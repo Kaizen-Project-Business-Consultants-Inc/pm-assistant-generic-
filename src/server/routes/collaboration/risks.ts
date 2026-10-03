@@ -15,7 +15,7 @@ import { PredictiveIntelligenceService } from '../../services/predictiveIntellig
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { projectService } from '../../services/ProjectService';
 import { projectMemberService } from '../../services/ProjectMemberService';
-import { queueRaidReviewRerun } from '../../services/raidReview/autoRerun';
+import { raidChanged } from '../../services/domainEvents';
 import { RAID_RESPONSE_STRATEGIES } from '../../database/RiskRepository';
 
 const RAID_TYPES = ['risk', 'issue', 'action', 'decision', 'assumption', 'dependency'] as const;
@@ -782,7 +782,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
         }
       }
 
-      if (succeeded.length > 0) queueRaidReviewRerun(projectId);
+      if (succeeded.length > 0) raidChanged(projectId);
       return reply.status(201).send({
         data: { succeeded: succeeded.length, failed, warnings },
       });

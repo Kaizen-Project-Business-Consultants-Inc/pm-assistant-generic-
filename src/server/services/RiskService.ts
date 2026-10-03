@@ -1,5 +1,5 @@
 import { riskRepository, ProjectRisk, RiskFilters, RiskStats, RaidUpdate, RAID_RESPONSE_STRATEGIES, type RaidResponseStrategy } from '../database/RiskRepository';
-import { queueRaidReviewRerun } from './raidReview/autoRerun';
+import { raidChanged } from './domainEvents';
 import { notificationService } from './NotificationService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { projectService } from './ProjectService';
@@ -133,7 +133,7 @@ class RiskService {
     }
 
     const risk = await riskRepository.create(data);
-    queueRaidReviewRerun(data.projectId);
+    raidChanged(data.projectId);
     logger.info('RAID item created: %s record=%s project=%s type=%s status=%s source=%s', risk.id, risk.recordId, data.projectId, data.type, risk.status, data.source || 'manual');
 
     // Fire-and-forget activity log
@@ -372,7 +372,7 @@ class RiskService {
     }
 
     const updated = await riskRepository.update(id, data);
-    queueRaidReviewRerun(existing.projectId);
+    raidChanged(existing.projectId);
     logger.info('RAID item updated: %s fields=%s', id, Object.keys(data).join(','));
 
     // Fire-and-forget activity logging for each changed field
@@ -422,7 +422,7 @@ class RiskService {
       comment: reason,
     }).catch((error) => { logger.warn('Failed to log RAID cancellation', { raidItemId: id, error }); });
 
-    queueRaidReviewRerun(existing.projectId);
+    raidChanged(existing.projectId);
     logger.info('RAID item cancelled: %s reason=%s', id, reason);
     return updated;
   }
@@ -450,7 +450,7 @@ class RiskService {
       comment: reason,
     }).catch((error) => { logger.warn('Failed to log RAID reversal', { raidItemId: id, error }); });
 
-    queueRaidReviewRerun(existing.projectId);
+    raidChanged(existing.projectId);
     logger.info('Decision reversed: %s reason=%s', id, reason);
     return updated;
   }

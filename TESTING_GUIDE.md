@@ -1378,7 +1378,8 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 
 `src/server/__tests__/utils/importCycleGuard.test.ts` reads every import in `src/server` and `src/client/src` with TypeScript's own parser and finds groups of files that import each other in a circle. Type-only imports don't count (they vanish when built); `await import()` "load it later" workarounds do. It counts the import links inside those groups and fails if the number rises above the ceiling at the top of the file, listing the links that closed the circle.
 
-- Baseline 2026-10-03: server 104 links / 38 files (21 / 11 on 2026-09-01); client 5 / 5.
+- Baseline 2026-10-03: server 104 links / 38 files (21 / 11 on 2026-09-01); client 5 / 5. After step 1B (notices): server 80 / 31.
+- **"Something changed" notices** (`services/domainEvents.ts`): code that changes a plan, a rate or a RAID item posts `planChanged` / `personRatesChanged` / `rateCardChanged` / `raidChanged`; `services/domainListeners.ts` connects them to Schedule Review, budget re-pricing and RAID Review. `registerDomainListeners()` must run in every process that changes data — `index.ts` and `scripts/runCronJob.ts`; `domainEvents.test.ts` guards both, and that nobody calls the reactions directly again.
 - The ceilings only go **down**: each untangling step lowers them in the same commit.
 - To see the current tangles: `PRINT_TANGLES=1 npx vitest run src/server/__tests__/utils/importCycleGuard.test.ts`.
 - If it fails on your change: don't raise the ceiling. Announce the change instead of calling the other part directly, or move the shared piece down a layer.

@@ -5,7 +5,7 @@ import { rateCardService, ratesOn } from './RateCardService';
 import { calendarsFor } from './weeklyLoad';
 import { workingDaysBetween } from '../utils/workingDays';
 import logger from '../utils/logger';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 
 /**
  * A task's budget = its planned work effort × rate (2026-10-02, agreed with the user) — never
@@ -70,13 +70,13 @@ export class TaskBudgetService {
   /** A person's rate changed: re-price the plans they're booked on (debounced, in the background) */
   async queueForResource(resourceId: string): Promise<void> {
     const bookings = await resourceService.findEffectiveAssignments({ resourceId, includeDone: true });
-    for (const sid of new Set(bookings.map(b => b.scheduleId))) queueReviewRerun(sid);
+    for (const sid of new Set(bookings.map(b => b.scheduleId))) planChanged(sid);
   }
 
   /** The rate card changed: re-price every plan (debounced per plan, in the background) */
   async queueAll(): Promise<void> {
     const schedules = await databaseService.query<{ id: string }>('SELECT id FROM schedules');
-    for (const s of schedules) queueReviewRerun(s.id);
+    for (const s of schedules) planChanged(s.id);
   }
 }
 

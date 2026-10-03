@@ -10,7 +10,7 @@ import { requireScope } from '../../middleware/requireScope';
 import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../utils/workingDays';
-import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
+import { planChanged } from '../../services/domainEvents';
 import {
   changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary,
 } from '../../services/ChangeHistoryService';
@@ -305,7 +305,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         }
       }
 
-      queueReviewRerun(body.scheduleId);
+      planChanged(body.scheduleId);
       if (succeeded.length > 0) {
         const projectId = await projectOfSchedule(body.scheduleId);
         if (projectId) {
@@ -416,7 +416,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       const doneIds = new Set(succeeded.map(s => s.id));
       for (const sid of new Set(body.updates.filter(u => doneIds.has(u.id)).map(u => u.scheduleId))) {
-        queueReviewRerun(sid);
+        planChanged(sid);
         const ids = body.updates.filter(u => u.scheduleId === sid && doneIds.has(u.id)).map(u => u.id);
         const projectId = await projectOfSchedule(sid);
         if (projectId) {
@@ -473,7 +473,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const header = result as any;
       const updated = header?.affectedRows ?? body.taskIds.length;
 
-      queueReviewRerun(body.scheduleId);
+      planChanged(body.scheduleId);
       const projectId = updated > 0 ? await projectOfSchedule(body.scheduleId) : null;
       if (projectId) {
         await changeHistoryService.record({
@@ -522,7 +522,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       await Promise.all([...parentIds].map(pid => scheduleService.recomputeParentRollup(pid).catch(err =>
         logger.error('[Rollup] recomputeParentRollup error on bulk delete:', err))));
 
-      queueReviewRerun(body.scheduleId);
+      planChanged(body.scheduleId);
       let changeId: string | null = null;
       const projectId = deletedIds.size > 0 ? await projectOfSchedule(body.scheduleId) : null;
       if (projectId) {

@@ -18,7 +18,7 @@ vi.mock('../../services/RateCardService', async () => {
 });
 const invalidateCache = vi.fn().mockResolvedValue(undefined);
 vi.mock('../../services/ProjectService', () => ({ projectService: { invalidateCache: (...a: any[]) => invalidateCache(...a) } }));
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
+vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { approvedTimeService } from '../../services/ApprovedTimeService';

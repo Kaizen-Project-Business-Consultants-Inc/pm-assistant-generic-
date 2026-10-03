@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Mocks (must be before imports) ---
 
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
+vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
 
 vi.mock('../../database/connection', () => ({
   databaseService: {

@@ -31,7 +31,7 @@ vi.mock('../../services/ScheduleFixProposerService', () => ({ scheduleFixPropose
 const replaceUndo = vi.fn().mockResolvedValue(2);
 vi.mock('../../services/ResourceReplaceService', () => ({ resourceReplaceService: { undo: (...a: any[]) => replaceUndo(...a) } }));
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: vi.fn().mockResolvedValue({}) } }));
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
+vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 import { changeHistoryService, NotLatestChangeError, ChangeStateError, snapshotTasksForDelete, deleteSummary, MAX_UNDO_BYTES } from '../../services/ChangeHistoryService';

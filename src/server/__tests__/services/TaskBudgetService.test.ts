@@ -17,8 +17,8 @@ vi.mock('../../services/RateCardService', async () => {
     { id: 'rc1', role: 'Developer', hourlyRate: 70, overtimeRate: null, effectiveFrom: '2026-01-01' },
   ] } };
 });
-const queueReviewRerun = vi.fn();
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: (...a: any[]) => queueReviewRerun(...a) }));
+const planChanged = vi.fn();
+vi.mock('../../services/domainEvents', () => ({ planChanged: (...a: any[]) => planChanged(...a) }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { taskBudgetService } from '../../services/TaskBudgetService';
@@ -85,6 +85,6 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
   it("a rate change re-prices the plans the person is booked on, in the background", async () => {
     findEffectiveAssignments.mockResolvedValue([{ scheduleId: 's1' }, { scheduleId: 's2' }, { scheduleId: 's1' }]);
     await taskBudgetService.queueForResource('r-peter');
-    expect(queueReviewRerun.mock.calls.map(c => c[0])).toEqual(['s1', 's2']);
+    expect(planChanged.mock.calls.map(c => c[0])).toEqual(['s1', 's2']);
   });
 });

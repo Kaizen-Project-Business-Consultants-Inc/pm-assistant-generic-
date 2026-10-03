@@ -21,7 +21,8 @@ import { join, dirname, resolve, relative } from 'path';
 const CEILING = {
   // 2026-10-03 baseline: 104 links / 38 files (one knot of 33 files around the schedule, plus
   // Embedding and RAID Review pairs). On 2026-09-01 it was 21 / 11.
-  server: { tangledLinks: 104, filesInTangles: 38 },
+  // Step 1B ("something changed" notices, services/domainEvents.ts): 80 / 31, RAID knot gone.
+  server: { tangledLinks: 80, filesInTangles: 31 },
   client: { tangledLinks: 5, filesInTangles: 5 },
 };
 

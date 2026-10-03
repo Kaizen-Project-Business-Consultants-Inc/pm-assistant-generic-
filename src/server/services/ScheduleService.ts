@@ -14,7 +14,7 @@ import { resourceService } from './ResourceService';
 import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
@@ -839,7 +839,7 @@ export class ScheduleService {
       this.autoAddAssigneeToTeam(data.assignedTo, schedule.projectId).catch(() => {});
     }
 
-    queueReviewRerun(data.scheduleId);
+    planChanged(data.scheduleId);
     return task;
   }
 
@@ -1128,7 +1128,7 @@ export class ScheduleService {
       }
     }
 
-    queueReviewRerun(oldTask.scheduleId);
+    planChanged(oldTask.scheduleId);
     return updated;
   }
 
@@ -1181,7 +1181,7 @@ export class ScheduleService {
 
     let changeId: string | null = null;
     if (deleted && existing) {
-      queueReviewRerun(existing.scheduleId);
+      planChanged(existing.scheduleId);
       // Recompute parent rollup after child deletion
       if (existing.parentTaskId) {
         await this.recomputeParentRollup(existing.parentTaskId).catch(err =>

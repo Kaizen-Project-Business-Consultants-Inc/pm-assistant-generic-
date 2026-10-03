@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import { config, logConfigSummary } from './config';
 import { registerPlugins } from './plugins';
 import { registerRoutes } from './routes';
+import { registerDomainListeners } from './services/domainListeners';
 import { databaseService } from './database/connection';
 import { runMigrations } from './database/migrationRunner';
 import { setDegraded } from './utils/degradedState';
@@ -77,6 +78,8 @@ async function start() {
     // Register service container for DI
     fastify.decorate('services', serviceContainer);
 
+    // "Something changed" notices → Schedule Review / budgets / RAID Review re-run
+    registerDomainListeners();
     await registerPlugins(fastify);
     await registerRoutes(fastify);
 

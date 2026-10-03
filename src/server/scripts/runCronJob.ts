@@ -25,6 +25,7 @@ import { databaseService } from '../database/connection';
 import { redisService } from '../services/RedisService';
 import { config } from '../config';
 import { forEachTenant } from '../services/scheduling/cronManager';
+import { registerDomainListeners } from '../services/domainListeners';
 
 const JOB_NAME = process.argv[2];
 
@@ -37,6 +38,8 @@ if (!JOB_NAME) {
 async function run() {
   const start = Date.now();
   console.log(`[cron-runner] Starting job: ${JOB_NAME}`);
+  // Jobs change data too: their changes must reach the same reactions as the app's
+  registerDomainListeners();
 
   try {
     // Verify database connection

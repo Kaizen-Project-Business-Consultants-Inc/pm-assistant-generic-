@@ -5,7 +5,7 @@ import { getRequestContext, getActorSource } from '../middleware/requestContext'
 import { scheduleService } from './ScheduleService';
 import { restoreTaskDates } from './ScheduleRecomputeService';
 import { auditLedgerService } from './AuditLedgerService';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 import logger from '../utils/logger';
 import { TASK_STATUS_LABEL } from '../constants/taskStatus';
 
@@ -578,7 +578,7 @@ class ChangeHistoryService {
     await databaseService.query(
       `UPDATE change_batches SET status = 'undone', undone_at = NOW(), undone_by = ? WHERE id = ?`, [userId, changeId],
     );
-    queueReviewRerun(scheduleId);
+    planChanged(scheduleId);
     auditLedgerService.append({
       actorId: userId ?? 'system',
       actorType: userId ? 'user' : 'system',

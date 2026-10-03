@@ -28,8 +28,8 @@ const svc = vi.hoisted(() => ({
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: svc }));
 vi.mock('../../services/ScheduleRecomputeService', () => ({ scheduleRecomputeService: {}, restoreTaskDates: vi.fn() }));
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: vi.fn(async () => ({})) } }));
-const queueReviewRerun = vi.hoisted(() => vi.fn());
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun }));
+const planChanged = vi.hoisted(() => vi.fn());
+vi.mock('../../services/domainEvents', () => ({ planChanged }));
 const record = vi.hoisted(() => vi.fn(async () => 'chg-1'));
 vi.mock('../../services/ChangeHistoryService', async (importOriginal) => {
   const real = await importOriginal<any>();

@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { rateCardChanged } from './domainEvents';
 import { databaseService } from '../database/connection';
 
 /**
@@ -112,8 +113,7 @@ export class RateCardService {
 
   /** Task budgets are planned hours × rate: a rate card change re-prices every plan, in the background */
   private repriceLater(): void {
-    import('./TaskBudgetService').then(({ taskBudgetService }) => taskBudgetService.queueAll())
-      .catch(() => { /* best effort — budgets also refresh on the next change to each plan */ });
+    rateCardChanged();
   }
 
   private async find(id: string): Promise<RateCardEntry | null> {

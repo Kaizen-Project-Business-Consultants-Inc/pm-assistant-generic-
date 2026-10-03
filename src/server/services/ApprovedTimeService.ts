@@ -4,7 +4,7 @@ import { scheduleService } from './ScheduleService';
 import { rateCardService, ratesOn } from './RateCardService';
 import { calendarsFor } from './weeklyLoad';
 import { workingDaysBetween } from '../utils/workingDays';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 import { projectService } from './ProjectService';
 import logger from '../utils/logger';
 
@@ -95,7 +95,7 @@ export class ApprovedTimeService {
       await scheduleService.recomputeParentRollup(pid).catch(err => logger.warn('[ApprovedTime] roll-up failed', { pid, error: err?.message }));
     }
     for (const projectId of projects) await this.applyToProject(projectId);
-    for (const sid of scheduleIds) queueReviewRerun(sid);
+    for (const sid of scheduleIds) planChanged(sid);
     return { tasks: tasks.length, projects: projects.size };
   }
 

@@ -2,7 +2,7 @@ import { databaseService } from '../database/connection';
 import { resourceRepository } from '../database/ResourceRepository';
 import { changeHistoryService } from './ChangeHistoryService';
 import { auditLedgerService } from './AuditLedgerService';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { ResourceValidationError } from './ResourceService';
 import logger from '../utils/logger';
@@ -68,7 +68,7 @@ export class ResourceReplaceService {
       taskIds,
       undo,
     });
-    queueReviewRerun(input.scheduleId);
+    planChanged(input.scheduleId);
     const ctx = getRequestContext();
     auditLedgerService.append({
       actorId: ctx?.userId ?? 'system',

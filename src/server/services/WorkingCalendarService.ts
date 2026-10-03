@@ -3,7 +3,7 @@ import { calendarService, CalendarService, type CalendarSpec, type CompanyHolida
 import { scheduleService } from './ScheduleService';
 import { scheduleRecomputeService, type DateDelta, type RescheduleReason } from './ScheduleRecomputeService';
 import { changeHistoryService } from './ChangeHistoryService';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 import type { IsWorking } from '../utils/workingDays';
 import logger from '../utils/logger';
 
@@ -107,7 +107,7 @@ export class WorkingCalendarService {
           taskIds: res.deltas.map(d => d.taskId),
           undo: { moved: res.deltas.map(d => ({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd })) },
         });
-        queueReviewRerun(sch.id);
+        planChanged(sch.id);
       }
     }
     return moves;

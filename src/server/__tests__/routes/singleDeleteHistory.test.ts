@@ -42,7 +42,7 @@ vi.mock('../../services/NotificationService', () => ({ notificationService: {} }
 vi.mock('../../services/UserService', () => ({ userService: {} }));
 const append = vi.hoisted(() => vi.fn(async () => ({})));
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append } }));
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
+vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
 
 import { scheduleRoutes } from '../../routes/scheduling/schedules';
 import { scheduleService } from '../../services/ScheduleService';

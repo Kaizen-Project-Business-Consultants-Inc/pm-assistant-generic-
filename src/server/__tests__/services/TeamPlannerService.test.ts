@@ -27,8 +27,8 @@ vi.mock('../../services/RateCardService', () => ({
   rateCardService: { listSafe: async () => [] },
   ratesOn: (r: any) => ({ standard: r.costRateHourly, overtime: null }),
 }));
-const queueReviewRerun = vi.fn();
-vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: (...a: any[]) => queueReviewRerun(...a) }));
+const planChanged = vi.fn();
+vi.mock('../../services/domainEvents', () => ({ planChanged: (...a: any[]) => planChanged(...a) }));
 vi.mock('../../services/ResourceService', () => ({ ResourceValidationError: class ResourceValidationError extends Error {} }));
 const checkProjectRoleFor = vi.fn();
 vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRoleFor: (...a: any[]) => checkProjectRoleFor(...a) }));
@@ -170,7 +170,7 @@ describe('TeamPlannerService — applying a drop', () => {
     expect(record).toHaveBeenCalledTimes(1);
     expect(record.mock.calls[0][0]).toMatchObject({ kind: 'planner_move', projectId: 'p-mine', scheduleId: 's1', taskIds: ['t-uat'] });
     expect(r.summary).toMatch(/^Gave "UAT test scripts" to Parth \(was Peter\)/);
-    expect(queueReviewRerun).toHaveBeenCalledWith('s1');
+    expect(planChanged).toHaveBeenCalledWith('s1');
   });
 
   it('a move in time writes the new dates and keeps the old dates for Undo', async () => {

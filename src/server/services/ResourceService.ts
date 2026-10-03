@@ -1,4 +1,5 @@
 import { resourceRepository } from '../database/ResourceRepository';
+import { planChanged, personRatesChanged } from './domainEvents';
 import { scheduleService } from './ScheduleService';
 import { auditLedgerService } from './AuditLedgerService';
 import { resourceAvailabilityService } from './ResourceAvailabilityService';
@@ -220,8 +221,7 @@ export class ResourceService {
 
     // A different rate (or role, for the rate card) re-prices the plans they're on
     if (['costRateHourly', 'overtimeRateHourly', 'useRateCard', 'role', 'capacityHoursPerWeek'].some(k => k in data && (data as any)[k] !== (existing as any)[k])) {
-      import('./TaskBudgetService').then(({ taskBudgetService }) => taskBudgetService.queueForResource(id))
-        .catch(() => { /* best effort — budgets also refresh on the next change to each plan */ });
+      personRatesChanged(id);
     }
 
     auditLedgerService.append({
@@ -397,14 +397,14 @@ export class ResourceService {
     }).catch(err => deadLetterService.capture('audit.append', {}, err));
 
     // An hours booking changes the task's planned cost: refresh it (and the review) shortly
-    import('./scheduleReview/autoRerun').then(m => m.queueReviewRerun(data.scheduleId)).catch(() => {});
+    planChanged(data.scheduleId);
     return { assignment, warnings };
   }
 
   async deleteAssignment(id: string): Promise<boolean> {
     const [row] = await databaseService.query<{ schedule_id: string }>('SELECT schedule_id FROM resource_assignments WHERE id = ?', [id]);
     const deleted = await resourceRepository.deleteAssignment(id);
-    if (deleted && row) import('./scheduleReview/autoRerun').then(m => m.queueReviewRerun(row.schedule_id)).catch(() => {});
+    if (deleted && row) planChanged(row.schedule_id);
     return deleted;
   }
 

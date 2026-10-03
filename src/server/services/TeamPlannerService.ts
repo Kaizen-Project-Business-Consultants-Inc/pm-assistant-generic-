@@ -7,7 +7,7 @@ import { scheduleRecomputeService, restoreTaskDates } from './ScheduleRecomputeS
 import { changeHistoryService } from './ChangeHistoryService';
 import { auditLedgerService } from './AuditLedgerService';
 import { rateCardService, ratesOn } from './RateCardService';
-import { queueReviewRerun } from './scheduleReview/autoRerun';
+import { planChanged } from './domainEvents';
 import { ResourceValidationError, type ResourceAssignment } from './ResourceService';
 import { hoursInWeek, calendarsFor } from './weeklyLoad';
 import { followTask } from '../database/bookingDates';
@@ -473,7 +473,7 @@ export class TeamPlannerService {
       taskIds: [...new Set([task.id, ...moves.map(m => m.taskId)])],
       undo,
     });
-    queueReviewRerun(task.schedule_id);
+    planChanged(task.schedule_id);
     const ctx = getRequestContext();
     auditLedgerService.append({
       actorId: ctx?.userId ?? 'system',
