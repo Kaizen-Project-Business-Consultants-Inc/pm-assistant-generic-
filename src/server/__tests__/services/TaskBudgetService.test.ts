@@ -88,3 +88,15 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
     expect(planChanged.mock.calls.map(c => c[0])).toEqual(['s1', 's2']);
   });
 });
+
+describe('a rate card change re-prices live plans only (2026-10-03)', () => {
+  it('archived projects and the sample are left alone — they only added to the burst', async () => {
+    query.mockReset(); planChanged.mockReset();
+    query.mockResolvedValueOnce([{ id: 's-live-1' }, { id: 's-live-2' }]);
+    await taskBudgetService.queueAll();
+    const sql = String(query.mock.calls[0][0]);
+    expect(sql).toContain('p.archived_at IS NULL');
+    expect(sql).toContain('COALESCE(p.is_demo, 0) = 0');
+    expect(planChanged.mock.calls.map(c => c[0])).toEqual(['s-live-1', 's-live-2']);
+  });
+});

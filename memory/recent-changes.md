@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Rate card change no longer floods the database
+queueAll re-priced + re-reviewed EVERY plan (archived too) at once ~20 s later → mysql2 'Queue limit reached' (staging 147×; prod 0×), could fail page loads. Now: live, non-sample plans only (TaskBudgetService.queueAll) and at most MAX_RUNNING=2 reviews at once in scheduleReview/autoRerun (whenThereIsRoom; AsyncResource.bind keeps each waiting plan's own company context — test proves it fails without). Covers company-holiday bursts too.
+
 ## 2026-10-03 — Notifications reach the assigned person's login
 Bug since tasks.assigned_to became a RESOURCE id (Sep 2026): 'Task assigned to you' (create + reassign), 'New comment on your task' and deadline reminders were addressed to the resource id → FK error, never delivered; the digest's overdue/due-soon lists searched by USERNAME and never matched; automation auto_assign wrote a login into assigned_to. New utils/assigneeLogins.ts (resource → its login; older tasks holding a login still work; no login → nobody). Guard in assigneeLogins.test.ts (no notification addressed to assignedTo directly; digest query; automation). Found by the step-1B staging log check.
 

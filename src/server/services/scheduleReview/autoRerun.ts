@@ -1,3 +1,4 @@
+import { AsyncResource } from 'async_hooks';
 import logger from '../../utils/logger';
 import { getRequestContext } from '../../middleware/requestContext';
 
@@ -11,8 +12,29 @@ import { getRequestContext } from '../../middleware/requestContext';
  * AI, no tokens. Timers carry the request's AsyncLocalStorage context, so the review runs
  * against the right tenant database. Fire-and-forget: a failure is logged, never surfaced
  * to the edit that caused it.
+ *
+ * At most MAX_RUNNING reviews run at once (2026-10-03). A rate card or company-holiday change
+ * queues every plan in the company; they all came due at the same moment and used up the
+ * database connections ("Queue limit reached" — staging, 147 times), which could also fail
+ * ordinary page loads. The rest wait their turn, each still in its own request context.
  */
 export const QUIET_MS = 20_000;
+export const MAX_RUNNING = 2;
+
+let running = 0;
+const waiting: Array<() => void> = [];
+
+/** Run now if there is room, else wait. The wait keeps the caller's context (the right company). */
+export function whenThereIsRoom(job: () => Promise<void>): void {
+  const start = AsyncResource.bind(() => {
+    running++;
+    job().finally(() => {
+      running--;
+      waiting.shift()?.();
+    });
+  });
+  if (running < MAX_RUNNING) start(); else waiting.push(start);
+}
 
 const pending = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -23,7 +45,7 @@ export function queueReviewRerun(scheduleId: string | null | undefined): void {
   const userId = getRequestContext()?.userId ?? null;
   const timer = setTimeout(() => {
     pending.delete(scheduleId);
-    void runNow(scheduleId, userId);
+    whenThereIsRoom(() => runNow(scheduleId, userId));
   }, QUIET_MS);
   // Never keep the process alive just for a pending review
   (timer as { unref?: () => void }).unref?.();
@@ -63,4 +85,6 @@ async function runNow(scheduleId: string, userId: string | null): Promise<void> 
 export function _resetAutoRerunForTests(): void {
   for (const t of pending.values()) clearTimeout(t);
   pending.clear();
+  waiting.length = 0;
+  running = 0;
 }

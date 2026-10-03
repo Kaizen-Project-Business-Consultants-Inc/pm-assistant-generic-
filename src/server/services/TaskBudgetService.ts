@@ -73,9 +73,15 @@ export class TaskBudgetService {
     for (const sid of new Set(bookings.map(b => b.scheduleId))) planChanged(sid);
   }
 
-  /** The rate card changed: re-price every plan (debounced per plan, in the background) */
+  /**
+   * The rate card changed: re-price every live plan (debounced per plan, in the background).
+   * Archived projects and the sample are left alone — they are history / never count, and
+   * re-pricing them only added to the burst (2026-10-03).
+   */
   async queueAll(): Promise<void> {
-    const schedules = await databaseService.query<{ id: string }>('SELECT id FROM schedules');
+    const schedules = await databaseService.query<{ id: string }>(
+      `SELECT s.id FROM schedules s JOIN projects p ON p.id = s.project_id
+        WHERE p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`);
     for (const s of schedules) planChanged(s.id);
   }
 }
