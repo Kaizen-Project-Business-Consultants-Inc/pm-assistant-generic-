@@ -168,6 +168,9 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', projectId] });
       queryClient.invalidateQueries({ queryKey: ['expense-summary', projectId] });
+      // the project's Total Spent includes expenses: refresh it too
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-summary', projectId] });
       setShowForm(false);
       setFormAmount('');
       setFormVendor('');
@@ -181,11 +184,16 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses', projectId] });
       queryClient.invalidateQueries({ queryKey: ['expense-summary', projectId] });
+      // the project's Total Spent includes expenses: refresh it too
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-summary', projectId] });
     },
   });
 
   const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const totalSpend = budgetSpent + totalExpenses;
+  // The project's spent already includes its expenses (labour + other costs + expenses, 2026-10-03)
+  const totalSpend = budgetSpent;
+  const otherCosts = Math.max(0, budgetSpent - labourCost - totalExpenses);
   const remaining = budgetAllocated - totalSpend;
   const usedPct = budgetAllocated > 0 ? Math.round((totalSpend / budgetAllocated) * 100) : 0;
   const burnStatus = usedPct > 100 ? 'over' : usedPct > 80 ? 'warning' : 'healthy';
@@ -304,7 +312,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
               <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalSpend, currency)}</p>
               {/* Labour comes from approved timesheets; other costs are typed in; expenses below */}
               <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                Labour (approved hours × rate) {formatCurrency(labourCost, currency)}{budgetSpent - labourCost > 0 ? ` · other costs ${formatCurrency(budgetSpent - labourCost, currency)}` : ''} · expenses {formatCurrency(totalExpenses, currency)}
+                Labour (approved hours × rate) {formatCurrency(labourCost, currency)}{otherCosts > 0 ? ` · other costs ${formatCurrency(otherCosts, currency)}` : ''} · expenses {formatCurrency(totalExpenses, currency)}
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">

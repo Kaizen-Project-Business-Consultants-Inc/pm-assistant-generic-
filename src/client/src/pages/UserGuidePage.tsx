@@ -337,6 +337,7 @@ const sections: Section[] = [
       "Months lock on the 5th of the next month: September's hours can't change from 5 October",
       'A task\'s cost is work effort × rate: planned cost = planned hours × rate, actual cost = approved hours × rate — never typed',
       'Licences, vendors and materials go in Financials → Expenses',
+      'Total Spent = labour + other costs + expenses — the same figure on the dashboard, portfolio and EVM; EVM counts each cost on the day it happened',
       'Approving updates each task: actual cost, % complete (stops at 99% until done), actual start',
       'On tasks with planned hours the % is calculated, not typed — use Mark done to finish a task',
       'Use prev/next arrows to move between weeks',

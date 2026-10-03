@@ -97,12 +97,14 @@ describe('ApprovedTimeService — what approved hours do to the plan', () => {
     expect(params.slice(2, 4)).toEqual([910, 910]);
   });
 
-  it('rolls up the summary task, and sets project spend = labour + other costs', async () => {
+  it('rolls up the summary task, and sets project spend = labour + other costs + expenses', async () => {
     db();
     await approvedTimeService.applyToTasks(['t1']);
     expect(recomputeParentRollup).toHaveBeenCalledWith('phase');
     const proj = query.mock.calls.find(([sql]) => String(sql).includes('UPDATE projects p SET'))!;
-    expect(proj[0]).toContain('p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost, 2)');
+    // spent = labour + other costs + expenses (2026-10-03: expenses used to be left out)
+    expect(proj[0]).toContain('p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost');
+    expect(proj[0]).toMatch(/budget_spent = ROUND\([\s\S]*FROM project_expenses e WHERE e.project_id = p.id/);
     expect(proj[0]).toContain('COALESCE(t.is_summary, 0) = 0'); // summary tasks aren't counted twice
     expect(proj[1]).toEqual(['p1']);
     expect(invalidateCache).toHaveBeenCalledWith('p1'); // screens must not show the cached old spend
@@ -111,5 +113,30 @@ describe('ApprovedTimeService — what approved hours do to the plan', () => {
   it('nothing to do for no tasks', async () => {
     expect(await approvedTimeService.applyToTasks([])).toEqual({ tasks: 0, projects: 0 });
     expect(query).not.toHaveBeenCalled();
+  });
+});
+
+describe('ApprovedTimeService.costTimeline — actual cost by day, for earned value', () => {
+  it("approved labour on the day worked (at that day's rate) + expenses on their date + undated other costs", async () => {
+    query.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM time_entries te')) return [
+        { user_id: 'u1', date: '2026-01-05', hours: 8, rate_type: 'standard' },
+        { user_id: 'u1', date: '2026-01-06', hours: 2, rate_type: 'overtime' },
+      ];
+      if (sql.includes('FROM resources')) return [{ user_id: 'u1', cost_rate_hourly: 50, overtime_rate_hourly: 75, use_rate_card: 0, role: 'Dev' }];
+      if (sql.includes('FROM project_expenses')) return [{ date: '2026-01-06', amount: 300 }, { date: '2026-01-20', amount: 1000 }];
+      if (sql.includes('SELECT other_costs FROM projects')) return [{ other_costs: 250 }];
+      return [];
+    });
+    const t = await approvedTimeService.costTimeline('p1');
+    expect(t).toEqual({ undated: 250, byDay: [
+      { date: '2026-01-05', amount: 400 },
+      { date: '2026-01-06', amount: 450 }, // 2 h overtime at 75 + 300 expense
+      { date: '2026-01-20', amount: 1000 },
+    ] });
+    const { costUpTo } = await import('../../services/costTimeline');
+    expect(costUpTo(t, '2026-01-04')).toBe(250);
+    expect(costUpTo(t, '2026-01-06')).toBe(1100);
+    expect(costUpTo(t, '2026-12-31')).toBe(2100);
   });
 });

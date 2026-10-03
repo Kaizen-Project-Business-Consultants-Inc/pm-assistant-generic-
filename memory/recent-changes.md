@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — spent includes expenses; EVM actual cost by date
+
+- `budget_spent` = labour + other costs + expenses everywhere (T075 backfill; recomputed on approvals and every expense change). Before, only Financials added expenses, so the dashboard, Budget Watch, analytics, portal, portfolio and EVM understated spend and CPI looked too good.
+- EVM AC = what was spent by each date (approved hours on the day worked, expenses on their date, undated other costs from the start), capped at the status date. It used to be task labour only, or "spent" smeared over the project.
+
 ## 2026-10-03 — Logged errors keep their message
 utils/logger.ts serializeErrors (before the PII mask, all three formats): an Error in log metadata now gives name, message, code/errno/sqlState, short stack — never the SQL text. Before: {"error":{"name":"Error"}} (~330 call sites), which hid the sample-removal bug and the staging portfolio/resources 500. Test: loggerErrors.test.ts.
 

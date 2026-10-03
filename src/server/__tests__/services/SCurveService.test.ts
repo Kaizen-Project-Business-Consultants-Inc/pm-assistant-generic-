@@ -28,6 +28,15 @@ vi.mock('../../database/SprintRepository', () => ({
   },
 }));
 
+// Actual cost comes from what was really spent, by date (approved labour + expenses + undated other costs)
+const mockCostTimeline = vi.fn(async (_id?: string) => ({ undated: 0, byDay: [] as Array<{ date: string; amount: number }> }));
+vi.mock('../../services/ApprovedTimeService', () => ({
+  approvedTimeService: { costTimeline: (...args: any[]) => mockCostTimeline(...args) },
+}));
+// Status date: well after the January 2026 test projects unless a test says otherwise
+const mockStatusDate = vi.fn(async (_id?: string) => '2026-06-30');
+vi.mock('../../services/StatusDateService', () => ({ statusDateFor: (...args: any[]) => mockStatusDate(...args) }));
+
 import { SCurveService } from '../../services/SCurveService';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -277,56 +286,32 @@ describe('SCurveService', () => {
       }
     });
 
-    it('uses per-task actualCost when available', async () => {
-      mockFindById.mockResolvedValue(makeProject({
-        budgetAllocated: 100000,
-        budgetSpent: 60000,
-      }));
+    it('actual cost = what was spent by each date: labour + expenses on their days, other costs from the start', async () => {
+      mockFindById.mockResolvedValue(makeProject({ budgetAllocated: 100000, budgetSpent: 60000 }));
       mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
       mockFindTasksByScheduleIds.mockResolvedValue([
-        makeTask('t1', {
-          startDate: '2026-01-01',
-          endDate: '2026-01-08',
-          progressPercentage: 100,
-          actualCost: 30000,
-        }),
-        makeTask('t2', {
-          startDate: '2026-01-08',
-          endDate: '2026-01-15',
-          progressPercentage: 50,
-          actualCost: 20000,
-        }),
+        makeTask('t1', { startDate: '2026-01-01', endDate: '2026-01-15', progressPercentage: 50, actualCost: 99999 }),
       ]);
+      mockCostTimeline.mockResolvedValueOnce({ undated: 1000, byDay: [{ date: '2026-01-02', amount: 4000 }, { date: '2026-01-12', amount: 5000 }] });
 
       const result = await service.computeSCurveData('proj-1');
-
-      // Last point AC should sum per-task actual costs = 50000
-      const lastPoint = result[result.length - 1];
-      expect(lastPoint.ac).toBe(50000);
+      // first point (1 Jan): only the undated other costs; by 8 Jan the first day's spend; at the end all of it
+      expect(result[0].ac).toBe(1000);
+      expect(result[1].ac).toBe(5000);
+      expect(result[result.length - 1].ac).toBe(10000);
+      // a task's own labour figure is not used any more (it left out expenses)
+      expect(result.every(p => p.ac <= 10000)).toBe(true);
     });
 
-    it('falls back to proportional budgetSpent when no per-task costs', async () => {
-      mockFindById.mockResolvedValue(makeProject({
-        budgetAllocated: 100000,
-        budgetSpent: 80000,
-      }));
+    it('never counts spend after the status date', async () => {
+      mockFindById.mockResolvedValue(makeProject({ budgetAllocated: 100000 }));
       mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
-      mockFindTasksByScheduleIds.mockResolvedValue([
-        makeTask('t1', {
-          startDate: '2026-01-01',
-          endDate: '2026-01-08',
-          progressPercentage: 100,
-        }),
-      ]);
+      mockFindTasksByScheduleIds.mockResolvedValue([makeTask('t1', { startDate: '2026-01-01', endDate: '2026-01-29' })]);
+      mockCostTimeline.mockResolvedValueOnce({ undated: 0, byDay: [{ date: '2026-01-05', amount: 2000 }, { date: '2026-01-20', amount: 3000 }] });
+      mockStatusDate.mockResolvedValueOnce('2026-01-10');
 
       const result = await service.computeSCurveData('proj-1');
-
-      // AC should be based on budgetSpent distributed proportionally
-      expect(result.length).toBeGreaterThan(0);
-      // Values should be numbers (exact values depend on Date.now())
-      for (const dp of result) {
-        expect(typeof dp.ac).toBe('number');
-      }
+      expect(result[result.length - 1].ac).toBe(2000);
     });
 
     it('skips tasks with no start or end date in duration calculations', async () => {
@@ -641,82 +626,6 @@ describe('SCurveService', () => {
     });
   });
 
-  // ── computeSCurveData — per-task actualCost edge cases ──────────────
-  describe('computeSCurveData — per-task actualCost distribution', () => {
-    it('distributes actualCost proportionally to elapsed time within task', async () => {
-      mockFindById.mockResolvedValue(makeProject({
-        budgetAllocated: 100000,
-        budgetSpent: 0,
-      }));
-      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
-      // Single task with actualCost, spanning 7 days
-      mockFindTasksByScheduleIds.mockResolvedValue([
-        makeTask('t1', {
-          startDate: '2026-01-01',
-          endDate: '2026-01-08',
-          progressPercentage: 100,
-          actualCost: 50000,
-        }),
-      ]);
-
-      const result = await service.computeSCurveData('proj-1');
-
-      // Last point should have full actual cost
-      const lastPoint = result[result.length - 1];
-      expect(lastPoint.ac).toBe(50000);
-    });
-
-    it('sums actualCost from multiple tasks', async () => {
-      mockFindById.mockResolvedValue(makeProject({
-        budgetAllocated: 100000,
-        budgetSpent: 0,
-      }));
-      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
-      mockFindTasksByScheduleIds.mockResolvedValue([
-        makeTask('t1', {
-          startDate: '2026-01-01',
-          endDate: '2026-01-08',
-          progressPercentage: 100,
-          actualCost: 25000,
-        }),
-        makeTask('t2', {
-          startDate: '2026-01-01',
-          endDate: '2026-01-08',
-          progressPercentage: 100,
-          actualCost: 35000,
-        }),
-      ]);
-
-      const result = await service.computeSCurveData('proj-1');
-
-      const lastPoint = result[result.length - 1];
-      expect(lastPoint.ac).toBe(60000);
-    });
-
-    it('treats tasks with actualCost=0 as no per-task cost data', async () => {
-      mockFindById.mockResolvedValue(makeProject({
-        budgetAllocated: 100000,
-        budgetSpent: 50000,
-      }));
-      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
-      mockFindTasksByScheduleIds.mockResolvedValue([
-        makeTask('t1', {
-          startDate: '2026-01-01',
-          endDate: '2026-01-08',
-          progressPercentage: 100,
-          actualCost: 0,
-        }),
-      ]);
-
-      const result = await service.computeSCurveData('proj-1');
-
-      // hasPerTaskCosts should be false (totalTaskActualCost === 0)
-      // so AC should fall back to proportional budgetSpent
-      expect(result.length).toBeGreaterThan(0);
-    });
-  });
-
-  // ── computeSCurveData — zero-duration tasks ─────────────────────────
   describe('computeSCurveData — zero-duration tasks (milestones)', () => {
     it('handles tasks where start equals end (1-day minimum duration)', async () => {
       mockFindById.mockResolvedValue(makeProject({

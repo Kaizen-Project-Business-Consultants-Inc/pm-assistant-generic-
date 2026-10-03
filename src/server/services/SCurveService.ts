@@ -2,6 +2,9 @@ import { scheduleService, Task, Schedule } from './ScheduleService';
 import { projectService, Project } from './ProjectService';
 import { sprintRepository } from '../database/SprintRepository';
 import { utcDay, workingSpread } from '../utils/workingDays';
+import { approvedTimeService } from './ApprovedTimeService';
+import { costUpTo } from './costTimeline';
+import { statusDateFor } from './StatusDateService';
 
 /** One week, the S-curve's sampling step (a chart interval, not a task date) */
 const WEEK_MS = 604_800_000;
@@ -19,8 +22,12 @@ export class SCurveService {
     if (!project) return [];
 
     const budgetAllocated = project.budgetAllocated || 0;
-    const budgetSpent = project.budgetSpent || 0;
     if (budgetAllocated <= 0) return [];
+    // Actual cost (2026-10-03): what was really spent by each date — approved hours on the day
+    // worked, expenses on their date, older undated costs from the start — up to the status date.
+    // It used to be the tasks' labour only (expenses left out), or "spent" smeared over time.
+    const costs = await approvedTimeService.costTimeline(projectId);
+    const asOf = String(await statusDateFor(projectId)).slice(0, 10);
 
     // Agile projects use sprint/story-point-based EVM
     if (project.methodology === 'agile') {
@@ -66,21 +73,14 @@ export class SCurveService {
 
     if (totalDuration === 0) return [];
 
-    // Check if any tasks have per-task actualCost data
-    const totalTaskActualCost = taskDurations.reduce((sum, { task }) => sum + ((task as any).actualCost ?? 0), 0);
-    const hasPerTaskCosts = totalTaskActualCost > 0;
-
     // Generate weekly data points
     const weekMs = WEEK_MS;
     const dataPoints: SCurveDataPoint[] = [];
-    const now = Date.now();
-
     for (let time = projectStart; time <= projectEnd + weekMs; time += weekMs) {
       const weekEnd = Math.min(time, projectEnd);
 
       let pv = 0; // Planned Value: cumulative planned spend by this date
       let ev = 0; // Earned Value: cumulative progress-weighted planned spend
-      let ac = 0; // Actual Cost: sum of per-task actual costs
 
       for (const { task, duration, start, end, shareBy } of taskDurations) {
         const taskBudget = (duration / totalDuration) * budgetAllocated;
@@ -93,30 +93,17 @@ export class SCurveService {
         if (weekEnd >= start) {
           ev += taskBudget * progress;
         }
-
-        // AC: use per-task actualCost, distributed proportionally to task progress
-        if (hasPerTaskCosts) {
-          const taskActualCost = (task as any).actualCost ?? 0;
-          if (taskActualCost > 0 && weekEnd >= start) {
-            // Distribute the task's actual cost over its working days, like PV
-            ac += weekEnd >= end ? taskActualCost : taskActualCost * shareBy(weekEnd);
-          }
-        }
       }
 
-      // Fallback: if no per-task costs, distribute project budgetSpent proportionally
-      if (!hasPerTaskCosts) {
-        const projectElapsed = (Math.min(weekEnd, now) - projectStart) / (projectEnd - projectStart);
-        ac = weekEnd <= now
-          ? budgetSpent * Math.max(0, Math.min(1, projectElapsed))
-          : budgetSpent;
-      }
+      // AC: spent by this date (never beyond the status date — the future isn't spent yet)
+      const day = new Date(weekEnd).toISOString().slice(0, 10);
+      const ac = costUpTo(costs, day < asOf ? day : asOf);
 
       dataPoints.push({
         date: new Date(weekEnd).toISOString().slice(0, 10),
         pv: Math.round(pv),
         ev: Math.round(ev),
-        ac: Math.round(weekEnd > now && !hasPerTaskCosts ? budgetSpent : ac),
+        ac: Math.round(ac),
       });
     }
 
@@ -129,7 +116,8 @@ export class SCurveService {
 
   private async computeAgileScurve(project: Project): Promise<SCurveDataPoint[]> {
     const BAC = project.budgetAllocated || 0;
-    const budgetSpent = project.budgetSpent || 0;
+    const costs = await approvedTimeService.costTimeline(project.id);
+    const asOf = String(await statusDateFor(project.id)).slice(0, 10);
 
     const sprints = await sprintRepository.findByProject(project.id);
     if (sprints.length === 0) return [];
@@ -160,8 +148,6 @@ export class SCurveService {
     // Generate weekly data points across the sprint timeline
     const DAY_MS = 86_400_000;
     const weekMs = 7 * DAY_MS;
-    const now = Date.now();
-
     const projectStart = new Date(sorted[0].startDate).getTime();
     const projectEnd = new Date(sorted[sorted.length - 1].endDate).getTime();
 
@@ -220,11 +206,9 @@ export class SCurveService {
         }
       }
 
-      // AC: distribute actual spend proportionally up to current date (same as waterfall)
-      const projectElapsed = (Math.min(weekEnd, now) - projectStart) / (projectEnd - projectStart);
-      const ac = weekEnd <= now
-        ? budgetSpent * Math.max(0, Math.min(1, projectElapsed))
-        : budgetSpent;
+      // AC: spent by this date, up to the status date (same as waterfall)
+      const day = new Date(weekEnd).toISOString().slice(0, 10);
+      const ac = costUpTo(costs, day < asOf ? day : asOf);
 
       dataPoints.push({
         date: new Date(weekEnd).toISOString().slice(0, 10),

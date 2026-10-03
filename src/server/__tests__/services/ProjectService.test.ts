@@ -22,6 +22,10 @@ vi.mock('../../services/DagWorkflowService', () => ({
 
 vi.mock('uuid', () => ({ v4: () => 'test-project-id' }));
 
+// a project's expenses (part of its money spent)
+const expensesTotal = vi.fn(async (_id?: string) => 0);
+vi.mock('../../database/ExpenseRepository', () => ({ expenseRepository: { totalForProject: (...a: any[]) => expensesTotal(...a) } }));
+
 import { ProjectService } from '../../services/ProjectService';
 import { databaseService } from '../../database/connection';
 import { policyEngineService } from '../../services/PolicyEngineService';
@@ -149,6 +153,18 @@ describe('ProjectService', () => {
       mockQuery.mockResolvedValueOnce([]);
       const updated = await service.update('nonexistent', { name: 'X' });
       expect(updated).toBeNull();
+    });
+
+    it('a typed total spent sets the other costs to what is over labour AND expenses', async () => {
+      expensesTotal.mockResolvedValueOnce(3000);
+      mockQuery
+        .mockResolvedValueOnce([{ ...sampleRow, labour_cost: 2000 }]) // findById (existing)
+        .mockResolvedValueOnce([]) // UPDATE
+        .mockResolvedValueOnce([{ ...sampleRow, budget_spent: 10000 }]); // findById (updated)
+      await service.update('p1', { budgetSpent: 10000 } as any);
+      const upd = mockQuery.mock.calls.find(c => String(c[0]).startsWith('UPDATE'))!;
+      // other costs 5000 = 10000 typed − 2000 labour − 3000 expenses; spent stays the full 10000
+      expect(upd[1]).toEqual(expect.arrayContaining([5000, 10000]));
     });
 
     it('returns existing when no fields to update', async () => {

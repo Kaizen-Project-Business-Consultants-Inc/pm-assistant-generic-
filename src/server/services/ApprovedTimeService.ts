@@ -7,6 +7,7 @@ import { workingDaysBetween } from '../utils/workingDays';
 import { planChanged } from './domainEvents';
 import { projectService } from './ProjectService';
 import logger from '../utils/logger';
+import type { CostTimeline } from './costTimeline';
 
 /**
  * What approved time does to the plan (2026-10-02, agreed with the user). After a line manager
@@ -18,12 +19,40 @@ import logger from '../utils/logger';
  *  - % complete = approved ÷ planned hours, stopping at 99% until the PM marks it done (tasks
  *    with no planned hours keep the PM's %); a task not started moves to in progress; the actual
  *    start is the first day worked;
- * and each project's money spent = its tasks' labour + its other costs. Recomputed from the
- * approved hours each time (not added on), so running it twice changes nothing.
+ * and each project's money spent = its tasks' labour + its other costs + its expenses (2026-10-03:
+ * expenses used to be left out of "spent" everywhere but Financials, so EVM, the dashboard and the
+ * portfolio understated spend). Recomputed from the approved hours each time (not added on), so
+ * running it twice changes nothing.
  */
 
 const ph = (n: number) => Array.from({ length: n }, () => '?').join(',');
 const money = (n: number) => Math.round(n * 100) / 100;
+
+interface Rated { costRateHourly: number | null; overtimeRateHourly: number | null; useRateCard: boolean; role: string }
+
+/** The people (with their rates) behind these logins */
+async function ratedPeople(userIds: string[]): Promise<Map<string, Rated>> {
+  const out = new Map<string, Rated>();
+  if (userIds.length === 0) return out;
+  const rows = await databaseService.query<any>(
+    `SELECT * FROM resources WHERE COALESCE(is_generic, 0) = 0 AND user_id IN (${ph(userIds.length)})`, userIds);
+  for (const r of rows) if (!out.has(r.user_id)) out.set(r.user_id, {
+    costRateHourly: r.cost_rate_hourly != null ? Number(r.cost_rate_hourly) : null,
+    overtimeRateHourly: r.overtime_rate_hourly != null ? Number(r.overtime_rate_hourly) : null,
+    useRateCard: !!r.use_rate_card, role: r.role,
+  });
+  return out;
+}
+
+type RateCard = Awaited<ReturnType<typeof rateCardService.listSafe>>;
+
+/** What one approved entry costs: its hours at the person's rate on the day worked (overtime rate for overtime) */
+function entryCost(e: { date: string; hours: number | string; rate_type?: string | null }, person: Rated | undefined, rateCard: RateCard): number {
+  if (!person) return 0;
+  const { standard, overtime } = ratesOn(person, e.date, rateCard);
+  const rate = e.rate_type === 'overtime' ? (overtime ?? standard) : standard;
+  return rate ? Number(e.hours) * rate : 0;
+}
 
 export class ApprovedTimeService {
   async applyToTasks(taskIds: string[]): Promise<{ tasks: number; projects: number }> {
@@ -36,15 +65,7 @@ export class ApprovedTimeService {
     const entries = await databaseService.query<any>(
       `SELECT task_id, user_id, DATE_FORMAT(date, '%Y-%m-%d') AS date, hours, rate_type
          FROM time_entries WHERE status = 'approved' AND task_id IN (${ph(ids.length)})`, ids);
-    const userIds = [...new Set(entries.map((e: any) => e.user_id))];
-    const people = userIds.length === 0 ? [] : await databaseService.query<any>(
-      `SELECT * FROM resources WHERE COALESCE(is_generic, 0) = 0 AND user_id IN (${ph(userIds.length)})`, userIds);
-    const personOf = new Map<string, any>();
-    for (const r of people) if (!personOf.has(r.user_id)) personOf.set(r.user_id, {
-      id: r.id, costRateHourly: r.cost_rate_hourly != null ? Number(r.cost_rate_hourly) : null,
-      overtimeRateHourly: r.overtime_rate_hourly != null ? Number(r.overtime_rate_hourly) : null,
-      useRateCard: !!r.use_rate_card, role: r.role,
-    });
+    const personOf = await ratedPeople([...new Set(entries.map((e: any) => e.user_id as string))]);
     const rateCard = await rateCardService.listSafe();
 
     // Everyone's planned hours on each task, for % complete
@@ -60,14 +81,8 @@ export class ApprovedTimeService {
       let cost = 0;
       let firstDay: string | null = null;
       for (const e of mine) {
-        const h = Number(e.hours);
-        hours += h;
-        const person = personOf.get(e.user_id);
-        if (person) {
-          const { standard, overtime } = ratesOn(person, e.date, rateCard);
-          const rate = e.rate_type === 'overtime' ? (overtime ?? standard) : standard;
-          if (rate) cost += h * rate;
-        }
+        hours += Number(e.hours);
+        cost += entryCost(e, personOf.get(e.user_id), rateCard);
         if (!firstDay || e.date < firstDay) firstDay = e.date;
       }
       const planned = bookings.filter(b => b.taskId === t.id)
@@ -111,17 +126,41 @@ export class ApprovedTimeService {
     return planned > 0 ? Math.min(99, Math.round((Number(row?.total ?? 0) / planned) * 100)) : null;
   }
 
-  /** A project's money spent = its tasks' labour + its other costs */
+  /** A project's money spent = its tasks' labour + its other costs + its expenses. Run after
+   *  approvals and whenever an expense is added, changed or removed (ExpenseService). */
   async applyToProject(projectId: string): Promise<void> {
+    // SET runs left to right: other costs are fixed (once) from the old figures first
     await databaseService.query(
       `UPDATE projects p SET
-         p.other_costs = COALESCE(p.other_costs, GREATEST(COALESCE(p.budget_spent, 0) - p.labour_cost, 0)),
+         p.other_costs = COALESCE(p.other_costs, GREATEST(COALESCE(p.budget_spent, 0) - p.labour_cost
+                           - (SELECT COALESCE(SUM(e.amount), 0) FROM project_expenses e WHERE e.project_id = p.id), 0)),
          p.labour_cost = (SELECT COALESCE(SUM(t.labour_cost), 0) FROM tasks t JOIN schedules s ON s.id = t.schedule_id
                            WHERE s.project_id = p.id AND COALESCE(t.is_summary, 0) = 0),
-         p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost, 2)
+         p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost
+                           + (SELECT COALESCE(SUM(e.amount), 0) FROM project_expenses e WHERE e.project_id = p.id), 2)
        WHERE p.id = ?`, [projectId]);
     // The project is cached for a few minutes; without this, screens showed the old spend
     await projectService.invalidateCache(projectId);
+  }
+
+  /** The project's actual cost by day: approved labour on the day worked, expenses on their date, other costs from the start */
+  async costTimeline(projectId: string): Promise<CostTimeline> {
+    const entries = await databaseService.query<any>(
+      `SELECT te.user_id, DATE_FORMAT(te.date, '%Y-%m-%d') AS date, te.hours, te.rate_type
+         FROM time_entries te JOIN tasks t ON t.id = te.task_id JOIN schedules s ON s.id = t.schedule_id
+        WHERE te.status = 'approved' AND s.project_id = ?`, [projectId]);
+    const personOf = await ratedPeople([...new Set(entries.map((e: any) => e.user_id as string))]);
+    const rateCard = await rateCardService.listSafe();
+    const byDay = new Map<string, number>();
+    for (const e of entries) byDay.set(e.date, (byDay.get(e.date) ?? 0) + entryCost(e, personOf.get(e.user_id), rateCard));
+    const expenses = await databaseService.query<any>(
+      `SELECT DATE_FORMAT(date, '%Y-%m-%d') AS date, SUM(amount) AS amount FROM project_expenses WHERE project_id = ? GROUP BY date`, [projectId]);
+    for (const x of expenses) byDay.set(x.date, (byDay.get(x.date) ?? 0) + Number(x.amount));
+    const [p] = await databaseService.query<any>('SELECT other_costs FROM projects WHERE id = ?', [projectId]);
+    return {
+      undated: Number(p?.other_costs ?? 0),
+      byDay: [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([date, amount]) => ({ date, amount })),
+    };
   }
 }
 

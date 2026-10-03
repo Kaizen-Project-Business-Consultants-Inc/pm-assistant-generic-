@@ -80,6 +80,12 @@ class ExpenseRepository extends BaseRepository<Expense> {
     return this.findById(id);
   }
 
+  /** All of a project's expenses added up (part of the project's money spent) */
+  async totalForProject(projectId: string): Promise<number> {
+    const [row] = await this.queryRaw(`SELECT COALESCE(SUM(amount), 0) AS total FROM project_expenses WHERE project_id = ?`, [projectId]);
+    return Math.round(Number(row?.total ?? 0) * 100) / 100;
+  }
+
   async getSummaryByCategory(projectId: string): Promise<{ category: string; total: number; count: number }[]> {
     const rows = await databaseService.query(
       `SELECT category, SUM(amount) AS total, COUNT(*) AS count

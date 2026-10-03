@@ -1,3 +1,4 @@
+import { expenseRepository } from '../database/ExpenseRepository';
 import { getActorSource } from '../middleware/requestContext';
 import { projectRepository } from '../database/ProjectRepository';
 import { CachedRepository } from '../database/CachedRepository';
@@ -172,17 +173,19 @@ export class ProjectService {
       }
     }
 
-    // Spending = labour (from approved timesheets, never typed) + other costs. A typed total
-    // (budgetSpent, from older screens and the API) sets the other costs to what's over labour.
+    // Spending = labour (from approved timesheets, never typed) + other costs + expenses. A typed
+    // total (budgetSpent, from older screens and the API) sets the other costs to what's over
+    // labour and expenses.
     data = { ...data };
     delete (data as any).labourCost;
     if ((data as any).otherCosts !== undefined || data.budgetSpent !== undefined) {
       const labour = existing.labourCost ?? 0;
+      const expenses = await expenseRepository.totalForProject(id);
       const other = (data as any).otherCosts !== undefined
         ? Math.max(0, Number((data as any).otherCosts) || 0)
-        : Math.max(0, (Number(data.budgetSpent) || 0) - labour);
+        : Math.max(0, (Number(data.budgetSpent) || 0) - labour - expenses);
       (data as any).otherCosts = other;
-      data.budgetSpent = Math.round((other + labour) * 100) / 100;
+      data.budgetSpent = Math.round((other + labour + expenses) * 100) / 100;
     }
     const updated = await projectRepository.update(id, data as Record<string, any>);
     if (!updated) return existing; // no fields to update

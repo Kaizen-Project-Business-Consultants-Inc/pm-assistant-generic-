@@ -742,7 +742,7 @@ Navigate to the EVM section of a project to see:
 
 - **Planned Value (PV)** -- The budgeted cost of work scheduled.
 - **Earned Value (EV)** -- The budgeted cost of work actually performed.
-- **Actual Cost (AC)** -- The actual cost incurred.
+- **Actual Cost (AC)** -- What was really spent by each date: approved hours (at each person's rate on the day worked), expenses on their own date, and any older costs typed in before timesheets (counted from the start). Nothing after the project's status date is counted. *(October 2026: AC used to leave out expenses, so cost efficiency (CPI) looked better than it was.)*
 
 ### Key Metrics
 
@@ -1331,7 +1331,7 @@ When a line manager approves a week, every task it touched is updated straight a
 - **Non-labour costs** (licences, vendors, materials) go in the project's **Financials → Expenses**. Costs that used to be typed on tasks were moved there automatically, each labelled "Moved from task …", so no money disappeared.
 - **% complete** = approved hours ÷ planned hours, stopping at **99%** until the task is marked done. On those tasks the % **can't be typed** — the task form shows it with a **Mark done** button (100%), and the Gantt/table % cells don't open. Reopening a done task puts the % back to what the approved hours say. Tasks with no planned hours (milestones, unassigned work) keep the % you type.
 - A task that hadn't started moves to **In progress**, and its **actual start** is the first day worked.
-- The project's **Total Spent** (Financials) = labour (approved hours × rate) + expenses, with the split shown under the figure.
+- The project's **Total Spent** = labour (approved hours × rate) + other costs + expenses, with the split shown under the figure on Financials. It's the same figure everywhere — dashboard, Budget Watch, analytics, portfolio, client portal and EVM (October 2026: before, only Financials included expenses). It updates as soon as hours are approved or an expense is added, changed or removed.
 
 Only approved hours count — hours still waiting for approval aren't in any cost, budget or workload "actual".
 

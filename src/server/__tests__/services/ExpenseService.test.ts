@@ -7,6 +7,10 @@ const mockRepoUpdate = vi.fn();
 const mockRepoDeleteById = vi.fn();
 const mockRepoGetSummaryByCategory = vi.fn();
 const mockRepoGetMonthlySpend = vi.fn();
+const mockRepoFindById = vi.fn(async (_id?: string): Promise<any> => ({ id: 'exp-1', projectId: 'proj-1' }));
+// a project's money spent includes its expenses: it's recomputed after every change
+const applyToProject = vi.fn(async (_id?: string) => undefined);
+vi.mock('../../services/ApprovedTimeService', () => ({ approvedTimeService: { applyToProject: (...a: any[]) => applyToProject(...a) } }));
 
 vi.mock('../../database/ExpenseRepository', () => ({
   expenseRepository: {
@@ -16,6 +20,7 @@ vi.mock('../../database/ExpenseRepository', () => ({
     deleteById: (...args: any[]) => mockRepoDeleteById(...args),
     getSummaryByCategory: (...args: any[]) => mockRepoGetSummaryByCategory(...args),
     getMonthlySpend: (...args: any[]) => mockRepoGetMonthlySpend(...args),
+    findById: (...args: any[]) => mockRepoFindById(...args),
   },
 }));
 
@@ -307,5 +312,30 @@ describe('ExpenseService', () => {
 
       await expect(expenseService.getMonthlySpend('proj-1')).rejects.toThrow('Monthly query failed');
     });
+  });
+});
+
+describe("ExpenseService — the project's spent follows its expenses", () => {
+  beforeEach(() => { applyToProject.mockClear(); });
+  it("recomputes the project's spent after adding, changing and removing an expense", async () => {
+    mockRepoCreate.mockResolvedValueOnce({ id: 'exp-9', projectId: 'proj-7' });
+    await expenseService.create({ projectId: 'proj-7', date: '2026-10-01', amount: 120, category: 'software', createdBy: 'u1' });
+    expect(applyToProject).toHaveBeenLastCalledWith('proj-7');
+
+    mockRepoUpdate.mockResolvedValueOnce({ id: 'exp-9', projectId: 'proj-7', amount: 150 });
+    await expenseService.update('exp-9', { amount: 150 });
+    expect(applyToProject).toHaveBeenCalledTimes(2);
+
+    mockRepoFindById.mockResolvedValueOnce({ id: 'exp-9', projectId: 'proj-7' });
+    mockRepoDeleteById.mockResolvedValueOnce(true);
+    await expenseService.delete('exp-9');
+    expect(applyToProject).toHaveBeenCalledTimes(3);
+    expect(applyToProject).toHaveBeenLastCalledWith('proj-7');
+  });
+
+  it('leaves spent alone when nothing was deleted', async () => {
+    mockRepoDeleteById.mockResolvedValueOnce(false);
+    await expenseService.delete('missing');
+    expect(applyToProject).not.toHaveBeenCalled();
   });
 });
