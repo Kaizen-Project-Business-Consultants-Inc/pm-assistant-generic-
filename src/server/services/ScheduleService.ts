@@ -15,6 +15,7 @@ import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
 import { planChanged } from './domainEvents';
+import { loginForAssignee } from '../utils/assigneeLogins';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
@@ -820,17 +821,20 @@ export class ScheduleService {
       logger.error('[Workflow] evaluateTaskChange error:', err)
     );
 
-    // Notify assignee of new task assignment
-    if (data.assignedTo && data.assignedTo !== data.createdBy) {
-      notificationService.create({
-        userId: data.assignedTo,
-        type: 'task_assigned',
-        severity: 'medium',
-        title: 'Task assigned to you',
-        message: `You have been assigned to "${task.name}"`,
-        projectId: schedule?.projectId,
-        linkType: 'task',
-        linkId: id,
+    // Notify assignee of new task assignment — "assigned to" is a person from Resources; tell their login
+    if (data.assignedTo) {
+      loginForAssignee(data.assignedTo).then(login => {
+        if (!login || login === data.createdBy) return;
+        return notificationService.create({
+          userId: login,
+          type: 'task_assigned',
+          severity: 'medium',
+          title: 'Task assigned to you',
+          message: `You have been assigned to "${task.name}"`,
+          projectId: schedule?.projectId,
+          linkType: 'task',
+          linkId: id,
+        });
       }).catch(err => logger.error('[Notification] task_assigned error:', err));
     }
 
@@ -1093,16 +1097,19 @@ export class ScheduleService {
 
     // Notify on reassignment
     const updaterId = getRequestContext()?.userId || data.createdBy || oldTask.createdBy;
-    if (data.assignedTo && data.assignedTo !== oldTask.assignedTo && data.assignedTo !== updaterId) {
-      notificationService.create({
-        userId: data.assignedTo,
-        type: 'task_assigned',
-        severity: 'medium',
-        title: 'Task assigned to you',
-        message: `You have been assigned to "${updated.name}"`,
-        projectId: schedule?.projectId ?? undefined,
-        linkType: 'task',
-        linkId: id,
+    if (data.assignedTo && data.assignedTo !== oldTask.assignedTo) {
+      loginForAssignee(data.assignedTo).then(login => {
+        if (!login || login === updaterId) return;
+        return notificationService.create({
+          userId: login,
+          type: 'task_assigned',
+          severity: 'medium',
+          title: 'Task assigned to you',
+          message: `You have been assigned to "${updated.name}"`,
+          projectId: schedule?.projectId ?? undefined,
+          linkType: 'task',
+          linkId: id,
+        });
       }).catch(err => logger.error('[Notification] task_assigned error:', err));
     }
 

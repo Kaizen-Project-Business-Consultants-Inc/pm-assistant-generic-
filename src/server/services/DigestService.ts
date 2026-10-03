@@ -150,10 +150,10 @@ export class DigestService {
     const [overdueTasks, upcomingDeadlines, unreadCount, recentChanges, actionItems, upcomingMeetings, activeSprints] =
       await Promise.all([
         enabledSections.has('overdue')
-          ? digestRepository.findOverdueTasks(user.username, nowStr)
+          ? digestRepository.findOverdueTasks(user.id, nowStr)
           : Promise.resolve([]),
         enabledSections.has('deadlines')
-          ? digestRepository.findUpcomingDeadlines(user.username, nowStr, threeDaysFromNow)
+          ? digestRepository.findUpcomingDeadlines(user.id, nowStr, threeDaysFromNow)
           : Promise.resolve([]),
         enabledSections.has('notifications')
           ? digestRepository.countUnreadNotifications(user.id)

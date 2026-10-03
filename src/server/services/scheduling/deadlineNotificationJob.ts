@@ -1,4 +1,5 @@
 import { databaseService } from '../../database/connection';
+import { loginsForAssignees } from '../../utils/assigneeLogins';
 import { notificationService } from '../NotificationService';
 import { redisService } from '../RedisService';
 import logger from '../../utils/logger';
@@ -40,14 +41,15 @@ export async function runDeadlineNotifications(): Promise<number> {
 
   let notified = 0;
 
+  // "Assigned to" is a person from Resources: remind their login; no login -> the task's creator
+  const logins = await loginsForAssignees(rows.map((r: any) => r.assigned_to));
+  const recipientOf = (r: any): string | null => (r.assigned_to && logins.get(r.assigned_to)) || r.created_by || null;
   // Work out each recipient's zone once, rather than per task.
-  const recipientIds = Array.from(new Set(
-    rows.map((r: any) => r.assigned_to || r.created_by).filter(Boolean),
-  ));
+  const recipientIds = Array.from(new Set(rows.map(recipientOf).filter(Boolean))) as string[];
   const zones = await timezonesFor(recipientIds);
 
   for (const row of rows) {
-    const recipient = row.assigned_to || row.created_by;
+    const recipient = recipientOf(row);
     if (!recipient) continue;
 
     // Only send when it is SEND_HOUR where this person is.

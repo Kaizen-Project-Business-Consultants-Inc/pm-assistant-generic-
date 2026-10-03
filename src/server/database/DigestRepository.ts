@@ -86,21 +86,24 @@ class DigestRepository {
     } catch { return []; }
   }
 
-  async findOverdueTasks(assignedTo: string, now: string, limit = 20): Promise<Array<{ name: string; end_date: string }>> {
+  /** Tasks assigned to this login: "assigned to" holds their person from Resources (or, on older tasks, the login) */
+  async findOverdueTasks(userId: string, now: string, limit = 20): Promise<Array<{ name: string; end_date: string }>> {
     return databaseService.query<{ name: string; end_date: string }>(
       `SELECT name, end_date FROM tasks
-       WHERE assigned_to = ? AND end_date < ? AND status NOT IN ('completed', 'cancelled')
+       WHERE (assigned_to = ? OR assigned_to IN (SELECT id FROM resources WHERE user_id = ?))
+         AND end_date < ? AND status NOT IN ('completed', 'cancelled')
        ORDER BY end_date ASC LIMIT ?`,
-      [assignedTo, now, limit],
+      [userId, userId, now, limit],
     );
   }
 
-  async findUpcomingDeadlines(assignedTo: string, now: string, until: string, limit = 20): Promise<Array<{ name: string; end_date: string }>> {
+  async findUpcomingDeadlines(userId: string, now: string, until: string, limit = 20): Promise<Array<{ name: string; end_date: string }>> {
     return databaseService.query<{ name: string; end_date: string }>(
       `SELECT name, end_date FROM tasks
-       WHERE assigned_to = ? AND end_date >= ? AND end_date <= ? AND status NOT IN ('completed', 'cancelled')
+       WHERE (assigned_to = ? OR assigned_to IN (SELECT id FROM resources WHERE user_id = ?))
+         AND end_date >= ? AND end_date <= ? AND status NOT IN ('completed', 'cancelled')
        ORDER BY end_date ASC LIMIT ?`,
-      [assignedTo, now, until, limit],
+      [userId, userId, now, until, limit],
     );
   }
 

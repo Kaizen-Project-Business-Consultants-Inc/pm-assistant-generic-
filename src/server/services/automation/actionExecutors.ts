@@ -367,7 +367,9 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     if (!picked) {
       // Fallback
       if (params.fallbackUserId) {
-        await scheduleService.updateTask(event.entityId, { assignedTo: params.fallbackUserId });
+        // "Assigned to" holds a person from Resources: the fallback login's person if they have one
+        const fallbackPerson = allResources.find(r => r.userId === params.fallbackUserId);
+        await scheduleService.updateTask(event.entityId, { assignedTo: fallbackPerson?.id ?? params.fallbackUserId });
         logger.info(`[AutomationAction] auto_assign: used fallback user ${params.fallbackUserId}`);
       } else {
         logger.warn('[AutomationAction] auto_assign: no suitable resource found');
@@ -375,7 +377,7 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       return;
     }
 
-    await scheduleService.updateTask(event.entityId, { assignedTo: picked.userId! });
+    await scheduleService.updateTask(event.entityId, { assignedTo: picked.id });
     logger.info(`[AutomationAction] auto_assign: assigned task ${event.entityId} to ${picked.name} (${picked.userId}) via ${strategy}`);
   },
 };

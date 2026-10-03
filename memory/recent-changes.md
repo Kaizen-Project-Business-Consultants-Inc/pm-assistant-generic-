@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Notifications reach the assigned person's login
+Bug since tasks.assigned_to became a RESOURCE id (Sep 2026): 'Task assigned to you' (create + reassign), 'New comment on your task' and deadline reminders were addressed to the resource id → FK error, never delivered; the digest's overdue/due-soon lists searched by USERNAME and never matched; automation auto_assign wrote a login into assigned_to. New utils/assigneeLogins.ts (resource → its login; older tasks holding a login still work; no login → nobody). Guard in assigneeLogins.test.ts (no notification addressed to assignedTo directly; digest query; automation). Found by the step-1B staging log check.
+
 ## 2026-10-03 — "Something changed" notices (code health step 1B)
 services/domainEvents.ts (imports nothing from the app) + domainListeners.ts (wired in index.ts AND scripts/runCronJob.ts). 13 places that called Schedule Review re-run / budget re-price / RAID Review re-run directly now post a notice. Tangles 104→80 links, 38→31 files; RAID knot gone. Same reactions, same request context (sync delivery). Guard: domainEvents.test.ts (wiring in both entry points, no direct calls, every former trigger still posts).
 

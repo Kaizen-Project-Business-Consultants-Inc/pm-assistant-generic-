@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { loginForAssignee } from '../../utils/assigneeLogins';
 import { z } from 'zod';
 import { scheduleService, DependencyValidationError, GroupValidationError } from '../../services/ScheduleService';
 import { flowMetricsService } from '../../services/FlowMetricsService';
@@ -731,9 +732,11 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       (async () => {
         try {
           const task = await scheduleService.findTaskById(taskId);
-          if (task?.assignedTo && task.assignedTo !== user.userId && !mentionedUserIds.has(task.assignedTo)) {
+          // "Assigned to" is a person from Resources: tell their login (none -> nobody to tell)
+          const assigneeLogin = task?.assignedTo ? await loginForAssignee(task.assignedTo) : null;
+          if (task && assigneeLogin && assigneeLogin !== user.userId && !mentionedUserIds.has(assigneeLogin)) {
             await notificationService.create({
-              userId: task.assignedTo,
+              userId: assigneeLogin,
               type: 'task_comment',
               severity: 'low',
               title: 'New comment on your task',
