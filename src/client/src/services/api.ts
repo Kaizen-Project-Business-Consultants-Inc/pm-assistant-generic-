@@ -467,8 +467,8 @@ class ApiService {
     return response.data;
   }
 
-  async importStructured(scheduleId: string, tasks: Array<{ name: string; uid?: number; wbs?: string; startDate?: string; endDate?: string; duration?: number; predecessors?: string; isMilestone?: boolean; percentComplete?: number; outlineLevel?: number }>) {
-    const response = await this.api.post(`/schedules/${scheduleId}/import-structured`, { tasks });
+  async importStructured(scheduleId: string, tasks: Array<{ name: string; uid?: number; wbs?: string; startDate?: string; endDate?: string; duration?: number; predecessors?: string; isMilestone?: boolean; percentComplete?: number; outlineLevel?: number }>, fileName?: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/import-structured`, { tasks, fileName });
     return response.data;
   }
 
@@ -1256,7 +1256,8 @@ class ApiService {
     return response.data;
   }
 
-  async bulkDeleteTasks(scheduleId: string, taskIds: string[]) {
+  /** `changeId`: the Schedule History entry — undoing it puts the tasks back (same ids) */
+  async bulkDeleteTasks(scheduleId: string, taskIds: string[]): Promise<{ deleted: number; changeId: string | null }> {
     const response = await this.api.delete('/bulk/tasks', { data: { scheduleId, taskIds } });
     return response.data;
   }
@@ -3502,8 +3503,8 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
   // CSV Import
   // -------------------------------------------------------------------------
 
-  async importTasks(scheduleId: string, csv: string, columnMap?: Record<string, string>) {
-    const response = await this.api.post(`/schedules/${scheduleId}/import`, { csv, columnMap });
+  async importTasks(scheduleId: string, csv: string, columnMap?: Record<string, string>, fileName?: string) {
+    const response = await this.api.post(`/schedules/${scheduleId}/import`, { csv, columnMap, fileName });
     return response.data;
   }
 

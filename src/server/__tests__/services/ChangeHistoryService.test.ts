@@ -18,7 +18,12 @@ vi.mock('../../middleware/requestContext', () => ({
 }));
 const bulkRemoveDependencies = vi.fn().mockResolvedValue(2);
 const deleteTask = vi.fn().mockResolvedValue(true);
-vi.mock('../../services/ScheduleService', () => ({ scheduleService: { bulkRemoveDependencies: (...a: any[]) => bulkRemoveDependencies(...a), deleteTask: (...a: any[]) => deleteTask(...a) } }));
+const recomputeParentRollup = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../services/ScheduleService', () => ({ scheduleService: {
+  bulkRemoveDependencies: (...a: any[]) => bulkRemoveDependencies(...a),
+  deleteTask: (...a: any[]) => deleteTask(...a),
+  recomputeParentRollup: (...a: any[]) => recomputeParentRollup(...a),
+} }));
 const restoreTaskDates = vi.fn().mockResolvedValue(3);
 vi.mock('../../services/ScheduleRecomputeService', () => ({ restoreTaskDates: (...a: any[]) => restoreTaskDates(...a) }));
 const fixUndo = vi.fn().mockResolvedValue({ score: 40 });
@@ -29,7 +34,7 @@ vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { appe
 vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
-import { changeHistoryService, NotLatestChangeError, ChangeStateError } from '../../services/ChangeHistoryService';
+import { changeHistoryService, NotLatestChangeError, ChangeStateError, snapshotTasksForDelete, deleteSummary, MAX_UNDO_BYTES } from '../../services/ChangeHistoryService';
 
 const row = (over: any) => ({
   id: 'c-1', project_id: 'p-1', schedule_id: 's-1', kind: 'link', summary: 'Added 2 links', status: 'applied',
@@ -202,6 +207,211 @@ describe('ChangeHistoryService', () => {
       expect((await changeHistoryService.list('s-1')).map(c => c.undoable)).toEqual([true, false]);
       query.mockImplementation((sql: string) => Promise.resolve(sql.includes('COUNT(*) AS cnt') ? [{ cnt: 2 }] : entries));
       expect((await changeHistoryService.list('s-1')).map(c => c.undoable)).toEqual([false, false]);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bulk delete and import (2026-10-03): both can be undone from History
+// ---------------------------------------------------------------------------
+describe('ChangeHistoryService — bulk delete and import', () => {
+  beforeEach(() => {
+    vi.clearAllMocks(); ctx.actorSource = 'web'; query.mockResolvedValue([]);
+    queryOn.mockReset(); queryOn.mockResolvedValue([]);
+  });
+
+  const snapshot = {
+    tasks: [
+      { id: 'kid', schedule_id: 's-1', name: 'Build', parent_task_id: 'ph', start_date: '2026-10-12', end_date: '2026-10-16', updated_at: '2026-09-01 10:00:00' },
+      { id: 'ph', schedule_id: 's-1', name: 'Phase 1', parent_task_id: 'top', start_date: '2026-10-05', end_date: '2026-10-16' },
+      { id: 'note', schedule_id: 's-1', name: 'Notes', parent_task_id: null, start_date: null, end_date: null },
+    ],
+    links: [
+      { id: 'l1', task_id: 'kid', dependency_id: 'keep', dependency_type: 'FS', lag_days: 0 },  // other end still there
+      { id: 'l2', task_id: 'kid', dependency_id: 'gone', dependency_type: 'FS', lag_days: 0 },  // other end deleted since
+    ],
+    bookings: [
+      { id: 'b1', resource_id: 'r-here', task_id: 'kid', schedule_id: 's-1', hours_per_week: 40, start_date: '2026-10-12', end_date: '2026-10-16' },
+      { id: 'b2', resource_id: 'r-gone', task_id: 'kid', schedule_id: 's-1', hours_per_week: 20, start_date: '2026-10-12', end_date: '2026-10-16' },
+    ],
+    assignments: [],
+    comments: [{ id: 'cm1', task_id: 'kid', user_id: 'u-1', user_name: 'Mike', text: 'Check with QA' }],
+    activities: [],
+    successors: [{ id: 'after', dependency: 'kid', dependency_type: 'FS', dependency_lag_days: 2 }],
+  };
+
+  describe('the copy taken before a bulk delete', () => {
+    it('reads the tasks (locked) and everything that hangs off them, on the delete connection', async () => {
+      const run = vi.fn(async (sql: string) => (sql.includes('FROM tasks WHERE id IN') ? [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }] : []));
+      const snap = await snapshotTasksForDelete(run, 's-1', ['a', 'b', 'a']);
+      const sqls = run.mock.calls.map(c => String(c[0]));
+      expect(sqls[0]).toContain('FOR UPDATE');
+      expect(run.mock.calls[0][1]).toEqual(['a', 'b', 's-1']);
+      for (const t of ['task_dependencies', 'resource_assignments', 'task_assignments', 'task_comments', 'task_activities']) {
+        expect(sqls.some(q => q.includes(`FROM ${t}`))).toBe(true);
+      }
+      expect(sqls.some(q => q.includes('WHERE dependency IN'))).toBe(true); // successors' old link columns
+      expect(snap.tasks).toHaveLength(2);
+    });
+
+    it('reads nothing more when none of the tasks are on this schedule', async () => {
+      const run = vi.fn(async () => []);
+      expect((await snapshotTasksForDelete(run, 's-1', ['x'])).tasks).toEqual([]);
+      expect(run).toHaveBeenCalledTimes(1);
+    });
+
+    it('names the tasks in the History line', () => {
+      expect(deleteSummary(['Design'])).toBe('Deleted 1 task: Design');
+      expect(deleteSummary(['Design', 'Build'])).toBe('Deleted 2 tasks: Design and Build');
+      expect(deleteSummary(['Design', 'Build', 'Test', 'Ship', 'Train'])).toBe('Deleted 5 tasks: Design, Build and 3 more');
+    });
+  });
+
+  describe('record', () => {
+    it('bulk delete: says what was deleted, from the copy (the tasks are gone)', async () => {
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'bulk_delete', summary: 'Deleted 3 tasks: Build, Phase 1 and 1 more', taskIds: ['kid', 'ph', 'note'], undo: snapshot });
+      const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(JSON.parse(insert[1][10])).toEqual([
+        'Deleted Build (12 Oct → 16 Oct)',
+        'Deleted Phase 1 (5 Oct → 16 Oct)',
+        'Deleted Notes',
+        '2 links, 2 bookings, 1 comment removed with them',
+      ]);
+      expect(JSON.parse(insert[1][9]).tasks).toHaveLength(3); // the copy is kept for Undo
+    });
+
+    it('import: what was added — tasks, links, people, the baseline', async () => {
+      query.mockImplementation((sql: string) => Promise.resolve(
+        String(sql).includes('FROM tasks WHERE id IN') ? [{ id: 'n1', name: 'Design' }, { id: 'n2', name: 'Build' }]
+          : String(sql).includes('FROM resources WHERE id IN') ? [{ id: 'r-new', name: 'Kabir' }] : []));
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'import', summary: 'Imported 2 tasks from plan.xlsx', taskIds: ['n1', 'n2'],
+        undo: { createdIds: ['n1', 'n2'], resourceIds: ['r-new'], baselineId: 'bl-1', links: 1, fileName: 'plan.xlsx' } });
+      const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(JSON.parse(insert[1][10])).toEqual(['Added Design', 'Added Build', 'Added 1 link', 'Added person Kabir', "Saved baseline 'Imported baseline'"]);
+    });
+
+    it('a copy too large to keep: the change is recorded, says so, and keeps no copy', async () => {
+      const huge = { ...snapshot, comments: [{ id: 'x', task_id: 'kid', text: 'x'.repeat(MAX_UNDO_BYTES + 10) }] };
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'bulk_delete', summary: 'Deleted 3 tasks: Build, Phase 1 and 1 more', taskIds: ['kid'], undo: huge });
+      const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(insert[1][4]).toBe('Deleted 3 tasks: Build, Phase 1 and 1 more (too large to undo from History)');
+      expect(insert[1][9]).toBe('null');
+    });
+  });
+
+  describe('undo a bulk delete', () => {
+    /** A small database: which task and person ids exist; INSERT INTO tasks adds to it */
+    function db(existingTasks: string[] = ['keep', 'after'], people: string[] = ['r-here']) {
+      const tasks = new Set(existingTasks);
+      queryOn.mockImplementation(async (_conn: any, sql: string, params: any[] = []) => {
+        if (sql.startsWith('INSERT INTO tasks')) { tasks.add(params[0]); return []; }
+        if (sql.startsWith('SELECT id FROM tasks WHERE id IN')) return params.filter(id => tasks.has(id)).map(id => ({ id }));
+        if (sql.startsWith('SELECT id FROM resources WHERE id IN')) return params.filter(id => people.includes(id)).map(id => ({ id }));
+        if (sql.startsWith('SELECT id FROM schedules')) return [{ id: 's-1' }];
+        return [];
+      });
+    }
+    const sqlOf = () => queryOn.mock.calls.map(c => String(c[1]));
+
+    it('puts the tasks back under their old ids, parents first, with what hung off them', async () => {
+      db();
+      withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(snapshot) }));
+      const r = await changeHistoryService.undo('s-1', 'c-1');
+      expect(r.restored).toBe(3);
+      expect(queryOn.mock.calls.every(c => c[0] === 'conn')).toBe(true); // one transaction, tenant-safe queryOn
+      const taskInserts = queryOn.mock.calls.filter(c => String(c[1]).startsWith('INSERT INTO tasks'));
+      const order = taskInserts.map(c => c[2][0]);
+      expect([...order].sort()).toEqual(['kid', 'note', 'ph']); // the same ids as before
+      expect(order.indexOf('ph')).toBeLessThan(order.indexOf('kid')); // parent before its child
+      // original columns, verbatim — dates included, so booked hours need no moving
+      expect(taskInserts.find(c => c[2][0] === 'kid')![1]).toContain('`start_date`');
+      expect(sqlOf().some(q => /UPDATE tasks SET[^`]*start_date/.test(q))).toBe(false);
+      // the successor's old single-predecessor columns come back
+      const succ = queryOn.mock.calls.find(c => String(c[1]).startsWith('UPDATE tasks SET dependency = ?'))!;
+      expect(succ[2]).toEqual(['kid', 'FS', 2, 'after', 's-1']);
+      // the summary above the deleted ones (not itself deleted) rolls up again
+      expect(recomputeParentRollup).toHaveBeenCalledWith('top');
+      expect(recomputeParentRollup).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls.some(([sql]) => String(sql).includes("SET status = 'undone'"))).toBe(true);
+    });
+
+    it('a link comes back only when both of its tasks exist; bookings only when the person still exists', async () => {
+      db();
+      withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(snapshot) }));
+      await changeHistoryService.undo('s-1', 'c-1');
+      const links = queryOn.mock.calls.filter(c => String(c[1]).includes('INTO task_dependencies'));
+      expect(links).toHaveLength(1);
+      expect(links[0][2]).toContain('l1');
+      const bookings = queryOn.mock.calls.filter(c => String(c[1]).includes('INTO resource_assignments'));
+      expect(bookings).toHaveLength(1);
+      expect(bookings[0][2]).toContain('b1');
+      expect(queryOn.mock.calls.filter(c => String(c[1]).includes('INTO task_comments'))).toHaveLength(1);
+    });
+
+    it('refuses when a task with one of those ids already exists — nothing is written', async () => {
+      db(['keep', 'kid']);
+      withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(snapshot) }));
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(ChangeStateError);
+      expect(sqlOf().some(q => q.startsWith('INSERT'))).toBe(false);
+      expect(query.mock.calls.some(([sql]) => String(sql).includes("SET status = 'undone'"))).toBe(false);
+    });
+
+    it('refuses once another task in the plan was deleted after it (a delete stamps the schedule)', async () => {
+      withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(snapshot) }));
+      const base = query.getMockImplementation()!;
+      query.mockImplementation((sql: string, params: any[]) => (String(sql).includes('FROM schedules WHERE id = ? AND updated_at')
+        ? Promise.resolve([{ cnt: 0 }, { cnt: 1 }]) // tasks untouched; the schedule stamped by a later delete
+        : base(sql, params)));
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(NotLatestChangeError);
+      expect(queryOn).not.toHaveBeenCalled();
+    });
+
+    it('refuses an older delete once a newer change exists', async () => {
+      withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(snapshot) }), 0, 'c-newer');
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(NotLatestChangeError);
+    });
+
+    it('a delete recorded without a copy (too large) cannot be undone, and History says so', async () => {
+      withChange(row({ kind: 'bulk_delete', undo_payload: 'null' }));
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toThrow(/too large/);
+      query.mockImplementation((sql: string) => Promise.resolve(sql.includes('AS cnt') ? [{ cnt: 0 }]
+        : [{ id: 'c-1', kind: 'bulk_delete', summary: 'Deleted 300 tasks', actor_id: null, source: 'web', status: 'applied', created_at: '2026-10-03T10:00:00Z', no_undo: 1 }]));
+      expect((await changeHistoryService.list('s-1'))[0].undoable).toBe(false);
+    });
+  });
+
+  describe('undo an import', () => {
+    it('removes its tasks, its baseline and the people it created that nothing else uses — in one transaction', async () => {
+      queryOn.mockImplementation(async (_c: any, sql: string, params: any[] = []) => {
+        if (sql.startsWith('DELETE FROM tasks')) return { affectedRows: 3 } as any;
+        if (sql.startsWith('SELECT id FROM resources WHERE id IN')) return params.slice(0, -1).map((id: string) => ({ id })); // nobody edited them
+        if (sql.includes('information_schema.COLUMNS')) return [{ t: 'task_assignments', c: 'resource_id' }, { t: 'bad name;', c: 'resource_id' }];
+        if (sql.includes('FROM `task_assignments`')) return [{ id: 'r-used' }]; // put on another project's task since
+        return [];
+      });
+      withChange(row({ kind: 'import', undo_payload: JSON.stringify({ createdIds: ['n1', 'n2', 'n3'], resourceIds: ['r-free', 'r-used'], baselineId: 'bl-1', links: 2 }) }));
+      const r = await changeHistoryService.undo('s-1', 'c-1');
+      expect(r.restored).toBe(3);
+      expect(queryOn.mock.calls.every(c => c[0] === 'conn')).toBe(true);
+      const sql = queryOn.mock.calls.map(c => String(c[1]));
+      expect(queryOn.mock.calls.find(c => String(c[1]).startsWith('DELETE FROM tasks'))![2]).toEqual(['n1', 'n2', 'n3', 's-1']);
+      expect(sql.some(q => q.startsWith('UPDATE schedules SET updated_at'))).toBe(true);
+      expect(queryOn.mock.calls.find(c => String(c[1]).startsWith('DELETE FROM schedule_baselines'))![2]).toEqual(['bl-1', 's-1']);
+      expect(sql.some(q => q.includes('bad name;'))).toBe(false); // only safe table names are queried
+      expect(queryOn.mock.calls.find(c => String(c[1]).startsWith('DELETE FROM resources'))![2]).toEqual(['r-free']);
+    });
+
+    it('keeps a person the PM edited after the import', async () => {
+      queryOn.mockImplementation(async () => []);
+      withChange(row({ kind: 'import', undo_payload: JSON.stringify({ createdIds: ['n1'], resourceIds: ['r-edited'] }) }));
+      await changeHistoryService.undo('s-1', 'c-1');
+      expect(queryOn.mock.calls.some(c => String(c[1]).startsWith('DELETE FROM resources'))).toBe(false);
+    });
+
+    it('refuses once a task of the plan was edited after the import', async () => {
+      withChange(row({ kind: 'import', undo_payload: JSON.stringify({ createdIds: ['n1'] }) }), 1);
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(NotLatestChangeError);
+      expect(queryOn).not.toHaveBeenCalled();
     });
   });
 });

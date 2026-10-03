@@ -862,6 +862,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         await apiService.bulkDeleteTasks(scheduleId, taskIds);
       }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
       showBulkSuccess(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`);
       clearBulkState();
     } catch (err) {

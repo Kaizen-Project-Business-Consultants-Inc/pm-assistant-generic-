@@ -559,8 +559,13 @@ export class ScheduleService {
    * Recompute a parent task's rollup fields from its children.
    * Recursively walks up the parent chain (max depth 10).
    */
-  async recomputeParentRollup(parentTaskId: string, depth = 0): Promise<void> {
+  /**
+   * `quiet`: the roll-up follows a background re-calculation (task budgets), not an edit — the
+   * summary's updated_at is kept so Schedule History doesn't see "the plan changed since".
+   */
+  async recomputeParentRollup(parentTaskId: string, depth = 0, opts: { quiet?: boolean } = {}): Promise<void> {
     if (depth >= 10) return;
+    const keepStamp = opts.quiet ? ', updated_at = updated_at' : '';
     const parent = await this.findTaskById(parentTaskId);
     if (!parent) return;
 
@@ -573,12 +578,12 @@ export class ScheduleService {
       // No children — clear summary flag
       if (parent.isSummary) {
         await databaseService.query(
-          'UPDATE tasks SET is_summary = 0 WHERE id = ?',
+          `UPDATE tasks SET is_summary = 0${keepStamp} WHERE id = ?`,
           [parentTaskId],
         );
       }
       if (parent.parentTaskId) {
-        await this.recomputeParentRollup(parent.parentTaskId, depth + 1);
+        await this.recomputeParentRollup(parent.parentTaskId, depth + 1, opts);
       }
       return;
     }
@@ -620,14 +625,14 @@ export class ScheduleService {
     await databaseService.query(
       `UPDATE tasks SET
         start_date = ?, end_date = ?, progress_percentage = ?, status = ?,
-        budget_allocated = ?, actual_cost = ?, estimated_days = ?, is_summary = 1
+        budget_allocated = ?, actual_cost = ?, estimated_days = ?, is_summary = 1${keepStamp}
        WHERE id = ?`,
       [rollupStart, rollupEnd, rollupProgress, rollupStatus, rollupBudget, rollupCost, rollupEstDays, parentTaskId],
     );
 
     // Recurse up
     if (parent.parentTaskId) {
-      await this.recomputeParentRollup(parent.parentTaskId, depth + 1);
+      await this.recomputeParentRollup(parent.parentTaskId, depth + 1, opts);
     }
   }
 
@@ -1141,6 +1146,9 @@ export class ScheduleService {
           'UPDATE tasks SET dependency = NULL, dependency_type = NULL, dependency_lag_days = 0 WHERE dependency = ?',
           [id],
         );
+        // A delete leaves no trace on the remaining tasks: stamp the schedule so Schedule History
+        // knows the plan changed after its newest entry (ChangeHistoryService.planChangedSince)
+        if (existing?.scheduleId) await q('UPDATE schedules SET updated_at = NOW() WHERE id = ?', [existing.scheduleId]);
       }
 
       return wasDeleted;

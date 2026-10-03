@@ -206,4 +206,25 @@ describe('ScheduleService', () => {
       expect(mockQuery).not.toHaveBeenCalled();
     });
   });
+  describe('recomputeParentRollup', () => {
+    // A background re-price (task budgets, ~20 s after a change) rolls up quietly: a summary that
+    // changes then is not "the plan changed since", which would block Undo in Schedule History
+    it('quiet: keeps the summary task updated_at; a normal roll-up does not', async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('parent_task_id = ?')) return [{ ...sampleTaskRow, id: 'c1', parent_task_id: 'phase' }];
+        if (sql.includes('FROM schedules')) return [sampleScheduleRow];
+        if (sql.includes('FROM tasks')) return [{ ...sampleTaskRow, id: 'phase' }];
+        return [];
+      });
+      await service.recomputeParentRollup('phase', 0, { quiet: true });
+      const quiet = mockQuery.mock.calls.find(([sql]) => String(sql).includes('is_summary = 1'))!;
+      expect(quiet[0]).toContain('updated_at = updated_at');
+      mockQuery.mockClear();
+      await service.recomputeParentRollup('phase');
+      const normal = mockQuery.mock.calls.find(([sql]) => String(sql).includes('is_summary = 1'))!;
+      expect(normal[0]).not.toContain('updated_at = updated_at');
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue([]);
+    });
+  });
 });

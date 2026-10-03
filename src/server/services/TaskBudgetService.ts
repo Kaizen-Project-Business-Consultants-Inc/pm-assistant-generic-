@@ -54,13 +54,15 @@ export class TaskBudgetService {
       const budget = priced ? Math.round(cost * 100) / 100 : null;
       const before = t.budget_allocated != null ? Number(t.budget_allocated) : null;
       if (budget !== before) {
-        await databaseService.query('UPDATE tasks SET budget_allocated = ? WHERE id = ?', [budget, t.id]);
+        // A worked-out figure, not an edit: updated_at stays, so a background re-price ~20 s after
+        // a change doesn't count as "the plan changed since" and block its Undo in Schedule History
+        await databaseService.query('UPDATE tasks SET budget_allocated = ?, updated_at = updated_at WHERE id = ?', [budget, t.id]);
         changed++;
         if (t.parent_task_id) parents.add(t.parent_task_id);
       }
     }
     for (const pid of parents) {
-      await scheduleService.recomputeParentRollup(pid).catch(err => logger.warn('[TaskBudget] roll-up failed', { pid, error: err?.message }));
+      await scheduleService.recomputeParentRollup(pid, 0, { quiet: true }).catch(err => logger.warn('[TaskBudget] roll-up failed', { pid, error: err?.message }));
     }
     return changed;
   }

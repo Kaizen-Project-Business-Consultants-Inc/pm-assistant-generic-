@@ -905,50 +905,22 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     return description;
   }, [schedule.id, queryClient, pushAction]);
 
-  // Bulk delete with undo
+  // Bulk delete; undo goes through Schedule History, which puts the tasks back under their old
+  // ids with their links, booked hours, people and comments (it used to recreate them as new tasks)
   const handleBulkDelete = useCallback(async (taskIds: string[]) => {
-    // Capture full task data before deleting so undo can recreate them
-    const deletedTasks = taskIds
-      .map(id => tasks.find(t => t.id === id))
-      .filter((t): t is typeof tasks[number] => !!t)
-      .map(t => ({
-        name: t.name,
-        description: t.description || undefined,
-        status: t.status,
-        priority: t.priority,
-        assignedTo: t.assignedTo || undefined,
-        startDate: t.startDate || undefined,
-        endDate: t.endDate || undefined,
-        estimatedDays: t.estimatedDays || undefined,
-        progressPercentage: t.progressPercentage || undefined,
-        parentTaskId: t.parentTaskId || undefined,
-        dependency: t.dependency || undefined,
-        isMilestone: t.isMilestone || undefined,
-        sortOrder: t.sortOrder,
-      }));
-
-    await apiService.bulkDeleteTasks(schedule.id, taskIds);
-    queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    const refresh = () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+      queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
+    };
+    let changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId;
+    refresh();
 
     pushAction({
       description: `Delete ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
-      undo: async () => {
-        for (const taskData of deletedTasks) {
-          await apiService.createTask(schedule.id, taskData);
-        }
-        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-      },
-      redo: async () => {
-        // Re-fetch current task IDs by name since IDs change after recreation
-        const currentTasks = queryClient.getQueryData<typeof tasks>(['tasks', schedule.id]) || [];
-        const idsToDelete = deletedTasks
-          .map(dt => currentTasks.find(ct => ct.name === dt.name)?.id)
-          .filter((id): id is string => !!id);
-        await apiService.bulkDeleteTasks(schedule.id, idsToDelete);
-        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-      },
+      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
+      redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId; refresh(); },
     });
-  }, [schedule.id, queryClient, tasks, pushAction]);
+  }, [schedule.id, queryClient, pushAction]);
 
   // Duplicate/paste tasks — creates copies with "(copy)" suffix
   const handleDuplicateTasks = useCallback(async (srcTasks: GanttTask[]) => {
@@ -1564,6 +1536,7 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
         onImported={() => {
           queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
           queryClient.invalidateQueries({ queryKey: ['schedule-review', schedule.id] });
+          queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
         }}
         onOpenReview={() => { setShowImportModal(false); setShowReviewPanel(true); }}
       />
