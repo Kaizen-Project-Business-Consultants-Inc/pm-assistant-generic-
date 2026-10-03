@@ -1,5 +1,5 @@
 import { databaseService } from './connection';
-import { EmbeddingRow } from '../services/EmbeddingService';
+import type { EmbeddingRow } from '../services/EmbeddingService';
 
 class EmbeddingRepository {
   async findByDocument(documentType: string, documentId: string): Promise<EmbeddingRow[]> {

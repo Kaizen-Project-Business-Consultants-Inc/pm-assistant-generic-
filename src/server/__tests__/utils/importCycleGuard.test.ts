@@ -22,7 +22,8 @@ const CEILING = {
   // 2026-10-03 baseline: 104 links / 38 files (one knot of 33 files around the schedule, plus
   // Embedding and RAID Review pairs). On 2026-09-01 it was 21 / 11.
   // Step 1B ("something changed" notices, services/domainEvents.ts): 80 / 31, RAID knot gone.
-  server: { tangledLinks: 80, filesInTangles: 31 },
+  // Step 1C (database layer stops calling business logic): 74 / 28, Embedding pair gone.
+  server: { tangledLinks: 74, filesInTangles: 28 },
   client: { tangledLinks: 5, filesInTangles: 5 },
 };
 
@@ -49,7 +50,7 @@ function resolveImport(from: string, spec: string): string | null {
 }
 
 /** The imports that exist when the code runs: value imports, re-exports and import() calls */
-function runtimeImports(file: string): string[] {
+export function runtimeImports(file: string): string[] {
   const sf = ts.createSourceFile(file, readFileSync(file, 'utf-8'), ts.ScriptTarget.Latest, true,
     file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const specs: string[] = [];
@@ -158,5 +159,35 @@ describe('the tangle finder itself', () => {
     try {
       expect(analyse(dir).tangledLinks).toEqual([]);
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+});
+
+/**
+ * Layering (step 1C): the database layer reads and writes rows; it never calls business logic.
+ * TaskRepository asking TaskAssignmentService for a plain read closed a large circle. Type
+ * labels (`import type`) are fine — they vanish when built. Plain helpers with no app imports
+ * of their own are listed here.
+ */
+describe('the database layer never calls business logic', () => {
+  const ALLOWED = new Set([
+    'services/RedisService.ts',          // cache client used by CachedRepository
+    'services/dagWorkflow/types.ts',     // plain types/constants
+    'services/dagWorkflow/rowMappers.ts',// plain row → object mappers
+  ]);
+  // The data layer: repositories, the connection and plain row helpers. (tenantProvisioner /
+  // tenantMigrationRunner also live in database/ but are company-setup scripts that run the layer,
+  // not part of it — nothing in the layer imports them.)
+  const isDataLayer = (name: string) => /Repository\.ts$|^connection\.ts$|^bookingDates\.ts$|^BaseRepository\.ts$/.test(name);
+  it('repositories import from services/ only type labels or the listed plain helpers', () => {
+    const SERVER = join(ROOT, 'src', 'server');
+    const dbDir = join(SERVER, 'database');
+    const offenders: string[] = [];
+    for (const f of readdirSync(dbDir).filter(isDataLayer).map(n => join(dbDir, n))) {
+      for (const to of runtimeImports(f)) {
+        const rel = relative(SERVER, to).replace(/\\/g, '/');
+        if (rel.startsWith('services/') && !ALLOWED.has(rel)) offenders.push(`database/${relative(dbDir, f)} -> ${rel}`);
+      }
+    }
+    expect(offenders, 'Move the read into a repository, or import only types (import type)').toEqual([]);
   });
 });

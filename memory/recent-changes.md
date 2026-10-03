@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Database layer stops calling business logic (code health step 1C)
+New database/TaskAssignmentRepository.ts (assignment reads + row mapper); TaskRepository reads through it instead of TaskAssignmentService; TaskAssignmentService delegates and re-exports the TaskAssignment type. TaskRepository/EmbeddingRepository use `import type`. Tangles 80→74 links, 31→28 files; no database file is tangled any more; Embedding pair gone. New guard: repositories may import from services/ only type labels or 3 listed plain helpers (proven to catch the old link).
+
 ## 2026-10-03 — Rate card change no longer floods the database
 queueAll re-priced + re-reviewed EVERY plan (archived too) at once ~20 s later → mysql2 'Queue limit reached' (staging 147×; prod 0×), could fail page loads. Now: live, non-sample plans only (TaskBudgetService.queueAll) and at most MAX_RUNNING=2 reviews at once in scheduleReview/autoRerun (whenThereIsRoom; AsyncResource.bind keeps each waiting plan's own company context — test proves it fails without). Covers company-holiday bursts too.
 

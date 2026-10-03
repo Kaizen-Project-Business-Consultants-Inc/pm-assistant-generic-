@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
 import { taskDatesOf, moveBookingsWithTasks } from './bookingDates';
 import { databaseService } from './connection';
-import { Task, TaskDependency, TaskComment, TaskActivityEntry } from '../services/ScheduleService';
-import { taskAssignmentService } from '../services/TaskAssignmentService';
+import type { Task, TaskDependency, TaskComment, TaskActivityEntry } from '../services/ScheduleService';
+import { taskAssignmentRepository } from './TaskAssignmentRepository';
 
 // ---------------------------------------------------------------------------
 // Row mappers
@@ -132,7 +132,7 @@ export class TaskRepository {
     const taskIds = tasks.map(t => t.id);
     const [depMap, assignMap] = await Promise.all([
       this.loadDependenciesForTasks(taskIds),
-      taskAssignmentService.getForTasks(taskIds),
+      taskAssignmentRepository.getForTasks(taskIds),
     ]);
     for (const task of tasks) {
       task.dependencies = depMap.get(task.id) || [];

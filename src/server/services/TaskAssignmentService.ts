@@ -2,54 +2,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { planChanged } from './domainEvents';
 import { databaseService } from '../database/connection';
 import { resourceRepository } from '../database/ResourceRepository';
+import { taskAssignmentRepository, rowToAssignment, type TaskAssignment } from '../database/TaskAssignmentRepository';
 import { toDateString, addDays, isWeekend } from '../utils/calendarDate';
 
-export interface TaskAssignment {
-  id: string;
-  taskId: string;
-  resourceId: string;
-  allocationPct: number;
-  roleOnTask?: string;
-  hoursPlanned?: number;
-  createdAt: string;
-}
-
-function rowToAssignment(row: any): TaskAssignment {
-  return {
-    id: row.id,
-    taskId: row.task_id,
-    resourceId: row.resource_id,
-    allocationPct: Number(row.allocation_pct) || 100,
-    roleOnTask: row.role_on_task ?? undefined,
-    hoursPlanned: row.hours_planned != null ? Number(row.hours_planned) : undefined,
-    createdAt: String(row.created_at),
-  };
-}
+export type { TaskAssignment } from '../database/TaskAssignmentRepository';
 
 export class TaskAssignmentService {
   async getForTask(taskId: string): Promise<TaskAssignment[]> {
-    const rows = await databaseService.query(
-      'SELECT * FROM task_assignments WHERE task_id = ? ORDER BY created_at',
-      [taskId],
-    );
-    return rows.map(rowToAssignment);
+    return taskAssignmentRepository.getForTask(taskId);
   }
 
   async getForTasks(taskIds: string[]): Promise<Map<string, TaskAssignment[]>> {
-    const map = new Map<string, TaskAssignment[]>();
-    if (taskIds.length === 0) return map;
-    const placeholders = taskIds.map(() => '?').join(', ');
-    const rows = await databaseService.query(
-      `SELECT * FROM task_assignments WHERE task_id IN (${placeholders}) ORDER BY created_at`,
-      taskIds,
-    );
-    for (const row of rows) {
-      const a = rowToAssignment(row);
-      const arr = map.get(a.taskId) || [];
-      arr.push(a);
-      map.set(a.taskId, arr);
-    }
-    return map;
+    return taskAssignmentRepository.getForTasks(taskIds);
   }
 
   async setAssignments(taskId: string, assignments: Array<{
