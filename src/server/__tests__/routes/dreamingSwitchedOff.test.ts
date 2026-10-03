@@ -14,7 +14,7 @@ import { dreamingRoutes } from '../../routes/ai/dreaming';
 /** Dreaming read users' AI conversations across the platform; switched off 2026-09-30. */
 describe('dreaming is switched off', () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(dreamingRoutes, { prefix: '/api/v1/dreaming' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(dreamingRoutes, { prefix: '/api/v1/dreaming' }); }, 60_000);
 
   it.each([
     ['POST', '/api/v1/dreaming/trigger'],

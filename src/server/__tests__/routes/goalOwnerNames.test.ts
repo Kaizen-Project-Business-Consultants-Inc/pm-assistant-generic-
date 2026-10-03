@@ -14,7 +14,7 @@ import { goalRoutes } from '../../routes/goals';
 
 describe("goals list shows each owner's name", () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(goalRoutes, { prefix: '/api/v1/goals' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(goalRoutes, { prefix: '/api/v1/goals' }); }, 60_000);
 
   it('adds ownerName from one lookup of all owners', async () => {
     goals.list.mockResolvedValue([

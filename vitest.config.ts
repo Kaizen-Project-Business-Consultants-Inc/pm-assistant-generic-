@@ -45,6 +45,9 @@ export default defineConfig({
           include: ['src/server/__tests__/**/*.test.ts'],
           setupFiles: ['src/server/__tests__/setup.ts'],
           testTimeout: 30000,
+          // Projects don't inherit the top-level hookTimeout (a route test's setup timed out at the
+          // 10 s default during a full run, 2026-10-03)
+          hookTimeout: 60000,
         },
       },
       // Frontend tests — jsdom environment, React 18 from client
@@ -56,6 +59,7 @@ export default defineConfig({
           include: ['src/client/**/*.test.{ts,tsx}'],
           setupFiles: ['src/client/src/__tests__/setup.ts'],
           testTimeout: 30000,
+          hookTimeout: 60000,
         },
         resolve: {
           alias: {

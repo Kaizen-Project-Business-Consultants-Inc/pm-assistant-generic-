@@ -30,7 +30,7 @@ import { meetingIntelligenceRoutes } from '../../routes/collaboration/meetingInt
 
 describe('Meeting Intelligence history', () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(meetingIntelligenceRoutes, { prefix: '/api/v1/meeting-intelligence' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(meetingIntelligenceRoutes, { prefix: '/api/v1/meeting-intelligence' }); }, 60_000);
 
   it("sends the project's analyses, not an empty object", async () => {
     mis.getProjectHistory.mockResolvedValue([

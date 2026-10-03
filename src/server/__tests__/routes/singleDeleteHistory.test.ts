@@ -58,7 +58,7 @@ describe('DELETE /schedules/:id/tasks/:taskId — recorded in History, undone li
   /** task ids that exist (the deleted one comes back on restore) */
   let present: Set<string>;
 
-  beforeAll(async () => { app = Fastify(); await app.register(scheduleRoutes, { prefix: '/api/v1/schedules' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(scheduleRoutes, { prefix: '/api/v1/schedules' }); }, 60_000);
   beforeEach(() => {
     vi.clearAllMocks();
     recorded = null;

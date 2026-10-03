@@ -1374,6 +1374,15 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 - Team Planner: `TeamPlannerService.test.ts` (drop check: before/after hours, overload warns not refuses, cost at the new rate, logged hours stay, week shift keeps working-day length + linked tasks + finish shift, predecessor holds it back; refusals: generic/already on it/finished/heading/milestone/undated/started task's dates/stale board; apply = one `planner_move` History change, bookings shifted, Undo restores; board: only managed projects' people, all their work counted, unreadable projects unnamed and locked), `ScheduleRecomputeService.test.ts` (`moves` option), `plannerLayout.test.ts` (client). Manual (staging, qa.pm): Resources → Team Planner → drag a block onto another person → check shows hours before → after → Give it → History shows it → Undo; drag a block one week right → linked tasks listed → Move it; Tab to a block + Enter opens the same check. As qa.team: the tab is not there.
 - Bookings follow their task: `bookingDates.test.ts` (whole-task / partial / shortened / no dates; only changed tasks touched; guard over every task-date write). Manual (staging): give a task an hours booking on Resources, drag the task on the Gantt to a later week, open Team Planner — the person's hours are in the new weeks.
 
+## Import tangle guard (Oct 2026)
+
+`src/server/__tests__/utils/importCycleGuard.test.ts` reads every import in `src/server` and `src/client/src` with TypeScript's own parser and finds groups of files that import each other in a circle. Type-only imports don't count (they vanish when built); `await import()` "load it later" workarounds do. It counts the import links inside those groups and fails if the number rises above the ceiling at the top of the file, listing the links that closed the circle.
+
+- Baseline 2026-10-03: server 104 links / 38 files (21 / 11 on 2026-09-01); client 5 / 5.
+- The ceilings only go **down**: each untangling step lowers them in the same commit.
+- To see the current tangles: `PRINT_TANGLES=1 npx vitest run src/server/__tests__/utils/importCycleGuard.test.ts`.
+- If it fails on your change: don't raise the ceiling. Announce the change instead of calling the other part directly, or move the shared piece down a layer.
+
 ## Production smoke tests (Oct 2026)
 
 `SMOKE_CREDENTIALS=path/to/prod-smoke-account.json npx playwright test -c playwright.prod.config.ts` — 10 read-only page checks on kovarti.com. The login comes from the same credentials file as `scripts/prod-smoke.cjs` (kept outside the repository); the checks reuse the session the setup step saves. Staging tests use the QA logins (qa.pm / qa.team / qa.outsider @pm.kpbc.ca, see `e2e/staging-helpers.ts`).

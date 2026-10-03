@@ -40,7 +40,7 @@ import { bulkRoutes } from '../../routes/core/bulk';
 
 describe('DELETE /bulk/tasks — copies, deletes, records for Undo', () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(bulkRoutes, { prefix: '/api/v1/bulk' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(bulkRoutes, { prefix: '/api/v1/bulk' }); }, 60_000);
   beforeEach(() => {
     vi.clearAllMocks();
     queryOn.mockImplementation(async (_conn: any, sql: string) => {

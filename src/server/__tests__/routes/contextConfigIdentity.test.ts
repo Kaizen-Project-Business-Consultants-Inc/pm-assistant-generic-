@@ -18,7 +18,7 @@ import { contextConfigRoutes } from '../../routes/ai/contextConfig';
 
 describe('AI settings use the real user and company', () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(contextConfigRoutes, { prefix: '/api/v1/context' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(contextConfigRoutes, { prefix: '/api/v1/context' }); }, 60_000);
 
   it.each(['/api/v1/context/config', '/api/v1/context/preview'])('%s resolves for this user in this company', async (url) => {
     svc.resolveContext.mockClear();

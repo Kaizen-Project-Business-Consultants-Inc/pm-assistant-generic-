@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Import tangle guard (code health step 1A)
+New guard importCycleGuard.test.ts: counts import links inside circular groups (TypeScript parser; type-only imports ignored, lazy import() counted). Ceilings = today's 104 links / 38 files (server), 5 / 5 (client); only ever lowered. Proven to fail on a new circle (RiskService ↔ SponsorService test). No app behaviour change; no new dependency (madge rejected: it pulls in a Vue compiler and bumps postcss).
+Also: vitest server/client projects now set hookTimeout 60 s themselves (they never inherited the top-level one; a route test's setup timed out at 10 s in a full run), plus explicit 60 s on 8 route-test setups.
+
 ## 2026-10-03 — Project sponsor + PM-controlled RAID escalation
 T074. Edit project → Sponsor (company user → added as Viewer, or a resource with an email). Critical risk/issue shows the PM a prompt; only the PM escalates, with a note (RAID update + notification/email to the sponsor). Nothing automatic (user's rule). SponsorService, routes/collaboration/sponsor.ts, SponsorEscalation.tsx.
 

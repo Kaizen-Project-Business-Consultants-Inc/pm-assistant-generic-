@@ -37,7 +37,7 @@ import { importRoutes } from '../../routes/scheduling/import';
 
 describe('imports are recorded in Schedule History', () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(importRoutes, { prefix: '/api/v1/schedules' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(importRoutes, { prefix: '/api/v1/schedules' }); }, 60_000);
   beforeEach(() => {
     vi.clearAllMocks();
     next = 0;

@@ -36,7 +36,7 @@ import { scheduleRoutes } from '../../routes/scheduling/schedules';
 
 describe('creating a task with a predecessor', () => {
   let app: any;
-  beforeAll(async () => { app = Fastify(); await app.register(scheduleRoutes, { prefix: '/api/v1/schedules' }); });
+  beforeAll(async () => { app = Fastify(); await app.register(scheduleRoutes, { prefix: '/api/v1/schedules' }); }, 60_000);
   beforeEach(() => { recompute.mockReset(); svc.createTask.mockReset(); svc.findTaskById.mockReset(); });
 
   it('moves the new task after its predecessor and returns the moved dates', async () => {
