@@ -373,7 +373,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
-      const deleted = await scheduleService.deleteTask(taskId);
+      // Recorded in Schedule History (changeId): Undo there, or Ctrl+Z, puts the task back
+      const { deleted, changeId } = await scheduleService.deleteTaskWithHistory(taskId);
       if (!deleted) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
       const { scheduleId } = request.params as { scheduleId: string };
       const schedule = await scheduleService.findById(scheduleId);
@@ -381,7 +382,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       webhookService.dispatch('task.deleted', { taskId }, user?.userId);
       automationEventBus.emit({ type: 'task.deleted', entityType: 'task', entityId: taskId, projectId: schedule?.projectId || '', userId: user.userId, payload: { taskId }, timestamp: new Date().toISOString() }).catch(() => {});
-      return { message: 'Task deleted successfully' };
+      return { message: 'Task deleted successfully', changeId };
     } catch (error) {
       logger.error('Delete task error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to delete task' });

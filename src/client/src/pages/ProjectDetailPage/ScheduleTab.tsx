@@ -651,19 +651,6 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
     },
   });
 
-  // Delete task
-  const deleteMutation = useMutation({
-    mutationFn: (taskId: string) => {
-      return apiService.deleteTask(schedule.id, taskId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-      setEditingTask(null);
-      setActiveTaskId(null);
-      announce('Task deleted');
-    },
-  });
-
   // Undo/redo
   const { canUndo, canRedo, undoDescription, redoDescription, pushAction: rawPushAction, undo: rawUndo, redo } = useUndoRedo();
 
@@ -685,6 +672,30 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
   }, [rawUndo]);
 
   useEffect(() => () => clearTimeout(toastTimerRef.current), []);
+
+  // Delete one task (task form, Gantt menu). Recorded in Schedule History like a bulk delete, so
+  // Ctrl+Z goes through the History undo: the task comes back under its old id with its links,
+  // booked hours, people and comments
+  const deleteMutation = useMutation({
+    mutationFn: (taskId: string) => apiService.deleteTask(schedule.id, taskId),
+    onSuccess: (res, taskId) => {
+      const refresh = () => {
+        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+        queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
+      };
+      refresh();
+      setEditingTask(null);
+      setActiveTaskId(null);
+      announce('Task deleted');
+      let changeId = res?.changeId ?? null;
+      const name = tasks.find(t => t.id === taskId)?.name;
+      pushAction({
+        description: name ? `Delete ${name}` : 'Delete 1 task',
+        undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
+        redo: async () => { changeId = (await apiService.deleteTask(schedule.id, taskId)).changeId; refresh(); },
+      });
+    },
+  });
 
   // Over-100% warning after Assigned To is changed in the table/Gantt cell (warning only)
   const [loadWarning, setLoadWarning] = useState<string | null>(null);

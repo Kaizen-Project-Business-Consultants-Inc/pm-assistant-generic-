@@ -465,7 +465,8 @@ class ApiService {
     return response.data;
   }
 
-  async deleteTask(scheduleId: string, taskId: string) {
+  /** `changeId`: the Schedule History entry — undoing it puts the task back (same id) */
+  async deleteTask(scheduleId: string, taskId: string): Promise<{ message: string; changeId: string | null }> {
     const response = await this.api.delete(`/schedules/${scheduleId}/tasks/${taskId}`);
     return response.data;
   }
