@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — History undo handlers (code health step 1D)
+ChangeHistoryService no longer imports the review-fix proposer, resource replace or Team Planner: they register their undo at startup (registerUndoHandler in domainListeners.ts). Single delete-with-history moved from ScheduleService into ChangeHistoryService.deleteTaskWithHistory (ScheduleService.removeTask takes History's copy step), so ScheduleService no longer imports History. Tangles 74→30 links, 28→13 files. Missing wiring → clear 'can't be undone right now', nothing marked undone (tested).
+
 ## 2026-10-03 — Database layer stops calling business logic (code health step 1C)
 New database/TaskAssignmentRepository.ts (assignment reads + row mapper); TaskRepository reads through it instead of TaskAssignmentService; TaskAssignmentService delegates and re-exports the TaskAssignment type. TaskRepository/EmbeddingRepository use `import type`. Tangles 80→74 links, 31→28 files; no database file is tangled any more; Embedding pair gone. New guard: repositories may import from services/ only type labels or 3 listed plain helpers (proven to catch the old link).
 

@@ -12,6 +12,14 @@ const reactions = vi.hoisted(() => ({
 vi.mock('../../services/scheduleReview/autoRerun', () => ({ queueReviewRerun: reactions.queueReviewRerun }));
 vi.mock('../../services/raidReview/autoRerun', () => ({ queueRaidReviewRerun: reactions.queueRaidReviewRerun }));
 vi.mock('../../services/TaskBudgetService', () => ({ taskBudgetService: { queueForResource: reactions.queueForResource, queueAll: reactions.queueAll } }));
+const undo = vi.hoisted(() => ({ registered: new Map<string, Function>(), fix: vi.fn(async () => ({ score: 1 })), replace: vi.fn(async () => 3), planner: vi.fn(async () => 4) }));
+vi.mock('../../services/ChangeHistoryService', () => ({
+  registerUndoHandler: (kind: string, h: Function) => undo.registered.set(kind, h),
+  REGISTERED_UNDO_KINDS: ['review_fix', 'reassign', 'planner_move'],
+}));
+vi.mock('../../services/ScheduleFixProposerService', () => ({ scheduleFixProposerService: { undo: undo.fix } }));
+vi.mock('../../services/ResourceReplaceService', () => ({ resourceReplaceService: { undo: undo.replace } }));
+vi.mock('../../services/TeamPlannerService', () => ({ teamPlannerService: { undo: undo.planner } }));
 
 import {
   onDomainEvent, publishDomainEvent, planChanged, personRatesChanged, rateCardChanged, raidChanged,
@@ -82,6 +90,16 @@ describe('startup wiring: every notice reaches its reaction', () => {
     raidChanged('p1');
     expect(reactions.queueRaidReviewRerun).toHaveBeenCalledWith('p1');
   });
+  it('Schedule History gets the undo for every change another feature makes (step 1D)', async () => {
+    expect([...undo.registered.keys()].sort()).toEqual(['planner_move', 'reassign', 'review_fix']);
+    await undo.registered.get('review_fix')!('s1', {}, { ref: 'prop-1', userId: 'u1' });
+    expect(undo.fix).toHaveBeenCalledWith('s1', 'prop-1', 'u1');
+    expect(await undo.registered.get('reassign')!('s1', { a: 1 }, { ref: null, userId: null })).toBe(3);
+    expect(undo.replace).toHaveBeenCalledWith('s1', { a: 1 });
+    expect(await undo.registered.get('planner_move')!('s1', { b: 2 }, { ref: null, userId: null })).toBe(4);
+    expect(undo.planner).toHaveBeenCalledWith('s1', { b: 2 });
+  });
+
   it('registering twice does not double the reactions', () => {
     registerDomainListeners();
     expect(listenerCounts()).toEqual({ 'plan.changed': 1, 'person.rates.changed': 1, 'ratecard.changed': 1, 'raid.changed': 1 });

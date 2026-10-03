@@ -1,6 +1,7 @@
 // C:\Users\gerog\Documents\pm-assistant-generic\src\server\services\aiActionExecutor.ts
 
 import { projectService, type CreateProjectData, type Project } from './ProjectService';
+import { changeHistoryService } from './ChangeHistoryService';
 import { checkProjectRoleFor } from '../middleware/requireProjectAccess';
 import { scheduleService, type CreateTaskData, type Task, DependencyValidationError } from './ScheduleService';
 import { userService } from './UserService';
@@ -231,7 +232,7 @@ export class AIActionExecutor {
     }
 
     // Recorded in Schedule History like a delete in the app, so it can be undone there
-    const { deleted } = await scheduleService.deleteTaskWithHistory(taskId);
+    const { deleted } = await changeHistoryService.deleteTaskWithHistory(taskId);
     return {
       success: deleted,
       toolName: 'delete_task',

@@ -34,7 +34,15 @@ vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { appe
 vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
-import { changeHistoryService, NotLatestChangeError, ChangeStateError, snapshotTasksForDelete, deleteSummary, MAX_UNDO_BYTES } from '../../services/ChangeHistoryService';
+import { changeHistoryService, NotLatestChangeError, ChangeStateError, snapshotTasksForDelete, deleteSummary, MAX_UNDO_BYTES, registerUndoHandler, _resetUndoHandlersForTests } from '../../services/ChangeHistoryService';
+import { scheduleFixProposerService } from '../../services/ScheduleFixProposerService';
+import { resourceReplaceService } from '../../services/ResourceReplaceService';
+
+/** What the app wires at startup (services/domainListeners.ts) — the features' own undo */
+function wireUndoHandlers() {
+  registerUndoHandler('review_fix', async (sid, _p, c) => { await scheduleFixProposerService.undo(sid, c.ref ?? '', c.userId); return 0; });
+  registerUndoHandler('reassign', (sid, p) => resourceReplaceService.undo(sid, p));
+}
 
 const row = (over: any) => ({
   id: 'c-1', project_id: 'p-1', schedule_id: 's-1', kind: 'link', summary: 'Added 2 links', status: 'applied',
@@ -52,7 +60,7 @@ function withChange(r: any, editedSince = 0, newestId = r.id) {
 }
 
 describe('ChangeHistoryService', () => {
-  beforeEach(() => { vi.clearAllMocks(); ctx.actorSource = 'web'; query.mockResolvedValue([]); });
+  beforeEach(() => { vi.clearAllMocks(); ctx.actorSource = 'web'; query.mockResolvedValue([]); _resetUndoHandlersForTests(); wireUndoHandlers(); });
 
   describe('record', () => {
     it('stores who, where from, the tasks touched and the undo data', async () => {
@@ -157,6 +165,13 @@ describe('ChangeHistoryService', () => {
       withChange(row({ kind: 'review_fix', ref: 'prop-9' }));
       await changeHistoryService.undo('s-1', 'c-1');
       expect(fixUndo).toHaveBeenCalledWith('s-1', 'prop-9', 'u-1');
+    });
+
+    it('a feature whose undo is not wired (startup missed) is refused with a clear message, and nothing is marked undone', async () => {
+      _resetUndoHandlersForTests();
+      withChange(row({ kind: 'planner_move', undo_payload: JSON.stringify({ moves: [] }) }));
+      await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toThrow(/can't be undone right now/);
+      expect(query.mock.calls.some(([sql]) => String(sql).includes("SET status = 'undone'"))).toBe(false);
     });
 
     it('AI reschedule: restores the dates', async () => {

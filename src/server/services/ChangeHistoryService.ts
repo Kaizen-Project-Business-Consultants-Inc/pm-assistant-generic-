@@ -101,6 +101,22 @@ const parseJson = <T>(v: unknown, fallback: T): T => {
 /** Kinds whose undo needs the copy kept with the change (none is kept when it was too large) */
 const NEEDS_COPY = new Set<string>(['bulk_delete', 'import']);
 
+/**
+ * Undo handlers for changes another feature knows how to put back (code health step 1D,
+ * 2026-10-03). History used to reach into the review-fix, resource-replace and Team Planner code
+ * to undo their changes, while they reach into History to record them — a circle. Each now hands
+ * History its undo at startup (services/domainListeners.ts, run by the app and the job runner).
+ * Returns how many tasks were put back.
+ */
+export type UndoHandler = (scheduleId: string, payload: any, ctx: { ref: string | null; userId: string | null }) => Promise<number>;
+const undoHandlers = new Map<ChangeKind, UndoHandler>();
+/** The change kinds whose undo another feature registers */
+export const REGISTERED_UNDO_KINDS: readonly ChangeKind[] = ['review_fix', 'reassign', 'planner_move'];
+export function registerUndoHandler(kind: ChangeKind, handler: UndoHandler): void { undoHandlers.set(kind, handler); }
+export function hasUndoHandler(kind: ChangeKind): boolean { return undoHandlers.has(kind); }
+/** Test hook */
+export function _resetUndoHandlersForTests(): void { undoHandlers.clear(); }
+
 type Run = (sql: string, params: any[]) => Promise<any[]>;
 type Row = Record<string, unknown>;
 const ph = (n: number) => Array.from({ length: n }, () => '?').join(',');
@@ -163,7 +179,7 @@ export async function snapshotTasksForDelete(run: Run, scheduleId: string, taskI
 
 /**
  * The one delete both delete paths use — bulk delete (DELETE /bulk/tasks) and the single-task
- * delete (task form, Gantt menu, MCP delete-task, via ScheduleService.deleteTaskWithHistory):
+ * delete (task form, Gantt menu, MCP delete-task, via ChangeHistoryService.deleteTaskWithHistory):
  * copy everything it removes, then clear the old single-predecessor columns that named these
  * tasks, delete them, and stamp the schedule. Call it inside the delete's transaction (`run` on
  * that connection) so the copy and the delete see the same rows. Returns the copy; nothing is
@@ -358,6 +374,28 @@ class ChangeHistoryService {
    * Record a group change. Never throws: history must not break the change it records
    * (a missing line only means that one change can't be undone from History).
    */
+  /**
+   * A delete a person (or Claude) makes on one task — the task form, the Gantt menu, MCP
+   * delete-task, the assistant: the schedule's own delete (roll-ups, audit, notices), with the
+   * copy for Undo taken in the delete's transaction, then a History line ("Deleted 1 task:
+   * Build") recorded after the roll-up. Undo puts it back exactly like a bulk delete.
+   * (Moved here from ScheduleService in step 1D, so the schedule code doesn't call History.)
+   */
+  async deleteTaskWithHistory(taskId: string): Promise<{ deleted: boolean; changeId: string | null }> {
+    const r = await scheduleService.removeTask(taskId, deleteTasksKeepingCopy);
+    const snap = r.copy;
+    if (!r.deleted || !snap || !r.projectId || !r.scheduleId) return { deleted: r.deleted, changeId: null };
+    const changeId = await this.record({
+      projectId: r.projectId,
+      scheduleId: r.scheduleId,
+      kind: 'bulk_delete',
+      summary: deleteSummary(snap.tasks.map(t => String(t.name))),
+      taskIds: snap.tasks.map(t => String(t.id)),
+      undo: snap,
+    });
+    return { deleted: true, changeId };
+  }
+
   async record(input: RecordInput): Promise<string | null> {
     try {
       if (input.taskIds.length === 0) return null;
@@ -535,11 +573,14 @@ class ChangeHistoryService {
         }
         break;
       }
-      case 'review_fix': {
-        // Lazy import: the proposer service pulls in the review engine
-        const { scheduleFixProposerService } = await import('./ScheduleFixProposerService');
-        await scheduleFixProposerService.undo(scheduleId, row.ref, getRequestContext()?.userId ?? null);
-        restored = taskIds.length;
+      case 'review_fix':
+      case 'reassign':
+      case 'planner_move': {
+        // The feature that made the change puts it back (registered at startup)
+        const handler = undoHandlers.get(row.kind as ChangeKind);
+        if (!handler) throw new ChangeStateError('This change can\'t be undone right now. Please try again in a minute.');
+        restored = await handler(scheduleId, p, { ref: row.ref ?? null, userId: getRequestContext()?.userId ?? null });
+        if (row.kind === 'review_fix') restored = taskIds.length;
         break;
       }
       case 'calendar':
@@ -552,22 +593,12 @@ class ChangeHistoryService {
         restored = await scheduleService.ungroupTasks(p.summaryId, p.previous ?? []);
         break;
       }
-      case 'reassign': {
-        const { resourceReplaceService } = await import('./ResourceReplaceService');
-        restored = await resourceReplaceService.undo(scheduleId, p);
-        break;
-      }
       case 'bulk_delete': {
         restored = await restoreDeletedTasks(scheduleId, p as DeleteSnapshot);
         break;
       }
       case 'import': {
         restored = await removeImported(scheduleId, p as ImportUndo, row.created_at);
-        break;
-      }
-      case 'planner_move': {
-        const { teamPlannerService } = await import('./TeamPlannerService');
-        restored = await teamPlannerService.undo(scheduleId, p);
         break;
       }
       default:

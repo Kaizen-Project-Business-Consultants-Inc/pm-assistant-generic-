@@ -1141,32 +1141,29 @@ export class ScheduleService {
 
   /** Delete a task (no Schedule History line — used by undo paths and internal clean-ups) */
   async deleteTask(id: string): Promise<boolean> {
-    return (await this.removeTask(id, false)).deleted;
+    return (await this.removeTask(id)).deleted;
   }
 
   /**
-   * A delete a person (or Claude) makes on one task — the task form, the Gantt menu, MCP
-   * delete-task, the assistant: the same delete, plus a Schedule History line ("Deleted 1 task:
-   * Build") whose Undo puts it back exactly like a bulk delete (same id, links, booked hours,
-   * people, comments). Deleting a summary task removes only that row, as before; its tasks keep
-   * pointing at it, so Undo re-attaches them.
+   * The schedule's one-task delete: the row, links that named it, the schedule stamp, the
+   * roll-up, the audit entry and the "plan changed" notice. `deleteKeepingCopy` (History's
+   * deleteTasksKeepingCopy, for a delete a person makes — ChangeHistoryService.deleteTaskWithHistory)
+   * does the delete inside this transaction and returns the copy Undo needs. Deleting a summary
+   * task removes only that row; its tasks keep pointing at it, so Undo re-attaches them.
    */
-  async deleteTaskWithHistory(id: string): Promise<{ deleted: boolean; changeId: string | null }> {
-    return this.removeTask(id, true);
-  }
-
-  private async removeTask(id: string, keepHistory: boolean): Promise<{ deleted: boolean; changeId: string | null }> {
+  async removeTask<S extends { tasks: any[] }>(
+    id: string,
+    deleteKeepingCopy?: (q: (sql: string, params: any[]) => Promise<any[]>, scheduleId: string, taskIds: string[]) => Promise<S>,
+  ): Promise<{ deleted: boolean; copy: S | null; scheduleId: string | null; projectId: string | null }> {
     const existing = await this.findTaskById(id);
-    // Lazy: ChangeHistoryService imports this service
-    const history = keepHistory && existing ? await import('./ChangeHistoryService') : null;
-    let copy: import('./ChangeHistoryService').DeleteSnapshot | null = null;
+    let copy: S | null = null;
 
     const deleted = await databaseService.transaction(async (conn) => {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
 
-      if (history && existing) {
+      if (deleteKeepingCopy && existing) {
         // The copy for Undo is read in this transaction, just before the delete (the shared bulk path)
-        copy = await history.deleteTasksKeepingCopy(q, existing.scheduleId, [id]);
+        copy = await deleteKeepingCopy(q, existing.scheduleId, [id]);
         return copy.tasks.length > 0;
       }
 
@@ -1186,7 +1183,7 @@ export class ScheduleService {
       return wasDeleted;
     });
 
-    let changeId: string | null = null;
+    let projectId: string | null = null;
     if (deleted && existing) {
       planChanged(existing.scheduleId);
       // Recompute parent rollup after child deletion
@@ -1206,22 +1203,12 @@ export class ScheduleService {
         payload: { before: existing },
         source: getActorSource(),
       }).catch(err => deadLetterService.capture('audit.append', {}, err));
-
-      // Recorded after the roll-up, so the summary's new dates aren't "changed since"
-      const snap = copy as import('./ChangeHistoryService').DeleteSnapshot | null;
-      if (history && snap && schedule?.projectId) {
-        changeId = await history.changeHistoryService.record({
-          projectId: schedule.projectId,
-          scheduleId: existing.scheduleId,
-          kind: 'bulk_delete',
-          summary: history.deleteSummary(snap.tasks.map(t => String(t.name))),
-          taskIds: snap.tasks.map(t => String(t.id)),
-          undo: snap,
-        });
-      }
+      projectId = schedule?.projectId ?? null;
     }
 
-    return { deleted, changeId };
+    // History records its line after this returns — after the roll-up, so the summary's new
+    // dates don't count as "changed since"
+    return { deleted, copy, scheduleId: existing?.scheduleId ?? null, projectId };
   }
 
   // -------------------------------------------------------------------------

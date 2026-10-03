@@ -2,13 +2,18 @@ import { onDomainEvent } from './domainEvents';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { queueRaidReviewRerun } from './raidReview/autoRerun';
 import { taskBudgetService } from './TaskBudgetService';
+import { registerUndoHandler } from './ChangeHistoryService';
+import { scheduleFixProposerService } from './ScheduleFixProposerService';
+import { resourceReplaceService } from './ResourceReplaceService';
+import { teamPlannerService } from './TeamPlannerService';
 import logger from '../utils/logger';
 
 /**
- * Connects each "something changed" notice (domainEvents.ts) to what reacts to it. Called once
+ * Connects each "something changed" notice (domainEvents.ts) to what reacts to it, and hands
+ * Schedule History the undo for changes other features make (ChangeHistoryService). Called once
  * by EVERY process that changes data: the app (index.ts) and the scheduled-jobs runner
  * (scripts/runCronJob.ts). A process that forgets this still works, but its changes quietly
- * stop re-running Schedule Review — the guard test domainListenersGuard.test.ts checks both.
+ * stop re-running Schedule Review — the guard in __tests__/services/domainEvents.test.ts checks both.
  */
 let registered = false;
 
@@ -28,6 +33,11 @@ export function registerDomainListeners(): void {
   });
   // RAID changed → RAID Review re-runs
   onDomainEvent('raid.changed', e => queueRaidReviewRerun(e.projectId));
+
+  // Schedule History: the features that know how to put their own changes back (step 1D)
+  registerUndoHandler('review_fix', async (scheduleId, _p, c) => { await scheduleFixProposerService.undo(scheduleId, c.ref ?? '', c.userId); return 0; });
+  registerUndoHandler('reassign', (scheduleId, p) => resourceReplaceService.undo(scheduleId, p));
+  registerUndoHandler('planner_move', (scheduleId, p) => teamPlannerService.undo(scheduleId, p));
 }
 
 /** Test hook */

@@ -23,7 +23,8 @@ const CEILING = {
   // Embedding and RAID Review pairs). On 2026-09-01 it was 21 / 11.
   // Step 1B ("something changed" notices, services/domainEvents.ts): 80 / 31, RAID knot gone.
   // Step 1C (database layer stops calling business logic): 74 / 28, Embedding pair gone.
-  server: { tangledLinks: 74, filesInTangles: 28 },
+  // Step 1D (History undo handlers; single delete-with-history moved into History): 30 / 13.
+  server: { tangledLinks: 30, filesInTangles: 13 },
   client: { tangledLinks: 5, filesInTangles: 5 },
 };
 

@@ -375,7 +375,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     try {
       const { taskId } = request.params as { taskId: string };
       // Recorded in Schedule History (changeId): Undo there, or Ctrl+Z, puts the task back
-      const { deleted, changeId } = await scheduleService.deleteTaskWithHistory(taskId);
+      const { deleted, changeId } = await changeHistoryService.deleteTaskWithHistory(taskId);
       if (!deleted) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
       const { scheduleId } = request.params as { scheduleId: string };
       const schedule = await scheduleService.findById(scheduleId);
