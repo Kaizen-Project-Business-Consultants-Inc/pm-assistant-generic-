@@ -36,8 +36,10 @@ const db = vi.hoisted(() => ({
     if (/SELECT id FROM schedules/.test(sql)) return [{ id: 'demo-sched-1' }];
     if (/SELECT id FROM tasks/.test(sql)) return [{ id: 'demo-t1' }, { id: 'demo-t2' }];
     if (/SELECT id FROM resources/.test(sql)) return [{ id: 'demo-res-1' }];
+    if (/information_schema\.TRIGGERS/.test(sql)) return [{ t: 'audit_ledger' }];
     if (/information_schema\.COLUMNS/.test(sql)) {
       return [
+        { t: 'audit_ledger', c: 'project_id' },
         { t: 'project_risks', c: 'project_id' },
         { t: 'time_entries', c: 'task_id' },
         { t: 'task_assignments', c: 'resource_id' },
@@ -82,6 +84,8 @@ describe('removing the sample', () => {
     expect(deletes.find(d => d.sql.includes('`time_entries` WHERE `task_id`'))?.params).toEqual(['demo-t1', 'demo-t2']);
     expect(deletes.find(d => d.sql.includes('`task_assignments` WHERE `resource_id`'))?.params).toEqual(['demo-res-1']);
     expect(deletes.find(d => d.sql.includes('`sprints` WHERE `schedule_id`'))?.params).toEqual(['demo-sched-1']);
+    // the audit ledger is append-only history: never deleted from (staging 2026-10-03: it refuses)
+    expect(deletes.some(d => d.sql.includes('audit_ledger'))).toBe(false);
     // a table name that isn't a plain identifier is never put into SQL
     expect(deletes.some(d => d.sql.includes('DROP'))).toBe(false);
     // the project goes last, inside one transaction
