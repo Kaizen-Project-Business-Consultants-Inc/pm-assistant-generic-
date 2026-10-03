@@ -159,7 +159,9 @@ echo ""
 # --- MCP-only deploy shortcut ---
 if [ "$MCP_ONLY" = true ]; then
   echo "[MCP] Building MCP server..."
-  cd mcp-server && npm run build && cd ..
+  # In a subshell: with `set -e`, a failure inside `a && b && c` does not stop the script,
+  # so a failed MCP build used to print OK and upload the old dist (2026-10-03)
+  (cd mcp-server && npm run build)
   echo "  OK"
 
   assert_source_unchanged
@@ -351,7 +353,7 @@ if [ "$CLIENT_ONLY" = false ]; then
   echo "  Syncing dependencies..."
   do_scp package.json "$SSH_HOST":/tmp/pkg.json
   do_scp package-lock.json "$SSH_HOST":/tmp/pkg-lock.json
-  do_ssh "sudo cp /tmp/pkg.json /opt/pm-app/package.json && sudo cp /tmp/pkg-lock.json /opt/pm-app/package-lock.json && sudo chown ubuntu:ubuntu /opt/pm-app/package.json /opt/pm-app/package-lock.json && cd /opt/pm-app && npm install --omit=dev --no-audit --no-fund 2>&1 | tail -1 && rm -f /tmp/pkg.json /tmp/pkg-lock.json"
+  do_ssh "sudo cp /tmp/pkg.json /opt/pm-app/package.json && sudo cp /tmp/pkg-lock.json /opt/pm-app/package-lock.json && sudo chown ubuntu:ubuntu /opt/pm-app/package.json /opt/pm-app/package-lock.json && set -o pipefail; cd /opt/pm-app && npm install --omit=dev --no-audit --no-fund 2>&1 | tail -1 && rm -f /tmp/pkg.json /tmp/pkg-lock.json"
   echo "  ✓ OK"
 else
   echo "[5/7] Server upload skipped (--client-only)"

@@ -1,10 +1,8 @@
 import { test, expect } from '@playwright/test';
-import { login } from './helpers';
+// Signed in once by e2e/prod-auth.setup.ts (saved session in storageState). The checks used to sign in
+// again with the local helper's account, which does not exist on prod, so every check timed out (2026-10-03).
 
 test.describe('Prod Smoke Tests', () => {
-  test.beforeEach(async ({ page }) => {
-    await login(page);
-  });
 
   test('Auth: dashboard loads with saved session', async ({ page }) => {
     await page.goto('/dashboard');

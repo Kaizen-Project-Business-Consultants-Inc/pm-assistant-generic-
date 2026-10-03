@@ -2,7 +2,7 @@
 
 ## Machine gotchas (things the code can't tell you)
 - `node_modules` in root, `src/client` and `mcp-server` keep going corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm install`.
-- `deploy.sh --mcp` deploys ONLY the MCP server and does not stop when the MCP build fails — check its output.
+- `deploy.sh --mcp` deploys ONLY the MCP server (a failed MCP build now stops it — fixed 2026-10-03).
 - After every prod deploy run `scripts/prod-smoke.cjs` (credentials in auto-memory).
 - nginx config lives ONLY on the servers, and `sites-enabled/pm-app` is a **separate file, not a symlink** to `sites-available` — editing the obvious one changes nothing. Staging allows `challenges.cloudflare.com`; production does not.
 - CAPTCHA (Cloudflare Turnstile) is built but switched off everywhere (no keys in either `.env`). **Do not restart it without the user asking.** Playwright can't test its happy path — only a human can.

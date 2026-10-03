@@ -2,7 +2,7 @@
 
 **Test Environment:** https://pm.kpbc.ca (staging)
 **Test Project:** CloudSync Platform Launch
-**Login:** mike_todo@yahoo.com / Test1234!
+**Login:** qa.pm@pm.kpbc.ca / Test1234! (the dedicated QA project manager; the old mike_todo account no longer exists — Oct 2026). Other QA logins: qa.team@pm.kpbc.ca (team member), qa.outsider@pm.kpbc.ca (separate company).
 **Last updated:** August 30, 2026
 
 ---
