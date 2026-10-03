@@ -21,6 +21,7 @@ vi.mock('../../services/ProjectService', () => ({ projectService: { invalidateCa
 // A fake tenant connection: answers the id look-ups and records every statement
 const conn = vi.hoisted(() => ({
   sql: [] as Array<{ sql: string; params: unknown[] }>,
+  usedByRealWork: [] as Array<{ r: string }>,
   beginTransaction: vi.fn(async () => {}),
   commit: vi.fn(async () => {}),
   rollback: vi.fn(async () => {}),
@@ -35,7 +36,10 @@ const db = vi.hoisted(() => ({
     if (/SELECT COUNT\(\*\) AS n FROM projects/.test(sql)) return [{ n: 1 }];
     if (/SELECT id FROM schedules/.test(sql)) return [{ id: 'demo-sched-1' }];
     if (/SELECT id FROM tasks/.test(sql)) return [{ id: 'demo-t1' }, { id: 'demo-t2' }];
-    if (/SELECT id FROM resources/.test(sql)) return [{ id: 'demo-res-1' }];
+    if (/SELECT id, name FROM resources/.test(sql)) return [{ id: 'demo-res-1', name: 'Sam Example' }, { id: 'demo-res-4', name: 'Alex Thompson' }];
+    if (/KEY_COLUMN_USAGE/.test(sql)) return [{ t: 'tasks', c: 'assigned_to' }, { t: 'task_assignments', c: 'resource_id' }];
+    if (/COLUMN_NAME = 'id'/.test(sql)) return [{ t: 'tasks' }, { t: 'task_assignments' }, { t: 'resource_availability' }];
+    if (/SELECT DISTINCT `assigned_to`/.test(sql)) return conn.usedByRealWork;
     if (/information_schema\.TRIGGERS/.test(sql)) return [{ t: 'audit_ledger' }];
     if (/information_schema\.COLUMNS/.test(sql)) {
       return [
@@ -43,6 +47,7 @@ const db = vi.hoisted(() => ({
         { t: 'project_risks', c: 'project_id' },
         { t: 'time_entries', c: 'task_id' },
         { t: 'task_assignments', c: 'resource_id' },
+        { t: 'resource_availability', c: 'resource_id' },
         { t: 'sprints', c: 'schedule_id' },
         { t: 'bad name; DROP TABLE x', c: 'project_id' },
       ];
@@ -75,14 +80,15 @@ describe('the sample seed file', () => {
 });
 
 describe('removing the sample', () => {
-  beforeEach(() => { conn.sql = []; vi.clearAllMocks(); });
+  beforeEach(() => { conn.sql = []; conn.usedByRealWork = []; vi.clearAllMocks(); });
 
   it('deletes only rows pointing at the sample project, its schedules, tasks and example people', async () => {
-    const removed = await sampleProjectService.remove();
+    const { removed, keptPeople } = await sampleProjectService.remove();
+    expect(keptPeople).toEqual([]);
     const deletes = conn.sql.filter(s => s.sql.startsWith('DELETE'));
     expect(deletes.find(d => d.sql.includes('`project_risks`'))?.params).toEqual([SAMPLE_PROJECT_ID]);
     expect(deletes.find(d => d.sql.includes('`time_entries` WHERE `task_id`'))?.params).toEqual(['demo-t1', 'demo-t2']);
-    expect(deletes.find(d => d.sql.includes('`task_assignments` WHERE `resource_id`'))?.params).toEqual(['demo-res-1']);
+    expect(deletes.find(d => d.sql.includes('`task_assignments` WHERE `resource_id`'))?.params).toEqual(['demo-res-1', 'demo-res-4']);
     expect(deletes.find(d => d.sql.includes('`sprints` WHERE `schedule_id`'))?.params).toEqual(['demo-sched-1']);
     // the audit ledger is append-only history: never deleted from (staging 2026-10-03: it refuses)
     expect(deletes.some(d => d.sql.includes('audit_ledger'))).toBe(false);
@@ -95,9 +101,26 @@ describe('removing the sample', () => {
     expect(removed).toBe(deletes.length);
   });
 
+  it('keeps an example person that real work uses (staging: a real task assigned to Alex Thompson)', async () => {
+    conn.usedByRealWork = [{ r: 'demo-res-4' }];
+    const { keptPeople } = await sampleProjectService.remove();
+    expect(keptPeople).toEqual(['Alex Thompson']);
+    const deletes = conn.sql.filter(s => s.sql.startsWith('DELETE'));
+    // only the unused example person goes, everywhere
+    expect(deletes.find(d => d.sql.includes('`task_assignments` WHERE `resource_id`'))?.params).toEqual(['demo-res-1']);
+    expect(deletes.find(d => d.sql.startsWith('DELETE FROM resources'))?.params).toEqual(['demo-res-1']);
+    // the kept person keeps their own sample rows (availability)
+    const avail = deletes.find(d => d.sql.includes('`resource_availability` WHERE id LIKE'));
+    expect(avail?.sql).toContain('resource_id NOT IN (?)');
+    expect(avail?.params).toEqual(['demo-%', 'demo-res-4']);
+    // "used" means rows the seed didn't write
+    const check = conn.sql.find(s => s.sql.startsWith('SELECT DISTINCT `assigned_to`'));
+    expect(check?.sql).toContain('id NOT LIKE ?');
+  });
+
   it('every prefix delete is scoped to "demo-" ids', async () => {
     await sampleProjectService.remove();
-    for (const d of conn.sql.filter(s => /WHERE id LIKE/.test(s.sql))) expect(d.params).toEqual(['demo-%']);
+    for (const d of conn.sql.filter(s => /^DELETE.*WHERE id LIKE/.test(s.sql))) expect(d.params).toEqual(['demo-%']);
   });
 
   it('a failure part-way rolls everything back', async () => {

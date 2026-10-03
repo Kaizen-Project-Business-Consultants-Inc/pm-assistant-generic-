@@ -31,10 +31,13 @@ export function SampleProjectTab() {
   const run = async (action: 'remove' | 'load') => {
     setError(null); setDone(null); setWorking(true);
     try {
-      if (action === 'remove') await apiService.removeSampleProject();
+      let kept: string[] = [];
+      if (action === 'remove') kept = (await apiService.removeSampleProject()).keptPeople ?? [];
       else await apiService.loadSampleProject();
       const msg = action === 'remove'
-        ? 'The sample project and its example people were removed. Your own projects were not touched.'
+        ? `The sample project was removed. Your own projects were not touched.${kept.length
+          ? ` Kept ${kept.length === 1 ? 'one example person' : `${kept.length} example people`} because your own work uses them: ${kept.join(', ')}. You can remove them in Resources once nothing of yours uses them.`
+          : ' Its example people were removed too.'}`
         : 'The sample project was added. Find "Sample Web App Development" in your project list.';
       setDone(msg); announce(msg);
       setConfirming(false);

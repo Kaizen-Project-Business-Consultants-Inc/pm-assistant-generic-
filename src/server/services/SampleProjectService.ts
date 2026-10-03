@@ -57,8 +57,13 @@ class SampleProjectService {
     } finally { conn.release(); }
   }
 
-  /** Remove the sample and everything that points at it. Returns how many rows went. */
-  async remove(dbName?: string): Promise<number> {
+  /**
+   * Remove the sample and everything that points at it. An example person the company's own
+   * work uses (a real task assigned to them, a booking, a RAID owner…) is kept, with their
+   * rows — removing them would leave real work pointing at nobody. Returns rows removed and
+   * the names of anyone kept.
+   */
+  async remove(dbName?: string): Promise<{ removed: number; keptPeople: string[] }> {
     const conn = await this.connect(dbName);
     let removed = 0;
     const del = async (sql: string, params: unknown[]) => {
@@ -71,7 +76,8 @@ class SampleProjectService {
         (await databaseService.queryOn<{ id: string }>(conn, sql, params as any[])).map(r => r.id);
       const scheduleIds = await ids('SELECT id FROM schedules WHERE project_id = ?', [SAMPLE_PROJECT_ID]);
       const taskIds = scheduleIds.length ? await ids(`SELECT id FROM tasks WHERE schedule_id IN (${scheduleIds.map(() => '?').join(',')})`, scheduleIds) : [];
-      const resourceIds = await ids('SELECT id FROM resources WHERE id LIKE ?', [`${SAMPLE_PREFIX}%`]);
+      const examplePeople = await databaseService.queryOn<{ id: string; name: string }>(conn,
+        'SELECT id, name FROM resources WHERE id LIKE ?', [`${SAMPLE_PREFIX}%`]);
 
       // Every table with a column pointing at the sample's project, schedules, tasks or people
       const cols = await databaseService.queryOn<{ t: string; c: string }>(conn,
@@ -82,6 +88,28 @@ class SampleProjectService {
       const appendOnly = new Set((await databaseService.queryOn<{ t: string }>(conn,
         `SELECT DISTINCT EVENT_OBJECT_TABLE AS t FROM information_schema.TRIGGERS
           WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_MANIPULATION = 'DELETE'`, [])).map(r => r.t));
+      // Example people the company's own rows use (rows the seed didn't write: no "demo-" id)
+      const personRefs = await databaseService.queryOn<{ t: string; c: string }>(conn,
+        `SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.KEY_COLUMN_USAGE
+          WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME = 'resources' AND TABLE_NAME <> 'resources'
+         UNION
+         SELECT c.TABLE_NAME, c.COLUMN_NAME FROM information_schema.COLUMNS c
+          WHERE c.TABLE_SCHEMA = DATABASE() AND c.TABLE_NAME <> 'resources'
+            AND (c.COLUMN_NAME IN ('resource_id', 'owner_resource_id') OR (c.TABLE_NAME = 'tasks' AND c.COLUMN_NAME = 'assigned_to'))`, []);
+      const hasId = new Set((await databaseService.queryOn<{ t: string }>(conn,
+        `SELECT TABLE_NAME AS t FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'id'`, [])).map(r => r.t));
+      const kept = new Set<string>();
+      for (const { t, c } of personRefs) {
+        if (!/^\w+$/.test(t) || !/^\w+$/.test(c) || appendOnly.has(t) || !hasId.has(t)) continue;
+        const used = await databaseService.queryOn<{ r: string }>(conn,
+          `SELECT DISTINCT \`${c}\` AS r FROM \`${t}\` WHERE \`${c}\` LIKE ? AND id NOT LIKE ?`, [`${SAMPLE_PREFIX}%`, `${SAMPLE_PREFIX}%`]);
+        for (const u of used) kept.add(u.r);
+      }
+      const resourceIds = examplePeople.map(p => p.id).filter(id => !kept.has(id));
+      const keptIds = [...kept];
+      const keptPeople = examplePeople.filter(p => kept.has(p.id)).map(p => p.name);
+      const resourceCols = new Set(cols.filter(x => x.c === 'resource_id').map(x => x.t));
+
       const targets: Record<string, string[]> = {
         project_id: [SAMPLE_PROJECT_ID], schedule_id: scheduleIds, task_id: taskIds, resource_id: resourceIds,
       };
@@ -93,15 +121,18 @@ class SampleProjectService {
       // The seed's own rows that don't point at the project (e.g. custom field definitions)
       for (const t of seededTables()) {
         if (['projects', 'schedules', 'tasks', 'resources'].includes(t) || !/^\w+$/.test(t) || appendOnly.has(t)) continue;
-        await del(`DELETE FROM \`${t}\` WHERE id LIKE ?`, [`${SAMPLE_PREFIX}%`]);
+        // a kept person keeps their own sample rows (availability etc.)
+        const keepTheirs = keptIds.length && resourceCols.has(t)
+          ? ` AND (resource_id IS NULL OR resource_id NOT IN (${keptIds.map(() => '?').join(',')}))` : '';
+        await del(`DELETE FROM \`${t}\` WHERE id LIKE ?${keepTheirs}`, [`${SAMPLE_PREFIX}%`, ...(keepTheirs ? keptIds : [])]);
       }
       if (taskIds.length) await del(`DELETE FROM tasks WHERE id IN (${taskIds.map(() => '?').join(',')})`, taskIds);
       if (scheduleIds.length) await del(`DELETE FROM schedules WHERE id IN (${scheduleIds.map(() => '?').join(',')})`, scheduleIds);
       if (resourceIds.length) await del(`DELETE FROM resources WHERE id IN (${resourceIds.map(() => '?').join(',')})`, resourceIds);
       await del('DELETE FROM projects WHERE id = ?', [SAMPLE_PROJECT_ID]);
       await conn.commit();
-      logger.info('[sample-project] removed', { dbName, removed });
-      return removed;
+      logger.info('[sample-project] removed', { dbName, removed, keptPeople: keptPeople.length });
+      return { removed, keptPeople };
     } catch (err) {
       await conn.rollback();
       throw err;

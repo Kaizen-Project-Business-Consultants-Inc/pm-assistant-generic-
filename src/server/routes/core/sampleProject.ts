@@ -34,9 +34,9 @@ export async function sampleProjectRoutes(fastify: FastifyInstance) {
 
   fastify.post('/api/v1/sample-project/remove', { preHandler: [requireScope('write'), ownerOnly] }, async (_request, reply) => {
     try {
-      const removed = await sampleProjectService.remove();
+      const { removed, keptPeople } = await sampleProjectService.remove();
       await projectService.invalidateCache(SAMPLE_PROJECT_ID).catch(() => {});
-      return { loaded: false, removed };
+      return { loaded: false, removed, keptPeople };
     } catch (error) {
       logger.error('Remove sample project failed', { message: (error as Error)?.message, code: (error as any)?.code });
       return reply.status(500).send({ error: 'Internal server error', message: 'The sample project could not be removed. Nothing was changed — please try again.' });

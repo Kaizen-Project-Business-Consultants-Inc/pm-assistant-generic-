@@ -334,7 +334,7 @@ class ApiService {
     return (await this.api.get('/sample-project')).data;
   }
 
-  async removeSampleProject(): Promise<{ loaded: false; removed: number }> {
+  async removeSampleProject(): Promise<{ loaded: false; removed: number; keptPeople: string[] }> {
     return (await this.api.post('/sample-project/remove')).data;
   }
 

@@ -24,7 +24,7 @@ describe('Settings → Sample project', () => {
 
   it('Remove asks for confirmation in the page and only then removes', async () => {
     api.getSampleProject.mockResolvedValue({ loaded: true, canManage: true });
-    api.removeSampleProject.mockResolvedValue({ loaded: false, removed: 40 });
+    api.removeSampleProject.mockResolvedValue({ loaded: false, removed: 40, keptPeople: ['Alex Thompson'] });
     show();
     expect(await screen.findByText('Loaded')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove…' }));
@@ -34,7 +34,7 @@ describe('Settings → Sample project', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove…' }));
     fireEvent.click(screen.getByRole('button', { name: /Yes, remove sample data/ }));
     await waitFor(() => expect(api.removeSampleProject).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole('status')).toBeTruthy();
+    expect((await screen.findByRole('status')).textContent).toMatch(/Kept one example person because your own work uses them: Alex Thompson/);
   });
 
   it('when not loaded, offers Load', async () => {
