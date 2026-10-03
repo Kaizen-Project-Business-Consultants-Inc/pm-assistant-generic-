@@ -2,11 +2,20 @@ import { test, expect } from '@playwright/test';
 import { login } from './helpers';
 
 async function navigateToGantt(page: import('@playwright/test').Page) {
-  // Navigate to first project's schedule tab
+  // The first project that has a plan (the first one listed may have none — 2026-10-03 the
+  // list started with a project without a schedule and every test here failed)
   await page.goto('/projects');
   const firstProject = page.locator('a[href^="/project/"]').first();
   await expect(firstProject).toBeVisible({ timeout: 10_000 });
-  const href = await firstProject.getAttribute('href');
+  const hrefs = await page.locator('a[href^="/project/"]').evaluateAll(as => [...new Set(as.map(a => a.getAttribute('href')))]);
+  let href: string | null = null;
+  for (const h of hrefs) {
+    const id = String(h).split('/')[2]?.split('?')[0];
+    const r = await page.request.get(`/api/v1/schedules/project/${id}`);
+    const body = r.ok() ? await r.json() : {};
+    if ((body.schedules ?? body.data ?? body ?? []).length > 0) { href = `/project/${id}`; break; }
+  }
+  expect(href, 'no project with a schedule for this login').not.toBeNull();
   await page.goto(`${href}?tab=schedule`);
   // Wait for the Gantt table to load
   await expect(
