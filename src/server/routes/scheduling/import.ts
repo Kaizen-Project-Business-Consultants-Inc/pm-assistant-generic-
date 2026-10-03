@@ -14,6 +14,7 @@ import { resolveAssigneeResources, assigneeToResourceId } from '../../utils/assi
 import { makePlaceholderEmail } from '../../utils/placeholderEmail';
 import { scheduleReviewService } from '../../services/ScheduleReviewService';
 import { baselineService } from '../../services/BaselineService';
+import { changeHistoryService } from '../../services/ChangeHistoryService';
 import {
   parsePredecessorTokens,
   resolvePredecessor,
@@ -41,6 +42,8 @@ function isTruthyFlag(v: string | undefined | null): boolean {
 const importCsvSchema = z.object({
   csv: z.string().min(1).max(5 * 1024 * 1024),
   columnMap: z.record(z.string(), z.string()).optional(),
+  /** The file's name, for the Schedule History line ("Imported 42 tasks from plan.xlsx") */
+  fileName: z.string().max(255).optional(),
 });
 
 const MAX_BULK = 100;
@@ -207,6 +210,28 @@ export async function importRoutes(fastify: FastifyInstance) {
  * the better long-term answer, but nobody has needed it yet and a wrong guess silently
  * corrupts a plan.
  */
+/**
+ * One Schedule History line for the import, with what Undo needs to take it all out again.
+ * Recorded LAST — after the roll-ups, the baseline and the review run — so the import's own
+ * follow-up writes don't count as "the plan changed since". Never fails the import.
+ */
+async function recordImport(
+  projectId: string, scheduleId: string, createdIds: string[],
+  extra: { resourceIds?: string[]; baselineId?: string | null; links: number; fileName?: string },
+): Promise<string | null> {
+  if (createdIds.length === 0) return null;
+  const n = createdIds.length;
+  const file = extra.fileName?.trim();
+  return changeHistoryService.record({
+    projectId,
+    scheduleId,
+    kind: 'import',
+    summary: `Imported ${n} task${n === 1 ? '' : 's'}${file ? ` from ${file}` : ''}`,
+    taskIds: createdIds,
+    undo: { createdIds, resourceIds: extra.resourceIds ?? [], baselineId: extra.baselineId ?? null, links: extra.links, fileName: file ?? null },
+  });
+}
+
 async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) {
   const existing = await scheduleService.findTasksByScheduleId(scheduleId);
   if (existing.length === 0) return null;
@@ -284,6 +309,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       }
       let assigneeIdByName = new Map<string, string>();
       let resourcesCreated = 0;
+      let createdResourceIds: string[] = [];
       if (importedAssignees.size > 0) {
         try {
           const existingResources = await resourceService.findAllResources();
@@ -308,6 +334,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           );
           assigneeIdByName = resolution.idByName;
           resourcesCreated = resolution.created;
+          createdResourceIds = resolution.createdIds;
         } catch (resErr: any) {
           // Fall back to storing raw names on the tasks
           logger.warn('Failed to auto-create resources during import', { error: resErr.message });
@@ -464,6 +491,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       const rowNumToTaskId = new Map<string, string>(); // 1-based row number → taskId
       const nameToTaskId = new Map<string, string>();
       for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
+      const createdTaskIds: string[] = []; // phase summaries and rows, for Undo in Schedule History
 
       for (const p of prepared) {
         try {
@@ -482,6 +510,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
                   createdBy: userId,
                 });
                 phaseTaskIds.set(phase, phaseTask.id);
+                createdTaskIds.push(phaseTask.id);
                 nameToTaskId.set(phase.toLowerCase(), phaseTask.id);
                 existingKeys.add(phaseDedupKey);
               } else {
@@ -525,6 +554,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           });
 
           existingKeys.add(dedupKey);
+          createdTaskIds.push(created.id);
           rowNumToTaskId.set(String(p.rowNum), created.id);
           nameToTaskId.set(p.name.toLowerCase(), created.id);
           succeeded.push(p.rowNum);
@@ -563,9 +593,10 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
 
       // ---- Create an imported baseline when the file carried baseline/actual data ----
       let baselineCreated = false;
+      let baselineId: string | null = null;
       if (succeeded.length > 0 && (sawBaselineColumn || sawActualColumn)) {
         try {
-          await baselineService.create(scheduleId, 'Imported baseline', userId);
+          baselineId = (await baselineService.create(scheduleId, 'Imported baseline', userId))?.id ?? null;
           baselineCreated = true;
         } catch (blErr: any) {
           logger.warn('Imported baseline creation failed', { scheduleId, error: blErr?.message });
@@ -589,7 +620,12 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
         }
       }
 
+      const changeId = await recordImport(schedule.projectId, scheduleId, createdTaskIds, {
+        resourceIds: createdResourceIds, baselineId, links: dependenciesCreated, fileName: rawBody.fileName,
+      });
+
       return {
+        changeId,
         succeeded: succeeded.length,
         failed,
         skipped,
@@ -701,6 +737,8 @@ Return a JSON object mapping unmapped headers to target fields.`;
 
   const importStructuredSchema = z.object({
     tasks: z.array(structuredTaskSchema).max(500),
+    /** The file's name, for the Schedule History line */
+    fileName: z.string().max(255).optional(),
   });
 
   fastify.post('/:scheduleId/import-structured', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -728,6 +766,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
       const warnings: string[] = [];
+      const createdTaskIds: string[] = []; // for Undo in Schedule History
       let isWorking: IsWorking | undefined; // the project calendar, read on first need
 
       for (let i = 0; i < body.tasks.length; i++) {
@@ -771,6 +810,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
           if (t.wbs) byWbs.set(t.wbs.trim(), task.id);
           nameToTaskId.set(t.name.trim().toLowerCase(), task.id);
           levelStack.push({ level, taskId: task.id });
+          createdTaskIds.push(task.id);
           succeeded.push(i + 1);
         } catch (rowErr: any) {
           failed.push({ row: i + 1, error: rowErr.message || 'Unknown error' });
@@ -822,7 +862,10 @@ Return a JSON object mapping unmapped headers to target fields.`;
         }
       }
 
+      const changeId = await recordImport(schedule.projectId, scheduleId, createdTaskIds, { links: depsCreated, fileName: body.fileName });
+
       return {
+        changeId,
         succeeded: succeeded.length,
         failed,
         warnings,

@@ -65,7 +65,7 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
 
   it('rolls up the summary task when a budget changed; leaves unchanged tasks alone', async () => {
     await taskBudgetService.recalcSchedule('s1');
-    expect(recomputeParentRollup).toHaveBeenCalledWith('phase');
+    expect(recomputeParentRollup).toHaveBeenCalledWith('phase', 0, { quiet: true });
     vi.clearAllMocks(); db();
     query.mockImplementation((sql: string) => sql.includes('FROM tasks WHERE schedule_id')
       ? Promise.resolve([{ id: 't-api', parent_task_id: 'phase', budget_allocated: 2000 }])
@@ -73,6 +73,13 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
     findEffectiveAssignments.mockResolvedValue([{ resourceId: 'r-peter', taskId: 't-api', scheduleId: 's1', hoursPerWeek: 40, startDate: '2026-10-12', endDate: '2026-10-16' }]);
     expect(await taskBudgetService.recalcSchedule('s1')).toBe(0);
     expect(recomputeParentRollup).not.toHaveBeenCalled();
+  });
+
+  it('a re-price is not an edit: the task keeps its updated_at, so Schedule History can still undo the change before it (2026-10-03)', async () => {
+    await taskBudgetService.recalcSchedule('s1');
+    const writes = query.mock.calls.filter(([sql]) => String(sql).startsWith('UPDATE tasks SET budget_allocated'));
+    expect(writes.length).toBeGreaterThan(0);
+    for (const [sql] of writes) expect(sql).toContain('updated_at = updated_at');
   });
 
   it("a rate change re-prices the plans the person is booked on, in the background", async () => {

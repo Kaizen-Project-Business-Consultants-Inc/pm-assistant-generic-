@@ -11,7 +11,9 @@ import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../utils/workingDays';
 import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
-import { changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues } from '../../services/ChangeHistoryService';
+import {
+  changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, snapshotTasksForDelete, touchScheduleForDelete, deleteSummary,
+} from '../../services/ChangeHistoryService';
 
 import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
 const FIELD_LABEL: Record<string, string> = {
@@ -505,21 +507,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         taskIds: z.array(z.string().min(1)).min(1).max(MAX_BULK),
       }).parse(request.body);
 
-      // Gather parent IDs before deletion for rollup recomputation
+      // One transaction: copy everything the delete removes (for Undo in Schedule History), then
+      // delete. The copy is read under a lock so it matches exactly what is deleted.
       const placeholders = body.taskIds.map(() => '?').join(',');
-      const existing = await databaseService.query<any>(
-        `SELECT id, parent_task_id FROM tasks WHERE id IN (${placeholders}) AND schedule_id = ?`,
-        [...body.taskIds, body.scheduleId],
-      );
-      const parentIds = new Set<string>();
-      for (const row of existing) {
-        if (row.parent_task_id && !body.taskIds.includes(row.parent_task_id)) {
-          parentIds.add(row.parent_task_id);
-        }
-      }
-
-      await databaseService.transaction(async (connection) => {
+      const snapshot = await databaseService.transaction(async (connection) => {
         const q = (sql: string, params: any[] = []) => databaseService.queryOn(connection, sql, params);
+        const snap = await snapshotTasksForDelete(q, body.scheduleId, body.taskIds);
+        if (snap.tasks.length === 0) return snap;
 
         // Clear dependency refs pointing to deleted tasks
         await q(
@@ -532,16 +526,35 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           `DELETE FROM tasks WHERE id IN (${placeholders}) AND schedule_id = ?`,
           [...body.taskIds, body.scheduleId],
         );
+        // A delete leaves no trace on the remaining tasks: History must still see the plan changed
+        await touchScheduleForDelete(q, body.scheduleId);
+        return snap;
       });
+      const deletedIds = new Set(snapshot.tasks.map((t: any) => String(t.id)));
 
-      // Recompute parent rollups (fire-and-forget)
-      for (const pid of parentIds) {
-        scheduleService.recomputeParentRollup(pid).catch(err =>
-          logger.error('[Rollup] recomputeParentRollup error on bulk delete:', err));
+      // Summary tasks above the deleted ones: their dates and totals follow (awaited, so History
+      // is recorded after these writes, not before)
+      const parentIds = new Set<string>();
+      for (const row of snapshot.tasks as any[]) {
+        if (row.parent_task_id && !deletedIds.has(row.parent_task_id)) parentIds.add(row.parent_task_id);
       }
+      await Promise.all([...parentIds].map(pid => scheduleService.recomputeParentRollup(pid).catch(err =>
+        logger.error('[Rollup] recomputeParentRollup error on bulk delete:', err))));
 
       queueReviewRerun(body.scheduleId);
-      return { deleted: existing.length };
+      let changeId: string | null = null;
+      const projectId = deletedIds.size > 0 ? await projectOfSchedule(body.scheduleId) : null;
+      if (projectId) {
+        changeId = await changeHistoryService.record({
+          projectId,
+          scheduleId: body.scheduleId,
+          kind: 'bulk_delete',
+          summary: deleteSummary(snapshot.tasks.map((t: any) => String(t.name))),
+          taskIds: [...deletedIds],
+          undo: snapshot,
+        });
+      }
+      return { deleted: deletedIds.size, changeId };
     } catch (error) {
       // Bad input is the caller's mistake: the app's error handler answers 400 with the field
       if (error instanceof z.ZodError) throw error;

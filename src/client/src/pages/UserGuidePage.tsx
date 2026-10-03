@@ -152,6 +152,8 @@ const sections: Section[] = [
       'Open History in the schedule toolbar',
       'Each entry shows who, when, and what changed, before → after (e.g. "Build Sprint 1: start 12 Oct → 19 Oct")',
       'Only the most recent change can be undone, and only until something else in the plan changes',
+      'Deleted tasks come back exactly as they were — with their links, booked hours and comments',
+      'An import can be undone too: its tasks, its baseline and any people it created for unknown names',
       'To reverse an older change, make it again by hand — History shows exactly what it was',
     ],
   },

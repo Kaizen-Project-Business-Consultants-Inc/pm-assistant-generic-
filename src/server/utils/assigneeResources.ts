@@ -17,6 +17,8 @@ export interface AssigneeResolution {
   idByName: Map<string, string>;
   /** number of resources created during resolution */
   created: number;
+  /** the resources created (so an import's Undo can remove them again) */
+  createdIds: string[];
 }
 
 export function normalizeAssigneeName(name: string): string {
@@ -35,6 +37,7 @@ export async function resolveAssigneeResources(
   }
 
   let created = 0;
+  const createdIds: string[] = [];
   for (const raw of names) {
     const name = raw.trim();
     if (!name) continue;
@@ -42,10 +45,11 @@ export async function resolveAssigneeResources(
     if (idByName.has(key)) continue;
     const resource = await createResource(name);
     idByName.set(key, resource.id);
+    createdIds.push(resource.id);
     created++;
   }
 
-  return { idByName, created };
+  return { idByName, created, createdIds };
 }
 
 /** Return the resource ID for an assignee name, or the raw name when unknown. */

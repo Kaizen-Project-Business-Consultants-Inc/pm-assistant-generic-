@@ -12,6 +12,13 @@ New companies start without the read-only sample (provisioner removes it). Setti
 - **Writes stopped:** `POST /meetings/sync-external` creates RAID actions (`riskService.create`, `sourceMeeting` = meeting title; PM/Owner only — 403 "Only the project's Manager or Owner can change this." tested as a team member). Removed `POST /meetings/:id/import-actions`, `MeetingService.importActionItemsFromAnalysis`, the "Import Actions" button and unused `MeetingActionItemList`; `/meeting-action-items` keeps only `GET /` and `GET /:id`. Send to RAID sets `sourceMeeting` (linked meeting title, else "Meeting analysis <date>").
 - **Client:** briefing dedupe — a RAID action/issue you own is under Yours only and no longer counted in the team "Risks, issues & actions" count. Digest setting label "Overdue actions (RAID)" (key `action_items`).
 - **Guard:** `__tests__/database/meetingActionItemsReadOnly.test.ts` fails on any INSERT/UPDATE/DELETE/REPLACE/TRUNCATE of the table outside migrations; only `deleteByMeeting` (meeting deletion) is whitelisted.
+## 2026-10-03 — Schedule History undoes deletes and imports (branch `undo-bulk-delete-import`, not deployed)
+
+- **Bulk delete** (`DELETE /bulk/tasks`) copies everything it removes inside its own transaction (tasks, links both ends, bookings, task people, comments, activity, successors' old link columns), records kind `bulk_delete`, returns `changeId`. Undo puts the tasks back under the SAME ids (time entries, checklists, files, baselines reconnect); links only where both ends exist; bookings/people only where the person exists; refused if an id exists again. History lines: "Deleted Build (12 Oct → 16 Oct)", "3 links, 2 bookings removed with them".
+- **Imports** (CSV/Excel and MS Project/AI) record kind `import` ("Imported 42 tasks from plan.xlsx"; file name sent by ImportModal) after roll-ups + review; undo removes the tasks, the Imported baseline, and people it created if unedited and unused anywhere.
+- **Deletes now count as "changed since"**: single + bulk delete stamp `schedules.updated_at`; `planChangedSince` checks it. Background budget re-price + its roll-up no longer bump `tasks.updated_at` (they made the newest change un-undoable ~20 s later when budgets changed).
+- Client: Ctrl+Z after a delete = History undo (old one recreated tasks with new ids); History list refreshes after delete/import.
+- Copies over 5 MB aren't kept: recorded "(too large to undo from History)".
 
 ## 2026-10-03 — leftovers list (items 6 and 4)
 

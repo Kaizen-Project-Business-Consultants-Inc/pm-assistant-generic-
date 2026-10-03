@@ -127,6 +127,8 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
   const [dragOver, setDragOver] = useState(false);
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState('');
+  // The spreadsheet's name, for the Schedule History line ("Imported 42 tasks from plan.xlsx")
+  const [fileName, setFileName] = useState('');
   const workbookRef = useRef<XLSX.WorkBook | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -144,6 +146,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
     setError('');
     setSheetNames([]);
     setSelectedSheet('');
+    setFileName('');
     workbookRef.current = null;
     setExtractedTasks(null);
     setExtracting(false);
@@ -209,7 +212,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
         isMilestone: !t.isSummary && t.duration === 0,
         outlineLevel: (t.wbs.split('.').length - 1) + 1, // "1" → 1, "1.1" → 2, "1.1.1" → 3
       }));
-      const res = await apiService.importStructured(scheduleId, tasks);
+      const res = await apiService.importStructured(scheduleId, tasks, docFileName || undefined);
       setResult(toImportResult(res));
       if ((res.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
@@ -227,6 +230,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
     }
 
     const ext = file.name.toLowerCase().split('.').pop();
+    setFileName(file.name);
 
     // Route document files to AI extraction
     if (ext && DOCUMENT_EXTS.includes(ext)) {
@@ -243,7 +247,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
           const mspdiTasks = parseMspdi(xmlText);
           if (mspdiTasks.length === 0) { setError('No tasks found in XML file.'); return; }
           setImporting(true);
-          const res = await apiService.importStructured(scheduleId, mspdiTasks);
+          const res = await apiService.importStructured(scheduleId, mspdiTasks, file.name);
           setResult(toImportResult(res));
           if ((res.succeeded ?? 0) > 0) onImported?.();
         } catch (err: unknown) {
@@ -315,7 +319,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
           headerMap[header] = columnMap[i] || '_skip';
         }
       }
-      const res = await apiService.importTasks(scheduleId, csvText, headerMap);
+      const res = await apiService.importTasks(scheduleId, csvText, headerMap, fileName || undefined);
       const data = res?.data ?? res;
       setResult(toImportResult(data));
       if ((data.succeeded ?? 0) > 0) onImported?.();
@@ -588,7 +592,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                     placeholder="name,status,priority,startDate,endDate&#10;Task A,not_started,high,2026-07-01,2026-07-15"
                     className="w-full rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 p-3 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none resize-y"
                     value={csvText}
-                    onChange={(e) => setCsvText(e.target.value)}
+                    onChange={(e) => { setCsvText(e.target.value); setFileName(''); }}
                   />
                   <button
                     disabled={!csvText.trim()}

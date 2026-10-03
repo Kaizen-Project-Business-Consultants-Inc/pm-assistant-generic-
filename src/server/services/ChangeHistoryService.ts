@@ -26,7 +26,11 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  *                  the calendar itself stays as it is)
  *  - reassign      the old resource back on the tasks ("Replace Generic Developer with …")
  *  - planner_move  a Team Planner drop: the person back, the dates (and hours bookings) back
- * Bulk delete and import are not covered yet.
+ *  - bulk_delete   the deleted tasks back WITH THEIR OLD IDS (so time entries, checklists, files and
+ *                  baselines that still point at them reconnect), with their links, booked hours,
+ *                  people, comments and activity, from a copy taken inside the delete
+ *  - import        delete what the import added: its tasks (links and bookings go with them), the
+ *                  "Imported baseline", and the people it created if nothing else uses them now
  *
  * Product owner, 2026-10-01: History is a RECORD. Each entry says what it did, before -> after.
  * Only the newest change to a plan can be undone, and only until anything else in the plan
@@ -34,7 +38,11 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  * built on it stays. There is no "undo anyway".
  */
 
-export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign' | 'planner_move';
+export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign' | 'planner_move' | 'bulk_delete' | 'import';
+
+/** Above this, the copy needed to undo is not kept: the change is recorded, but can't be undone */
+export const MAX_UNDO_BYTES = 5 * 1024 * 1024;
+const TOO_LARGE_NOTE = ' (too large to undo from History)';
 
 /** Columns bulk update may change — the only ones we read before and write back on undo */
 export const BULK_UPDATE_COLUMNS: Record<string, string> = {
@@ -89,6 +97,239 @@ const parseJson = <T>(v: unknown, fallback: T): T => {
   return v as T;
 };
 
+/** Kinds whose undo needs the copy kept with the change (none is kept when it was too large) */
+const NEEDS_COPY = new Set<string>(['bulk_delete', 'import']);
+
+type Run = (sql: string, params: any[]) => Promise<any[]>;
+type Row = Record<string, unknown>;
+const ph = (n: number) => Array.from({ length: n }, () => '?').join(',');
+const SAFE_IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+/** What a bulk delete removed: enough to put it all back under the same ids */
+export interface DeleteSnapshot {
+  tasks: Row[];
+  links: Row[];
+  bookings: Row[];
+  assignments: Row[];
+  comments: Row[];
+  activities: Row[];
+  /** Tasks whose old single-predecessor columns named a deleted task (the delete clears them) */
+  successors: Array<{ id: string; dependency: string; dependency_type: string | null; dependency_lag_days: number | null }>;
+}
+
+/** What an import added */
+export interface ImportUndo {
+  createdIds: string[];
+  /** People the import created because the file named someone unknown */
+  resourceIds?: string[];
+  baselineId?: string | null;
+  links?: number;
+  fileName?: string | null;
+}
+
+/** A delete leaves nothing on the remaining tasks, so it stamps the schedule (see planChangedSince) */
+export async function touchScheduleForDelete(run: Run, scheduleId: string): Promise<void> {
+  await run('UPDATE schedules SET updated_at = NOW() WHERE id = ?', [scheduleId]);
+}
+
+/**
+ * Everything a bulk delete removes, read inside the delete's own transaction BEFORE the delete
+ * (tasks locked FOR UPDATE), so the copy and the delete see the same rows. Tables without a
+ * foreign key to tasks (time entries, checklists, files, baselines…) keep their rows and the old
+ * task id, so restoring the tasks under the same ids reconnects them.
+ */
+export async function snapshotTasksForDelete(run: Run, scheduleId: string, taskIds: string[]): Promise<DeleteSnapshot> {
+  const empty: DeleteSnapshot = { tasks: [], links: [], bookings: [], assignments: [], comments: [], activities: [], successors: [] };
+  const wanted = [...new Set(taskIds)];
+  if (wanted.length === 0) return empty;
+  const tasks = await run(`SELECT * FROM tasks WHERE id IN (${ph(wanted.length)}) AND schedule_id = ? FOR UPDATE`, [...wanted, scheduleId]);
+  if (!Array.isArray(tasks) || tasks.length === 0) return empty;
+  const ids = tasks.map((t: any) => String(t.id));
+  const inIds = ph(ids.length);
+  const byTask = (table: string) => run(`SELECT * FROM ${table} WHERE task_id IN (${inIds})`, ids);
+  return {
+    tasks,
+    links: await run(`SELECT * FROM task_dependencies WHERE task_id IN (${inIds}) OR dependency_id IN (${inIds})`, [...ids, ...ids]),
+    bookings: await byTask('resource_assignments'),
+    assignments: await byTask('task_assignments'),
+    comments: await byTask('task_comments'),
+    activities: await byTask('task_activities'),
+    successors: await run(
+      `SELECT id, dependency, dependency_type, dependency_lag_days FROM tasks
+        WHERE dependency IN (${inIds}) AND schedule_id = ? AND id NOT IN (${inIds})`, [...ids, scheduleId, ...ids]),
+  };
+}
+
+/** "Deleted 1 task: Design", "Deleted 2 tasks: Design and Build", "Deleted 5 tasks: Design, Build and 3 more" */
+export function deleteSummary(names: string[]): string {
+  const n = names.length;
+  const list = n === 1 ? names[0] : n === 2 ? `${names[0]} and ${names[1]}` : `${names[0]}, ${names[1]} and ${n - 2} more`;
+  return `Deleted ${n} task${n === 1 ? '' : 's'}: ${list}`;
+}
+
+const RESTORE_TABLES = ['tasks', 'task_dependencies', 'resource_assignments', 'task_assignments', 'task_comments', 'task_activities'];
+
+/** The columns each table has now (a copy taken before a migration may name one that is gone) */
+async function columnsOf(run: Run, tables: string[]): Promise<Map<string, Set<string>>> {
+  const rows = await run(
+    `SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN (${ph(tables.length)}) AND EXTRA NOT LIKE '%GENERATED%'`, tables);
+  const map = new Map<string, Set<string>>();
+  for (const r of Array.isArray(rows) ? rows : []) {
+    if (!map.has(r.t)) map.set(r.t, new Set());
+    map.get(r.t)!.add(r.c);
+  }
+  return map;
+}
+
+/** A copied value back into a column: JSON objects as text, a serialised Buffer as a Buffer */
+function toDbValue(v: unknown): unknown {
+  if (v && typeof v === 'object') {
+    const b = v as { type?: string; data?: unknown };
+    if (b.type === 'Buffer' && Array.isArray(b.data)) return Buffer.from(b.data as number[]);
+    return JSON.stringify(v);
+  }
+  return v;
+}
+
+async function insertRow(run: Run, table: string, row: Row, columns: Map<string, Set<string>>, ignore = false): Promise<void> {
+  const known = columns.get(table);
+  const keys = Object.keys(row).filter(k => SAFE_IDENT.test(k) && (!known || known.has(k)));
+  if (keys.length === 0) return;
+  await run(
+    `INSERT ${ignore ? 'IGNORE ' : ''}INTO ${table} (${keys.map(k => `\`${k}\``).join(', ')}) VALUES (${ph(keys.length)})`,
+    keys.map(k => toDbValue(row[k])));
+}
+
+async function idsPresent(run: Run, table: 'tasks' | 'resources', ids: string[]): Promise<Set<string>> {
+  const list = [...new Set(ids.filter(Boolean))];
+  if (list.length === 0) return new Set();
+  const rows = await run(`SELECT id FROM ${table} WHERE id IN (${ph(list.length)})`, list);
+  return new Set((Array.isArray(rows) ? rows : []).map((r: any) => String(r.id)));
+}
+
+/** Parents before their children (no foreign key needs it; it keeps the restore in a sensible order) */
+function parentsFirst(tasks: Row[]): Row[] {
+  const byId = new Map(tasks.map(t => [String(t.id), t]));
+  const depth = (t: Row): number => {
+    let d = 0;
+    let p = t.parent_task_id as string | null;
+    while (p && byId.has(p) && d < 50) { d++; p = byId.get(p)!.parent_task_id as string | null; }
+    return d;
+  };
+  return [...tasks].sort((a, b) => depth(a) - depth(b));
+}
+
+/**
+ * Undo a bulk delete: the tasks back under their old ids, then what hung off them. A link comes
+ * back only when both its tasks exist; hours bookings and people on tasks only when the person
+ * still exists. One transaction: all of it, or none.
+ */
+async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Promise<number> {
+  const tasks = (snap.tasks ?? []).filter(t => typeof t.id === 'string');
+  if (tasks.length === 0) throw new ChangeStateError('There is nothing to put back for this change.');
+  const ids = tasks.map(t => String(t.id));
+  let skippedLinks = 0;
+  let skippedPeople = 0;
+  await databaseService.transaction(async (conn) => {
+    const run: Run = (sql, params) => databaseService.queryOn(conn, sql, params);
+    if ((await idsPresent(run, 'tasks', ids)).size > 0) {
+      throw new ChangeStateError('Some of these tasks are already back in the plan, so the delete can\'t be undone.');
+    }
+    if ((await run('SELECT id FROM schedules WHERE id = ?', [scheduleId])).length === 0) {
+      throw new ChangeStateError('This schedule no longer exists.');
+    }
+    const columns = await columnsOf(run, RESTORE_TABLES);
+    for (const t of parentsFirst(tasks)) await insertRow(run, 'tasks', { ...t, schedule_id: scheduleId }, columns);
+
+    const links = snap.links ?? [];
+    const ends = await idsPresent(run, 'tasks', links.flatMap(l => [String(l.task_id), String(l.dependency_id)]));
+    for (const l of links) {
+      if (ends.has(String(l.task_id)) && ends.has(String(l.dependency_id))) await insertRow(run, 'task_dependencies', l, columns, true);
+      else skippedLinks++;
+    }
+
+    const bookings = snap.bookings ?? [];
+    const assignments = snap.assignments ?? [];
+    const people = await idsPresent(run, 'resources', [...bookings, ...assignments].map(r => String(r.resource_id)));
+    for (const b of bookings) {
+      if (people.has(String(b.resource_id))) await insertRow(run, 'resource_assignments', { ...b, schedule_id: scheduleId }, columns, true);
+      else skippedPeople++;
+    }
+    for (const a of assignments) {
+      if (people.has(String(a.resource_id))) await insertRow(run, 'task_assignments', a, columns, true);
+      else skippedPeople++;
+    }
+    for (const c of snap.comments ?? []) await insertRow(run, 'task_comments', c, columns, true);
+    for (const a of snap.activities ?? []) await insertRow(run, 'task_activities', a, columns, true);
+
+    // The old single-predecessor columns the delete cleared on the tasks that followed
+    for (const s of snap.successors ?? []) {
+      await run(
+        'UPDATE tasks SET dependency = ?, dependency_type = ?, dependency_lag_days = ? WHERE id = ? AND schedule_id = ? AND dependency IS NULL',
+        [s.dependency, s.dependency_type ?? null, s.dependency_lag_days ?? 0, s.id, scheduleId]);
+    }
+  });
+  if (skippedLinks || skippedPeople) {
+    logger.info('[ChangeHistory] delete undone; some links/people were gone', { scheduleId, skippedLinks, skippedPeople });
+  }
+  // Summary tasks the deleted tasks sat under get their dates and totals back
+  const parents = new Set(tasks.map(t => t.parent_task_id as string | null).filter((p): p is string => !!p && !ids.includes(p)));
+  for (const pid of parents) {
+    await scheduleService.recomputeParentRollup(pid).catch((err: any) =>
+      logger.warn('[ChangeHistory] roll-up after restore failed', { pid, error: err?.message }));
+  }
+  return tasks.length;
+}
+
+/**
+ * The people an import created that nothing uses now and nobody has edited since the import —
+ * any column named *resource_id in this company's database, or a task's Assigned to, counts as use.
+ */
+async function unusedResources(run: Run, resourceIds: string[], createdAt: unknown): Promise<string[]> {
+  const ids = [...new Set(resourceIds.filter(Boolean))];
+  if (ids.length === 0) return [];
+  const untouched = await run(
+    `SELECT id FROM resources WHERE id IN (${ph(ids.length)}) AND updated_at <= DATE_ADD(?, INTERVAL 5 SECOND)`, [...ids, createdAt]);
+  const candidates = new Set((Array.isArray(untouched) ? untouched : []).map((r: any) => String(r.id)));
+  if (candidates.size === 0) return [];
+  const refs = await run(
+    `SELECT TABLE_NAME AS t, COLUMN_NAME AS c FROM information_schema.COLUMNS
+      WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME <> 'resources' AND COLUMN_NAME LIKE '%resource_id'`, []);
+  const columns: Array<{ t: string; c: string }> = [
+    { t: 'tasks', c: 'assigned_to' },
+    ...(Array.isArray(refs) ? refs : []).filter((r: any) => SAFE_IDENT.test(r.t) && SAFE_IDENT.test(r.c)),
+  ];
+  for (const { t, c } of columns) {
+    if (candidates.size === 0) break;
+    const list = [...candidates];
+    const used = await run(`SELECT DISTINCT \`${c}\` AS id FROM \`${t}\` WHERE \`${c}\` IN (${ph(list.length)})`, list);
+    for (const u of Array.isArray(used) ? used : []) candidates.delete(String(u.id));
+  }
+  return [...candidates];
+}
+
+/**
+ * Undo an import: its tasks go (their links, bookings and comments go with them), so does the
+ * "Imported baseline" it saved, and the people it created unless something else uses them now.
+ */
+async function removeImported(scheduleId: string, u: ImportUndo, createdAt: unknown): Promise<number> {
+  const ids = [...new Set(u.createdIds ?? [])];
+  let removed = 0;
+  await databaseService.transaction(async (conn) => {
+    const run: Run = (sql, params) => databaseService.queryOn(conn, sql, params);
+    if (ids.length > 0) {
+      const res: any = await run(`DELETE FROM tasks WHERE id IN (${ph(ids.length)}) AND schedule_id = ?`, [...ids, scheduleId]);
+      removed = Number(res?.affectedRows ?? ids.length);
+      await touchScheduleForDelete(run, scheduleId);
+    }
+    if (u.baselineId) await run('DELETE FROM schedule_baselines WHERE id = ? AND schedule_id = ?', [u.baselineId, scheduleId]);
+    const unused = await unusedResources(run, u.resourceIds ?? [], createdAt);
+    if (unused.length > 0) await run(`DELETE FROM resources WHERE id IN (${ph(unused.length)})`, unused);
+  });
+  return removed;
+}
+
 class ChangeHistoryService {
   /**
    * Record a group change. Never throws: history must not break the change it records
@@ -100,11 +341,19 @@ class ChangeHistoryService {
       const ctx = getRequestContext();
       const id = uuidv4();
       const details = await describeChange(input).catch(() => [] as string[]);
+      // A very large copy (a bulk delete of tasks with long notes and history) is not kept:
+      // the change is still recorded, and says it can't be undone
+      let undo = JSON.stringify(input.undo ?? null);
+      let summary = input.summary;
+      if (undo.length > MAX_UNDO_BYTES) {
+        undo = 'null';
+        summary = summary.slice(0, 500 - TOO_LARGE_NOTE.length) + TOO_LARGE_NOTE;
+      }
       await databaseService.query(
         `INSERT INTO change_batches (id, project_id, schedule_id, kind, summary, actor_id, source, ref, task_ids, undo_payload, details)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, input.projectId, input.scheduleId, input.kind, input.summary.slice(0, 500), ctx?.userId ?? null,
-          getActorSource(), input.ref ?? null, JSON.stringify([...new Set(input.taskIds)]), JSON.stringify(input.undo ?? null),
+        [id, input.projectId, input.scheduleId, input.kind, summary.slice(0, 500), ctx?.userId ?? null,
+          getActorSource(), input.ref ?? null, JSON.stringify([...new Set(input.taskIds)]), undo,
           JSON.stringify(details)],
       );
       return id;
@@ -127,7 +376,8 @@ class ChangeHistoryService {
 
   async list(scheduleId: string, days = 30): Promise<ChangeEntry[]> {
     const rows = await databaseService.query<any>(
-      `SELECT id, kind, summary, actor_id, source, status, undone_at, undone_by, created_at, details
+      `SELECT id, kind, summary, actor_id, source, status, undone_at, undone_by, created_at, details,
+              (undo_payload IS NULL OR CAST(undo_payload AS CHAR) = 'null') AS no_undo
        FROM change_batches
        WHERE schedule_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
        ORDER BY created_at DESC, id DESC
@@ -145,7 +395,9 @@ class ChangeHistoryService {
     const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
     // Only the newest entry can be undone, while it is still applied and nothing has changed since
     const newest = rows[0];
-    const newestUndoable = !!newest && newest.status === 'applied' && !(await this.planChangedSince(scheduleId, newest.created_at));
+    const newestUndoable = !!newest && newest.status === 'applied'
+      && !(NEEDS_COPY.has(newest.kind) && Number(newest.no_undo))
+      && !(await this.planChangedSince(scheduleId, newest.created_at));
     return rows.map((r: any, i: number) => ({
       id: r.id,
       kind: r.kind,
@@ -178,13 +430,19 @@ class ChangeHistoryService {
     if (!latest || latest.id !== mine.id || await this.planChangedSince(scheduleId, mine.created_at)) throw new NotLatestChangeError();
   }
 
-  /** Has anything in the plan been edited since this moment? (a few seconds' grace for the change's own follow-up writes) */
+  /**
+   * Has anything in the plan been edited since this moment? (a few seconds' grace for the change's
+   * own follow-up writes). A task edit shows on the task; a task DELETE leaves nothing behind on the
+   * tasks, so every delete stamps the schedule (touchScheduleForDelete) and that counts too.
+   */
   private async planChangedSince(scheduleId: string, createdAt: unknown): Promise<boolean> {
     const edited = await databaseService.query<any>(
-      `SELECT COUNT(*) AS cnt FROM tasks WHERE schedule_id = ? AND updated_at > DATE_ADD(?, INTERVAL 5 SECOND)`,
-      [scheduleId, createdAt],
+      `SELECT COUNT(*) AS cnt FROM tasks WHERE schedule_id = ? AND updated_at > DATE_ADD(?, INTERVAL 5 SECOND)
+       UNION ALL
+       SELECT COUNT(*) AS cnt FROM schedules WHERE id = ? AND updated_at > DATE_ADD(?, INTERVAL 5 SECOND)`,
+      [scheduleId, createdAt, scheduleId, createdAt],
     );
-    return Number(edited[0]?.cnt ?? 0) > 0;
+    return edited.reduce((n: number, r: any) => n + Number(r?.cnt ?? 0), 0) > 0;
   }
 
   /** Mark a change undone when it was undone somewhere else (e.g. the review-fix panel's own Undo) */
@@ -214,19 +472,23 @@ class ChangeHistoryService {
     if (!latest || latest.id !== changeId) throw new NotLatestChangeError();
     if (await this.planChangedSince(scheduleId, row.created_at)) throw new NotLatestChangeError();
 
-    const payload = parseJson<any>(row.undo_payload, {});
+    const payload = parseJson<any>(row.undo_payload, null);
+    if (NEEDS_COPY.has(row.kind) && !payload) {
+      throw new ChangeStateError('This change was too large to keep a copy of, so it can\'t be undone from History.');
+    }
+    const p = payload ?? {};
     let restored = 0;
     switch (row.kind as ChangeKind) {
       case 'link': {
-        const links = (payload.links ?? []) as Array<{ taskId: string; dependencyId: string }>;
+        const links = (p.links ?? []) as Array<{ taskId: string; dependencyId: string }>;
         if (links.length) restored += await scheduleService.bulkRemoveDependencies(scheduleId, links);
-        const dates = (payload.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
+        const dates = (p.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
         if (dates.length) await restoreTaskDates(scheduleId, dates);
         break;
       }
       case 'bulk_update':
       case 'bulk_status': {
-        const prev = (payload.previous ?? []) as PreviousValues[];
+        const prev = (p.previous ?? []) as PreviousValues[];
         const allowed = new Set(Object.values(BULK_UPDATE_COLUMNS));
         await databaseService.transaction(async (conn) => {
           const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
@@ -245,7 +507,7 @@ class ChangeHistoryService {
         break;
       }
       case 'bulk_create': {
-        for (const id of (payload.createdIds ?? []) as string[]) {
+        for (const id of (p.createdIds ?? []) as string[]) {
           if (await scheduleService.deleteTask(id).catch(() => false)) restored++;
         }
         break;
@@ -259,22 +521,30 @@ class ChangeHistoryService {
       }
       case 'calendar':
       case 'ai_reschedule': {
-        const dates = (payload.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
+        const dates = (p.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
         restored = await restoreTaskDates(scheduleId, dates);
         break;
       }
       case 'group': {
-        restored = await scheduleService.ungroupTasks(payload.summaryId, payload.previous ?? []);
+        restored = await scheduleService.ungroupTasks(p.summaryId, p.previous ?? []);
         break;
       }
       case 'reassign': {
         const { resourceReplaceService } = await import('./ResourceReplaceService');
-        restored = await resourceReplaceService.undo(scheduleId, payload);
+        restored = await resourceReplaceService.undo(scheduleId, p);
+        break;
+      }
+      case 'bulk_delete': {
+        restored = await restoreDeletedTasks(scheduleId, p as DeleteSnapshot);
+        break;
+      }
+      case 'import': {
+        restored = await removeImported(scheduleId, p as ImportUndo, row.created_at);
         break;
       }
       case 'planner_move': {
         const { teamPlannerService } = await import('./TeamPlannerService');
-        restored = await teamPlannerService.undo(scheduleId, payload);
+        restored = await teamPlannerService.undo(scheduleId, p);
         break;
       }
       default:
@@ -331,6 +601,9 @@ async function describeChange(input: RecordInput): Promise<string[]> {
   const byId = new Map(rows.map((r: any) => [r.id, r]));
   const nameOf = (id: string) => byId.get(id)?.name ?? 'a task';
   const lines: string[] = [];
+  /** Totals that must survive the line limit ("3 links removed with them") */
+  const tail: string[] = [];
+  const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
   // Plain words, not system codes: "In progress → Done", "High", "Yes", "40%"
   const show = (col: string, v: unknown): string => {
     if (col === 'start_date' || col === 'end_date') return shortDay(v);
@@ -396,6 +669,33 @@ async function describeChange(input: RecordInput): Promise<string[]> {
       for (const id of ids) lines.push(`${nameOf(id)}: ${who(undo.fromId)} → ${who(undo.toId)}`);
       break;
     }
+    case 'bulk_delete': {
+      // The tasks are gone: the words come from the copy taken before the delete
+      for (const t of (undo.tasks ?? []) as Array<Record<string, any>>) {
+        const s = t.start_date ? String(t.start_date).slice(0, 10) : null;
+        const e = t.end_date ? String(t.end_date).slice(0, 10) : null;
+        lines.push(s || e ? `Deleted ${t.name} (${shortDay(s)} → ${shortDay(e)})` : `Deleted ${t.name}`);
+      }
+      const parts = [
+        (undo.links ?? []).length ? count(undo.links.length, 'link') : '',
+        (undo.bookings ?? []).length ? count(undo.bookings.length, 'booking') : '',
+        (undo.comments ?? []).length ? count(undo.comments.length, 'comment') : '',
+      ].filter(Boolean);
+      if (parts.length) tail.push(`${parts.join(', ')} removed with them`);
+      break;
+    }
+    case 'import': {
+      for (const id of (undo.createdIds ?? ids) as string[]) lines.push(`Added ${nameOf(id)}`);
+      if (Number(undo.links) > 0) tail.push(`Added ${count(Number(undo.links), 'link')}`);
+      const created = (undo.resourceIds ?? []) as string[];
+      if (created.length) {
+        const people = await databaseService.query<any>(
+          `SELECT id, name FROM resources WHERE id IN (${created.map(() => '?').join(',')})`, created);
+        for (const p of people) tail.push(`Added person ${p.name}`);
+      }
+      if (undo.baselineId) tail.push("Saved baseline 'Imported baseline'");
+      break;
+    }
     case 'planner_move': {
       const r = undo.reassign;
       if (r) {
@@ -408,7 +708,8 @@ async function describeChange(input: RecordInput): Promise<string[]> {
       break;
     }
   }
-  return lines.length > MAX_LINES ? [...lines.slice(0, MAX_LINES), `…and ${lines.length - MAX_LINES} more`] : lines;
+  const shown = lines.length > MAX_LINES ? [...lines.slice(0, MAX_LINES), `…and ${lines.length - MAX_LINES} more`] : lines;
+  return [...shown, ...tail];
 }
 
 export const changeHistoryService = new ChangeHistoryService();
