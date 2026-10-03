@@ -40,7 +40,8 @@ test('an expense raises the project\'s spent, and EVM counts it from its date', 
 
 test('Financials shows spent as the total, without adding expenses twice', async () => {
   const spent = await spentOf();
-  await pm.goto(`/project/${ids.projectId}?tab=financials`);
+  await pm.goto(`/project/${ids.projectId}`);
+  await pm.getByRole('tab', { name: 'Financials' }).or(pm.getByRole('button', { name: 'Financials', exact: true })).first().click();
   const card = pm.locator('div', { has: pm.getByText('Total Spent', { exact: true }) }).last();
   await expect(card).toContainText(`$${spent.toLocaleString('en-US')}`, { timeout: 20_000 });
   await expect(card).toContainText('expenses $500');
