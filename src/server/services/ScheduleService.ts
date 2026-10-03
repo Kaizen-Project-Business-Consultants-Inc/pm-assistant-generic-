@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { taskDatesOf, moveBookingsWithTasks } from '../database/bookingDates';
 import { databaseService } from '../database/connection';
 import { scheduleRepository } from '../database/ScheduleRepository';
 import { taskRepository, TaskRepository } from '../database/TaskRepository';
@@ -1032,7 +1033,10 @@ export class ScheduleService {
 
       if (fields.length > 0) {
         values.push(id);
+        const before = await taskDatesOf(q, [id]);
         await q(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, values);
+        // the task's booked hours move with it
+        await moveBookingsWithTasks(q, before);
       }
     });
 
@@ -1523,7 +1527,9 @@ export class ScheduleService {
       if (origId) scenarioByOriginal.set(origId, st);
     }
 
-    // Update base tasks with scenario dates/durations
+    // Update base tasks with scenario dates/durations (booked hours move with them)
+    const run = (sql: string, params: any[]) => databaseService.query(sql, params);
+    const before = await taskDatesOf(run, baseTasks.map(t => t.id));
     for (const bt of baseTasks) {
       const st = scenarioByOriginal.get(bt.id);
       if (st) {
@@ -1533,6 +1539,7 @@ export class ScheduleService {
         );
       }
     }
+    await moveBookingsWithTasks(run, before);
 
     // Delete the scenario schedule
     await this.delete(scenarioId);

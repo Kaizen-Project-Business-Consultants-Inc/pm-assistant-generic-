@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { taskDatesOf, moveBookingsWithTasks } from '../database/bookingDates';
 import { databaseService } from '../database/connection';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { scheduleService } from './ScheduleService';
@@ -228,6 +229,8 @@ class ChangeHistoryService {
         const prev = (payload.previous ?? []) as PreviousValues[];
         const allowed = new Set(Object.values(BULK_UPDATE_COLUMNS));
         await databaseService.transaction(async (conn) => {
+          const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
+          const datesBefore = await taskDatesOf(run, prev.filter(p => 'start_date' in p.values || 'end_date' in p.values).map(p => p.id));
           for (const p of prev) {
             const cols = Object.keys(p.values).filter(c => allowed.has(c));
             if (!cols.length) continue;
@@ -236,6 +239,8 @@ class ChangeHistoryService {
               [...cols.map(c => p.values[c]), p.id, scheduleId]);
             restored++;
           }
+          // booked hours move back with their tasks
+          await moveBookingsWithTasks(run, datesBefore);
         });
         break;
       }

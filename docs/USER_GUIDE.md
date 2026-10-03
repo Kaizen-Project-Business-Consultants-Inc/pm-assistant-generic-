@@ -864,6 +864,8 @@ Every resource is either a **person** or a **generic role**.
 
 **Resource Histogram and Level Resources (Sep 2026)** use the same bookings as the Workload Heatmap, by working day: each person's hours per day (a % on the task, Assigned To at 100%, hours bookings — weekly hours ÷ 5, Monday–Friday), including their other live projects, against their own day (weekly capacity ÷ 5, lower in a week with time off). People are shown by name. **Level Resources** delays non-critical tasks within their float, choosing the smallest delay that clears the most over-capacity days; work on other projects never moves. Tasks that still overload someone get a suggested replacement with matching skills **and room on those days**.
 
+**Booked hours move with their task (October 2026).** Hours booked for someone on a task (e.g. "Alex, 20 hours a week") now move whenever the task moves — dragging it on the Gantt, changing its dates, linked tasks being pushed later, Undo, a Schedule Review fix or a what-if scenario. A booking for the whole task keeps covering the whole task; a booking for part of it moves by the same number of days and stays inside the task. Before, the hours stayed in the old weeks, so the workload showed the person busy at the wrong time.
+
 ### Team Planner (October 2026)
 
 **Resources → Team Planner** (marked *New*) shows your company's people down the side — those with work on the projects you manage first, then everyone else who can take work — and the weeks across — like Microsoft Project's Team Planner. Each person's row adds up **all** their work, on every project, at their real weekly hours (working days only), so you see straight away who is over in which week (a red "48h · over by 8h").

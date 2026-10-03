@@ -4,7 +4,7 @@
 
 - **Resources → Team Planner** (PMs): people × weeks, all projects counted; drag a task to another person or week; check before saving (hours before → after, dates, linked tasks, finish shift, cost, logged hours stay); one History change (`planner_move`), undoable. Overload warns, never refuses (user, 2026-10-02). Team members/viewers/executives don't get the tab.
 - `ScheduleRecomputeService.recompute` takes `moves` (put tasks on new dates, successors follow, never before a predecessor). `ResourceReplaceService.swap/assign` split out of `replace`.
-- **Known gap, not fixed:** hours bookings (`resource_assignments`) don't follow their task when its dates change elsewhere (Gantt drag, link re-flow). The planner moves them; other paths don't.
+- Hours bookings now follow their task on every date change (`database/bookingDates.ts`, guard test) — fixed the same day (user: yes).
 
 ## 2026-10-02 (c) — the two older issues
 

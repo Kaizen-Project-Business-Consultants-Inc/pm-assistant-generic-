@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { taskDatesOf, moveBookingsWithTasks } from './bookingDates';
 import { databaseService } from './connection';
 import { Task, TaskDependency, TaskComment, TaskActivityEntry } from '../services/ScheduleService';
 import { taskAssignmentService } from '../services/TaskAssignmentService';
@@ -246,7 +247,11 @@ export class TaskRepository {
     if (endDate !== undefined) { fields.push('end_date = ?'); values.push(endDate); }
     if (fields.length === 0) return;
     values.push(taskId);
+    const run = (sql: string, params: any[]) => databaseService.query(sql, params);
+    const before = await taskDatesOf(run, [taskId]);
     await databaseService.query(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, values);
+    // the task's booked hours move with it
+    await moveBookingsWithTasks(run, before);
   }
 
   // --- Comments ---

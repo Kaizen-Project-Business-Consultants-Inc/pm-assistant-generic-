@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { taskDatesOf, moveBookingsWithTasks } from '../../database/bookingDates';
 import { scheduleRecomputeService } from '../../services/ScheduleRecomputeService';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
@@ -363,6 +364,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       }
 
       await databaseService.transaction(async (connection) => {
+        const run = (sql: string, params: any[]) => databaseService.queryOn(connection, sql, params);
+        const datesBefore = await taskDatesOf(run, body.updates.filter(u => u.startDate !== undefined || u.endDate !== undefined).map(u => u.id));
         for (const u of body.updates) {
           try {
             if (!u.id || !u.scheduleId) {
@@ -405,6 +408,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             failed.push({ id: u.id || 'unknown', error: err.message || 'Unknown error' });
           }
         }
+        // booked hours move with their tasks
+        await moveBookingsWithTasks(run, datesBefore);
       });
 
       const doneIds = new Set(succeeded.map(s => s.id));

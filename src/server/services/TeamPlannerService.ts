@@ -10,6 +10,7 @@ import { rateCardService, ratesOn } from './RateCardService';
 import { queueReviewRerun } from './scheduleReview/autoRerun';
 import { ResourceValidationError, type ResourceAssignment } from './ResourceService';
 import { hoursInWeek, calendarsFor } from './weeklyLoad';
+import { followTask } from '../database/bookingDates';
 import { checkProjectRoleFor } from '../middleware/requireProjectAccess';
 import { readableProjectIds } from '../utils/readableProjects';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
@@ -364,9 +365,9 @@ export class TeamPlannerService {
       const m = movedById.get(a.taskId);
       if (m) {
         // A task-based booking takes the task's new dates; an hours booking moves by the same days
-        const shift = m.oldStart ? calendarDaysBetween(m.oldStart, m.newStart) : 0;
+        const t = { start: m.oldStart, end: m.oldEnd };
         b = a.source === 'manual'
-          ? { ...b, startDate: addCalendarDays(a.startDate, shift), endDate: addCalendarDays(a.endDate, shift) }
+          ? (() => { const f = followTask({ start: a.startDate.slice(0, 10), end: a.endDate.slice(0, 10) }, t, { start: m.newStart, end: m.newEnd }); return { ...b, startDate: f.start, endDate: f.end }; })()
           : { ...b, startDate: m.newStart, endDate: m.newEnd };
       }
       if (reassign && a.taskId === task.id && a.resourceId === fromId) b = { ...b, resourceId: toId! };
@@ -453,20 +454,7 @@ export class TeamPlannerService {
         onlyFrom: [task.id], reason: 'team_planner',
         moves: { [task.id]: { startDate: moves.find(m => m.taskId === task.id)!.newStart, endDate: moves.find(m => m.taskId === task.id)!.newEnd } },
       });
-      // Hours bookings follow their task by the same number of days
-      for (const m of moves) {
-        if (!m.oldStart) continue;
-        const shift = calendarDaysBetween(m.oldStart, m.newStart);
-        if (shift === 0) continue;
-        const rows = await databaseService.query<{ id: string; start_date: string; end_date: string }>(
-          `SELECT id, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date
-             FROM resource_assignments WHERE task_id = ? AND schedule_id = ?`, [m.taskId, task.schedule_id]);
-        for (const b of rows) {
-          undo.bookings.push({ id: b.id, startDate: b.start_date, endDate: b.end_date });
-          await databaseService.query('UPDATE resource_assignments SET start_date = ?, end_date = ? WHERE id = ?',
-            [addCalendarDays(b.start_date, shift), addCalendarDays(b.end_date, shift), b.id]);
-        }
-      }
+      // (hours bookings move with their tasks inside the date write — database/bookingDates.ts)
       await databaseService.query(`UPDATE tasks SET updated_at = NOW() WHERE id IN (${ph(moves.length)})`, moves.map(m => m.taskId));
     }
 
@@ -503,6 +491,7 @@ export class TeamPlannerService {
   /** History's Undo for a 'planner_move' change */
   async undo(scheduleId: string, u: PlannerUndo): Promise<number> {
     let restored = 0;
+    // entries recorded before bookings moved with their task (2026-10-02) carry them; newer ones don't
     for (const b of u.bookings ?? []) {
       await databaseService.query('UPDATE resource_assignments SET start_date = ?, end_date = ? WHERE id = ? AND schedule_id = ?', [b.startDate, b.endDate, b.id, scheduleId]);
     }

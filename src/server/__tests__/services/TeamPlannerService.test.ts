@@ -173,7 +173,7 @@ describe('TeamPlannerService — applying a drop', () => {
     expect(queueReviewRerun).toHaveBeenCalledWith('s1');
   });
 
-  it('a move in time writes the new dates, moves hours bookings by the same days, and keeps the old dates for Undo', async () => {
+  it('a move in time writes the new dates and keeps the old dates for Undo', async () => {
     recompute.mockResolvedValue({
       deltas: [{ taskId: 't-uat', name: 'UAT', oldStart: '2026-10-19', oldEnd: '2026-11-06', newStart: '2026-10-26', newEnd: '2026-11-13', movedDays: 7 }],
       projectEndBefore: '2026-11-06', projectEndAfter: '2026-11-13', projectEndShiftDays: 7, tasksMoved: 1, leafCount: 1,
@@ -186,11 +186,12 @@ describe('TeamPlannerService — applying a drop', () => {
     await teamPlannerService.apply({ taskId: 't-uat', fromResourceId: 'peter', toResourceId: 'peter', weeks: 1 });
     expect(recompute).toHaveBeenLastCalledWith('s1', expect.objectContaining({ reason: 'team_planner', moves: { 't-uat': { startDate: '2026-10-26', endDate: '2026-11-13' } } }));
     expect(recompute.mock.calls.at(-1)![1].dryRun).toBeUndefined();
-    expect(query).toHaveBeenCalledWith('UPDATE resource_assignments SET start_date = ?, end_date = ? WHERE id = ?', ['2026-10-26', '2026-11-13', 'ra1']);
+    // hours bookings move inside the date write itself (database/bookingDates.ts), not here
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining('UPDATE resource_assignments'), expect.anything());
     expect(swap).not.toHaveBeenCalled();
     const undo = record.mock.calls[0][0].undo;
     expect(undo.moved).toEqual([{ taskId: 't-uat', startDate: '2026-10-19', endDate: '2026-11-06' }]);
-    expect(undo.bookings).toEqual([{ id: 'ra1', startDate: '2026-10-19', endDate: '2026-11-06' }]);
+    expect(undo.bookings).toEqual([]);
   });
 
   it('Undo puts the bookings, the dates and the person back', async () => {
