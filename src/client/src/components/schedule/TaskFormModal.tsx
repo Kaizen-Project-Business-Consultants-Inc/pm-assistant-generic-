@@ -998,7 +998,7 @@ export function TaskFormModal({
       {showDeleteConfirm && task && onDelete && (
         <ConfirmModal
           title="Delete Task"
-          message={`Delete "${task.name}"? This cannot be undone.`}
+          message={`Delete "${task.name}"? You can undo this from History.`}
           confirmLabel="Delete"
           onConfirm={() => { onDelete(task.id); setShowDeleteConfirm(false); }}
           onCancel={() => setShowDeleteConfirm(false)}

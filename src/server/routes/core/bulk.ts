@@ -12,7 +12,7 @@ import logger from '../../utils/logger';
 import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../utils/workingDays';
 import { queueReviewRerun } from '../../services/scheduleReview/autoRerun';
 import {
-  changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, snapshotTasksForDelete, touchScheduleForDelete, deleteSummary,
+  changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary,
 } from '../../services/ChangeHistoryService';
 
 import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
@@ -509,27 +509,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       // One transaction: copy everything the delete removes (for Undo in Schedule History), then
       // delete. The copy is read under a lock so it matches exactly what is deleted.
-      const placeholders = body.taskIds.map(() => '?').join(',');
-      const snapshot = await databaseService.transaction(async (connection) => {
-        const q = (sql: string, params: any[] = []) => databaseService.queryOn(connection, sql, params);
-        const snap = await snapshotTasksForDelete(q, body.scheduleId, body.taskIds);
-        if (snap.tasks.length === 0) return snap;
-
-        // Clear dependency refs pointing to deleted tasks
-        await q(
-          `UPDATE tasks SET dependency = NULL, dependency_type = NULL, dependency_lag_days = 0 WHERE dependency IN (${placeholders}) AND schedule_id = ?`,
-          [...body.taskIds, body.scheduleId],
-        );
-
-        // Delete the tasks
-        await q(
-          `DELETE FROM tasks WHERE id IN (${placeholders}) AND schedule_id = ?`,
-          [...body.taskIds, body.scheduleId],
-        );
-        // A delete leaves no trace on the remaining tasks: History must still see the plan changed
-        await touchScheduleForDelete(q, body.scheduleId);
-        return snap;
-      });
+      const snapshot = await databaseService.transaction(async (connection) =>
+        deleteTasksKeepingCopy((sql, params) => databaseService.queryOn(connection, sql, params), body.scheduleId, body.taskIds));
       const deletedIds = new Set(snapshot.tasks.map((t: any) => String(t.id)));
 
       // Summary tasks above the deleted ones: their dates and totals follow (awaited, so History

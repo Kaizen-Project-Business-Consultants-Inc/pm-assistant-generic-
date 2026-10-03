@@ -1,5 +1,7 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Schedule History records single-task deletes (branch `history-single-delete`, not deployed)
+Deleting one task (task form Delete, Gantt right-click when it uses the single route, MCP `delete-task`, the assistant's delete) now adds a History line like a bulk delete ("Deleted 1 task: Build", "Deleted Build (12 Oct → 16 Oct)", "1 link, 1 booking removed with them") with the same Undo (same id, links, bookings, people, comments). Shared helper `deleteTasksKeepingCopy` (ChangeHistoryService) used by both `DELETE /bulk/tasks` and `ScheduleService.deleteTaskWithHistory`; the single route keeps its WebSocket/webhook/automation/audit/roll-up. Summary tasks: only the heading is deleted (unchanged; children show at top level), Undo re-attaches them. Ctrl+Z after a single delete = History undo; History refreshes. Edit-form confirm now says "You can undo this from History." Test: `__tests__/routes/singleDeleteHistory.test.ts`.
 ## 2026-10-03 — Sample project is optional
 New companies start without the read-only sample (provisioner removes it). Settings → Sample project (owner/admin/PMO) loads and removes it, with in-page confirmation; setup wizard offers "Explore a sample project first". SampleProjectService removes everything pointing at the sample's project/schedules/tasks/example people in one transaction. Existing companies keep theirs until removed.
 ## 2026-10-03 — the sample project never counts in totals

@@ -230,7 +230,8 @@ export class AIActionExecutor {
       return { success: false, toolName: 'delete_task', summary: `Task '${taskId}' not found`, error: 'Task not found' };
     }
 
-    const deleted = await scheduleService.deleteTask(taskId);
+    // Recorded in Schedule History like a delete in the app, so it can be undone there
+    const { deleted } = await scheduleService.deleteTaskWithHistory(taskId);
     return {
       success: deleted,
       toolName: 'delete_task',

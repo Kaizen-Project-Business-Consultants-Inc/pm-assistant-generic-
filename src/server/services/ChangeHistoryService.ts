@@ -26,7 +26,8 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  *                  the calendar itself stays as it is)
  *  - reassign      the old resource back on the tasks ("Replace Generic Developer with …")
  *  - planner_move  a Team Planner drop: the person back, the dates (and hours bookings) back
- *  - bulk_delete   the deleted tasks back WITH THEIR OLD IDS (so time entries, checklists, files and
+ *  - bulk_delete   (also a single-task delete: task form, Gantt menu, MCP delete-task)
+ *                  the deleted tasks back WITH THEIR OLD IDS (so time entries, checklists, files and
  *                  baselines that still point at them reconnect), with their links, booked hours,
  *                  people, comments and activity, from a copy taken inside the delete
  *  - import        delete what the import added: its tasks (links and bookings go with them), the
@@ -158,6 +159,28 @@ export async function snapshotTasksForDelete(run: Run, scheduleId: string, taskI
       `SELECT id, dependency, dependency_type, dependency_lag_days FROM tasks
         WHERE dependency IN (${inIds}) AND schedule_id = ? AND id NOT IN (${inIds})`, [...ids, scheduleId, ...ids]),
   };
+}
+
+/**
+ * The one delete both delete paths use — bulk delete (DELETE /bulk/tasks) and the single-task
+ * delete (task form, Gantt menu, MCP delete-task, via ScheduleService.deleteTaskWithHistory):
+ * copy everything it removes, then clear the old single-predecessor columns that named these
+ * tasks, delete them, and stamp the schedule. Call it inside the delete's transaction (`run` on
+ * that connection) so the copy and the delete see the same rows. Returns the copy; nothing is
+ * deleted when none of the tasks is on this schedule.
+ */
+export async function deleteTasksKeepingCopy(run: Run, scheduleId: string, taskIds: string[]): Promise<DeleteSnapshot> {
+  const snap = await snapshotTasksForDelete(run, scheduleId, taskIds);
+  if (snap.tasks.length === 0) return snap;
+  const ids = snap.tasks.map(t => String(t.id));
+  const inIds = ph(ids.length);
+  await run(
+    `UPDATE tasks SET dependency = NULL, dependency_type = NULL, dependency_lag_days = 0 WHERE dependency IN (${inIds}) AND schedule_id = ?`,
+    [...ids, scheduleId]);
+  await run(`DELETE FROM tasks WHERE id IN (${inIds}) AND schedule_id = ?`, [...ids, scheduleId]);
+  // A delete leaves no trace on the remaining tasks: History must still see the plan changed
+  await touchScheduleForDelete(run, scheduleId);
+  return snap;
 }
 
 /** "Deleted 1 task: Design", "Deleted 2 tasks: Design and Build", "Deleted 5 tasks: Design, Build and 3 more" */
