@@ -38,7 +38,7 @@ export async function sampleProjectRoutes(fastify: FastifyInstance) {
       await projectService.invalidateCache(SAMPLE_PROJECT_ID).catch(() => {});
       return { loaded: false, removed };
     } catch (error) {
-      logger.error('Remove sample project failed', { error });
+      logger.error('Remove sample project failed', { message: (error as Error)?.message, code: (error as any)?.code });
       return reply.status(500).send({ error: 'Internal server error', message: 'The sample project could not be removed. Nothing was changed — please try again.' });
     }
   });
@@ -49,7 +49,7 @@ export async function sampleProjectRoutes(fastify: FastifyInstance) {
       await projectService.invalidateCache(SAMPLE_PROJECT_ID).catch(() => {});
       return { loaded: true };
     } catch (error) {
-      logger.error('Load sample project failed', { error });
+      logger.error('Load sample project failed', { message: (error as Error)?.message, code: (error as any)?.code });
       return reply.status(500).send({ error: 'Internal server error', message: 'The sample project could not be loaded. Nothing was changed — please try again.' });
     }
   });
