@@ -468,16 +468,16 @@ describe('EmailService', () => {
       expect(html).toContain('Deploy v2');
     });
 
-    it('renders action items section', async () => {
+    it('renders the overdue RAID actions section', async () => {
       await service.sendDigestEmail('user@test.com', 'Bob', {
         ...minDigest,
-        actionItems: [{ title: 'Review PR', dueDate: '2026-09-10', meetingTitle: 'Sprint Planning' }],
+        actionItems: [{ title: 'Review PR', dueDate: '2026-09-10', projectName: 'DBJ-Loans' }],
       });
 
       const html = mockSend.mock.calls[0][0].html;
-      expect(html).toContain('Overdue Action Items (1)');
+      expect(html).toContain('Overdue actions in RAID (1)');
+      expect(html).toContain('DBJ-Loans');
       expect(html).toContain('Review PR');
-      expect(html).toContain('Sprint Planning');
     });
 
     it('renders upcoming meetings section', async () => {

@@ -13,6 +13,7 @@ import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import { projectMemberService } from '../../services/ProjectMemberService';
 import { fileAttachmentService } from '../../services/FileAttachmentService';
+import { meetingRepository } from '../../database/MeetingRepository';
 import { parseTranscriptFile } from '../../utils/transcriptParser';
 
 /**
@@ -295,6 +296,11 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Analysis not found' });
       }
 
+      // Which meeting these came from, so a meeting action can be traced in the RAID log:
+      // the linked meeting's title, else the analysis date
+      const linkedMeeting = analysis.meetingId ? await meetingRepository.findById(analysis.meetingId).catch(() => null) : null;
+      const sourceMeeting = (linkedMeeting?.title || `Meeting analysis ${String(analysis.createdAt ?? '').slice(0, 10)}`.trim()).slice(0, 255);
+
       const imported: any[] = [];
       // An owner must be on this project; anyone else is kept as a name only
       const memberIds = new Set((await projectMemberService.findByProjectId(parsed.projectId)).map(m => m.userId));
@@ -319,6 +325,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
           ownerId,
           ownerName: ownerId ? undefined : item.ownerName,
           source: 'meeting',
+          sourceMeeting,
           createdBy: userId,
         });
         imported.push(risk);

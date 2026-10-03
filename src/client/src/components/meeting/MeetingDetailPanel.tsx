@@ -16,7 +16,6 @@ import {
   X,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
-import { MeetingActionItemList } from './MeetingActionItemList';
 import { MeetingToRaidModal } from './MeetingToRaidModal';
 import { mapAnalysisToRaidCandidates, RaidCandidate } from '../../utils/meetingToRaidMapper';
 
@@ -90,14 +89,6 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
     onSuccess: () => {
       setNotesEditing(false);
       queryClient.invalidateQueries({ queryKey: ['meeting', meetingId] });
-    },
-  });
-
-  const importActionsMutation = useMutation({
-    mutationFn: (analysisId: string) => apiService.importMeetingActions(meetingId, analysisId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['meeting', meetingId] });
-      queryClient.invalidateQueries({ queryKey: ['meetingActionItems'] });
     },
   });
 
@@ -372,13 +363,6 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => importActionsMutation.mutate(a.id)}
-                    disabled={importActionsMutation.isPending}
-                    className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap"
-                  >
-                    {importActionsMutation.isPending ? 'Importing...' : 'Import Actions'}
-                  </button>
-                  <button
                     onClick={() => handleSendToRaid(a)}
                     className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 whitespace-nowrap flex items-center gap-1"
                   >
@@ -404,15 +388,6 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
           </div>
         </div>
       )}
-
-      {/* Action Items */}
-      <div className="card p-4">
-        <MeetingActionItemList
-          projectId={projectId}
-          meetingId={meetingId}
-          showCreateButton
-        />
-      </div>
 
       {/* Send to RAID Modal */}
       <MeetingToRaidModal

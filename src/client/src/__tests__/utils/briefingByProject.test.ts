@@ -172,6 +172,23 @@ describe('Team follow-up vs Yours to do (Sep 2026)', () => {
     expect(statusSummary(lms)).toBe('');
   });
 
+  it('an overdue RAID action you own is under Yours only — not in the team list or its count', () => {
+    const withAction = buildProjectBriefings({
+      ...withMine,
+      raidWatch: [...withMine.raidWatch,
+        { id: 'r2', type: 'action_item', label: 'Issue inputs request', projectId: 'nswma', projectName: 'NSWMA', projectCode: 'PRJ-006', detail: '3d overdue', linkTab: 'raid' },
+        { id: 'a9', type: 'action_item', label: 'Send minutes', projectId: 'nswma', projectName: 'NSWMA', projectCode: 'PRJ-006', detail: '1d overdue', linkTab: 'raid', resourceName: 'Pat' },
+      ],
+      projects: withMine.projects.map(p => (p.id === 'nswma' ? { ...p, counts: { ...p.counts, overdueActions: 2 } } : p)),
+    }, { showApprovals: true, formatDate: (d: string) => d, today: TODAY });
+    const n = withAction.find(p => p.id === 'nswma')!;
+    const risks = n.sections.find(s => s.key === 'risks')!;
+    expect(risks.items.map(i => i.id)).toEqual(['a9']);
+    expect(risks.count).toBe(1);
+    expect(risks.items[0]).toMatchObject({ tag: 'Action · 1d overdue', link: '/project/nswma?tab=raid' });
+    expect(n.yours.raid.map(r => r.id)).toContain('r2');
+  });
+
   it('counts your items in the summary', () => {
     expect(statusSummary(get('nswma'))).toContain('3 yours');
   });

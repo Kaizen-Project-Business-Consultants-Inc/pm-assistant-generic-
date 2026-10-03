@@ -17,7 +17,7 @@ Full CRUD lifecycle for projects with the following attributes:
 - **Methodology**: waterfall (default), agile, or hybrid. Controls the presentation layer — tab ordering, readiness bar steps, context cards, and default view mode. Does not restrict feature access (e.g., waterfall projects can still use sprints).
 - **Budget management**: allocated budget, spent budget, budget variance
 - **Date management**: start date, end date, auto-calculated duration
-- **Team assignment**: project members with role-based access (owner, manager, editor, viewer). Only members can access a project; non-members get 404. Creator is auto-added as owner. Admin/pmo bypass membership; executive gets read-only bypass. **Viewer assignment-based permissions**: viewers (free, no seat consumption) can update tasks assigned to them (via resource linkage), comment on assigned tasks, update/complete/reopen/cancel meeting action items assigned to them, upload file attachments to assigned tasks and owned RAID items, and update/comment on RAID items they own. Unassigned items return 403. The "My Assignments" dashboard widget shows all items assigned to the viewer across tasks, RAID items, and action items.
+- **Team assignment**: project members with role-based access (owner, manager, editor, viewer). Only members can access a project; non-members get 404. Creator is auto-added as owner. Admin/pmo bypass membership; executive gets read-only bypass. **Viewer assignment-based permissions**: viewers (free, no seat consumption) can update tasks assigned to them (via resource linkage), comment on assigned tasks, update the RAID actions they own (meeting actions included — they live in the RAID log since Oct 2026), upload file attachments to assigned tasks and owned RAID items, and update/comment on RAID items they own. Unassigned items return 403. The "My Assignments" dashboard widget shows all items assigned to the viewer across tasks, RAID items, and action items.
 - **Project Brief**: Inline-editable markdown description on the Overview tab. The brief card is part of the **reorderable card grid** — drag it to reposition alongside KPI, milestones, and other overview cards (rendered full-width via `col-span-full`). Supports headings, bold, italic, lists, links, and inline code via the **`marked` GFM parser** (not regex). Clicking a link in the rendered brief opens it in a new tab without entering edit mode. Click-to-edit with **save-on-blur** — text is saved when you click outside the editor or tab away, not while typing. A formatting toolbar (bold, italic, heading, list, link, code) appears in edit mode with Ctrl+B/I shortcuts; toolbar wraps on narrow screens. Collaborative editing indicators show when another user is editing the brief (amber pulsing dot with username via the shared `PresenceIndicator` component, `role="status"` and `aria-live="polite"` for screen readers, `motion-reduce:animate-none` for reduced motion). Empty projects show a placeholder prompting the user to add a brief. Read-only users see rendered markdown without edit controls. The edit button is always visible on touch devices (no hover required). Failed saves show a "Save failed" message with a Retry link. Content is sanitized client-side via DOMPurify on render. Description is limited to 50,000 characters. **Keyboard accessible:** view-mode and empty-state divs have `tabIndex`, `role="button"`, and keyboard handlers (Enter/Space to edit). **Escape cancels** editing and reverts draft to the pre-edit description — because nothing is saved mid-keystroke, Escape is an honest cancel. **Unmount recovery:** navigating away mid-edit persists the draft to sessionStorage and attempts to save; if the save fails, the draft is recovered on next visit. Closing the browser tab triggers a `beforeunload` warning if there are unsaved changes. **Optimistic locking:** each save sends the last-known `expectedUpdatedAt` timestamp; if another user saved in the meantime, the server returns 409 Conflict and the UI shows "Someone else saved — Refresh" instead of silently overwriting. **Reconnect resilience:** editing presence is re-sent after WebSocket reconnect so other users continue to see the editing indicator during network interruptions. **Notifications** are scoped per-user — WebSocket notification events are sent only to the target user, not broadcast to all clients.
 
 ### Schedules
@@ -1014,7 +1014,9 @@ The top of the page presents three input modes:
 - **From Teams** (Oct 2026) — `TeamsMeetingsTab`. The PM connects their own Microsoft account (delegated Graph permissions `Calendars.Read`, `OnlineMeetings.Read`, `OnlineMeetingTranscript.Read.All`, `offline_access`; integration row provider `msteams_meetings`, separate from the channel-posting `msteams`). Lists Teams meetings that ended in the last 30 days (`/me/calendarView`, max 20) with transcript status — Ready / No transcript / Not allowed / Already analyzed (`meeting_analyses.source_ref = teams:<event id>`, T066). For a recurring meeting the transcript created during that occurrence is used. **Who's who:** speakers from the Teams VTT are matched to project members by the PM's saved choice (`meeting_speaker_links`, T066, per company), then member name, then invitee email; the PM confirms. The transcript is rewritten with the confirmed member names (guests marked "not a project member") and analysed by the normal pipeline; action items, risks and issues carry `saidBy` + `at`, decisions `madeBy` + `at`. Endpoints `/api/v1/teams-meetings/`: `GET status`, `GET install`, `GET admin-approval-url`, `DELETE connection` (your own), `GET meetings?projectId`, `POST speakers`, `POST analyze` (project Manager/Owner; schedule must be the project's; feature `meeting_intelligence`). Sign-in uses a one-time state (Redis, 10 min) and the callback requires the same Kovarti user to be signed in. Never joins a meeting. The results panel also now shows risk titles and task-update changes, which were blank before.
 
 - **Meeting Coach** (Oct 2026) — **Chair's card** button (`ChairsCard`, printable) with the call-out phrases and "who owns it / by when". The analysis marks each item `calledOut` (someone explicitly labelled it, any wording) with a short `quote`; owners (`assignee` / `owner`) are resolved to project members by `services/meetingCoach.ts` (`resolveOwner`: full name, unique first name, or `ownerChoices` when two fit; non-members kept as a name; owner ids are never taken from the AI); due dates are worked out by the AI from the meeting date (Teams: the meeting's date, otherwise today) and moved to a working day (`workingDue`). `buildScorecard` (called out / AI only, actions with owner + date, risks with owner, tips, trend over the project's last 4 vs previous 4 meetings) is stored in `meeting_analyses.coach` (T067). `MeetingCoachReview` shows Called out (ticked) / AI spotted (unticked) with owner/date fixes; **Add to RAID is the project Manager/Owner only** (`send-to-raid` now takes `ownerId` — kept only if a project member — and `ownerName`), duplicates skipped. Analyses with a scorecard add to RAID from the review; the older Send to RAID button remains for earlier analyses.
-- **Import Meeting** — opens the `SyncExternalMeetingModal` to manually import a meeting from any external source (Read.ai, Otter.ai, or any other platform). Users fill in the meeting title, date, duration, location, attendees, summary, and action items (one per line, with optional "Name: Description" format for auto-parsed assignee attribution). On submit, a completed meeting record and associated action items are created via `POST /api/v1/meetings/sync-external`.
+- **Import Meeting** — opens the `SyncExternalMeetingModal` to manually import a meeting from any external source (Read.ai, Otter.ai, or any other platform). Users fill in the meeting title, date, duration, location, attendees, summary, and action items (one per line, with optional "Name: Description" format for auto-parsed assignee attribution). On submit, `POST /api/v1/meetings/sync-external` creates a completed meeting record and adds **each action to the RAID log** via `riskService.create` (type `action`, source `meeting`, `source_meeting` = the meeting title, owner name, optional `dueDate`, severity from priority). The route needs the project's Manager/Owner (only the PM adds to RAID); the button is hidden for everyone else. The success message reads "Meeting imported. N actions added to RAID."
+
+**Meeting actions live in the RAID log (Oct 2026).** The old `meeting_action_items` table is read-only history: `/api/v1/meeting-action-items` keeps only `GET /` and `GET /:id`; create/update/complete/reopen/cancel and `/my`, `/summary` are gone, as is `POST /meetings/:id/import-actions`. Existing rows were **not** copied into RAID (only a PM adds to RAID). The guard test `meetingActionItemsReadOnly.test.ts` fails the build if any server code writes to the table again (deleting a meeting still removes its old items). **Send to RAID** from an analysis now records `source_meeting` (the linked meeting's title, else "Meeting analysis <date>"). The Morning Briefing's overdue actions, the digest, the Report Builder's action source and the Meeting Follow-Up agent all read RAID actions.
 
 An optional **Meeting Title** field lets users label the analysis for easier retrieval in the History table.
 
@@ -1068,7 +1070,7 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 | POST | `/api/v1/meeting-intelligence/:analysisId/check-raid-duplicates` | Duplicate check before RAID import |
 | POST | `/api/v1/meeting-intelligence/:analysisId/send-to-raid` | Import meeting items into RAID log |
 | POST | `/api/v1/meetings/:id/send-minutes` | Email formatted minutes to recipients |
-| POST | `/api/v1/meetings/sync-external` | Import meeting + action items from external source |
+| POST | `/api/v1/meetings/sync-external` | Import meeting from an external source; its actions become RAID actions (project Manager/Owner only) |
 
 ### Lessons Learned
 
@@ -1449,7 +1451,7 @@ The `ReportBuilderService` provides a configurable report engine:
 
 - **Report templates**: saved configurations with named sections, sharable across users
 - **Section types**: KPI cards, tables, bar charts, line charts, pie charts
-- **8 data sources**: projects, tasks, time entries, budgets, resources, RAID items, meetings, action items
+- **8 data sources**: projects, tasks, time entries, budgets, resources, RAID items, meetings, actions (RAID) — the `action_items` source reads `project_risks` where `type = 'action'` (title → description, owner → assignee_name, severity → priority, plus `meeting`), so saved reports keep working
 - **Filters**: date range, project, status
 - **Group-by**: aggregate data by any dimension including computed temporal groupings (week, month via SQL `DATE_FORMAT`); the `groupBy` parameter is validated against an allowlist to prevent SQL injection. Client-side aliases (`project` → `project_id`, `assignee` → `assigned_to`) are resolved server-side.
 - **Column selection**: table sections support picking specific columns to display; columns are validated against a per-table allowlist to prevent SQL injection. When no columns are selected, all columns are shown.
@@ -1640,7 +1642,7 @@ Critical and high-severity notifications are automatically sent via email (Resen
 - **Overdue tasks** assigned to the user
 - **Upcoming deadlines** (next 3 days)
 - **Unread notification count**
-- **Meeting Action Items** — overdue action items assigned to the user across all meetings
+- **Overdue actions (RAID)** — open RAID actions the user owns that are past due (meeting actions included), with their project; sample projects and archived projects are left out. *(Until Oct 2026 this read the retired meeting action-item list and selected a column that didn't exist, so the section was always empty.)*
 - **Upcoming Meetings** — meetings scheduled within the next 3 days
 - **Active Sprint Summary** — current sprint name, task completion count and percentage (rendered as a progress bar in the email)
 
@@ -1652,13 +1654,13 @@ Users control digest content and delivery time in **Settings > Notifications**:
 - **Section toggles** — checkboxes to include or exclude each section independently:
   - Overdue Tasks
   - Upcoming Deadlines
-  - Meeting Action Items
+  - Overdue actions (RAID) (key `action_items`, unchanged)
   - Upcoming Meetings
   - Sprint Status
   - Recent Changes
   - Unread Notifications
 
-The digest email template uses **color-coded sections** for quick scanning: red (overdue tasks), amber (upcoming deadlines), purple (meeting action items), blue (upcoming meetings), green (sprint status), cyan (recent activity).
+The digest email template uses **color-coded sections** for quick scanning: red (overdue tasks), amber (upcoming deadlines), purple (overdue RAID actions), blue (upcoming meetings), green (sprint status), cyan (recent activity).
 
 Preferences are stored in the database (`users.email_notifications_enabled`, `users.digest_frequency`, `users.digest_last_sent_at`, `users.notification_type_preferences`) and managed via `PUT /api/v1/users/me/notification-preferences`.
 
@@ -3733,7 +3735,7 @@ All API routes are prefixed with `/api/v1/` and organized by domain:
 /api/v1/task-prioritization  AI task ranking
 /api/v1/meeting-intelligence Meeting transcript analysis
 /api/v1/meetings             Meeting agenda & minutes management
-/api/v1/meeting-action-items Meeting action item tracking
+/api/v1/meeting-action-items Past meeting action items (read-only history; meeting actions live in RAID)
 /api/v1/lessons-learned   Retrospective knowledge base
 /api/v1/learning          AI learning feedback
 /api/v1/exports           Data export

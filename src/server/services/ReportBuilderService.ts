@@ -61,6 +61,18 @@ function rowToDTO(row: ReportTemplateRow): ReportTemplate {
   };
 }
 
+/**
+ * "Action Items" reports read the RAID log's actions (meeting actions included) — the old
+ * meeting_action_items table is retired (Oct 2026). Column names stay as they were so saved
+ * reports keep working: title → description, owner → assignee_name, severity → priority.
+ */
+const RAID_ACTIONS_SOURCE = `(SELECT pr.id, pr.project_id, pr.title AS description,
+    COALESCE(ores.name, NULLIF(TRIM(pr.owner_name), '')) AS assignee_name,
+    pr.due_date, pr.severity AS priority, pr.status, pr.source, pr.source_meeting AS meeting, pr.created_at
+  FROM project_risks pr
+  LEFT JOIN resources ores ON ores.id = pr.owner_resource_id
+  WHERE pr.type = 'action') AS action_items`;
+
 class ReportBuilderService {
   async createTemplate(userId: string, data: {
     name: string;
@@ -174,7 +186,7 @@ class ReportBuilderService {
       case 'resources': return 'resources';
       case 'raid_items': return 'project_risks';
       case 'meetings': return 'meetings';
-      case 'action_items': return 'meeting_action_items';
+      case 'action_items': return RAID_ACTIONS_SOURCE;
       default: return 'projects';
     }
   }
@@ -368,14 +380,14 @@ class ReportBuilderService {
 
     if (dataSource === 'action_items') {
       const rows = await databaseService.query<any>(
-        `SELECT COUNT(*) as total, SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) as open_items, SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) as in_progress FROM ${tableName}${whereClause}`,
+        `SELECT COUNT(*) as total, SUM(CASE WHEN status='open' THEN 1 ELSE 0 END) as open_items, SUM(CASE WHEN status IN ('completed', 'closed') THEN 1 ELSE 0 END) as completed, SUM(CASE WHEN status='in_progress' THEN 1 ELSE 0 END) as in_progress FROM ${tableName}${whereClause}`,
         whereParams,
       );
       const total = Number(rows[0].total);
       const completed = Number(rows[0].completed);
       return {
         kpis: [
-          { label: 'Total Action Items', value: total },
+          { label: 'Total Actions', value: total },
           { label: 'Open', value: Number(rows[0].open_items) },
           { label: 'In Progress', value: Number(rows[0].in_progress) },
           { label: 'Completed', value: completed },
@@ -396,7 +408,7 @@ class ReportBuilderService {
       resources: ['id', 'name', 'role', 'email', 'capacity_hours_per_week', 'cost_rate_hourly', 'is_active', 'resource_group', 'created_at'],
       project_risks: ['id', 'project_id', 'type', 'title', 'category', 'severity', 'probability', 'impact', 'risk_score', 'status', 'owner_id', 'due_date', 'created_at'],
       meetings: ['id', 'project_id', 'title', 'meeting_type', 'scheduled_date', 'duration_minutes', 'location', 'status', 'created_at'],
-      meeting_action_items: ['id', 'meeting_id', 'project_id', 'description', 'assignee_name', 'due_date', 'priority', 'status', 'source', 'created_at'],
+      [RAID_ACTIONS_SOURCE]: ['id', 'project_id', 'description', 'assignee_name', 'due_date', 'priority', 'status', 'source', 'meeting', 'created_at'],
     };
     return map[tableName] || [];
   }

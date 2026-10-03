@@ -66,7 +66,7 @@ const DATA_SOURCE_OPTIONS: { value: DataSource; label: string }[] = [
   { value: 'resources', label: 'Resources' },
   { value: 'raid_items', label: 'RAID Items' },
   { value: 'meetings', label: 'Meetings' },
-  { value: 'action_items', label: 'Action Items' },
+  { value: 'action_items', label: 'Actions (RAID)' },
 ];
 
 const GROUP_BY_OPTIONS: Record<DataSource, { value: string; label: string }[]> = {
@@ -115,7 +115,7 @@ const GROUP_BY_OPTIONS: Record<DataSource, { value: string; label: string }[]> =
   action_items: [
     { value: 'status', label: 'Status' },
     { value: 'priority', label: 'Priority' },
-    { value: 'assignee_name', label: 'Assignee' },
+    { value: 'assignee_name', label: 'Owner' },
     { value: 'source', label: 'Source' },
     { value: 'month', label: 'Month' },
   ],
@@ -189,12 +189,13 @@ const TABLE_COLUMNS: Record<DataSource, { value: string; label: string }[]> = {
     { value: 'status', label: 'Status' },
   ],
   action_items: [
-    { value: 'description', label: 'Description' },
-    { value: 'assignee_name', label: 'Assignee' },
+    { value: 'description', label: 'Title' },
+    { value: 'assignee_name', label: 'Owner' },
     { value: 'due_date', label: 'Due Date' },
     { value: 'priority', label: 'Priority' },
     { value: 'status', label: 'Status' },
     { value: 'source', label: 'Source' },
+    { value: 'meeting', label: 'Meeting' },
     { value: 'created_at', label: 'Created' },
   ],
 };

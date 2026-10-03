@@ -190,6 +190,51 @@ describe('ReportBuilderService', () => {
     });
   });
 
+  describe('"Action Items" reads the RAID log (Oct 2026)', () => {
+    const template = (section: Record<string, unknown>) => [{
+      id: 't1', user_id: 'u1', name: 'Actions', description: null,
+      config: JSON.stringify({ sections: [section] }),
+      is_shared: false, created_at: '2026-01-01', updated_at: '2026-01-01',
+    }];
+
+    it('a saved table report keeps its columns, now filled from RAID actions', async () => {
+      mockQuery.mockResolvedValueOnce(template({
+        type: 'table', dataSource: 'action_items',
+        columns: ['description', 'assignee_name', 'priority', 'meeting_id', 'due_date'],
+        filters: { projectId: 'p-1', status: 'open' },
+      })).mockResolvedValueOnce([{ description: 'Send minutes', assignee_name: 'Pat', priority: 'high', due_date: '2026-10-01' }]);
+
+      const report = await reportBuilderService.generateReport('t1', undefined, new Set(['p-1']));
+      const [sql, params] = mockQuery.mock.calls[1];
+      expect(sql).not.toContain('meeting_action_items');
+      expect(sql).toContain('FROM project_risks pr');
+      expect(sql).toContain("WHERE pr.type = 'action'");
+      expect(sql).toContain('pr.title AS description');
+      expect(sql).toContain('pr.severity AS priority');
+      expect(sql).toContain('AS assignee_name');
+      // a column that no longer exists (meeting_id) is dropped, not sent to the database
+      expect(sql).toMatch(/^SELECT description, assignee_name, priority, due_date FROM/);
+      expect(sql).toContain('project_id IN (?)');
+      expect(params).toEqual(['p-1', 'p-1', 'open']);
+      expect(report.sections[0].data.table.rows[0]).toEqual(['Send minutes', 'Pat', 'high', '2026-10-01']);
+    });
+
+    it('charts and KPIs read RAID actions too, counting closed as done', async () => {
+      mockQuery.mockResolvedValueOnce(template({ type: 'bar_chart', dataSource: 'action_items', groupBy: 'priority' }))
+        .mockResolvedValueOnce([{ label: 'high', value: 2 }]);
+      await reportBuilderService.generateReport('t1', undefined, 'all');
+      expect(mockQuery.mock.calls[1][0]).toContain("WHERE pr.type = 'action'");
+      expect(mockQuery.mock.calls[1][0]).toContain('GROUP BY priority');
+
+      vi.clearAllMocks();
+      mockQuery.mockResolvedValueOnce(template({ type: 'kpi', dataSource: 'action_items' }))
+        .mockResolvedValueOnce([{ total: 4, open_items: 1, completed: 2, in_progress: 1 }]);
+      const report = await reportBuilderService.generateReport('t1', undefined, 'all');
+      expect(mockQuery.mock.calls[1][0]).toContain("status IN ('completed', 'closed')");
+      expect(report.sections[0].data.kpis).toContainEqual({ label: 'Completion Rate', value: '50%' });
+    });
+  });
+
   // -------------------------------------------------------------------------
   // executeTableQuery — headers and rows
   // -------------------------------------------------------------------------

@@ -141,9 +141,13 @@ class DailyBriefingService {
     // Restricted roles only see tasks assigned to them (via resource linked to their user)
     const assignedJoin = isRestricted ? 'JOIN resources assigned_r ON t.assigned_to = assigned_r.id AND assigned_r.user_id = ?' : '';
     const assignedParams = isRestricted ? [userId] : [];
-    // For action items, restrict by assignee_user_id
-    const actionAssignedFilter = isRestricted ? 'AND mai.assignee_user_id = ?' : '';
-    const actionAssignedParams = isRestricted ? [userId] : [];
+    // Overdue actions are RAID actions (type 'action'); restricted roles see only the ones they own,
+    // the same rule as open issues. Meeting actions live in the RAID log too.
+    const ownerFilter = isRestricted ? 'AND pr.owner_id = ?' : '';
+    const ownerParams = isRestricted ? [userId] : [];
+    const OPEN_ACTION = `pr.type = 'action'
+           AND pr.due_date < CURDATE()
+           AND pr.status NOT IN ('completed', 'closed', 'cancelled', 'deferred')`;
 
     // Every section joins projects with `p.archived_at IS NULL`: an archived project must not
     // appear — the briefing used to link straight into archived projects, so a PM could work in
@@ -288,20 +292,20 @@ class DailyBriefingService {
          ORDER BY t.end_date ASC LIMIT 10`,
         [...assignedParams, ...memberParams]
       ),
-      // RAID Watch: Overdue meeting action items
+      // RAID Watch: Overdue RAID actions (meeting actions included — they live in the RAID log)
       databaseService.query<any>(
-        `SELECT mai.id, mai.description, mai.due_date, p.id AS projectId, p.name AS projectName,
+        `SELECT pr.id, pr.title, pr.due_date, p.id AS projectId, p.name AS projectName,
                 COALESCE(p.project_code, '') AS projectCode,
-                DATEDIFF(CURDATE(), mai.due_date) AS overdueDays,
-                mai.assignee_name AS resourceName
-         FROM meeting_action_items mai
-         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL
+                DATEDIFF(CURDATE(), pr.due_date) AS overdueDays,
+                pr.owner_id AS ownerId, ores.name AS ownerResourceName, pr.owner_name AS ownerText
+         FROM project_risks pr
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+         LEFT JOIN resources ores ON ores.id = pr.owner_resource_id
          ${memberJoin}
-         WHERE mai.due_date < CURDATE()
-           AND mai.status NOT IN ('completed', 'cancelled')
-           ${actionAssignedFilter}
-         ORDER BY mai.due_date ASC LIMIT ${ITEM_CAP}`,
-        [...memberParams, ...actionAssignedParams]
+         WHERE ${OPEN_ACTION}
+           ${ownerFilter}
+         ORDER BY pr.due_date ASC LIMIT ${ITEM_CAP}`,
+        [...memberParams, ...ownerParams]
       ),
       // RAID Watch: Blocked tasks (FS predecessor not completed, leaf tasks only)
       databaseService.query<any>(
@@ -331,14 +335,14 @@ class DailyBriefingService {
         `SELECT pr.id, pr.title, pr.severity, p.id AS projectId, p.name AS projectName,
                 COALESCE(p.project_code, '') AS projectCode
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE pr.type = 'issue'
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
-           ${isRestricted ? 'AND pr.owner_id = ?' : ''}
+           ${ownerFilter}
          ORDER BY FIELD(pr.severity, 'critical', 'high', 'medium', 'low'), pr.created_at DESC
          LIMIT ${ITEM_CAP}`,
-        [...memberParams, ...(isRestricted ? [userId] : [])]
+        [...memberParams, ...ownerParams]
       ),
       // Every project the user can see (quiet ones too), for the per-project view
       databaseService.query<any>(
@@ -397,24 +401,23 @@ class DailyBriefingService {
       databaseService.query<any>(
         `SELECT p.id AS projectId, COUNT(*) AS cnt
          FROM project_risks pr
-         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE pr.type = 'issue'
            AND pr.status NOT IN ('resolved', 'closed', 'cancelled', 'mitigated')
-           ${isRestricted ? 'AND pr.owner_id = ?' : ''}
+           ${ownerFilter}
          GROUP BY p.id`,
-        [...memberParams, ...(isRestricted ? [userId] : [])]
+        [...memberParams, ...ownerParams]
       ),
       databaseService.query<any>(
         `SELECT p.id AS projectId, COUNT(*) AS cnt
-         FROM meeting_action_items mai
-         JOIN projects p ON mai.project_id = p.id AND p.archived_at IS NULL
+         FROM project_risks pr
+         JOIN projects p ON pr.project_id = p.id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
-         WHERE mai.due_date < CURDATE()
-           AND mai.status NOT IN ('completed', 'cancelled')
-           ${actionAssignedFilter}
+         WHERE ${OPEN_ACTION}
+           ${ownerFilter}
          GROUP BY p.id`,
-        [...memberParams, ...actionAssignedParams]
+        [...memberParams, ...ownerParams]
       ),
       // Next open milestone per project (any distance ahead) — the "Next:" line on quiet projects
       databaseService.query<any>(
@@ -532,7 +535,9 @@ class DailyBriefingService {
     // Risk owners, in the RAID panel's order: a member (login account, name lives in the
     // control plane), then a resource with no login, then the free-text name. Managers only,
     // like task owners.
-    const riskOwnerIds = showResource ? [...new Set(risks.map((r: any) => r.ownerId).filter(Boolean))] : [];
+    const riskOwnerIds = showResource
+      ? [...new Set([...risks, ...overdueActions].map((r: any) => r.ownerId).filter(Boolean))]
+      : [];
     const ownerUserNames = new Map<string, string>();
     if (riskOwnerIds.length > 0) {
       const users = await databaseService.queryControlPlane<any>(
@@ -562,13 +567,15 @@ class DailyBriefingService {
       raidWatch.push({
         id: item.id,
         type: 'action_item',
-        label: item.description?.substring(0, 80) || 'Action item',
+        label: item.title?.substring(0, 80) || 'Action item',
         projectId: item.projectId,
         projectName: item.projectName,
         projectCode: item.projectCode,
         detail: `${item.overdueDays}d overdue`,
         linkTab: 'raid',
-        resourceName: showResource ? (item.resourceName || undefined) : undefined,
+        resourceName: showResource
+          ? (ownerUserNames.get(item.ownerId) || item.ownerResourceName || item.ownerText || undefined)
+          : undefined,
       });
     }
 

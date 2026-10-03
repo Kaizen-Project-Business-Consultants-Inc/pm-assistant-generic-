@@ -147,6 +147,8 @@ export const MeetingAnalysisSchema = z.object({
   taskUpdates: z.array(MeetingTaskUpdateSchema),
   appliedItems: z.array(z.number()),
   createdAt: z.string(),
+  /** The meeting this analysis is linked to, if any */
+  meetingId: z.string().nullable().optional(),
   /** Meeting Coach scorecard (analyses since Oct 2026) */
   coach: z.any().optional(),
 });

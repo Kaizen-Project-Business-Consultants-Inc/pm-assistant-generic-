@@ -103,7 +103,7 @@ SME accounts get an extended **4-step wizard** with an additional Team Setup ste
 **Step 2 — Team Setup**
 - A seat summary shows how many seats your plan includes, how many are already used, and how many are still available.
 - Use the invite form to add team members: enter an email address and select a role, then click **Send Invite**. Repeat for each person you want to add.
-  - **Viewer** — can see the project. Can also update the RAID items assigned to them (status, progress updates, comments, attachments), log their own time, post their own sprint standups, retrospective notes and votes, and mark meeting action items assigned to them as in progress, done or reopened (with notes). Changing the sprint itself, creating or cancelling action items, and anything Mjuzi does to a project stay with the Manager/Owner. You only ever see projects you're on — in dashboards, reports, exports and Mjuzi's answers (admins, PMO and executives see the whole portfolio). Lessons Learned stay shared across the organisation. On the Resources screens you still see how busy each person is across all projects, but work on projects you're not on shows as **"Work on another project" / "Other projects"**, without names or costs. Buttons for things you can't change are hidden, and a blue **View only** note at the top of the Sprints, Automations, What-if and Meeting Minutes screens says what you can still do.
+  - **Viewer** — can see the project. Can also update the RAID items assigned to them (status, progress updates, comments, attachments), log their own time, post their own sprint standups, retrospective notes and votes, and update the RAID actions they own — meeting actions included, since they live in the RAID log. Changing the sprint itself, adding to RAID, and anything Mjuzi does to a project stay with the Manager/Owner. You only ever see projects you're on — in dashboards, reports, exports and Mjuzi's answers (admins, PMO and executives see the whole portfolio). Lessons Learned stay shared across the organisation. On the Resources screens you still see how busy each person is across all projects, but work on projects you're not on shows as **"Work on another project" / "Other projects"**, without names or costs. Buttons for things you can't change are hidden, and a blue **View only** note at the top of the Sprints, Automations, What-if and Meeting Minutes screens says what you can still do.
   - **Manager** — can change the project: tasks, dates, links, RAID items, change requests, imports, AI changes. AI suggestions on project data (suggest a mitigation, AI task estimate, AI project analysis, optimise schedule, strategic risk scan) are for the Manager/Owner too — they're hidden from everyone else.
   - **Owner** — everything a Manager can do, plus make other people Owner, remove members and delete the project. A project always keeps at least one Owner.
   - The **Editor** role was removed in September 2026; anyone who had it is now a Viewer. Only the project's Manager or Owner can change project data. Edit buttons appear only for them.
@@ -1501,7 +1501,7 @@ For custom reports, use the **Report Builder**:
 1. Navigate to **Report Builder** in the sidebar.
 2. Click **New Report** to open the report designer.
 3. Configure report sections:
-   - Choose from **8 data sources**: Projects, Tasks, Time Entries, Budgets, Resources, RAID Items, Meetings, and Action Items.
+   - Choose from **8 data sources**: Projects, Tasks, Time Entries, Budgets, Resources, RAID Items, Meetings, and Actions (RAID). **Actions (RAID)** lists the RAID log's actions (meeting actions included) — saved reports that used the old "Action Items" source keep working and now show RAID actions (Title, Owner, Due Date, Priority = severity, Status, Source, Meeting).
    - Add filters (by project, date range, status).
    - Select visualization types (KPI cards, tables, bar charts, line charts, pie charts).
    - For **table sections**, click **Select Columns** to pick which columns appear in the table (e.g., Name, Status, Priority). If no columns are selected, all columns are shown.
@@ -1753,8 +1753,12 @@ Click the **Import Meeting** button (top-right of the input tabs area) to open t
 2. Optionally set **Duration**, **Location/Platform**, and **Source** (e.g., "Read.ai").
 3. Add **Attendees** (comma-separated).
 4. Paste the **Meeting Summary** from your external platform.
-5. Add **Action Items** — one per line. Use the format `Name: Description` to auto-assign (e.g., "John: Finalize the budget proposal"). Lines without a colon are imported as unassigned items.
-6. Click **Import Meeting**. A completed meeting record and all action items are created instantly.
+5. Add **Actions** — one per line. Use the format `Name: Description` to name the owner (e.g., "John: Finalize the budget proposal"). Lines without a colon are added with no owner.
+6. Click **Import Meeting**. A completed meeting record is created and **each action is added to the project's RAID log** as an action (source: meeting, with the meeting's title), so you track and close it there like any other action. The message says how many were added, e.g. "Meeting imported. 2 actions added to RAID."
+
+Only the project's Manager or Owner can import a meeting (it adds to RAID); others don't see the button.
+
+> **Meeting actions live in the RAID log (October 2026).** The old separate meeting action-item list no longer takes new items and can't be changed; items already on it stay as read-only history. They were not copied into RAID — only a project manager adds to RAID. **Send to RAID** on an analysis also records which meeting each item came from.
 
 The imported meeting appears in the Analysis History and is accessible from the Meetings page.
 
@@ -2490,8 +2494,8 @@ Navigate to **Settings** to configure:
 - **Custom fields** -- Define organization-wide custom fields that appear on tasks and projects.
 - **Notifications** -- Configure notification preferences per category (Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines) with independent in-app and email toggles. Includes email master toggle, digest frequency, and the following digest customization options:
   - **Preferred send hour** -- Choose any hour from 0 to 23 (UTC) for your digest email delivery. The default is 7 AM UTC.
-  - **Digest section toggles** -- Enable or disable each section of the digest independently: Overdue Tasks, Upcoming Deadlines, Meeting Action Items, Upcoming Meetings, Sprint Status, Recent Changes, Unread Notifications.
-  The digest email uses color-coded sections (red for overdue, amber for deadlines, purple for meeting action items, blue for upcoming meetings, green for sprint status, cyan for recent activity). System alerts are always delivered to admin users.
+  - **Digest section toggles** -- Enable or disable each section of the digest independently: Overdue Tasks, Upcoming Deadlines, Overdue actions (RAID) — the RAID actions you own that are past due, with their project —, Upcoming Meetings, Sprint Status, Recent Changes, Unread Notifications.
+  The digest email uses color-coded sections (red for overdue, amber for deadlines, purple for overdue RAID actions, blue for upcoming meetings, green for sprint status, cyan for recent activity). System alerts are always delivered to admin users.
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 - **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner or an admin adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
@@ -2636,7 +2640,7 @@ Buttons that change company-wide things — New Project, Start, Add Resource, Ne
 | **Admin** | Full access to all features, user management, settings, and admin panel. |
 | **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
 | **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). |
-| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update/complete/reopen/cancel meeting action items assigned to them, upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |
+| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |
 | **Executive** | Pure read-only — dashboards, portfolio, and reports. No edits, no comments. |
 
 **My Assignments Widget** *(removed September 2026)*: its tasks and RAID items now appear under **Yours to do** in each project of the Morning Briefing (it also showed archived projects and the old meeting action-item list).
@@ -3101,7 +3105,7 @@ The app remembers which view you chose. Your unread notification count sits in t
 
 A team member (or a Manager on some other project) only sees "Yours to do". The project list shows both counts, e.g. "3 late · 2 yours".
 
-Each team part has up to six sections, each with a count — **Late**, **Blocked** (with what the task is waiting on), **Risks, issues & actions** (new high/critical risks, open issues, overdue meeting actions), **Waiting for your approval** (change requests; hidden for viewers) and **Due this week** (tasks and milestones, with the real date). An empty section says "None". Counts are true totals: when a section has more than fits, **See all N →** opens the full list (late and due-soon open the schedule already filtered).
+Each team part has up to six sections, each with a count — **Late**, **Blocked** (with what the task is waiting on), **Risks, issues & actions** (new high/critical risks, open issues, overdue RAID actions — meeting actions included; each opens the project's RAID log), **Waiting for your approval** (change requests; hidden for viewers) and **Due this week** (tasks and milestones, with the real date). An empty section says "None". Counts are true totals: when a section has more than fits, **See all N →** opens the full list (late and due-soon open the schedule already filtered).
 
 **Clicking a task opens its schedule scrolled to that row, highlighted in amber.** It opens the right schedule when the project has several, switches to the Gantt if you were on a view without rows (Kanban, Calendar…), expands a collapsed phase that hides the task, and clears any filter or search that hides it (a note says so). The highlight fades after a few seconds. If the task has since been deleted, a note says so instead.
 

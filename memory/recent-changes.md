@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — meeting actions live in the RAID log (branch `retire-meeting-action-items`, not deployed)
+
+- **Product rule:** meeting actions are RAID actions (`project_risks` type `action`, source `meeting`). `meeting_action_items` is read-only history — no live screen reads it, nothing writes it. Old rows were **not** copied into RAID (only a PM adds to RAID; no migration creates RAID items). Table not dropped.
+- **Reads → RAID:** Morning Briefing overdue actions + per-project count (`DailyBriefingService`; restricted roles see own `owner_id`; owner = member name → resource → typed name; sample projects excluded here and in the open-issues list/count). Digest "Overdue actions (RAID)" (`DigestRepository.findOverdueActionItems`, owner = user, project name; was always empty — it selected a missing `ai.title`). Report Builder `action_items` source = derived table over RAID actions with the old column names (saved reports keep working; KPI counts closed as done). Meeting Follow-Up agent counts overdue open RAID meeting actions (one project-level alert → RAID tab) instead of the analysis JSON.
+- **Writes stopped:** `POST /meetings/sync-external` creates RAID actions (`riskService.create`, `sourceMeeting` = meeting title; PM/Owner only — 403 "Only the project's Manager or Owner can change this." tested as a team member). Removed `POST /meetings/:id/import-actions`, `MeetingService.importActionItemsFromAnalysis`, the "Import Actions" button and unused `MeetingActionItemList`; `/meeting-action-items` keeps only `GET /` and `GET /:id`. Send to RAID sets `sourceMeeting` (linked meeting title, else "Meeting analysis <date>").
+- **Client:** briefing dedupe — a RAID action/issue you own is under Yours only and no longer counted in the team "Risks, issues & actions" count. Digest setting label "Overdue actions (RAID)" (key `action_items`).
+- **Guard:** `__tests__/database/meetingActionItemsReadOnly.test.ts` fails on any INSERT/UPDATE/DELETE/REPLACE/TRUNCATE of the table outside migrations; only `deleteByMeeting` (meeting deletion) is whitelisted.
+
 ## 2026-10-03 — leftovers list (items 6 and 4)
 
 - **deploy.sh**: a failed MCP build now stops the deploy (`cd x && build && cd ..` never tripped `set -e`; now a subshell); the remote `npm install | tail` uses pipefail.

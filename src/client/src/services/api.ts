@@ -1738,11 +1738,6 @@ class ApiService {
     return response.data;
   }
 
-  async importMeetingActions(meetingId: string, analysisId: string) {
-    const response = await this.api.post(`/meetings/${meetingId}/import-actions`, { analysisId });
-    return response.data;
-  }
-
   async uploadTranscriptFile(file: File, projectId: string, scheduleId: string, meetingId?: string) {
     const formData = new FormData();
     formData.append('file', file);
@@ -1763,7 +1758,8 @@ class ApiService {
     location?: string;
     attendees?: string[];
     summary: string;
-    actionItems?: Array<{ description: string; assigneeName?: string; priority?: string }>;
+    /** Each becomes a RAID action on the project */
+    actionItems?: Array<{ description: string; assigneeName?: string; priority?: string; dueDate?: string }>;
     source?: string;
   }) {
     const response = await this.api.post('/meetings/sync-external', data);
@@ -1776,7 +1772,8 @@ class ApiService {
   }
 
   // -------------------------------------------------------------------------
-  // Meeting Action Items
+  // Meeting Action Items — read-only history (Oct 2026). Meeting actions now live in the
+  // RAID log (type 'action'); nothing writes the old list any more.
   // -------------------------------------------------------------------------
 
   async getMeetingActionItems(filters: { projectId?: string; meetingId?: string; status?: string; assigneeUserId?: string; overdue?: boolean }) {
@@ -1787,45 +1784,6 @@ class ApiService {
     if (filters.assigneeUserId) params.set('assigneeUserId', filters.assigneeUserId);
     if (filters.overdue) params.set('overdue', 'true');
     const response = await this.api.get(`/meeting-action-items?${params}`);
-    return response.data;
-  }
-
-  async getMyActionItems(filters?: { status?: string; overdue?: boolean }) {
-    const params = new URLSearchParams();
-    if (filters?.status) params.set('status', filters.status);
-    if (filters?.overdue) params.set('overdue', 'true');
-    const response = await this.api.get(`/meeting-action-items/my?${params}`);
-    return response.data;
-  }
-
-  async getActionItemSummary(projectId?: string) {
-    const params = projectId ? `?projectId=${projectId}` : '';
-    const response = await this.api.get(`/meeting-action-items/summary${params}`);
-    return response.data;
-  }
-
-  async createActionItem(data: Record<string, any>) {
-    const response = await this.api.post('/meeting-action-items', data);
-    return response.data;
-  }
-
-  async updateActionItem(id: string, data: Record<string, any>) {
-    const response = await this.api.put(`/meeting-action-items/${id}`, data);
-    return response.data;
-  }
-
-  async completeActionItem(id: string) {
-    const response = await this.api.post(`/meeting-action-items/${id}/complete`);
-    return response.data;
-  }
-
-  async reopenActionItem(id: string) {
-    const response = await this.api.post(`/meeting-action-items/${id}/reopen`);
-    return response.data;
-  }
-
-  async cancelActionItem(id: string) {
-    const response = await this.api.post(`/meeting-action-items/${id}/cancel`);
     return response.data;
   }
 

@@ -391,9 +391,9 @@ describe('DailyBriefingService', () => {
 
     // ── RAID Watch ─────────────────────────────────────────────────────
 
-    it('builds RAID watch items from overdue action items', async () => {
+    it('builds RAID watch items from overdue RAID actions', async () => {
       const actions = [
-        { id: 'a-1', description: 'Review design doc', due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 3, resourceName: 'Alice' },
+        { id: 'a-1', title: 'Review design doc', due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 3, ownerId: null, ownerResourceName: 'Alice', ownerText: null },
       ];
       setupDefaultResults({ 8: actions });
 
@@ -411,10 +411,10 @@ describe('DailyBriefingService', () => {
       });
     });
 
-    it('truncates action item description to 80 chars in label', async () => {
+    it('truncates the action title to 80 chars in label', async () => {
       const longDesc = 'A'.repeat(100);
       const actions = [
-        { id: 'a-2', description: longDesc, due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, resourceName: null },
+        { id: 'a-2', title: longDesc, due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, resourceName: null },
       ];
       setupDefaultResults({ 8: actions });
 
@@ -423,15 +423,47 @@ describe('DailyBriefingService', () => {
       expect(result.raidWatch[0].label).toHaveLength(80);
     });
 
-    it('uses fallback label when action item description is null', async () => {
+    it('uses fallback label when the action title is null', async () => {
       const actions = [
-        { id: 'a-3', description: null, due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 2, resourceName: null },
+        { id: 'a-3', title: null, due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 2, resourceName: null },
       ];
       setupDefaultResults({ 8: actions });
 
       const result = await dailyBriefingService.getDailyBriefing('user-1', 'admin');
 
       expect(result.raidWatch[0].label).toBe('Action item');
+    });
+
+    it('reads overdue actions from the RAID log, not the retired meeting action items table', async () => {
+      setupDefaultResults();
+
+      await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+
+      const sqls = queryMock.mock.calls.map((c: any[]) => String(c[0]));
+      expect(sqls.some(q => q.includes('meeting_action_items'))).toBe(false);
+      for (const idx of [7, 15]) { // overdue actions list, per-project overdue-action counts
+        expect(sqls[idx]).toContain("pr.type = 'action'");
+        expect(sqls[idx]).toContain('pr.due_date < CURDATE()');
+        expect(sqls[idx]).toContain("pr.status NOT IN ('completed', 'closed', 'cancelled', 'deferred')");
+        expect(sqls[idx]).toContain('COALESCE(p.is_demo, 0) = 0');
+      }
+      // open issues leave the sample project out too
+      expect(sqls[9]).toContain('COALESCE(p.is_demo, 0) = 0');
+      expect(sqls[14]).toContain('COALESCE(p.is_demo, 0) = 0');
+    });
+
+    it('names the action owner: member, else resource, else typed name', async () => {
+      const actions = [
+        { id: 'a-1', title: 'A', projectId: 'p-1', projectName: 'P', projectCode: 'PC', overdueDays: 1, ownerId: 'u-9', ownerResourceName: 'Res', ownerText: 'Typed' },
+        { id: 'a-2', title: 'B', projectId: 'p-1', projectName: 'P', projectCode: 'PC', overdueDays: 1, ownerId: null, ownerResourceName: 'Sapphire Dev', ownerText: 'Typed' },
+        { id: 'a-3', title: 'C', projectId: 'p-1', projectName: 'P', projectCode: 'PC', overdueDays: 1, ownerId: null, ownerResourceName: null, ownerText: 'DBJ' },
+      ];
+      setupDefaultResults({ 8: actions });
+      queryControlPlaneMock.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'u-9', full_name: 'Pat Owner' }]);
+
+      const result = await dailyBriefingService.getDailyBriefing('user-1', 'project_manager');
+
+      expect(result.raidWatch.map(r => r.resourceName)).toEqual(['Pat Owner', 'Sapphire Dev', 'DBJ']);
     });
 
     it('builds RAID watch items from blocked tasks', async () => {
@@ -599,7 +631,7 @@ describe('DailyBriefingService', () => {
 
     it('shows resource names for RAID action items for manager roles', async () => {
       const actions = [
-        { id: 'a-1', description: 'Action', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, resourceName: 'Alice' },
+        { id: 'a-1', title: 'Action', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, ownerId: null, ownerResourceName: null, ownerText: 'Alice' },
       ];
       setupDefaultResults({ 8: actions });
 
@@ -620,15 +652,16 @@ describe('DailyBriefingService', () => {
       expect(dueTodayCallArgs[1]).toEqual(['user-1', 'p-1', 'user-1']);
     });
 
-    it('restricted roles include action assigned filter params', async () => {
+    it('restricted roles see only the overdue RAID actions they own', async () => {
       setupDefaultResults();
 
       await dailyBriefingService.getDailyBriefing('user-1', 'team_member');
 
-      // overdueActions query (index 7 in query calls):
-      // params: [...memberParams, ...actionAssignedParams] = ['p-1', 'user-1', 'user-1']
+      // overdueActions query (index 7 in query calls): RAID actions owned by the user
+      // params: [...memberParams, ...ownerParams] = ['p-1', 'user-1', 'user-1']
       const overdueActionsCallArgs = queryMock.mock.calls[7];
       expect(overdueActionsCallArgs[1]).toEqual(['p-1', 'user-1', 'user-1']);
+      expect(overdueActionsCallArgs[0]).toContain('pr.owner_id = ?');
     });
 
     it('restricted roles include owner filter for open issues', async () => {
@@ -691,9 +724,9 @@ describe('DailyBriefingService', () => {
       expect(result.actionItems.pendingProposals).toBe(0);
     });
 
-    it('handles action item with empty string description', async () => {
+    it('handles an action with an empty title', async () => {
       const actions = [
-        { id: 'a-4', description: '', due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, resourceName: null },
+        { id: 'a-4', title: '', due_date: '2026-09-10', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, resourceName: null },
       ];
       setupDefaultResults({ 8: actions });
 
@@ -705,7 +738,7 @@ describe('DailyBriefingService', () => {
 
     it('handles resourceName as null in RAID items for manager roles', async () => {
       const actions = [
-        { id: 'a-5', description: 'Test', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, resourceName: null },
+        { id: 'a-5', title: 'Test', projectId: 'p-1', projectName: 'P1', projectCode: 'P1', overdueDays: 1, ownerId: null, ownerResourceName: null, ownerText: null },
       ];
       setupDefaultResults({ 8: actions });
 

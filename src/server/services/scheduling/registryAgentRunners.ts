@@ -5,6 +5,7 @@ import { AgentActivityLogService } from '../AgentActivityLogService';
 import type { Project } from '../ProjectService';
 import logger from '../../utils/logger';
 import { isOverdue } from '../../utils/calendarDate';
+import { databaseService } from '../../database/connection';
 
 // ---------------------------------------------------------------------------
 // Agent 2 — Budget Burn-Rate
@@ -175,12 +176,23 @@ export async function runMeetingFollowUpAgent(
   const invocationResult = await agentRegistry.invoke('meeting-followup-v1', { projectId: project.id }, ctx);
   if (!invocationResult.success) throw new Error(invocationResult.error || 'Meeting agent failed');
   const analyses = invocationResult.output.analyses;
-  if (analyses.length === 0) {
+
+  // Overdue meeting actions are RAID actions now (source 'meeting'), so one marked done in the
+  // RAID log stops being reported — the analysis JSON is only a snapshot of what was said.
+  const openMeetingActions = await databaseService.query<{ due_date: string }>(
+    `SELECT due_date FROM project_risks
+     WHERE project_id = ? AND type = 'action' AND source = 'meeting' AND due_date IS NOT NULL
+       AND status NOT IN ('completed', 'closed', 'cancelled', 'deferred')`,
+    [project.id],
+  );
+  const overdueActions = openMeetingActions.filter(a => isOverdue(a.due_date)).length;
+
+  if (analyses.length === 0 && overdueActions === 0) {
     await activityLog.log({
       projectId: project.id,
       agentName: 'meeting',
       result: 'skipped',
-      summary: 'No meeting analyses found for this project',
+      summary: 'No meeting analyses or overdue meeting actions for this project',
     });
     return 0;
   }
@@ -189,53 +201,62 @@ export async function runMeetingFollowUpAgent(
   const notifyUserId = project.projectManagerId || project.createdBy;
 
   for (const analysis of analyses) {
-    const problems: string[] = [];
-
     const unappliedUpdates = analysis.taskUpdates.filter(
       (_: any, idx: number) => !analysis.appliedItems.includes(idx),
     );
-    if (unappliedUpdates.length > 0) {
-      problems.push(`${unappliedUpdates.length} unapplied task update(s)`);
-    }
-
-    const overdueItems = analysis.actionItems.filter((item: any) => {
-      if (!item.dueDate) return false;
-      return isOverdue(item.dueDate);
-    });
-    if (overdueItems.length > 0) {
-      problems.push(`${overdueItems.length} overdue action item(s)`);
-    }
-
-    if (problems.length === 0) {
+    if (unappliedUpdates.length === 0) {
       await activityLog.log({
         projectId: project.id,
         agentName: 'meeting',
         result: 'skipped',
-        summary: `Meeting analysis "${analysis.id}" — nothing overdue or unapplied`,
+        summary: `Meeting analysis "${analysis.id}" — nothing unapplied`,
       });
       continue;
     }
 
+    const problem = `${unappliedUpdates.length} unapplied task update(s)`;
     await notificationService.create({
       userId: notifyUserId,
       type: 'meeting_followup',
-      severity: overdueItems.length > 2 ? 'high' : 'medium',
+      severity: 'medium',
       title: `Meeting Follow-Up: "${project.name}"`,
-      message: problems.join('. ') + '.',
+      message: `${problem}.`,
       projectId: project.id,
       linkType: 'meeting',
       linkId: analysis.id,
     });
 
-    logger.info(`[Agent:Meeting] Alert for "${project.name}": ${problems.join('; ')}`);
+    logger.info(`[Agent:Meeting] Alert for "${project.name}": ${problem}`);
     alertCount++;
 
     await activityLog.log({
       projectId: project.id,
       agentName: 'meeting',
       result: 'alert_created',
-      summary: problems.join('. ') + '.',
-      details: { analysisId: analysis.id, unappliedUpdates: unappliedUpdates.length, overdueItems: overdueItems.length },
+      summary: `${problem}.`,
+      details: { analysisId: analysis.id, unappliedUpdates: unappliedUpdates.length },
+    });
+  }
+
+  if (overdueActions > 0) {
+    const problem = `${overdueActions} overdue meeting action(s) in the RAID log`;
+    await notificationService.create({
+      userId: notifyUserId,
+      type: 'meeting_followup',
+      severity: overdueActions > 2 ? 'high' : 'medium',
+      title: `Meeting Follow-Up: "${project.name}"`,
+      message: `${problem}.`,
+      projectId: project.id,
+      linkType: 'raid',
+    });
+    logger.info(`[Agent:Meeting] Alert for "${project.name}": ${problem}`);
+    alertCount++;
+    await activityLog.log({
+      projectId: project.id,
+      agentName: 'meeting',
+      result: 'alert_created',
+      summary: `${problem}.`,
+      details: { overdueActions },
     });
   }
 
