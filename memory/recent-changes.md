@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Schedule Review 1.8 + Monte Carlo empty plans
+
+- R38 bottleneck task (info), R40 sprint left open after its end (low), from the retired agents; R39 long chain dropped (normal in sequential plans: 7/18 good templates). Monte Carlo nightly check skips plans with no tasks instead of logging an error.
+
 ## 2026-10-04 — agents slimmed
 
 - Nightly scan = 3 checks, no AI: delays (working days; AI Reschedule proposes on request), budget (EVM metrics, labour + expenses), Monte Carlo (working-day lateness). One unread alert per plan/project (`linkId`).

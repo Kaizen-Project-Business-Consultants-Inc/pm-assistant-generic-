@@ -2829,6 +2829,8 @@ The column mapping component (`ColumnMapper`) is shared between the "From File" 
 
 ### Schedule Review (automatic after import, on demand from the toolbar)
 
+*Rules v1.8 (Oct 2026) adds R38 "Bottleneck task" (info — shown, no score deduction): an open task with 4 or more open tasks waiting directly on it; and R40 "Sprint left open after its end" (low): a sprint not completed more than 5 working days after its end date. Both came from the retired Dependency Risk and Project Hygiene agents; their long-chain check was not kept (normal in sequential plans).*
+
 *Rules v1.7 (Oct 2026) adds R37 "Work starting soon with no one named" (medium): an open leaf task starting within 14 days (or already started) whose Assigned To or a % person is a generic role. R11 now ignores generic roles and treats a placeholder email (`@example.com`) as no email.*
 
 *Rules v1.5 (Sep 2026) adds R35 "Heading over a single task" and R36 "Heading with too many tasks directly under it" (> 15), both low.*

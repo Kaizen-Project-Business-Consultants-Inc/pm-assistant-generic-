@@ -2,6 +2,11 @@
 
 Source of truth: Claude Doc "Schedule Review Spec" (https://claude.ai/code/artifact/3ca60bdf-7674-4668-b205-020981c1edc7), also exported as PDF to the user on 2026-09-16. This file carries enough of it to keep building without the doc.
 
+## Rules v1.8 (2026-10-04) — R38 bottleneck task, R40 open sprint (from the retired agents)
+- R38 (info, no deduction): open leaf task with 4+ open leaf tasks waiting directly on it. No built-in template trips it.
+- R40 (low, schedule-wide): a sprint not completed/cancelled more than 5 working days after its end date (input `sprints` from ScheduleReviewService).
+- R39 "long chain of linked tasks" was tried and dropped: 7 of 18 good templates have 12–20-task chains — normal in a sequential plan. Number R39 stays unused.
+
 ## Rules v1.7 (2026-10-01) — R37 generic role on work starting soon
 - R37 (medium): open leaf task starting within 14 calendar days (or already started) whose Assigned To or a % person is a generic role. R11 ignores generic roles and treats a placeholder (@example.com) email as no email.
 

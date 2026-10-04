@@ -12,7 +12,13 @@ import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 
-export const RULES_VERSION = '1.7';
+export const RULES_VERSION = '1.8';
+
+// 1.8 (2026-10-04): checks taken over from retired agents — R38 bottleneck task (4+ open tasks
+// wait directly on it; 'info': a risk to know about, no deduction, so the score keeps meaning "is
+// this plan well built"); R40 sprint left open more than five working days after its end ('low').
+// A "long chain of linked tasks" check (R39) was tried and dropped: 7 of the 18 well-built
+// templates have chains of 12–20 tasks — in a sequential plan that's normal, not a problem.
 
 // 1.7 (2026-10-01): R37 — work starting within two weeks still on a generic role ("Generic
 // Developer") instead of a named person. R11 ignores generic roles (R37 covers them) and treats
@@ -85,6 +91,8 @@ export interface ReviewInput {
   } | null;
   /** Sprints defined on the project (Agile plans often keep sprints outside the task list) */
   sprintCount?: number;
+  /** The project's sprints (R40: left open after their end) */
+  sprints?: Array<{ id: string; name: string; endDate?: string | null; status?: string | null }>;
   tasks: ReviewTask[];
   resources?: ReviewResource[];
   baselineCount: number;
@@ -173,6 +181,8 @@ export const RULES: Record<string, RuleMeta> = {
   R35: { id: 'R35', name: 'Heading over a single task', severity: 'low', scope: 'task' },
   R36: { id: 'R36', name: 'Heading with too many tasks directly under it', severity: 'low', scope: 'task' },
   R37: { id: 'R37', name: 'Work starting soon with no one named', severity: 'medium', scope: 'task' },
+  R38: { id: 'R38', name: 'Bottleneck task', severity: 'info', scope: 'task' },
+  R40: { id: 'R40', name: 'Sprint left open after its end', severity: 'low', scope: 'schedule' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -699,8 +709,33 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     }
   }
 
+  // R38 — Bottleneck: an open task that many open tasks wait on directly. If it slips, they all do.
+  const isOpen = (t?: ReviewTask) => !!t && !DONE_STATUSES.has(norm(t.status)) && g.leafIds.has(t.id);
+  const waitingOn = (id: string) => (g.successorsOf.get(id) || []).filter(sid => isOpen(g.byId.get(sid)));
+  const bottlenecks = g.leaves
+    .filter(t => isOpen(t) && waitingOn(t.id).length >= BOTTLENECK_SUCCESSORS)
+    .sort((a, b) => waitingOn(b.id).length - waitingOn(a.id).length);
+  if (bottlenecks.length > 0) {
+    findings.push(make('R38', bottlenecks.map(t => t.id), `${plural(bottlenecks.length, 'task')} ${bottlenecks.length === 1 ? 'has' : 'have'} ${BOTTLENECK_SUCCESSORS} or more tasks waiting directly on ${bottlenecks.length === 1 ? 'it' : 'them'}: ${bottlenecks.slice(0, 3).map(t => `'${t.name}' (${waitingOn(t.id).length} waiting)`).join(', ')}${bottlenecks.length > 3 ? ` and ${bottlenecks.length - 3} more` : ''}. If one slips, everything after it slips — start it early, put your strongest people on it, or protect it with a buffer.`));
+  }
+
+  // R40 — A sprint still open more than five working days after it ended
+  const staleSprints = (input.sprints || []).filter(sp => {
+    const end = ymd(sp.endDate);
+    if (!end || end >= today || ['completed', 'cancelled', 'closed'].includes(norm(sp.status))) return false;
+    return workingDaySpan(end, today, isWorking) - 1 > SPRINT_GRACE_WORKING_DAYS;
+  });
+  if (staleSprints.length > 0) {
+    findings.push(make('R40', [], `${plural(staleSprints.length, 'sprint')} ended more than ${SPRINT_GRACE_WORKING_DAYS} working days ago but ${staleSprints.length === 1 ? 'is' : 'are'} still open: ${staleSprints.slice(0, 3).map(sp => `'${sp.name}'`).join(', ')}${staleSprints.length > 3 ? ` and ${staleSprints.length - 3} more` : ''}. Complete ${staleSprints.length === 1 ? 'it' : 'them'} (Sprints tab) so unfinished work moves on and velocity stays accurate.`));
+  }
+
   return { findings, skipped, leafTaskCount: n };
 }
+
+/** R38: this many open tasks waiting directly on one task */
+const BOTTLENECK_SUCCESSORS = 4;
+/** R40: a sprint may stay open this many working days after its end */
+const SPRINT_GRACE_WORKING_DAYS = 5;
 
 /** R37: name a real person this many calendar days before a task starts */
 const GENERIC_NOTICE_DAYS = 14;

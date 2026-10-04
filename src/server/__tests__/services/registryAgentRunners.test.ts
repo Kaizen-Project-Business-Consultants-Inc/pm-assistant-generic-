@@ -39,3 +39,12 @@ describe('Monte Carlo check', () => {
     expect(n.message).toContain('5 working day(s)');
   });
 });
+
+describe('Monte Carlo check — empty plans', () => {
+  it('skips a plan with no tasks quietly (not an error, no alert)', async () => {
+    h.invoke.mockResolvedValue({ success: false, error: 'No tasks found for schedule: s9' });
+    expect(await runMonteCarloConfidenceAgent(project, [{ id: 's9', name: 'Empty', endDate: '2026-11-13' }], log)).toBe(0);
+    expect(h.notify).not.toHaveBeenCalled();
+    expect(log.log).toHaveBeenCalledWith(expect.objectContaining({ result: 'skipped', summary: '"Empty" has no tasks yet' }));
+  });
+});

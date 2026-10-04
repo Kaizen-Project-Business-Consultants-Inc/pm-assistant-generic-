@@ -505,7 +505,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.7') // 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.8') // 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
@@ -649,5 +649,46 @@ describe('R35 / R36 — how many tasks sit directly under a heading', () => {
     expect((r35[0] as any).taskIds).toEqual(['solo']);
     expect((r36[0] as any).taskIds).toEqual(['big']);
     expect((r36[0] as any).message).toContain("'Build' (16)");
+  });
+});
+
+describe('R38 and R40 — taken over from the retired agents (rules 1.8)', () => {
+  const fs = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
+
+  it('R38 flags an open task that 4+ open tasks wait on — info only, no score deduction', () => {
+    seq = 0;
+    const hub = task({ id: 'hub', name: 'Data model', startDate: '2026-10-01', endDate: '2026-10-09' });
+    const waiting = ['w1', 'w2', 'w3', 'w4'].map(id => task({ id, name: `Screen ${id}`, startDate: '2026-10-12', endDate: '2026-10-16', dependencies: fs('hub') }));
+    const doneWaiter = task({ id: 'w5', name: 'Done screen', status: 'completed', dependencies: fs('hub') });
+    const small = task({ id: 'small', name: 'Small', startDate: '2026-10-01', endDate: '2026-10-02' });
+    const three = ['x1', 'x2', 'x3'].map(id => task({ id, name: id, dependencies: fs('small') }));
+    const { findings } = evaluateRules(input([hub, ...waiting, doneWaiter, small, ...three]));
+    const f = rule(findings, 'R38');
+    expect(f).toHaveLength(1);
+    expect(f[0].taskIds).toEqual(['hub']); // 3 waiting isn't enough; finished waiters don't count
+    expect(f[0].message).toContain("'Data model' (4 waiting)");
+    expect(RULES.R38.severity).toBe('info');
+    const scored = scoreFindings(f as any, 10);
+    expect(scored.findings[0].pointsDeducted).toBe(0);
+  });
+
+  it('there is no R39 (a long chain is normal in a sequential plan — dropped)', () => {
+    expect((RULES as any).R39).toBeUndefined();
+  });
+
+  it('R40 flags a sprint still open more than 5 working days after its end', () => {
+    seq = 0;
+    const t = task({ name: 'Build', startDate: '2026-09-01', endDate: '2026-09-30' });
+    // TODAY is Wed 16 Sep 2026
+    const sprints = [
+      { id: 'sp1', name: 'Sprint 3', endDate: '2026-09-04', status: 'active' },      // 7 working days ago → flagged
+      { id: 'sp2', name: 'Sprint 4', endDate: '2026-09-11', status: 'active' },      // 3 working days ago → grace
+      { id: 'sp3', name: 'Sprint 2', endDate: '2026-08-21', status: 'completed' },   // done
+    ];
+    const f = rule(evaluateRules(input([t], { sprints })).findings, 'R40');
+    expect(f).toHaveLength(1);
+    expect(f[0].message).toContain("'Sprint 3'");
+    expect(f[0].message).not.toContain('Sprint 4');
+    expect(RULES.R40.severity).toBe('low');
   });
 });

@@ -105,6 +105,14 @@ export async function runMonteCarloConfidenceAgent(
     const ctx = { actorId: 'system' as const, actorType: 'system' as const, source: 'system' as const, projectId: project.id };
     const invocationResult = await agentRegistry.invoke('monte-carlo-v1', { scheduleId: schedule.id }, ctx);
     if (!invocationResult.success) {
+      // A plan with no tasks has nothing to simulate — not an error (it filled the log every night)
+      if (/no tasks/i.test(String(invocationResult.error ?? ''))) {
+        await activityLog.log({
+          projectId: project.id, agentName: 'monte_carlo', result: 'skipped',
+          summary: `"${schedule.name}" has no tasks yet`, details: { scheduleId: schedule.id, scheduleName: schedule.name },
+        });
+        continue;
+      }
       logger.error(`[Agent:MonteCarlo] Invocation failed for schedule ${schedule.id}: ${invocationResult.error}`);
       continue;
     }
