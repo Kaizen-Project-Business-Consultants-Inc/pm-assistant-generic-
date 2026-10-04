@@ -55,7 +55,8 @@ import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
 import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
 import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 import { isCalendarOverdue } from '../../utils/dateUtils';
-import { workingDaysBetween, finishAfterWorkingDays, addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../utils/workingDays';
+import { workingDaysBetween, addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../utils/workingDays';
+import { planDurationEdit } from './durationEdit';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -1214,14 +1215,12 @@ export function GanttChart({
 
     // Duration: compute new endDate
     if (field === 'duration') {
-      const days = parseInt(value.replace(/d$/i, ''), 10);
-      // Working days, start day included: 2 on a Thursday finishes Friday, 3 finishes Monday
-      const newEnd = isNaN(days) ? null : finishAfterWorkingDays(task.startDate, days, workCalendar);
-      if (!newEnd) { cancelEditing(); return; }
+      const plan = planDurationEdit(task, value, workCalendar);
+      if (!plan.ok) { cancelEditing(); return; }
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate(taskId, { endDate: newEnd });
+      onTaskUpdate(taskId, plan.patch);
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -1379,6 +1378,16 @@ export function GanttChart({
           if (e.key === 'v') {
             if (copiedValue && copiedValue.field === focusedCell.field) {
               e.preventDefault();
+              // Duration isn't stored: a pasted duration moves the finish, by the same rule as typing one
+              if (focusedCell.field === 'duration') {
+                const pasteTask = tasks.find(t => t.id === focusedCell.taskId);
+                const plan = pasteTask ? planDurationEdit(pasteTask, copiedValue.value, workCalendar) : null;
+                if (!plan?.ok) return;
+                onTaskUpdate(focusedCell.taskId, plan.patch);
+                setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+                setTimeout(() => setPasteFlash(null), 800);
+                return;
+              }
               onTaskUpdate(focusedCell.taskId, { [focusedCell.field === 'dependency' ? 'dependencies' : focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
               setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
               setTimeout(() => setPasteFlash(null), 800);
@@ -1539,7 +1548,7 @@ export function GanttChart({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder]);
+  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar]);
 
   // When editing ends, restore focus to that cell
   useEffect(() => {

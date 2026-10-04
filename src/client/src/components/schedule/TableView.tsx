@@ -26,7 +26,8 @@ import {
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
-import { workingDaysBetween, finishAfterWorkingDays, cpmOffsetToDate } from '../../utils/workingDays';
+import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
+import { planDurationEdit } from './durationEdit';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -696,14 +697,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     if (value === originalValue) { cancelEditing(); return; }
 
     if (field === 'duration') {
-      const days = parseInt(value.replace(/d$/i, ''), 10);
-      // Working days, start day included: 2 on a Thursday finishes Friday, 3 finishes Monday
-      const newEnd = isNaN(days) ? null : finishAfterWorkingDays(task.startDate, days, workCalendar);
-      if (!newEnd) { cancelEditing(); return; }
+      const plan = planDurationEdit(task, value, workCalendar);
+      if (!plan.ok) { cancelEditing(); return; }
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate?.(taskId, { endDate: newEnd });
+      onTaskUpdate?.(taskId, plan.patch);
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -950,6 +949,16 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         if (e.key === 'v') {
           if (focusedCell && copiedValue && copiedValue.field === focusedCell.field) {
             e.preventDefault();
+            // Duration isn't stored: a pasted duration moves the finish, by the same rule as typing one
+            if (focusedCell.field === 'duration') {
+              const pasteTask = tasks.find(t => t.id === focusedCell.taskId);
+              const plan = pasteTask ? planDurationEdit(pasteTask, copiedValue.value, workCalendar) : null;
+              if (!plan?.ok) return;
+              onTaskUpdate?.(focusedCell.taskId, plan.patch);
+              setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+              setTimeout(() => setPasteFlash(null), 800);
+              return;
+            }
             const apiField = focusedCell.field === 'notes' ? 'description' : focusedCell.field;
             const val = focusedCell.field === 'progressPercentage'
               ? Math.max(0, Math.min(100, Number(copiedValue.value)))
@@ -1078,7 +1087,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar]);
 
   // Restore focusedCell when editing ends
   useEffect(() => {
