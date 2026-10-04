@@ -9,6 +9,8 @@ User approved. Portfolio overview / people / analytics and the AI portfolio summ
 
 ## 2026-10-03 — spent includes expenses; EVM actual cost by date
 
+- **T076 (2026-10-04):** T075 double-counted the sample project (its seed's spent already equalled its expenses; T072 had copied that into other_costs) → 225,000 instead of 112,500 in every tenant. T076 sets other_costs = 0 on demo projects and recomputes. Customer projects unaffected (none had other_costs + expenses).
+
 - `budget_spent` = labour + other costs + expenses everywhere (T075 backfill; recomputed on approvals and every expense change). Before, only Financials added expenses, so the dashboard, Budget Watch, analytics, portal, portfolio and EVM understated spend and CPI looked too good.
 - EVM AC = what was spent by each date (approved hours on the day worked, expenses on their date, undated other costs from the start), capped at the status date. It used to be task labour only, or "spent" smeared over the project.
 
