@@ -99,6 +99,8 @@ export const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: tr
   status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   taskType: z.enum(['task', 'story', 'bug', 'epic']).optional(),
+  // null = move the task to the top level (outdent out of its summary); the old summary rolls up
+  parentTaskId: z.string().nullable().optional(),
 });
 
 export async function scheduleRoutes(fastify: FastifyInstance) {

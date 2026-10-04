@@ -940,7 +940,7 @@ npm run test:e2e:ui
 
 **Data:** one project per run ("QA – e2e schedule behaviour …", archived at the end) with a fresh fixed plan (Oct–Nov 2026) for every test, deleted after it; a second project with 300 tasks for the speed tests, also archived. Projects a crashed run left active (older than 30 min) are archived at the start. The browser clock is fixed at Tue 13 Oct 2026 and the time zone at America/Toronto, so the Late/Due filters, dates and the Today line never move. The file signs the QA PM in itself (a password sign-in ends the user's other sessions at their next refresh) and hands its session on to the specs after it.
 
-**Known bugs:** tests named `KNOWN BUG — …` are marked `test.fail()`: they pass while the bug is there and go red the day it is fixed — then remove the `test.fail` line.
+**Known bugs:** tests named `KNOWN BUG — …` are marked `test.fail()`: they pass while the bug is there and go red the day it is fixed — then remove the `test.fail` line. (The six first found — outdent to the top level, Gantt Assigned picker, progress handle under the bar name, due-today counted Late, Table indent roll-up, Table task link in a long plan — were fixed on 2026-10-04 and are normal tests now.)
 
 **Run:**
 

@@ -607,8 +607,12 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             onClick={(e) => onCellClick(e, task.id, 'assignedTo', task)}
             title={resourceNameMap.get(task.assignedTo || '') || task.assignedTo || undefined}
           >
-            {isEditingField(editingField, 'assignedTo') && onTaskUpdate ? (
+            {resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '\u2014'}
+            {isEditingField(editingField, 'assignedTo') && onTaskUpdate && (
+              // floating: this cell clips what it holds (truncate), so the list opens in a layer
+              // above the page, under the cell \u2014 inside the cell it was cut off (2026-10-04)
               <ResourcePickerDropdown
+                floating
                 value={task.assignedTo || null}
                 onSelect={(userId) => {
                   onCancelEditing();
@@ -620,8 +624,6 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 }}
                 onClose={onCancelEditing}
               />
-            ) : (
-              resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '\u2014'
             )}
           </div>
         );

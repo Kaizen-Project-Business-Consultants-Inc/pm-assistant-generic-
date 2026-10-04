@@ -273,10 +273,13 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
         </>
       )}
 
-      {/* Bar label (shows on hover or if bar is wide enough) */}
+      {/* Bar label (shows on hover or if bar is wide enough). It lets presses through
+          (pointer-events-none): it covers the whole bar, and it used to catch presses meant for the
+          progress handle, so dragging the handle moved the bar instead (2026-10-04). A press on
+          the label itself still reaches the bar underneath, as before. */}
       {width > 60 && (
         <div
-          className="absolute inset-0 flex items-center px-1.5 z-10"
+          className="absolute inset-0 flex items-center px-1.5 z-10 pointer-events-none"
           style={task.assignedTo && !isParent && width > 60 ? { paddingRight: 22 } : undefined}
         >
           <span

@@ -148,11 +148,35 @@ describe('ChangeHistoryService', () => {
     it('bulk edit / status: writes back only the previous values it saved, on this schedule', async () => {
       withChange(row({ kind: 'bulk_status', undo_payload: JSON.stringify({ previous: [{ id: 't1', values: { status: 'in_progress', evil_column: 'x' } }] }) }));
       await changeHistoryService.undo('s-1', 'c-1');
-      const [conn, sql, params] = queryOn.mock.calls[0];
-      expect(conn).toBe('conn'); // on the transaction's connection (tenant-safe queryOn)
+      expect(queryOn.mock.calls.every(c => c[0] === 'conn')).toBe(true); // on the transaction's connection (tenant-safe queryOn)
+      const [, sql, params] = queryOn.mock.calls.find(c => String(c[1]).startsWith('UPDATE tasks'))!;
       expect(sql).toContain('SET status = ?');
       expect(sql).not.toContain('evil_column');
       expect(params).toEqual(['in_progress', 't1', 's-1']);
+    });
+
+    it('bulk edit undo: the summary tasks above (before and after the put-back) roll up (2026-10-04)', async () => {
+      // An indent undone: t1 goes back from under "launch" to under "phase" — both summaries follow
+      withChange(row({ kind: 'bulk_update', undo_payload: JSON.stringify({ previous: [{ id: 't1', values: { parent_task_id: 'phase' } }, { id: 't2', values: { name: 'Old name' } }] }) }));
+      let parent = 'launch';
+      queryOn.mockImplementation(async (_c: any, sql: string, params: any[]) => {
+        if (sql.startsWith('SELECT DISTINCT parent_task_id')) {
+          expect(params).toEqual(['t1', 's-1']); // only tasks whose roll-up fields changed, on this schedule
+          return [{ parent_task_id: parent }];
+        }
+        if (sql.startsWith('UPDATE tasks') && sql.includes('parent_task_id = ?')) parent = params[0];
+        return [];
+      });
+      await changeHistoryService.undo('s-1', 'c-1');
+      expect(recomputeParentRollup.mock.calls.map(c => c[0])).toEqual(['launch', 'phase']);
+      queryOn.mockReset();
+      queryOn.mockResolvedValue([]);
+    });
+
+    it('a name-only bulk edit undo rolls nothing up', async () => {
+      withChange(row({ kind: 'bulk_update', undo_payload: JSON.stringify({ previous: [{ id: 't2', values: { name: 'Old name' } }] }) }));
+      await changeHistoryService.undo('s-1', 'c-1');
+      expect(recomputeParentRollup).not.toHaveBeenCalled();
     });
 
     it('bulk create: deletes the created tasks', async () => {

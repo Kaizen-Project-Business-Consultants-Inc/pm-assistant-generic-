@@ -211,18 +211,16 @@ test('Gantt grid: inline edit name, start, finish, duration and status; the assi
   await expectTask(page, scheduleId, 'Docs', t => t.status === 'in_progress');
   await expect(await ganttCell(page, ids.docs, 'Status')).toHaveText('Active');
 
-  // Assignee: the picker opens on the first click (choosing someone: see the KNOWN BUG test below)
+  // Assignee: the picker opens on the first click (choosing someone: the next test)
   await (await ganttCell(page, ids.launch, 'Assigned')).click();
   await expect(page.getByPlaceholder('Search resources...')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(page.getByPlaceholder('Search resources...')).toHaveCount(0);
 });
 
-test('KNOWN BUG — Gantt grid: the Assigned picker is cut off by its cell, so no one can be chosen', async ({ page }) => {
-  // The Assigned cell has `truncate` (overflow: hidden), and the people list opens inside it —
-  // only a sliver of the search box shows and the names underneath can't be clicked.
-  // The Table's Assigned To picker works (tested above).
-  test.fail(true, 'Gantt Assigned picker is clipped by the cell (overflow hidden)');
+test('Gantt grid: the Assigned picker opens above the grid, and someone can be chosen', async ({ page }) => {
+  // Fixed 2026-10-04: the Assigned cell has `truncate` (overflow: hidden) and the people list used
+  // to open inside it — only a sliver showed. It now opens in a layer above the page, under the cell.
   await open(page, 'gantt');
   await (await ganttCell(page, plan.ids.launch, 'Assigned')).click();
   await page.getByPlaceholder('Search resources...').fill(otherResource.name);
@@ -457,10 +455,8 @@ test('Gantt indent (Tab) makes a summary that rolls up; Shift+Tab outdents one l
   await expectTask(page, scheduleId, 'Launch', t => ymd(t.startDate) === '2026-10-05' && ymd(t.endDate) === '2026-10-09');
 });
 
-test('KNOWN BUG — Gantt Shift+Tab cannot outdent a task to the top level', async ({ page }) => {
-  // The page sends parentTaskId: null; PUT /schedules/:id/tasks/:id refuses null (400 "Parent task id
-  // is not valid") — the update schema has parentTaskId as an optional string, not nullable.
-  test.fail(true, 'outdent to top level is refused by the server (parentTaskId: null → 400)');
+test('Gantt Shift+Tab outdents a task to the top level', async ({ page }) => {
+  // Fixed 2026-10-04: the page sends parentTaskId: null, which the task update used to refuse (400).
   await open(page, 'gantt');
   const { ids, scheduleId } = plan;
   await (await ganttCell(page, ids.design, 'Task Name')).click();
@@ -505,11 +501,9 @@ test('Table indent and outdent (keyboard and right-click menu)', async ({ page }
   await expectTask(page, scheduleId, 'Fix bug', t => t.parentTaskId === ids.launch);
 });
 
-test('KNOWN BUG — Table indent does not roll the new summary\'s dates up', async ({ page }) => {
-  // The Table indents through PUT /bulk/tasks, which changes parentTaskId but doesn't recompute
-  // the parent (the Gantt's single-task PUT does): Launch keeps 2–6 Nov and isn't marked summary.
-  // (The Gantt's multi-row Tab uses the same bulk path.)
-  test.fail(true, 'bulk reparent skips the summary rollup');
+test('Table indent rolls the new summary\'s dates up', async ({ page }) => {
+  // Fixed 2026-10-04: the Table indents through PUT /bulk/tasks, which used to change parentTaskId
+  // without recomputing the summary (Launch kept 2–6 Nov). The Gantt's multi-row Tab uses it too.
   await open(page, 'table');
   const { ids, scheduleId } = plan;
   await tableRow(page, ids.docs).click({ button: 'right', position: { x: 300, y: 10 } });
@@ -518,8 +512,8 @@ test('KNOWN BUG — Table indent does not roll the new summary\'s dates up', asy
   await expectTask(page, scheduleId, 'Launch', t => !!t.isSummary && ymd(t.startDate) === '2026-11-09' && ymd(t.endDate) === '2026-11-13');
 });
 
-test('KNOWN BUG — Table right-click Outdent cannot move a task to the top level', async ({ page }) => {
-  test.fail(true, 'outdent to top level is refused by the server (parentTaskId: null → 400)');
+test('Table right-click Outdent moves a task to the top level', async ({ page }) => {
+  // Fixed 2026-10-04 (parentTaskId: null used to be refused by the task update)
   await open(page, 'table');
   const { ids, scheduleId } = plan;
   await tableRow(page, ids.design).click({ button: 'right', position: { x: 300, y: 10 } });
@@ -678,10 +672,9 @@ test('Gantt bars: the progress handle sets % complete (a bar too short for its n
   await expectTask(page, plan.scheduleId, 'Launch', t => (t.progressPercentage ?? 0) >= 60 && (t.progressPercentage ?? 0) <= 80 && ymd(t.startDate) === '2026-11-02');
 });
 
-test('KNOWN BUG — Gantt bars: on a bar wide enough to show its name, the progress handle cannot be grabbed', async ({ page }) => {
-  // The name label (absolute inset-0, z-10, after the handle) covers the handle, so pressing on
-  // the handle starts a bar MOVE instead: the task's dates change and % complete doesn't.
-  test.fail(true, 'progress handle is covered by the bar label on bars wider than 60 px');
+test('Gantt bars: the progress handle sets % complete on a bar wide enough to show its name', async ({ page }) => {
+  // Fixed 2026-10-04: the name label covers the bar and used to catch the press, so dragging the
+  // handle MOVED the bar. The label now lets presses through.
   await api(setup, 'put', `/api/v1/schedules/${plan.scheduleId}/tasks/${plan.ids.build}`, { progressPercentage: 20 });
   await open(page, 'gantt', { zoom: 'day' });
   await page.waitForLoadState('networkidle'); // late answers re-draw the timeline (and scroll it back to today)
@@ -757,11 +750,9 @@ test('Gantt: search, Late / My Tasks quick filters, column sort, collapse a summ
   await expect(ganttRows(page)).toHaveCount(7);
 });
 
-test('KNOWN BUG — a task due today counts as Late (west of UTC)', async ({ page }) => {
-  // utils/taskRiskAssessment.ts reads 'YYYY-MM-DD' with new Date(), i.e. midnight UTC — in
-  // Toronto that is the evening before, so a task finishing today is "late" (and its row gets
-  // the red edge). The task counts above use isCalendarOverdue and don't have this problem.
-  test.fail(true, 'due-today tasks show as Late in time zones behind UTC');
+test('a task due today is not Late (west of UTC)', async ({ page }) => {
+  // Fixed 2026-10-04: utils/taskRiskAssessment.ts read 'YYYY-MM-DD' with new Date(), i.e. midnight
+  // UTC — in Toronto the evening before — so a task finishing today was "late".
   await api(setup, 'put', `/api/v1/schedules/${plan.scheduleId}/tasks/${plan.ids.fix}`, { endDate: '2026-10-13' });
   await open(page, 'gantt');
   await expect(page.getByRole('tab', { name: /^Late/ })).toContainText('0', { timeout: 5_000 });
@@ -987,10 +978,9 @@ test.describe('300-task plan', () => {
     await expect(row).toHaveClass(highlighted);
   });
 
-  test('KNOWN BUG — Table: a task link does not scroll a long (virtualised) plan to the task', async ({ page }) => {
-    // TableView looks the row up in the page to scroll to it, but with 100+ rows only the
-    // rows on screen exist, so a task further down is never reached (the Gantt scrolls by position).
-    test.fail(true, 'Table deep link to an off-screen row in a 100+ task plan does nothing');
+  test('Table: a task link scrolls a long (virtualised) plan to the task', async ({ page }) => {
+    // Fixed 2026-10-04: with 100+ rows only the rows on screen exist; the Table now scrolls to
+    // where the row sits first, then centres it once it has rendered.
     const b = big!;
     await openSchedule(page, b.projectId, b.scheduleId, 'table', { query: `&schedule=${b.scheduleId}&task=${b.deepId}` });
     await expect(tableRow(page, b.deepId)).toBeInViewport({ timeout: 10_000 });

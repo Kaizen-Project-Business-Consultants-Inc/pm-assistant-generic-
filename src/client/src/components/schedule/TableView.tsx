@@ -58,6 +58,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
   // Focus a task from a link: open its collapsed phases and groups, then scroll its row
   // to the middle once it has rendered (a few frames — data and layout may still settle).
+  // In a long plan (100+ rows, virtualised) only the rows on screen exist, so the table is
+  // first scrolled to where the row sits; then it renders and is centred (2026-10-04).
+  const virtualRowsRef = useRef<{ on: boolean; rows: GanttTask[] }>({ on: false, rows: [] });
   useEffect(() => {
     if (!focusTaskId) return;
     const byId = new Map(tasks.map(t => [t.id, t]));
@@ -72,6 +75,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     const seek = () => {
       const row = document.querySelector(`tr[data-task-id="${CSS.escape(focusTaskId)}"]`);
       if (row) { row.scrollIntoView({ block: 'center' }); return; }
+      const box = scrollContainerRef.current;
+      const idx = virtualRowsRef.current.on ? virtualRowsRef.current.rows.findIndex(t => t.id === focusTaskId) : -1;
+      if (box && idx >= 0) {
+        box.scrollTop = Math.max(0, idx * ROW_H - box.clientHeight / 2);
+        setScrollTop(box.scrollTop);
+      }
       if (++tries < 30) frame = requestAnimationFrame(seek);
     };
     frame = requestAnimationFrame(seek);
@@ -397,6 +406,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const containerHeight = scrollContainerRef.current?.clientHeight ?? 600;
   const startRow = useVirtualization ? Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN) : 0;
   const endRow = useVirtualization ? Math.min(visibleSorted.length, Math.ceil((scrollTop + containerHeight) / ROW_H) + OVERSCAN) : visibleSorted.length;
+  virtualRowsRef.current = { on: useVirtualization, rows: visibleSorted };
 
   const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField;
 

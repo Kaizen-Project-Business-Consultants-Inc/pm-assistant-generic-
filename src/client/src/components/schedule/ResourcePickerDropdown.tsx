@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -25,9 +26,19 @@ interface ResourcePickerDropdownProps {
   onSelect: (userId: string, resourceName: string) => void;
   onClear: () => void;
   onClose: () => void;
+  /**
+   * Open in a layer above the page, placed under the cell it is in, instead of inside the cell.
+   * For cells that clip what they hold (the Gantt grid: `truncate`, and a scrolling panel) — there
+   * the list was cut off and no one could be picked (2026-10-04).
+   */
+  floating?: boolean;
 }
 
-export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: ResourcePickerDropdownProps) {
+/** w-56 */
+const FLOAT_WIDTH = 224;
+const EDGE = 8;
+
+export function ResourcePickerDropdown({ value, onSelect, onClear, onClose, floating = false }: ResourcePickerDropdownProps) {
   const [search, setSearch] = useState('');
   const [skillFilter, setSkillFilter] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -71,18 +82,51 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
     inputRef.current?.focus();
   }, []);
 
+  // Floating: the cell the picker belongs to (a marker is left in it), and where to draw the list
+  const anchorRef = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!floating) return;
+    const place = () => {
+      const cell = anchorRef.current?.parentElement;
+      if (!cell) return;
+      const r = cell.getBoundingClientRect();
+      const h = dropdownRef.current?.offsetHeight ?? 0;
+      const left = Math.max(EDGE, Math.min(r.left, window.innerWidth - FLOAT_WIDTH - EDGE));
+      const below = r.bottom + 4;
+      // no room below: open upwards
+      const top = h > 0 && below + h > window.innerHeight - EDGE && r.top - 4 - h >= EDGE ? r.top - 4 - h : below;
+      setPos(p => (p && p.top === top && p.left === left ? p : { top, left }));
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [floating, resources.length]);
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+        // a press on the picker's own cell is not "outside" (the cell's click keeps it open)
+        if (floating && anchorRef.current?.parentElement?.contains(target)) return;
         onClose();
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-  }, [onClose]);
+  }, [onClose, floating]);
 
-  return (
-    <div ref={dropdownRef} className="absolute top-full left-0 mt-1 z-50 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
+  const panel = (
+    <div
+      ref={dropdownRef}
+      className={`${floating ? 'fixed text-left' : 'absolute top-full left-0 mt-1'} z-50 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden`}
+      // opacity (not visibility) until placed, so the search box can take focus straight away
+      style={floating ? { top: pos?.top ?? 0, left: pos?.left ?? 0, opacity: pos ? 1 : 0 } : undefined}
+    >
       {/* Current assignment */}
       {currentResource && (
         <div className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
@@ -143,5 +187,13 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose }: Re
         />
       </div>
     </div>
+  );
+
+  if (!floating) return panel;
+  return (
+    <>
+      <span ref={anchorRef} hidden />
+      {createPortal(panel, document.body)}
+    </>
   );
 }

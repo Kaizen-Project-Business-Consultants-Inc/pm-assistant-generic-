@@ -54,6 +54,30 @@ export const BULK_UPDATE_COLUMNS: Record<string, string> = {
 };
 const DATE_COLUMNS = new Set(['start_date', 'end_date']);
 
+/** Task columns a summary task's roll-up (dates, %, status, totals) is worked out from */
+export const ROLLUP_COLUMNS = new Set(['start_date', 'end_date', 'estimated_days', 'progress_percentage', 'status', 'parent_task_id']);
+
+/** The summary tasks the given tasks of this schedule sit under right now (read before a re-parent AND after it) */
+export async function parentIdsOf(run: Run, scheduleId: string, taskIds: string[]): Promise<string[]> {
+  if (taskIds.length === 0) return [];
+  const rows = (await run(
+    `SELECT DISTINCT parent_task_id FROM tasks WHERE id IN (${taskIds.map(() => '?').join(',')}) AND schedule_id = ? AND parent_task_id IS NOT NULL`,
+    [...taskIds, scheduleId])) as Array<{ parent_task_id: string | null }>;
+  return (Array.isArray(rows) ? rows : []).map(r => r.parent_task_id).filter((p): p is string => !!p);
+}
+
+/**
+ * Bring the given summary tasks' dates and totals up to date — one after another, awaited, so a
+ * caller records Schedule History AFTER these writes (else "the plan changed since" would trip).
+ * A parent left with no tasks stops being a summary (recomputeParentRollup does that).
+ */
+export async function rollUpSummaries(parentIds: Iterable<string>): Promise<void> {
+  for (const pid of new Set(parentIds)) {
+    await scheduleService.recomputeParentRollup(pid).catch((err: any) =>
+      logger.error('[Rollup] recomputeParentRollup error after a bulk change', { pid, error: err?.message }));
+  }
+}
+
 export interface RecordInput {
   projectId: string;
   scheduleId: string;
@@ -551,8 +575,12 @@ class ChangeHistoryService {
       case 'bulk_status': {
         const prev = (p.previous ?? []) as PreviousValues[];
         const allowed = new Set(Object.values(BULK_UPDATE_COLUMNS));
+        // Summary tasks above the tasks put back (old and new parents) roll up afterwards
+        const rollupIds = prev.filter(p => Object.keys(p.values).some(c => ROLLUP_COLUMNS.has(c))).map(p => p.id);
+        const parents: string[] = [];
         await databaseService.transaction(async (conn) => {
           const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
+          parents.push(...await parentIdsOf(run, scheduleId, rollupIds));
           const datesBefore = await taskDatesOf(run, prev.filter(p => 'start_date' in p.values || 'end_date' in p.values).map(p => p.id));
           for (const p of prev) {
             const cols = Object.keys(p.values).filter(c => allowed.has(c));
@@ -564,7 +592,9 @@ class ChangeHistoryService {
           }
           // booked hours move back with their tasks
           await moveBookingsWithTasks(run, datesBefore);
+          parents.push(...await parentIdsOf(run, scheduleId, rollupIds));
         });
+        await rollUpSummaries(parents);
         break;
       }
       case 'bulk_create': {

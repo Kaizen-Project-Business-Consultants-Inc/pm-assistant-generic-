@@ -56,7 +56,7 @@ import { QuickFilterPills, type QuickFilterType } from './schedule-tab/QuickFilt
 import { buildTaskRiskMap, DEFAULT_RISK_THRESHOLDS, type RiskThresholds } from '../../utils/taskRiskAssessment';
 import { useAuthStore } from '../../stores/authStore';
 import { announce } from '../../utils/announce';
-import { isCalendarOverdue } from '../../utils/dateUtils';
+import { isCalendarOverdue, toCalendarDate } from '../../utils/dateUtils';
 import type { WorkCalendar } from '../../utils/workingDays';
 
 
@@ -1002,9 +1002,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       const status = t.status?.toLowerCase();
       const isFinished = status === 'completed' || status === 'done' || status === 'cancelled';
       if (t.endDate && !isFinished) {
-        const end = new Date(t.endDate);
-        end.setHours(0, 0, 0, 0);
-        if (end >= now && end <= dueEnd) counts.due++;
+        // the stored calendar day at LOCAL midnight (new Date('YYYY-MM-DD') is the day before west of UTC)
+        const end = toCalendarDate(t.endDate);
+        if (end && end >= now && end <= dueEnd) counts.due++;
       }
       if (risk === 'late') counts.late++;
       if (risk === 'at_risk' || risk === 'critical') counts.at_risk++;
@@ -1027,9 +1027,9 @@ function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImpo
       switch (quickFilter) {
         case 'due': {
           if (!t.endDate || isFinished) return false;
-          const end = new Date(t.endDate); end.setHours(0, 0, 0, 0);
+          const end = toCalendarDate(t.endDate);
           const dueEnd = new Date(now); dueEnd.setDate(dueEnd.getDate() + dueWeeks * 7);
-          return end >= now && end <= dueEnd;
+          return !!end && end >= now && end <= dueEnd;
         }
         case 'late': return risk === 'late';
         case 'at_risk': return risk === 'at_risk' || risk === 'critical';

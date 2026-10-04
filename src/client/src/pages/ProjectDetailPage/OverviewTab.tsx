@@ -37,7 +37,7 @@ import { CustomFieldManager } from '../../components/customfields/CustomFieldMan
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
 import { ScheduleHealthCard } from '../../components/schedule/review/ScheduleHealthCard';
-import { formatCalendarDate, isCalendarOverdue } from '../../utils/dateUtils';
+import { formatCalendarDate, isCalendarOverdue, toCalendarDate } from '../../utils/dateUtils';
 
 interface ProjectOverview {
   id: string;
@@ -212,7 +212,8 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ? Math.min(100, Math.max(0, ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100))
     : 0;
   const taskProgressPct = summary?.portfolio?.avgProgress ?? summary?.tasks?.completionRate ?? 0;
-  const isOverdue = end ? now > end : false;
+  // calendar days: a project finishing today is not overdue (new Date(end) is midnight UTC)
+  const isOverdue = endDate ? isCalendarOverdue(endDate) : false;
   const onTrack = isOverdue ? false : taskProgressPct >= elapsedPct - 10;
 
   const budgetAllocated = project.budgetAllocated || 0;
@@ -237,15 +238,18 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const spi: number | null = evmData?.currentMetrics?.SPI ?? null;
   const eac: number | null = evmData?.currentMetrics?.EAC ?? null;
 
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
   const dueSoonTasks = allTasks
     .filter((t: any) => {
       if (t.status === 'completed' || t.status === 'done') return false;
       const dueDate = t.endDate || t.end_date || t.dueDate || t.due_date;
       if (!dueDate) return false;
-      const due = new Date(dueDate);
-      const in7Days = new Date();
+      // calendar days in the user's own day, so a task due today is "due today", not gone
+      const due = toCalendarDate(dueDate);
+      const in7Days = new Date(today);
       in7Days.setDate(in7Days.getDate() + 7);
-      return due >= now && due <= in7Days;
+      return !!due && due >= today && due <= in7Days;
     })
     .sort((a: any, b: any) => {
       const da = a.endDate || a.end_date || a.dueDate || a.due_date || '';
@@ -679,7 +683,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
       <div className="space-y-2 max-h-[200px] overflow-y-auto">
         {dueSoonTasks.map((t: any) => {
           const dueDate = t.endDate || t.end_date || t.dueDate || t.due_date;
-          const daysLeft = Math.ceil((new Date(dueDate).getTime() - now.getTime()) / 86400000);
+          const daysLeft = Math.round(((toCalendarDate(dueDate)?.getTime() ?? today.getTime()) - today.getTime()) / 86400000);
           return (
             <div key={t.id} className="flex items-start gap-2.5">
               <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${

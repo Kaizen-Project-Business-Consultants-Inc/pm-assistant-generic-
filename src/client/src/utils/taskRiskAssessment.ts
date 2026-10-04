@@ -1,3 +1,5 @@
+import { toCalendarDate } from './dateUtils';
+
 export type TaskRiskLevel = 'none' | 'at_risk' | 'critical' | 'late';
 
 export interface RiskThresholds {
@@ -23,15 +25,16 @@ export function assessTaskRisk(task: TaskLike, thresholds: RiskThresholds = DEFA
   if (status === 'completed' || status === 'done' || status === 'cancelled') return 'none';
   if (!task.startDate || !task.endDate) return 'none';
 
+  // Calendar days in the user's own day: 'YYYY-MM-DD' read at LOCAL midnight. new Date('2026-10-13')
+  // is midnight UTC — the evening before for anyone west of UTC — which made a task due today "late".
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const end = new Date(task.endDate);
-  end.setHours(0, 0, 0, 0);
+  const end = toCalendarDate(task.endDate);
+  const start = toCalendarDate(task.startDate);
+  if (!end || !start) return 'none';
 
   if (end < now) return 'late';
 
-  const start = new Date(task.startDate);
-  start.setHours(0, 0, 0, 0);
   const totalDuration = end.getTime() - start.getTime();
   if (totalDuration <= 0) return 'none';
 

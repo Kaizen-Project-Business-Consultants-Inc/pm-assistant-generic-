@@ -13,6 +13,7 @@ import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../ut
 import { planChanged } from '../../services/domainEvents';
 import {
   changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary,
+  ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries,
 } from '../../services/ChangeHistoryService';
 
 import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
@@ -365,8 +366,21 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         else delete u.progressPercentage;
       }
 
+      // Summary tasks above the edited tasks roll up afterwards — the parents before the change
+      // (a task moved out) and after it (a task moved in), like the single-task edit
+      const rollupUpdates = body.updates.filter(u => u.id && u.scheduleId && Object.keys(BULK_UPDATE_COLUMNS)
+        .some(k => (u as any)[k] !== undefined && ROLLUP_COLUMNS.has(BULK_UPDATE_COLUMNS[k])));
+      const rollupSchedules = [...new Set(rollupUpdates.map(u => u.scheduleId))];
+      const parents: string[] = [];
+      const readParents = async (run: (sql: string, params: any[]) => Promise<any>) => {
+        for (const sid of rollupSchedules) {
+          parents.push(...await parentIdsOf(run, sid, rollupUpdates.filter(u => u.scheduleId === sid).map(u => u.id)));
+        }
+      };
+
       await databaseService.transaction(async (connection) => {
         const run = (sql: string, params: any[]) => databaseService.queryOn(connection, sql, params);
+        await readParents(run);
         const datesBefore = await taskDatesOf(run, body.updates.filter(u => u.startDate !== undefined || u.endDate !== undefined).map(u => u.id));
         for (const u of body.updates) {
           try {
@@ -412,7 +426,11 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         }
         // booked hours move with their tasks
         await moveBookingsWithTasks(run, datesBefore);
+        await readParents(run);
       });
+
+      // Awaited BEFORE History records the change, so it doesn't look "changed since"
+      await rollUpSummaries(parents);
 
       const doneIds = new Set(succeeded.map(s => s.id));
       for (const sid of new Set(body.updates.filter(u => doneIds.has(u.id)).map(u => u.scheduleId))) {
@@ -472,6 +490,9 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       // databaseService.query casts it as T[], but it is really the header.
       const header = result as any;
       const updated = header?.affectedRows ?? body.taskIds.length;
+
+      // A summary's status and % follow its tasks — roll up before History records
+      if (updated > 0) await rollUpSummaries(await parentIdsOf((sql, params) => databaseService.query(sql, params), body.scheduleId, body.taskIds));
 
       planChanged(body.scheduleId);
       const projectId = updated > 0 ? await projectOfSchedule(body.scheduleId) : null;

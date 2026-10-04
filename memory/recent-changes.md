@@ -1,5 +1,16 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Six schedule bugs from the safety net fixed
+
+Branch `fix-six-schedule-bugs` (not merged/deployed). The six `KNOWN BUG` tests in `e2e/schedule-behaviour.spec.ts` are now normal tests (no `test.fail`).
+1. **Outdent to the top level:** `updateTaskSchema` (routes/scheduling/schedules.ts) takes `parentTaskId: null`; ScheduleService.updateTask already cleared it and rolled the OLD summary up (it drops `is_summary` when no children are left). MCP never sets a parent on update — nothing to change there.
+2. **Gantt Assigned picker:** `ResourcePickerDropdown` has `floating` — portal to `<body>`, fixed position under its cell (flips up when no room, follows scroll/resize); a press on its own cell isn't "outside". Gantt grid uses it and keeps showing the name in the cell. The Table's picker is unchanged.
+3. **Progress handle under the bar name:** the name label on `GanttTimelineBar` is `pointer-events-none` — presses reach the handle; a press on the name still reaches the bar (move/click) as before. Stacking order unchanged (the right-edge resize still wins at 100%).
+4. **Due today = Late west of UTC:** `utils/taskRiskAssessment.ts` reads dates with `toCalendarDate` (local midnight). Sweep: ScheduleTab "Due" filter count + list (same `new Date('YYYY-MM-DD')` mistake — a task due today dropped out of Due), Overview "project overdue" (now `isCalendarOverdue`), Overview "Due soon" list and its "Due today / N days left". Left as they are (display only, server-judged lists): KPIDrillInPage days-overdue, ProjectsPM / ProjectDetailPage days-left, AnalyticsPage.
+5. **Bulk edit roll-up:** `PUT /bulk/tasks` reads the parents of tasks whose dates/%/status/duration/parent change, before and after (same transaction connection, scoped to each task's schedule), then rolls them up, awaited BEFORE History records. Same gap fixed in `PUT /bulk/tasks/status` and in History's Undo of a bulk edit/status (helpers `parentIdsOf`, `rollUpSummaries`, `ROLLUP_COLUMNS` in ChangeHistoryService.ts).
+6. **Table task link in a long plan:** TableView's seek scrolls the (virtualised, 100+ rows) table to the row's position when the row isn't rendered yet, then centres it as before.
+Guards: server `routes/taskOutdentTopLevel.test.ts`, `routes/bulkUpdateRollup.test.ts`, ChangeHistoryService undo roll-up tests; client `utils/taskRiskAssessment.test.ts` (runs in America/Toronto), `components/ganttGridAndBarFixes.test.tsx`. All failed on the old code.
+
 ## 2026-10-04 — Schedule behaviour safety net (before splitting the schedule screens)
 
 Branch `schedule-safety-net` (tests only, no app code). `e2e/schedule-behaviour.spec.ts` + `e2e/schedule-helpers.ts`, in `playwright.staging-full.config.ts`: real-browser checks on staging of the Gantt, Table and Kanban — inline edits, keyboard, copy/paste, indent/outdent, bulk delete + History/Ctrl+Z undo, bar drag/resize/progress/link, search/filters/sort/collapse, columns kept after reload, Timeline strip, empty-row insert, task links, light/dark screenshots (baselines committed), 300-task speed baseline (time from opening to rows on screen, 6 runs: Gantt 1.9–3.6 s with one 8.1 s outlier, Table 1.8–2.6 s). Own project per run, fresh fixed plan per test, everything archived. See TESTING_GUIDE 9g.
