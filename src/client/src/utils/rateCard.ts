@@ -9,7 +9,11 @@ export function todayYmd(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-/** The card rate for a role in force on `day` (the latest one starting on or before it), or null */
+/**
+ * The card rate for a role in force on `day` (the latest one starting on or before it), or null.
+ * Same pick as the server's ratesOn (RateCardService) — src/server/__tests__/utils/rulesParity.test.ts
+ * fails until both match.
+ */
 export function cardRateOn(role: string, day: string, card: RateCardEntry[]): RateCardEntry | null {
   const key = roleKey(role);
   let best: RateCardEntry | null = null;

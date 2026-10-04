@@ -5,7 +5,8 @@
  * top-level tasks in sort order, each followed depth-first by its children, siblings ordered
  * by `sortOrder`, start date, creation time, then id. `sortOrder` itself is NOT the row number — schedules number
  * it from 0 or 1 depending on how they were created, and it restarts under each parent.
- * If one of these changes, change the other.
+ * If one of these changes, change the other — __tests__/utils/rulesParity.test.ts feeds both the
+ * same plans and fails until they match.
  */
 export interface RowNumberTask {
   id: string;

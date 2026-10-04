@@ -55,6 +55,8 @@ function ymdLocal(d: Date): string {
  * The rates a resource is paid on `day` (YYYY-MM-DD), given the whole card. Pure, so
  * reports can load the card once and ask for any number of resources and weeks.
  * A resource on the card whose role has no rate yet on that day falls back to its own rate.
+ * The screen picks the card rate the same way (src/client/src/utils/rateCard.ts cardRateOn) —
+ * __tests__/utils/rulesParity.test.ts fails until both match.
  */
 export function ratesOn(resource: RatedResource, day: string, card: RateCardEntry[]): Rates {
   if (resource.useRateCard) {

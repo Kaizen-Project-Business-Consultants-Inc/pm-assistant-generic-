@@ -2,6 +2,10 @@
  * Working-day steps for moving tasks. Dates are UTC-midnight Dates standing for
  * calendar days. Which days are worked comes from the project calendar
  * (`calendarService.workingDayChecker`); `weekdaysOnly` is the fallback.
+ *
+ * The screen does the same arithmetic in src/client/src/utils/workingDays.ts (Duration column,
+ * typing a duration, dragging bars). __tests__/utils/rulesParity.test.ts feeds both copies the same
+ * dates and calendars — change one and that test fails until both match.
  */
 const DAY_MS = 86_400_000;
 

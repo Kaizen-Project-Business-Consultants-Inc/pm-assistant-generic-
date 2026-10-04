@@ -1,6 +1,8 @@
 /**
  * Flesch-Kincaid readability analysis.
  * Pure algorithmic function — no LLM needed.
+ * The screen has a copy (src/client/src/utils/readingLevel.ts); __tests__/utils/rulesParity.test.ts
+ * fails until both score text the same.
  */
 
 export interface ReadingLevelResult {

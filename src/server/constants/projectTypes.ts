@@ -2,7 +2,8 @@
  * Project types — the single list the server validates against. Must match the
  * `projects.project_type` ENUM (tenant migrations T001 + T055) and the client's
  * src/client/src/constants/projectTypes.ts. mcp-server/src/tools/projects.ts keeps its own
- * copy (separate package) — update it too.
+ * copy (separate package) — update it too. __tests__/utils/rulesParity.test.ts fails until the
+ * server, screen, MCP and latest database ENUM lists all match.
  */
 export const PROJECT_TYPES = [
   'it',

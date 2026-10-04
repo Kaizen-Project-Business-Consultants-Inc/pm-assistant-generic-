@@ -127,12 +127,33 @@ export class TaskRepository {
     return map;
   }
 
+  /**
+   * Tasks whose % complete comes from approved hours: dated, not a heading or milestone, with
+   * someone planned on them (Assigned to a resource, a person + %, or an hours booking). The one
+   * rule — ScheduleService.progressFromHoursTaskIds (on save) and the `progressFromHours` flag on
+   * every task the screens get both use it.
+   */
+  async progressFromHoursIds(taskIds: string[]): Promise<Set<string>> {
+    const ids = [...new Set(taskIds.filter(Boolean))];
+    if (ids.length === 0) return new Set();
+    const rows = await databaseService.query<{ id: string }>(
+      `SELECT t.id FROM tasks t
+        WHERE t.id IN (${ids.map(() => '?').join(',')})
+          AND t.start_date IS NOT NULL AND t.end_date IS NOT NULL
+          AND COALESCE(t.is_milestone, 0) = 0 AND COALESCE(t.is_summary, 0) = 0
+          AND (EXISTS (SELECT 1 FROM resources r WHERE r.id = t.assigned_to)
+               OR EXISTS (SELECT 1 FROM task_assignments ta WHERE ta.task_id = t.id)
+               OR EXISTS (SELECT 1 FROM resource_assignments ra WHERE ra.task_id = t.id))`, ids);
+    return new Set((Array.isArray(rows) ? rows : []).map(r => r.id));
+  }
+
   async attachDependencies(tasks: Task[]): Promise<void> {
     if (tasks.length === 0) return;
     const taskIds = tasks.map(t => t.id);
-    const [depMap, assignMap] = await Promise.all([
+    const [depMap, assignMap, fromHours] = await Promise.all([
       this.loadDependenciesForTasks(taskIds),
       taskAssignmentRepository.getForTasks(taskIds),
+      this.progressFromHoursIds(taskIds),
     ]);
     for (const task of tasks) {
       task.dependencies = depMap.get(task.id) || [];
@@ -143,6 +164,7 @@ export class TaskRepository {
         task.dependencyLagDays = first.lagDays;
       }
       task.assignments = assignMap.get(task.id) || [];
+      task.progressFromHours = fromHours.has(task.id);
     }
   }
 

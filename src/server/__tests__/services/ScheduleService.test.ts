@@ -150,6 +150,18 @@ describe('ScheduleService', () => {
       const tasks = await service.findTasksByScheduleId('s1');
       expect(tasks).toEqual([]);
     });
+
+    it("each task carries the server's progressFromHours answer, from the same query the save uses", async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.startsWith('SELECT * FROM tasks WHERE schedule_id')) return [sampleTaskRow, { ...sampleTaskRow, id: 't2' }];
+        if (sql.includes('FROM resource_assignments ra')) return [{ id: 't2' }];
+        return [];
+      });
+      const tasks = await service.findTasksByScheduleId('s1');
+      expect(tasks.map(t => [t.id, t.progressFromHours])).toEqual([['t1', false], ['t2', true]]);
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue([]);
+    });
   });
 
   describe('findTaskById', () => {

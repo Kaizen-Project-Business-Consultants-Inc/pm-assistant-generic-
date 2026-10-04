@@ -5,6 +5,10 @@
  * from the project calendar: the server sends the non-working dates for a range
  * (weekends, holidays — minus any day the calendar marks as a working exception).
  * Outside that range, or before it has loaded, Saturday and Sunday are non-working.
+ *
+ * The server does the same arithmetic in src/server/utils/workingDays.ts (moving tasks, CPM,
+ * imports). src/server/__tests__/utils/rulesParity.test.ts feeds both copies the same dates and
+ * calendars — change one and that test fails until both match.
  */
 export interface WorkCalendar {
   /** Non-working dates between `from` and `to` inclusive */
@@ -46,11 +50,12 @@ export function workingDaysBetween(start: string | null | undefined, end: string
 /**
  * The finish date for a task starting on `start` that takes `days` working days
  * (start counts as day 1 when it is a working day). Null for a bad date or days < 1.
+ * Fractional days round up, as the server's finishFor does (2.5 days → 3).
  */
 export function finishAfterWorkingDays(start: string | null | undefined, days: number, cal?: WorkCalendar | null): string | null {
   let cursor = ymd(start);
   if (!cursor || !Number.isFinite(days) || days < 1) return null;
-  let remaining = Math.floor(days);
+  let remaining = Math.ceil(days);
   for (let guard = 0; guard < 20000; guard++) {
     if (isWorkingDay(cursor, cal)) {
       remaining--;
@@ -82,7 +87,8 @@ export function nextWorkingDay(date: string | null | undefined, cal?: WorkCalend
 
 /**
  * Move `n` working days from `date` (n < 0 goes back); n = 0 returns `date` unchanged.
- * Same as the server's shiftWorking. Null for a bad date.
+ * Same as the server's shiftWorking for whole days (the screen only passes whole days; a
+ * fractional n is rounded here). Null for a bad date.
  */
 export function shiftWorkingDays(date: string | null | undefined, n: number, cal?: WorkCalendar | null): string | null {
   let cursor = ymd(date);
