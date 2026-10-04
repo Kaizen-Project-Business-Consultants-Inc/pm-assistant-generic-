@@ -2188,6 +2188,8 @@ Reviewers can filter by status, open the Review Panel for each submission, and t
 
 The **Portfolio** page provides a cross-project view of all active work with two modes selectable via a toggle in the toolbar.
 
+**What counts (October 2026):** the portfolio's totals, its people view and its analytics cover your **live** projects only — archived projects and the read-only sample project are left out. Claude's portfolio summaries use the same rule. Archived projects are still listed on the Projects page (Archived filter).
+
 ### Portfolio Dashboard (default view)
 
 The dashboard mode shows:

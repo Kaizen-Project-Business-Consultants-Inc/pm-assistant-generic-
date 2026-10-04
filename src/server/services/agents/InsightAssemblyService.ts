@@ -1,4 +1,5 @@
 import { interAgentQueryService, AgentInsight } from './InterAgentQueryService';
+import { mapWithLimit, DEFAULT_LIMIT } from '../../utils/mapWithLimit';
 
 export interface AssembledInsights {
   projectId: string;
@@ -45,10 +46,8 @@ export class InsightAssemblyService {
   }
 
   async assembleForPortfolio(projectIds: string[]): Promise<AssembledInsights[]> {
-    const results = await Promise.all(
-      projectIds.map(id => this.assembleForProject(id)),
-    );
-    return results;
+    // A few at a time: one per project all at once can use up the database connections
+    return mapWithLimit(projectIds, DEFAULT_LIMIT, id => this.assembleForProject(id));
   }
 
   private extractFinding(insight: AgentInsight): AssembledInsights['agentFindings'][0] | null {

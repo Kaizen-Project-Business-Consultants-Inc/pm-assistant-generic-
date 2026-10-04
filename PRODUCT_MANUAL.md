@@ -1542,6 +1542,8 @@ The Reports page maintains a history of all generated reports (AI reports, Statu
 
 ### Portfolio Analytics
 
+**Live projects only (2026-10-03).** `routes/reporting/portfolio.ts` (overview, `/resources`, `/analytics`), `aiContextBuilder.buildPortfolioContext` and NL `aggregate_portfolio_stats` filter `!p.isDemo && !p.archivedAt`. `/resources` computes per-project workload through `utils/mapWithLimit` (3 at a time) — all at once used up the 5-connection DB pool (`Queue limit reached`, 500 on staging with ~70 projects).
+
 The `AnalyticsSummaryService` computes portfolio-level KPIs:
 
 - Total projects by status

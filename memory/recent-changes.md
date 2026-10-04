@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — Portfolio: archived projects left out; no more 'everything at once'
+User approved. Portfolio overview / people / analytics and the AI portfolio summaries (aiContextBuilder.buildPortfolioContext, NL aggregate_portfolio_stats) leave archived projects out, like the sample. /portfolio/resources computed workload for every project at once → 'Queue limit reached' 500 on staging; now utils/mapWithLimit (3 at a time; keeps request context). Same for InsightAssemblyService.assembleForPortfolio; NL stats reads schedules in one query. Guard (mapWithLimit.test.ts): no Promise.all over a mapped project list; archived filter present.
+
 ## 2026-10-03 — AI suggestions and workflows stay inside their project (security)
 
 - Workflows ran on every project's events (task/project changes, proposals) — now only their own project's; steps can't reach another project. Autonomy only per project by its PM (global ignored; UI controls hidden). Slack approve/reject removed (link instead). Knowledge search limited to its project's meeting notes. SECURITY_GUIDE §14a.

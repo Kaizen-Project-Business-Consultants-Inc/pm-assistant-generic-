@@ -145,7 +145,7 @@ export class AIContextBuilder {
     const projects = (isAdmin
       ? await this.projectService.findAll()
       : await this.projectService.findByUserId(opts!.userId!))
-      .filter((p) => !p.isDemo); // the sample project never counts in portfolio totals
+      .filter((p) => !p.isDemo && !p.archivedAt); // the sample and archived projects never count in portfolio totals
 
     const byStatus: Record<string, number> = {};
     const byPriority: Record<string, number> = {};

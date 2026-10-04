@@ -349,13 +349,13 @@ async function executeToolFn(
     case 'aggregate_portfolio_stats': {
       const listed = (await allowed()) === 'all' ? await projectService.findAll() : await projectService.findByUserId(user.userId);
       // The sample project never counts in portfolio totals (it stays in list_projects)
-      const projects = listed.filter((p) => !p.isDemo);
+      const projects = listed.filter((p) => !p.isDemo && !p.archivedAt); // archived projects don't count either
       const sampleIds = listed.filter((p) => p.isDemo).map((p) => p.id);
       const sampleSchedules = new Set(sampleIds.length ? (await scheduleService.findByProjectIds(sampleIds)).map((sch) => sch.id) : []);
       const allTasks = ((await allowed()) === 'all'
         ? await scheduleService.findAllTasks()
         : await scheduleService.findTasksByScheduleIds(
-          (await Promise.all(projects.map((p) => scheduleService.findByProjectId(p.id)))).flat().map((sch) => sch.id)))
+          (await scheduleService.findByProjectIds(projects.map((p) => p.id))).map((sch) => sch.id)))
         .filter((t) => !sampleSchedules.has(t.scheduleId));
 
       const totalBudgetAllocated = projects.reduce((s, p) => s + (p.budgetAllocated ?? 0), 0);

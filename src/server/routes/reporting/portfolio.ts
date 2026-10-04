@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { mapWithLimit, DEFAULT_LIMIT } from '../../utils/mapWithLimit';
 import { projectService } from '../../services/ProjectService';
 import { scheduleService } from '../../services/ScheduleService';
 import { resourceService } from '../../services/ResourceService';
@@ -20,7 +21,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const userId = user.userId;
-      const projects = (await projectService.findByUserId(userId)).filter(p => !p.isDemo); // the sample project never counts
+      const projects = (await projectService.findByUserId(userId)).filter(p => !p.isDemo && !p.archivedAt); // the sample and archived projects never count
 
       // Batch: 3 queries total instead of 1 + N + N×M
       const projectIds = projects.map(p => p.id);
@@ -94,17 +95,16 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const projects = (await projectService.findByUserId(user.userId)).filter(p => !p.isDemo); // the sample project never counts
+      const projects = (await projectService.findByUserId(user.userId)).filter(p => !p.isDemo && !p.archivedAt); // the sample and archived projects never count
       const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'planning');
 
       // Fetch workload for each active project in parallel
-      const workloadResults = await Promise.all(
-        activeProjects.map(async (p) => ({
-          projectId: p.id,
-          projectName: p.name,
-          workload: await resourceService.computeWorkload(p.id),
-        }))
-      );
+      // A few projects at a time: all at once used up the database connections (staging 500)
+      const workloadResults = await mapWithLimit(activeProjects, DEFAULT_LIMIT, async (p) => ({
+        projectId: p.id,
+        projectName: p.name,
+        workload: await resourceService.computeWorkload(p.id),
+      }));
 
       // Pre-fetch all resources to avoid N+1 lookups
       const allResources = await resourceService.findAllResources();
@@ -207,7 +207,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
         return JSON.parse(cached);
       }
 
-      const projects = (await projectService.findByUserId(userId)).filter(p => !p.isDemo); // the sample project never counts
+      const projects = (await projectService.findByUserId(userId)).filter(p => !p.isDemo && !p.archivedAt); // the sample and archived projects never count
       const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'planning');
 
       if (activeProjects.length === 0) {

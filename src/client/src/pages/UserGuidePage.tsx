@@ -208,6 +208,7 @@ const sections: Section[] = [
       'Portfolio health dashboard with red/amber/green indicators',
       'Aggregate budget and resource utilization',
       'Filter and sort projects by status, priority, or health',
+      'Totals cover live projects only — archived projects and the sample project are left out',
     ],
   },
   {
