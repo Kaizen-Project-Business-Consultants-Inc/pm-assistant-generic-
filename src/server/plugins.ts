@@ -314,7 +314,10 @@ export async function registerPlugins(fastify: FastifyInstance) {
     }
     const error = err instanceof Error ? err : new Error(String(err));
     const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
-    logger.error('Global error handler', { errorName: error.name, errorMessage: error.message });
+    // A refusal (4xx — e.g. "this feature requires a paid subscription") is the app working as
+    // designed, not a fault: warn, so real errors stand out in the logs (2026-10-04: a trial
+    // account browsing put nine "errors" in prod's log after every smoke test)
+    (statusCode < 500 ? logger.warn : logger.error).call(logger, 'Global error handler', { statusCode, errorName: error.name, errorMessage: error.message });
 
     auditService.logSystemEvent(request, 'error', {
       error: error.message, url: request.url, method: request.method
