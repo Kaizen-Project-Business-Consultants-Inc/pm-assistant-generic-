@@ -3,7 +3,6 @@ import * as querystring from 'querystring';
 import { z } from 'zod';
 import { slackAdapter, SlackConfig } from '../../services/integrations/SlackAdapter';
 import { projectService } from '../../services/ProjectService';
-import { actionProposalService } from '../../services/agents/ActionProposalService';
 import { integrationRepository, parseConfig } from '../../database/IntegrationRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -230,33 +229,14 @@ export async function slackRoutes(fastify: FastifyInstance) {
       }
 
       const actionId = action.action_id as string;
-      const proposalId = action.value as string;
-      const slackUser = payload.user?.username || payload.user?.name || 'slack-user';
 
       if (actionId === 'proposal_approve' || actionId === 'proposal_reject') {
-        const decision = actionId === 'proposal_approve' ? 'approved' : 'rejected';
-
-        // Find the integration owner to act as reviewer
-        // Use the first active Slack integration's user_id as the acting user
-        const integrations = await integrationRepository.findActiveByProviderAndProject('slack', proposalId);
-        let reviewerId = 'system';
-        if (integrations.length > 0) {
-          reviewerId = integrations[0].user_id;
-        }
-
-        const comment = `${decision === 'approved' ? 'Approved' : 'Rejected'} via Slack by @${slackUser}`;
-        await actionProposalService.addReview(proposalId, reviewerId, decision, comment);
-
-        // Return updated message
+        // Older messages still carry these buttons. Slack can't approve or reject any more — only
+        // the project's PM decides, in Kovarti, where the PM check applies (2026-10-03).
         return reply.send({
-          replace_original: true,
-          text: `Proposal *${decision}* by @${slackUser}`,
-          blocks: [
-            {
-              type: 'section',
-              text: { type: 'mrkdwn', text: `Proposal *${decision}* by @${slackUser}` },
-            },
-          ],
+          response_type: 'ephemeral',
+          replace_original: false,
+          text: `Suggestions are approved or rejected in Kovarti by the project's PM: ${config.APP_URL}/agent`,
         });
       }
 

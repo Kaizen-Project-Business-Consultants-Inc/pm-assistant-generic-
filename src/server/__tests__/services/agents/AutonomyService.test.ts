@@ -46,7 +46,7 @@ describe('AutonomyService', () => {
 
     it('returns true when all criteria are met', async () => {
       const { databaseService } = await import('../../../database/connection');
-      vi.mocked(databaseService.query).mockResolvedValueOnce([]).mockResolvedValueOnce([{
+      vi.mocked(databaseService.query).mockResolvedValueOnce([{
         autonomy_tier: 3,
         min_confidence_threshold: 80,
         max_risk_level: 'low',
@@ -58,7 +58,7 @@ describe('AutonomyService', () => {
 
     it('returns false when confidence is below threshold', async () => {
       const { databaseService } = await import('../../../database/connection');
-      vi.mocked(databaseService.query).mockResolvedValueOnce([]).mockResolvedValueOnce([{
+      vi.mocked(databaseService.query).mockResolvedValueOnce([{
         autonomy_tier: 3,
         min_confidence_threshold: 80,
         max_risk_level: 'low',
@@ -70,7 +70,7 @@ describe('AutonomyService', () => {
 
     it('returns false when risk level exceeds maximum', async () => {
       const { databaseService } = await import('../../../database/connection');
-      vi.mocked(databaseService.query).mockResolvedValueOnce([]).mockResolvedValueOnce([{
+      vi.mocked(databaseService.query).mockResolvedValueOnce([{
         autonomy_tier: 3,
         min_confidence_threshold: 80,
         max_risk_level: 'low',
@@ -78,6 +78,17 @@ describe('AutonomyService', () => {
 
       const result = await service.canAutoExecute('test-agent', 'proj-1', 90, 'high');
       expect(result).toBe(false);
+    });
+  });
+
+  describe('canAutoExecute — only a setting for that project counts', () => {
+    it('ignores a company-wide (no project) setting: the PM must switch it on for the project', async () => {
+      const { databaseService } = await import('../../../database/connection');
+      // no setting for this project; a company-wide Tier 3 would have been the next lookup
+      vi.mocked(databaseService.query).mockResolvedValueOnce([]);
+      const result = await service.canAutoExecute('test-agent', 'proj-1', 99, 'low');
+      expect(result).toBe(false);
+      expect(vi.mocked(databaseService.query)).toHaveBeenCalledTimes(1);
     });
   });
 

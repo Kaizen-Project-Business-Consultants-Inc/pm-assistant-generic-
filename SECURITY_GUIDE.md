@@ -375,6 +375,16 @@ Outbound webhooks (`WebhookService.ts`) are secured with HMAC signatures:
 
 ---
 
+## 14a. AI suggestions and workflows stay inside their project (Oct 2026)
+
+Found in the 2026-10-03 agent review; fixed before any agent was switched on.
+
+- **Workflows run only on their own project.** `dagWorkflow/index.ts` `appliesTo`: a workflow saved for a project is skipped for other projects' task changes, project changes and agent proposals (it used to match on trigger type alone, so project A's workflow could change project B's tasks or approve B's proposals). Company-wide workflows (no project) can only be created by a company admin. Inside a project's workflow, steps can't name another project: `executeAction(…, scope)` notifies, runs agents and auto-approves only on the workflow's project (`auto_approve_proposal` skips a proposal from elsewhere).
+- **Agents never act by themselves without the PM.** `AutonomyService.canAutoExecute` only honours a Tier 3 setting for that exact project; company-wide settings are ignored. `PUT /agent/autonomy/:agentId` requires a `projectId` and the Manager/Owner of that project (was: any admin, for all projects). The Autonomy tab no longer shows promote/demote (autonomy is a long-term goal; agents only suggest).
+- **Slack can't approve or reject proposals.** The buttons let anyone in the channel decide, recorded as the integration owner. Messages now link to Kovarti, where the PM check applies; old buttons reply with that link.
+- **Knowledge search (rag-context-v1) is per project.** Agents receive `context.projectId` from the registry; the search returns meeting notes only from that project (none without one). `RagService.buildContextString` now requires the readable-projects set.
+- Tests: `DagWorkflowService.test.ts` (another project's events skipped; company-wide still runs), `dagWorkflowScope.test.ts`, `AutonomyService.test.ts`, `ragAgentCapability.test.ts`.
+
 ## 15. Stakeholder Portal Access
 
 The stakeholder portal (`PortalService.ts`, `src/server/routes/portal.ts`) provides limited external access:

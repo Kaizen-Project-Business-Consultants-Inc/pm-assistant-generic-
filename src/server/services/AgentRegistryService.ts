@@ -16,7 +16,8 @@ export interface AgentCapability {
   outputSchema: ZodSchema;
   permissions: string[];
   timeoutMs?: number;
-  handler: (input: any) => Promise<any>;
+  /** `context.projectId` is the project the agent runs for (a project's workflow: always its own) */
+  handler: (input: any, context?: { projectId?: string | null }) => Promise<any>;
 }
 
 export interface InvocationResult {
@@ -120,7 +121,7 @@ export class AgentRegistry {
     let output: any;
     try {
       output = await Promise.race([
-        cap.handler(inputResult.data),
+        cap.handler(inputResult.data, { projectId: context.projectId ?? null }),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error(`Agent timeout after ${timeoutMs}ms`)), timeoutMs),
         ),

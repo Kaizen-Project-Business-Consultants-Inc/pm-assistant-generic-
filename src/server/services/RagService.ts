@@ -93,8 +93,13 @@ export class RagService {
   // Build a context string for AI prompts
   // -------------------------------------------------------------------------
 
-  async buildContextString(query: string, topK?: number): Promise<string> {
-    const results = await this.search(query, { topK });
+  /** Search and build prompt context — `readableProjectIds` is required: meeting notes are per project */
+  async buildContextString(query: string, readableProjectIds: Set<string> | 'all', topK?: number): Promise<string> {
+    return this.contextFrom(await this.search(query, { topK, readableProjectIds }));
+  }
+
+  /** The prompt context for results already searched (and filtered to what the caller may read) */
+  contextFrom(results: RagResult[]): string {
     if (results.length === 0) return '';
 
     const parts: string[] = ['## Relevant Historical Context\n'];

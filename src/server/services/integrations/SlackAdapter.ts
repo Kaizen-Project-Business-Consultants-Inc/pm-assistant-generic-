@@ -471,16 +471,11 @@ export class SlackAdapter {
         const blocks: any[] = [
           { type: 'section', text: { type: 'mrkdwn', text: `*Agent Proposal* :robot_face:\n*${proposal.title || proposal.actionType}*\n${proposal.description || ''}` } },
         ];
-        // Interactive buttons need a bot token, which only OAuth installs have
-        if (canUseInteractive) {
-          blocks.push({
-            type: 'actions',
-            elements: [
-              { type: 'button', text: { type: 'plain_text', text: 'Approve' }, style: 'primary', action_id: 'proposal_approve', value: proposal.id },
-              { type: 'button', text: { type: 'plain_text', text: 'Reject' }, style: 'danger', action_id: 'proposal_reject', value: proposal.id },
-            ],
-          });
-        }
+        // Only the project's PM decides, in Kovarti (2026-10-03): Approve/Reject buttons here let
+        // anyone in the channel decide, recorded as the integration's owner. Link to it instead.
+        void canUseInteractive;
+        const url = `${config.APP_URL}/agent`;
+        blocks.push({ type: 'context', elements: [{ type: 'mrkdwn', text: `<${url}|Review in Kovarti> — the project's PM approves or rejects it there.` }] });
         return { text, blocks };
       }
       case 'budget_alert': {

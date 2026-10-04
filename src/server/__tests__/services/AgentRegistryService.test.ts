@@ -158,7 +158,7 @@ describe('AgentRegistry', () => {
       expect(result.success).toBe(true);
       expect(result.output).toEqual({ result: 'done' });
       expect(result.durationMs).toBeGreaterThanOrEqual(0);
-      expect(handler).toHaveBeenCalledWith({ value: 'hello' });
+      expect(handler).toHaveBeenCalledWith({ value: 'hello' }, expect.objectContaining({ projectId: expect.anything() }));
     });
   });
 

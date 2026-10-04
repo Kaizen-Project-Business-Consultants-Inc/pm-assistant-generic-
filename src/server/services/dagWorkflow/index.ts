@@ -9,6 +9,23 @@ import {
   DefinitionWithGraph, ExecutionWithNodes, NodeType,
 } from './types';
 import { matchesTrigger, buildAdjacencyList, advanceExecution, executeWorkflowEngine } from './engine';
+import { databaseService } from '../../database/connection';
+
+/**
+ * A workflow made for one project only runs on that project's events (2026-10-03: every enabled
+ * workflow ran on every project's task changes, project changes and AI proposals, so a workflow
+ * set up in project A could change tasks — or approve and apply proposals — in project B).
+ * Company-wide workflows (no project) still run everywhere; only a company admin can make one.
+ */
+function appliesTo(def: { projectId: string | null }, projectId: string | null): boolean {
+  return !def.projectId || def.projectId === projectId;
+}
+
+async function projectOfSchedule(scheduleId: string | null | undefined): Promise<string | null> {
+  if (!scheduleId) return null;
+  const [r] = await databaseService.query<{ project_id: string }>('SELECT project_id FROM schedules WHERE id = ?', [scheduleId]);
+  return r?.project_id ?? null;
+}
 
 // Re-export types and templateResolver for external consumers
 export * from './types';
@@ -163,8 +180,10 @@ class DagWorkflowService {
 
     try {
       const defs = await workflowRepository.findEnabledDefinitions();
+      const taskProject = defs.some(d => d.projectId) ? await projectOfSchedule(task.scheduleId) : null;
 
       for (const def of defs) {
+        if (!appliesTo(def, taskProject)) continue;
         const fullDef = await this.getDefinition(def.id);
         if (!fullDef) continue;
 
@@ -191,6 +210,7 @@ class DagWorkflowService {
       const defs = await workflowRepository.findEnabledDefinitions();
 
       for (const def of defs) {
+        if (!appliesTo(def, projectId)) continue;
         const fullDef = await this.getDefinition(def.id);
         if (!fullDef) continue;
 
@@ -229,6 +249,7 @@ class DagWorkflowService {
       const defs = await workflowRepository.findEnabledDefinitions();
 
       for (const def of defs) {
+        if (!appliesTo(def, data.projectId)) continue;
         const fullDef = await this.getDefinition(def.id);
         if (!fullDef) continue;
 

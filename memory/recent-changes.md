@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-03 — AI suggestions and workflows stay inside their project (security)
+
+- Workflows ran on every project's events (task/project changes, proposals) — now only their own project's; steps can't reach another project. Autonomy only per project by its PM (global ignored; UI controls hidden). Slack approve/reject removed (link instead). Knowledge search limited to its project's meeting notes. SECURITY_GUIDE §14a.
+
 ## 2026-10-03 — spent includes expenses; EVM actual cost by date
 
 - `budget_spent` = labour + other costs + expenses everywhere (T075 backfill; recomputed on approvals and every expense change). Before, only Financials added expenses, so the dashboard, Budget Watch, analytics, portal, portfolio and EVM understated spend and CPI looked too good.

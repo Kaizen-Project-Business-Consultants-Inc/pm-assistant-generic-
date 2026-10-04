@@ -19,12 +19,16 @@ agentRegistry.register({
   }),
   permissions: ['agent:knowledge'],
   timeoutMs: 30000,
-  handler: async (input: { query: string; documentType?: 'lesson' | 'meeting' | 'knowledge_base'; topK?: number }) => {
+  // Meeting notes only from the project it runs for (2026-10-03: it searched every project's
+  // meetings); with no project, no meetings at all. Lessons and the knowledge base are company-wide.
+  handler: async (input: { query: string; documentType?: 'lesson' | 'meeting' | 'knowledge_base'; topK?: number }, context?: { projectId?: string | null }) => {
+    const readableProjectIds = new Set<string>(context?.projectId ? [context.projectId] : []);
     const results = await ragService.search(input.query, {
       documentType: input.documentType,
       topK: input.topK,
+      readableProjectIds,
     });
-    const contextString = await ragService.buildContextString(input.query, input.topK);
+    const contextString = ragService.contextFrom(results);
     return { results, contextString };
   },
 });

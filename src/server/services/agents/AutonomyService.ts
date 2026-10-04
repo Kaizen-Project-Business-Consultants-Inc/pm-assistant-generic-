@@ -64,11 +64,9 @@ export class AutonomyService {
     riskLevel: RiskLevel,
   ): Promise<boolean> {
     try {
-      let config = await autonomyRepository.findConfigByAgentAndProject(agentId, projectId);
-      if (!config) {
-        config = await autonomyRepository.findConfigByAgentGlobal(agentId);
-      }
-
+      // Only a setting for THIS project counts (2026-10-03): a company-wide one let an admin make an
+      // agent change every project without its PM — and only the PM changes anything.
+      const config = await autonomyRepository.findConfigByAgentAndProject(agentId, projectId);
       if (!config) return false;
       if (Number(config.autonomy_tier) < 3) return false;
       if (confidenceScore < Number(config.min_confidence_threshold)) return false;

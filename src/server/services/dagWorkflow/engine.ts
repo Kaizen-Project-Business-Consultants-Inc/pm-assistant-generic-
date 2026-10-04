@@ -105,6 +105,8 @@ export async function executeAction(
   config: Record<string, any>,
   task: Task | null,
   scheduleService: ScheduleService,
+  /** the workflow's own project (null = company-wide): a project's workflow can't reach another project */
+  scope: string | null = null,
 ): Promise<Record<string, any>> {
   const actionType = config.actionType;
   switch (actionType) {
@@ -129,7 +131,7 @@ export async function executeAction(
       try {
         const { notificationService } = await import('../NotificationService');
         const schedule = task ? await scheduleService.findById(task.scheduleId) : null;
-        const projectId = schedule?.projectId ?? config.projectId;
+        const projectId = schedule?.projectId ?? (scope ?? config.projectId);
         if (projectId) {
           const { projectService: projSvc } = await import('../ProjectService');
           const project = await projSvc.findById(projectId);
@@ -163,7 +165,7 @@ export async function executeAction(
       const resolvedInput = resolveTemplates(config.input ?? {}, {}, task);
       const result = await agentRegistry.invoke(config.capabilityId, resolvedInput, {
         actorId: 'system', actorType: 'system', source: 'system',
-        projectId: config.projectId,
+        projectId: scope ?? config.projectId,
       });
       return { action: 'invoke_agent', capabilityId: config.capabilityId, success: result.success, output: result.output };
     }
@@ -172,6 +174,12 @@ export async function executeAction(
       if (!proposalId) return { action: 'auto_approve_proposal', skipped: true, reason: 'no proposalId' };
       const { actionProposalService } = await import('../agents/ActionProposalService');
       const { actionExecutor } = await import('../agents/ActionExecutor');
+      if (scope) {
+        const proposal = await actionProposalService.getById(proposalId);
+        if (!proposal || proposal.projectId !== scope) {
+          return { action: 'auto_approve_proposal', skipped: true, reason: "the proposal isn't on this workflow's project" };
+        }
+      }
       await actionProposalService.updateStatus(proposalId, 'approved', { reviewedBy: 'system' });
       const result = await actionExecutor.execute(proposalId);
       return { action: 'auto_approve_proposal', proposalId, ...result };
@@ -287,7 +295,7 @@ async function executeNode(
 
       case 'action': {
         const resolvedConfig = resolveTemplates(node.config, nodeOutputs, task, triggerContext);
-        const output = await executeAction(resolvedConfig, task, scheduleService);
+        const output = await executeAction(resolvedConfig, task, scheduleService, def.projectId ?? null);
         nodeOutputs[node.id] = output;
         await workflowRepository.updateNodeExecutionCompleted(nodeExecId, JSON.stringify(output));
         break;
@@ -307,7 +315,7 @@ async function executeNode(
           const resolvedInput = resolveTemplates(node.config.input ?? {}, nodeOutputs, task, triggerContext);
           const result = await agentRegistry.invoke(capabilityId, resolvedInput, {
             actorId: 'system', actorType: 'system', source: 'system',
-            projectId: node.config.projectId as string | undefined,
+            projectId: (def.projectId ?? node.config.projectId) as string | undefined,
           });
           if (result.success) {
             const agentOutput = { agentOutput: result.output, durationMs: result.durationMs };

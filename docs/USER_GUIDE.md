@@ -994,6 +994,8 @@ Workload calculations automatically account for availability — if a resource h
 
 PM Assistant includes a DAG (Directed Acyclic Graph) workflow engine for automating project processes.
 
+**A project's workflow only runs on that project (October 2026).** A workflow saved for a project reacts only to that project's task changes, project changes and AI suggestions, and its steps (notify, run an agent, approve a suggestion) only act on that project. Company-wide workflows — made by a company admin, with no project — still run on every project.
+
 ### Creating a Workflow
 
 There are two ways to create a workflow:
@@ -1985,7 +1987,7 @@ Connect PM Assistant to external tools for bidirectional synchronization.
 |----------|-----------|
 | **Jira** | Sync tasks with Jira issues. Import/export task status, priority, and assignments. |
 | **GitHub** | Link GitHub issues and pull requests to project tasks. Track development progress. |
-| **Slack** | Event notifications, `/kovarti status` slash command, interactive proposal approval buttons. |
+| **Slack** | Event notifications, `/kovarti status` slash command, proposal alerts with a link to review them in Kovarti. |
 | **Trello** | Sync cards with project tasks. |
 | **Google Calendar** | Bi-directional sync between task deadlines and calendar events. OAuth connect flow. |
 
@@ -2072,7 +2074,7 @@ Type `/kovarti status My Project` in any Slack channel to get a formatted projec
 
 #### Interactive Proposal Buttons
 
-When the AI agent creates a proposal, a Slack message is sent with **Approve** and **Reject** buttons. Clicking either button records the review decision and logs the Slack username in the project audit trail.
+When the AI agent creates a proposal, a Slack message tells you about it with a **Review in Kovarti** link. Suggestions are approved or rejected in Kovarti by the project's PM (October 2026: Slack's Approve/Reject buttons were removed — anyone in the channel could press them). Older messages that still show the buttons reply with the link.
 
 #### Sending Messages from Agents or Workflows
 
@@ -2117,8 +2119,8 @@ If a team is already connected, the button reads **Connect Another Account**.
 Notifications arrive as Adaptive Cards, Microsoft Teams' equivalent of Slack's
 Block Kit messages — a title, key details, and (where relevant) a link back to
 the item in Kovarti. There are no interactive Approve/Reject buttons on agent
-proposals in Microsoft Teams yet (Slack has these) — approve or reject from
-inside Kovarti instead.
+proposals in Microsoft Teams (Slack doesn't have them either) — approve or reject from
+inside Kovarti, where the project's PM decides.
 
 ---
 

@@ -188,7 +188,7 @@ describe('RagService', () => {
         },
       ] as any);
 
-      const context = await ragService.buildContextString('budget issues');
+      const context = await ragService.buildContextString('budget issues', 'all');
       expect(context).toContain('Relevant Historical Context');
       expect(context).toContain('Budget overrun');
       expect(context).toContain('0.90');
@@ -197,7 +197,7 @@ describe('RagService', () => {
     it('returns empty string when no results', async () => {
       vi.spyOn(embeddingService, 'searchSimilar').mockResolvedValue([]);
 
-      const context = await ragService.buildContextString('nothing');
+      const context = await ragService.buildContextString('nothing', 'all');
       expect(context).toBe('');
     });
   });

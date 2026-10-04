@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────
+// Which project a task's plan belongs to (a workflow only runs on its own project's events)
+const scheduleProject = vi.fn(async (_sql: string, _p?: any[]): Promise<any[]> => [{ project_id: 'p1' }]);
+vi.mock('../../database/connection', () => ({ databaseService: { query: (...a: any[]) => scheduleProject(a[0], a[1]) } }));
 
 vi.mock('../../database/WorkflowRepository', () => {
   const mockRepo = {
@@ -986,6 +989,28 @@ describe('DagWorkflowService', () => {
   });
 
   // ── evaluateProjectChange ──────────────────────────────────────────────
+
+  describe("a project's workflow runs only on that project's events", () => {
+    it('skips task changes, project changes and proposals from another project', async () => {
+      const def = makeDef({ id: 'wf1', projectId: 'p1' });
+      mockRepo.findEnabledDefinitions.mockResolvedValue([def]);
+      scheduleProject.mockResolvedValueOnce([{ project_id: 'p2' }]);
+      await dagWorkflowService.evaluateTaskChange(makeTask({ status: 'completed' }), makeTask({ status: 'in_progress' }), {} as any);
+      await dagWorkflowService.evaluateProjectChange('p2', 'budget_update', { utilization: 99 });
+      await dagWorkflowService.evaluateProposalEvent('proposal_created', { proposalId: 'x', projectId: 'p2', agentId: 'a', confidenceScore: 99, riskLevel: 'low', title: 't' });
+      // never even looked at the workflow's steps
+      expect(mockRepo.findDefinitionById).not.toHaveBeenCalled();
+      expect(mockRepo.insertExecution).not.toHaveBeenCalled();
+      mockRepo.findEnabledDefinitions.mockResolvedValue([]);
+    });
+
+    it('a company-wide workflow (no project) still runs everywhere', async () => {
+      mockRepo.findEnabledDefinitions.mockResolvedValueOnce([makeDef({ id: 'wf9', projectId: null })]);
+      mockRepo.findDefinitionById.mockResolvedValueOnce(null);
+      await dagWorkflowService.evaluateProjectChange('p2', 'budget_update', { utilization: 99 });
+      expect(mockRepo.findDefinitionById).toHaveBeenCalledWith('wf9');
+    });
+  });
 
   describe('evaluateProjectChange', () => {
     it('triggers on budget_threshold when utilization meets threshold', async () => {

@@ -847,8 +847,10 @@ function AgentEligibilityCard({ agentId, config, isAdmin }: {
 }
 
 function AutonomyTab() {
-  const user = useAuthStore(s => s.user);
-  const isAdmin = user?.role === 'admin';
+  // Agents only suggest; the PM decides (product owner, 2026-10-03 — acting by themselves is a
+  // long-term goal). The promote/demote controls are hidden; the server only accepts it per
+  // project from that project's PM.
+  const isAdmin = false;
 
   const { data, isLoading } = useQuery({
     queryKey: ['autonomy-configs'],
@@ -873,8 +875,8 @@ function AutonomyTab() {
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Autonomous Execution (Tier 3)</h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-              Tier 2 agents propose actions for human review. Tier 3 agents auto-execute low-risk, high-confidence proposals.
-              Promotion requires 30+ days, 20+ proposals, 80%+ acceptance, 70%+ effectiveness, and zero rollbacks.
+              Agents only suggest — the project's PM reviews every suggestion and decides. Letting an agent act by itself
+              (Tier 3) isn't switched on in Kovarti; the track record below shows how often each agent's suggestions are accepted.
             </p>
           </div>
         </div>
