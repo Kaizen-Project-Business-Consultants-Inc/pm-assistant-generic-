@@ -40,8 +40,16 @@ for (const [who, creds] of [['company owner (qa.pm)', STAGING_USER], ['team memb
       const s = (await p.request.get(url)).status();
       expect([401, 403], `${url} → ${s}`).toContain(s);
     }
-    await p.goto('/admin/users');
-    await expect(p).not.toHaveURL(/\/admin\//, { timeout: 15_000 });
+    // no admin screen anywhere in what a customer sees
+    await p.goto('/dashboard');
+    await expect(p.locator('nav').first()).toBeVisible({ timeout: 20_000 });
+    await expect(p.locator('a[href^="/admin"]')).toHaveCount(0);
+    await expect(p.getByRole('link', { name: /^admin/i })).toHaveCount(0);
+    await expect(p.getByRole('button', { name: /switch to admin/i })).toHaveCount(0);
+    for (const path of ['/admin', '/admin/users', '/admin/tenants', '/admin/revenue', '/admin/feedback']) {
+      await p.goto(path);
+      await expect(p).not.toHaveURL(/\/admin/, { timeout: 15_000 });
+    }
     await p.close();
   });
 }
