@@ -10,6 +10,7 @@ import { killSwitchService } from '../agents/KillSwitchService';
 import { agentMemoryService } from '../AgentMemoryService';
 import { deadLetterService } from '../DeadLetterService';
 import logger from '../../utils/logger';
+import { getTenantContext } from '../../middleware/requestContext';
 import { runBudgetBurnRateAgent, runMonteCarloConfidenceAgent } from './registryAgentRunners';
 
 /**
@@ -70,14 +71,18 @@ async function storeScanResult(agentId: string, projectId: string, result: Recor
   }
 }
 
-let scanInProgress = false;
+// One scan at a time PER COMPANY (2026-10-04: it was one flag for the whole server, and the nightly
+// job scans three companies at once — the second and third were skipped as "still in progress")
+const scansInProgress = new Set<string>();
+const scanKey = () => getTenantContext()?.dbName ?? 'single-tenant';
 
 export async function runScanImpl(activityLog: AgentActivityLogService, projectId?: string): Promise<ScanStats> {
-  if (scanInProgress) {
+  const key = scanKey();
+  if (scansInProgress.has(key)) {
     logger.warn('[Agent] Scan skipped — previous scan still in progress');
     return emptyStats();
   }
-  scanInProgress = true;
+  scansInProgress.add(key);
 
   try {
   logger.info(`[Agent] Starting scan...${projectId ? ` (project: ${projectId})` : ''}`);
@@ -218,6 +223,6 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
   webhookService.dispatch('agent.scan_completed', { stats }, undefined);
   return stats;
   } finally {
-    scanInProgress = false;
+    scansInProgress.delete(key);
   }
 }

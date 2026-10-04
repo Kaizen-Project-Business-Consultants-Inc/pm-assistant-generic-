@@ -1,5 +1,13 @@
 # Kovarti PM Assistant — Agentic System Architecture
 
+> **Status, October 2026 — historical design.** The agents described here were retired on 2026-10-04
+> after a review found they duplicated Schedule Review, the Team Planner, EVM, status reports and
+> Lessons, their AI replies failed, their suggested actions couldn't be carried out, and some
+> reached across projects. What runs today: three nightly checks with no AI (slipping tasks, budget,
+> Monte Carlo) — see docs/AI_DESIGN_FEATURES.md. The "intelligent PM" direction continues as PM
+> playbooks (docs/playbooks/). Agents only suggest; the project's PM decides.
+
+
 This document defines the architecture, governance, and implementation of PM Assistant's agentic system — 14 autonomous AI agents that detect issues, reason via Claude, and propose (or auto-execute) corrective actions with human-in-the-loop governance.
 
 ---

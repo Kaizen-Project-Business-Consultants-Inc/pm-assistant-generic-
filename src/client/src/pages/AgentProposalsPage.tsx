@@ -108,7 +108,7 @@ const STATUS_TABS = [
 
 
 // The agents Kovarti runs (2026-10-04: twelve others were removed after the agent review)
-const KNOWN_AGENTS = ['auto-reschedule-v1', 'budget-forecast-v1', 'monte-carlo-v1'];
+const KNOWN_AGENTS = ['auto-reschedule-v1', 'monte-carlo-v1'];
 
 // ---------------------------------------------------------------------------
 // Utilities

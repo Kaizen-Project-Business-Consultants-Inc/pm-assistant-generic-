@@ -1,14 +1,13 @@
 import { z } from 'zod';
 
 /**
- * The agents the app runs (2026-10-04, after the agent review): delays (AI Reschedule), the EVM
- * budget forecast and Monte Carlo. Twelve others were removed — they duplicated Schedule Review,
+ * The agents the app runs (2026-10-04, after the agent review): delays (AI Reschedule) and Monte
+ * Carlo (the nightly budget check reads EVM directly). Twelve others were removed — they duplicated Schedule Review,
  * the Team Planner, EVM, status reports and Lessons, their AI replies failed, or they reached
  * across projects. Knowledge search (rag-context-v1) is registered in ragAgentCapability.ts.
  */
 import { agentRegistry } from './AgentRegistryService';
 import { autoRescheduleService } from './AutoRescheduleService';
-import { evmForecastService } from './EVMForecastService';
 import { monteCarloService } from './MonteCarloService';
 
 // Register RAG agent capability (side-effect import)
@@ -41,26 +40,6 @@ agentRegistry.register({
     }
     const proposal = await autoRescheduleService.generateProposal(input.scheduleId, undefined, 'agent');
     return { delays: significant, proposal };
-  },
-});
-
-// --- Budget Forecast Agent ---
-agentRegistry.register({
-  id: 'budget-forecast-v1',
-  capability: 'budget.forecast',
-  version: '1.0.0',
-  description: 'Generates EVM budget forecast for a project',
-  inputSchema: z.object({
-    projectId: z.string(),
-  }),
-  outputSchema: z.object({
-    forecast: z.any(),
-  }),
-  permissions: ['agent:budget'],
-  timeoutMs: 90000,
-  handler: async (input: { projectId: string }) => {
-    const forecast = await evmForecastService.generateForecast(input.projectId);
-    return { forecast };
   },
 });
 

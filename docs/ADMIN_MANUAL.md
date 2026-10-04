@@ -526,34 +526,26 @@ Proposal creation is rate-limited to prevent alert fatigue:
 - 10 proposals per agent per project per 7 days
 - 30 proposals across all agents per project per 7 days
 
-### Registered Agents
+### Nightly checks (October 2026)
 
-| Agent ID | What It Does |
-|----------|-------------|
-| `auto-reschedule-v1` | Detects schedule delays, generates reschedule proposals |
-| `budget-forecast-v1` | Generates EVM budget forecasts |
-| `monte-carlo-v1` | Runs Monte Carlo simulations for schedule risk |
-| `meeting-followup-v1` | Identifies overdue meeting action items |
-| `schedule-recovery-v1` | Claude-powered root cause analysis and recovery proposals |
-| `scope-creep-detection-v1` | Detects scope creep via task growth, estimate increases, change requests |
-| `budget-intelligence-v1` | Analyzes EVM metrics, reasons about cost deviations, proposes budget recovery actions |
-| `resource-optimization-v1` | Detects over-allocated/under-utilized resources and bottleneck roles, proposes rebalancing actions |
-| `cross-project-intelligence-v1` | Portfolio-level analysis: systemic risks, common patterns, resource contention across projects |
-| `risk-escalation-v1` | Detects compound risks where multiple agents flag the same project; escalates to management |
-| `stakeholder-communication-v1` | Auto-generates stakeholder status reports with executive summaries, highlights, risks, and recommended actions |
-| `project-hygiene-v1` | Detects stale tasks, missing data, abandoned sprints, zero-progress tasks |
-| `dependency-risk-v1` | Builds dependency graph, detects blocked chains, bottleneck tasks, long chains |
-| `lessons-learned-v1` | Extracts structured lessons when projects near completion (≥90%) or complete |
-| `predictive-alerting-v1` | Velocity trend analysis, progress trajectory, risk accumulation, early warnings |
+With `AGENT_ENABLED=true` the nightly job runs three checks for every active project — no AI, nothing changed, the project's PM gets one alert per plan or project until they've read it:
+
+| Check | What it does |
+|-------|-------------|
+| Slipping tasks (`auto-reschedule-v1`'s delay detection) | Tasks behind where their working days say they should be; points the PM to AI Reschedule for proposed dates |
+| Budget | Cost performance (CPI, VAC) from EVM, using the real spend (labour + expenses) |
+| Schedule risk (`monte-carlo-v1`) | The P80 finish later than the plan's end, in working days |
+
+Twelve earlier agents (schedule recovery, scope creep, budget intelligence, resource optimization, cross-project intelligence, risk escalation, stakeholder communication, project hygiene, dependency risk, lessons learned, predictive alerting, meeting follow-up) were removed on 2026-10-04 — they duplicated Schedule Review, the Team Planner, EVM, status reports, Lessons and the Morning Briefing, and their AI output was unreliable. Planned replacement: PM playbooks (`docs/playbooks/`). The AI Proposals inbox stays for them.
 
 ### Autonomous Execution (Tier 3)
 
-Agents can be promoted from Tier 2 (propose-only) to Tier 3 (auto-execute) when they demonstrate sustained reliability. Promotion requires ≥30 days, ≥20 proposals, ≥80% acceptance, ≥70% effectiveness, and zero rollbacks.
+Not offered in the app (October 2026): agents only suggest and the project's PM decides; acting by themselves is a long-term goal. The API still accepts promotion per project, by that project's Manager/Owner only — company-wide settings are ignored.
 
 **API:**
 - `GET /api/v1/agent/autonomy` — list autonomy configs
 - `GET /api/v1/agent/autonomy/:agentId/eligibility` — check promotion eligibility
-- `PUT /api/v1/agent/autonomy/:agentId` — promote/demote (admin only)
+- `PUT /api/v1/agent/autonomy/:agentId` — promote/demote on one project (`projectId` required; that project's PM)
 
 ---
 

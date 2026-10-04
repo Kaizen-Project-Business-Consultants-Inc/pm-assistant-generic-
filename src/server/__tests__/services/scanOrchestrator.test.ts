@@ -31,6 +31,9 @@ vi.mock('../../services/scheduling/registryAgentRunners', () => ({
   runMonteCarloConfidenceAgent: (...a: any[]) => h.mc(...a),
 }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+// which company the scan runs for (the nightly job scans three companies at once)
+const tenant = vi.hoisted(() => ({ db: 'pmassist_t_a' }));
+vi.mock('../../middleware/requestContext', () => ({ getTenantContext: () => ({ dbName: tenant.db, orgId: 'o' }) }));
 
 import { runScanImpl } from '../../services/scheduling/scanOrchestrator';
 
@@ -70,5 +73,25 @@ describe('nightly scan — three checks, no AI', () => {
     expect((h.budget.mock.calls[0] as any[])[0].id).toBe('p1');
     expect(stats).toMatchObject({ budgetAlertsCreated: 1, mcAlertsCreated: 1 });
     expect(Object.keys(stats).sort()).toEqual(['budgetAlertsCreated', 'delaysDetected', 'mcAlertsCreated', 'notificationsSent', 'projectsScanned', 'schedulesScanned']);
+  });
+});
+
+describe('nightly scan — one scan per company at a time', () => {
+  it('scans companies in parallel (it used to skip all but the first as "still in progress")', async () => {
+    h.detectDelays.mockResolvedValue([]);
+    let release!: () => void;
+    const gate = new Promise<void>(r => { release = r; });
+    h.findByProjectId.mockImplementationOnce(async () => { await gate; return [{ id: 's1', name: 'Plan', endDate: '2026-12-31' }]; });
+    tenant.db = 'pmassist_t_a';
+    const first = runScanImpl(log); // company A, held mid-scan
+    await new Promise(r => setTimeout(r, 0));
+    tenant.db = 'pmassist_t_b';
+    const second = await runScanImpl(log); // company B starts while A is running
+    expect(second.projectsScanned).toBe(1);
+    tenant.db = 'pmassist_t_a';
+    const again = await runScanImpl(log); // A again while A still runs → skipped
+    expect(again.projectsScanned).toBe(0);
+    release();
+    expect((await first).projectsScanned).toBe(1);
   });
 });
