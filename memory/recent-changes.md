@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Item 4 Phase 1: two pieces moved out of ScheduleTab
+Pure move (bodies byte-identical, only imports changed): MobileScheduleView → pages/ProjectDetailPage/schedule-tab/MobileScheduleView.tsx, ScheduleOverflowMenu (+ props) → schedule-tab/ScheduleOverflowMenu.tsx. ScheduleTab.tsx 1,974 → 1,644 lines. No behaviour change.
+
 ## 2026-10-04 — Six schedule bugs from the safety net fixed
 
 Branch `fix-six-schedule-bugs` (not merged/deployed). The six `KNOWN BUG` tests in `e2e/schedule-behaviour.spec.ts` are now normal tests (no `test.fail`).
