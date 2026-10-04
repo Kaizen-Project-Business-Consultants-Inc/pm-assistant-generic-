@@ -932,6 +932,34 @@ npm run test:e2e:ui
 - Test user credentials are in `e2e/helpers.ts` — update if your dev environment uses different credentials
 - HTML test report generated at `playwright-report/` after each run
 
+### 9g. Schedule behaviour safety net (real browser, staging)
+
+`e2e/schedule-behaviour.spec.ts` (+ `e2e/schedule-helpers.ts`) pins what the Gantt, Table and Kanban views do **today**, so the planned split of `GanttChart.tsx`, `TableView.tsx` and `ScheduleTab.tsx` can be checked step by step. It runs against staging as the QA PM and is part of `playwright.staging-full.config.ts`.
+
+**What it covers:** the three views open with every task and no errors; inline edits in the Gantt grid and the Table (name, start, finish, duration — "3" on a Thursday start finishes Monday — status, assignee) checked on the server; keyboard (arrows, Enter/Escape, Tab while editing); cell copy/paste (duration, dates, predecessors; a summary row refuses); indent/outdent (keys and right-click) with the summary roll-up; bulk delete then Undo from History and Ctrl+Z (same task ids back); Gantt bar drag (whole working days), finish-edge resize, progress handle, drawing a link; search, Late / My Tasks filters, column sort, collapse; columns hide/move kept after a reload (shared by both views); the Timeline strip; typing in the empty row adds a task; task links (`?schedule=…&task=…`) expand, scroll to and highlight the row; light/dark screenshots of the Gantt and the Table; a 300-task plan (time from opening to rows on screen, ceiling 15 s, printed as `[speed]`).
+
+**Data:** one project per run ("QA – e2e schedule behaviour …", archived at the end) with a fresh fixed plan (Oct–Nov 2026) for every test, deleted after it; a second project with 300 tasks for the speed tests, also archived. Projects a crashed run left active (older than 30 min) are archived at the start. The browser clock is fixed at Tue 13 Oct 2026 and the time zone at America/Toronto, so the Late/Due filters, dates and the Today line never move. The file signs the QA PM in itself (a password sign-in ends the user's other sessions at their next refresh) and hands its session on to the specs after it.
+
+**Known bugs:** tests named `KNOWN BUG — …` are marked `test.fail()`: they pass while the bug is there and go red the day it is fixed — then remove the `test.fail` line.
+
+**Run:**
+
+```bash
+# the whole staging suite
+npx playwright test --config playwright.staging-full.config.ts
+# just this file
+npx playwright test --config playwright.staging-full.config.ts schedule-behaviour
+```
+
+**Screenshot baselines** live in `e2e/schedule-behaviour.spec.ts-snapshots/` (`*-chromium-win32.png` — they are per operating system; a run on Linux/macOS writes its own the first time). After an **intended** visual change to the Gantt or Table, re-take them and commit the new images (`*.png` is git-ignored, so add them with `git add -f`):
+
+```bash
+npx playwright test --config playwright.staging-full.config.ts schedule-behaviour -g "Screenshot" --update-snapshots=all
+git add -f e2e/schedule-behaviour.spec.ts-snapshots/*.png
+```
+
+Look at the new images before committing — a baseline taken from a broken screen pins the breakage.
+
 ---
 
 ## Verification Checklist
