@@ -104,6 +104,8 @@ export interface Task {
   dependencies: TaskDependency[];
   /** Multi-resource assignments */
   assignments?: Array<{ id: string; taskId: string; resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number; createdAt: string }>;
+  /** % complete comes from approved hours (progressFromHoursTaskIds) — sent so the screens don't guess */
+  progressFromHours?: boolean;
 }
 
 export interface CreateScheduleData {
@@ -851,17 +853,9 @@ export class ScheduleService {
    * typed — only marking them done changes it (to 100%).
    */
   async progressFromHoursTaskIds(taskIds: string[]): Promise<Set<string>> {
-    const ids = [...new Set(taskIds.filter(Boolean))];
-    if (ids.length === 0) return new Set();
-    const rows = await databaseService.query<{ id: string }>(
-      `SELECT t.id FROM tasks t
-        WHERE t.id IN (${ids.map(() => '?').join(',')})
-          AND t.start_date IS NOT NULL AND t.end_date IS NOT NULL
-          AND COALESCE(t.is_milestone, 0) = 0 AND COALESCE(t.is_summary, 0) = 0
-          AND (EXISTS (SELECT 1 FROM resources r WHERE r.id = t.assigned_to)
-               OR EXISTS (SELECT 1 FROM task_assignments ta WHERE ta.task_id = t.id)
-               OR EXISTS (SELECT 1 FROM resource_assignments ra WHERE ra.task_id = t.id))`, ids);
-    return new Set(rows.map(r => r.id));
+    // One query for both uses: this check on save, and the `progressFromHours` flag every task
+    // carries to the screens (TaskRepository.attachDependencies) — so the two can't drift.
+    return taskRepository.progressFromHoursIds(taskIds);
   }
 
   async updateTask(id: string, data: Partial<Omit<Task, 'id' | 'scheduleId' | 'createdAt' | 'updatedAt'>>): Promise<Task | null> {

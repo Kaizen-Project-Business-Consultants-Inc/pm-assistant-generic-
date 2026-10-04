@@ -44,6 +44,8 @@ export interface GanttTask {
   workHours?: number;
   effortDriven?: boolean;
   assignments?: Array<{ id: string; resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number }>;
+  /** The server's answer: % complete comes from approved hours (see utils/progressFromHours.ts) */
+  progressFromHours?: boolean;
 }
 
 export interface FlatRow {
@@ -86,14 +88,16 @@ export function formatShortDate(d: Date, referenceYear?: number): string {
  * Sibling order in the plan itself: sortOrder, then start date, then creation time, then
  * id — fully deterministic, so two loads of the same data can never number rows
  * differently. sortOrder is normally unique (T054); the rest only breaks legacy ties.
- * Same order as src/server/utils/scheduleRowNumbers.ts and tenant migration T054.
+ * Same order as src/server/utils/scheduleRowNumbers.ts and tenant migration T054 —
+ * src/server/__tests__/utils/rulesParity.test.ts feeds both the same plans: change one and
+ * that test fails until both match. Undated sorts before any date (as on the server).
  */
 export function compareOutlineOrder(a: GanttTask, b: GanttTask): number {
   const sa = a.sortOrder ?? 0;
   const sb = b.sortOrder ?? 0;
   if (sa !== sb) return sa - sb;
-  const da = toDate(a.startDate)?.getTime() ?? 0;
-  const db = toDate(b.startDate)?.getTime() ?? 0;
+  const da = toDate(a.startDate)?.getTime() ?? -Infinity;
+  const db = toDate(b.startDate)?.getTime() ?? -Infinity;
   if (da !== db) return da - db;
   const ca = String((a as { createdAt?: string }).createdAt ?? '');
   const cb = String((b as { createdAt?: string }).createdAt ?? '');
@@ -108,7 +112,8 @@ export function compareOutlineOrder(a: GanttTask, b: GanttTask): number {
  * task. Pass the schedule's COMPLETE task list, not a filtered one.
  *
  * The Morning Briefing computes the same numbers server-side in
- * src/server/utils/scheduleRowNumbers.ts — if this ordering changes, change that too.
+ * src/server/utils/scheduleRowNumbers.ts — if this ordering changes, change that too
+ * (src/server/__tests__/utils/rulesParity.test.ts fails until both match).
  */
 export function buildRowNumberMap(tasks: GanttTask[]): Map<string, number> {
   const map = new Map<string, number>();

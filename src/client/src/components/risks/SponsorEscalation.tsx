@@ -5,19 +5,14 @@ import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { announce } from '../../utils/announce';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { needsEscalationPrompt } from '../../utils/escalationPrompt';
 
 /**
  * Escalate a RAID item to the project's sponsor (Oct 2026, the PM is in total control).
  * Nothing goes to the sponsor by itself: a Critical risk or issue shows the PM a prompt, and
  * only the PM sends it, with their own note. Everyone sees the "Escalated to sponsor" tag.
- * Same rule as the server's needsEscalationPrompt (SponsorService).
+ * The prompt rule is utils/escalationPrompt.ts (same as the server's; a parity test checks).
  */
-export function needsEscalationPrompt(item: { type: string; severity?: string; status: string; escalatedAt?: string | null; escalationPromptDismissedAt?: string | null }): boolean {
-  if (!['risk', 'issue'].includes(item.type)) return false;
-  if (item.severity !== 'critical') return false;
-  if (['closed', 'resolved', 'cancelled', 'reversed', 'mitigated'].includes(item.status)) return false;
-  return !item.escalatedAt && !item.escalationPromptDismissedAt;
-}
 
 interface Props {
   projectId: string;

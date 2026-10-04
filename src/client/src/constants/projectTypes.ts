@@ -1,6 +1,7 @@
 /**
  * Project types shown in forms and tables. Must match src/server/constants/projectTypes.ts
- * (and the projects.project_type database ENUM).
+ * (and the projects.project_type database ENUM) — src/server/__tests__/utils/rulesParity.test.ts
+ * fails until they do.
  */
 export const PROJECT_TYPE_OPTIONS = [
   { value: 'it', label: 'IT / Software' },

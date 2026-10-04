@@ -1,6 +1,7 @@
 /**
  * Flesch-Kincaid readability analysis.
- * Client-side mirror of src/server/utils/readingLevel.ts
+ * Client-side mirror of src/server/utils/readingLevel.ts — change one and
+ * src/server/__tests__/utils/rulesParity.test.ts fails until both match.
  */
 
 export interface ReadingLevelResult {

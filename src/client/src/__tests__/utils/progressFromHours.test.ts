@@ -14,4 +14,13 @@ describe('progressFromHours — which tasks get a calculated % (no typing)', () 
     expect(progressFromHours({ ...base, assignedTo: 'r1', startDate: null })).toBe(false);
     expect(progressFromHours(null)).toBe(false);
   });
+  it("the server's answer wins when the task carries one (it sees hours bookings and real resources)", () => {
+    // Only an hours booking: the screen alone can't see it, the server says locked
+    expect(progressFromHours({ ...base, progressFromHours: true })).toBe(true);
+    // "Assigned to" holds an old name that is no resource: the server says not locked
+    expect(progressFromHours({ ...base, assignedTo: 'Old Name', progressFromHours: false })).toBe(false);
+    // No answer (an unsaved form): the screen's own rule
+    expect(progressFromHours({ ...base, assignedTo: 'r1', progressFromHours: undefined })).toBe(true);
+    expect(progressFromHours({ ...base, assignedTo: 'r1', progressFromHours: null })).toBe(true);
+  });
 });

@@ -349,10 +349,15 @@ export function TaskFormModal({
   const { data: resourceData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 60_000 });
   const resourceList: { id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[] = resourceData?.resources || [];
   const assignedResource = findResourceForAssignee(resourceList, form.assignedTo);
-  // % complete on a task with planned hours comes from approved hours: shown, not typed
+  // % complete on a task with planned hours comes from approved hours: shown, not typed. The
+  // server's answer while dates and people are as saved; the screen's own guess once they change.
+  const plannedPeople = form.assignments.filter(a => a.resourceId);
+  const lockInputsAsSaved = !!task && JSON.stringify([form.startDate, form.endDate, !!form.isMilestone, form.assignedTo.trim(), plannedPeople.map(a => a.resourceId)])
+    === JSON.stringify([toInputDate(task.startDate), toInputDate(task.endDate), !!task.isMilestone, (task.assignedTo || '').trim(), (task.assignments ?? []).map(a => a.resourceId).filter(Boolean)]);
   const lockedProgress = !isSummary && progressFromHours({
     startDate: form.startDate, endDate: form.endDate, isMilestone: form.isMilestone,
-    assignedTo: form.assignedTo, assignments: form.assignments.filter(a => a.resourceId),
+    assignedTo: form.assignedTo, assignments: plannedPeople,
+    progressFromHours: lockInputsAsSaved ? task?.progressFromHours : undefined,
   });
   const assignedResourceId = assignedResource?.id ?? '';
   // Picked someone whose email is still a placeholder? They won't hear about this task

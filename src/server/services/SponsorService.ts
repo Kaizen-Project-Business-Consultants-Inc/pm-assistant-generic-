@@ -8,6 +8,10 @@ import { riskService } from './RiskService';
 import { config } from '../config';
 import { isExamplePerson } from '../utils/sampleData';
 import logger from '../utils/logger';
+import { needsEscalationPrompt } from '../utils/escalationPrompt';
+
+// The prompt rule lives in utils/escalationPrompt.ts (pure, so the parity test can load it)
+export { needsEscalationPrompt };
 
 /**
  * Project sponsor + RAID escalation (Oct 2026, agreed with the user: the PM is in total control).
@@ -28,16 +32,6 @@ export interface Sponsor {
 
 export class SponsorError extends Error {
   constructor(public status: number, message: string) { super(message); }
-}
-
-const HIGHEST = new Set(['critical']);
-
-/** Whether the PM should be asked "Escalate to sponsor?" on this item */
-export function needsEscalationPrompt(item: Pick<ProjectRisk, 'type' | 'severity' | 'status' | 'escalatedAt' | 'escalationPromptDismissedAt'>): boolean {
-  if (!['risk', 'issue'].includes(item.type)) return false;
-  if (!HIGHEST.has(String(item.severity))) return false;
-  if (['closed', 'resolved', 'cancelled', 'reversed', 'mitigated'].includes(String(item.status))) return false;
-  return !item.escalatedAt && !item.escalationPromptDismissedAt;
 }
 
 class SponsorService {

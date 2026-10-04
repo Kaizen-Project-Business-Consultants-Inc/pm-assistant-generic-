@@ -45,6 +45,24 @@ npm run type-check
 # Equivalent to: tsc --noEmit
 ```
 
+### Rules kept in two places (screen + server)
+
+Some business rules run both on the screen (so it can answer instantly) and on the server (which decides). Each pair has a **parity test** that feeds both copies the same broad table of cases and fails if any answer differs — change one copy and the test fails until the other matches. Most live in `src/server/__tests__/utils/rulesParity.test.ts`; run it with `npx vitest run src/server/__tests__/utils/rulesParity.test.ts`.
+
+| Rule | Screen copy | Server copy | Kept equal by |
+|---|---|---|---|
+| Task row numbers (plan order) | `components/schedule/gantt/types.ts` `buildRowNumberMap` | `utils/scheduleRowNumbers.ts` | `rulesParity.test.ts` (hand cases + 200 generated plans) |
+| Working days: which days are worked, Duration count, finish date for N days, moving N working days | `utils/workingDays.ts` | `utils/workingDays.ts` + `CalendarService.isWorking` / `getNonWorkingDates` | `rulesParity.test.ts` (4 calendars: none, holidays + company holidays + extra working days, 6-day week, Sun–Wed) |
+| "Escalate to sponsor?" prompt | `utils/escalationPrompt.ts` | `utils/escalationPrompt.ts` | `rulesParity.test.ts` (every combination) |
+| Rate card rate in force on a day | `utils/rateCard.ts` `cardRateOn` | `RateCardService.ratesOn` | `rulesParity.test.ts` |
+| Reading level (project brief) | `utils/readingLevel.ts` | `utils/readingLevel.ts` | `rulesParity.test.ts` |
+| Project types | `constants/projectTypes.ts` | `constants/projectTypes.ts`, MCP `tools/projects.ts`, latest tenant ENUM migration | `rulesParity.test.ts` |
+| Placeholder emails | `utils/placeholderEmail.ts` | `utils/placeholderEmail.ts` | `placeholderEmail.test.ts` |
+| Server key renaming | `utils/serverKeys.ts` | `utils/caseConverter.ts` | `serverKeys.test.ts` |
+| % complete comes from approved hours | uses the server's answer: every task carries `progressFromHours` (own rule only in an unsaved form) | `TaskRepository.progressFromHoursIds` | `ScheduleService.test.ts`, `progressFromHours.test.ts`, `taskFormProgressLock.test.tsx` |
+
+Known, deliberate differences: the screen's working-day calendar covers the date range it fetched and falls back to Mon–Fri outside it; a span with no working day shows 0d on the screen while the server's CPM treats it as the task's estimate (or 1); the screen's `workingDaysBetween` returns nothing for an end before the start. Whole-day moves only — the screen never sends fractional day moves.
+
 ---
 
 ## 2. API Testing Patterns

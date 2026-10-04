@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Rules kept in two places can't drift (code health item 2)
+Branch `health-rules-twice` (not merged/deployed). Parity test `src/server/__tests__/utils/rulesParity.test.ts` feeds the screen and server copies the same cases: row numbers, working days (4 calendars), sponsor prompt, rate card pick, reading level, project types (server/screen/MCP/ENUM — had no guard). Each copy's comment points at it; TESTING_GUIDE "Rules kept in two places" lists every pair.
+- **% complete from approved hours:** the screen guessed and disagreed with the server — a task with only an hours booking was typeable (server ignored the %), a task whose "Assigned to" was an old name/login (not a resource) was locked. Now every task carries the server's `progressFromHours` (one batched query in `TaskRepository.attachDependencies`, the same SQL the save uses); the screen's own rule only for an unsaved form whose dates/people changed.
+- Fixed small disagreements found by the test: typing a fractional duration rounded down on the screen, up on the server (screen now rounds up — the screen only sends whole days today); an undated task sorted after a pre-1970 one on the screen.
+- Sponsor prompt rule moved to pure `utils/escalationPrompt.ts` on both sides (the server copy is only used by tests). Noted, not changed: the MS Project export numbers predecessor rows in database order, not the screen's row numbers.
+
 ## 2026-10-03 — Portfolio: archived projects left out; no more 'everything at once'
 User approved. Portfolio overview / people / analytics and the AI portfolio summaries (aiContextBuilder.buildPortfolioContext, NL aggregate_portfolio_stats) leave archived projects out, like the sample. /portfolio/resources computed workload for every project at once → 'Queue limit reached' 500 on staging; now utils/mapWithLimit (3 at a time; keeps request context). Same for InsightAssemblyService.assembleForPortfolio; NL stats reads schedules in one query. Guard (mapWithLimit.test.ts): no Promise.all over a mapped project list; archived filter present.
 
