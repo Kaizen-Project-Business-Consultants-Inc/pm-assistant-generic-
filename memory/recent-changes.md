@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Schedule grid leftovers: summary rows, pasted Predecessors, stable milestone list
+Branch `small-schedule-fixes` (not merged/deployed). Follow-ups from the Duration rule entry below.
+- **Summary rows (Gantt grid):** Start, Finish, % complete (and Status/Duration) no longer open for typing and look greyed, same rule as the Table — one list in `components/schedule/summaryRollup.ts` (`isSummaryRollupCell`; `table/types.ts` SUMMARY_ROLLUP_FIELDS is built from it). Ctrl+V into those cells is now refused in **both** views (the Table refused typing but not paste). Gantt Tab-to-next-cell skips them on a summary row.
+- **Pasted Predecessors:** Ctrl+V sent the raw text (`{dependencies: "3SS"}` in Gantt, `{dependency: "3SS"}` in Table) — the server can't use it. Typing and pasting in both views now go through `components/schedule/predecessorEdit.ts` `planPredecessorEdit` → the same `{dependencies:[…]}` task update (History/Undo, re-flow unchanged). Unusable value (missing row, self, duplicate, bad text) → paste does nothing.
+- **Dashboard lists:** `/dashboard/milestones` ORDER BY end date only → the 10th of many same-day milestones changed between loads. Now end date, project name, task name, id. Same tie-break added to `/overdue-tasks` (LIMIT 50) and the pending change requests in `/cr-summary` (LIMIT 5).
+- Guards: `__tests__/components/predecessorEdit.test.ts`, `summaryRollupCells.test.ts` (client), `__tests__/routes/dashboardStableOrder.test.ts` (server; any LIMITed query in dashboardData.ts must end its ORDER BY with an id).
+
 ## 2026-10-04 — agents slimmed
 
 - Nightly scan = 3 checks, no AI: delays (working days; AI Reschedule proposes on request), budget (EVM metrics, labour + expenses), Monte Carlo (working-day lateness). One unread alert per plan/project (`linkId`).

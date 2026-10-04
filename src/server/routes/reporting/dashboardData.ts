@@ -41,7 +41,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        WHERE t.status NOT IN ('completed','done','cancelled') AND t.end_date < CURDATE()
          -- same "overdue" as the Morning Briefing and the tile: leaf tasks only
          AND t.id NOT IN (SELECT DISTINCT parent_task_id FROM tasks WHERE parent_task_id IS NOT NULL)
-       ORDER BY overdueDays DESC
+       -- tie-break so the same 50 come back on every load
+       ORDER BY overdueDays DESC, p.name ASC, t.name ASC, t.id ASC
        LIMIT 50`,
       params
     );
@@ -145,7 +146,8 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
        WHERE t.is_milestone = 1
          AND t.status NOT IN ('completed','done','cancelled')
          AND t.end_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
-       ORDER BY t.end_date ASC
+       -- many milestones can share a date: tie-break so the same ones fill the list on every load
+       ORDER BY t.end_date ASC, p.name ASC, t.name ASC, t.id ASC
        LIMIT ?`,
       params
     );
@@ -188,7 +190,7 @@ export async function dashboardDataRoutes(fastify: FastifyInstance) {
          JOIN projects p ON cr.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
          ${memberJoin}
          WHERE cr.status IN ('pending','in_review')
-         ORDER BY cr.created_at ASC
+         ORDER BY cr.created_at ASC, cr.id ASC
          LIMIT 5`,
         params,
       ),
