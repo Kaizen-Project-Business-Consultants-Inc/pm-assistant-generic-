@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Client api.ts split by area (code health item 5)
+Branch `health-split-api` (not merged/deployed). `src/client/src/services/api.ts` (4,284 lines, one ApiService class, 644 methods) is now a ~100-line facade; methods moved verbatim into `services/apiAreas/` — http (ApiBase: the one axios instance + interceptors), auth, billing, projects, schedules, scheduling, agile, resources, raid, meetings, ai, reports, workflows, integrations, admin, misc. Each area class extends ApiBase for typing only; api.ts copies their prototype methods onto ApiService (throws on a duplicate name) and merges the types with an interface, so callers and test mocks are unchanged and every method's type is identical (checked with the TS checker: 644/644 same). Only text change inside bodies: inline `import('../types/…')` type paths became `../../`. The 9 exported types moved next to their area and are re-exported from api.ts. Guard: `__tests__/services/apiService.split.test.ts` + `apiServiceMethods.fixture.json` (method list from the original). Noted, not changed: methods sat under the wrong banner in places (createSchedule/updateSchedule/deleteSchedule under "Rate card", bulkDeleteTasks under "Resources", task comments under "Resource Availability", predictions under "RAID", sample-project calls under "Working calendar", an empty "Agent Activity Log" banner); a generic `request(method, path, data)` helper sits under "Policy Engine".
+
 ## 2026-10-04 — agents slimmed
 
 - Nightly scan = 3 checks, no AI: delays (working days; AI Reschedule proposes on request), budget (EVM metrics, labour + expenses), Monte Carlo (working-day lateness). One unread alert per plan/project (`linkId`).

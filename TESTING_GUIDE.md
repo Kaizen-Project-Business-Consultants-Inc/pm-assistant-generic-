@@ -63,6 +63,10 @@ Some business rules run both on the screen (so it can answer instantly) and on t
 
 Known, deliberate differences: the screen's working-day calendar covers the date range it fetched and falls back to Mon–Fri outside it; a span with no working day shows 0d on the screen while the server's CPM treats it as the task's estimate (or 1); the screen's `workingDaysBetween` returns nothing for an end before the start. Whole-day moves only — the screen never sends fractional day moves.
 
+### Client API split (`apiService`)
+
+`src/client/src/services/api.ts` is a thin facade; the methods live by area in `src/client/src/services/apiAreas/` (one shared axios instance in `apiAreas/http.ts`). The guard `src/client/src/__tests__/services/apiService.split.test.ts` fails if a method disappears or appears without updating the fixture (`apiServiceMethods.fixture.json`, taken from the original file), if two areas define the same method name, if more than one axios instance / set of interceptors is created, or if sampled methods from each area stop calling their verb + URL. Adding a new API method: put it in the right area file and add its name to the fixture (keep it sorted, bump `count`). Run: `npx vitest run src/client/src/__tests__/services/apiService.split.test.ts`.
+
 ---
 
 ## 2. API Testing Patterns
