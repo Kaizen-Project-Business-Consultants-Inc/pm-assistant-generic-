@@ -208,6 +208,8 @@ enabled afterwards. Adding a job needs three things: the job module, a `case` in
 > and a job that goes quiet, or has no record at all, raises an alert.
 
 Run one by hand: `sudo systemctl start pm-cron@<name>.service`
+**Weekly PM review** (`pm-cron@pm-weekly-review`, Oct 2026) fires every hour Thursday–Saturday UTC but only does work for a company in the hour when it is **Friday 07:00 in that company's time zone**; a repeat firing in the same week does nothing.
+
 Inspect: `systemctl list-timers 'pm-cron@*'` and `journalctl -u pm-cron@<name>.service`
 
 - **Trial Reminder Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 09:00 to send trial expiry reminder emails. It sends emails at the 7-day, 3-day and 1-day warnings, and on expiry. It only ever touches free-tier trials (`subscription_tier = 'trial'`) — a paying customer is never told their trial is expiring, and the expired-trial downgrade in the same job carries the same restriction so it cannot lock out an account that has paid. Emails use a polished dark-themed HTML template matching the Kovarti brand (teal accent bar, logo, status badge, gradient CTA button, reassurance info points, responsive layout, dark-mode CSS, Outlook VML fallback). Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`, template: `buildTrialEmailHtml()` in `EmailService.ts`.

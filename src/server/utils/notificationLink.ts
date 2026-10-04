@@ -46,6 +46,8 @@ export function notificationPath(n: NotificationTarget): string | null {
       return '/agent';
     case 'resource_request':
       return '/resources';
+    case 'weekly_pm_review':
+      return project('weekly-review') ?? '/dashboard';
     default:
       return project();
   }

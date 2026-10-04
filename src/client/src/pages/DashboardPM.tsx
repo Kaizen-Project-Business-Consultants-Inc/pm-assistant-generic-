@@ -22,6 +22,7 @@ import { useDashboardPreferences } from '../hooks/useDashboardPreferences';
 import { KpiTilePM } from '../components/pm/KpiTilePM';
 import { ActivityFeedPM } from '../components/pm/ActivityFeedPM';
 import { MorningBriefingWidget } from '../components/dashboard/widgets/MorningBriefingWidget';
+import { MyWeeklyReviews } from '../components/weeklyReview/MyWeeklyReviews';
 import { VelocitySparklineWidget } from '../components/dashboard/widgets/VelocitySparklineWidget';
 import { StandupSummaryWidget } from '../components/dashboard/widgets/StandupSummaryWidget';
 import { SprintSnapshotWidget } from '../components/dashboard/widgets/SprintSnapshotWidget';
@@ -288,6 +289,9 @@ export function DashboardPM() {
           />
         </div>
       </div>
+
+      {/* Weekly PM review — only for people managing a reviewed project; not a movable widget */}
+      <MyWeeklyReviews />
 
       {/* ── Widget Grid with drag-and-drop ── */}
       <WidgetGrid

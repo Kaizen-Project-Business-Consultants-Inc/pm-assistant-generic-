@@ -16,6 +16,7 @@
  *   timesheet-compliance — Nudge people who have not logged time (recipient's 16:00)
  *   utilization-coaching — Weekly utilization coaching tips
  *   weekly-review-pack   — Friday review pack for project owners
+ *   pm-weekly-review     — Weekly PM review (hourly Thu–Sat UTC; runs at Friday 07:00 in each company's zone)
  *   alert-check      — Run infrastructure health checks
  *   deadline-check   — Send deadline approaching notifications (2-day warning)
  *   data-retention   — Purge stale data from webhook_deliveries, dead_letter_queue, etc.
@@ -31,7 +32,7 @@ const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
   console.error('Usage: node dist/server/scripts/runCronJob.js <job-name>');
-  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, alert-check, deadline-check, schedule-review, data-retention');
+  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, pm-weekly-review, alert-check, deadline-check, schedule-review, data-retention');
   process.exit(1);
 }
 
@@ -150,6 +151,15 @@ async function run() {
         await forEachTenant(async (tenant) => {
           const count = await runWeeklyReviewPack();
           console.log(`[cron-runner] Weekly review pack: ${count} sent (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'pm-weekly-review': {
+        const { runPmWeeklyReviews } = await import('../services/scheduling/pmWeeklyReviewJob');
+        await forEachTenant(async (tenant) => {
+          const count = await runPmWeeklyReviews({ orgId: tenant?.orgId ?? null });
+          console.log(`[cron-runner] Weekly PM review: ${count} PM(s) notified (${tenant?.slug ?? 'default'})`);
         });
         break;
       }

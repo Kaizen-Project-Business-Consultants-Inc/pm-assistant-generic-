@@ -3357,6 +3357,29 @@ The **AI Scan** button in the RAID toolbar triggers a project-scoped analysis:
 
 AI Scan does not overwrite or modify existing records — it only proposes new ones.
 
+### Weekly PM review (Oct 2026)
+
+**For the project's Manager and Owner only** (and admins/PMO). Team members, viewers and executives don't see it.
+
+Every Friday at about 7 am (your company's time zone) Kovarti does the PM's weekly check of each live project — the plan, people, hours, money and risks — and lists **at most 5 decisions**, most important first. You get **one notification** for all your projects ("DBJ-Loans: 2 decisions · NSWMA: all fine"), and the dashboard shows **This week's reviews**. You can also run it any day: **Overview → Weekly PM review → Run my weekly review**.
+
+What it looks for:
+- **Finish date at risk** — a task on the critical path behind where it should be by now (working days)
+- **Task slipping** — a task more than 5 working days behind that still has slack
+- **Someone is overloaded** — a person over their hours in the next two weeks, all projects counted
+- **Cost running over** — cost efficiency (CPI) below 0.90 (only when the project has a budget)
+- **Plan quality dropped** — the Schedule Review score fell 10 or more in a week, or the plan has critical problems
+- **Risks not handled** — high or critical risks with no owner or no response
+- **RAID items overdue**, **change requests waiting** a week or more, **hours waiting for approval**
+
+Each decision says what's wrong and what a good PM would do. **Why?** shows the facts behind it (from your own numbers — nothing is guessed). The main button opens the tab where you fix it. **Nothing changes until you act.**
+
+**Dismiss** asks why (Not a problem / Already handled / The facts are wrong). A dismissed problem stays quiet for four weeks **unless it gets worse**.
+
+Below the decisions: **Fine this week** (on track, on budget, plan quality and its change, risks under control, nobody overloaded, timesheets), **A little uncertain this week** (for example tasks not updated for two weeks, or no budget set), and the **status colour** the facts point to (red / amber / green). **Write the status report** opens the status report for you to edit and send — Kovarti never sends it.
+
+The review uses no AI: the same facts always give the same result.
+
 ### RAID Review (quality check of the log)
 
 **For the project's Manager and Owner only** (and admins/PMO): team members, viewers and executives don't see the Review button, the score or the flags — it's the PM's working tool, and the fixes are theirs to make. Sponsors get the RAID Report instead.

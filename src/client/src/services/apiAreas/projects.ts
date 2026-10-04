@@ -1,4 +1,5 @@
 import { ApiBase } from './http';
+import type { WeeklyReview, WeeklyResponse, DismissReason, MyWeeklyReview } from '../../components/weeklyReview/weeklyReviewTypes';
 
 /**
  * Projects, members, links, groups, sample project, templates, custom fields, attachments, portal, intake, guests and lessons learned.
@@ -543,5 +544,22 @@ export class ProjectsApi extends ApiBase {
   async revokeGuest(guestId: string) {
     const response = await this.api.delete(`/org/guests/${guestId}`);
     return response.data;
+  }
+
+  // Weekly PM review (PM-only; not the timesheet 'Weekly Review' in resources.ts): the latest review, run it now, dismiss an item with a reason
+  async getMyPmWeeklyReviews(): Promise<{ reviews: MyWeeklyReview[] }> {
+    return (await this.api.get('/projects/weekly-reviews/mine')).data;
+  }
+
+  async getPmWeeklyReview(projectId: string): Promise<{ review: WeeklyReview | null }> {
+    return (await this.api.get(`/projects/${projectId}/weekly-review`)).data;
+  }
+
+  async runPmWeeklyReview(projectId: string): Promise<{ review: WeeklyReview }> {
+    return (await this.api.post(`/projects/${projectId}/weekly-review/run`, {})).data;
+  }
+
+  async dismissPmWeeklyReviewItem(projectId: string, reviewId: string, itemKey: string, reason: DismissReason): Promise<{ responses: WeeklyResponse[] }> {
+    return (await this.api.post(`/projects/${projectId}/weekly-review/${reviewId}/dismiss`, { itemKey, reason })).data;
   }
 }

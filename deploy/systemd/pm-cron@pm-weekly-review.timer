@@ -1,0 +1,9 @@
+[Unit]
+Description=PM Assistant Weekly PM review (hourly Thu-Sat UTC; each company runs at Friday 07:00 in its own time zone)
+
+[Timer]
+OnCalendar=Thu,Fri,Sat *-*-* *:05:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

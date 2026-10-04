@@ -1094,6 +1094,13 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 
 - **AI split-task and missing-phase suggestions** (Sep 2026): Propose fixes asks the AI once to split tasks that bundle independent actions (approvals become milestones; single activities are left alone) and to place a task for each missing standard phase — all tick-to-apply with one-step undo; the review score itself stays rule-based.
 
+### Weekly PM review (Oct 2026)
+- Kovarti does the PM's Friday check of every live project: plan, people, hours, money, risks — at most 5 decisions, most important first
+- Each decision: what's wrong, what a good PM would do, the facts behind it, and a button to where it's fixed
+- "Fine this week", "a little uncertain" and a facts-based red/amber/green status; opens the status report editor (never sent automatically)
+- Dismiss with a reason; it stays quiet unless it gets worse
+- One notification per PM, Friday 7 am company time; dashboard list; runnable any day; PM-only; no AI, so repeatable and free to run
+
 ### RAID Review (Sep 2026)
 - Deterministic RAID log quality score (12 PMI/PRINCE2-based checks), findings by severity with the standard each one applies
 - Row flags in the RAID list; per-project switch-off of a check

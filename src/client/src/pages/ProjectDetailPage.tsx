@@ -26,6 +26,7 @@ import { useAuthStore } from '../stores/authStore';
 import { SaveAsTemplateModal } from '../components/templates/SaveAsTemplateModal';
 import { usePresence } from '../hooks/usePresence';
 import { SetupChecklist } from '../components/project/SetupChecklist';
+import { WeeklyReviewCard } from '../components/weeklyReview/WeeklyReviewCard';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
 import { EditProjectModal } from '../components/project/EditProjectModal';
 import { getPrimaryTabs, getOverflowTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
@@ -47,10 +48,11 @@ const BacklogView = lazy(() => import('../components/backlog/BacklogView').then(
 const TimeTrackingTab = lazy(() => import('../components/project/TimeTrackingTab').then(m => ({ default: m.TimeTrackingTab })));
 const BudgetTab = lazy(() => import('../components/project/BudgetTab').then(m => ({ default: m.BudgetTab })));
 const AttachmentPanel = lazy(() => import('../components/attachments/AttachmentPanel').then(m => ({ default: m.AttachmentPanel })));
+const WeeklyReviewView = lazy(() => import('../components/weeklyReview/WeeklyReviewView').then(m => ({ default: m.WeeklyReviewView })));
 const AutomationsTab = lazy(() => import('./ProjectDetailPage/AutomationsTab').then(m => ({ default: m.AutomationsTab })));
 const DocumentsTab = lazy(() => import('./ProjectDetailPage/DocumentsTab').then(m => ({ default: m.DocumentsTab })));
 
-type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'insights' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents';
+type Tab = 'overview' | 'schedule' | 'raid' | 'ai-insights' | 'performance' | 'insights' | 'scenarios' | 'team' | 'agent-activity' | 'change-requests' | 'sprints' | 'backlog' | 'resources' | 'time' | 'files' | 'budget' | 'automations' | 'documents' | 'weekly-review';
 
 
 const statusStyles: Record<string, { label: string; color: string }> = {
@@ -80,7 +82,7 @@ export function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'insights', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations', 'documents'];
+  const validTabs: Tab[] = ['overview', 'schedule', 'raid', 'insights', 'ai-insights', 'performance', 'scenarios', 'team', 'agent-activity', 'change-requests', 'sprints', 'backlog', 'resources', 'time', 'files', 'budget', 'automations', 'documents', 'weekly-review'];
   const tabParam = searchParams.get('tab') as Tab | null;
   const [activeTab, setActiveTabState] = useState<Tab>(tabParam && validTabs.includes(tabParam) ? tabParam : 'overview');
   const setActiveTab = (tab: Tab) => {
@@ -111,7 +113,11 @@ export function ProjectDetailPage() {
 
   const { user } = useAuthStore();
   // Project Manager/Owner (or admin/PMO) of THIS project — not the organisation role
-  const { canEdit: canEditStatus } = useProjectRole(id);
+  const { canEdit: canEditStatus, loaded: roleLoaded } = useProjectRole(id);
+  // The weekly review is the PM's: anyone else following a link lands on Overview
+  useEffect(() => {
+    if (activeTab === 'weekly-review' && roleLoaded && !canEditStatus) setActiveTab('overview');
+  }, [activeTab, roleLoaded, canEditStatus]); // eslint-disable-line react-hooks/exhaustive-deps
   const { viewers: presenceViewers, editors: presenceEditors } = usePresence(id);
   const otherViewers = presenceViewers.filter(v => v.userId !== user?.id);
 
@@ -700,6 +706,9 @@ export function ProjectDetailPage() {
       {/* Setup Checklist */}
       {activeTab === 'overview' && canEditStatus && <SetupChecklist project={project} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
 
+      {/* Weekly PM review — the project's PM only (hidden from team, viewers, executives) */}
+      {activeTab === 'overview' && canEditStatus && <WeeklyReviewCard projectId={id!} onOpen={() => setActiveTab('weekly-review')} />}
+
       {/* Tab Content */}
       <h2 className="sr-only">{[...getPrimaryTabs(methodology), ...getOverflowTabs(methodology)].find(t => t.id === activeTab)?.label ?? activeTab}</h2>
       <Suspense fallback={<SectionSpinner />}>
@@ -723,6 +732,9 @@ export function ProjectDetailPage() {
         )}
         {activeTab === 'automations' && <AutomationsTab projectId={id!} />}
         {activeTab === 'documents' && <DocumentsTab projectId={id!} />}
+        {activeTab === 'weekly-review' && canEditStatus && (
+          <WeeklyReviewView projectId={id!} onBack={() => setActiveTab('overview')} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} />
+        )}
       </Suspense>
 
       {project && (

@@ -1505,6 +1505,18 @@ AI-powered reports (Risk Assessment, Budget Forecast, Resource Utilization) stil
 
 The Reports page includes "See Also" links to the **EVM Dashboard** and **Monte Carlo Simulation** pages for users who need deeper analytical views.
 
+### Weekly PM review (Oct 2026)
+
+The PM's Friday check, done by Kovarti (playbook: `docs/playbooks/weekly-pm-cycle.md`). Per live project it gathers facts from Kovarti's own numbers — delays (`AutoRescheduleService.detectDelays`, working days), workload in the next two weeks across all projects (`ResourceService.computeWorkload`), EVM (`generateMetricsOnly`, only with a budget and something earned or spent), the Schedule Review score and its change over a week, RAID (high/critical risks without owner or response, overdue open items), change requests pending or in review, timesheets waiting for approval — and picks **at most 5 decisions** (`services/weeklyReview/picker.ts`, pure and unit-tested), red before amber. It also lists what's fine, what makes the picture uncertain (stale tasks, no budget), and a red/amber/green status from the facts. No AI.
+
+- **PM-only** (project Manager/Owner; admin/PMO pass). Overview card "Weekly PM review" with **Run my weekly review**; the review opens as a hidden project view (`?tab=weekly-review`); anyone else following a link lands on Overview.
+- **Dismiss with a reason** (not a problem / already handled / facts wrong); the problem stays quiet for 28 days unless its size grows.
+- **Friday run**: systemd timer `pm-cron@pm-weekly-review` fires hourly Thu–Sat UTC; each company runs in the hour when it is Friday 07:00 in the company's time zone; projects already reviewed by a Friday run in the last 3 days are skipped. One notification per PM (`weekly_pm_review`), linking to the project's review (one project) or the dashboard (several).
+- Dashboard **This week's reviews**: the user's managed projects reviewed in the last 7 days, those needing them first.
+- **Write the status report** opens the existing status report editor; nothing is sent automatically.
+- Not yet: one-click Apply of a suggestion (Team Planner moves etc.) and AI wording — the buttons open the tab where the PM acts.
+- Storage: tenant migration T079 (`weekly_reviews`, last 26 runs per project; `weekly_review_responses`). API: `GET /api/v1/projects/:projectId/weekly-review`, `POST …/weekly-review/run`, `POST …/weekly-review/:reviewId/dismiss`, `GET /api/v1/projects/weekly-reviews/mine`.
+
 ### RAID Review (Sep 2026)
 
 Deterministic quality check of a project's RAID log (rules v1.0, RR01–RR12, PMI/PRINCE2): response strategy on high risks, due dates on actions, one named owner, wrong type, overdue and stale, issue response, decision record, assumption validation, closure details, duplicates, and a cause–event–effect wording suggestion (not scored). Score 0–100 stored per run (`raid_reviews`); re-runs ~20 s after RAID changes and imports; per-project switch-off of checks (`raid_review_settings`). Propose fixes (change type, set owner, set due date, set response strategy) applied through RiskService with one-step undo (`raid_fix_batches`) — since Oct 2026 only for the project's newest fix batch and only while no RAID item has changed since (409 `not_latest`; no force). New fields on RAID items: `response_strategy` (avoid / mitigate / transfer / accept / escalate) and `closure_reason` (tenant migration T061). API under `/api/v1/projects/:projectId/raid-review`.

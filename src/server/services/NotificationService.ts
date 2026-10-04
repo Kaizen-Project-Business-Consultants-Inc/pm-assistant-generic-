@@ -50,6 +50,7 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   meeting_action_overdue: 'meetings',
   timesheet_reminder: 'tasks',
   weekly_review: 'tasks',
+  weekly_pm_review: 'tasks',
   time_coaching: 'tasks',
 };
 

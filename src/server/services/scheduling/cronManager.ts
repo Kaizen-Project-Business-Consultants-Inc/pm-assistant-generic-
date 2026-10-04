@@ -24,6 +24,7 @@ export interface CronTasks {
   storageSyncTask: cron.ScheduledTask | null;
   timesheetComplianceTask: cron.ScheduledTask | null;
   weeklyReviewTask: cron.ScheduledTask | null;
+  pmWeeklyReviewTask: cron.ScheduledTask | null;
   scheduleReviewTask: cron.ScheduledTask | null;
   utilizationCoachingTask: cron.ScheduledTask | null;
   scheduledAutomationTask: cron.ScheduledTask | null;
@@ -48,6 +49,7 @@ export function startCronTasks(
     storageSyncTask: null,
     timesheetComplianceTask: null,
     weeklyReviewTask: null,
+    pmWeeklyReviewTask: null,
     scheduleReviewTask: null,
     utilizationCoachingTask: null,
     scheduledAutomationTask: null,
@@ -322,6 +324,23 @@ export function startCronTasks(
     });
   });
 
+  // Weekly PM review — hourly Thu–Sat UTC; each company runs at Friday 07:00 in its own zone
+  logger.info('[cron] Starting weekly PM review (Friday 07:00 company time)');
+  tasks.pmWeeklyReviewTask = cron.schedule('5 * * * 4-6', async () => {
+    await forEachTenant(async (tenant) => {
+      const label = tenant?.slug ?? 'default';
+      try {
+        const { runPmWeeklyReviews } = await import('./pmWeeklyReviewJob');
+        const count = await runPmWeeklyReviews({ orgId: tenant?.orgId ?? null });
+        if (count > 0) logger.info(`[cron:pm-weekly-review] ${label} completed`, { cronJob: 'pm-weekly-review', tenant: label, result: { notified: count } });
+      } catch (error) {
+        logger.error(`[cron:pm-weekly-review] ${label} FAILED`, {
+          cronJob: 'pm-weekly-review', tenant: label, error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    });
+  });
+
   // Schedule Review (living document) — Mondays at 04:00
   logger.info('[cron] Starting weekly Schedule Review (Mondays at 04:00)');
   tasks.scheduleReviewTask = cron.schedule('0 4 * * 1', async () => {
@@ -432,6 +451,7 @@ export function stopCronTasks(tasks: CronTasks): void {
   if (tasks.storageSyncTask) { tasks.storageSyncTask.stop(); tasks.storageSyncTask = null; }
   if (tasks.timesheetComplianceTask) { tasks.timesheetComplianceTask.stop(); tasks.timesheetComplianceTask = null; }
   if (tasks.weeklyReviewTask) { tasks.weeklyReviewTask.stop(); tasks.weeklyReviewTask = null; }
+  if (tasks.pmWeeklyReviewTask) { tasks.pmWeeklyReviewTask.stop(); tasks.pmWeeklyReviewTask = null; }
   if (tasks.scheduleReviewTask) { tasks.scheduleReviewTask.stop(); tasks.scheduleReviewTask = null; }
   if (tasks.utilizationCoachingTask) { tasks.utilizationCoachingTask.stop(); tasks.utilizationCoachingTask = null; }
   if (tasks.scheduledAutomationTask) { tasks.scheduledAutomationTask.stop(); tasks.scheduledAutomationTask = null; }

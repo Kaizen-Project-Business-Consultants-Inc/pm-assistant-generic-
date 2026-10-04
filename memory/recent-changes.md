@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Weekly PM review
+
+User approved the mock: Friday, at most 5 decisions per project. `services/weeklyReview/picker.ts` (pure) + `WeeklyReviewService.ts` (facts, no AI) + T079 + PM-only routes (`routes/collaboration/weeklyReview.ts`) + Friday job `services/scheduling/pmWeeklyReviewJob.ts` (timer `pm-cron@pm-weekly-review`, hourly Thu–Sat UTC, runs at Friday 07:00 company zone, one notification per PM, type/link `weekly_pm_review`). Client `components/weeklyReview/*`: Overview card, hidden project view `?tab=weekly-review`, dashboard "This week's reviews". Name clash: the old time "Weekly Review" (`weekly_review`, `getWeeklyReview`) is separate. NOT YET: one-click Apply (Team Planner moves / reminders / fixes) and AI wording.
+
 ## 2026-10-04 — Schedule Review 1.8 + Monte Carlo empty plans
 
 - R38 bottleneck task (info), R40 sprint left open after its end (low), from the retired agents; R39 long chain dropped (normal in sequential plans: 7/18 good templates). Monte Carlo nightly check skips plans with no tasks instead of logging an error.

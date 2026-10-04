@@ -130,6 +130,21 @@ const sections: Section[] = [
     ],
   },
   {
+    id: 'weekly-pm-review',
+    title: 'Weekly PM review',
+    icon: ClipboardCheck,
+    description:
+      'Every Friday Kovarti checks each of your projects and lists at most 5 decisions that need you.',
+    items: [
+      'For the project Manager/Owner only: Overview → Weekly PM review → Run my weekly review (any day)',
+      "Friday about 7 am you get one notification for all your projects; the dashboard shows This week's reviews",
+      'Looks at the finish date, slipping tasks, overloaded people, cost, plan quality, risks, overdue RAID items, waiting change requests and timesheets',
+      'Why? shows the facts behind each decision; the main button opens the tab where you fix it — nothing changes until you act',
+      "Dismiss asks why; it won't come back for four weeks unless it gets worse",
+      "Also shows what's fine, what's uncertain, and the status colour — then Write the status report to edit and send it yourself",
+    ],
+  },
+  {
     id: 'raid-review',
     title: 'RAID Review',
     icon: ClipboardCheck,

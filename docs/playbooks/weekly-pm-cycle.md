@@ -1,8 +1,10 @@
-# Playbook: Weekly PM cycle  (approved by the product owner 2026-10-03 — not built yet)
+# Playbook: Weekly PM cycle  (approved by the product owner 2026-10-03; v1 built 2026-10-04 — "Weekly PM review")
 
 **What it's for:** once a week, do what a good PM does before writing the status report — look at
 the whole project, find what needs attention, suggest fixes, and draft the report. The PM reviews,
 changes what they like, and decides. Kovarti changes nothing by itself.
+
+> **Built in v1 (2026-10-04):** the checks, at most 5 decisions (user: Friday, 5), Why? facts, Dismiss with reasons, fine/uncertain notes, status colour, Friday notification per PM, dashboard list, "Write the status report". **Not yet:** one-click Apply of a suggestion (Team Planner moves, reminders, fixes) and AI choosing/wording — each decision opens the tab where the PM acts.
 
 ---
 

@@ -108,6 +108,29 @@ class WeeklyReviewRepository {
     return rows.map(r => ({ key: r.item_key, measure: Number(r.measure) || 0, at: stamp(r.created_at).slice(0, 10) }));
   }
 
+  /** The latest review of each project the user manages (owner/manager member), live projects only */
+  async latestForManager(userId: string): Promise<Array<{ projectId: string; projectName: string; reviewId: string; rag: string; items: number; createdAt: string; done: number }>> {
+    const rows = await databaseService.query<any>(
+      `SELECT w.id, w.project_id, p.name AS project_name, w.rag, w.items, w.created_at,
+              (SELECT COUNT(*) FROM weekly_review_responses r WHERE r.review_id = w.id) AS done
+         FROM weekly_reviews w
+         JOIN projects p ON p.id = w.project_id AND p.archived_at IS NULL
+         JOIN project_members m ON m.project_id = w.project_id AND m.user_id = ? AND m.role IN ('owner', 'manager')
+        WHERE w.created_at = (SELECT MAX(w2.created_at) FROM weekly_reviews w2 WHERE w2.project_id = w.project_id)
+        LIMIT 200`,
+      [userId],
+    );
+    return rows.map(r => ({
+      projectId: r.project_id,
+      projectName: r.project_name,
+      reviewId: r.id,
+      rag: r.rag,
+      items: parseJson<unknown[]>(r.items, []).length,
+      createdAt: stamp(r.created_at),
+      done: Number(r.done) || 0,
+    }));
+  }
+
   async saveResponse(r: { id: string; projectId: string; reviewId: string; itemKey: string; response: 'dismissed' | 'applied'; reason: string | null; measure: number; createdBy: string }): Promise<void> {
     await databaseService.query(
       `INSERT INTO weekly_review_responses (id, project_id, review_id, item_key, response, reason, measure, created_by)

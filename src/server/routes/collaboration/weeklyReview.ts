@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { weeklyReviewService, WeeklyReviewNotFoundError, DISMISS_REASONS } from '../../services/WeeklyReviewService';
+import { today } from '../../utils/calendarDate';
 import logger from '../../utils/logger';
 
 const dismissSchema = z.object({
@@ -26,6 +27,16 @@ export async function weeklyReviewRoutes(fastify: FastifyInstance) {
     logger.error(`Weekly review: ${what} failed`, { message: (error as Error)?.message, stack: (error as Error)?.stack });
     return reply.status(500).send({ error: 'Internal server error', message: `Failed to ${what}` });
   };
+
+  // GET /weekly-reviews/mine — "This week's reviews" on the dashboard: only the projects
+  // the caller manages (owner/manager member), filtered in the query
+  fastify.get('/weekly-reviews/mine', {
+    preHandler: [requireScope('read')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      return { reviews: await weeklyReviewService.mine(request.user!.userId, today()) };
+    } catch (error) { return fail(reply, error, 'load your weekly reviews'); }
+  });
 
   // GET /:projectId/weekly-review — the latest review and what the PM did with it
   fastify.get('/:projectId/weekly-review', {

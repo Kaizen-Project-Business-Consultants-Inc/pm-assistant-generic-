@@ -17,6 +17,7 @@ const m = vi.hoisted(() => ({
   dismissals: vi.fn(),
   saveResponse: vi.fn(),
   responsesFor: vi.fn(),
+  latestForManager: vi.fn(),
 }));
 
 vi.mock('../../services/ProjectService', () => ({ projectService: { findById: m.project } }));
@@ -32,7 +33,7 @@ vi.mock('../../database/ApprovalWorkflowRepository', () => ({ approvalWorkflowRe
 vi.mock('../../database/WeeklyReviewRepository', () => ({
   weeklyReviewRepository: {
     insert: m.insert, findById: m.findById, prune: async () => {}, dismissalsSince: m.dismissals,
-    saveResponse: m.saveResponse, responsesFor: m.responsesFor, findLatest: vi.fn(),
+    saveResponse: m.saveResponse, responsesFor: m.responsesFor, findLatest: vi.fn(), latestForManager: m.latestForManager,
   },
 }));
 
@@ -149,5 +150,18 @@ describe('WeeklyReviewService.run and dismiss', () => {
     m.findById.mockResolvedValue({ id: 'rv1', projectId: 'p1', items: [] });
     await expect(weeklyReviewService.dismiss('p1', 'rv1', 'delay:t1', 'not_a_problem', 'u1')).rejects.toBeInstanceOf(WeeklyReviewNotFoundError);
     expect(m.saveResponse).not.toHaveBeenCalled();
+  });
+});
+
+describe('WeeklyReviewService.mine (dashboard list)', () => {
+  it('this week only, open decisions = items minus responses, projects needing you first', async () => {
+    m.latestForManager.mockResolvedValue([
+      { projectId: 'a', projectName: 'Zeta', reviewId: 'r1', rag: 'green', items: 0, done: 0, createdAt: '2026-10-09T07:00:00.000Z' },
+      { projectId: 'b', projectName: 'Alpha', reviewId: 'r2', rag: 'red', items: 3, done: 1, createdAt: '2026-10-09T07:00:00.000Z' },
+      { projectId: 'c', projectName: 'Old', reviewId: 'r3', rag: 'amber', items: 2, done: 0, createdAt: '2026-09-20T07:00:00.000Z' },
+    ]);
+    const out = await weeklyReviewService.mine('u1', '2026-10-09');
+    expect(m.latestForManager).toHaveBeenCalledWith('u1');
+    expect(out.map(r => [r.projectName, r.open])).toEqual([['Alpha', 2], ['Zeta', 0]]);
   });
 });

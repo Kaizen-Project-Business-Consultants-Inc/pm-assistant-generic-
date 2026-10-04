@@ -177,6 +177,16 @@ export class WeeklyReviewService {
     return { ...row, projectName: project?.name ?? '', responses };
   }
 
+  /** "This week's reviews" on the dashboard: the user's managed projects, needing them first */
+  async mine(userId: string, asOf: string): Promise<Array<{ projectId: string; projectName: string; reviewId: string; rag: string; open: number; createdAt: string }>> {
+    const since = addCalendarDays(asOf, -7);
+    const rows = await weeklyReviewRepository.latestForManager(userId);
+    return rows
+      .filter(r => dayOf(r.createdAt) >= since)
+      .map(r => ({ projectId: r.projectId, projectName: r.projectName, reviewId: r.reviewId, rag: r.rag, open: Math.max(0, r.items - r.done), createdAt: r.createdAt }))
+      .sort((a, b) => b.open - a.open || a.projectName.localeCompare(b.projectName));
+  }
+
   /** The PM says an item isn't useful — it stays quiet in later weeks unless it gets worse */
   async dismiss(projectId: string, reviewId: string, itemKey: string, reason: DismissReason, userId: string): Promise<WeeklyResponseRow[]> {
     const review = await weeklyReviewRepository.findById(reviewId);
