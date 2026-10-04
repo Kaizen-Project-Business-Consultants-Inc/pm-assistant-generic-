@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { killSwitchService } from '../../services/agents/KillSwitchService';
 
+import { platformAdminOnly } from '../../utils/platformAdmin';
 const toggleKillSwitchSchema = z.object({
   action: z.enum(['enable', 'disable']),
 });
@@ -29,7 +30,7 @@ export async function killSwitchRoutes(fastify: FastifyInstance) {
 
   // Toggle global kill switch
   fastify.post('/kill-switch', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Toggle global agent kill switch (admin only)', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -45,7 +46,7 @@ export async function killSwitchRoutes(fastify: FastifyInstance) {
 
   // Toggle per-agent kill switch
   fastify.put('/kill-switch/agent/:agentId', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Toggle per-agent kill switch (admin only)', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -62,7 +63,7 @@ export async function killSwitchRoutes(fastify: FastifyInstance) {
 
   // Toggle per-project kill switch
   fastify.put('/kill-switch/project/:projectId', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Toggle per-project kill switch (admin only)', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

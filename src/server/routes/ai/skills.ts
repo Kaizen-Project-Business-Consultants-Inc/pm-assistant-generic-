@@ -3,6 +3,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { skillRegistryService } from '../../services/context/SkillRegistryService';
 
+import { platformAdminOnly } from '../../utils/platformAdmin';
 export async function skillRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -41,7 +42,7 @@ export async function skillRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/skills — create skill (admin)
   fastify.post('/', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Create a new skill', tags: ['skills'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -68,7 +69,7 @@ export async function skillRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/skills/:id — update skill (admin)
   fastify.put('/:id', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Update a skill', tags: ['skills'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

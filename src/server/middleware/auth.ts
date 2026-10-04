@@ -46,10 +46,16 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         });
       }
 
+      const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null }>(
+        'SELECT organization_id FROM users WHERE id = ? LIMIT 1',
+        [keyInfo.userId],
+      );
       request.user = {
         userId: keyInfo.userId,
         username: 'api-key',
         role: keyInfo.userRole,
+        // unknown (no row) counts as having a company: never mistaken for the platform admin
+        hasCompany: keyOwner.length > 0 ? keyOwner[0].organization_id != null : true,
       };
       request.apiKeyId = keyInfo.keyId;
       request.apiKeyScopes = keyInfo.scopes;
@@ -97,10 +103,12 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     // Fetch extra user flags (must_change_password, is_guest)
     const url = request.url;
     const isPasswordChangeAllowed = url.includes('/auth/change-password') || url.includes('/auth/logout') || url.includes('/auth/me');
-    const rows = await databaseService.queryControlPlane<{ must_change_password: number; is_guest: number; guest_expires_at: string | null }>(
-      'SELECT must_change_password, is_guest, guest_expires_at FROM users WHERE id = ? LIMIT 1',
+    const rows = await databaseService.queryControlPlane<{ must_change_password: number; is_guest: number; guest_expires_at: string | null; organization_id: string | null }>(
+      'SELECT must_change_password, is_guest, guest_expires_at, organization_id FROM users WHERE id = ? LIMIT 1',
       [decoded.userId],
     );
+    // unknown (no row) counts as having a company: never mistaken for the platform admin
+    request.user.hasCompany = rows.length > 0 ? rows[0].organization_id != null : true;
 
     if (rows.length > 0) {
       if (!isPasswordChangeAllowed && rows[0].must_change_password) {

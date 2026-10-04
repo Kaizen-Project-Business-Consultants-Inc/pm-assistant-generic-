@@ -8,6 +8,7 @@ import { emailService } from '../../services/EmailService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
+import { isPlatformAdmin, platformAdminOnly } from '../../utils/platformAdmin';
 const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024; // 5MB
 
 const submitFeedbackSchema = z.object({
@@ -131,7 +132,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.userId;
       const { id } = request.params as { id: string };
-      const isAdmin = request.user!.role === 'admin';
+      const isAdmin = isPlatformAdmin(request.user);
 
       const rows = await databaseService.queryControlPlane(
         `SELECT screenshot_data, user_id FROM feedback WHERE id = ?`,
@@ -159,7 +160,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
   });
 
   // GET / — List all feedback (admin only)
-  fastify.get('/', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/', { preHandler: [requireScope('admin'), platformAdminOnly] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { status, limit = '50', offset = '0' } = request.query as { status?: string; limit?: string; offset?: string };
 
@@ -227,7 +228,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
   });
 
   // PATCH /:id — Update feedback status/notes/reply (admin only)
-  fastify.patch('/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.patch('/:id', { preHandler: [requireScope('admin'), platformAdminOnly] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const adminUserId = request.user!.userId;

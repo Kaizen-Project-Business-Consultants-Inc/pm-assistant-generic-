@@ -1,4 +1,5 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
+import { isPlatformAdmin } from '../utils/platformAdmin';
 import { organizationRepository } from '../database/OrganizationRepository';
 import { config } from '../config';
 import { organizationService } from '../services/OrganizationService';
@@ -54,7 +55,7 @@ export async function tenantResolverHook(
   if (!request.user?.userId) return;
 
   // Support view: the platform admin's read-only, recorded visit into one company
-  if (request.user.role === 'admin') {
+  if (isPlatformAdmin(request.user)) {
     const visitId = (request.cookies as Record<string, string | undefined> | undefined)?.[SUPPORT_COOKIE];
     const visit = visitId ? await supportSessionService.findActive(visitId, request.user.userId) : null;
     if (visit) {

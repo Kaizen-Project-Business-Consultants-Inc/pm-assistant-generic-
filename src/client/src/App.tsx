@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES, ROUTE_PATTERNS, routeTo } from './routes';
-import { useAuthStore, withoutCompany, isPersonalPath } from './stores/authStore';
+import { useAuthStore, withoutCompany, isPersonalPath, isPlatformAdmin } from './stores/authStore';
 import { NoCompanyPage } from './pages/NoCompanyPage';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { AppUpdater } from './components/AppUpdater';
@@ -114,9 +114,11 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
   if (user?.mustChangePassword) return <Navigate to="/change-password" replace />;
   if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
+  // Admin pages are the Kovarti platform admin's only — admin role AND no company
+  if (requiredRole === 'admin' && !isPlatformAdmin(user)) return <Navigate to="/dashboard" replace />;
   // No company: the platform admin goes to the admin pages; anyone else is told why there's nothing here
   if (withoutCompany(user) && !isPersonalPath(location.pathname)) {
-    if (user?.role === 'admin') return <Navigate to={ROUTES.adminUsers} replace />;
+    if (isPlatformAdmin(user)) return <Navigate to={ROUTES.adminUsers} replace />;
     return <AppLayout><NoCompanyPage /></AppLayout>;
   }
   return <AppLayout><RouteErrorBoundary>{children}</RouteErrorBoundary></AppLayout>;

@@ -34,6 +34,14 @@ export function withoutCompany(user: User | null | undefined): boolean {
   return !!user && user.organization === null;
 }
 
+/**
+ * The Kovarti platform admin: role 'admin' AND no company ("admin owns nothing", user rule
+ * 2026-10-04). Company members can't be admin; the server refuses it too (utils/platformAdmin.ts).
+ */
+export function isPlatformAdmin(user: User | null | undefined): boolean {
+  return !!user && user.role === 'admin' && withoutCompany(user);
+}
+
 export function isPersonalPath(pathname: string): boolean {
   return PERSONAL_PATHS.some(p => pathname === p || pathname.startsWith(`${p}/`));
 }

@@ -10,7 +10,7 @@ import jwt from 'jsonwebtoken';
 const SECRET = 'test-secret-test-secret-test-secret-123';
 vi.mock('../../config', () => ({ config: { JWT_SECRET: 'test-secret-test-secret-test-secret-123', NODE_ENV: 'production', MULTI_TENANT_ENABLED: true } }));
 vi.mock('../../services/RedisService', () => ({ redisService: { get: vi.fn(async () => null), set: vi.fn(async () => {}) } }));
-vi.mock('../../database/connection', () => ({ databaseService: { queryControlPlane: vi.fn(async (sql: string) => (/is_active/.test(sql) ? [{ is_active: 1 }] : [{ must_change_password: 0, is_guest: 0 }])) } }));
+vi.mock('../../database/connection', () => ({ databaseService: { queryControlPlane: vi.fn(async (sql: string, params?: string[]) => (/is_active/.test(sql) ? [{ is_active: 1 }] : [{ must_change_password: 0, is_guest: 0, organization_id: params?.[0] === 'company-admin' ? 'o1' : null }])) } }));
 vi.mock('../../middleware/requireSubscription', () => ({ subscriptionGuard: vi.fn(async () => {}) }));
 vi.mock('../../services/ApiKeyService', () => ({ apiKeyService: { validateKey: vi.fn() } }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }, maskPii: (v: string) => v }));
@@ -49,6 +49,13 @@ describe('Support view — start and end a visit', () => {
   it('only the platform admin can start one', async () => {
     expect((await post('pmo', good)).statusCode).toBe(403);
     expect((await post('project_manager', good)).statusCode).toBe(403);
+    expect(svc.start).not.toHaveBeenCalled();
+  });
+
+  // 2026-10-04: 'admin' inside a company is not the platform admin (admin owns nothing)
+  it('an admin who belongs to a company is refused', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/v1/admin/support-sessions', cookies: { access_token: tokenFor('admin', 'company-admin') }, payload: good });
+    expect(res.statusCode).toBe(403);
     expect(svc.start).not.toHaveBeenCalled();
   });
 

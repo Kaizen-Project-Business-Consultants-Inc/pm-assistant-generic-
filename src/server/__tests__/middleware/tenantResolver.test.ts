@@ -94,7 +94,7 @@ describe('tenantResolver — Support view (the admin\'s read-only visit into one
     });
   });
   const visiting = (url: string, method = 'GET') =>
-    ({ url, method, cookies: { support_session: 'v1' }, user: { userId: 'admin1', role: 'admin' } }) as any;
+    ({ url, method, cookies: { support_session: 'v1' }, user: { userId: 'admin1', role: 'admin', hasCompany: false } }) as any;
 
   it('reads come from the visited company', async () => {
     const r = reply();
@@ -126,6 +126,15 @@ describe('tenantResolver — Support view (the admin\'s read-only visit into one
     await tenantResolverHook(visiting('/api/v1/projects'), r);
     expect(r.status).toHaveBeenCalledWith(403);
     expect(r.send.mock.calls[0][0].error).toBe('no_company');
+  });
+
+  // 2026-10-04: 'admin' inside a company is NOT the platform admin (admin owns nothing)
+  it('a visit cookie means nothing to an admin who belongs to a company', async () => {
+    (organizationService.findByUserId as any).mockResolvedValue({ id: 'o1', slug: 'acme', dbName: 'pmassist_t_acme', isActive: true, isProvisioned: true });
+    const r = reply();
+    await tenantResolverHook({ url: '/api/v1/projects', method: 'GET', cookies: { support_session: 'v1' }, user: { userId: 'u2', role: 'admin', hasCompany: true } } as any, r);
+    expect(support.findActive).not.toHaveBeenCalled();
+    expect(ctx.tenantDbName).toBe('pmassist_t_acme');
   });
 
   it('a visit cookie means nothing to anyone but the admin', async () => {

@@ -7,13 +7,14 @@ import { rateLimiter } from '../../middleware/rateLimiter';
 import { emailService } from '../../services/EmailService';
 import { config } from '../../config';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 const joinSchema = z.object({
   email: z.string().email(),
 });
 
 function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user!;
-  if (!user || user.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     return false;
   }

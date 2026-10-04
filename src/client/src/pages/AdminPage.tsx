@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '../stores/authStore';
+import { useAuthStore, isPlatformAdmin } from '../stores/authStore';
 import { apiService } from '../services/api';
 import { tierBadgeClass, roleLabel } from '../constants/branding';
 import {
@@ -482,7 +482,7 @@ export function AdminPage() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<Tab>('users');
 
-  if (user?.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     return <Navigate to="/dashboard" replace />;
   }
 

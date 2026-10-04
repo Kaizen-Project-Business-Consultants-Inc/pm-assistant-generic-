@@ -119,18 +119,31 @@ describe('UserService', () => {
     it('uses custom role when provided', async () => {
       mockQuery
         .mockResolvedValueOnce([]) // INSERT
-        .mockResolvedValueOnce([{ ...sampleRow, id: 'test-user-id', role: 'admin' }]);
+        .mockResolvedValueOnce([{ ...sampleRow, id: 'test-user-id', role: 'pmo' }]);
 
       await service.create({
-        username: 'admin',
-        email: 'admin@example.com',
+        username: 'pmo1',
+        email: 'pmo@example.com',
         passwordHash: 'hash',
-        fullName: 'Admin User',
-        role: 'admin',
+        fullName: 'PMO User',
+        role: 'pmo',
       });
 
       const insertCall = mockQuery.mock.calls[0];
-      expect(insertCall[1]).toContain('admin');
+      expect(insertCall[1]).toContain('pmo');
+    });
+
+    // 2026-10-04: 'admin' is the Kovarti platform admin only — nothing in the app may make one
+    it('refuses to create an admin', async () => {
+      await expect(service.create({
+        username: 'x', email: 'x@example.com', passwordHash: 'h', fullName: 'X', role: 'admin',
+      } as any)).rejects.toThrow(/reserved for the Kovarti platform/);
+      expect(mockQuery).not.toHaveBeenCalled();
+    });
+
+    it('refuses to make an existing user admin', async () => {
+      await expect(service.update('u1', { role: 'admin' } as any)).rejects.toThrow(/reserved for the Kovarti platform/);
+      expect(mockQuery).not.toHaveBeenCalled();
     });
   });
 

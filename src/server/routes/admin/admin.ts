@@ -15,6 +15,7 @@ import { config, getTierBudget } from '../../config';
 import logger from '../../utils/logger';
 import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 const statusSchema = z.object({
   active: z.boolean(),
 });
@@ -25,7 +26,7 @@ const changeTierSchema = z.object({
 
 function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user!;
-  if (!user || user.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     return false;
   }

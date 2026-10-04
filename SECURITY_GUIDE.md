@@ -160,6 +160,19 @@ owner  >  manager  >  viewer   (editor = viewer)
 
 **Why the gaps existed (for the record):** the check was added on 4 Jul 2026 route by route (opt-in); later routes (bulk tools 15 Jul, bulk delete 5 Sep, many others) never got it; the middleware silently passed when it couldn't find a project; nothing tested for it.
 
+### Platform admin = admin role AND no company (Oct 2026)
+"Admin owns nothing." The only platform admin is the account with role `admin` and no company
+(`utils/platformAdmin.ts` `isPlatformAdmin`; client `isPlatformAdmin` in `stores/authStore.ts`). Every
+platform route — `routes/admin/*`, the support-visit switch in `tenantResolver`, the all-company
+feedback list, the AI kill switch and skills (`platformAdminOnly` next to `requireScope('admin')`) —
+checks that, never the bare role. `authMiddleware` records `hasCompany` from the user row (unknown =
+has a company, so the check fails closed). Company owners can't grant `admin`: invite and role change
+use `COMPANY_ASSIGNABLE_ROLES` (`constants/roles.ts`) and answer 400 with a plain message;
+`UserService.create/update` refuse `role: 'admin'`; the owner's role can't be changed; a removed member
+never leaves with `admin`. System alerts go only to the platform admin. Found 2026-10-04 (full audit):
+until then a company owner could make a member `admin`, which passed every platform check. Guards:
+`__tests__/middleware/platformAdminGuard.test.ts`, `__tests__/routes/orgAdminRole.test.ts`.
+
 ### Support view — platform admin access to customer data (Sep 2026)
 The platform admin never changes customer data. To troubleshoot, the admin opens a **Support view**
 visit into ONE company:
@@ -180,7 +193,7 @@ routes answer `no_company` (see ADMIN_MANUAL).
 
 | Global User Role | Bypass Behavior |
 |---|---|
-| `admin`, `pmo` | Full access to all projects (no membership required) |
+| `admin`, `pmo` | Full access to all projects (no membership required). `admin` is the platform admin only and has no company, so in practice this is PMO. |
 | `executive` | Read-only access to all projects (write/admin denied) |
 | All other roles | Must be a project member with sufficient project role |
 

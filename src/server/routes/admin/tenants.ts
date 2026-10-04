@@ -7,9 +7,10 @@ import { organizationService } from '../../services/OrganizationService';
 import { provisionTenantDatabase } from '../../database/tenantProvisioner';
 import { runTenantMigrations } from '../../database/tenantMigrationRunner';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user!;
-  if (!user || user.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     return false;
   }

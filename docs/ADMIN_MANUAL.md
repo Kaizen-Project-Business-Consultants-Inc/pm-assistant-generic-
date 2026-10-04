@@ -8,12 +8,14 @@ This manual is for **system administrators** who manage users, projects, and pla
 
 | Role          | Access                                                              |
 |---------------|---------------------------------------------------------------------|
-| **admin**     | Full access: all users, projects, system settings, billing, audit.  |
+| **admin**     | The Kovarti platform admin only (see below). Never a company member. |
 | **executive** | Read-only portfolio view, analytics dashboards, KPI summaries.      |
 | **manager**   | Create/manage projects, assign members, run reports, approve tasks. |
 | **member**    | View and work on assigned projects, log time, update tasks.         |
 
-Admins can manage all aspects of the platform. Managers operate within projects they own or are assigned to. Members participate in their assigned work.
+Managers operate within projects they own or are assigned to. Members participate in their assigned work.
+
+**"Admin" means the Kovarti platform admin — and nothing else (October 2026).** The platform admin is the account with the `admin` role **and no company**: it owns nothing and has no projects. It reaches the admin pages (all companies, plans, users and password resets, revenue, logs, waitlist, feedback, the AI kill switch and skills) and can open a read-only, recorded **Support view** into one company. Company owners **cannot** give anyone the admin role: it isn't in Settings → Team, and the server refuses it ("Admin is reserved for the Kovarti platform team…"). The owner's own role can't be changed by anyone else, and a member removed from a company never keeps the admin role. The account is created by hand on the server (`seed-admin.sql`); never give it a company. Before October 2026 the admin pages only checked the role, and the company invite list offered "Admin" — that is how a company member could have become a platform admin.
 
 ---
 

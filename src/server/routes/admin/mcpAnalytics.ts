@@ -2,9 +2,10 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { databaseService } from '../../database/connection';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
   const user = request.user!;
-  if (!user || user.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     return false;
   }

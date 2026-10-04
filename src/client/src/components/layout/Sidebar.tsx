@@ -43,7 +43,7 @@ import {
   Brain,
   Lock,
 } from 'lucide-react';
-import { useAuthStore, withoutCompany } from '../../stores/authStore';
+import { useAuthStore, withoutCompany, isPlatformAdmin } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
 import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
@@ -222,7 +222,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
   const nav = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { t } = useTranslation();
-  const isAdmin = user?.role === 'admin';
+  // The Kovarti platform admin (admin role, no company) — company members are never admin
+  const isAdmin = isPlatformAdmin(user);
 
   // No company (the platform admin): there is no project side to switch to
   const noCompany = withoutCompany(user);

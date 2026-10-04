@@ -7,8 +7,8 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { ViewerInvitePanel } from '../../components/settings/ViewerInvitePanel';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
+// Never 'admin': that is the Kovarti platform admin only (user rule 2026-10-04)
 const ROLE_OPTIONS = [
-  { value: 'admin', label: 'Admin' },
   { value: 'project_manager', label: 'Project Manager' },
   { value: 'team_member', label: 'Team Member' },
   { value: 'viewer', label: 'Viewer' },

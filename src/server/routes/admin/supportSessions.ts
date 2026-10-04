@@ -6,6 +6,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { userService } from '../../services/UserService';
 import { sendValidationError } from '../../utils/validationError';
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 import {
   supportSessionService, SupportSessionError, SUPPORT_COOKIE, SUPPORT_SESSION_MINUTES,
 } from '../../services/SupportSessionService';
@@ -17,7 +18,7 @@ const startSchema = z.object({
 });
 
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
-  if (request.user?.role !== 'admin') {
+  if (!isPlatformAdmin(request.user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Only the platform admin can start a support visit.' });
     return false;
   }

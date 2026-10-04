@@ -69,6 +69,21 @@ export interface CreateUserData {
   stripeCustomerId?: string;
 }
 
+/**
+ * Nothing in the app may make someone 'admin' — the role is the Kovarti platform admin only and
+ * is set by hand on the server (seed-admin.sql). User rule 2026-10-04; see utils/platformAdmin.ts.
+ */
+export class AdminRoleNotAssignableError extends Error {
+  constructor() {
+    super("Admin is reserved for the Kovarti platform team and can't be given to a company member. Choose another role.");
+    this.name = 'AdminRoleNotAssignableError';
+  }
+}
+
+function assertNotAdminRole(role: string | undefined): void {
+  if (role === 'admin') throw new AdminRoleNotAssignableError();
+}
+
 export class UserService {
   /** Display names for many users in one query (id → full name, else username). Unknown ids are left out. */
   async displayNames(ids: string[]): Promise<Map<string, string>> {
@@ -113,10 +128,12 @@ export class UserService {
   }
 
   async create(data: CreateUserData): Promise<User> {
+    assertNotAdminRole((data as { role?: string }).role);
     return userRepository.create(data);
   }
 
   async update(id: string, data: Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>): Promise<User | null> {
+    assertNotAdminRole((data as { role?: string }).role);
     return userRepository.update(id, data as Record<string, any>);
   }
 

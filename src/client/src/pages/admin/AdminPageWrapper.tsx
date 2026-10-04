@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, isPlatformAdmin } from '../../stores/authStore';
 import { ShieldCheck } from 'lucide-react';
 
 interface AdminPageWrapperProps {
@@ -12,7 +12,7 @@ interface AdminPageWrapperProps {
 export function AdminPageWrapper({ title, subtitle, children }: AdminPageWrapperProps) {
   const { user } = useAuthStore();
 
-  if (user?.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     return <Navigate to="/dashboard" replace />;
   }
 

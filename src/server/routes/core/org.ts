@@ -10,6 +10,7 @@ import { emailService } from '../../services/EmailService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { resourceService } from '../../services/ResourceService';
 import { isConsultantTier } from '../../utils/tierUtils';
+import { COMPANY_ASSIGNABLE_ROLES, ADMIN_NOT_ASSIGNABLE_MESSAGE } from '../../constants/roles';
 import logger from '../../utils/logger';
 import { config } from '../../config';
 import { runWithTenantContext } from '../../middleware/requestContext';
@@ -28,10 +29,8 @@ function inOrgDb<T>(org: { id: string; dbName?: string | null }, fn: () => Promi
 
 const inviteSchema = z.object({
   email: z.string().email(),
-  role: z.enum([
-    'admin', 'executive', 'project_manager', 'team_member', 'scrum_master',
-    'finance_officer', 'risk_manager', 'pmo', 'ba', 'qa', 'tester', 'devops', 'claude_sme', 'viewer',
-  ]).default('team_member'),
+  // Never 'admin' — that is the Kovarti platform admin only (user rule 2026-10-04)
+  role: z.enum(COMPANY_ASSIGNABLE_ROLES).default('team_member'),
 });
 
 /**
@@ -72,6 +71,9 @@ export async function orgRoutes(fastify: FastifyInstance) {
         return reply.status(429).send({ error: 'Too many invite attempts. Please try again later.' });
       }
 
+      if ((request.body as { role?: unknown } | null)?.role === 'admin') {
+        return reply.status(400).send({ error: 'Role not allowed', message: ADMIN_NOT_ASSIGNABLE_MESSAGE });
+      }
       const { email, role } = inviteSchema.parse(request.body);
       const inviterId = request.user!.userId;
 
@@ -280,11 +282,9 @@ export async function orgRoutes(fastify: FastifyInstance) {
   });
 
   // Update a member's role
+  // Never 'admin' — that is the Kovarti platform admin only (user rule 2026-10-04)
   const updateMemberSchema = z.object({
-    role: z.enum([
-      'admin', 'executive', 'project_manager', 'team_member', 'scrum_master',
-      'finance_officer', 'risk_manager', 'pmo', 'ba', 'qa', 'tester', 'devops', 'claude_sme', 'viewer',
-    ]),
+    role: z.enum(COMPANY_ASSIGNABLE_ROLES),
   });
 
   fastify.patch('/members/:memberId', {
@@ -292,6 +292,9 @@ export async function orgRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { memberId } = request.params as { memberId: string };
+      if ((request.body as { role?: unknown } | null)?.role === 'admin') {
+        return reply.status(400).send({ error: 'Role not allowed', message: ADMIN_NOT_ASSIGNABLE_MESSAGE });
+      }
       const { role } = updateMemberSchema.parse(request.body);
       const requesterId = request.user!.userId;
 
@@ -315,6 +318,11 @@ export async function orgRoutes(fastify: FastifyInstance) {
       // Cannot change own role (prevent locking yourself out)
       if (memberId === requesterId) {
         return reply.status(400).send({ error: 'Cannot change your own role' });
+      }
+
+      // The company owner's role is not changed by anyone else
+      if (memberId === org.ownerUserId) {
+        return reply.status(400).send({ error: 'Cannot change the owner', message: "The company owner's role can't be changed." });
       }
 
       // Consultant tiers can only have viewers (no promotions to non-viewer)
@@ -616,7 +624,13 @@ export async function orgRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Member not found in your organization' });
       }
 
-      // Remove org association (set organization_id to NULL)
+      // Remove org association (set organization_id to NULL). A person without a company who
+      // is 'admin' looks exactly like the platform admin, so nobody leaves as admin.
+      const leaving = await userService.findById(memberId);
+      if (leaving?.role === 'admin') {
+        logger.warn('[org] removed member had the admin role — reset to team_member', { memberId, orgId: org.id });
+        await userService.update(memberId, { role: 'team_member' } as any);
+      }
       await userService.update(memberId, { organizationId: null } as any);
       organizationService.invalidateUserCache(memberId);
 

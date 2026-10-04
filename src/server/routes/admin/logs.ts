@@ -4,13 +4,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 export async function logsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /api/v1/admin/logs — query structured logs
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user;
-    if (!user || user.role !== 'admin') {
+    if (!isPlatformAdmin(user)) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     }
 
@@ -60,7 +61,7 @@ export async function logsRoutes(fastify: FastifyInstance) {
   // GET /api/v1/admin/logs/files — list available log files
   fastify.get('/files', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user;
-    if (!user || user.role !== 'admin') {
+    if (!isPlatformAdmin(user)) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     }
 
@@ -83,7 +84,7 @@ export async function logsRoutes(fastify: FastifyInstance) {
   // GET /api/v1/admin/logs/download/:filename — download a log file
   fastify.get('/download/:filename', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user;
-    if (!user || user.role !== 'admin') {
+    if (!isPlatformAdmin(user)) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     }
 

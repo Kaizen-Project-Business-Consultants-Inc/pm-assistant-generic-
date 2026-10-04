@@ -9,9 +9,10 @@ import { redisService } from '../../services/RedisService';
 import { config } from '../../config';
 import { EmailService } from '../../services/EmailService';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
   const user = request.user!;
-  if (!user || user.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     return false;
   }

@@ -4,9 +4,10 @@ import { subscriptionRepository } from '../../database/SubscriptionRepository';
 import { subscriptionEventRepository } from '../../database/SubscriptionEventRepository';
 import { databaseService } from '../../database/connection';
 
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
   const user = request.user!;
-  if (!user || user.role !== 'admin') {
+  if (!isPlatformAdmin(user)) {
     reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     return false;
   }

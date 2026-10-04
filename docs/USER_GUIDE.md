@@ -87,7 +87,7 @@ A **3-step wizard** guides you through initial setup:
 **Step 2 — Create Your First Project (optional)**
 - Pick a project template from the library to pre-populate tasks, milestones, and dependencies. Templates are sorted to match your methodology choice, and up to 6 are shown.
 - You can skip this step — just click **Skip** to go straight to the confirmation screen. You can always create a project manually from the Projects page later.
-- **Explore a sample project first** (company owner or admin, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it.
+- **Explore a sample project first** (company owner or PMO, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it.
 
 **Step 3 — You're all set**
 - A confirmation screen shows your trial details (start date, end date, and what's included).
@@ -2496,7 +2496,7 @@ All prices are displayed in **USD (US Dollars)**:
 Navigate to **Settings** to configure:
 
 - **User management** -- Add, edit, or deactivate users. Assign roles (admin, executive, manager, member).
-- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant Basic, Consultant Pro, SME, and Enterprise plans. **Note:** Consultant tiers can only invite viewers (the role dropdown is hidden). SME and Enterprise tiers can invite any role, but non-viewer invites consume a paid seat (auto-added to your Stripe subscription if needed).
+- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant Basic, Consultant Pro, SME, and Enterprise plans. **Note:** Consultant tiers can only invite viewers (the role dropdown is hidden). SME and Enterprise tiers can invite any company role (Project Manager, Team Member, Viewer, Executive, PMO and the other job roles), but non-viewer invites consume a paid seat (auto-added to your Stripe subscription if needed). There is no "Admin" role for company members — admin is reserved for the Kovarti platform team. The company owner's own role can't be changed by anyone else.
 - **API keys** -- Generate and manage API keys for programmatic access. Revoking a key shows a styled confirmation modal before the key is deleted.
 - **Webhooks** -- Configure outbound webhook endpoints. Deleting a webhook shows a styled confirmation modal.
 - **Custom fields** -- Define organization-wide custom fields that appear on tasks and projects.

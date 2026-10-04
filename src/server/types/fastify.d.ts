@@ -21,6 +21,8 @@ declare module 'fastify' {
       role: string;
       isGuest?: boolean;
       guestExpiresAt?: string | null;
+      /** Belongs to a company (set by authMiddleware). The platform admin has none — see utils/platformAdmin.ts */
+      hasCompany?: boolean;
     };
     apiKeyId?: string;
     apiKeyScopes?: string[];
