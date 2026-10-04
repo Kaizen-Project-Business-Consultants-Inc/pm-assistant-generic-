@@ -21,13 +21,15 @@ import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
 import {
   barColors, priorityColors, statusOptions, priorityOptions,
-  SUMMARY_ROLLUP_FIELDS, formatDate,
+  formatDate,
   type TableViewProps, type SortDir, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { planDurationEdit } from './durationEdit';
+import { planPredecessorEdit } from './predecessorEdit';
+import { isSummaryRollupCell } from './summaryRollup';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -515,34 +517,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
   const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
 
-  const parsePredecessorInput = useCallback((input: string, currentTaskId: string): { deps: Array<{ taskId: string; type: string; lag: number }> } | { error: string } => {
-    const trimmed = input.trim();
-    if (!trimmed) return { deps: [] };
-
-    const parts = trimmed.split(',').map(s => s.trim()).filter(Boolean);
-    const deps: Array<{ taskId: string; type: string; lag: number }> = [];
-
-    for (const part of parts) {
-      const match = part.match(/^(\d+)\s*(FS|FF|SS|SF)?\s*([+-]\d+d?)?$/i);
-      if (!match) return { error: `Invalid format: "${part}". Use: row# or row#FS or row#SS+2d` };
-
-      const rowNum = parseInt(match[1], 10);
-      const type = (match[2] || 'FS').toUpperCase();
-      const lagStr = match[3];
-      const lag = lagStr ? parseInt(lagStr.replace(/d$/i, ''), 10) : 0;
-
-      const targetTaskId = rowNumToTaskId.get(rowNum);
-      if (!targetTaskId) return { error: `Row ${rowNum} not found` };
-      if (targetTaskId === currentTaskId) return { error: 'Cannot reference self' };
-      if (deps.some(d => d.taskId === targetTaskId)) return { error: `Duplicate: row ${rowNum}` };
-
-      deps.push({ taskId: targetTaskId, type, lag });
-    }
-
-    if (deps.length > 20) return { error: 'Max 20 predecessors' };
-    return { deps };
-  }, [rowNumToTaskId]);
-
   const getDepHealth = useCallback((depTaskId: string): 'satisfied' | 'in_progress' | 'at_risk' => {
     const depTask = tasks.find(t => t.id === depTaskId);
     if (!depTask) return 'at_risk';
@@ -666,7 +640,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     // % complete from approved hours can't be typed (mark the task done instead)
     if (field === 'progressPercentage' && progressFromHours(task as any)) return;
     if (!onTaskUpdate) return; // read-only mode
-    if (task.isSummary && SUMMARY_ROLLUP_FIELDS.has(field)) return;
+    if (isSummaryRollupCell(task, field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
   }, [getTaskFieldValue, onTaskUpdate]);
@@ -713,22 +687,16 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     }
 
     if (field === 'dependency') {
-      const result = parsePredecessorInput(value, taskId);
-      if ('error' in result) {
-        setDepError({ taskId, message: result.error });
+      const plan = planPredecessorEdit(value, taskId, rowNumToTaskId);
+      if (!plan.ok) {
+        setDepError({ taskId, message: plan.message });
         return;
       }
       setDepError(null);
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate?.(taskId, {
-        dependencies: result.deps.map(d => ({
-          dependencyId: d.taskId,
-          dependencyType: d.type,
-          lagDays: d.lag,
-        })),
-      });
+      onTaskUpdate?.(taskId, plan.patch);
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -758,7 +726,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);
-  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, parsePredecessorInput, workCalendar]);
+  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, rowNumToTaskId, workCalendar]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
     if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
@@ -785,7 +753,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     savedCell?.taskId === taskId && savedCell.field === field;
 
   const editableCellClass = (taskId: string, field: string, task?: GanttTask) => {
-    if (task?.isSummary && SUMMARY_ROLLUP_FIELDS.has(field as EditableField)) {
+    if (isSummaryRollupCell(task, field)) {
       return 'relative cursor-default opacity-70';
     }
     const base = 'relative cursor-pointer transition-all duration-150';
@@ -949,9 +917,21 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         if (e.key === 'v') {
           if (focusedCell && copiedValue && copiedValue.field === focusedCell.field) {
             e.preventDefault();
+            const pasteTarget = tasks.find(t => t.id === focusedCell.taskId);
+            // A summary's dates, % and status come from its tasks: refuse quietly, as typing does
+            if (isSummaryRollupCell(pasteTarget, focusedCell.field)) return;
+            // Predecessors: the same parse and the same update as typing them
+            if (focusedCell.field === 'dependency') {
+              const plan = planPredecessorEdit(copiedValue.value, focusedCell.taskId, rowNumToTaskId);
+              if (!plan.ok) return;
+              onTaskUpdate?.(focusedCell.taskId, plan.patch);
+              setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+              setTimeout(() => setPasteFlash(null), 800);
+              return;
+            }
             // Duration isn't stored: a pasted duration moves the finish, by the same rule as typing one
             if (focusedCell.field === 'duration') {
-              const pasteTask = tasks.find(t => t.id === focusedCell.taskId);
+              const pasteTask = pasteTarget;
               const plan = pasteTask ? planDurationEdit(pasteTask, copiedValue.value, workCalendar) : null;
               if (!plan?.ok) return;
               onTaskUpdate?.(focusedCell.taskId, plan.patch);
@@ -1087,7 +1067,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar, rowNumToTaskId]);
 
   // Restore focusedCell when editing ends
   useEffect(() => {

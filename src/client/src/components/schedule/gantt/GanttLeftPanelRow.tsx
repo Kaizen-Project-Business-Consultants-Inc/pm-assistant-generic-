@@ -4,6 +4,7 @@ import { ResourceQuickAssign } from '../ResourceQuickAssign';
 import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { apiService } from '../../../services/api';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
+import { isSummaryRollupCell } from '../summaryRollup';
 import {
   type GanttTask,
   type GanttColDef,
@@ -117,8 +118,11 @@ function editableCellClass(
   savedField: string | null,
   pasteFlashField: string | null,
   field: string,
+  task?: GanttTask,
 ): string {
   if (!hasOnTaskUpdate) return '';
+  // Same look as the Table view: a summary's rolled-up cells are not editable
+  if (isSummaryRollupCell(task, field)) return 'relative cursor-default opacity-70';
   const base = 'relative cursor-pointer transition-all duration-150';
   if (isEditingField(editingField, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
   if (isPasteFlashField(pasteFlashField, field)) return `${base} ring-2 ring-green-400 ring-inset rounded bg-green-50 dark:bg-green-900/20`;
@@ -222,7 +226,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
 
   // Shorthand for building cell classes
   const cellClass = (field: string) =>
-    editableCellClass(hasOnTaskUpdate, editingField, focusedField, savedField, pasteFlashField, field);
+    editableCellClass(hasOnTaskUpdate, editingField, focusedField, savedField, pasteFlashField, field, task);
 
   return (
     <div

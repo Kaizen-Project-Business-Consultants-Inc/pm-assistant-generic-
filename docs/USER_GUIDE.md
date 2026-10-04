@@ -385,7 +385,7 @@ Tasks can be organized hierarchically:
 - Create **parent tasks** (phases or work packages) as top-level items.
 - Add **subtasks** under parent tasks to break down work.
 - Expand or collapse task groups using the chevron icon.
-- **Summary tasks**: Parent tasks with children become summary tasks. Their dates, progress, status, and budget are automatically computed from children. Rollup fields are read-only in the table and task form (shown as greyed/disabled). The Gantt chart renders summary tasks with diamond markers at each end of the bar.
+- **Summary tasks**: Parent tasks with children become summary tasks. Their dates, progress, status, and budget are automatically computed from children. Rollup fields (Start, Finish, Duration, % complete, Status, budget) are read-only in the Gantt grid, the table and the task form (shown as greyed/disabled) -- clicking one does not open it for typing, and pasting into one does nothing. The Gantt chart renders summary tasks with diamond markers at each end of the bar.
 
 ### Task Budget
 
@@ -513,7 +513,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Export**: Click the **Export** dropdown in the toolbar to access four options: **PDF** (A3 landscape, auto-scaled via html2pdf.js), **PNG** (high-quality 2x image via html-to-image), **Print** (browser print dialog), and **CSV** (task data download). All export modes temporarily expand the Gantt to capture the full schedule before reverting to the normal view.
 - Hover over a bar to see task details including all predecessors (row number, task name, dependency type, lag, and health status per predecessor). Click to edit.
 - **Column header sort**: Click any column header in the left panel to sort rows ascending, then descending, then back to default (none). A ▲ or ▼ indicator appears in the header to show the active sort direction. Sort preserves task hierarchy — children are sorted within their own sibling group, not mixed across levels. Row drag reorder is disabled while a sort is active.
-- **Copy/Paste cells**: Press **Ctrl+C** to copy the focused cell's value to the clipboard. Press **Ctrl+V** to paste the clipboard value into the focused cell (paste only applies when the field types match). A green flash confirms the paste.
+- **Copy/Paste cells**: Press **Ctrl+C** to copy the focused cell's value to the clipboard. Press **Ctrl+V** to paste the clipboard value into the focused cell (paste only applies when the field types match). A green flash confirms the paste. A pasted **Predecessors** value is read exactly like a typed one ("3", "3SS+2d", "4, 7FF") and makes the same links -- they show in Schedule History and can be undone; if it can't be used (for example a row that doesn't exist, or the task itself), nothing changes. A summary task's Start, Finish, Duration, % complete and Status can't be pasted into.
 - **Copy/Paste rows**: When no cell is focused, **Ctrl+C** copies the selected or active task(s) and **Ctrl+V** pastes them as new duplicate tasks with `" (copy)"` appended to each name. Useful for quickly creating similar tasks without re-entering data.
 - **Duplicate shortcut (Ctrl+D)**: Duplicates the selected or active task(s) in one step — equivalent to Ctrl+C then Ctrl+V. Works in both Gantt Chart and Table View.
 - **Column auto-fit**: **Double-click** the right border of any column header (the resize handle) to auto-fit the column width to its longest content value. Width is capped at 400px.
@@ -643,7 +643,7 @@ Column selections are saved per schedule and persist across page reloads. All vi
 
 **Arrow Key Navigation** -- Use the **Arrow keys** to move between cells. The focused cell is highlighted with a blue ring. Press **Enter** or **F2** to enter edit mode; press **Escape** to clear the focus. The first click on a row selects it; a second click on a cell of the already-selected row enters edit mode (matching the Gantt chart behavior).
 
-**Cell Copy/Paste** -- When a cell is focused, press **Ctrl+C** to copy its value to the clipboard and **Ctrl+V** to paste from the clipboard into the focused cell (same field type only). A green flash confirms.
+**Cell Copy/Paste** -- When a cell is focused, press **Ctrl+C** to copy its value to the clipboard and **Ctrl+V** to paste from the clipboard into the focused cell (same field type only). A green flash confirms. Pasted Predecessors are read like typed ones; a value that can't be used (a row that doesn't exist, or the task itself) changes nothing. Summary rows refuse a paste into their rolled-up cells.
 
 **Copy/Paste Rows** -- When no cell is focused, press **Ctrl+C** to copy the selected or active task(s) and **Ctrl+V** to paste them as duplicates. Each copy has `" (copy)"` appended to its name. Other fields (dates, status, priority) are carried over from the original. Press **Ctrl+D** to duplicate in one step (no separate copy needed).
 

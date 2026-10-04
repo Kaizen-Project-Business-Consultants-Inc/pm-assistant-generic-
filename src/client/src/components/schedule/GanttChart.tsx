@@ -57,6 +57,8 @@ import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 import { isCalendarOverdue } from '../../utils/dateUtils';
 import { workingDaysBetween, addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../utils/workingDays';
 import { planDurationEdit } from './durationEdit';
+import { planPredecessorEdit } from './predecessorEdit';
+import { isSummaryRollupCell } from './summaryRollup';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -1066,28 +1068,6 @@ export function GanttChart({
     return map;
   }, [rowNumMap]);
 
-  const parsePredecessorInput = useCallback((input: string, currentTaskId: string): { deps: Array<{ taskId: string; type: string; lag: number }> } | { error: string } => {
-    const trimmed = input.trim();
-    if (!trimmed) return { deps: [] };
-    const parts = trimmed.split(',').map(s => s.trim()).filter(Boolean);
-    const deps: Array<{ taskId: string; type: string; lag: number }> = [];
-    for (const part of parts) {
-      const match = part.match(/^(\d+)\s*(FS|FF|SS|SF)?\s*([+-]\d+d?)?$/i);
-      if (!match) return { error: `Invalid format: "${part}". Use: row# or row#FS or row#SS+2d` };
-      const rowNum = parseInt(match[1], 10);
-      const type = (match[2] || 'FS').toUpperCase();
-      const lagStr = match[3];
-      const lag = lagStr ? parseInt(lagStr.replace(/d$/i, ''), 10) : 0;
-      const targetTaskId = rowNumToTaskId.get(rowNum);
-      if (!targetTaskId) return { error: `Row ${rowNum} not found` };
-      if (targetTaskId === currentTaskId) return { error: 'Cannot reference self' };
-      if (deps.some(d => d.taskId === targetTaskId)) return { error: `Duplicate: row ${rowNum}` };
-      deps.push({ taskId: targetTaskId, type, lag });
-    }
-    if (deps.length > 20) return { error: 'Max 20 predecessors' };
-    return { deps };
-  }, [rowNumToTaskId]);
-
   const getTaskFieldValue = useCallback((task: GanttTask, field: EditableField): string => {
     switch (field) {
       case 'name': return task.name || '';
@@ -1176,6 +1156,8 @@ export function GanttChart({
     // % complete from approved hours can't be typed (mark the task done instead)
     if (field === 'progressPercentage' && progressFromHours(task as any)) return;
     if (!onTaskUpdate || drag) return;
+    // A summary's dates, % complete and status come from its tasks (same rule as the Table view)
+    if (isSummaryRollupCell(task, field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
     setDepError(null);
@@ -1232,19 +1214,13 @@ export function GanttChart({
 
     // Dependency: multi-dep parsing
     if (field === 'dependency') {
-      const result = parsePredecessorInput(value, taskId);
-      if ('error' in result) { setDepError({ taskId, message: result.error }); return; }
+      const plan = planPredecessorEdit(value, taskId, rowNumToTaskId);
+      if (!plan.ok) { setDepError({ taskId, message: plan.message }); return; }
       setDepError(null);
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate(taskId, {
-        dependencies: result.deps.map(d => ({
-          dependencyId: d.taskId,
-          dependencyType: d.type,
-          lagDays: d.lag,
-        })),
-      });
+      onTaskUpdate(taskId, plan.patch);
       setTimeout(() => {
         setSavingCell(null);
         setSavedCell({ taskId, field });
@@ -1271,7 +1247,7 @@ export function GanttChart({
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     }, 300);
-  }, [onTaskUpdate, tasks, getTaskFieldValue, cancelEditing, parsePredecessorInput, workCalendar]);
+  }, [onTaskUpdate, tasks, getTaskFieldValue, cancelEditing, rowNumToTaskId, workCalendar]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
     if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
@@ -1280,21 +1256,20 @@ export function GanttChart({
       e.preventDefault();
       // Save current cell first
       saveEdit(taskId, field, editValue);
-      // Navigate to next/prev editable field
-      const fieldIdx = FIELD_ORDER.indexOf(field);
+      // Navigate to next/prev editable field (on a summary row, past the cells it can't edit)
       const rowIdx = rows.findIndex(r => r.task.id === taskId);
       if (rowIdx === -1) return;
-      if (e.shiftKey) {
-        if (fieldIdx > 0) {
-          startEditing(taskId, FIELD_ORDER[fieldIdx - 1], rows[rowIdx].task);
-        } else if (rowIdx > 0) {
-          startEditing(rows[rowIdx - 1].task.id, FIELD_ORDER[FIELD_ORDER.length - 1], rows[rowIdx - 1].task);
-        }
-      } else {
-        if (fieldIdx < FIELD_ORDER.length - 1) {
-          startEditing(taskId, FIELD_ORDER[fieldIdx + 1], rows[rowIdx].task);
-        } else if (rowIdx < rows.length - 1) {
-          startEditing(rows[rowIdx + 1].task.id, FIELD_ORDER[0], rows[rowIdx + 1].task);
+      const step = e.shiftKey ? -1 : 1;
+      let r = rowIdx;
+      let f = FIELD_ORDER.indexOf(field);
+      for (let guard = 0; guard < FIELD_ORDER.length * 2; guard++) {
+        f += step;
+        if (f < 0) { r -= 1; f = FIELD_ORDER.length - 1; }
+        else if (f >= FIELD_ORDER.length) { r += 1; f = 0; }
+        if (r < 0 || r >= rows.length) return;
+        if (!isSummaryRollupCell(rows[r].task, FIELD_ORDER[f])) {
+          startEditing(rows[r].task.id, FIELD_ORDER[f], rows[r].task);
+          return;
         }
       }
     }
@@ -1378,9 +1353,21 @@ export function GanttChart({
           if (e.key === 'v') {
             if (copiedValue && copiedValue.field === focusedCell.field) {
               e.preventDefault();
+              const pasteTarget = tasks.find(t => t.id === focusedCell.taskId);
+              // A summary's dates, % and status come from its tasks: refuse quietly, as typing does
+              if (isSummaryRollupCell(pasteTarget, focusedCell.field)) return;
+              // Predecessors: the same parse and the same update as typing them
+              if (focusedCell.field === 'dependency') {
+                const plan = planPredecessorEdit(copiedValue.value, focusedCell.taskId, rowNumToTaskId);
+                if (!plan.ok) return;
+                onTaskUpdate(focusedCell.taskId, plan.patch);
+                setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+                setTimeout(() => setPasteFlash(null), 800);
+                return;
+              }
               // Duration isn't stored: a pasted duration moves the finish, by the same rule as typing one
               if (focusedCell.field === 'duration') {
-                const pasteTask = tasks.find(t => t.id === focusedCell.taskId);
+                const pasteTask = pasteTarget;
                 const plan = pasteTask ? planDurationEdit(pasteTask, copiedValue.value, workCalendar) : null;
                 if (!plan?.ok) return;
                 onTaskUpdate(focusedCell.taskId, plan.patch);
@@ -1388,7 +1375,7 @@ export function GanttChart({
                 setTimeout(() => setPasteFlash(null), 800);
                 return;
               }
-              onTaskUpdate(focusedCell.taskId, { [focusedCell.field === 'dependency' ? 'dependencies' : focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
+              onTaskUpdate(focusedCell.taskId, { [focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
               setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
               setTimeout(() => setPasteFlash(null), 800);
             }
@@ -1548,7 +1535,7 @@ export function GanttChart({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar]);
+  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId]);
 
   // When editing ends, restore focus to that cell
   useEffect(() => {

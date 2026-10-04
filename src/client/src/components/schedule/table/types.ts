@@ -5,6 +5,7 @@ import type { GanttTask } from '../GanttChart';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { formatCalendarDate } from '../../../utils/dateUtils';
+import { SUMMARY_ROLLUP_FIELD_NAMES } from '../summaryRollup';
 
 export type SortDir = 'asc' | 'desc';
 export type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
@@ -91,7 +92,8 @@ export const priorityColors: Record<string, string> = {
 export const statusOptions = ['pending', 'in_progress', 'completed'];
 export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
-export const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set(['startDate', 'endDate', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'duration']);
+/** The one list lives in ../summaryRollup.ts (the Gantt grid uses it too). */
+export const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set<EditableField>(SUMMARY_ROLLUP_FIELD_NAMES);
 
 export function formatDate(d?: string): string {
   if (!d) return '-';
