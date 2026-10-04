@@ -81,6 +81,18 @@ export class AIAccountCapError extends AIBudgetExceededError {
   }
 }
 
+/**
+ * The AI can't be used right now for reasons no retry in the next minutes will fix: no credit
+ * on the account, a bad key, rate limit, overload, timeout, no connection, or the circuit
+ * breaker is open. Callers that run on page loads should stop asking for a while (Oct 2026:
+ * staging ran out of credit and every project open made up to 3 failing calls).
+ */
+export function isAIUnavailableError(err: unknown): boolean {
+  if (err instanceof AICircuitBreakerError) return true;
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return /credit balance is too low|Authentication failed|Rate limit exceeded|temporarily overloaded or unavailable|timed out after|Failed to connect to Anthropic/i.test(msg);
+}
+
 export class AICircuitBreakerError extends Error {
   constructor(public retryAfterMs: number) {
     super('AI service temporarily unavailable due to repeated failures. Please try again shortly.');

@@ -56,6 +56,7 @@ vi.mock('../../services/claudeService', () => ({
     isAvailable: () => mockClaudeIsAvailable(),
     completeWithJsonSchema: (...args: any[]) => mockClaudeCompleteWithJsonSchema(...args),
   },
+  isAIUnavailableError: (e: any) => /credit balance is too low/.test(String(e?.message)),
   PromptTemplate: class {
     constructor(public template: string, public version: string) {}
     render(vars: Record<string, string>) {
@@ -82,7 +83,7 @@ vi.mock('../../utils/logger', () => ({
 }));
 
 // Import AFTER mocks
-import { EVMForecastService } from '../../services/EVMForecastService';
+import { EVMForecastService, EVMAIUnavailableError } from '../../services/EVMForecastService';
 import { config } from '../../config';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -438,6 +439,45 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(null);
 
       await expect(service.generateAIPredictions('missing-id')).rejects.toThrow('Project not found: missing-id');
+    });
+
+    // Oct 2026: staging ran out of AI credit and every project open retried the call
+    it('AI unreachable (no credit): remembers it for 10 minutes and says "unavailable"', async () => {
+      (config as any).AI_ENABLED = true;
+      mockClaudeIsAvailable.mockReturnValue(true);
+      mockRedisGet.mockResolvedValue(null);
+      mockFindById.mockResolvedValue(makeProject());
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+      mockFindByProjectId.mockResolvedValue([]);
+      mockClaudeCompleteWithJsonSchema.mockRejectedValue(new Error('[ClaudeService.complete] Bad request sent to Anthropic API. Details: 400 Your credit balance is too low to access the Anthropic API.'));
+
+      await expect(service.generateAIPredictions('proj-1')).rejects.toBeInstanceOf(EVMAIUnavailableError);
+      expect(mockRedisSet).toHaveBeenCalledWith('evm:ai:unavailable', '1', 600);
+    });
+
+    it('while AI is marked unavailable, no AI call is made', async () => {
+      (config as any).AI_ENABLED = true;
+      mockClaudeIsAvailable.mockReturnValue(true);
+      mockRedisGet.mockImplementation(async (k: string) => (k === 'evm:ai:unavailable' ? '1' : null));
+      mockFindById.mockResolvedValue(makeProject());
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+      mockFindByProjectId.mockResolvedValue([]);
+
+      await expect(service.generateAIPredictions('proj-1')).rejects.toBeInstanceOf(EVMAIUnavailableError);
+      expect(mockClaudeCompleteWithJsonSchema).not.toHaveBeenCalled();
+    });
+
+    it('other AI failures are not treated as "unavailable" (no pause)', async () => {
+      (config as any).AI_ENABLED = true;
+      mockClaudeIsAvailable.mockReturnValue(true);
+      mockRedisGet.mockResolvedValue(null);
+      mockFindById.mockResolvedValue(makeProject());
+      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
+      mockFindByProjectId.mockResolvedValue([]);
+      mockClaudeCompleteWithJsonSchema.mockRejectedValue(new Error('schema mismatch'));
+
+      await expect(service.generateAIPredictions('proj-1')).rejects.toThrow('schema mismatch');
+      expect(mockRedisSet).not.toHaveBeenCalledWith('evm:ai:unavailable', expect.anything(), expect.anything());
     });
   });
 

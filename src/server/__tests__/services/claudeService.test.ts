@@ -101,7 +101,7 @@ vi.mock('@anthropic-ai/sdk', () => {
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { ClaudeService, PromptTemplate, promptTemplates, AICircuitBreakerError } from '../../services/claudeService';
+import { ClaudeService, PromptTemplate, promptTemplates, AICircuitBreakerError, isAIUnavailableError } from '../../services/claudeService';
 import type { CompletionOptions } from '../../services/claudeService';
 import { config } from '../../config';
 import { getRequestContext } from '../../middleware/requestContext';
@@ -977,5 +977,25 @@ describe('cost control (Sep 2026)', () => {
     redisState.connected = true; redisState.spent = '12.3';
     mockCreate.mockResolvedValueOnce(mockApiResponse());
     await expect(makeService().complete(defaultOptions())).resolves.toBeTruthy();
+  });
+});
+
+describe('isAIUnavailableError (Oct 2026)', () => {
+  it('no credit, bad key, rate limit, overload, timeout, no connection, breaker open → unavailable', () => {
+    for (const m of [
+      '[ClaudeService.complete] Bad request sent to Anthropic API. Details: 400 {"error":{"message":"Your credit balance is too low to access the Anthropic API."}}',
+      '[ClaudeService.complete] Authentication failed. The ANTHROPIC_API_KEY is invalid or expired.',
+      '[ClaudeService.complete] Rate limit exceeded. Please wait before making additional requests.',
+      '[ClaudeService.complete] Anthropic API is temporarily overloaded or unavailable. Please retry later.',
+      '[ClaudeService.complete] Request to Anthropic API timed out after 60000ms.',
+      '[ClaudeService.complete] Failed to connect to Anthropic API. Details: ECONNRESET',
+    ]) expect(isAIUnavailableError(new Error(m)), m).toBe(true);
+    expect(isAIUnavailableError(new AICircuitBreakerError(1000))).toBe(true);
+  });
+
+  it('a bad request about the prompt itself, or any other error, is not', () => {
+    expect(isAIUnavailableError(new Error('[ClaudeService.complete] Bad request sent to Anthropic API. Details: 400 max_tokens too large'))).toBe(false);
+    expect(isAIUnavailableError(new Error('Project not found'))).toBe(false);
+    expect(isAIUnavailableError(undefined)).toBe(false);
   });
 });

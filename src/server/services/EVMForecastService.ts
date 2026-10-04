@@ -1,4 +1,4 @@
-import { claudeService, PromptTemplate } from './claudeService';
+import { claudeService, PromptTemplate, isAIUnavailableError } from './claudeService';
 import { sCurveService, SCurveDataPoint } from './SCurveService';
 import { projectService, Project } from './ProjectService';
 import { scheduleService } from './ScheduleService';
@@ -19,6 +19,17 @@ import {
 } from '../schemas/evmForecastSchemas';
 
 const AI_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
+/** After the AI turned out to be unreachable (no credit, overload…), don't ask again for this long */
+const AI_UNAVAILABLE_KEY = 'evm:ai:unavailable';
+const AI_UNAVAILABLE_TTL_SECONDS = 10 * 60;
+
+/** AI predictions can't be made right now (route answers 503, quietly) */
+export class EVMAIUnavailableError extends Error {
+  constructor() {
+    super('AI predictions are unavailable right now. The figures above are still correct; try again later.');
+    this.name = 'EVMAIUnavailableError';
+  }
+}
 
 /**
  * A task's planned value as at `now`: its budget spread evenly over its WORKING days
@@ -130,13 +141,13 @@ export class EVMForecastService {
           aiPredictions = JSON.parse(cached);
           logger.debug('[EVMForecastService] AI predictions loaded from cache', { projectId });
         } else {
-          aiPredictions = await this.getAIPredictions(
+          aiPredictions = await this.askAI(() => this.getAIPredictions(
             project,
             currentMetrics,
             weeklyData,
             earlyWarnings,
             traditionalForecasts,
-          );
+          ));
 
           // Cache the result
           if (aiPredictions) {
@@ -236,6 +247,27 @@ export class EVMForecastService {
   // AI predictions only — used for deferred loading
   // -------------------------------------------------------------------------
 
+  /**
+   * Call the AI unless it was found unreachable in the last 10 minutes; when it is, remember
+   * that and throw EVMAIUnavailableError instead of letting every page open try again.
+   */
+  private async askAI<T>(call: () => Promise<T>): Promise<T> {
+    try {
+      if (await redisService.get(AI_UNAVAILABLE_KEY)) throw new EVMAIUnavailableError();
+    } catch (err) {
+      if (err instanceof EVMAIUnavailableError) throw err;
+      /* Redis down: just try the AI */
+    }
+    try {
+      return await call();
+    } catch (err) {
+      if (!isAIUnavailableError(err)) throw err;
+      try { await redisService.set(AI_UNAVAILABLE_KEY, '1', AI_UNAVAILABLE_TTL_SECONDS); } catch { /* ignore */ }
+      logger.warn('[EVMForecastService] AI unavailable — pausing EVM AI predictions for 10 minutes', { error: (err as Error)?.message });
+      throw new EVMAIUnavailableError();
+    }
+  }
+
   async generateAIPredictions(projectId: string, userId?: string): Promise<EVMForecastAIResponse | null> {
     if (!config.AI_ENABLED || !claudeService.isAvailable()) return null;
 
@@ -259,7 +291,7 @@ export class EVMForecastService {
     const earlyWarnings = this.generateEarlyWarnings(currentMetrics);
     const traditionalForecasts = this.computeTraditionalForecasts(currentMetrics);
 
-    const aiPredictions = await this.getAIPredictions(project, currentMetrics, weeklyData, earlyWarnings, traditionalForecasts);
+    const aiPredictions = await this.askAI(() => this.getAIPredictions(project, currentMetrics, weeklyData, earlyWarnings, traditionalForecasts));
 
     // Cache
     if (aiPredictions) {

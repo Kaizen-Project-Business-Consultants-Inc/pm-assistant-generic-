@@ -591,6 +591,8 @@ export function PerformancePanel({ projectId, onNavigate }: {
     queryFn: () => apiService.getEVMAIPredictions(projectId),
     enabled: !!projectId && !!evmData?.result,
     staleTime: 5 * 60 * 1000,
+    // Each try is an AI call — never repeat it automatically
+    retry: false,
   });
 
   const { data: sCurveData } = useQuery({
@@ -898,6 +900,11 @@ export function PerformancePanel({ projectId, onNavigate }: {
             <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded animate-pulse w-2/3" />
           </div>
         </div>
+      ) : !aiPredictions && aiData?.unavailable ? (
+        <p className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-sm text-gray-600 dark:text-gray-300">
+          <Bot className="inline h-4 w-4 mr-1.5 align-text-bottom text-gray-500" aria-hidden="true" />
+          AI analysis is unavailable right now. The figures above are still correct — try again later.
+        </p>
       ) : (
         <AIAnalysisSection aiPredictions={aiPredictions} bac={bac} />
       )}

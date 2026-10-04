@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
-import { evmForecastService } from '../../services/EVMForecastService';
+import { evmForecastService, EVMAIUnavailableError } from '../../services/EVMForecastService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
@@ -58,6 +58,12 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
       }
       if (err.code === 'AI_BUDGET_EXCEEDED' || err.name === 'AIBudgetExceededError') {
         return reply.status(429).send({ error: 'AI budget exceeded', message: 'AI token budget has been reached for this month. AI predictions are temporarily unavailable.' });
+      }
+      // No credit / overloaded / AI unreachable: say so quietly (the service already logged one
+      // warning and pauses asking for 10 minutes). A normal answer, not a 5xx: a 5xx would be
+      // retried by the page and counted by the server-error alert on every project view.
+      if (err instanceof EVMAIUnavailableError) {
+        return reply.send({ aiPredictions: null, unavailable: true, message: err.message });
       }
       fastify.log.error({ err }, 'EVM AI prediction generation failed');
       return reply.status(500).send({ error: 'Failed to generate AI predictions' });

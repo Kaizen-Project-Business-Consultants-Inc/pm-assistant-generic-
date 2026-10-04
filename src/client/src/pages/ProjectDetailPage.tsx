@@ -275,7 +275,9 @@ export function ProjectDetailPage() {
     },
   });
 
-  // Prefetch EVM data on project open — so Performance tab loads instantly
+  // Prefetch EVM figures on project open — so Performance tab loads instantly. NOT the AI
+  // predictions: those cost an AI call and are asked for only when the Performance panel opens
+  // (Oct 2026: every project open made an AI call, up to 3 when it failed).
   useEffect(() => {
     if (id) {
       queryClient.prefetchQuery({
@@ -283,11 +285,6 @@ export function ProjectDetailPage() {
         queryFn: () => apiService.getEVMForecast(id),
         staleTime: 5 * 60 * 1000,
       });
-      queryClient.prefetchQuery({
-        queryKey: ['evmForecastAI', id],
-        queryFn: () => apiService.getEVMAIPredictions(id),
-        staleTime: 5 * 60 * 1000,
-      }).catch(() => { /* AI predictions are optional — budget exceeded or AI disabled */ });
     }
   }, [id, queryClient]);
 
