@@ -601,6 +601,12 @@ describe('AutoRescheduleService', () => {
     });
 
     it('moves dates in working days: never onto a weekend, dependents keep their working-day length and lag', async () => {
+      // Dates below are "N days from today". Run on a Sunday or Monday they made tasks that start or
+      // end on a weekend — which plans can't have any more (working days only) — and the test failed
+      // on those two days only (2026-10-04). Pin "today" to a Wednesday.
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-07T15:00:00Z'));
+      try {
       mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
       mockFindTasksByScheduleId.mockResolvedValue([
         makeTask('t1', 'Predecessor', { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }),
@@ -624,6 +630,9 @@ describe('AutoRescheduleService', () => {
       const len = (s: string, e: string) => workingDaysAfter(utcDay(s), utcDay(e), weekdaysOnly);
       expect(len(t2.proposedStartDate, t2.proposedEndDate)).toBe(len(onOrAfterWorking(utcDay(t2.currentStartDate), weekdaysOnly).toISOString(), t2.currentEndDate));
       expect(proposal.estimatedImpact.daysChange).toBe(Math.max(0, wd(daysFromNow(30), t2.proposedEndDate)));
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('does not shift completed or cancelled dependents', async () => {
