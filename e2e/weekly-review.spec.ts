@@ -17,7 +17,7 @@ test.describe.configure({ mode: 'serial' });
 test.beforeAll(async ({ browser }) => {
   pm = await signedIn(browser, STAGING_USER);
   ids = await makeProject(pm, 'QA – e2e weekly review', plusDays(thisMonday(), -28), plusDays(thisMonday(), 60));
-  await makeTask(pm, ids.scheduleId, { name: 'E2E design', startDate: thisMonday(), endDate: plusDays(thisMonday(), 4) });
+  await makeTask(pm, ids.scheduleId, { name: 'E2E design', startDate: plusDays(thisMonday(), 14), endDate: plusDays(thisMonday(), 18) }); // in the future: not late
   await api(pm, 'post', `/api/v1/projects/${ids.projectId}/risks`, { type: 'risk', title: 'E2E vendor may be late', severity: 'high' });
   await api(pm, 'post', `/api/v1/projects/${ids.projectId}/risks`, { type: 'action', title: 'E2E chase sign-off', severity: 'low', dueDate: plusDays(thisMonday(), -14) });
   // A team member who can see the project but doesn't manage it
@@ -47,8 +47,9 @@ test('the PM runs the review from Overview and sees the decisions', async () => 
 });
 
 test('Dismiss asks why and the decision folds away', async () => {
-  await pm.getByRole('button', { name: 'Dismiss' }).nth(1).click();
-  await pm.getByRole('button', { name: 'Already handled' }).click();
+  const card = pm.locator('article', { hasText: 'RAID items overdue' });
+  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await card.getByRole('button', { name: 'Already handled' }).click();
   await expect(pm.getByText(/RAID items overdue — dismissed \(Already handled\)/)).toBeVisible({ timeout: 15_000 });
   await expect(pm.getByRole('heading', { name: /1 decision needed/ })).toBeVisible();
 
