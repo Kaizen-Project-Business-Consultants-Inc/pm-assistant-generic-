@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — Item 4 Phase 2 batch A: Gantt column and filtering logic moved into hooks
+Branch `gantt-hooks-a` (not merged/deployed). Pure move, JSX untouched, same names/logic/dependency lists, same localStorage keys and formats (`gantt-col-widths:<id>`, `gantt-visible-cols:<id>`, `gantt-col-order:<id>`). `components/schedule/gantt/hooks/useGanttColumns.ts`: widths/resize, visibility, order (move + drag reorder), Gantt↔Table key mapping for an external columnState, minimum row width; plus `useGanttColumnAutoFit` (cell text + auto-fit, called where it always was because it needs the visible rows). `gantt/hooks/useTaskFiltering.ts`: quick search, filter panel, header sort, flattened rows, parents-of-matches, and the search → filters → sort pipeline (sort state stays with filtering). GanttChart.tsx 3,055 → 2,679 lines. Tests: `__tests__/components/useGanttColumns.test.ts` (saved-layout keys/formats, hide/show, move, resize, external columnState, auto-fit), `useTaskFiltering.test.ts` (compares against the old inline pipeline copied into the test, every search × filter × sort × collapse combination). Next: staging safety net, then useGanttLayout.
+
 ## 2026-10-04 — Item 4 Phase 1: two pieces moved out of ScheduleTab
 Pure move (bodies byte-identical, only imports changed): MobileScheduleView → pages/ProjectDetailPage/schedule-tab/MobileScheduleView.tsx, ScheduleOverflowMenu (+ props) → schedule-tab/ScheduleOverflowMenu.tsx. ScheduleTab.tsx 1,974 → 1,644 lines. No behaviour change.
 
