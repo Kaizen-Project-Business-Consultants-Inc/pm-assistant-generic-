@@ -176,6 +176,14 @@ export async function authRoutes(fastify: FastifyInstance) {
         maxAge: 24 * 60 * 60,
       });
 
+      // Same as /auth/me: the app needs to know straight away whether there's a company
+      // (the platform admin has none — utils/platformAdmin.ts)
+      let organization: { id: string; name: string; slug: string; isOwner?: boolean } | null = null;
+      if (config.MULTI_TENANT_ENABLED) {
+        const org = await organizationService.findByUserId(user.id);
+        if (org) organization = { id: org.id, name: org.name, slug: org.slug, isOwner: org.ownerUserId === user.id };
+      }
+
       return {
         token: accessToken,
         mustChangePassword: user.mustChangePassword || false,
@@ -193,6 +201,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           mustChangePassword: user.mustChangePassword || false,
           isGuest: user.isGuest || false,
           guestExpiresAt: user.guestExpiresAt ? String(user.guestExpiresAt) : null,
+          organization,
         },
       };
     } catch (error) {

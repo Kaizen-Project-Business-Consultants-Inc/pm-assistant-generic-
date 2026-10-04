@@ -54,7 +54,12 @@ export async function tenantResolverHook(
   // No user = no tenant context (authMiddleware will handle 401)
   if (!request.user?.userId) return;
 
-  // Support view: the platform admin's read-only, recorded visit into one company
+  // Support view: the platform admin's read-only, recorded visit into one company.
+  // This hook runs before the route's authMiddleware, so whether the user has a company isn't
+  // known yet — look it up (cached) for anyone with the admin role.
+  if (request.user.role === 'admin' && request.user.hasCompany === undefined) {
+    request.user.hasCompany = !!(await organizationService.findByUserId(request.user.userId));
+  }
   if (isPlatformAdmin(request.user)) {
     const visitId = (request.cookies as Record<string, string | undefined> | undefined)?.[SUPPORT_COOKIE];
     const visit = visitId ? await supportSessionService.findActive(visitId, request.user.userId) : null;

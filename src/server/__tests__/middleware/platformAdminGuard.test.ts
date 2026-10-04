@@ -48,7 +48,11 @@ describe('platform screens use the platform-admin check, never the bare role', (
   });
 
   it('the support-visit switch checks the platform admin', () => {
-    expect(code(join(server, 'middleware', 'tenantResolver.ts'))).toMatch(/if \(isPlatformAdmin\(request\.user\)\)/);
+    const src = code(join(server, 'middleware', 'tenantResolver.ts'));
+    expect(src).toMatch(/if \(isPlatformAdmin\(request\.user\)\)/);
+    // the early user has no hasCompany yet: it must be looked up before the check
+    expect(src.indexOf('request.user.hasCompany = !!(await organizationService.findByUserId')).toBeGreaterThan(-1);
+    expect(src.indexOf('request.user.hasCompany = !!(await')).toBeLessThan(src.indexOf('if (isPlatformAdmin(request.user))'));
   });
 
   it('system alerts go only to the platform admin', () => {

@@ -137,6 +137,18 @@ describe('tenantResolver — Support view (the admin\'s read-only visit into one
     expect(ctx.tenantDbName).toBe('pmassist_t_acme');
   });
 
+  // Found on staging 2026-10-04: the early user (plugins.ts) carries no hasCompany, so the visit
+  // was ignored and every read answered no_company. The hook now looks it up.
+  it('works for the admin as the early login hook leaves them (company not yet known)', async () => {
+    (organizationService.findByUserId as any).mockResolvedValue(null);
+    const r = reply();
+    const req = { url: '/api/v1/projects', method: 'GET', cookies: { support_session: 'v1' }, user: { userId: 'admin1', role: 'admin' } } as any;
+    await tenantResolverHook(req, r);
+    expect(r.status).not.toHaveBeenCalled();
+    expect(ctx.tenantDbName).toBe('pmassist_t_dbj');
+    expect(req.user.hasCompany).toBe(false);
+  });
+
   it('a visit cookie means nothing to anyone but the admin', async () => {
     (organizationService.findByUserId as any).mockResolvedValue({ id: 'o1', slug: 'acme', dbName: 'pmassist_t_acme', isActive: true, isProvisioned: true });
     const r = reply();
