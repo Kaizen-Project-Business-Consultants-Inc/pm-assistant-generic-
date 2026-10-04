@@ -19,7 +19,7 @@ import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import { calendarService } from './CalendarService';
 import { scheduleRecomputeService } from './ScheduleRecomputeService';
 import {
-  type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor,
+  type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor, addCalendarDays,
 } from '../utils/workingDays';
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -129,38 +129,32 @@ export class AutoRescheduleService {
       if (task.status === 'completed' || task.status === 'cancelled') continue;
       if (!task.startDate || !task.endDate) continue;
 
-      const startDate = new Date(task.startDate);
-      const endDate = new Date(task.endDate);
+      const startDate = utcDay(task.startDate);
+      const endDate = utcDay(task.endDate);
 
       // Skip tasks that haven't started yet (start date in the future)
       if (startDate.getTime() > now.getTime()) continue;
 
-      const totalDuration = endDate.getTime() - startDate.getTime();
-      if (totalDuration <= 0) continue;
-
-      const elapsed = now.getTime() - startDate.getTime();
-      const expectedProgress = Math.min(100, (elapsed / totalDuration) * 100);
+      // Where the task should be by today, in WORKING days (2026-10-04: calendar time counted
+      // weekends and holidays as days that should have had work)
+      const totalWD = workingDaysAfter(utcDay(addCalendarDays(ymdOf(startDate), -1)), endDate, isWorking);
+      if (totalWD <= 0) continue;
+      const elapsedWD = Math.min(totalWD, workingDaysAfter(utcDay(addCalendarDays(ymdOf(startDate), -1)), now, isWorking));
+      const expectedProgress = Math.min(100, (elapsedWD / totalWD) * 100);
       const actualProgress = task.progressPercentage ?? 0;
 
       // Flag as delayed if actual progress is more than 10% behind expected
       if (actualProgress < expectedProgress - 10) {
-        // Estimate completion based on current velocity
+        // Estimate the finish from the pace so far, in working days from today
         let estimatedEndDate: Date;
         if (actualProgress <= 0) {
-          // No progress at all — estimate double the remaining duration from now. If the end
-          // date has already passed there is no "remaining" (it's negative, which used to put
-          // the estimate in the past and silently drop the most overdue tasks) — assume the
-          // whole task still has to be done, starting today.
-          const remainingMs = endDate.getTime() - now.getTime();
-          estimatedEndDate = remainingMs > 0
-            ? new Date(now.getTime() + remainingMs * 2)
-            : new Date(now.getTime() + totalDuration);
+          // No progress at all — double the working days left; if the end has passed there is
+          // nothing "left", so the whole task still has to be done, starting today.
+          const leftWD = workingDaysAfter(now, endDate, isWorking);
+          estimatedEndDate = shiftWorking(now, leftWD > 0 ? leftWD * 2 : totalWD, isWorking);
         } else {
-          // Project completion based on current velocity
-          const msPerPercent = elapsed / actualProgress;
-          const remainingPercent = 100 - actualProgress;
-          const estimatedRemainingMs = remainingPercent * msPerPercent;
-          estimatedEndDate = new Date(now.getTime() + estimatedRemainingMs);
+          const perPercent = Math.max(elapsedWD, 1) / actualProgress;
+          estimatedEndDate = shiftWorking(now, Math.ceil((100 - actualProgress) * perPercent), isWorking);
         }
 
         // The estimate lands on a working day; the delay is counted in working days

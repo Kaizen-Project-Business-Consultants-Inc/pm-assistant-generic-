@@ -2394,6 +2394,8 @@ Lessons surface automatically at key moments so you benefit from past experience
 
 AI agents continuously monitor your projects for schedule delays, scope creep, and other issues. When an agent detects something actionable, it creates a **proposal** -- a recommended set of changes for human review.
 
+**October 2026:** the nightly checks are now three, with no AI: **slipping tasks** (counted in working days — open the schedule and use AI Reschedule for proposed dates), **budget** (cost performance from the real spend, labour + expenses) and **schedule risk** (Monte Carlo finish later than the plan's end). You get one alert per plan or project until you've read it, not one every night. The other agents were removed — Schedule Review, the Team Planner, EVM, status reports and Lessons already do their jobs better.
+
 Access the Agent Proposals page from the **Agent** link in the sidebar (visible to managers and admins).
 
 ### Viewing Proposals

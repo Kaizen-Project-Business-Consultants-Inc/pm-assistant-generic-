@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Hoisted mock functions (vi.mock is hoisted, so references must use vi.hoisted)
@@ -246,6 +246,11 @@ describe('AutoRescheduleService', () => {
   // =========================================================================
 
   describe('detectDelays', () => {
+    // "N days from today" dates land on weekends on some days of the week; delays are counted in
+    // working days, so pin today to a Wednesday (2026-10-07) for a stable answer.
+    beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-07T15:00:00Z')); });
+    afterEach(() => { vi.useRealTimers(); });
+
     it('returns empty array when there are no tasks', async () => {
       mockFindTasksByScheduleId.mockResolvedValue([]);
       const result = await service.detectDelays('sch-1');
@@ -283,13 +288,21 @@ describe('AutoRescheduleService', () => {
       expect(result).toEqual([]);
     });
 
-    it('skips tasks where totalDuration is zero or negative', async () => {
-      const sameDay = daysAgo(1);
+    it('skips a task that ends before it starts', async () => {
       mockFindTasksByScheduleId.mockResolvedValue([
-        makeTask('t1', 'Same day', { startDate: sameDay, endDate: sameDay, progressPercentage: 0 }),
+        makeTask('t1', 'Backwards', { startDate: daysAgo(1), endDate: daysAgo(3), progressPercentage: 0 }),
       ]);
       const result = await service.detectDelays('sch-1');
       expect(result).toEqual([]);
+    });
+
+    it('flags a one-day task from yesterday that has no progress (it used to count as zero length)', async () => {
+      const yesterday = daysAgo(1); // Tue 6 Oct (today is pinned to Wed 7 Oct)
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Same day', { startDate: yesterday, endDate: yesterday, progressPercentage: 0 }),
+      ]);
+      const result = await service.detectDelays('sch-1');
+      expect(result.length).toBe(1);
     });
 
     it('detects a delayed task when progress is more than 10% behind expected', async () => {
@@ -336,11 +349,8 @@ describe('AutoRescheduleService', () => {
       ]);
       const result = await service.detectDelays('sch-1');
       expect(result.length).toBe(1);
-      // ~5 calendar days late, counted in working days — depends on which weekdays they cover
-      // (a fixed 4–6 failed whenever a weekend fell in that window)
-      const expected = wd(daysFromNow(5), daysFromNow(10));
-      expect(result[0].delayDays).toBeGreaterThanOrEqual(expected - 1);
-      expect(result[0].delayDays).toBeLessThanOrEqual(expected + 1);
+      // no progress: twice the working days left from today → late by the working days that were left
+      expect(result[0].delayDays).toBe(wd(daysFromNow(0), daysFromNow(5)));
     });
 
     it('flags an overdue task with no progress (used to be dropped)', async () => {
@@ -368,10 +378,9 @@ describe('AutoRescheduleService', () => {
     });
 
     it('projects completion based on current velocity for partial progress', async () => {
-      // 10 of 20 days elapsed, 20% progress. Velocity = 10d / 20% = 0.5 d/%.
-      // Remaining: 80% * 0.5 = 40 days from now.
-      // Delay = 40 - 10 = ~30 calendar days = 20–24 working days, depending on which
-      // weekday today is (the dates are built from today) and where the weekends fall.
+      // Today Wed 7 Oct; the task runs Sun 27 Sep – Sat 17 Oct: 15 working days, 8 of them worked,
+      // 20% done → 0.4 working days per % → 80% left = 32 working days → Fri 20 Nov.
+      // Late by Mon 19 Oct … Fri 20 Nov = 25 working days.
       mockFindTasksByScheduleId.mockResolvedValue([
         makeTask('t1', 'Slow task', {
           startDate: daysAgo(10),
@@ -381,8 +390,7 @@ describe('AutoRescheduleService', () => {
       ]);
       const result = await service.detectDelays('sch-1');
       expect(result.length).toBe(1);
-      expect(result[0].delayDays).toBeGreaterThanOrEqual(19);
-      expect(result[0].delayDays).toBeLessThanOrEqual(24);
+      expect(result[0].delayDays).toBe(25);
     });
 
     it('gives the same answer whatever the time of day (dates are days, not moments)', async () => {
@@ -402,8 +410,9 @@ describe('AutoRescheduleService', () => {
       const morning = await run('2026-09-30T08:00:00Z');
       const evening = await run('2026-09-30T22:00:00Z');
       expect(evening).toBe(morning);
-      // 10 days for 20% → 40 more days from 30 Sep = Mon 9 Nov; due Sat 10 Oct → Mon 12 Oct … 9 Nov
-      expect(morning).toBe(21);
+      // In WORKING days: 8 worked (21 Sep–30 Sep) for 20% → 32 more from 30 Sep = Fri 13 Nov; due Sat
+      // 10 Oct → late Mon 12 Oct … Fri 13 Nov = 25 working days (it counted calendar days: 21)
+      expect(morning).toBe(25);
     });
 
     it('treats undefined progressPercentage as 0', async () => {

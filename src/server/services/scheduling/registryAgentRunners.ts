@@ -4,8 +4,9 @@ import { notificationService } from '../NotificationService';
 import { AgentActivityLogService } from '../AgentActivityLogService';
 import type { Project } from '../ProjectService';
 import logger from '../../utils/logger';
-import { isOverdue } from '../../utils/calendarDate';
-import { databaseService } from '../../database/connection';
+import { evmForecastService } from '../EVMForecastService';
+import { scheduleService } from '../ScheduleService';
+import { utcDay, workingDaysAfter } from '../../utils/workingDays';
 
 // ---------------------------------------------------------------------------
 // Agent 2 — Budget Burn-Rate
@@ -25,12 +26,10 @@ export async function runBudgetBurnRateAgent(
     return 0;
   }
 
-  const ctx = { actorId: 'system' as const, actorType: 'system' as const, source: 'system' as const, projectId: project.id };
-  const result = await agentRegistry.invoke('budget-forecast-v1', { projectId: project.id }, ctx);
-  if (!result.success) throw new Error(result.error || 'Budget agent failed');
-  const forecast = result.output.forecast;
+  // EVM figures only — no AI call (the nightly check used to run the AI forecast for every project)
+  const forecast = await evmForecastService.generateMetricsOnly(project.id);
   const { CPI, VAC } = forecast.currentMetrics;
-  const overrunProbability = forecast.aiPredictions?.overrunProbability;
+  const overrunProbability: number | undefined = undefined;
 
   const cpiThreshold = config.AGENT_BUDGET_CPI_THRESHOLD;
   const overrunThreshold = config.AGENT_BUDGET_OVERRUN_THRESHOLD;
@@ -73,6 +72,7 @@ export async function runBudgetBurnRateAgent(
     message: problems.join('. ') + '.',
     projectId: project.id,
     linkType: 'evm',
+    linkId: project.id, // one unread budget alert per project, not one a night
   });
 
   logger.info(`[Agent:Budget] Alert created for "${project.name}": ${problems.join('; ')}`);
@@ -113,11 +113,13 @@ export async function runMonteCarloConfidenceAgent(
     const pDateStr = result.completionDate[pKey];
     if (!pDateStr || !schedule.endDate) continue;
 
-    const pDate = new Date(pDateStr);
-    const endDate = new Date(schedule.endDate);
+    const end = String(schedule.endDate).slice(0, 10);
+    const pDay = String(pDateStr).slice(0, 10);
 
-    if (pDate > endDate) {
-      const daysOver = Math.ceil((pDate.getTime() - endDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (pDay > end) {
+      // late by WORKING days, on the plan's calendar (it counted calendar days)
+      const isWorking = await scheduleService.workingDayTest(schedule.id);
+      const daysOver = Math.max(1, workingDaysAfter(utcDay(end), utcDay(pDay), isWorking));
 
       const criticalTasks = result.criticalityIndex
         .filter((t: any) => t.criticalityPercent > 80)
@@ -130,7 +132,7 @@ export async function runMonteCarloConfidenceAgent(
         type: 'monte_carlo_alert',
         severity: daysOver > 14 ? 'critical' : daysOver > 7 ? 'high' : 'medium',
         title: `Schedule Risk: "${schedule.name}"`,
-        message: `P${confidenceLevel} completion is ${daysOver} day(s) past deadline.${
+        message: `P${confidenceLevel} completion is ${daysOver} working day(s) past the plan's end.${
           criticalTasks.length > 0
             ? ` Critical tasks: ${criticalTasks.slice(0, 3).join(', ')}.`
             : ''
@@ -138,6 +140,7 @@ export async function runMonteCarloConfidenceAgent(
         projectId: project.id,
         scheduleId: schedule.id,
         linkType: 'schedule',
+        linkId: schedule.id, // one unread risk alert per plan, not one a night
       });
 
       logger.info(`[Agent:MonteCarlo] Alert for "${schedule.name}": P${confidenceLevel} +${daysOver}d`);
@@ -162,149 +165,4 @@ export async function runMonteCarloConfidenceAgent(
   }
 
   return alertCount;
-}
-
-// ---------------------------------------------------------------------------
-// Agent 4 — Meeting Follow-Up
-// ---------------------------------------------------------------------------
-
-export async function runMeetingFollowUpAgent(
-  project: Project,
-  activityLog: AgentActivityLogService,
-): Promise<number> {
-  const ctx = { actorId: 'system' as const, actorType: 'system' as const, source: 'system' as const, projectId: project.id };
-  const invocationResult = await agentRegistry.invoke('meeting-followup-v1', { projectId: project.id }, ctx);
-  if (!invocationResult.success) throw new Error(invocationResult.error || 'Meeting agent failed');
-  const analyses = invocationResult.output.analyses;
-
-  // Overdue meeting actions are RAID actions now (source 'meeting'), so one marked done in the
-  // RAID log stops being reported — the analysis JSON is only a snapshot of what was said.
-  const openMeetingActions = await databaseService.query<{ due_date: string }>(
-    `SELECT due_date FROM project_risks
-     WHERE project_id = ? AND type = 'action' AND source = 'meeting' AND due_date IS NOT NULL
-       AND status NOT IN ('completed', 'closed', 'cancelled', 'deferred')`,
-    [project.id],
-  );
-  const overdueActions = openMeetingActions.filter(a => isOverdue(a.due_date)).length;
-
-  if (analyses.length === 0 && overdueActions === 0) {
-    await activityLog.log({
-      projectId: project.id,
-      agentName: 'meeting',
-      result: 'skipped',
-      summary: 'No meeting analyses or overdue meeting actions for this project',
-    });
-    return 0;
-  }
-
-  let alertCount = 0;
-  const notifyUserId = project.projectManagerId || project.createdBy;
-
-  for (const analysis of analyses) {
-    const unappliedUpdates = analysis.taskUpdates.filter(
-      (_: any, idx: number) => !analysis.appliedItems.includes(idx),
-    );
-    if (unappliedUpdates.length === 0) {
-      await activityLog.log({
-        projectId: project.id,
-        agentName: 'meeting',
-        result: 'skipped',
-        summary: `Meeting analysis "${analysis.id}" — nothing unapplied`,
-      });
-      continue;
-    }
-
-    const problem = `${unappliedUpdates.length} unapplied task update(s)`;
-    await notificationService.create({
-      userId: notifyUserId,
-      type: 'meeting_followup',
-      severity: 'medium',
-      title: `Meeting Follow-Up: "${project.name}"`,
-      message: `${problem}.`,
-      projectId: project.id,
-      linkType: 'meeting',
-      linkId: analysis.id,
-    });
-
-    logger.info(`[Agent:Meeting] Alert for "${project.name}": ${problem}`);
-    alertCount++;
-
-    await activityLog.log({
-      projectId: project.id,
-      agentName: 'meeting',
-      result: 'alert_created',
-      summary: `${problem}.`,
-      details: { analysisId: analysis.id, unappliedUpdates: unappliedUpdates.length },
-    });
-  }
-
-  if (overdueActions > 0) {
-    const problem = `${overdueActions} overdue meeting action(s) in the RAID log`;
-    await notificationService.create({
-      userId: notifyUserId,
-      type: 'meeting_followup',
-      severity: overdueActions > 2 ? 'high' : 'medium',
-      title: `Meeting Follow-Up: "${project.name}"`,
-      message: `${problem}.`,
-      projectId: project.id,
-      linkType: 'raid',
-    });
-    logger.info(`[Agent:Meeting] Alert for "${project.name}": ${problem}`);
-    alertCount++;
-    await activityLog.log({
-      projectId: project.id,
-      agentName: 'meeting',
-      result: 'alert_created',
-      summary: `${problem}.`,
-      details: { overdueActions },
-    });
-  }
-
-  return alertCount;
-}
-
-// ---------------------------------------------------------------------------
-// Agent 5 — Scope Creep Detection
-// ---------------------------------------------------------------------------
-
-export async function runScopeCreepAgent(
-  project: Project,
-  activityLog: AgentActivityLogService,
-): Promise<number> {
-  const notifyUserId = project.projectManagerId || project.createdBy;
-  const ctx = { actorId: 'system' as const, actorType: 'system' as const, source: 'system' as const, projectId: project.id };
-
-  const invocationResult = await agentRegistry.invoke('scope-creep-detection-v1', {
-    projectId: project.id,
-    userId: notifyUserId,
-  }, ctx);
-
-  if (!invocationResult.success) {
-    throw new Error(invocationResult.error || 'Scope creep agent failed');
-  }
-
-  const { skipped, skipReason, indicators, proposal } = invocationResult.output;
-
-  if (skipped) {
-    await activityLog.log({
-      projectId: project.id,
-      agentName: 'scope_creep',
-      result: 'skipped',
-      summary: skipReason || 'No scope creep detected',
-      details: indicators ? { ...indicators } : undefined,
-    });
-    return 0;
-  }
-
-  logger.info(`[Agent:ScopeCreep] Alert created for "${project.name}"`);
-
-  await activityLog.log({
-    projectId: project.id,
-    agentName: 'scope_creep',
-    result: 'alert_created',
-    summary: `Scope creep detected — proposal created`,
-    details: indicators ? { ...indicators, proposalId: proposal?.id } : undefined,
-  });
-
-  return 1;
 }

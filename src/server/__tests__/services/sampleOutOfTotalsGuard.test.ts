@@ -34,7 +34,6 @@ const AGGREGATES: Array<{ file: string; min: number; what: string }> = [
   { file: 'services/NLQueryService.ts', min: 2, what: 'NL query portfolio stats' },
   { file: 'services/NarrativeService.ts', min: 1, what: 'portfolio narrative' },
   { file: 'services/predictiveIntelligence.ts', min: 1, what: 'AI dashboard weather pick' },
-  { file: 'services/agents/CrossProjectIntelligenceAgent.ts', min: 1, what: 'cross-project agent indicators' },
   { file: 'services/scheduling/scanOrchestrator.ts', min: 1, what: 'agent scans' },
   { file: 'services/scheduling/weeklyReviewPackJob.ts', min: 1, what: 'weekly review pack' },
   { file: 'services/TaskAssignmentService.ts', min: 1, what: 'project allocations for all people' },

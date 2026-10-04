@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-04 — agents slimmed
+
+- Nightly scan = 3 checks, no AI: delays (working days; AI Reschedule proposes on request), budget (EVM metrics, labour + expenses), Monte Carlo (working-day lateness). One unread alert per plan/project (`linkId`).
+- Removed 12 agents + ReasoningEngine + reasoning/* (duplicates, failing AI replies, unexecutable actions, cross-project leaks); migration 128 / T077 drop their `agents` rows. Still open from the review: Schedule Review rules for bottleneck tasks, long chains, abandoned sprints (were in Dependency Risk / Hygiene).
+
 ## 2026-10-03 — Portfolio: archived projects left out; no more 'everything at once'
 User approved. Portfolio overview / people / analytics and the AI portfolio summaries (aiContextBuilder.buildPortfolioContext, NL aggregate_portfolio_stats) leave archived projects out, like the sample. /portfolio/resources computed workload for every project at once → 'Queue limit reached' 500 on staging; now utils/mapWithLimit (3 at a time; keeps request context). Same for InsightAssemblyService.assembleForPortfolio; NL stats reads schedules in one query. Guard (mapWithLimit.test.ts): no Promise.all over a mapped project list; archived filter present.
 

@@ -107,13 +107,8 @@ const STATUS_TABS = [
 ] as const;
 
 
-const KNOWN_AGENTS = [
-  'schedule-recovery-v1', 'scope-creep-detection-v1', 'budget-burn-rate-v1',
-  'monte-carlo-risk-v1', 'resource-optimization-v1', 'budget-intelligence-v1',
-  'meeting-intelligence-v1', 'cross-project-intelligence-v1', 'risk-escalation-v1',
-  'stakeholder-communication-v1', 'project-hygiene-v1', 'dependency-risk-v1',
-  'lessons-learned-v1', 'predictive-alerting-v1',
-];
+// The agents Kovarti runs (2026-10-04: twelve others were removed after the agent review)
+const KNOWN_AGENTS = ['auto-reschedule-v1', 'budget-forecast-v1', 'monte-carlo-v1'];
 
 // ---------------------------------------------------------------------------
 // Utilities
