@@ -97,3 +97,28 @@ describe('the "saved" flash waits for the save', () => {
     expect(result.current.depError).toBe(null);
   });
 });
+
+describe('timers after unmount (2026-10-05)', () => {
+  it('a save handed off just before the grid goes away leaves no timer and flashes nothing', async () => {
+    const onTaskUpdate = vi.fn(() => undefined as unknown as Promise<boolean>); // a plain void save
+    const { result, unmount } = renderHook(() => useInlineCellEdit<string>({
+      tasks: TASKS, onTaskUpdate, getTaskFieldValue: fieldValue, rowNumToTaskId: new Map(), rules: TABLE_EDIT_RULES,
+    }));
+    act(() => { result.current.saveEdit('a', 'name', 'A2'); });
+    expect(vi.getTimerCount()).toBe(1);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => { vi.advanceTimersByTime(5000); });
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('a save still on its way when the grid goes away: no flash when it comes back', async () => {
+    const d = deferred();
+    const { result, unmount } = setup(vi.fn(() => d.promise));
+    act(() => { result.current.saveEdit('a', 'name', 'A2'); });
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    await act(async () => { d.settle(true); vi.advanceTimersByTime(5000); });
+    expect(announce).not.toHaveBeenCalled();
+  });
+});

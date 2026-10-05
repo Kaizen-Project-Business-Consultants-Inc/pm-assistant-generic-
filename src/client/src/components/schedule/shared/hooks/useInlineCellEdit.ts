@@ -6,6 +6,7 @@ import { announce } from '../../../../utils/announce';
 import { planDurationEdit } from '../../durationEdit';
 import { planPredecessorEdit } from '../../predecessorEdit';
 import { isSummaryRollupCell } from '../../summaryRollup';
+import { useUnmountSafeTimeouts } from './useUnmountSafeTimeouts';
 
 /**
  * Where the Gantt grid and the Table view edit a cell differently. Each side passes its own
@@ -97,6 +98,8 @@ export function useInlineCellEdit<F extends string>({
   useEffect(() => {
     return () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); };
   }, []);
+  // The 300 ms "saving" step: cleared on unmount, so no flash is set after the grid is gone
+  const later = useUnmountSafeTimeouts();
 
   const startEditing = useCallback((taskId: string, field: F, task: GanttTask) => {
     // % complete from approved hours can't be typed (mark the task done instead)
@@ -120,10 +123,11 @@ export function useInlineCellEdit<F extends string>({
       savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
     };
     if (!result || typeof (result as PromiseLike<unknown>).then !== 'function') {
-      setTimeout(flash, 300);
+      later(flash, 300);
       return;
     }
-    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 300));
+    // Never resolves if the grid unmounts first, so nothing is flashed after that either
+    const minDelay = new Promise<void>(resolve => { later(resolve, 300); });
     Promise.all([result as PromiseLike<unknown>, minDelay]).then(
       ([ok]) => {
         if (ok !== false) { flash(); return; }
@@ -132,7 +136,7 @@ export function useInlineCellEdit<F extends string>({
       },
       () => setSavingCell(c => (c && c.taskId === taskId && c.field === field ? null : c)),
     );
-  }, []);
+  }, [later]);
 
   const cancelEditing = useCallback(() => {
     setEditingCell(null);

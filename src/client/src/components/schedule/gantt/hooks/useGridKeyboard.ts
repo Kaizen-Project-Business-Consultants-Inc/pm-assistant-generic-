@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from 'react';
 import { type GanttTask, type FlatRow, type EditableField, type GanttColDef } from '../types';
 import { type WorkCalendar } from '../../../../utils/workingDays';
+import { useUnmountSafeTimeouts } from '../../shared/hooks/useUnmountSafeTimeouts';
 import {
   useGridCellState, useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell,
   handleGridNavKey, GANTT_KEYBOARD_RULES,
@@ -64,6 +65,8 @@ export function useGridKeyboard({
   const {
     focusedCell, setFocusedCell, copiedValue, setCopiedValue, pasteFlash, flashPaste, copiedTasks, setCopiedTasks,
   } = useGridCellState<EditableField>();
+  // The "Copied N tasks" message timer is cleared if the Gantt goes away first
+  const later = useUnmountSafeTimeouts();
 
   const rowTasks = useMemo(() => rows.map(r => r.task), [rows]);
 
@@ -131,7 +134,7 @@ export function useGridKeyboard({
             if (toCopy.length > 0) {
               setCopiedTasks(toCopy);
               setBulkMessage(`Copied ${toCopy.length} task${toCopy.length > 1 ? 's' : ''}`);
-              setTimeout(() => setBulkMessage(''), 2000);
+              later(() => setBulkMessage(''), 2000);
             }
             return;
           }
@@ -222,7 +225,7 @@ export function useGridKeyboard({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId]);
+  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId, later]);
 
   // When editing ends, restore focus to that cell
   useRestoreFocusAfterEdit(editingCell, setFocusedCell);

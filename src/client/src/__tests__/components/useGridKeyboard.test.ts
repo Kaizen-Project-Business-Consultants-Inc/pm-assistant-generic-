@@ -344,3 +344,49 @@ describe('useGridKeyboard — when it stays out of the way', () => {
     expect(s.props.onDuplicateTasks).not.toHaveBeenCalled();
   });
 });
+
+describe('useGridKeyboard — timers after unmount (2026-10-05)', () => {
+  // Their timers used to fire after the Gantt was gone and set state (in tests: after teardown,
+  // "window is not defined"). Unmounting must leave no timer behind.
+  it('"Copied N tasks" is not cleared after the Gantt has gone', () => {
+    vi.useFakeTimers();
+    const s = setup({ activeTaskId: 'b' });
+    key('c', { ctrlKey: true });
+    expect(s.props.setBulkMessage).toHaveBeenCalledWith('Copied 1 task');
+    expect(vi.getTimerCount()).toBe(1);
+    s.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(s.props.setBulkMessage).not.toHaveBeenCalledWith('');
+  });
+
+  it('the pasted-cell flash timer is cleared on unmount', () => {
+    vi.useFakeTimers();
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const s = setup();
+    focusCell(s, 'a', 'name');
+    key('c', { ctrlKey: true });
+    key('ArrowDown');
+    key('v', { ctrlKey: true });
+    expect(s.result.current.pasteFlash).toEqual({ taskId: 'b', field: 'name' });
+    s.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(err).not.toHaveBeenCalled();
+  });
+
+  it('while mounted, each paste still clears its own flash after 0.8 s, as before', () => {
+    vi.useFakeTimers();
+    const s = setup();
+    focusCell(s, 'a', 'name');
+    key('c', { ctrlKey: true });
+    key('ArrowDown');
+    key('v', { ctrlKey: true });
+    act(() => { vi.advanceTimersByTime(500); });
+    key('ArrowDown');
+    key('v', { ctrlKey: true });
+    expect(s.result.current.pasteFlash).toEqual({ taskId: 'c', field: 'name' });
+    act(() => { vi.advanceTimersByTime(300); }); // the first paste's timer ends the flash, as it always did
+    expect(s.result.current.pasteFlash).toBeNull();
+  });
+});

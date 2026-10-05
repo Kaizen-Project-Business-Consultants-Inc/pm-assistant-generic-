@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import type { GanttTask } from '../../gantt/types';
 import type { WorkCalendar } from '../../../../utils/workingDays';
 import { planDurationEdit } from '../../durationEdit';
+import { useUnmountSafeTimeouts } from './useUnmountSafeTimeouts';
 import { planPredecessorEdit } from '../../predecessorEdit';
 import { isSummaryRollupCell } from '../../summaryRollup';
 
@@ -54,16 +55,17 @@ export const TABLE_KEYBOARD_RULES: GridKeyboardRules<string> = {
 
 export type GridCell<F extends string> = { taskId: string; field: F };
 
-/** Focused cell, copied cell value, copied rows, and the pasted-cell flash (0.8 s). */
+/** Focused cell, copied cell value, copied rows, and the pasted-cell flash (0.8 s; its timer is cleared on unmount). */
 export function useGridCellState<F extends string>() {
   const [focusedCell, setFocusedCell] = useState<GridCell<F> | null>(null);
   const [copiedValue, setCopiedValue] = useState<{ field: F; value: string } | null>(null);
   const [pasteFlash, setPasteFlash] = useState<{ taskId: string; field: string } | null>(null);
   const [copiedTasks, setCopiedTasks] = useState<GanttTask[]>([]);
+  const later = useUnmountSafeTimeouts();
   const flashPaste = useCallback((taskId: string, field: string) => {
     setPasteFlash({ taskId, field });
-    setTimeout(() => setPasteFlash(null), 800);
-  }, []);
+    later(() => setPasteFlash(null), 800);
+  }, [later]);
   return { focusedCell, setFocusedCell, copiedValue, setCopiedValue, pasteFlash, flashPaste, copiedTasks, setCopiedTasks };
 }
 
