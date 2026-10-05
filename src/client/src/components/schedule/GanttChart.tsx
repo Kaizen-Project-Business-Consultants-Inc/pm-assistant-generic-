@@ -10,6 +10,7 @@ import { useDependencyDraw } from './gantt/hooks/useDependencyDraw';
 import { useBarDrag } from './gantt/hooks/useBarDrag';
 import { useGridKeyboard } from './gantt/hooks/useGridKeyboard';
 import { useInlineCellEdit, GANTT_EDIT_RULES } from './shared/hooks/useInlineCellEdit';
+import { useUnmountSafeTimeouts } from './shared/hooks/useUnmountSafeTimeouts';
 import type { SavedView } from './SavedViewsDropdown';
 import { ConfirmModal } from '../ui/ConfirmModal';
 // Extracted sub-modules
@@ -466,10 +467,12 @@ export function GanttChart({
     setBulkAssignee('');
   }, []);
 
+  // The bulk message clears after 3 s; the timer is cleared if the Gantt goes away first
+  const later = useUnmountSafeTimeouts();
   const showBulkMessage = useCallback((msg: string) => {
     setBulkMessage(msg);
-    setTimeout(() => setBulkMessage(''), 3000);
-  }, []);
+    later(() => setBulkMessage(''), 3000);
+  }, [later]);
 
   const applyBulkUpdate = useCallback(async (field: string, value: string) => {
     if (!value || selectedIds.size === 0 || !onBulkUpdate) return;

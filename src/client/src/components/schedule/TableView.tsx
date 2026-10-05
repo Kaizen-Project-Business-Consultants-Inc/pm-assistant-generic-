@@ -19,6 +19,7 @@ import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
 import { useTableGrouping } from './table/hooks/useTableGrouping';
 import { useInlineCellEdit, TABLE_EDIT_RULES } from './shared/hooks/useInlineCellEdit';
+import { useUnmountSafeTimeouts } from './shared/hooks/useUnmountSafeTimeouts';
 import { useGridCellState } from './shared/hooks/useGridKeyboardPaste';
 import { useTableKeyboard } from './table/hooks/useTableKeyboard';
 import {
@@ -213,7 +214,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
   // Inline editing state & helpers (shared with the Gantt grid: shared/hooks/useInlineCellEdit)
   const {
-    editingCell, editValue, setEditValue, savingCell, setSavingCell, savedCell, setSavedCell, savedTimerRef,
+    editingCell, editValue, setEditValue, savingCell, setSavingCell, savedCell, finishSave,
     depError, setDepError,
     startEditing, cancelEditing, saveEdit, handleKeyDown, handleSelectChange, handleDateChange,
   } = useInlineCellEdit<EditableField>({
@@ -572,10 +573,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     });
   }, []);
 
+  // Bulk messages clear after 3 s; the timers are cleared if the Table goes away first
+  const later = useUnmountSafeTimeouts();
   const showBulkSuccess = useCallback((msg: string) => {
     setBulkMessage(msg);
-    setTimeout(() => setBulkMessage(''), 3000);
-  }, []);
+    later(() => setBulkMessage(''), 3000);
+  }, [later]);
 
   const clearBulkState = useCallback(() => {
     setSelectedIds(new Set());
@@ -604,11 +607,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } catch (err) {
       console.error('Bulk update failed:', err);
       setBulkMessage('Some updates failed');
-      setTimeout(() => setBulkMessage(''), 3000);
+      later(() => setBulkMessage(''), 3000);
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkSuccess, clearBulkState]);
+  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkSuccess, clearBulkState, later]);
 
   const confirmAndDeleteTasks = useCallback(async (taskIds: string[]) => {
     setBulkLoading(true);
@@ -625,11 +628,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } catch (err) {
       console.error('Delete failed:', err);
       setBulkMessage('Some deletes failed');
-      setTimeout(() => setBulkMessage(''), 3000);
+      later(() => setBulkMessage(''), 3000);
     } finally {
       setBulkLoading(false);
     }
-  }, [onBulkDelete, scheduleId, queryClient, showBulkSuccess, clearBulkState]);
+  }, [onBulkDelete, scheduleId, queryClient, showBulkSuccess, clearBulkState, later]);
 
   const handleDeleteTasks = useCallback((taskIds: string[]) => {
     if (taskIds.length === 0) return;
@@ -950,14 +953,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 value={task.assignedTo || null}
                 onSelect={(userId) => {
                   cancelEditing();
-                  onTaskUpdate?.(task.id, { assignedTo: userId });
+                  const result: unknown = onTaskUpdate?.(task.id, { assignedTo: userId });
                   setSavingCell({ taskId: task.id, field: 'assignedTo' });
-                  setTimeout(() => {
-                    setSavingCell(null);
-                    setSavedCell({ taskId: task.id, field: 'assignedTo' });
-                    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-                    savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-                  }, 300);
+                  // Same "saving" → "saved" steps as the other cells: waits for the save, no "saved" if it failed
+                  finishSave(task.id, 'assignedTo', result);
                 }}
                 onClear={() => {
                   cancelEditing();

@@ -214,7 +214,7 @@ export function useInlineCellEdit<F extends string>({
     savedCell, setSavedCell,
     savedTimerRef,
     depError, setDepError,
-    startEditing, cancelEditing, saveEdit,
+    startEditing, cancelEditing, saveEdit, finishSave,
     handleKeyDown, handleSelectChange, handleDateChange,
   };
 }
