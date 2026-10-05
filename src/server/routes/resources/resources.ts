@@ -18,6 +18,8 @@ import { taskAssignmentService } from '../../services/TaskAssignmentService';
 import { resourceReplaceService } from '../../services/ResourceReplaceService';
 import { teamPlannerService } from '../../services/TeamPlannerService';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { checkCreate, checkUpdate, checkDelete, removeLogin, PeopleRightsError } from '../../services/peopleRights';
+import { getRequestContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
 import { utcDay, mondayOf } from '../../utils/workingDays';
 import { hoursInWeek, calendarsFor } from '../../services/weeklyLoad';
@@ -114,10 +116,15 @@ async function inviteResource(
   if (!email || isPlaceholderEmail(email)) {
     return { sent: false, message: `${resource.name} has a placeholder email. Add their real email first, then invite them.` };
   }
-  const inviterUserId = (request.user as any)?.userId;
-  const inviterEmail = (request.user as any)?.email;
-  const inviterName = (request.user as any)?.fullName || inviterEmail || 'A team member';
-  const inviterOrgId = (request.user as any)?.organizationId;
+  // The request user carries only id/username/role — read the rest (it used to read email, name
+  // and company off request.user, got nothing, and told people already in YOUR company that they
+  // belong to "another company"; found 2026-10-05)
+  const inviterUserId = request.user!.userId;
+  const [inviter] = await databaseService.queryControlPlane<{ email: string; full_name: string | null }>(
+    'SELECT email, full_name FROM users WHERE id = ? LIMIT 1', [inviterUserId]);
+  const inviterEmail = inviter?.email;
+  const inviterName = inviter?.full_name || inviterEmail || 'A team member';
+  const inviterOrgId = getRequestContext()?.organizationId;
 
   if (inviterEmail && email.toLowerCase() === inviterEmail.toLowerCase()) {
     return { sent: false, message: 'This resource uses your own email. You already have access — no invite was sent.' };
@@ -218,12 +225,14 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.post('/', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const raw = createResourceSchema.parse(request.body);
+      await checkCreate(request.user, raw as any);
       const resource = await resourceService.createResource({
         ...raw,
         skills: normalizeSkills(raw.skills),
       } as any);
       return reply.status(201).send({ resource });
     } catch (error) {
+      if (error instanceof PeopleRightsError) return reply.status(403).send({ error: 'Forbidden', message: error.message });
       if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Invalid resource data', message: error.message });
       // A rejected field is the caller's mistake, not a server fault — say what
       // was actually wrong instead of a bare "Invalid resource data" that gives
@@ -248,10 +257,14 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const raw = updateResourceSchema.parse(request.body);
       const data = raw.skills ? { ...raw, skills: normalizeSkills(raw.skills) } : raw;
+      const existing = await resourceService.findResourceById(id);
+      if (!existing) return reply.status(404).send({ error: 'Resource not found' });
+      await checkUpdate(request.user, existing, data as any);
       const resource = await resourceService.updateResource(id, data as any);
       if (!resource) return reply.status(404).send({ error: 'Resource not found' });
       return { resource };
     } catch (error) {
+      if (error instanceof PeopleRightsError) return reply.status(403).send({ error: 'Forbidden', message: error.message });
       if (error instanceof ResourceValidationError) return reply.status(400).send({ error: 'Invalid resource data', message: error.message });
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Invalid resource data', message: error.issues[0] ? `${error.issues[0].path.join('.')}: ${error.issues[0].message}` : 'Invalid request body' });
       logger.error('Update resource error', { error });
@@ -398,39 +411,41 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
     const { removeAccess } = request.query as { removeAccess?: string };
 
-    // Look up resource before deleting (need email for access removal)
+    // Look up resource before deleting (need its login for access removal)
     const resource = await resourceService.findResourceById(id);
     if (!resource) return reply.status(404).send({ error: 'Resource not found' });
+
+    // Removing someone who signs in, or their login, is the company owner's or a PMO's call
+    try {
+      await checkDelete(request.user, [resource], removeAccess === 'true');
+    } catch (error) {
+      if (error instanceof PeopleRightsError) return reply.status(403).send({ error: 'Forbidden', message: error.message });
+      throw error;
+    }
 
     const deleted = await resourceService.deleteResource(id);
     if (!deleted) return reply.status(404).send({ error: 'Resource not found' });
 
-    // Optionally remove the user's access to the organization
-    if (removeAccess === 'true' && resource.email) {
-      databaseService.queryControlPlane<{ id: string; organization_id: string }>(
-        'SELECT id, organization_id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1',
-        [resource.email],
-      ).then(async ([user]) => {
-        if (!user) return;
-        // Only deactivate if the user belongs to the same org as the requester
-        const requesterOrgId = (request.user as any)?.organizationId;
-        if (user.organization_id && user.organization_id === requesterOrgId) {
-          await databaseService.queryControlPlane(
-            'UPDATE users SET organization_id = NULL, is_active = 0 WHERE id = ?',
-            [user.id],
-          );
-          logger.info('User access removed on resource delete', { userId: user.id, email: resource.email });
-        }
-      }).catch(err => logger.error('Failed to remove user access on resource delete', { error: err?.message || err }));
+    let accessRemoved = false;
+    if (removeAccess === 'true') {
+      accessRemoved = await removeLogin(resource);
+      if (accessRemoved) logger.info('User access removed on resource delete', { resourceId: id, userId: resource.userId });
     }
 
-    return { message: 'Resource deleted' };
+    return { message: accessRemoved ? 'Resource deleted and their login removed' : 'Resource deleted', accessRemoved };
   });
 
   // POST /resources/bulk-delete
   fastify.post('/bulk-delete', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = z.object({ ids: z.array(z.string().min(1)).min(1).max(100) }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'Provide an array of resource IDs (max 100)' });
+    const people = await resourceService.findResourcesByIds(body.data.ids);
+    try {
+      await checkDelete(request.user, people, false);
+    } catch (error) {
+      if (error instanceof PeopleRightsError) return reply.status(403).send({ error: 'Forbidden', message: error.message });
+      throw error;
+    }
     const deleted = await resourceService.deleteResources(body.data.ids);
     return { deleted };
   });
@@ -626,6 +641,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         const group = (row.resourceGroup || row.department || row.Department || '').trim() || null;
 
         try {
+          await checkCreate(request.user, { email });
           await resourceService.createResource({
             name, role, email,
             capacityHoursPerWeek: capacity,

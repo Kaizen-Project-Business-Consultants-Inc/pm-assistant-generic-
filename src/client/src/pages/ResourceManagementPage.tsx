@@ -8,6 +8,8 @@ import { CalendarTemplateManager } from '../components/resources/CalendarTemplat
 import { ResourceRequestList } from '../components/resources/ResourceRequestList';
 import { ResourceRequestApprovalPanel } from '../components/resources/ResourceRequestApprovalPanel';
 import { TeamPlanner } from '../components/resources/TeamPlanner';
+import { useCanManagePeople } from '../hooks/useCanManagePeople';
+import { useAuthStore } from '../stores/authStore';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,6 +124,9 @@ type TabKey = 'team' | 'planner' | 'workload' | 'histogram' | 'forecast' | 'tren
 
 export function ResourceManagementPage() {
   const canChange = useCanChangeData();
+  // Owner or PMO: line managers, emails of people who sign in, removing people who sign in
+  const canManagePeople = useCanManagePeople();
+  const me = useAuthStore((s) => s.user);
   const queryClient = useQueryClient();
   // ?tab=workload (from the Gantt's Conflicts link) opens the Heatmap on all projects
   const tabFromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
@@ -366,6 +371,12 @@ export function ResourceManagementPage() {
       resourceGroup: formGroup || null,
       skills: formSkills,
     };
+    // A PM doesn't touch the line manager, or the email of someone who signs in (the server
+    // refuses it; new people get the owner as line manager by default)
+    if (!canManagePeople) {
+      delete (data as Partial<typeof data>).lineManagerUserId;
+      if (editingResource?.userId) delete (data as Partial<typeof data>).email;
+    }
     if (editingResource) {
       updateResourceMutation.mutate({ id: editingResource.id, data });
     } else {
@@ -582,19 +593,39 @@ export function ResourceManagementPage() {
                   )}
                 </div>
                 <div>
-                  <label htmlFor="resource-email" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email (required)</label>
-                  <input id="resource-email" type="email" required aria-describedby="resource-email-hint" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="name@company.com" />
-                  <p id="resource-email-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {isPlaceholderEmail(formEmail) ? 'This is a placeholder — replace it with their real email.' : "Saving doesn't send an invite. Not sure who yet? Use a generic role."}
-                  </p>
+                  {editingResource?.userId && !canManagePeople ? (
+                    <>
+                      <span className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</span>
+                      <p className="text-sm text-gray-800 dark:text-gray-100">{formEmail}</p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Signs in to Kovarti — only the company owner or a PMO can change this email.</p>
+                    </>
+                  ) : (
+                    <>
+                      <label htmlFor="resource-email" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email (required)</label>
+                      <input id="resource-email" type="email" required aria-describedby="resource-email-hint" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="name@company.com" />
+                      <p id="resource-email-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        {isPlaceholderEmail(formEmail) ? 'This is a placeholder — replace it with their real email.' : "Saving doesn't send an invite. Not sure who yet? Use a generic role."}
+                      </p>
+                    </>
+                  )}
                 </div>
                 <div>
-                  <label htmlFor="resource-line-manager" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Line manager (required)</label>
-                  <select id="resource-line-manager" required aria-describedby="resource-line-manager-hint" value={formLineManager} onChange={(e) => setFormLineManager(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
-                    <option value="">Choose…</option>
-                    {lineManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                  <p id="resource-line-manager-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">Approves their weekly timesheet. Anyone with a login, a PM too.</p>
+                  {canManagePeople ? (
+                    <>
+                      <label htmlFor="resource-line-manager" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Line manager (required)</label>
+                      <select id="resource-line-manager" required aria-describedby="resource-line-manager-hint" value={formLineManager} onChange={(e) => setFormLineManager(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
+                        <option value="">Choose…</option>
+                        {lineManagers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                      <p id="resource-line-manager-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">Approves their weekly timesheet. Anyone with a login, a PM too.</p>
+                    </>
+                  ) : (
+                    <>
+                      <span className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Line manager</span>
+                      <p className="text-sm text-gray-800 dark:text-gray-100">{editingResource ? (managerName(editingResource.lineManagerUserId) || '—') : 'The company owner'}</p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Approves their weekly timesheet. Only the company owner or a PMO can change it.</p>
+                    </>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Week</label>
@@ -757,7 +788,7 @@ export function ResourceManagementPage() {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <span>{managerName(r.lineManagerUserId) || '—'}</span>
                           {r.lineManagerIsDefault && (
-                            canChange
+                            canManagePeople
                               ? <button onClick={() => openEdit(r)} className="inline-flex items-center rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-500/70 dark:bg-amber-900/30 dark:text-amber-200" title="Given the company owner automatically. Open to confirm or change.">Set by default — check</button>
                               : <span className="inline-flex items-center rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-500/70 dark:bg-amber-900/30 dark:text-amber-200">Set by default</span>
                           )}
@@ -830,12 +861,13 @@ export function ResourceManagementPage() {
                       <td className="px-4 py-3 text-right">
                         {canChange && <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => {
+                          {/* removing someone who signs in is the owner's or a PMO's call; the owner's own record never */}
+                          {(!r.userId || canManagePeople) && !(r.userId && r.userId === me?.id && me?.organization?.isOwner) && <button onClick={() => {
                             setDeleteConfirmId(r.id);
                             setDeleteImpact(null);
                             setDeleteImpactLoading(true);
                             apiService.getResourceDeleteImpact(r.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
-                          }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>
+                          }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label="Delete resource"><Trash2 className="w-3.5 h-3.5" /></button>}
                         </div>}
                       </td>
                     </tr>
@@ -1299,15 +1331,17 @@ export function ResourceManagementPage() {
               </div>
             </div>
           )}
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={removeAccessOnDelete}
-              onChange={(e) => setRemoveAccessOnDelete(e.target.checked)}
-              className="rounded border-gray-300 text-red-600 focus:ring-red-500"
-            />
-            Also remove this person's access to the organization
-          </label>
+          {canManagePeople && (
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={removeAccessOnDelete}
+                onChange={(e) => setRemoveAccessOnDelete(e.target.checked)}
+                className="rounded border-gray-300 text-red-600 focus:ring-red-500"
+              />
+              Also remove their login — they leave the company and can no longer sign in
+            </label>
+          )}
         </ConfirmModal>
       )}
 

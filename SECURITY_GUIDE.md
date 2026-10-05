@@ -169,6 +169,18 @@ owner  >  manager  >  viewer   (editor = viewer)
 
 **Why the gaps existed (for the record):** the check was added on 4 Jul 2026 route by route (opt-in); later routes (bulk tools 15 Jul, bulk delete 5 Sep, many others) never got it; the middleware silently passed when it couldn't find a project; nothing tested for it.
 
+### People list — risky changes are the owner's or a PMO's (Oct 2026)
+`services/peopleRights.ts` (user decision 2026-10-05, "Option B"): project managers manage ordinary
+people, but only the company owner or a PMO may choose/change a line manager (= timesheet approver),
+change the email of someone who signs in (an email change re-links the person to a login), add a person
+whose email is a login, delete people who sign in, or remove a login ("Also remove their login" — which
+had silently done nothing: it read the company off `request.user`, which doesn't carry it). Nobody does
+these to the owner's own record. 403 with a plain message; routes POST/PUT/DELETE `/resources`,
+bulk-delete and import all call the checks. The same `request.user` mistake also broke the Invite
+button (people in your own company were told they belonged to "another company") and the inviter's
+name in invite emails — fixed; guard: no code reads `request.user.fullName/email/organizationId`.
+Tests: `__tests__/routes/peopleRights.test.ts`.
+
 ### Platform admin = admin role AND no company (Oct 2026)
 "Admin owns nothing." The only platform admin is the account with role `admin` and no company
 (`utils/platformAdmin.ts` `isPlatformAdmin`; client `isPlatformAdmin` in `stores/authStore.ts`). Every

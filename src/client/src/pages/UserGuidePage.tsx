@@ -452,6 +452,7 @@ const sections: Section[] = [
       'Level Resources (schedule ⋮ menu, or project → Resources → Leveling) proposes moving non-critical tasks within their spare time; nothing changes until you Apply',
       'Every person needs an email — "Placeholder email" (name@example.com) means the real one is still to add; nothing is ever sent there',
       'Every person has a line manager, who approves their timesheets (anyone with a login, a PM too). "Set by default — check" means it was given the company owner automatically',
+      'Only the company owner or a PMO chooses line managers, changes the email of someone who signs in, or removes someone who signs in (and their login); project managers manage everyone else',
       'Not sure who yet? Assign a generic role ("Generic Developer"). Resources → Add generic role makes your own',
       'Saving a person never emails them: click Invite when you want them to log in',
       'Project → Team → Unfilled demand shows how many people the generic roles need each week; Replace… hands their tasks to a real person (undo from History)',

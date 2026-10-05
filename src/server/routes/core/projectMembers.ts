@@ -8,6 +8,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { notificationService } from '../../services/NotificationService';
+import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 
 const ROLE_MESSAGE = 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)';
@@ -125,7 +126,9 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       }
 
       // Send invitation email (fire-and-forget)
-      const inviterName = (request.user as any)?.fullName || (request.user as any)?.email || 'A team member';
+      // request.user has no name/email — read the inviter's (it always said "A team member")
+      const inviter = await userService.findById(request.user!.userId).catch(() => null);
+      const inviterName = inviter?.fullName || inviter?.email || 'A team member';
       projectService.findById(projectId).then(project => {
         const projectName = project?.name || 'a project';
         emailService.sendProjectInviteEmail(data.email, {

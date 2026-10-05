@@ -848,6 +848,8 @@ The Budget tab within each project provides comprehensive expense tracking and b
 
 Every person on the Resources list has a **line manager** — the one person who approves their weekly timesheet. Anyone with a login can be a line manager, a PM included. Choose it in **Add person** / **Edit person** (it's required). People who were on the list before got the company owner as their line manager, shown with an orange **Set by default — check** tag; open the person and save to confirm, or pick someone else. Nobody can be their own line manager (except the company owner, who has no one above them). Generic roles have none.
 
+**Who can change what on the people list (October 2026).** Project managers add and edit people — skills, rates, hours, roles, people without a login such as subcontractors — and import lists. Only the **company owner** or a **PMO** can: choose or change someone's **line manager**; change the **email of someone who signs in** (or add a person whose email already has a login); **delete someone who signs in**; and tick **Also remove their login** when deleting (they leave the company and can no longer sign in). A project manager doesn't see those controls; a new person they add gets the owner as line manager, and the owner or a PMO can change it. Nobody can do these to the company owner's own record. (Before, any project manager could set themselves as a coworker's line manager and approve that person's timesheets.)
+
 ### People and generic roles (October 2026)
 
 Every resource is either a **person** or a **generic role**.
