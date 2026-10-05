@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState, useCallback, Fragment } from 'react';
+import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
@@ -26,7 +26,6 @@ import {
   TABLE_DEFAULT_W,
   TABLE_MIN_W,
   TABLE_MAX_W,
-  GANTT_COLUMNS,
   ZOOM_CONFIGS,
   ZOOM_LEVELS,
   FIELD_ORDER,
@@ -41,8 +40,7 @@ import { GanttFilterPanel } from './gantt/GanttFilterPanel';
 import { GanttBulkActionBar } from './gantt/GanttBulkActionBar';
 import { GanttToolbar } from './gantt/GanttToolbar';
 import type { PanelMode } from './gantt/GanttToolbar';
-import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
-import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
+import { GanttGridPanel } from './gantt/GanttGridPanel';
 import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
 import { isSummaryRollupCell } from './summaryRollup';
@@ -1116,250 +1114,83 @@ export function GanttChart({
         {/* LEFT: Task table                                               */}
         {/* ============================================================= */}
         {panelMode !== 'gantt' && (
-        <div
-          ref={leftPanelRef}
-          role="grid"
-          aria-label="Task list"
-          className="flex-shrink-0 overflow-y-auto overflow-x-auto scrollbar-hide"
-          style={{ width: panelMode === 'table' ? '100%' : tableWidth }}
-        >
-          {/* Table header */}
-          <GanttLeftPanelHeader
-            orderedColumns={orderedColumns}
-            isColVisible={isColVisible}
-            getColWidth={getColWidth}
-            sortField={sortField}
-            sortDirection={sortDirection}
-            allSelected={allSelected}
-            hasOnBulkUpdate={!!onBulkUpdate}
-            hasOnTaskClick={!!onTaskClick}
-            ganttColDrag={ganttColDrag}
-            handleHeaderSort={handleHeaderSort}
-            handleColResizeStart={handleColResizeStart}
-            autoFitGanttColumn={autoFitGanttColumn}
-            toggleSelectAll={toggleSelectAll}
-            minRowWidth={minRowWidth}
-            ganttKeyToTableKey={ganttKeyToTableKey}
-            moveColumn={moveColumn}
-            columnState={_columnState}
-          />
-
-          {/* Task rows */}
-          <div style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
-          {rows.map(({ task, level }, rowIdx) => {
-            if (shouldVirtualize && (rowIdx < visStart || rowIdx >= visEnd)) return null;
-            const showInlineInsertAfter = inlineInsertIdx === rowIdx && !inlineInsertIsBefore;
-            const showInlineInsertBefore = inlineInsertIdx === rowIdx && inlineInsertIsBefore;
-            return (
-              <Fragment key={task.id}>
-              {showInlineInsertBefore && (
-                <div
-                  className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
-                  style={{ height: ROW_H, minWidth: minRowWidth }}
-                >
-                  <div className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono" style={{ width: getColWidth(GANTT_COLUMNS[0]) }}>+</div>
-                  <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="Type task name and press Enter…"
-                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
-                      onKeyDown={(e) => {
-                        const input = e.currentTarget;
-                        if (e.key === 'Enter' && input.value.trim()) {
-                          e.preventDefault();
-                          onInlineInsertBefore?.(input.value.trim(), inlineInsert!.beforeTaskId!, inlineInsert!.parentTaskId);
-                          input.value = '';
-                        }
-                        if (e.key === 'Escape') setInlineInsert(null);
-                        if (e.key === 'Tab') {
-                          e.preventDefault();
-                          if (input.value.trim()) {
-                            onInlineInsertBefore?.(input.value.trim(), inlineInsert!.beforeTaskId!, inlineInsert!.parentTaskId);
-                            input.value = '';
-                          } else {
-                            setInlineInsert(null);
-                          }
-                        }
-                      }}
-                      onBlur={(e) => { if (!e.currentTarget.value.trim()) setInlineInsert(null); }}
-                    />
-                  </div>
-                  {orderedColumns.map(col => {
-                    if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
-                    if (!isColVisible(col)) return null;
-                    return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
-                  })}
-                  <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
-                </div>
-              )}
-              <GanttLeftPanelRow
-                task={task}
-                level={level}
-                rowIdx={rowIdx}
-                isActive={activeTaskId === task.id}
-                isFocused={focusTaskId === task.id || !!highlightTaskIds?.has(task.id)}
-                workCalendar={workCalendar}
-                isSelected={selectedIds.has(task.id)}
-                isParent={parentTaskIds.has(task.id)}
-                isCollapsed={collapsedIds.has(task.id)}
-                editingField={editingCell?.taskId === task.id ? editingCell.field : null}
-                focusedField={focusedCell?.taskId === task.id && !editingCell ? focusedCell.field : null}
-                editValue={editingCell?.taskId === task.id ? editValue : ''}
-                savedField={savedCell?.taskId === task.id ? savedCell.field : null}
-                pasteFlashField={pasteFlash?.taskId === task.id ? pasteFlash.field : null}
-                depErrorMsg={depError?.taskId === task.id ? depError.message : null}
-                rowDragTargetHere={rowDrag?.targetIdx === rowIdx && rowDrag?.taskId !== task.id}
-                isRowDragSource={rowDrag?.taskId === task.id}
-                someSelected={someSelected}
-                orderedColumns={orderedColumns}
-                isColVisible={isColVisible}
-                getColWidth={getColWidth}
-                minRowWidth={minRowWidth}
-                shouldVirtualize={shouldVirtualize}
-                rowNumMap={rowNumMap}
-                reviewFlagMap={reviewFlagMap}
-                successorMap={successorMap}
-                tasks={tasks}
-                sortField={sortField}
-                hasOnBulkUpdate={!!onBulkUpdate}
-                hasOnTaskReorder={!!onTaskReorder}
-                hasOnTaskClick={!!onTaskClick}
-                hasOnTaskUpdate={!!onTaskUpdate}
-                hasOnInsertAfter={!!(onInlineInsert || onInsertAfter)}
-                hasOnDeleteTask={!!onDeleteTask}
-                onRowClick={handleRowClick}
-                onRowDoubleClick={handleRowDoubleClick}
-                onRowContextMenu={handleRowContextMenu}
-                onRowDragStart={handleRowDragStart}
-                onRowDragOver={handleRowDragOver}
-                onRowDrop={handleRowDrop}
-                onRowDragEnd={handleRowDragEnd}
-                toggleSelect={toggleSelect}
-                toggleCollapse={toggleCollapse}
-                onCellClick={handleCellClick}
-                onEditValueChange={setEditValue}
-                onSaveEdit={saveEdit}
-                onKeyDown={handleKeyDown}
-                onSelectChange={handleSelectChange}
-                onDateChange={handleDateChange}
-                onCancelEditing={cancelEditing}
-                onTaskClick={onTaskClick}
-                onInsertAfter={handleInsertAfter}
-                onDeleteTask={onDeleteTask}
-                onTaskUpdate={onTaskUpdate}
-                setNotesPopup={setNotesPopup}
-                setPendingDeleteIds={setPendingDeleteIds}
-                getDepHealth={getDepHealth}
-              />
-              {showInlineInsertAfter && (
-                <div
-                  className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
-                  style={{ height: ROW_H, minWidth: minRowWidth }}
-                >
-                  {/* Row number */}
-                  <div
-                    className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono"
-                    style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
-                  >
-                    +
-                  </div>
-                  {/* Task name input */}
-                  <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
-                    <input
-                      type="text"
-                      autoFocus
-                      placeholder="Type task name and press Enter…"
-                      className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
-                      onKeyDown={(e) => {
-                        const input = e.currentTarget;
-                        if (e.key === 'Enter' && input.value.trim()) {
-                          e.preventDefault();
-                          const name = input.value.trim();
-                          const afterId = inlineInsert!.afterTaskId!;
-                          const parentId = inlineInsert!.parentTaskId;
-                          onInlineInsert?.(name, afterId, parentId);
-                          // Keep inline insert active for continuous entry (Tab-like in MS Project)
-                          input.value = '';
-                        }
-                        if (e.key === 'Escape') {
-                          setInlineInsert(null);
-                        }
-                        if (e.key === 'Tab') {
-                          e.preventDefault();
-                          if (input.value.trim()) {
-                            const name = input.value.trim();
-                            const afterId = inlineInsert!.afterTaskId!;
-                            const parentId = inlineInsert!.parentTaskId;
-                            onInlineInsert?.(name, afterId, parentId);
-                            input.value = '';
-                          } else {
-                            setInlineInsert(null);
-                          }
-                        }
-                      }}
-                      onBlur={(e) => {
-                        // If empty on blur, cancel
-                        if (!e.currentTarget.value.trim()) {
-                          setInlineInsert(null);
-                        }
-                      }}
-                    />
-                  </div>
-                  {/* Empty cells for remaining columns */}
-                  {orderedColumns.map(col => {
-                    if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
-                    if (!isColVisible(col)) return null;
-                    return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
-                  })}
-                  <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
-                </div>
-              )}
-              </Fragment>
-            );
-          })}
-
-          {/* MPP-style empty input rows for inline task creation */}
-          {onQuickAdd && !shouldVirtualize && Array.from({ length: Math.max(3, 6 - rows.length) }).map((_, i) => (
-            <div
-              key={`empty-${i}`}
-              className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}
-              style={{ height: ROW_H, minWidth: minRowWidth }}
-            >
-              {/* Row number */}
-              <div
-                className="shrink-0 px-1 text-center text-xs text-gray-300 dark:text-gray-600 font-mono"
-                style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
-              >
-                {rowNumMap.size + i + 1}
-              </div>
-              {/* Task name input */}
-              <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]) }}>
-                <input
-                  type="text"
-                  placeholder={i === 0 ? 'Type a task name…' : ''}
-                  className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
-                  onKeyDown={(e) => {
-                    const input = e.currentTarget;
-                    if (e.key === 'Enter' && input.value.trim()) {
-                      onQuickAdd(input.value.trim());
-                      input.value = '';
-                    }
-                    if (e.key === 'Escape') { input.value = ''; input.blur(); }
-                  }}
-                />
-              </div>
-              {/* Empty cells for remaining columns */}
-              {orderedColumns.map(col => {
-                if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
-                if (!isColVisible(col)) return null;
-                return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
-              })}
-              <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
-            </div>
-          ))}
-          </div>
-        </div>
+        <GanttGridPanel
+          leftPanelRef={leftPanelRef}
+          panelMode={panelMode}
+          tableWidth={tableWidth}
+          orderedColumns={orderedColumns}
+          isColVisible={isColVisible}
+          getColWidth={getColWidth}
+          ganttColDrag={ganttColDrag}
+          handleColResizeStart={handleColResizeStart}
+          autoFitGanttColumn={autoFitGanttColumn}
+          minRowWidth={minRowWidth}
+          ganttKeyToTableKey={ganttKeyToTableKey}
+          moveColumn={moveColumn}
+          columnState={_columnState}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          handleHeaderSort={handleHeaderSort}
+          rows={rows}
+          tasks={tasks}
+          shouldVirtualize={shouldVirtualize}
+          totalRowsHeight={totalRowsHeight}
+          visStart={visStart}
+          visEnd={visEnd}
+          rowNumMap={rowNumMap}
+          inlineInsertIdx={inlineInsertIdx}
+          inlineInsertIsBefore={inlineInsertIsBefore}
+          inlineInsert={inlineInsert}
+          setInlineInsert={setInlineInsert}
+          onInlineInsert={onInlineInsert}
+          onInlineInsertBefore={onInlineInsertBefore}
+          onQuickAdd={onQuickAdd}
+          activeTaskId={activeTaskId}
+          focusTaskId={focusTaskId}
+          highlightTaskIds={highlightTaskIds}
+          selectedIds={selectedIds}
+          someSelected={someSelected}
+          allSelected={allSelected}
+          toggleSelectAll={toggleSelectAll}
+          toggleSelect={toggleSelect}
+          parentTaskIds={parentTaskIds}
+          collapsedIds={collapsedIds}
+          toggleCollapse={toggleCollapse}
+          editingCell={editingCell}
+          editValue={editValue}
+          savedCell={savedCell}
+          depError={depError}
+          focusedCell={focusedCell}
+          pasteFlash={pasteFlash}
+          setEditValue={setEditValue}
+          saveEdit={saveEdit}
+          cancelEditing={cancelEditing}
+          handleSelectChange={handleSelectChange}
+          handleDateChange={handleDateChange}
+          handleCellClick={handleCellClick}
+          handleKeyDown={handleKeyDown}
+          rowDrag={rowDrag}
+          handleRowDragStart={handleRowDragStart}
+          handleRowDragOver={handleRowDragOver}
+          handleRowDrop={handleRowDrop}
+          handleRowDragEnd={handleRowDragEnd}
+          handleRowClick={handleRowClick}
+          handleRowDoubleClick={handleRowDoubleClick}
+          handleRowContextMenu={handleRowContextMenu}
+          handleInsertAfter={handleInsertAfter}
+          setNotesPopup={setNotesPopup}
+          setPendingDeleteIds={setPendingDeleteIds}
+          workCalendar={workCalendar}
+          reviewFlagMap={reviewFlagMap}
+          successorMap={successorMap}
+          getDepHealth={getDepHealth}
+          onBulkUpdate={onBulkUpdate}
+          onTaskClick={onTaskClick}
+          onTaskReorder={onTaskReorder}
+          onTaskUpdate={onTaskUpdate}
+          onInsertAfter={onInsertAfter}
+          onDeleteTask={onDeleteTask}
+        />
         )}
 
         {/* Draggable splitter */}
