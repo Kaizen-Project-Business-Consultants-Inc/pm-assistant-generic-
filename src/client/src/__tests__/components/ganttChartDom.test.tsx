@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 /**
  * Code-health item 4, phase 4 (2026-10-05): the Gantt's left grid panel and right timeline
  * panel moved out of GanttChart.tsx into gantt/GanttGridPanel.tsx and gantt/GanttTimelinePanel.tsx.
@@ -6,14 +7,16 @@
  * fixtures captured on the commit BEFORE the move (origin/master 51a8eeb8).
  *
  * To re-capture (only ever on a commit whose DOM is known good): GANTT_DOM_WRITE=1 npx vitest run ganttChartDom
+ * The happy-dom pin on line 1 makes it pass under both the root config and src/client's (jsdom
+ * by default, which serialises inline styles differently) — see domFixtures.ts.
  */
 process.env.TZ = 'UTC';
 
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 import { render, fireEvent, cleanup, act, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { expectSameDom as expectSameDomFixture } from './domFixtures';
 
 const api = vi.hoisted(() => ({
   getResources: vi.fn(async () => ({ resources: [
@@ -30,22 +33,7 @@ const FIXTURES = join(__dirname, '__fixtures__', 'ganttChartDom');
 const WRITE = process.env.GANTT_DOM_WRITE === '1';
 
 function expectSameDom(name: string, html: string) {
-  const file = join(FIXTURES, `${name}.html`);
-  if (WRITE) {
-    if (!existsSync(FIXTURES)) mkdirSync(FIXTURES, { recursive: true });
-    writeFileSync(file, html, 'utf8');
-    return;
-  }
-  // fixtures are stored with LF; a Windows checkout (core.autocrlf) may hand them back with CRLF
-  const expected = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
-  // byte-identical; on a mismatch, report the first differing offset for a readable failure
-  if (html !== expected) {
-    let i = 0;
-    while (i < html.length && html[i] === expected[i]) i++;
-    expect({ at: i, got: html.slice(Math.max(0, i - 120), i + 120) })
-      .toEqual({ at: i, got: expected.slice(Math.max(0, i - 120), i + 120) });
-  }
-  expect(html).toBe(expected);
+  expectSameDomFixture(FIXTURES, name, html, WRITE);
 }
 
 // A realistic plan: a summary with children, a nested summary, a milestone, FS/SS links with lag,
