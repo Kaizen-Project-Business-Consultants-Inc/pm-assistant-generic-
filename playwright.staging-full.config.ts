@@ -23,6 +23,8 @@ export default defineConfig({
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
     storageState: './test-results/.staging-auth.json',
+    // e2e/qa-data.ts works out dates in UTC; the browser must agree (specs with a fixed clock override this)
+    timezoneId: 'UTC',
   },
   projects: [
     {

@@ -23,7 +23,10 @@ export const thisMonday = () => mondayOf(day(new Date()));
 export async function signedIn(browser: Browser, creds: { username: string; password: string }): Promise<Page> {
   // its own sign-in: not the suite's saved QA PM session (the config's storageState)
   // tall enough that the Team Planner's rows fit without scrolling mid-drag
-  const ctx = await browser.newContext({ baseURL: STAGING_URL, storageState: { cookies: [], origins: [] }, viewport: { width: 1500, height: 1600 } });
+  const ctx = await browser.newContext({ baseURL: STAGING_URL, storageState: { cookies: [], origins: [] }, viewport: { width: 1500, height: 1600 },
+    // the browser's "today" must be the same UTC day these helpers work out, or a run between
+    // 00:00 UTC and local midnight sees a different week (Team Planner failed that way 2026-10-05)
+    timezoneId: 'UTC' });
   const page = await ctx.newPage();
   await page.goto('/login');
   await page.fill('#username', creds.username);
