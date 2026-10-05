@@ -1430,6 +1430,12 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 - Staging: as **qa.pm** open a project → Overview → **Run my weekly review**; check decisions, Why?, the tab buttons, Dismiss (the item folds away, the count drops), and the dashboard's **This week's reviews**. As **qa.team** the card is absent and `?tab=weekly-review` lands on Overview; the API returns 403. As **qa.outsider** the review API is refused.
 - Friday run on a server: `sudo systemctl start pm-cron@pm-weekly-review.service` only does work in a company's Friday 07:00 hour; check `journalctl -u pm-cron@pm-weekly-review.service`.
 
+## Failed saves in the schedule (Oct 2026)
+
+- Unit: `src/client/src/__tests__/components/useScheduleMutations.test.tsx` ('a failed save': the cache goes back, the message, no Undo entry, two quick edits, bulk/reorder/create/delete/duplicate), `useInlineCellEditSaveResult.test.ts` (the "saved" flash waits for the save), `bulkMessageTimers.test.tsx` (Table assignee tick; bulk message timers), `useGridKeyboard.test.ts` (timers cleared on unmount).
+- By hand on staging, as **qa.pm**: open a plan in the Gantt or Table. In the browser's developer tools, Network tab, set throttling to **Offline**. Edit a task name and press Enter: the old name comes back, a red message says *Your change to "…" was not saved. The last saved version is shown again — please try again.*, no green tick appears and Ctrl+Z has nothing new to undo. Drag a bar: it goes back. Close the message with ✕, set the network back to **No throttling**, make the edit again: it saves and stays.
+- When the server refuses a change rather than being unreachable, its reason appears after the colon ("was not saved: <reason>.").
+
 ## Import tangle guard (Oct 2026)
 
 `src/server/__tests__/utils/importCycleGuard.test.ts` reads every import in `src/server` and `src/client/src` with TypeScript's own parser and finds groups of files that import each other in a circle. Type-only imports don't count (they vanish when built); `await import()` "load it later" workarounds do. It counts the import links inside those groups and fails if the number rises above the ceiling at the top of the file, listing the links that closed the circle.
