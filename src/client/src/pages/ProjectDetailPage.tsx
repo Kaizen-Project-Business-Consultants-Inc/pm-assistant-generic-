@@ -25,6 +25,7 @@ import { useUIStore } from '../stores/uiStore';
 import { useAuthStore } from '../stores/authStore';
 import { SaveAsTemplateModal } from '../components/templates/SaveAsTemplateModal';
 import { usePresence } from '../hooks/usePresence';
+import { useProjectStatusChange } from '../hooks/useProjectStatusChange';
 import { SetupChecklist } from '../components/project/SetupChecklist';
 import { WeeklyReviewCard } from '../components/weeklyReview/WeeklyReviewCard';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
@@ -223,33 +224,18 @@ export function ProjectDetailPage() {
   const [extractingLessons, setExtractingLessons] = useState(false);
   const [extractedLessons, setExtractedLessons] = useState<any[] | null>(null);
 
-  const statusMutation = useMutation({
-    mutationFn: ({ status, cancellationReason }: { status: string; cancellationReason?: string }) =>
-      apiService.updateProjectStatus(id!, status, cancellationReason),
-    onMutate: async ({ status }) => {
-      // Optimistic update — immediately show the new status in the select
-      await queryClient.cancelQueries({ queryKey: ['project', id] });
-      const previous = queryClient.getQueryData(['project', id]);
-      queryClient.setQueryData(['project', id], (old: any) => {
-        if (!old) return old;
-        // Handle both { project: {...} } and direct project shapes
-        if (old.project) return { ...old, project: { ...old.project, status } };
-        return { ...old, status };
-      });
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      // Rollback on failure
-      if (context?.previous) {
-        queryClient.setQueryData(['project', id], context.previous);
-      }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', id] });
+  // Status change: shown at once, put back with a message if it does not save
+  // (hooks/useProjectStatusChange). The cancel dialog closes, and the close-out prompt opens,
+  // only once the change has saved — a failed cancel keeps the dialog and its reason open.
+  const { statusMutation, statusError, setStatusError } = useProjectStatusChange(
+    id,
+    (s) => statusStyles[s]?.label ?? s,
+    (saved) => {
       setShowCancelModal(false);
       setCancelReason('');
+      if (saved === 'completed') setShowCloseoutModal(true);
     },
-  });
+  );
 
   const updateProjectMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => apiService.updateProject(id!, data),
@@ -377,6 +363,20 @@ export function ProjectDetailPage() {
           Back to Dashboard
         </button>
 
+        {/* A status change that did not save (screen readers hear it via announce) */}
+        {statusError && !showCancelModal && (
+          <div data-testid="project-status-error" className="mb-3 flex items-start gap-2 rounded-lg border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/40 px-4 py-2.5 text-sm text-red-900 dark:text-red-100">
+            <span>{statusError}</span>
+            <button
+              type="button"
+              onClick={() => setStatusError(null)}
+              className="ml-auto text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-white"
+              aria-label="Dismiss error"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
@@ -387,10 +387,10 @@ export function ProjectDetailPage() {
                   onChange={(e) => {
                     const newStatus = e.target.value;
                     if (newStatus === 'cancelled') {
+                      setStatusError(null);
                       setShowCancelModal(true);
                     } else if (newStatus === 'completed') {
-                      statusMutation.mutate({ status: newStatus });
-                      setShowCloseoutModal(true);
+                      statusMutation.mutate({ status: newStatus }); // the close-out prompt opens once it has saved
                     } else {
                       statusMutation.mutate({ status: newStatus });
                     }
@@ -770,8 +770,8 @@ export function ProjectDetailPage() {
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-none"
               autoFocus
             />
-            {statusMutation.isError && (
-              <p className="text-sm text-red-600 mt-2">Failed to cancel project. Please try again.</p>
+            {statusError && (
+              <p className="text-sm text-red-600 dark:text-red-400 mt-2">{statusError}</p>
             )}
             <div className="flex justify-end gap-3 mt-4">
               <button
