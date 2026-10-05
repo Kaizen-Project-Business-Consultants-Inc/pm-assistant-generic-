@@ -246,6 +246,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     createBaselineMutation, createMutation, updateMutation,
     canUndo, canRedo, undoDescription, redoDescription, undo, redo,
     undoToast, setUndoToast, toastTimerRef,
+    saveError, setSaveError,
     deleteMutation,
     loadWarning, setLoadWarning, loadTimerRef,
     updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate,
@@ -923,6 +924,22 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             onClick={() => { setUndoToast(null); clearTimeout(toastTimerRef.current); }}
             className="text-gray-500 hover:text-gray-200 ml-1"
             aria-label="Dismiss notification"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* A save that failed: what did not save and what to do (screen readers hear it via announce) */}
+      {saveError && (
+        <div data-testid="schedule-save-error" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-start gap-2 max-w-xl bg-red-50 dark:bg-red-900/80 border border-red-300 dark:border-red-700 text-red-900 dark:text-red-100 text-sm px-4 py-2.5 rounded-lg shadow-lg">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{saveError}</span>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-white ml-1"
+            aria-label="Dismiss error"
           >
             ✕
           </button>

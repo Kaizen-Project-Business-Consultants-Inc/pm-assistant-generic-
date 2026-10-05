@@ -4,6 +4,10 @@
  * bulk delete / duplicate, all with their optimistic cache patches and the exact (schedule-scoped)
  * query keys they invalidate. Moved out of ScheduleGantt in ScheduleTab.tsx unchanged — same code,
  * same order of hook calls — code health item 4, phase 4 batch B (2026-10-05).
+ *
+ * A failed save (2026-10-05): the screen goes back to the last saved values (only the fields that
+ * save changed, and only where no later edit has changed them since), the Undo entry for it is
+ * taken off the list, and `saveError` says what did not save and what to do.
  */
 import { useState, useRef, useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useMutation, type QueryClient } from '@tanstack/react-query';
@@ -20,6 +24,32 @@ import { announce } from '../../../utils/announce';
 /** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
 const movedSuffix = (n: number) => (n > 0 ? ` · ${n} task${n > 1 ? 's' : ''} moved later` : '');
 
+/** Second sentence of a failed-save message: whether the screen was put back */
+export const SHOWN_AGAIN = 'The last saved version is shown again — please try again.';
+export const TRY_AGAIN = 'Please try again.';
+
+/**
+ * '<what>: <the server's reason>. <after>' — the server's reason only when it sent one (a network
+ * failure has none). E.g. 'Your change to "Alpha" was not saved: End date is before start date.
+ * The last saved version is shown again — please try again.'
+ */
+export function saveFailedMessage(what: string, error: unknown, after: string): string {
+  const m = (error as { response?: { data?: { message?: unknown } } } | null)?.response?.data?.message;
+  const why = typeof m === 'string' && m.trim() ? m.trim().replace(/[.!\s]+$/, '') : '';
+  return `${what}${why ? `: ${why}` : ''}. ${after}`;
+}
+
+/** The fields an optimistic edit changed: what they were before, and what the edit set */
+export interface OptimisticPatch {
+  taskId: string;
+  before: Record<string, { had: boolean; value: unknown }>;
+  after: Record<string, unknown>;
+}
+
+type UpdateVars = { taskId: string; data: TaskFormData | Record<string, unknown>; optimistic?: OptimisticPatch };
+
+const sameValue = (a: unknown, b: unknown) => Object.is(a, b) || JSON.stringify(a) === JSON.stringify(b);
+
 export interface ScheduleMutationsArgs {
   schedule: { id: string };
   tasks: GanttTask[];
@@ -30,6 +60,49 @@ export interface ScheduleMutationsArgs {
 }
 
 export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask }: ScheduleMutationsArgs) {
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const taskName = (taskId: string) => tasksRef.current.find(t => t.id === taskId)?.name;
+
+  // What did not save: shown until dismissed, replaced by the next one, or cleared by a good save
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Every task list in the cache for this plan is the one key ['tasks', schedule.id] (Lesson 5)
+  const mapCachedTasks = useCallback((fn: (t: any) => any) => {
+    queryClient.setQueryData(['tasks', schedule.id], (old: any) => {
+      if (!old) return old;
+      const list = old.data || old.tasks || old;
+      if (!Array.isArray(list)) return old;
+      const updated = list.map(fn);
+      if (old.data) return { ...old, data: updated };
+      if (old.tasks) return { ...old, tasks: updated };
+      return updated;
+    });
+  }, [queryClient, schedule.id]);
+
+  // Put back the fields a failed save changed, but not a field a later edit has changed since
+  // (that edit is still on its way, or saved; the refetch after the last save shows the truth)
+  const rollbackPatch = useCallback((p: OptimisticPatch) => {
+    mapCachedTasks(t => {
+      if (t.id !== p.taskId) return t;
+      let next = t;
+      for (const [key, snap] of Object.entries(p.before)) {
+        if (!sameValue(t[key], p.after[key])) continue;
+        if (next === t) next = { ...t };
+        if (snap.had) next[key] = snap.value; else delete next[key];
+      }
+      return next;
+    });
+  }, [mapCachedTasks]);
+
+  const updateKey = useMemo(() => ['updateTask', schedule.id], [schedule.id]);
+
+  // The error replaces the Undo toast in the same spot; screen readers hear it via announce()
+  const showSaveError = useCallback((message: string) => {
+    setSaveError(message);
+    setUndoToast(null); // declared below; only called from save callbacks, after render
+    announce(message);
+  }, []);
   const createBaselineMutation = useMutation({
     mutationFn: () => apiService.createBaseline(schedule.id, `Baseline ${new Date().toLocaleDateString()}`),
     onSuccess: () => {
@@ -81,11 +154,15 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       setActiveTaskId(null);
       announce('Task created');
     },
+    onError: (error: unknown, data) => {
+      showSaveError(saveFailedMessage(`The new task${data?.name ? ` "${data.name}"` : ''} was not created`, error, TRY_AGAIN));
+    },
   });
 
   // Update task mutation
   const updateMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: string; data: TaskFormData | Record<string, unknown> }) => {
+    mutationKey: updateKey,
+    mutationFn: ({ taskId, data }: UpdateVars) => {
       if ('name' in data && 'status' in data && 'priority' in data && 'assignedTo' in data) {
         const d = data as TaskFormData;
         const deps = (d.predecessors || [])
@@ -117,30 +194,56 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       return apiService.updateTask(schedule.id, taskId, data as Record<string, unknown>);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       setEditingTask(null);
+      setSaveError(null);
       announce('Task updated');
     },
-    onError: (error: any) => {
+    onError: (error: any, vars) => {
       const msg = error?.response?.data?.message || error?.message || 'Failed to update task';
       console.error('Task update failed:', msg);
-      announce('Error: ' + msg);
+      if (vars.optimistic) rollbackPatch(vars.optimistic);
+      const before = vars.optimistic?.before.name;
+      const name = before?.had && typeof before.value === 'string' ? before.value : taskName(vars.taskId);
+      showSaveError(saveFailedMessage(`Your change to ${name ? `"${name}"` : 'this task'} was not saved`, error, vars.optimistic ? SHOWN_AGAIN : TRY_AGAIN));
+    },
+    // Refetch when the last save still on its way has finished, failed or not (an earlier
+    // refetch would briefly show a later edit as not made). Same key as before (Lesson 5).
+    onSettled: () => {
+      if (queryClient.isMutating({ mutationKey: updateKey }) <= 1) {
+        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+      }
     },
   });
 
+  // Resolves true when saved, false when not (the message and the put-back are done by onError)
+  const saveTask = useCallback((vars: UpdateVars): Promise<boolean> =>
+    updateMutation.mutateAsync(vars).then(() => true, () => false), [updateMutation]);
+
   // Undo/redo
-  const { canUndo, canRedo, undoDescription, redoDescription, pushAction: rawPushAction, undo: rawUndo, redo } = useUndoRedo();
+  const { canUndo, canRedo, undoDescription, redoDescription, pushAction: rawPushAction, removeAction, undo: rawUndo, redo } = useUndoRedo();
 
   // Undo toast
   const [undoToast, setUndoToast] = useState<string | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const toastActionRef = useRef<Parameters<typeof rawPushAction>[0] | null>(null);
 
   const pushAction = useCallback((action: Parameters<typeof rawPushAction>[0]) => {
     rawPushAction(action);
+    toastActionRef.current = action;
     setUndoToast(action.description);
     clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => setUndoToast(null), 4000);
   }, [rawPushAction]);
+
+  // The save behind an Undo entry failed: there is nothing to undo, so the entry (and its toast) goes
+  const dropFailedAction = useCallback((action: Parameters<typeof rawPushAction>[0]) => {
+    removeAction(action);
+    if (toastActionRef.current === action) {
+      toastActionRef.current = null;
+      setUndoToast(null);
+      clearTimeout(toastTimerRef.current);
+    }
+  }, [removeAction]);
 
   const undo = useCallback(() => {
     rawUndo();
@@ -155,6 +258,10 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
   // booked hours, people and comments
   const deleteMutation = useMutation({
     mutationFn: (taskId: string) => apiService.deleteTask(schedule.id, taskId),
+    onError: (error: unknown, taskId) => {
+      const name = taskName(taskId);
+      showSaveError(saveFailedMessage(`${name ? `"${name}"` : 'The task'} was not deleted`, error, TRY_AGAIN));
+    },
     onSuccess: (res, taskId) => {
       const refresh = () => {
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
@@ -195,37 +302,45 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
 
   // Optimistically patch a single task in the query cache
   const patchTaskInCache = useCallback((taskId: string, data: Record<string, unknown>) => {
-    queryClient.setQueryData(['tasks', schedule.id], (old: any) => {
-      if (!old) return old;
-      const list = old.data || old.tasks || old;
-      if (!Array.isArray(list)) return old;
-      const updated = list.map((t: any) =>
-        t.id === taskId ? { ...t, ...data } : t
-      );
-      if (old.data) return { ...old, data: updated };
-      if (old.tasks) return { ...old, tasks: updated };
-      return updated;
-    });
-  }, [queryClient, schedule.id]);
+    mapCachedTasks((t: any) => (t.id === taskId ? { ...t, ...data } : t));
+  }, [mapCachedTasks]);
 
-  // Update task with undo support
-  const updateTaskWithUndo = useCallback((taskId: string, data: Record<string, unknown>) => {
+  // The optimistic edit, react-query's onMutate steps done just before mutate() so the screen
+  // changes in the same render as the drag or keystroke: stop a refetch of this plan's tasks that
+  // is on its way (it would overwrite the edit with older data), note the fields' saved values,
+  // patch. onError puts them back.
+  const applyOptimisticPatch = useCallback((taskId: string, data: Record<string, unknown>): OptimisticPatch => {
+    void queryClient.cancelQueries({ queryKey: ['tasks', schedule.id], exact: true });
+    const old: any = queryClient.getQueryData(['tasks', schedule.id]);
+    const list = old ? (old.data || old.tasks || old) : null;
+    const current = Array.isArray(list) ? list.find((t: any) => t.id === taskId) : undefined;
+    const before: OptimisticPatch['before'] = {};
+    for (const key of Object.keys(data)) {
+      before[key] = current && key in current ? { had: true, value: current[key] } : { had: false, value: undefined };
+    }
+    patchTaskInCache(taskId, data);
+    return { taskId, before, after: data };
+  }, [queryClient, schedule.id, patchTaskInCache]);
+
+  // Update task with undo support. Resolves true when saved (the Table/Gantt cell flashes "saved"
+  // only then), false when not.
+  const updateTaskWithUndo = useCallback((taskId: string, data: Record<string, unknown>): Promise<boolean> => {
     const task = tasks.find(t => t.id === taskId);
-    if (!task) { updateMutation.mutate({ taskId, data }); return; }
+    if (!task) return saveTask({ taskId, data });
     const oldValues: Record<string, unknown> = {};
     for (const key of Object.keys(data)) {
       const val = (task as unknown as Record<string, unknown>)[key];
       oldValues[key] = val === undefined ? null : val;
     }
     // Optimistically update the cache for instant UI feedback
-    patchTaskInCache(taskId, data);
+    const optimistic = applyOptimisticPatch(taskId, data);
     const fieldNames = Object.keys(data).join(', ');
     if ('dependencies' in data) {
       // A new predecessor can push this task and its successors later (server re-flow).
       // Undo must put those dates back as well as the old links.
       let moved: RescheduledTask[] = [];
-      const run = async () => {
-        const res: any = await updateMutation.mutateAsync({ taskId, data });
+      const run = async (patch?: OptimisticPatch) => {
+        const res: any = await updateMutation.mutateAsync({ taskId, data, optimistic: patch });
         moved = res?.rescheduled ?? [];
         if (moved.length) {
           const msg = `Edit ${task.name} (predecessors)${movedSuffix(moved.length)}`;
@@ -235,7 +350,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
           toastTimerRef.current = setTimeout(() => setUndoToast(null), 4000);
         }
       };
-      pushAction({
+      const depAction = {
         description: `Edit ${task.name} (${fieldNames})`,
         undo: async () => {
           await updateMutation.mutateAsync({ taskId, data: oldValues });
@@ -245,20 +360,25 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
           }
         },
         redo: () => { run().catch(() => {}); },
-      });
-      run().catch(() => {});
-      return;
+      };
+      pushAction(depAction);
+      return run(optimistic).then(() => true, () => { dropFailedAction(depAction); return false; });
     }
-    pushAction({
+    const action = {
       description: `Edit ${task.name} (${fieldNames})`,
       undo: () => updateMutation.mutate({ taskId, data: oldValues }),
       redo: () => updateMutation.mutate({ taskId, data }),
+    };
+    pushAction(action);
+    return saveTask({ taskId, data, optimistic }).then(ok => {
+      if (!ok) { dropFailedAction(action); return false; }
+      // The over-100% warning only for an assignment that was actually saved
+      if (typeof data.assignedTo === 'string' && data.assignedTo && data.assignedTo !== task.assignedTo) {
+        warnIfOverloaded({ ...task, ...(data as Partial<GanttTask>) }, data.assignedTo);
+      }
+      return true;
     });
-    updateMutation.mutate({ taskId, data });
-    if (typeof data.assignedTo === 'string' && data.assignedTo && data.assignedTo !== task.assignedTo) {
-      warnIfOverloaded({ ...task, ...(data as Partial<GanttTask>) }, data.assignedTo);
-    }
-  }, [tasks, updateMutation, pushAction, patchTaskInCache, schedule.id, queryClient, warnIfOverloaded]);
+  }, [tasks, updateMutation, saveTask, pushAction, dropFailedAction, applyOptimisticPatch, schedule.id, queryClient, warnIfOverloaded]);
 
   // Drag-end with undo (bar drag for dates)
   const handleTaskDragEndWithUndo = useCallback((taskId: string, newStart: string, newEnd: string) => {
@@ -267,25 +387,17 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     const oldStart = task.startDate;
     const oldEnd = task.endDate;
 
-    queryClient.setQueryData(['tasks', schedule.id], (old: any) => {
-      if (!old) return old;
-      const list = old.data || old.tasks || old;
-      if (!Array.isArray(list)) return old;
-      const updated = list.map((t: any) =>
-        t.id === taskId ? { ...t, startDate: newStart, endDate: newEnd } : t
-      );
-      if (old.data) return { ...old, data: updated };
-      if (old.tasks) return { ...old, tasks: updated };
-      return updated;
-    });
+    const optimistic = applyOptimisticPatch(taskId, { startDate: newStart, endDate: newEnd });
 
-    pushAction({
+    const action = {
       description: `Move ${task.name}`,
       undo: () => updateMutation.mutate({ taskId, data: { startDate: oldStart, endDate: oldEnd } }),
       redo: () => updateMutation.mutate({ taskId, data: { startDate: newStart, endDate: newEnd } }),
-    });
-    updateMutation.mutate({ taskId, data: { startDate: newStart, endDate: newEnd } });
-  }, [tasks, updateMutation, pushAction, queryClient, schedule.id]);
+    };
+    pushAction(action);
+    saveTask({ taskId, data: { startDate: newStart, endDate: newEnd }, optimistic })
+      .then(ok => { if (!ok) dropFailedAction(action); });
+  }, [tasks, updateMutation, saveTask, pushAction, dropFailedAction, applyOptimisticPatch]);
 
   // Row reorder with undo (supports cross-parent reparenting)
   const handleTaskReorder = useCallback((updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => {
@@ -302,7 +414,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       if (u.parentTaskId !== undefined) entry.parentTaskId = u.parentTaskId;
       return entry;
     });
-    pushAction({
+    const action = {
       description: `Reorder tasks`,
       undo: async () => {
         await apiService.bulkUpdateTasks(toBulk(oldValues));
@@ -312,10 +424,15 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
         await apiService.bulkUpdateTasks(toBulk(updates));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
-    });
+    };
+    pushAction(action);
     apiService.bulkUpdateTasks(toBulk(updates))
-      .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] }));
-  }, [tasks, schedule.id, pushAction, queryClient]);
+      .then(() => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] }), (error: unknown) => {
+        dropFailedAction(action);
+        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+        showSaveError(saveFailedMessage('The new row order was not saved', error, TRY_AGAIN));
+      });
+  }, [tasks, schedule.id, pushAction, dropFailedAction, queryClient, showSaveError]);
 
   // Bulk update with undo
   const handleBulkUpdate = useCallback(async (taskIds: string[], field: string, value: string) => {
@@ -325,7 +442,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       return { id, oldValue: val === undefined ? null : val };
     });
     const apiValue = (field === 'parentTaskId' && !value) ? null : value;
-    pushAction({
+    const action = {
       description: `Bulk update ${field} on ${taskIds.length} tasks`,
       undo: async () => {
         await apiService.bulkUpdateTasks(oldValues.map(o => ({ id: o.id, scheduleId: schedule.id, [field]: o.oldValue })));
@@ -335,10 +452,19 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
         await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: apiValue })));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       },
-    });
-    await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: apiValue })));
-    queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-  }, [tasks, schedule.id, pushAction, queryClient]);
+    };
+    pushAction(action);
+    try {
+      await apiService.bulkUpdateTasks(taskIds.map(id => ({ id, scheduleId: schedule.id, [field]: apiValue })));
+    } catch (error) {
+      // Thrown on, so the bulk bar does not say "Updated"
+      dropFailedAction(action);
+      showSaveError(saveFailedMessage(`The change to ${taskIds.length} task${taskIds.length === 1 ? '' : 's'} was not saved`, error, TRY_AGAIN));
+      throw error;
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    }
+  }, [tasks, schedule.id, pushAction, dropFailedAction, queryClient, showSaveError]);
 
   // Link selected tasks (chain / all wait on a row / a row waits on all) with undo.
   // Rows are the fixed row numbers, so this works the same under any sort or filter.
@@ -400,7 +526,15 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
       queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
     };
-    let changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId;
+    let changeId: Awaited<ReturnType<typeof apiService.bulkDeleteTasks>>['changeId'];
+    try {
+      changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId;
+    } catch (error) {
+      // Nothing leaves the screen before the server agrees, so there is nothing to put back
+      const n = taskIds.length;
+      showSaveError(saveFailedMessage(`${n} task${n === 1 ? ' was' : 's were'} not deleted`, error, TRY_AGAIN));
+      throw error;
+    }
     refresh();
 
     pushAction({
@@ -408,12 +542,13 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
       redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId; refresh(); },
     });
-  }, [schedule.id, queryClient, pushAction]);
+  }, [schedule.id, queryClient, pushAction, showSaveError]);
 
   // Duplicate/paste tasks — creates copies with "(copy)" suffix
   const handleDuplicateTasks = useCallback(async (srcTasks: GanttTask[]) => {
     for (const t of srcTasks) {
-      await createMutation.mutateAsync({
+      // Stop at the first copy that fails (createMutation's onError says which); the callers don't wait
+      const ok = await createMutation.mutateAsync({
         name: `${t.name} (copy)`,
         status: t.status || 'pending',
         priority: t.priority || 'medium',
@@ -425,7 +560,8 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
         parentTaskId: t.parentTaskId || undefined,
         estimatedDays: t.estimatedDays != null ? String(t.estimatedDays) : undefined,
         isMilestone: t.isMilestone || undefined,
-      } as any);
+      } as any).then(() => true, () => false);
+      if (!ok) return;
     }
   }, [createMutation]);
 
@@ -438,6 +574,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     createBaselineMutation, createMutation, updateMutation,
     canUndo, canRedo, undoDescription, redoDescription, pushAction, undo, redo,
     undoToast, setUndoToast, toastTimerRef,
+    saveError, setSaveError,
     deleteMutation,
     loadWarning, setLoadWarning, loadTimerRef, warnIfOverloaded,
     patchTaskInCache, updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate,

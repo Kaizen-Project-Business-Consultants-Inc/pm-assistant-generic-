@@ -22,6 +22,12 @@ export function useUndoRedo() {
     setRedoStack([]);
   }, []);
 
+  /** Take an entry back off both stacks (its save failed, so there is nothing to undo or redo) */
+  const removeAction = useCallback((action: UndoAction) => {
+    setUndoStack(prev => (prev.includes(action) ? prev.filter(a => a !== action) : prev));
+    setRedoStack(prev => (prev.includes(action) ? prev.filter(a => a !== action) : prev));
+  }, []);
+
   const undo = useCallback(() => {
     const stack = undoRef.current;
     if (stack.length === 0) return;
@@ -68,6 +74,7 @@ export function useUndoRedo() {
     undoDescription: undoStack.length > 0 ? undoStack[undoStack.length - 1].description : '',
     redoDescription: redoStack.length > 0 ? redoStack[redoStack.length - 1].description : '',
     pushAction,
+    removeAction,
     undo,
     redo,
   };

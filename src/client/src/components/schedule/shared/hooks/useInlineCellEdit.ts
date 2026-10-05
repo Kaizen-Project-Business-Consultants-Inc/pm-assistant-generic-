@@ -61,6 +61,11 @@ export const TABLE_EDIT_RULES: InlineEditRules<string> = {
  * for ordinary fields. Enter saves, Escape cancels; dropdowns and date pickers save on change.
  * Taken from the two copies in GanttChart.tsx and TableView.tsx (2026-10-05, code-health item 4
  * phase 3); their differences are the `rules` above.
+ *
+ * When onTaskUpdate returns a promise (the Schedule tab's save does, 2026-10-05), the flash and the
+ * read-out wait for it as well as the 300 ms, and a save that resolves false (or fails) shows no
+ * "saved" at all: the cell just stops saving, and the screen's own error message says what failed.
+ * An onTaskUpdate that returns nothing keeps the plain 300 ms timer.
  */
 export function useInlineCellEdit<F extends string>({
   tasks,
@@ -72,7 +77,8 @@ export function useInlineCellEdit<F extends string>({
   rules,
 }: {
   tasks: GanttTask[];
-  onTaskUpdate?: (taskId: string, data: Record<string, unknown>) => void;
+  /** May return a promise of "saved?" — then the "saved" flash waits for it (see above) */
+  onTaskUpdate?: (taskId: string, data: Record<string, unknown>) => void | Promise<boolean>;
   getTaskFieldValue: (task: GanttTask, field: F) => string;
   rowNumToTaskId: Map<number, string>;
   workCalendar?: WorkCalendar | null;
@@ -103,6 +109,31 @@ export function useInlineCellEdit<F extends string>({
     if (rules.clearDepErrorOnStartAndCancel) setDepError(null);
   }, [onTaskUpdate, blockEditingWhile, getTaskFieldValue, rules]);
 
+  // After a save has been handed to onTaskUpdate: "saving" for 300 ms, then the green flash —
+  // or, when onTaskUpdate gave a promise, once it has also come back true (false/failed: no flash)
+  const finishSave = useCallback((taskId: string, field: string, result: unknown, readOut?: string) => {
+    const flash = () => {
+      setSavingCell(null);
+      setSavedCell({ taskId, field });
+      if (readOut) announce(readOut);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
+    };
+    if (!result || typeof (result as PromiseLike<unknown>).then !== 'function') {
+      setTimeout(flash, 300);
+      return;
+    }
+    const minDelay = new Promise<void>(resolve => setTimeout(resolve, 300));
+    Promise.all([result as PromiseLike<unknown>, minDelay]).then(
+      ([ok]) => {
+        if (ok !== false) { flash(); return; }
+        // Only this cell stops "saving" (a later save of another cell keeps its spinner)
+        setSavingCell(c => (c && c.taskId === taskId && c.field === field ? null : c));
+      },
+      () => setSavingCell(c => (c && c.taskId === taskId && c.field === field ? null : c)),
+    );
+  }, []);
+
   const cancelEditing = useCallback(() => {
     setEditingCell(null);
     setEditValue('');
@@ -127,13 +158,7 @@ export function useInlineCellEdit<F extends string>({
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate?.(taskId, plan.patch);
-      setTimeout(() => {
-        setSavingCell(null);
-        setSavedCell({ taskId, field });
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-      }, 300);
+      finishSave(taskId, field, onTaskUpdate?.(taskId, plan.patch));
       return;
     }
 
@@ -148,13 +173,7 @@ export function useInlineCellEdit<F extends string>({
       setSavingCell({ taskId, field });
       setEditingCell(null);
       setEditValue('');
-      onTaskUpdate?.(taskId, plan.patch);
-      setTimeout(() => {
-        setSavingCell(null);
-        setSavedCell({ taskId, field });
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-      }, 300);
+      finishSave(taskId, field, onTaskUpdate?.(taskId, plan.patch));
       return;
     }
 
@@ -165,16 +184,8 @@ export function useInlineCellEdit<F extends string>({
     setEditValue('');
 
     const apiField = rules.toApiField(field);
-    onTaskUpdate?.(taskId, { [apiField]: saveValue });
-
-    setTimeout(() => {
-      setSavingCell(null);
-      setSavedCell({ taskId, field });
-      announce(`${field} saved`);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-    }, 300);
-  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, rowNumToTaskId, workCalendar, rules]);
+    finishSave(taskId, field, onTaskUpdate?.(taskId, { [apiField]: saveValue }), `${field} saved`);
+  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, rowNumToTaskId, workCalendar, rules, finishSave]);
 
   /** Enter saves, Escape cancels (the Gantt adds Tab on top of this). */
   const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: F) => {

@@ -5,8 +5,9 @@
  * schedule-scoped keys (Lesson 5) as the inline code on c7082f09. The whole tab's DOM is checked
  * separately by scheduleTabDom.test.tsx.
  *
- * Note: the inline code never rolled an optimistic edit back when the save failed (onError only
- * announces); the tests pin that too, so a later change to it is a deliberate one.
+ * A failed save (2026-10-05, changed on purpose): the inline code never rolled an optimistic edit
+ * back (onError only announced). Now the fields that save changed go back to the last saved
+ * values, its Undo entry is dropped, and `saveError` says what did not save; see 'a failed save'.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
@@ -30,6 +31,8 @@ const api = vi.hoisted(() => ({
   checkResourceLoad: vi.fn(),
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
+vi.mock('../../utils/announce', () => ({ announce: vi.fn() }));
+import { announce } from '../../utils/announce';
 
 import { useScheduleMutations } from '../../pages/ProjectDetailPage/schedule-tab/useScheduleMutations';
 
@@ -59,6 +62,7 @@ const flush = () => act(async () => { for (let i = 0; i < 5; i++) await new Prom
 
 beforeEach(() => {
   for (const f of Object.values(api)) f.mockReset();
+  vi.mocked(announce).mockClear();
   api.createTask.mockResolvedValue({ task: { id: 'new' } });
   api.updateTask.mockResolvedValue({ task: {} });
   api.deleteTask.mockResolvedValue({ changeId: 'ch1' });
@@ -119,16 +123,25 @@ describe('create / update / delete / baseline mutations', () => {
     expect(s.setEditingTask).toHaveBeenCalledWith(null);
   });
 
-  it('a failed update is announced; the optimistic cache change is NOT rolled back and nothing is invalidated', async () => {
-    api.updateTask.mockRejectedValue({ response: { data: { message: 'Nope' } } });
+  it('a failed update puts the last saved value back, says so, drops its Undo entry and refetches this plan\'s tasks', async () => {
+    api.updateTask.mockRejectedValue({ response: { data: { message: 'Nope.' } } });
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { result, s } = setup();
-    act(() => { result.current.updateTaskWithUndo('a', { name: 'Renamed' }); });
+    let saved: Promise<boolean> | undefined;
+    act(() => { saved = result.current.updateTaskWithUndo('a', { name: 'Renamed' }); });
+    expect(cached().find(t => t.id === 'a')!.name).toBe('Renamed'); // optimistic, at once
+    expect(result.current.undoToast).toBe('Edit Alpha (name)');
     await flush();
-    expect(cached().find(t => t.id === 'a')!.name).toBe('Renamed');
-    expect(invalidated).toEqual([]);
+    await expect(saved).resolves.toBe(false);
+    expect(cached().find(t => t.id === 'a')!.name).toBe('Alpha');
+    const msg = 'Your change to "Alpha" was not saved: Nope. The last saved version is shown again — please try again.';
+    expect(result.current.saveError).toBe(msg);
+    expect(announce).toHaveBeenCalledWith(msg);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.undoToast).toBe(null);
+    expect(invalidated).toEqual([['tasks', 's1']]);
     expect(s.setEditingTask).not.toHaveBeenCalled();
-    expect(err).toHaveBeenCalledWith('Task update failed:', 'Nope');
+    expect(err).toHaveBeenCalledWith('Task update failed:', 'Nope.');
   });
 
   it('deleteMutation deletes, invalidates tasks + schedule-changes, and Undo goes through Schedule History', async () => {
@@ -327,3 +340,233 @@ describe('edits with undo', () => {
   });
 });
 
+
+describe('a failed save', () => {
+  const NOPE = { response: { data: { message: 'Nope' } } };
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {});
+  const SHOWN = 'The last saved version is shown again — please try again.';
+  /** updateTask calls that wait until the test settles them, in call order */
+  function deferredUpdates() {
+    const calls: Array<{ resolve: (v: unknown) => void; reject: (e: unknown) => void }> = [];
+    api.updateTask.mockImplementation(() => new Promise((resolve, reject) => { calls.push({ resolve, reject }); }));
+    return calls;
+  }
+
+  it('with no reason from the server (offline), the message still says what did not save and what to do', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(new Error('Network Error'));
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { status: 'done' }); });
+    await flush();
+    expect(cached().find(t => t.id === 'a')!.status).toBe('pending');
+    expect(result.current.saveError).toBe(`Your change to "Alpha" was not saved. ${SHOWN}`);
+  });
+
+  it('a field the task did not have before is taken off again', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(NOPE);
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('b', { priority: 'high' }); });
+    expect(cached().find(t => t.id === 'b')!.priority).toBe('high');
+    await flush();
+    expect(cached().find(t => t.id === 'b')).not.toHaveProperty('priority');
+  });
+
+  it('two quick edits, the first fails: only the first edit\'s field goes back; the second stays, keeps its Undo, and the refetch waits for it', async () => {
+    quiet();
+    const calls = deferredUpdates();
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'A1' }); });
+    act(() => { result.current.updateTaskWithUndo('a', { status: 'done' }); });
+    await flush();
+    expect(calls).toHaveLength(2);
+    await act(async () => { calls[0].reject(NOPE); });
+    await flush();
+    expect(cached().find(t => t.id === 'a')).toMatchObject({ name: 'Alpha', status: 'done' });
+    expect(result.current.undoDescription).toBe('Edit Alpha (status)');
+    expect(result.current.saveError).toBe(`Your change to "Alpha" was not saved: Nope. ${SHOWN}`);
+    expect(invalidated).toEqual([]); // a refetch now would briefly show "done" as not made
+    await act(async () => { calls[1].resolve({ task: {} }); });
+    await flush();
+    expect(invalidated).toEqual([['tasks', 's1']]);
+    expect(result.current.saveError).toBe(null); // a good save clears the old message
+  });
+
+  it('two quick edits of the same field, the first fails: the later value stays on screen', async () => {
+    quiet();
+    const calls = deferredUpdates();
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'A1' }); });
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'A2' }); });
+    await flush();
+    await act(async () => { calls[0].reject(NOPE); });
+    await flush();
+    expect(cached().find(t => t.id === 'a')!.name).toBe('A2');
+    expect(result.current.canUndo).toBe(true);
+  });
+
+  it('two quick edits, the second fails: the first (saved) edit stays', async () => {
+    quiet();
+    const calls = deferredUpdates();
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'A1' }); });
+    act(() => { result.current.updateTaskWithUndo('a', { status: 'done' }); });
+    await flush();
+    await act(async () => { calls[0].resolve({ task: {} }); });
+    await flush();
+    expect(invalidated).toEqual([]); // the second save is still on its way
+    await act(async () => { calls[1].reject(NOPE); });
+    await flush();
+    expect(cached().find(t => t.id === 'a')).toMatchObject({ name: 'A1', status: 'pending' });
+    expect(result.current.undoDescription).toBe('Edit Alpha (name)');
+    expect(invalidated).toEqual([['tasks', 's1']]);
+  });
+
+  it('an edit stops a refetch of this plan\'s tasks that is on its way (it would overwrite the edit)', async () => {
+    const { result } = setup();
+    void qc.fetchQuery({ queryKey: ['tasks', 's1'], queryFn: () => new Promise(() => {}) }).catch(() => {});
+    expect(qc.getQueryState(['tasks', 's1'])!.fetchStatus).toBe('fetching');
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'Renamed' }); });
+    expect(qc.getQueryState(['tasks', 's1'])!.fetchStatus).toBe('idle');
+    expect(cached().find(t => t.id === 'a')!.name).toBe('Renamed');
+  });
+
+  it('a new predecessor that fails: the old links come back, no Undo entry', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(NOPE);
+    const tasks = TASKS.map(t => (t.id === 'c' ? { ...t, dependencies: [{ dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }] } : t)) as GanttTask[];
+    const { result } = setup(tasks);
+    let saved: Promise<boolean> | undefined;
+    act(() => { saved = result.current.updateTaskWithUndo('c', { dependencies: [{ dependencyId: 'b', dependencyType: 'FS', lagDays: 0 }] }); });
+    await flush();
+    await expect(saved).resolves.toBe(false);
+    expect(cached().find(t => t.id === 'c')!.dependencies).toEqual([{ dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }]);
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.saveError).toBe(`Your change to "Gamma" was not saved: Nope. ${SHOWN}`);
+  });
+
+  it('a new assignee that did not save gets no over-100% warning', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(NOPE);
+    api.checkResourceLoad.mockResolvedValue({ resourceId: 'r2', resourceName: 'Sam Builder', overWeeks: [{ weekStart: '2026-03-09', utilization: 140, alsoOn: [] }] });
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('b', { assignedTo: 'r2' }); });
+    await flush();
+    expect(api.checkResourceLoad).not.toHaveBeenCalled();
+    expect(result.current.loadWarning).toBe(null);
+    expect(cached().find(t => t.id === 'b')).not.toHaveProperty('assignedTo');
+  });
+
+  it('a renamed task that did not save is named by its saved name', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(NOPE);
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('b', { name: 'Beta 2' }); });
+    await flush();
+    expect(result.current.saveError).toBe(`Your change to "Beta" was not saved: Nope. ${SHOWN}`);
+  });
+
+  it('a successful edit resolves true and is otherwise unchanged (no message, Undo kept)', async () => {
+    const { result } = setup();
+    let saved: Promise<boolean> | undefined;
+    act(() => { saved = result.current.updateTaskWithUndo('a', { name: 'Renamed' }); });
+    await flush();
+    await expect(saved).resolves.toBe(true);
+    expect(cached().find(t => t.id === 'a')!.name).toBe('Renamed');
+    expect(result.current.saveError).toBe(null);
+    expect(result.current.undoDescription).toBe('Edit Alpha (name)');
+    expect(invalidated).toEqual([['tasks', 's1']]);
+  });
+
+  it('bar drag that fails: the bar goes back to its saved dates, no Undo entry', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(NOPE);
+    const { result } = setup();
+    act(() => { result.current.handleTaskDragEndWithUndo('a', '2026-03-03', '2026-03-09'); });
+    expect(cached().find(t => t.id === 'a')).toMatchObject({ startDate: '2026-03-03', endDate: '2026-03-09' });
+    await flush();
+    expect(cached().find(t => t.id === 'a')).toMatchObject({ startDate: '2026-03-02', endDate: '2026-03-06' });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.undoToast).toBe(null);
+    expect(result.current.saveError).toBe(`Your change to "Alpha" was not saved: Nope. ${SHOWN}`);
+  });
+
+  it('the task form and a Kanban move are not shown early, so the message only asks to try again', async () => {
+    quiet();
+    api.updateTask.mockRejectedValue(NOPE);
+    const { result, s } = setup();
+    act(() => { result.current.updateMutation.mutate({ taskId: 'a', data: { ...FORM } as never }); });
+    await flush();
+    expect(result.current.saveError).toBe('Your change to "Alpha" was not saved: Nope. Please try again.');
+    expect(s.setEditingTask).not.toHaveBeenCalled(); // the form stays open with what was typed
+    expect(cached()).toEqual(TASKS);
+    act(() => { result.current.handleKanbanStatusChange('c', 'done'); });
+    await flush();
+    expect(result.current.saveError).toBe('Your change to "Gamma" was not saved: Nope. Please try again.');
+    expect(cached().find(t => t.id === 'c')!.status).toBe('pending');
+  });
+
+  it('a task that was not created or not deleted says so; a failed delete leaves no Undo', async () => {
+    quiet();
+    api.createTask.mockRejectedValue(NOPE);
+    api.deleteTask.mockRejectedValue(NOPE);
+    const { result, s } = setup();
+    act(() => { result.current.createMutation.mutate({ ...FORM } as never); });
+    await flush();
+    expect(result.current.saveError).toBe('The new task "New" was not created: Nope. Please try again.');
+    expect(s.setShowAddForm).not.toHaveBeenCalled();
+    act(() => { result.current.deleteMutation.mutate('b'); });
+    await flush();
+    expect(result.current.saveError).toBe('"Beta" was not deleted: Nope. Please try again.');
+    expect(result.current.canUndo).toBe(false);
+    expect(invalidated).toEqual([]);
+  });
+
+  it('reorder that fails: no Undo entry, the saved order is fetched again, and it says so', async () => {
+    api.bulkUpdateTasks.mockRejectedValue(NOPE);
+    const { result } = setup();
+    act(() => { result.current.handleTaskReorder([{ taskId: 'a', sortOrder: 25 }]); });
+    await flush();
+    expect(result.current.canUndo).toBe(false);
+    expect(invalidated).toEqual([['tasks', 's1']]);
+    expect(result.current.saveError).toBe('The new row order was not saved: Nope. Please try again.');
+  });
+
+  it('bulk update that fails: thrown on to the bulk bar, no Undo entry, refetched, and it says so', async () => {
+    api.bulkUpdateTasks.mockRejectedValue(NOPE);
+    const { result } = setup();
+    await act(async () => { await expect(result.current.handleBulkUpdate(['a', 'b'], 'status', 'done')).rejects.toBe(NOPE); });
+    expect(result.current.canUndo).toBe(false);
+    expect(invalidated).toEqual([['tasks', 's1']]);
+    expect(result.current.saveError).toBe('The change to 2 tasks was not saved: Nope. Please try again.');
+  });
+
+  it('bulk delete that fails: thrown on, no Undo entry, and it says so', async () => {
+    api.bulkDeleteTasks.mockRejectedValue(NOPE);
+    const { result } = setup();
+    await act(async () => { await expect(result.current.handleBulkDelete(['a'])).rejects.toBe(NOPE); });
+    expect(result.current.canUndo).toBe(false);
+    expect(result.current.saveError).toBe('1 task was not deleted: Nope. Please try again.');
+  });
+
+  it('duplicate stops at the first copy that fails (and does not throw)', async () => {
+    api.createTask.mockRejectedValue(NOPE);
+    const { result } = setup();
+    await act(async () => { await result.current.handleDuplicateTasks([TASKS[0], TASKS[1]]); });
+    expect(api.createTask).toHaveBeenCalledTimes(1);
+    expect(result.current.saveError).toBe('The new task "Alpha (copy)" was not created: Nope. Please try again.');
+  });
+
+  it('a failed Undo save is refetched (the screen shows what the server has) and says so', async () => {
+    quiet();
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'Renamed' }); });
+    await flush();
+    api.updateTask.mockRejectedValue(NOPE);
+    invalidated = [];
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(result.current.saveError).toBe('Your change to "Alpha" was not saved: Nope. Please try again.');
+    expect(invalidated).toEqual([['tasks', 's1']]);
+  });
+});
