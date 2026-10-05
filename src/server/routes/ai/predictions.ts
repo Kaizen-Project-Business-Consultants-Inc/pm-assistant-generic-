@@ -8,6 +8,7 @@ import { databaseService } from '../../database/connection';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { runHealthSnapshot } from '../../services/scheduling/healthSnapshotJob';
+import { platformAdminOnly } from '../../utils/platformAdmin';
 
 export async function predictionRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -210,7 +211,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
 
   // POST /health/snapshot — Manual trigger for health snapshot (admin only)
   fastify.post('/health/snapshot', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
   }, async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       const count = await runHealthSnapshot();

@@ -1821,6 +1821,8 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 
 > **Trial accounts — Auto-Reschedule:** If you are on a trial plan, the Auto-Reschedule panel shows 3 sample detected delays (API Integration, Database Migration, UI Redesign) and 1 sample AI proposal with an amber banner. The **Generate Proposal** button is disabled. No AI tokens are consumed. Upgrade to a paid plan to run AI-powered reschedule analysis on your real schedule.
 
+> **What a key or a Claude connection can do (October 2026):** never more than your own role. A viewer's or team member's key can only read; a project manager's can also change the projects they manage. Connecting Claude gives it exactly your rights. You can **Revoke** any of your own keys at any time.
+
 > **Trial accounts — API Keys:** If you are on a trial plan, the API Keys tab in Settings shows 2 sample keys (CI/CD Pipeline, Dashboard Read-Only) with an amber banner. The **Create Key** button is hidden. Upgrade to a paid plan to generate real API keys for programmatic access.
 
 ### AI Summary Banner

@@ -5,7 +5,8 @@ import { agentRepository } from '../../database/AgentRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
-import logger from '../../utils/logger';
+import logger from '../../utils/logger';
+import { platformAdminOnly, requirePlatformAdmin } from '../../utils/platformAdmin';
 
 const updateAgentSchema = z.object({
   isEnabled: z.boolean().optional(),
@@ -37,7 +38,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
 
   // PATCH /registry/:id — update agent (enable/disable, config)
   fastify.patch('/registry/:id', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Update agent configuration', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -75,6 +76,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       // Full portfolio scan: admin only
       await requireScope('admin')(request, reply);
       if (reply.sent) return;
+      if (!requirePlatformAdmin(request, reply)) return;
     }
 
     try {

@@ -87,8 +87,17 @@ The `requireScope` middleware (`src/server/middleware/requireScope.ts`) gates in
 admin  >  write  >  read
 ```
 
-- **JWT session users** bypass scope checks -- their access is governed by role.
-- **API key users** must hold a scope equal to or higher than the route requirement.
+- **Signed-in users:** the role's rights (`constants/roleScopes.ts` `ROLE_SCOPES` — the single list).
+- **API key users (including Claude connections):** the key's rights **limited to the owner's current
+  role** (`effectiveScopes`) — a key never does more than its owner can, even one made before the role was
+  lowered. A key's `admin` includes write and read; `*` means "whatever the role allows".
+- **Claude (MCP OAuth) keys** are issued with the person's role rights at connection and on every renewal
+  (`mcp-server/src/oauth/roleScopes.ts`, a checked copy of the server list). Until October 2026 every
+  Claude key got read + write + admin regardless of role (audit critical #2).
+- **`admin` is Kovarti platform work only:** every route that asks for it also requires the platform admin
+  (`platformAdminOnly` / `requirePlatformAdmin`). Proposal Execute/Undo need the project's Manager/Owner
+  (`write`); revoking an API key needs only `read` and touches your own keys only.
+- Guards: `__tests__/middleware/claudeKeyScopes.test.ts`, `requireScope.test.ts`.
 
 Usage in a route:
 

@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { query } from '../db.js';
 import { DatabaseClientsStore } from './clientsStore.js';
 import { renderAuthorizePage } from './authorizePage.js';
+import { scopesForUser } from './roleScopes.js';
 
 interface AuthCodeRow extends RowDataPacket {
   code: string;
@@ -125,7 +126,8 @@ export class PmOAuthProvider implements OAuthServerProvider {
         `OAuth: ${client.client_name || client.client_id}`,
         keyHash,
         keyPrefix,
-        JSON.stringify(['read', 'write', 'admin']),
+        // the person's own role rights — never more (2026-10-04 audit)
+        JSON.stringify(await scopesForUser(authCode.user_id)),
       ],
     );
 
@@ -199,7 +201,8 @@ export class PmOAuthProvider implements OAuthServerProvider {
         `OAuth: ${client.client_name || client.client_id}`,
         keyHash,
         keyPrefix,
-        JSON.stringify(['read', 'write', 'admin']),
+        // re-read on every renewal, so a lowered role takes effect
+        JSON.stringify(await scopesForUser(tokenRow.user_id)),
       ],
     );
 

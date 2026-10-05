@@ -1,7 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { dreamingService, DREAMING_SWITCHED_OFF, DREAMING_OFF_MESSAGE } from '../../services/context/DreamingService';
+import { dreamingService, DREAMING_SWITCHED_OFF, DREAMING_OFF_MESSAGE } from '../../services/context/DreamingService';
+import { platformAdminOnly } from '../../utils/platformAdmin';
 
 /** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
 const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -89,7 +90,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/dreaming/trigger — manually trigger a dreaming run (admin)
   fastify.post('/trigger', {
-    preHandler: [requireScope('admin'), adminOrPmo],
+    preHandler: [requireScope('admin'), platformAdminOnly, adminOrPmo],
     schema: { description: 'Manually trigger a dreaming run', tags: ['dreaming'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { z } from 'zod';
 import { contextConfigService, type ConfigScope, CONFIG_KEY_SCHEMAS } from '../../services/context/ContextConfigService';
+import { platformAdminOnly } from '../../utils/platformAdmin';
 
 const scopeSchema = z.enum(['org', 'project', 'user']);
 
@@ -136,7 +137,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/context/config/:scope/:scopeId/lock — lock a key
   fastify.post('/config/:scope/:scopeId/lock', {
-    preHandler: [requireScope('admin'), contextScopeGate],
+    preHandler: [requireScope('admin'), platformAdminOnly, contextScopeGate],
     schema: { description: 'Lock a config key (admin only)', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

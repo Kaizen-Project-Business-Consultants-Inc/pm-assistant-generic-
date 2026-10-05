@@ -23,7 +23,7 @@ import {
   History,
   Cpu,
 } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
+import { useProjectRole } from '../hooks/useProjectRole';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
 import { MetaPill } from '../components/ui/MetaPill';
@@ -312,7 +312,6 @@ function TriageSection({ proposals, onSelect }: { proposals: Proposal[]; onSelec
 
 function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
-  const user = useAuthStore(s => s.user);
   const [comment, setComment] = useState('');
   const [feedbackOutcome, setFeedbackOutcome] = useState('');
   const [feedbackComment, setFeedbackComment] = useState('');
@@ -356,10 +355,12 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
 
   const proposal: Proposal | undefined = data?.proposal;
   const actions: ProposalAction[] = actionsData?.actions || [];
-  const isAdmin = user?.role === 'admin';
-  const canReview = proposal?.status === 'pending';
-  const canExecute = proposal?.status === 'approved' && isAdmin;
-  const canRollback = proposal?.status === 'executed' && isAdmin;
+  // Only the proposal's project Manager/Owner acts on it — same rule as the server (2026-10-05:
+  // Execute/Undo used to need the platform 'admin' right, so no customer PM could use them)
+  const { canEdit: isProjectPM } = useProjectRole(proposal?.projectId);
+  const canReview = proposal?.status === 'pending' && isProjectPM;
+  const canExecute = proposal?.status === 'approved' && isProjectPM;
+  const canRollback = proposal?.status === 'executed' && isProjectPM;
   const canFeedback = proposal?.status === 'executed';
   const anyMutating = approveMutation.isPending || rejectMutation.isPending || executeMutation.isPending || rollbackMutation.isPending || feedbackMutation.isPending;
 

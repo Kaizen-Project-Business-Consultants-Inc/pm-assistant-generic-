@@ -10,7 +10,8 @@ import { WRITE_ROLES, canChangeData } from '../../hooks/useCanChangeData';
  */
 describe("the app's change rights match the server's", () => {
   it('WRITE_ROLES = the roles the server gives write scope', () => {
-    const src = readFileSync(join(__dirname, '..', '..', '..', '..', 'server', 'middleware', 'requireScope.ts'), 'utf8');
+    // the server's single role → rights list (moved from requireScope.ts, 2026-10-05)
+    const src = readFileSync(join(__dirname, '..', '..', '..', '..', 'server', 'constants', 'roleScopes.ts'), 'utf8');
     const serverWrite = [...src.matchAll(/^\s+(\w+):\s*\[([^\]]*)\]/gm)]
       .filter(m => /'write'/.test(m[2]))
       .map(m => m[1]);

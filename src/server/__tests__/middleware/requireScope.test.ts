@@ -85,8 +85,8 @@ describe('requireScope', () => {
   });
 
   describe('scope hierarchy', () => {
-    it('admin scope implies write and read', async () => {
-      const req = makeRequest({ apiKeyScopes: ['admin'] });
+    it('admin scope implies write and read (for the platform admin)', async () => {
+      const req = makeRequest({ user: { userId: 'u1', username: 'admin', role: 'admin' }, apiKeyScopes: ['admin'] });
       for (const scope of ['read', 'write', 'admin'] as const) {
         const reply = makeReply();
         await requireScope(scope)(req, reply);
@@ -159,5 +159,33 @@ describe('requireScope', () => {
         });
       }
     }
+  });
+
+  // 2026-10-05 (audit critical #2): a key — including a Claude connection, which used to be
+  // issued with every right — never does more than its owner's role
+  describe("a key never exceeds the person's role", () => {
+    it("a team member's 'admin' key can only read", async () => {
+      const req = makeRequest({ user: { userId: 'u1', username: 'tm', role: 'team_member' }, apiKeyScopes: ['read', 'write', 'admin'] });
+      const r1 = makeReply(); await requireScope('read')(req, r1); expect(r1.status).not.toHaveBeenCalled();
+      const r2 = makeReply(); await requireScope('write')(req, r2); expect(r2.status).toHaveBeenCalledWith(403);
+      const r3 = makeReply(); await requireScope('admin')(req, r3); expect(r3.status).toHaveBeenCalledWith(403);
+    });
+
+    it("a project manager's 'admin' key can read and write, not admin", async () => {
+      const req = makeRequest({ user: { userId: 'u1', username: 'pm', role: 'project_manager' }, apiKeyScopes: ['read', 'write', 'admin'] });
+      const r1 = makeReply(); await requireScope('write')(req, r1); expect(r1.status).not.toHaveBeenCalled();
+      const r2 = makeReply(); await requireScope('admin')(req, r2); expect(r2.status).toHaveBeenCalledWith(403);
+    });
+
+    it("a viewer's key made before a role change follows the current role", async () => {
+      const req = makeRequest({ user: { userId: 'u1', username: 'v', role: 'viewer' }, apiKeyScopes: ['read', 'write'] });
+      const r = makeReply(); await requireScope('write')(req, r); expect(r.status).toHaveBeenCalledWith(403);
+    });
+
+    it("'*' on a key means what the role allows", async () => {
+      const req = makeRequest({ user: { userId: 'u1', username: 'pm', role: 'project_manager' }, apiKeyScopes: ['*'] });
+      const r1 = makeReply(); await requireScope('write')(req, r1); expect(r1.status).not.toHaveBeenCalled();
+      const r2 = makeReply(); await requireScope('admin')(req, r2); expect(r2.status).toHaveBeenCalledWith(403);
+    });
   });
 });

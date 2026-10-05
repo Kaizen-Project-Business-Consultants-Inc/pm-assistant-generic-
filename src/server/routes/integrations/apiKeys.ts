@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { apiKeyService } from '../../services/ApiKeyService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { scopesForRole } from '../../constants/roleScopes';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
@@ -28,23 +29,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       const body = createApiKeySchema.parse(request.body ?? {});
 
       // Enforce: requested scopes cannot exceed user's own role scopes
-      const ROLE_SCOPES: Record<string, string[]> = {
-        admin: ['read', 'write', 'admin'],
-        executive: ['read'],
-        project_manager: ['read', 'write'],
-        scrum_master: ['read', 'write'],
-        team_member: ['read'],
-        finance_officer: ['read'],
-        risk_manager: ['read', 'write'],
-        pmo: ['read', 'write'],
-        ba: ['read', 'write'],
-        qa: ['read', 'write'],
-        tester: ['read'],
-        devops: ['read', 'write'],
-        claude_sme: ['read'],
-        viewer: ['read'],
-      };
-      const userScopes = ROLE_SCOPES[user.role ?? ''] ?? ['read'];
+      const userScopes: string[] = scopesForRole(user.role);
       const disallowed = body.scopes.filter(s => !userScopes.includes(s));
       if (disallowed.length > 0) {
         return reply.status(403).send({
@@ -93,7 +78,9 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   });
 
   // DELETE /:id — Revoke an API key
-  fastify.delete('/:id', { preHandler: [requireScope('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // Anyone may revoke their OWN key (revokeKey only matches the caller's keys). It used to need
+  // the 'admin' right, so customers couldn't revoke keys at all (found 2026-10-05).
+  fastify.delete('/:id', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });

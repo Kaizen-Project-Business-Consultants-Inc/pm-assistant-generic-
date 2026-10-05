@@ -126,8 +126,10 @@ export async function proposalRoutes(fastify: FastifyInstance) {
   });
 
   // Execute approved proposal
+  // The project's Manager/Owner, like approve/reject. It needed the 'admin' right, which only the
+  // platform admin (no company) or an over-powered Claude key had — PMs couldn't (2026-10-05).
   fastify.post('/:id/execute', {
-    preHandler: [requireScope('admin'), proposalPMGate],
+    preHandler: [requireScope('write'), proposalPMGate],
     schema: { description: 'Execute an approved agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
@@ -146,7 +148,7 @@ export async function proposalRoutes(fastify: FastifyInstance) {
 
   // Rollback executed proposal
   fastify.post('/:id/rollback', {
-    preHandler: [requireScope('admin'), proposalPMGate],
+    preHandler: [requireScope('write'), proposalPMGate],
     schema: { description: 'Rollback an executed agent proposal', tags: ['agent'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };

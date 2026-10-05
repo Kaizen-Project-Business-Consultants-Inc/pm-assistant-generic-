@@ -687,6 +687,10 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 - The MCP server exposes project, task, sprint, resource, and reporting tools.
 - Claude can query project status, create tasks, log time, and generate reports via natural language.
 
+### What a Claude connection may do (October 2026)
+- A Claude connection acts as the person who connected it, **with exactly their role's rights**: a viewer or team member can read; a project manager can read and change their projects; nobody gets admin rights through Claude except the Kovarti platform admin. When a person's role changes, their existing connection follows the new role straight away (every key is limited to its owner's role on each request), and the connection's key is re-issued with the new rights at its next renewal.
+- Deploying: the MCP server is separate — `bash deploy.sh <env> --mcp` deploys it (the app needs its own deploy).
+
 ---
 
 ## 19. Tenant Management (Multi-Tenant)

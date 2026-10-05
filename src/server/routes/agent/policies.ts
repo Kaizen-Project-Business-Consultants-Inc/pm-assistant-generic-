@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { policyEngineService } from '../../services/PolicyEngineService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import logger from '../../utils/logger';
+import logger from '../../utils/logger';
+import { platformAdminOnly } from '../../utils/platformAdmin';
 
 const createPolicySchema = z.object({
   projectId: z.string().optional().nullable(),
@@ -69,7 +70,7 @@ export async function policyRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/policies
   fastify.post('/', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = createPolicySchema.parse(request.body);
@@ -89,7 +90,7 @@ export async function policyRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/policies/:id
   fastify.put('/:id', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
@@ -109,7 +110,7 @@ export async function policyRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/policies/:id
   fastify.delete('/:id', {
-    preHandler: [requireScope('admin')],
+    preHandler: [requireScope('admin'), platformAdminOnly],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
