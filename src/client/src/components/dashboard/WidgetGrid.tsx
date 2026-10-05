@@ -46,6 +46,17 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
     }
   }
 
+  // Keyboard-accessible move: swap widget at fromIdx with the one at toIdx
+  const moveWidget = useCallback((fromIdx: number, toIdx: number) => {
+    if (toIdx < 0 || toIdx >= orderedIds.length) return;
+    const newOrder = [...orderedIds];
+    const [moved] = newOrder.splice(fromIdx, 1);
+    newOrder.splice(toIdx, 0, moved);
+    onReorder(newOrder);
+  }, [orderedIds, onReorder]);
+
+  // The empty state comes after every hook (a hook below an early return crashes React when
+  // the last widget is switched off, or the first one on)
   if (orderedIds.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
@@ -103,15 +114,6 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
       groups.push({ type: size, items: [{ id, flatIdx }] });
     }
   });
-
-  // Keyboard-accessible move: swap widget at fromIdx with the one at toIdx
-  const moveWidget = useCallback((fromIdx: number, toIdx: number) => {
-    if (toIdx < 0 || toIdx >= orderedIds.length) return;
-    const newOrder = [...orderedIds];
-    const [moved] = newOrder.splice(fromIdx, 1);
-    newOrder.splice(toIdx, 0, moved);
-    onReorder(newOrder);
-  }, [orderedIds, onReorder]);
 
   const renderDraggable = (id: string, flatIdx: number) => {
     const size = getSize(id);

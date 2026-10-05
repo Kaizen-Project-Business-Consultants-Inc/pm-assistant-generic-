@@ -236,6 +236,12 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
   const tooltipRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
+  }, []);
+
+  // Every hook comes before this return (a hook after it crashes React when metricKey changes
+  // between a known and an unknown metric)
   const info = METRIC_INFO[metricKey];
   if (!info) return <>{children}</>;
 
@@ -272,10 +278,6 @@ export function EVMMetricTooltip({ metricKey, values, children }: EVMMetricToolt
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => setOpen(false), 150);
   };
-
-  useEffect(() => {
-    return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, []);
 
   return (
     <div
