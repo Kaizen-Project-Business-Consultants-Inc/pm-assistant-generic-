@@ -10,7 +10,8 @@ export function computeNextRun(config: ScheduleConfig, timezone: string = 'UTC',
 
   switch (config.type) {
     case 'interval': {
-      const minutes = Math.max(1, Math.min(1440, config.intervalMinutes));
+      // at least 5 minutes: scheduled automations are checked every 5 minutes (pm-cron@scheduled-automations)
+      const minutes = Math.max(5, Math.min(1440, config.intervalMinutes));
       return new Date(now.getTime() + minutes * 60_000);
     }
 

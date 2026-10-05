@@ -1,0 +1,9 @@
+[Unit]
+Description=PM Assistant Google Calendar sync (every 15 min)
+
+[Timer]
+OnCalendar=*:0/15
+Persistent=false
+
+[Install]
+WantedBy=timers.target

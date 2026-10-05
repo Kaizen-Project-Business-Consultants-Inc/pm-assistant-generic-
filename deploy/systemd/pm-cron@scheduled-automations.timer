@@ -1,0 +1,9 @@
+[Unit]
+Description=PM Assistant Scheduled automations (every 5 min)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=false
+
+[Install]
+WantedBy=timers.target

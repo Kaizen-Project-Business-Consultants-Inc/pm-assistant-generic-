@@ -714,12 +714,12 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Run every (minutes)</label>
               <input
                 type="number"
-                min={1} max={1440}
+                min={5} max={1440}
                 value={scheduleConfig.intervalMinutes ?? 30}
-                onChange={(e) => setScheduleConfig({ ...scheduleConfig, intervalMinutes: Math.max(1, Math.min(1440, parseInt(e.target.value) || 1)) })}
+                onChange={(e) => setScheduleConfig({ ...scheduleConfig, intervalMinutes: Math.max(5, Math.min(1440, parseInt(e.target.value) || 5)) })}
                 className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">1 = every minute, 60 = every hour, 1440 = once daily</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">5 = every 5 minutes (the shortest), 60 = every hour, 1440 = once daily</p>
             </div>
           )}
 

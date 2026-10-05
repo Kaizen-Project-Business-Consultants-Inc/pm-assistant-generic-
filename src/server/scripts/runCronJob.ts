@@ -16,6 +16,9 @@
  *   timesheet-compliance — Nudge people who have not logged time (recipient's 16:00)
  *   utilization-coaching — Weekly utilization coaching tips
  *   weekly-review-pack   — Friday review pack for project owners
+ *   scheduled-automations — every 5 min: automations with a time trigger (interval/daily/weekly)
+ *   calendar-sync        — every 15 min: Google Calendar for users who connected it
+ *   storage-sync         — every 15 min: connected document storage
  *   pm-weekly-review     — Weekly PM review (hourly Thu–Sat UTC; runs at Friday 07:00 in each company's zone)
  *   alert-check      — Run infrastructure health checks
  *   deadline-check   — Send deadline approaching notifications (2-day warning)
@@ -32,7 +35,7 @@ const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
   console.error('Usage: node dist/server/scripts/runCronJob.js <job-name>');
-  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, pm-weekly-review, alert-check, deadline-check, schedule-review, data-retention');
+  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, pm-weekly-review, scheduled-automations, calendar-sync, storage-sync, alert-check, deadline-check, schedule-review, data-retention');
   process.exit(1);
 }
 
@@ -192,6 +195,36 @@ async function run() {
         await forEachTenant(async (tenant) => {
           const count = await runScheduleReview();
           console.log(`[cron-runner] Schedule review: ${count} notifications sent (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      // These three were only ever started by the in-process scheduler (cronManager.startCronTasks),
+      // which nothing calls — so on the servers they never ran (found by the 2026-10-04 audit).
+      // Now systemd timers run them like every other job.
+      case 'scheduled-automations': {
+        const { runDueScheduledAutomations } = await import('../services/automation/scheduledAutomationRunner');
+        await forEachTenant(async (tenant) => {
+          const count = await runDueScheduledAutomations();
+          if (count > 0) console.log(`[cron-runner] Scheduled automations: ${count} run (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'calendar-sync': {
+        const { calendarSyncService } = await import('../services/integrations/CalendarSyncService');
+        await forEachTenant(async (tenant) => {
+          const result = await calendarSyncService.syncAllUsers();
+          if (result.synced > 0) console.log(`[cron-runner] Calendar sync: ${JSON.stringify(result)} (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'storage-sync': {
+        const { runStorageSync } = await import('../services/scheduling/storageSyncJob');
+        await forEachTenant(async (tenant) => {
+          await runStorageSync();
+          console.log(`[cron-runner] Storage sync done (${tenant?.slug ?? 'default'})`);
         });
         break;
       }

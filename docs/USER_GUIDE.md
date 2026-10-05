@@ -3978,7 +3978,7 @@ In addition to event-driven triggers (e.g., "when a task is completed"), you can
 1. Click **New Automation**.
 2. In the **Event Type** dropdown, scroll to the **Scheduled (Time-Based)** group.
 3. Choose a schedule type:
-   - **Interval** — runs every N minutes (e.g., every 30 minutes)
+   - **Interval** — runs every N minutes (e.g., every 30 minutes; the shortest is 5 minutes). Scheduled automations are checked every 5 minutes, so a run can start up to 5 minutes after its time. (Until October 2026 scheduled automations never ran on the servers — fixed.)
    - **Daily** — runs once daily at a specific time
    - **Weekly** — runs once per week on a specific day and time
    - **Monthly** — runs once per month on a specific day and time

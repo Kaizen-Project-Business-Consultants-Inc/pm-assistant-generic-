@@ -1,6 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+
+## 2026-10-05 — Scheduled automations, calendar sync, storage sync now run (audit high)
+
+They lived only in cronManager.startCronTasks (never called) — no systemd timers. Added runCronJob cases + timers: scheduled-automations every 5 min, calendar-sync and storage-sync every 15 min. Shortest automation interval raised 1 → 5 min (server computeNextRun + form). Guard scheduledJobsWired.test.ts (runner cases ⇔ timer files). Usage today: prod 0 automations, staging 1.
+
 ## 2026-10-05 — AI only when a person asks (audit high)
 
 Risk form mitigation ideas: button "Suggest mitigations from past lessons" (query enabled by the click, retry false; lessons lookup debounced 600 ms) — was an AI call per keystroke. Time tab weekly summary: `?narrative=1` only when the panel is opened, never for 0 hours; Friday time pack never asks. Team tab: forecast GET has no AI; PM-only "Suggest how to rebalance" → POST /resource-optimizer/:id/rebalance-suggestions. Guard aiOnlyWhenAsked.test.ts.

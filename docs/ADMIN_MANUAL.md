@@ -210,6 +210,8 @@ enabled afterwards. Adding a job needs three things: the job module, a `case` in
 > and a job that goes quiet, or has no record at all, raises an alert.
 
 Run one by hand: `sudo systemctl start pm-cron@<name>.service`
+**Scheduled automations, calendar sync, storage sync** (`pm-cron@scheduled-automations` every 5 min, `pm-cron@calendar-sync` and `pm-cron@storage-sync` every 15 min; Oct 2026). Until then they existed only in the in-process scheduler, which nothing starts, so they never ran. Every job must have both a `runCronJob.ts` case and a timer file (guard: `__tests__/scripts/scheduledJobsWired.test.ts`); `deploy.sh` installs and enables every timer it finds.
+
 **Weekly PM review** (`pm-cron@pm-weekly-review`, Oct 2026) fires every hour Thursday–Saturday UTC but only does work for a company in the hour when it is **Friday 07:00 in that company's time zone**; a repeat firing in the same week does nothing.
 
 Inspect: `systemctl list-timers 'pm-cron@*'` and `journalctl -u pm-cron@<name>.service`
