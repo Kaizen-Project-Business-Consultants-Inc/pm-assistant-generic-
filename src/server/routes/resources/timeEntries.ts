@@ -340,14 +340,15 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   fastify.get('/weekly-review/:projectId', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const { weekStart } = request.query as { weekStart?: string };
+      const { weekStart, narrative } = request.query as { weekStart?: string; narrative?: string };
       const ws = weekStart || (() => {
         const d = new Date();
         const day = d.getDay();
         d.setDate(d.getDate() - ((day + 6) % 7));
         return d.toISOString().slice(0, 10);
       })();
-      const review = await timeAnomalyService.generateWeeklyReview(projectId, ws);
+      // the AI summary only when the panel is opened (?narrative=1)
+      const review = await timeAnomalyService.generateWeeklyReview(projectId, ws, { withNarrative: narrative === '1' || narrative === 'true' });
       return { review };
     } catch (error) {
       logger.error('Get weekly review error', { error });

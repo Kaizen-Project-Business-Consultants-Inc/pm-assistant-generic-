@@ -976,7 +976,7 @@ AI-powered forecasting of future resource bottlenecks based on current task assi
 
 ### Rebalance Suggestions
 
-The system analyzes workload across resources and suggests task reassignments to balance the team's load more evenly.
+When someone on the project is over-booked, the project's PM sees **Suggest how to rebalance** on the Team tab. Pressing it asks the AI for task reassignments that even out the load (October 2026: it used to run by itself every time the tab opened).
 
 ### Resource Availability Calendar
 
@@ -1362,7 +1362,7 @@ Click **Dismiss** on any anomaly to hide it for the current session. Anomalies r
 
 Below the anomalies panel, a **Weekly Review** card summarizes the current week:
 
-- **AI Narrative** — When expanded, a blue callout at the top shows a 2-3 sentence AI-generated summary of the week's time activity, highlighting key insights. Falls back to a template-based summary when AI is disabled.
+- **AI Narrative** — When expanded, a blue callout at the top shows a 2-3 sentence AI-generated summary of the week's time activity, highlighting key insights. It is written only when you open the panel, and never for a week with no hours (October 2026). Falls back to a template-based summary when AI is disabled.
 - **Total hours** by team member (bar chart).
 - **Anomaly count** and **compliance percentage**.
 - **Top tasks** by hours consumed.
@@ -2311,7 +2311,7 @@ Every lesson has a status that tracks its maturity. Managers can advance lessons
 | Approved | Green | Endorsed for reuse; used in risk mitigation suggestions |
 | Archived | Amber | Superseded or no longer relevant; hidden from default views |
 
-**To approve a lesson:** click the **Approve** button on the lesson card. The status changes to Approved and the lesson becomes eligible to appear in risk mitigation suggestions.
+**To approve a lesson:** click the **Approve** button on the lesson card. The status changes to Approved and the lesson becomes eligible to appear in risk mitigation suggestions. In the risk/issue form, press **Suggest mitigations from past lessons** to see them — the AI is asked only when you press it (October 2026; it used to be asked on every keystroke).
 
 **To archive a lesson:** click the **Archive** button on the lesson card. Archived lessons are hidden from the default view but remain in the database.
 

@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 648,
+  "count": 649,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -344,6 +344,7 @@
     "getRaidReviewFixes",
     "getRaidUpdates",
     "getRateCard",
+    "getRebalanceSuggestions",
     "getRelevantLessons",
     "getReport",
     "getReportHistory",

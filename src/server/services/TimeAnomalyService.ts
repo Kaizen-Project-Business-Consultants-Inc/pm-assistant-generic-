@@ -370,7 +370,12 @@ class TimeAnomalyService {
   /**
    * Generate a weekly review pack for a project.
    */
-  async generateWeeklyReview(projectId: string, weekStart: string): Promise<WeeklyReview> {
+  /**
+   * `withNarrative`: also ask the AI for the written summary. Only when a person opens the panel
+   * (it used to run on every Time-tab open, even collapsed, and for weeks with no hours —
+   * 2026-10-04 audit). The Friday pack job doesn't use the narrative, so it never asks.
+   */
+  async generateWeeklyReview(projectId: string, weekStart: string, opts: { withNarrative?: boolean } = {}): Promise<WeeklyReview> {
     const startStr = toDateString(weekStart)!;
     const endStr = addDays(startStr, 6)!; // Mon-Sun
 
@@ -448,7 +453,7 @@ class TimeAnomalyService {
 
     // AI narrative (Feature 3)
     let narrative: string | undefined;
-    try {
+    if (opts.withNarrative && totalHours > 0) try {
       narrative = await this.generateWeeklyNarrative({
         projectId, weekStart, weekEnd: endStr, totalHours, hoursByUser,
         anomalyCount: anomalies.length, anomalies, compliancePercent, topTasks, overBudgetTasks,

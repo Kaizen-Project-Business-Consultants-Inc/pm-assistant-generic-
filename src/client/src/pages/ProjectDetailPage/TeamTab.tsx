@@ -56,6 +56,9 @@ function ResourceOptimizerSection({ projectId }: { projectId: string }) {
     queryFn: () => apiService.getResourceForecast(projectId),
     enabled: !!projectId,
   });
+  // AI rebalancing ideas only when the project's PM asks (it ran on every open; 2026-10-04 audit)
+  const { canEdit: isProjectPM } = useProjectRole(projectId);
+  const rebalance = useMutation({ mutationFn: () => apiService.getRebalanceSuggestions(projectId) });
 
   const forecast = data?.result;
 
@@ -73,8 +76,25 @@ function ResourceOptimizerSection({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {forecast.rebalanceSuggestions?.length > 0 && (
-        <RebalanceSuggestions suggestions={forecast.rebalanceSuggestions} />
+      {isProjectPM && forecast.bottlenecks?.length > 0 && !rebalance.data && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 flex items-center gap-3 flex-wrap">
+          <p className="flex-1 min-w-0 text-sm text-gray-700 dark:text-gray-300">Some people are over-booked. Kovarti can suggest how to move work around (uses AI).</p>
+          <button
+            type="button"
+            onClick={() => rebalance.mutate()}
+            disabled={rebalance.isPending}
+            className="h-10 px-4 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold disabled:opacity-60"
+          >
+            {rebalance.isPending ? 'Thinking…' : 'Suggest how to rebalance'}
+          </button>
+          {rebalance.isError && <p role="alert" className="w-full text-sm text-red-700 dark:text-red-300">Could not get suggestions right now. Try again later.</p>}
+        </div>
+      )}
+      {(rebalance.data?.rebalanceSuggestions?.length ?? 0) > 0 && (
+        <RebalanceSuggestions suggestions={rebalance.data!.rebalanceSuggestions} />
+      )}
+      {rebalance.data && rebalance.data.rebalanceSuggestions.length === 0 && (
+        <p className="text-sm text-gray-600 dark:text-gray-400">No rebalancing ideas right now.</p>
       )}
     </>
   );

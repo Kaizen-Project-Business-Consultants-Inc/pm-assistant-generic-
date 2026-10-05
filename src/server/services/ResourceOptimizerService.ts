@@ -25,10 +25,16 @@ export class ResourceOptimizerService {
   // predictBottlenecks
   // ---------------------------------------------------------------------------
 
+  /**
+   * `withAI`: also ask the AI how to rebalance. Only when the PM presses "Suggest how to
+   * rebalance" — opening the Team tab / Resources page used to call the AI every time anyone was
+   * over-booked (2026-10-04 audit).
+   */
   async predictBottlenecks(
     projectId: string,
     weeksAhead: number = 8,
     userId?: string,
+    opts: { withAI?: boolean } = {},
   ): Promise<ResourceForecastResult> {
     // 1. Get workloads from ResourceService
     const workloads = await resourceService.computeWorkload(projectId);
@@ -139,7 +145,7 @@ export class ResourceOptimizerService {
     // 6. Optionally generate AI rebalancing suggestions
     let rebalanceSuggestions: RebalanceSuggestion[] | undefined;
 
-    if (config.AI_ENABLED && claudeService.isAvailable() && bottlenecks.length > 0) {
+    if (opts.withAI && config.AI_ENABLED && claudeService.isAvailable() && bottlenecks.length > 0) {
       try {
         rebalanceSuggestions = await this.generateRebalanceSuggestions(
           workloads,

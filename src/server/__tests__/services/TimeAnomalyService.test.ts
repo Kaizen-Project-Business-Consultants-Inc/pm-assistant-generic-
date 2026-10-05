@@ -398,7 +398,7 @@ describe('TimeAnomalyService', () => {
       mockQuery.mockResolvedValueOnce([{ user_id: 'u1', full_name: 'Alice' }]);
       mockQuery.mockResolvedValueOnce([]);
 
-      const result = await timeAnomalyService.generateWeeklyReview('proj-1', '2026-09-08');
+      const result = await timeAnomalyService.generateWeeklyReview('proj-1', '2026-09-08', { withNarrative: true }); // only when the panel is opened (2026-10-05)
       expect(result.narrative).toBeDefined();
       expect(result.narrative).toContain('logged');
       expect(result.narrative).toContain('hours');

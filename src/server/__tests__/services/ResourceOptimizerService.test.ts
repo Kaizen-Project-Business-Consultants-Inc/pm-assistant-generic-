@@ -421,7 +421,7 @@ describe('ResourceOptimizerService', () => {
       ];
       mockCompleteWithJsonSchema.mockResolvedValue({ data: suggestions });
 
-      const result = await service.predictBottlenecks('proj-1');
+      const result = await service.predictBottlenecks('proj-1', 8, undefined, { withAI: true }); // only when the PM asks (2026-10-05)
 
       expect(result.rebalanceSuggestions).toEqual(suggestions);
       expect(mockCompleteWithJsonSchema).toHaveBeenCalledOnce();

@@ -34,7 +34,19 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
     staleTime: 5 * 60_000,
   });
 
-  const review: WeeklyReview | null = data?.review || null;
+  // The AI-written summary only once the panel is opened — and never retried automatically
+  // (it ran on every Time-tab open, even collapsed; 2026-10-04 audit)
+  const { data: narrativeData } = useQuery({
+    queryKey: ['weekly-review-narrative', projectId, weekStart],
+    queryFn: () => apiService.getWeeklyReview(projectId, weekStart, true),
+    enabled: expanded && !!data?.review?.totalHours,
+    staleTime: 30 * 60_000,
+    retry: false,
+  });
+
+  const review: WeeklyReview | null = data?.review
+    ? { ...data.review, narrative: narrativeData?.review?.narrative ?? data.review.narrative }
+    : null;
 
   if (isLoading) return null;
   if (!review || review.totalHours === 0) return null;

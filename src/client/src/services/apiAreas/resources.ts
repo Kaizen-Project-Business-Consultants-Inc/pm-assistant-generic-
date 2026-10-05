@@ -215,6 +215,11 @@ export class ResourcesApi extends ApiBase {
   // Resource Optimizer
   // -------------------------------------------------------------------------
 
+  /** AI ideas for moving work off over-booked people — only when the PM asks */
+  async getRebalanceSuggestions(projectId: string): Promise<{ rebalanceSuggestions: any[]; bottlenecks: number }> {
+    return (await this.api.post(`/resource-optimizer/${projectId}/rebalance-suggestions`, {})).data;
+  }
+
   async getResourceForecast(projectId: string, weeksAhead?: number) {
     const params = weeksAhead ? { weeksAhead } : {};
     const response = await this.api.get(`/resource-optimizer/${projectId}/forecast`, { params });
@@ -342,9 +347,11 @@ export class ResourcesApi extends ApiBase {
     return response.data;
   }
 
-  async getWeeklyReview(projectId: string, weekStart?: string) {
+  /** withNarrative: also the AI-written summary (only when the panel is opened) */
+  async getWeeklyReview(projectId: string, weekStart?: string, withNarrative = false) {
     const params: Record<string, string> = {};
     if (weekStart) params.weekStart = weekStart;
+    if (withNarrative) params.narrative = '1';
     const response = await this.api.get(`/time-entries/weekly-review/${projectId}`, { params });
     return response.data;
   }

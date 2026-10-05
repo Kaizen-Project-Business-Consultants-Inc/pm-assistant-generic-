@@ -187,11 +187,17 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
     setError(null);
   }, [editRisk, defaultType, isOpen]);
 
-  // Debounced search key for lessons — only query when title is long enough
-  const lessonsSearchKey = useMemo(() => {
+  // Search key for lessons — only when the text is long enough, and only once typing pauses
+  // (it changed on every keystroke; 2026-10-04 audit)
+  const typedText = useMemo(() => {
     const text = `${form.title} ${form.description}`.trim();
     return text.length >= 10 ? text : '';
   }, [form.title, form.description]);
+  const [lessonsSearchKey, setLessonsSearchKey] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setLessonsSearchKey(typedText), 600);
+    return () => clearTimeout(t);
+  }, [typedText]);
 
   const { data: lessonsData, isFetching: lessonsFetching } = useQuery({
     queryKey: ['risk-lessons', lessonsSearchKey, form.category],
@@ -203,16 +209,21 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const relevantLessons = (lessonsData?.lessons || []).slice(0, 5);
 
   // Cross-project mitigation suggestions from lessons knowledge base
+  // AI suggestions only when the person presses "Suggest mitigations" — they used to be asked
+  // on every keystroke (2026-10-04 audit). Asked once for the text at the time of the click.
   const [showMitigationSuggestions, setShowMitigationSuggestions] = useState(false);
-  const { data: mitigationsData } = useQuery({
-    queryKey: ['risk-mitigations', lessonsSearchKey, form.category],
-    queryFn: () => apiService.suggestMitigations(
-      `${form.title} ${form.description}`.trim(),
-      form.category !== 'other' ? form.category : 'general',
-    ),
-    enabled: !!lessonsSearchKey && (form.type === 'risk' || form.type === 'issue'),
-    staleTime: 60_000,
+  const [mitigationAsk, setMitigationAsk] = useState<{ text: string; category: string } | null>(null);
+  const { data: mitigationsData, isFetching: mitigationsFetching } = useQuery({
+    queryKey: ['risk-mitigations', mitigationAsk?.text, mitigationAsk?.category],
+    queryFn: () => apiService.suggestMitigations(mitigationAsk!.text, mitigationAsk!.category),
+    enabled: !!mitigationAsk,
+    staleTime: 10 * 60_000,
+    retry: false,
   });
+  const askForMitigations = () => {
+    setMitigationAsk({ text: typedText, category: form.category !== 'other' ? form.category : 'general' });
+    setShowMitigationSuggestions(true);
+  };
   const mitigationSuggestions = (mitigationsData?.suggestions || []).slice(0, 5);
 
   const handleTypeChange = (newType: string) => {
@@ -470,7 +481,21 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
             </div>
           )}
 
-          {/* Cross-project mitigation suggestions */}
+          {/* Cross-project mitigation suggestions — asked for with a button, never while typing */}
+          {typedText && (form.type === 'risk' || form.type === 'issue') && (!mitigationAsk || mitigationAsk.text !== typedText) && (
+            <button
+              type="button"
+              onClick={askForMitigations}
+              disabled={mitigationsFetching}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary-700 dark:text-primary-400 hover:underline disabled:opacity-60"
+            >
+              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+              {mitigationsFetching ? 'Looking…' : 'Suggest mitigations from past lessons'}
+            </button>
+          )}
+          {mitigationAsk && !mitigationsFetching && mitigationSuggestions.length === 0 && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">No suggestions found for this.</p>
+          )}
           {mitigationSuggestions.length > 0 && (form.type === 'risk' || form.type === 'issue') && (
             <div className="border border-primary-200 dark:border-primary-800 rounded-lg bg-primary-50/50 dark:bg-primary-900/10">
               <button

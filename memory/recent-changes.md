@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+
+## 2026-10-05 — AI only when a person asks (audit high)
+
+Risk form mitigation ideas: button "Suggest mitigations from past lessons" (query enabled by the click, retry false; lessons lookup debounced 600 ms) — was an AI call per keystroke. Time tab weekly summary: `?narrative=1` only when the panel is opened, never for 0 hours; Friday time pack never asks. Team tab: forecast GET has no AI; PM-only "Suggest how to rebalance" → POST /resource-optimizer/:id/rebalance-suggestions. Guard aiOnlyWhenAsked.test.ts.
+
 ## 2026-10-05 — Item 4 Phase 4 batch B: schedule mutations hook + workspace moved out of ScheduleTab
 Branch `phase4b` (not merged/deployed). No behaviour change; DOM byte-identical. `schedule-tab/useScheduleMutations.ts` = ScheduleGantt's one contiguous block of task changes (baseline/create/update/delete mutations, useUndoRedo + Undo toast, over-100% load warning, optimistic cache patch, update-with-undo, bar drag, reorder, bulk update/link/group/delete, duplicate, Kanban status), verbatim, called at the same place (same hook order; invalidation keys unchanged, all schedule-scoped). `schedule-tab/ScheduleWorkspace.tsx` = ScheduleGantt itself, verbatim, still named ScheduleGantt (PRODUCT_MANUAL names it). ScheduleTab 1,646 → 223 lines. Guards: `scheduleTabDom.test.tsx` (whole tab in 10 states vs fixtures captured on c7082f09 before the moves), `useScheduleMutations.test.tsx` (20: API call + payload, cache patch, invalidated keys, undo/redo, toast; pins that a failed edit is NOT rolled back in the cache — never was). DOM tests now pin `@vitest-environment happy-dom` (shared helper `domFixtures.ts`), so ganttChartDom + scheduleTabDom pass under the root config AND `cd src/client && npx vitest run` (jsdom serialised inline styles differently: rgb() colours, expanded border shorthands, long floats).
 
