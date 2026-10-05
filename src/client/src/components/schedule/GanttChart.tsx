@@ -904,25 +904,6 @@ export function GanttChart({
     }
   }, []);
 
-  if (rows.length === 0 && baseRows.length === 0 && !onQuickAdd) {
-    return (
-      <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">
-        <p>No tasks to display.</p>
-        {onAddTask && (
-          <button
-            onClick={onAddTask}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Task
-          </button>
-        )}
-      </div>
-    );
-  }
-
   // -----------------------------------------------------------------------
   // Stable callbacks for GanttLeftPanelRow
   // -----------------------------------------------------------------------
@@ -995,6 +976,27 @@ export function GanttChart({
     }
     prevTasksLenRef.current = tasks.length;
   }, [tasks.length, inlineInsert]);
+
+  // The empty state comes after every hook: an early return above a hook makes React throw
+  // "Rendered fewer hooks than expected" when a plan goes from some tasks to none (or back)
+  if (rows.length === 0 && baseRows.length === 0 && !onQuickAdd) {
+    return (
+      <div className="text-center py-12 text-sm text-gray-500 dark:text-gray-400">
+        <p>No tasks to display.</p>
+        {onAddTask && (
+          <button
+            onClick={onAddTask}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Task
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div ref={ganttContainerRef} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
