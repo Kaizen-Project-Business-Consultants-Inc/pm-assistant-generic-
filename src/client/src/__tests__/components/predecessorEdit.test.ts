@@ -58,8 +58,11 @@ describe('planPredecessorEdit — typing or pasting a Predecessors cell', () => 
 // through the one parser and send the same `dependencies` update.
 describe('Gantt and Table use the one Predecessors rule', () => {
   const SCHEDULE = join(__dirname, '../../components/schedule');
+  // The Gantt grid's paste path lives in gantt/hooks/useGridKeyboard.ts (moved out of GanttChart.tsx 2026-10-04)
+  const GANTT_KEYBOARD = 'gantt/hooks/useGridKeyboard.ts';
   for (const file of ['GanttChart.tsx', 'TableView.tsx']) {
-    const src = readFileSync(join(SCHEDULE, file), 'utf8');
+    const src = [file, ...(file === 'GanttChart.tsx' ? [GANTT_KEYBOARD] : [])]
+      .map(f => readFileSync(join(SCHEDULE, f), 'utf8')).join('\n');
     it(`${file} calls planPredecessorEdit for typing and pasting`, () => {
       expect(src).toContain("from './predecessorEdit'");
       expect((src.match(/planPredecessorEdit\(/g) || []).length).toBeGreaterThanOrEqual(2);

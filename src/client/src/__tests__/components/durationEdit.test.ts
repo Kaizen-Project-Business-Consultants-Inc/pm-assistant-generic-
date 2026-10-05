@@ -100,8 +100,11 @@ describe('planDurationEdit — typing a Duration moves the finish', () => {
 // in one never reached the other. Both must call the shared rule, for typing and for pasting.
 describe('Gantt and Table use the one Duration rule', () => {
   const SCHEDULE = join(__dirname, '../../components/schedule');
+  // The Gantt grid's paste path lives in gantt/hooks/useGridKeyboard.ts (moved out of GanttChart.tsx 2026-10-04)
+  const GANTT_KEYBOARD = 'gantt/hooks/useGridKeyboard.ts';
   for (const file of ['GanttChart.tsx', 'TableView.tsx']) {
-    const src = readFileSync(join(SCHEDULE, file), 'utf8');
+    const src = [file, ...(file === 'GanttChart.tsx' ? [GANTT_KEYBOARD] : [])]
+      .map(f => readFileSync(join(SCHEDULE, f), 'utf8')).join('\n');
     it(`${file} calls planDurationEdit for typing and pasting`, () => {
       expect(src).toContain("from './durationEdit'");
       expect((src.match(/planDurationEdit\(/g) || []).length).toBeGreaterThanOrEqual(2);
