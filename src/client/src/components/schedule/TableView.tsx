@@ -3,7 +3,7 @@ import { progressFromHours } from '../../utils/progressFromHours';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
-import { buildRowNumberMap, compareOutlineOrder } from './gantt/types';
+import { buildRowNumberMap } from './gantt/types';
 import { apiService } from '../../services/api';
 import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
@@ -19,10 +19,11 @@ import { BulkGroupControls } from './BulkGroupControls';
 import { TableHeaderRow } from './table/TableHeaderRow';
 import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
+import { useTableGrouping } from './table/hooks/useTableGrouping';
 import {
   barColors, priorityColors, statusOptions, priorityOptions,
   formatDate,
-  type TableViewProps, type SortDir, type GroupByField, type EditableField,
+  type TableViewProps, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
@@ -50,11 +51,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     return map;
   }, [resourceData]);
 
-  const [sortField, setSortField] = useState<ColumnKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [groupBy, setGroupBy] = useState<GroupByField>('');
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [collapsedSummaries, setCollapsedSummaries] = useState<Set<string>>(new Set());
 
   // Focus a task from a link: open its collapsed phases and groups, then scroll its row
   // to the middle once it has rendered (a few frames — data and layout may still settle).
@@ -238,57 +234,16 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const isPasteFlash = (taskId: string, field: string) =>
     pasteFlash?.taskId === taskId && pasteFlash.field === field;
 
-  const toggleSort = useCallback((field: ColumnKey) => {
-    if (sortField === field) {
-      if (sortDir === 'asc') {
-        setSortDir('desc');
-      } else {
-        setSortField(null);
-        setSortDir('asc');
-      }
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-  }, [sortField, sortDir]);
-
-  // Get a sortable value for any column
-  const getSortValue = useCallback((task: GanttTask, field: ColumnKey): any => {
-    switch (field) {
-      case 'name': return task.name.toLowerCase();
-      case 'status': return task.status;
-      case 'priority': {
-        const order = { urgent: 0, high: 1, medium: 2, low: 3 };
-        return order[(task.priority || 'medium') as keyof typeof order] ?? 2;
-      }
-      case 'startDate': return task.startDate || '';
-      case 'endDate': return task.endDate || '';
-      case 'progressPercentage': return task.progressPercentage ?? 0;
-      case 'assignedTo': return (task.assignedTo || '').toLowerCase();
-      case 'notes': return (task.description || '').toLowerCase();
-      case 'duration': {
-        const span = workingDaysBetween(task.startDate, task.endDate, workCalendar);
-        if (span) return span;
-        return task.estimatedDays ?? 0;
-      }
-      case 'earlyStart': return cpmMap.get(task.id)?.ES ?? Infinity;
-      case 'earlyFinish': return cpmMap.get(task.id)?.EF ?? Infinity;
-      case 'lateStart': return cpmMap.get(task.id)?.LS ?? Infinity;
-      case 'lateFinish': return cpmMap.get(task.id)?.LF ?? Infinity;
-      case 'totalFloat': return cpmMap.get(task.id)?.totalFloat ?? Infinity;
-      case 'freeFloat': return cpmMap.get(task.id)?.freeFloat ?? Infinity;
-      case 'critical': return cpmMap.get(task.id)?.isCritical ? 0 : 1;
-      case 'baselineStart': return (task as any).baselineStartDate || baselineMap.get(task.id)?.baselineStart || '';
-      case 'baselineEnd': return (task as any).baselineFinishDate || baselineMap.get(task.id)?.baselineEnd || '';
-      case 'startVariance': return baselineMap.get(task.id)?.startVarianceDays ?? Infinity;
-      case 'endVariance': return baselineMap.get(task.id)?.endVarianceDays ?? Infinity;
-      case 'actualStartDate': return (task as any).actualStartDate || '';
-      case 'actualEndDate': return (task as any).actualEndDate || '';
-      case 'baselineDuration': return (task as any).baselineDurationDays ?? Infinity;
-      case 'baselineCost': return (task as any).baselineCost ?? Infinity;
-      default: return '';
-    }
-  }, [cpmMap, baselineMap, workCalendar]);
+  // Sort + group-by + the flattened, collapse-aware row list (table/hooks/useTableGrouping)
+  const {
+    sortField, setSortField, sortDir, setSortDir,
+    groupBy, setGroupBy,
+    collapsedGroups, setCollapsedGroups,
+    collapsedSummaries, setCollapsedSummaries,
+    toggleSort,
+    visibleSorted, summaryTaskIds, toggleSummaryCollapse,
+    groupedSorted, toggleGroupCollapse,
+  } = useTableGrouping({ tasks, cpmMap, baselineMap, workCalendar });
 
   // Build hierarchical ordering
   const levelMap = useMemo(() => {
@@ -310,84 +265,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     assign(null, 0);
     return map;
   }, [tasks]);
-
-  const sorted = useMemo(() => {
-    const taskIds = new Set(tasks.map(t => t.id));
-    const childrenOf = new Map<string | null, GanttTask[]>();
-    for (const t of tasks) {
-      const parent = (t.parentTaskId && taskIds.has(t.parentTaskId)) ? t.parentTaskId : null;
-      if (!childrenOf.has(parent)) childrenOf.set(parent, []);
-      childrenOf.get(parent)!.push(t);
-    }
-
-    const sortChildren = (list: GanttTask[]) => {
-      if (!sortField) {
-        return [...list].sort(compareOutlineOrder);
-      }
-      return [...list].sort((a, b) => {
-        const va = getSortValue(a, sortField);
-        const vb = getSortValue(b, sortField);
-        if (va < vb) return sortDir === 'asc' ? -1 : 1;
-        if (va > vb) return sortDir === 'asc' ? 1 : -1;
-        return 0;
-      });
-    };
-
-    const summaryIds = new Set<string>();
-    for (const [parentId] of childrenOf) {
-      if (parentId !== null) summaryIds.add(parentId);
-    }
-
-    const result: GanttTask[] = [];
-    const flatten = (parentId: string | null) => {
-      const children = childrenOf.get(parentId);
-      if (!children) return;
-      for (const child of sortChildren(children)) {
-        result.push(child);
-        if (!collapsedSummaries.has(child.id)) {
-          flatten(child.id);
-        }
-      }
-    };
-    flatten(null);
-    return { rows: result, summaryIds };
-  }, [tasks, sortField, sortDir, getSortValue, collapsedSummaries]);
-
-  const visibleSorted = sorted.rows;
-  const summaryTaskIds = sorted.summaryIds;
-
-  const toggleSummaryCollapse = useCallback((taskId: string) => {
-    setCollapsedSummaries(prev => {
-      const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId);
-      else next.add(taskId);
-      return next;
-    });
-  }, []);
-
-  // Group tasks
-  const groupedSorted = useMemo(() => {
-    if (!groupBy) return null;
-    const groups = new Map<string, GanttTask[]>();
-    for (const task of visibleSorted) {
-      let key: string;
-      if (groupBy === 'status') key = task.status || 'unknown';
-      else if (groupBy === 'priority') key = task.priority || 'medium';
-      else key = task.assignedTo || 'Unassigned';
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(task);
-    }
-    return groups;
-  }, [visibleSorted, groupBy]);
-
-  const toggleGroupCollapse = useCallback((key: string) => {
-    setCollapsedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }, []);
 
   // Row drag reorder state
   const [rowDrag, setRowDrag] = useState<{
