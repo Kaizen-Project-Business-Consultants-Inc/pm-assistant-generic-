@@ -56,10 +56,11 @@ describe('Sprint Board: moving a card', () => {
     expect(columnOf(container, 'Alpha')).toBe('Todo');
     act(() => { dropOn(container, 'In Progress', 'a'); });
     expect(columnOf(container, 'Alpha')).toBe('In Progress'); // at once
-    expect(api.updateTask).toHaveBeenCalledWith('s1', 'a', { status: 'in_progress' });
+    await waitFor(() => expect(api.updateTask).toHaveBeenCalledWith('s1', 'a', { status: 'in_progress' }));
+    expect(columnOf(container, 'Alpha')).toBe('In Progress'); // still, while saving
     api.getSprintBoard.mockResolvedValue(board('in_progress'));
     await act(async () => { finish({}); });
-    await waitFor(() => expect(announce).toHaveBeenCalledWith('Task moved to in_progress'));
+    await waitFor(() => expect(vi.mocked(announce).mock.calls).toEqual([['Task moved to in_progress']]));
     expect(columnOf(container, 'Alpha')).toBe('In Progress');
     expect(container.querySelector('[data-testid="sprint-save-error"]')).toBeNull();
   });

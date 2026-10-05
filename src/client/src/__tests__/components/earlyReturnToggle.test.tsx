@@ -13,7 +13,7 @@ import type { WidgetDef } from '../../components/dashboard/WidgetRegistry';
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-const hookErrors = (spy: ReturnType<typeof vi.spyOn>) =>
+const hookErrors = (spy: { mock: { calls: unknown[][] } }) =>
   spy.mock.calls.filter(c => /hooks|Rendered (fewer|more)/i.test(String(c[0])));
 
 describe('WidgetGrid: widgets → none → widgets', () => {
