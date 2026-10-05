@@ -11,7 +11,7 @@ import { join, relative } from 'path';
 const SRC = join(__dirname, '..', '..');
 const SMALL_OK = new Set([
   'components/ui/Avatar.tsx', 'pages/ProjectDetailPage/RAIDTab.tsx', 'pages/ProjectDetailPage/schedule-tab/ScheduleToolbar.tsx',
-  'components/dashboard/CustomizeDropdown.tsx', 'components/schedule/GanttChart.tsx', 'components/sprints/StandupLogPanel.tsx',
+  'components/dashboard/CustomizeDropdown.tsx', 'components/schedule/gantt/GanttTimelinePanel.tsx', 'components/sprints/StandupLogPanel.tsx',
   'components/project/ResourcesTab.tsx', 'components/resources/RoleCapacityView.tsx', 'components/resources/WorkloadHeatmap.tsx',
   'components/resources/AvailabilityCalendar.tsx', 'components/timetracking/UtilizationHeatmap.tsx',
 ]);

@@ -36,7 +36,8 @@ function expectSameDom(name: string, html: string) {
     writeFileSync(file, html, 'utf8');
     return;
   }
-  const expected = readFileSync(file, 'utf8');
+  // fixtures are stored with LF; a Windows checkout (core.autocrlf) may hand them back with CRLF
+  const expected = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
   // byte-identical; on a mismatch, report the first differing offset for a readable failure
   if (html !== expected) {
     let i = 0;
