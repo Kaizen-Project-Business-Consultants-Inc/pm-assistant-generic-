@@ -233,8 +233,9 @@ export class ResourceRepository extends BaseRepository<Resource> {
    * count. One booking per task and person: an hours booking beats a %, a % beats "Assigned to".
    * Derived rows have ids "task:<id>" / "owner:<taskId>" — they are not deletable bookings.
    */
-  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; from?: string; to?: string; includeDone?: boolean } = {}): Promise<ResourceAssignment[]> {
+  async findEffectiveAssignments(filter: { scheduleIds?: string[]; resourceId?: string; resourceIds?: string[]; from?: string; to?: string; includeDone?: boolean } = {}): Promise<ResourceAssignment[]> {
     if (filter.scheduleIds && filter.scheduleIds.length === 0) return [];
+    if (filter.resourceIds && filter.resourceIds.length === 0) return [];
     // Finished and cancelled work no longer takes anyone's time (2026-10-01) — except where the
     // caller asks about the past (who worked on a project, last weeks' planned hours)
     const openOnly = filter.includeDone ? '' : ` AND COALESCE(t.status, '') NOT IN ('completed', 'cancelled')`;
@@ -248,8 +249,11 @@ export class ResourceRepository extends BaseRepository<Resource> {
       AND NOT EXISTS (SELECT 1 FROM tasks c WHERE c.parent_task_id = t.id)
       AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0${openOnly}`;
     const extra = where.length ? ` AND ${where.join(' AND ')}` : '';
-    const byResource = filter.resourceId ? ' AND r.id = ?' : '';
-    const rp = filter.resourceId ? [filter.resourceId] : [];
+    // Only these people (workload asks for a project's people, not the whole company's bookings —
+    // 2026-10-04 audit: every workload view read every booking in the company)
+    const ids = filter.resourceIds ?? [];
+    const byResource = (filter.resourceId ? ' AND r.id = ?' : '') + (ids.length ? ` AND r.id IN (${ids.map(() => '?').join(',')})` : '');
+    const rp = [...(filter.resourceId ? [filter.resourceId] : []), ...ids];
 
     const manual = await this.queryRaw(
       `SELECT ra.id, ra.resource_id, ra.task_id, ra.schedule_id, ra.hours_per_week, ra.start_date, ra.end_date
@@ -257,7 +261,7 @@ export class ResourceRepository extends BaseRepository<Resource> {
          JOIN schedules s ON s.id = ra.schedule_id
          JOIN projects p ON p.id = s.project_id AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
          LEFT JOIN tasks t ON t.id = ra.task_id
-        WHERE 1 = 1${openOnly}${filter.resourceId ? ' AND ra.resource_id = ?' : ''}${filter.scheduleIds ? ` AND ra.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})` : ''}${filter.to ? ' AND ra.start_date <= ?' : ''}${filter.from ? ' AND ra.end_date >= ?' : ''}`,
+        WHERE 1 = 1${openOnly}${filter.resourceId ? ' AND ra.resource_id = ?' : ''}${ids.length ? ` AND ra.resource_id IN (${ids.map(() => '?').join(',')})` : ''}${filter.scheduleIds ? ` AND ra.schedule_id IN (${filter.scheduleIds.map(() => '?').join(',')})` : ''}${filter.to ? ' AND ra.start_date <= ?' : ''}${filter.from ? ' AND ra.end_date >= ?' : ''}`,
       [...rp, ...(filter.scheduleIds ?? []), ...(filter.to ? [filter.to] : []), ...(filter.from ? [filter.from] : [])],
     );
     const onTask = await this.queryRaw(

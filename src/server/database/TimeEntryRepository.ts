@@ -160,6 +160,38 @@ class TimeEntryRepository {
   }
 
   /** Approved hours per week split by rate type; `projectId` limits it to one project (its cost is its own) */
+  /**
+   * Approved hours per person per week (total, standard, overtime) for many people in ONE query
+   * — workload used two queries per person (2026-10-04 audit). Optional: one project only.
+   */
+  async sumHoursByUsersAndWeekRange(userIds: string[], startDate: string, endDate: string, projectId?: string): Promise<Map<string, Array<{ weekStart: string; totalHours: number; standardHours: number; overtimeHours: number }>>> {
+    const out = new Map<string, Array<{ weekStart: string; totalHours: number; standardHours: number; overtimeHours: number }>>();
+    const ids = [...new Set(userIds)];
+    if (ids.length === 0) return out;
+    const rows = await databaseService.query(
+      `SELECT user_id, DATE_SUB(date, INTERVAL ((DAYOFWEEK(date) + 5) % 7) DAY) AS week_start,
+              SUM(hours) AS total_hours,
+              SUM(CASE WHEN COALESCE(rate_type, 'standard') = 'standard' THEN hours ELSE 0 END) AS standard_hours,
+              SUM(CASE WHEN rate_type = 'overtime' THEN hours ELSE 0 END) AS overtime_hours
+       FROM time_entries
+       WHERE user_id IN (${ids.map(() => '?').join(',')}) AND date >= ? AND date < ? AND status = 'approved'${projectId ? ' AND project_id = ?' : ''}
+       GROUP BY user_id, week_start
+       ORDER BY week_start`,
+      [...ids, startDate, endDate, ...(projectId ? [projectId] : [])],
+    );
+    for (const r of rows as any[]) {
+      const list = out.get(r.user_id) ?? [];
+      list.push({
+        weekStart: String(r.week_start).slice(0, 10),
+        totalHours: Number(r.total_hours) || 0,
+        standardHours: Number(r.standard_hours) || 0,
+        overtimeHours: Number(r.overtime_hours) || 0,
+      });
+      out.set(r.user_id, list);
+    }
+    return out;
+  }
+
   async sumHoursByRateTypeAndWeekRange(userId: string, startDate: string, endDate: string, projectId?: string): Promise<{ weekStart: string; standardHours: number; overtimeHours: number }[]> {
     const rows = await databaseService.query(
       `SELECT DATE_SUB(date, INTERVAL ((DAYOFWEEK(date) + 5) % 7) DAY) AS week_start,

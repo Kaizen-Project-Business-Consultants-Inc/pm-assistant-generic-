@@ -2,6 +2,11 @@
 
 
 
+
+## 2026-10-05 — Workload: right hours under load, fewer queries (audit high)
+
+calendarsFor (weeklyLoad.ts) read every plan calendar at once (~4 queries each, 5-connection pool) and a failure silently became Mon–Fri → now 3 at a time + one retry. computeWorkload read every booking in the company → findEffectiveAssignments({…, resourceIds: people}). Approved hours: two queries per person, one at a time → TimeEntryRepository.sumHoursByUsersAndWeekRange (one query) in computeWorkload and computeGlobalWorkload. Team Planner / levelling still read the whole company pool by design (they offer anyone). Guard workloadQueries.test.ts; weeklyLoad test covers concurrency + retry.
+
 ## 2026-10-05 — Scheduled automations, calendar sync, storage sync now run (audit high)
 
 They lived only in cronManager.startCronTasks (never called) — no systemd timers. Added runCronJob cases + timers: scheduled-automations every 5 min, calendar-sync and storage-sync every 15 min. Shortest automation interval raised 1 → 5 min (server computeNextRun + form). Guard scheduledJobsWired.test.ts (runner cases ⇔ timer files). Usage today: prod 0 automations, staging 1.

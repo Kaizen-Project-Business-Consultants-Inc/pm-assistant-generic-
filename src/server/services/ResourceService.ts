@@ -467,7 +467,7 @@ export class ResourceService {
     const people = new Set(resources.filter(r => !r.isGeneric).map(r => r.id));
     const firstDay = weeks[0].toISOString().slice(0, 10);
     const lastDay = new Date(weeks[weeks.length - 1].getTime() + 6 * DAY_MS).toISOString().slice(0, 10);
-    const elsewhere = generic || people.size === 0 ? [] : (await resourceRepository.findEffectiveAssignments({ from: firstDay, to: lastDay }))
+    const elsewhere = generic || people.size === 0 ? [] : (await resourceRepository.findEffectiveAssignments({ from: firstDay, to: lastDay, resourceIds: [...people] }))
       .filter(a => people.has(a.resourceId) && !here.has(a.scheduleId));
     const calOther = await calendarsFor(elsewhere.map(a => a.scheduleId), (id) => scheduleService.workingDayTest(id));
     // Rates can change over time (rate card): each week is costed at that week's rate
@@ -478,6 +478,15 @@ export class ResourceService {
     const capacityMap = await resourceAvailabilityService.getEffectiveCapacityBatch(
       resources.map(r => ({ id: r.id, capacityHoursPerWeek: r.capacityHoursPerWeek, calendarTemplateId: r.calendarTemplateId })),
       weeks,
+    );
+
+    // This project's approved hours for everyone involved, in one query (it was two queries per
+    // person, one person at a time — 2026-10-04 audit)
+    const hoursByUser = await timeEntryRepository.sumHoursByUsersAndWeekRange(
+      resources.map(r => r.userId).filter((u): u is string => !!u),
+      weeks[0].toISOString().slice(0, 10),
+      new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10),
+      projectId,
     );
 
     const workloads: ResourceWorkload[] = [];
@@ -501,15 +510,11 @@ export class ResourceService {
       let actualByWeek: Map<string, number> | null = null;
       let rateByWeek: Map<string, { standard: number; overtime: number }> | null = null;
       if (resource.userId) {
-        const firstWeek = weeks[0].toISOString().slice(0, 10);
-        const lastWeekEnd = new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10);
         // This project's approved hours and their cost — not the person's other projects (it used
         // to take all their time, so a project's cost included work logged elsewhere)
-        const actuals = await timeEntryRepository.sumHoursByUserAndWeekRange(resource.userId, firstWeek, lastWeekEnd, projectId);
-        actualByWeek = new Map(actuals.map(a => [a.weekStart, a.totalHours]));
-        // Fetch rate-type breakdown for cost calculation
-        const rateBreakdown = await timeEntryRepository.sumHoursByRateTypeAndWeekRange(resource.userId, firstWeek, lastWeekEnd, projectId);
-        rateByWeek = new Map(rateBreakdown.map(r => [r.weekStart, { standard: r.standardHours, overtime: r.overtimeHours }]));
+        const rows = hoursByUser.get(resource.userId) ?? [];
+        actualByWeek = new Map(rows.map(a => [a.weekStart, a.totalHours]));
+        rateByWeek = new Map(rows.map(r => [r.weekStart, { standard: r.standardHours, overtime: r.overtimeHours }]));
       }
 
       const resCapacityMap = capacityMap.get(resId);
@@ -644,6 +649,13 @@ export class ResourceService {
       weeks,
     );
 
+    // Everyone's approved hours in one query (was one query per person — 2026-10-04 audit)
+    const hoursByUser = await timeEntryRepository.sumHoursByUsersAndWeekRange(
+      resources.map(r => r.userId).filter((u): u is string => !!u),
+      weeks[0].toISOString().slice(0, 10),
+      new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10),
+    );
+
     const workloads: ResourceWorkload[] = [];
 
     for (const resId of involvedResourceIds) {
@@ -661,10 +673,7 @@ export class ResourceService {
 
       let actualByWeek: Map<string, number> | null = null;
       if (resource.userId) {
-        const firstWeek = weeks[0].toISOString().slice(0, 10);
-        const lastWeekEnd = new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10);
-        const actuals = await timeEntryRepository.sumHoursByUserAndWeekRange(resource.userId, firstWeek, lastWeekEnd);
-        actualByWeek = new Map(actuals.map(a => [a.weekStart, a.totalHours]));
+        actualByWeek = new Map((hoursByUser.get(resource.userId) ?? []).map(a => [a.weekStart, a.totalHours]));
       }
 
       const resCapacityMap = capacityMap.get(resId);

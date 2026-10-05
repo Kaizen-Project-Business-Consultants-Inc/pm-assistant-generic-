@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { hoursInWeek, workingDaysInWeek, calendarsFor } from '../../services/weeklyLoad';
+import { hoursInWeek, workingDaysInWeek, calendarsFor, CALENDAR_LOOKUPS_AT_ONCE } from '../../services/weeklyLoad';
 import { weekdaysOnly } from '../../utils/workingDays';
 
 describe('weekly load counts only the days a task covers (2026-10-01)', () => {
@@ -37,10 +37,26 @@ describe('weekly load counts only the days a task covers (2026-10-01)', () => {
   it('looks each plan calendar up once, and falls back to Mon–Fri when it fails', async () => {
     const lookup = vi.fn(async (id: string) => { if (id === 'bad') throw new Error('no calendar'); return (d: Date) => d.getUTCDay() !== 0; });
     const calOf = await calendarsFor(['s1', 's1', 'bad'], lookup);
-    expect(lookup).toHaveBeenCalledTimes(2);
+    expect(lookup).toHaveBeenCalledTimes(3); // s1 once; 'bad' tried twice before the fallback
     expect(calOf('s1')(new Date('2026-10-10T00:00:00Z'))).toBe(true);   // Saturday worked on s1
     expect(calOf('bad')(new Date('2026-10-10T00:00:00Z'))).toBe(false); // Mon–Fri
     expect(calOf('unknown')).toBe(weekdaysOnly);
+  });
+
+  // 2026-10-05: reading them all at once could swamp the database pool, and a failed read
+  // silently counted the plan as Mon–Fri — now a few at a time, and a failed read is retried
+  it('reads a few calendars at a time and retries a failed read once', async () => {
+    let running = 0, most = 0, flaky = 0;
+    const lookup = vi.fn(async (id: string) => {
+      running++; most = Math.max(most, running);
+      await new Promise(r => setTimeout(r, 5));
+      running--;
+      if (id === 'flaky' && flaky++ === 0) throw new Error('pool busy');
+      return (d: Date) => d.getUTCDay() !== 0;
+    });
+    const calOf = await calendarsFor(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'flaky'], lookup);
+    expect(most).toBeLessThanOrEqual(CALENDAR_LOOKUPS_AT_ONCE);
+    expect(calOf('flaky')(new Date('2026-10-10T00:00:00Z'))).toBe(true); // the retry worked: not Mon–Fri
   });
 });
 

@@ -68,6 +68,7 @@ vi.mock('../../database/TimeEntryRepository', () => ({
   timeEntryRepository: {
     sumHoursByUserAndWeekRange: vi.fn().mockResolvedValue([]),
     sumHoursByRateTypeAndWeekRange: vi.fn().mockResolvedValue([]),
+    sumHoursByUsersAndWeekRange: vi.fn().mockResolvedValue(new Map()),
   },
 }));
 
@@ -707,21 +708,17 @@ describe('ResourceService', () => {
       capacityMap.set('r1', new Map());
       mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(capacityMap);
 
-      mockTimeEntryRepo.sumHoursByUserAndWeekRange.mockResolvedValueOnce([
-        { weekStart: '2026-01-06', totalHours: 35 },
-      ]);
-      mockTimeEntryRepo.sumHoursByRateTypeAndWeekRange.mockResolvedValueOnce([
-        { weekStart: '2026-01-06', standardHours: 30, overtimeHours: 5 },
-      ]);
+      mockTimeEntryRepo.sumHoursByUsersAndWeekRange.mockResolvedValueOnce(new Map([
+        ['u1', [{ weekStart: '2026-01-06', totalHours: 35, standardHours: 30, overtimeHours: 5 }]],
+      ]));
 
       const result = await service.computeWorkload('p1');
-      // This project's approved hours only — not the person's time on other projects
-      expect(mockTimeEntryRepo.sumHoursByUserAndWeekRange).toHaveBeenCalledWith(
-        'u1', expect.any(String), expect.any(String), 'p1',
+      // This project's approved hours only — not the person's time on other projects — for
+      // everyone at once (one query, 2026-10-05)
+      expect(mockTimeEntryRepo.sumHoursByUsersAndWeekRange).toHaveBeenCalledWith(
+        ['u1'], expect.any(String), expect.any(String), 'p1',
       );
-      expect(mockTimeEntryRepo.sumHoursByRateTypeAndWeekRange).toHaveBeenCalledWith(
-        'u1', expect.any(String), expect.any(String), 'p1',
-      );
+      expect(mockTimeEntryRepo.sumHoursByUserAndWeekRange).not.toHaveBeenCalled();
 
       // Check that actual hours are populated for the relevant week
       const weekWithActual = result[0].weeks.find(w => w.weekStart === '2026-01-06');
@@ -742,12 +739,9 @@ describe('ResourceService', () => {
       capacityMap.set('r1', new Map());
       mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(capacityMap);
 
-      mockTimeEntryRepo.sumHoursByUserAndWeekRange.mockResolvedValueOnce([
-        { weekStart: '2026-01-06', totalHours: 45 },
-      ]);
-      mockTimeEntryRepo.sumHoursByRateTypeAndWeekRange.mockResolvedValueOnce([
-        { weekStart: '2026-01-06', standardHours: 40, overtimeHours: 5 },
-      ]);
+      mockTimeEntryRepo.sumHoursByUsersAndWeekRange.mockResolvedValueOnce(new Map([
+        ['u1', [{ weekStart: '2026-01-06', totalHours: 45, standardHours: 40, overtimeHours: 5 }]],
+      ]));
 
       const result = await service.computeWorkload('p1');
       // cost for that week = 40 * 100 + 5 * 150 = 4750
@@ -869,8 +863,8 @@ describe('ResourceService', () => {
       capacityMap.set('r2', new Map());
       mockAvailabilityService.getEffectiveCapacityBatch.mockResolvedValueOnce(capacityMap);
 
-      // r2 has userId so time entries will be fetched
-      mockTimeEntryRepo.sumHoursByUserAndWeekRange.mockResolvedValueOnce([]);
+      // r2 has userId so time entries will be fetched (everyone in one query)
+      mockTimeEntryRepo.sumHoursByUsersAndWeekRange.mockResolvedValueOnce(new Map());
 
       const result = await service.computeGlobalWorkload();
       expect(result).toHaveLength(2);

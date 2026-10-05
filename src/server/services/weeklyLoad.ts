@@ -20,14 +20,23 @@ export function hoursInWeek(
   return days === 0 ? 0 : Math.round(((a.hoursPerWeek / 5) * days) * 100) / 100;
 }
 
+/** How many plan calendars are read at once (the database pool is small — 2026-10-04 audit) */
+export const CALENDAR_LOOKUPS_AT_ONCE = 3;
+
 /**
  * Each plan's working calendar, looked up once per plan. `lookup` is the schedule service's
- * workingDayTest; anything that fails falls back to Monday–Friday.
+ * workingDayTest. Read a few at a time — firing them all at once (one per plan, ~4 queries each)
+ * could swamp the database pool, and a failed read silently counted that plan as Monday–Friday,
+ * so hours came out wrong under load. A failed read is tried once more before that fallback.
  */
 export async function calendarsFor(scheduleIds: Iterable<string>, lookup: (scheduleId: string) => Promise<IsWorking>): Promise<(scheduleId: string) => IsWorking> {
   const map = new Map<string, IsWorking>();
-  await Promise.all([...new Set(scheduleIds)].map(async (id) => {
-    try { map.set(id, await lookup(id)); } catch { map.set(id, weekdaysOnly); }
-  }));
+  const ids = [...new Set(scheduleIds)];
+  for (let i = 0; i < ids.length; i += CALENDAR_LOOKUPS_AT_ONCE) {
+    await Promise.all(ids.slice(i, i + CALENDAR_LOOKUPS_AT_ONCE).map(async (id) => {
+      try { map.set(id, await lookup(id)); return; } catch { /* once more */ }
+      try { map.set(id, await lookup(id)); } catch { map.set(id, weekdaysOnly); }
+    }));
+  }
   return (id: string) => map.get(id) ?? weekdaysOnly;
 }
