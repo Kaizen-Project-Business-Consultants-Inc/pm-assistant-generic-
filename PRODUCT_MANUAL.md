@@ -703,7 +703,7 @@ Use the add/remove buttons on each task card. Each card shows name, status badge
 
 A Kanban-style board scoped to a single sprint with three columns (Todo, In Progress, Done). Features:
 
-- **Drag-and-drop** — Drag cards between columns to update task status (optimistic UI update).
+- **Drag-and-drop** — Drag cards between columns to update task status. The card moves at once (a local marker); once the save has succeeded and the board has been fetched again the marker is cleared. If the save fails the card goes back to its column and a red message at the top of the board (dismiss with ✕, also announced) says *The move of "X" was not saved: <reason>. Please try again.* Story points that fail to save show *The story points for "X" were not saved …*.
 - **WIP limits** — Click the gear icon on any column header to set a work-in-progress limit. Column highlights amber when at or over limit.
 - **Swimlanes** — Toggle the Swimlane button to group tasks by assignee, with avatar headers for each group.
 - **Deterministic avatars** — Assignee avatars use a consistent color from an 8-color palette based on name hash.

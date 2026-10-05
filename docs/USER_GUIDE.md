@@ -1230,7 +1230,7 @@ Once planning is complete, click **Start Sprint** to begin. The sprint status ch
 
 During an active sprint, the sprint board provides a Kanban-style view with three columns (Todo, In Progress, Done):
 
-- **Drag-and-drop** -- Drag cards between columns to update task status. The UI updates immediately (optimistic update) while the API call completes in the background.
+- **Drag-and-drop** -- Drag cards between columns to update task status. The card moves straight away while the change saves in the background. If it can't be saved, the card goes back to its column and a red message at the top of the board says so (e.g. *The move of "Login page" was not saved. Please try again.*); close it with **✕**. The same happens if story points can't be saved.
 - **WIP limits** -- Click the gear icon on any column header to set a work-in-progress limit. The column highlights amber when at or over the limit.
 - **Swimlanes** -- Click the **Swimlane** toggle to group tasks by assignee. Each group shows an avatar header with task count.
 - **Assignee avatars** -- Each card shows the assignee with a colored avatar circle. Colors are deterministic (same person always gets the same color from an 8-color palette).

@@ -20,24 +20,10 @@ import { useUndoRedo } from '../../../hooks/useUndoRedo';
 import { buildRowNumberMap } from '../../../components/schedule/gantt/types';
 import { buildBulkLinks, type BulkLinkMode } from '../../../components/schedule/bulkLink';
 import { announce } from '../../../utils/announce';
+import { SHOWN_AGAIN, TRY_AGAIN, saveFailedMessage } from '../../../utils/saveFailedMessage';
 
 /** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
 const movedSuffix = (n: number) => (n > 0 ? ` · ${n} task${n > 1 ? 's' : ''} moved later` : '');
-
-/** Second sentence of a failed-save message: whether the screen was put back */
-export const SHOWN_AGAIN = 'The last saved version is shown again — please try again.';
-export const TRY_AGAIN = 'Please try again.';
-
-/**
- * '<what>: <the server's reason>. <after>' — the server's reason only when it sent one (a network
- * failure has none). E.g. 'Your change to "Alpha" was not saved: End date is before start date.
- * The last saved version is shown again — please try again.'
- */
-export function saveFailedMessage(what: string, error: unknown, after: string): string {
-  const m = (error as { response?: { data?: { message?: unknown } } } | null)?.response?.data?.message;
-  const why = typeof m === 'string' && m.trim() ? m.trim().replace(/[.!\s]+$/, '') : '';
-  return `${what}${why ? `: ${why}` : ''}. ${after}`;
-}
 
 /** The fields an optimistic edit changed: what they were before, and what the edit set */
 export interface OptimisticPatch {

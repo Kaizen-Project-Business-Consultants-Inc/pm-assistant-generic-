@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useMemo, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Kanban, Settings, Users, ShieldCheck } from 'lucide-react';
+import { Kanban, Settings, Users, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { announce } from '../../utils/announce';
+import { saveFailedMessage, TRY_AGAIN } from '../../utils/saveFailedMessage';
 import { Avatar } from '../ui/Avatar';
 
 interface BoardTask {
@@ -180,6 +181,12 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
   const [swimlane, setSwimlane] = useState<'none' | 'assignee'>('none');
   const [editingPointsTaskId, setEditingPointsTaskId] = useState<string | null>(null);
   const [editingPointsValue, setEditingPointsValue] = useState('');
+  // What did not save (a card move or story points): shown until dismissed or the next one
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const showSaveError = useCallback((message: string) => {
+    setSaveError(message);
+    announce(message);
+  }, []);
   const queryClient = useQueryClient();
 
   const { data, isLoading, isError } = useQuery({
@@ -225,6 +232,10 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sprintBoard', sprintId] });
     },
+    onError: (error: unknown, { taskId }) => {
+      const name = rawTasks.find(t => t.id === taskId)?.name;
+      showSaveError(saveFailedMessage(`The story points for ${name ? `"${name}"` : 'this task'} were not saved`, error, TRY_AGAIN));
+    },
   });
 
   const handlePointsClick = useCallback((taskId: string, currentPoints: number) => {
@@ -248,14 +259,33 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
     }
   }, [handlePointsSave]);
 
+  const clearMoveMarker = useCallback((taskId: string, status: string) => {
+    setLocalTaskOverrides((prev) => {
+      if (prev[taskId] !== status) return prev;
+      const next = { ...prev };
+      delete next[taskId];
+      return next;
+    });
+  }, []);
+
   const updateStatusMutation = useMutation({
     mutationFn: ({ taskId, status }: { taskId: string; status: string }) => {
       if (!scheduleId) return Promise.reject(new Error('No scheduleId available'));
       return apiService.updateTask(scheduleId, taskId, { status });
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['sprintBoard', sprintId] });
+    // The card was moved on screen at once (localTaskOverrides). Success: the marker goes once
+    // the board has been fetched again (so the card doesn't hop back meanwhile). Failure: it goes
+    // straight away, which puts the card back, and the message says so. Either way only if no
+    // later move of the same card has replaced it.
+    onSuccess: async (_data, variables) => {
       announce(`Task moved to ${variables.status}`);
+      await queryClient.invalidateQueries({ queryKey: ['sprintBoard', sprintId] });
+      clearMoveMarker(variables.taskId, variables.status);
+    },
+    onError: (error: unknown, { taskId, status }) => {
+      clearMoveMarker(taskId, status);
+      const name = rawTasks.find(t => t.id === taskId)?.name;
+      showSaveError(saveFailedMessage(`The move of ${name ? `"${name}"` : 'this task'} was not saved`, error, TRY_AGAIN));
     },
   });
 
@@ -332,6 +362,21 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+      {/* A move or story points that did not save (screen readers hear it via announce) */}
+      {saveError && (
+        <div data-testid="sprint-save-error" className="flex items-start gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-900/40 border-b border-red-300 dark:border-red-700 text-sm text-red-900 dark:text-red-100">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+          <span>{saveError}</span>
+          <button
+            type="button"
+            onClick={() => setSaveError(null)}
+            className="ml-auto text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-white"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2 flex-wrap">
         <Kanban className="w-4 h-4 text-primary-500" />
         <h3 className="text-sm font-semibold text-gray-800 dark:text-white">Sprint Board</h3>
