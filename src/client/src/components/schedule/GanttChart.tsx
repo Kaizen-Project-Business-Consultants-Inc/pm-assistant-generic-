@@ -1,5 +1,4 @@
 import { useMemo, useRef, useEffect, useState, useCallback, Fragment } from 'react';
-import { progressFromHours } from '../../utils/progressFromHours';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
@@ -10,6 +9,7 @@ import { useGanttLayout } from './gantt/hooks/useGanttLayout';
 import { useDependencyDraw } from './gantt/hooks/useDependencyDraw';
 import { useBarDrag } from './gantt/hooks/useBarDrag';
 import { useGridKeyboard } from './gantt/hooks/useGridKeyboard';
+import { useInlineCellEdit, GANTT_EDIT_RULES } from './shared/hooks/useInlineCellEdit';
 import type { SavedView } from './SavedViewsDropdown';
 import { ConfirmModal } from '../ui/ConfirmModal';
 // Extracted sub-modules
@@ -40,14 +40,11 @@ import { GanttTimelineStrip } from './gantt/GanttTimelineStrip';
 import { GanttFilterPanel } from './gantt/GanttFilterPanel';
 import { GanttBulkActionBar } from './gantt/GanttBulkActionBar';
 import { GanttToolbar } from './gantt/GanttToolbar';
-import { announce } from '../../utils/announce';
 import type { PanelMode } from './gantt/GanttToolbar';
 import { GanttLeftPanelHeader } from './gantt/GanttLeftPanelHeader';
 import { GanttLeftPanelRow } from './gantt/GanttLeftPanelRow';
 import { GanttTimelineBar } from './gantt/GanttTimelineBar';
 import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
-import { planDurationEdit } from './durationEdit';
-import { planPredecessorEdit } from './predecessorEdit';
 import { isSummaryRollupCell } from './summaryRollup';
 
 // Re-export types for external consumers
@@ -595,22 +592,6 @@ export function GanttChart({
     parentTaskIds, minDate, dayPx, selectedIds, workCalendar,
   });
 
-  // -----------------------------------------------------------------------
-  // Inline editing state & helpers
-  // -----------------------------------------------------------------------
-  const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  // savingCell tracks the cell currently being saved (used for timing the green flash)
-  const [savingCell, setSavingCell] = useState<{ taskId: string; field: string } | null>(null);
-  void savingCell; // read to satisfy TS — value used internally for save timing
-  const [savedCell, setSavedCell] = useState<{ taskId: string; field: string } | null>(null);
-  const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); };
-  }, []);
-
   // Reverse map: row number → taskId
   const rowNumToTaskId = useMemo(() => {
     const map = new Map<number, string>();
@@ -662,16 +643,17 @@ export function GanttChart({
   // Column auto-fit: measure text width and set width to max + padding
   const autoFitGanttColumn = useGanttColumnAutoFit({ rows, getTaskFieldValue, workCalendar, setGanttColWidths });
 
-  const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
-    // % complete from approved hours can't be typed (mark the task done instead)
-    if (field === 'progressPercentage' && progressFromHours(task as any)) return;
-    if (!onTaskUpdate || drag) return;
-    // A summary's dates, % complete and status come from its tasks (same rule as the Table view)
-    if (isSummaryRollupCell(task, field)) return;
-    setEditingCell({ taskId, field });
-    setEditValue(getTaskFieldValue(task, field));
-    setDepError(null);
-  }, [onTaskUpdate, drag, getTaskFieldValue]);
+  // -----------------------------------------------------------------------
+  // Inline editing state & helpers (shared with the Table view: shared/hooks/useInlineCellEdit)
+  // -----------------------------------------------------------------------
+  const {
+    editingCell, editValue, setEditValue, savedCell, depError,
+    startEditing, cancelEditing, saveEdit,
+    handleKeyDown: handleEditKeyDown, handleSelectChange, handleDateChange,
+  } = useInlineCellEdit<EditableField>({
+    tasks, onTaskUpdate, getTaskFieldValue, rowNumToTaskId, workCalendar,
+    blockEditingWhile: drag, rules: GANTT_EDIT_RULES,
+  });
 
   /** Click-to-select, click-again-to-edit: first click selects the row, second click enters inline edit.
    *  Dropdown fields (assignedTo, status, priority) open immediately on first click. */
@@ -689,79 +671,9 @@ export function GanttChart({
     }
   }, [onTaskUpdate, activeTaskId, startEditing, onTaskSelect]);
 
-  const cancelEditing = useCallback(() => {
-    setEditingCell(null);
-    setEditValue('');
-    setDepError(null);
-  }, []);
-
-  const saveEdit = useCallback((taskId: string, field: EditableField, value: string) => {
-    if (!onTaskUpdate) return;
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-    const originalValue = getTaskFieldValue(task, field);
-    if (value === originalValue) { cancelEditing(); return; }
-
-    // Name cannot be empty
-    if (field === 'name' && !value.trim()) { cancelEditing(); return; }
-
-    // Duration: compute new endDate
-    if (field === 'duration') {
-      const plan = planDurationEdit(task, value, workCalendar);
-      if (!plan.ok) { cancelEditing(); return; }
-      setSavingCell({ taskId, field });
-      setEditingCell(null);
-      setEditValue('');
-      onTaskUpdate(taskId, plan.patch);
-      setTimeout(() => {
-        setSavingCell(null);
-        setSavedCell({ taskId, field });
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-      }, 300);
-      return;
-    }
-
-    // Dependency: multi-dep parsing
-    if (field === 'dependency') {
-      const plan = planPredecessorEdit(value, taskId, rowNumToTaskId);
-      if (!plan.ok) { setDepError({ taskId, message: plan.message }); return; }
-      setDepError(null);
-      setSavingCell({ taskId, field });
-      setEditingCell(null);
-      setEditValue('');
-      onTaskUpdate(taskId, plan.patch);
-      setTimeout(() => {
-        setSavingCell(null);
-        setSavedCell({ taskId, field });
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-      }, 300);
-      return;
-    }
-
-    const saveValue = field === 'progressPercentage'
-      ? Math.max(0, Math.min(100, Number(value)))
-      : field === 'estimatedDays' || field === 'estimatedDurationHours'
-        ? Math.max(0, Number(value))
-        : value;
-
-    setSavingCell({ taskId, field });
-    setEditingCell(null);
-    setEditValue('');
-    onTaskUpdate(taskId, { [field]: saveValue });
-    setTimeout(() => {
-      setSavingCell(null);
-      setSavedCell({ taskId, field });
-      announce(`${field} saved`);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-    }, 300);
-  }, [onTaskUpdate, tasks, getTaskFieldValue, cancelEditing, rowNumToTaskId, workCalendar]);
-
+  // Enter saves and Escape cancels (shared editor); Tab saves and moves to the next editable cell (Gantt only)
   const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
-    if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
-    else if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); }
+    if (e.key === 'Enter' || e.key === 'Escape') handleEditKeyDown(e, taskId, field);
     else if (e.key === 'Tab') {
       e.preventDefault();
       // Save current cell first
@@ -783,17 +695,7 @@ export function GanttChart({
         }
       }
     }
-  }, [saveEdit, cancelEditing, editValue, rows, startEditing]);
-
-  const handleSelectChange = useCallback((taskId: string, field: EditableField, value: string) => {
-    setEditValue(value);
-    saveEdit(taskId, field, value);
-  }, [saveEdit]);
-
-  const handleDateChange = useCallback((taskId: string, field: EditableField, value: string) => {
-    setEditValue(value);
-    saveEdit(taskId, field, value);
-  }, [saveEdit]);
+  }, [handleEditKeyDown, saveEdit, editValue, rows, startEditing]);
 
 
   // Grid keyboard: focused cell + arrow keys, Enter/F2/Escape, copy/paste (cell and row),

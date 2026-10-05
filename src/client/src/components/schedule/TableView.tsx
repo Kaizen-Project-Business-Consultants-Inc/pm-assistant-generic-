@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
-import { progressFromHours } from '../../utils/progressFromHours';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
@@ -9,7 +8,6 @@ import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
 import { ConfirmModal } from '../ui/ConfirmModal';
-import { announce } from '../../utils/announce';
 import { ResourceQuickAssign } from './ResourceQuickAssign';
 import { ResourcePickerDropdown } from './ResourcePickerDropdown';
 import { TableToolbar } from './table/TableToolbar';
@@ -20,6 +18,7 @@ import { TableHeaderRow } from './table/TableHeaderRow';
 import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
 import { useTableGrouping } from './table/hooks/useTableGrouping';
+import { useInlineCellEdit, TABLE_EDIT_RULES } from './shared/hooks/useInlineCellEdit';
 import {
   barColors, priorityColors, statusOptions, priorityOptions,
   formatDate,
@@ -83,10 +82,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     return () => cancelAnimationFrame(frame);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusTaskId]);
-  const [editingCell, setEditingCell] = useState<{ taskId: string; field: EditableField } | null>(null);
-  const [editValue, setEditValue] = useState<string>('');
-  const [savingCell, setSavingCell] = useState<{ taskId: string; field: string } | null>(null);
-  const [savedCell, setSavedCell] = useState<{ taskId: string; field: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState('');
   const [bulkPriority, setBulkPriority] = useState('');
@@ -155,15 +150,79 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   }, [setColWidths]);
 
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Row number maps
+  // Fixed row numbers (MS Project-style ID): position in the full plan, unaffected by
+  // sort, filter or collapse
+  const rowNumMap = useMemo(() => buildRowNumberMap(allTasks ?? tasks), [allTasks, tasks]);
+
+  const rowNumToTaskId = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const [taskId, n] of rowNumMap) map.set(n, taskId);
+    return map;
+  }, [rowNumMap]);
+
+  const getTaskFieldValue = useCallback((task: GanttTask, field: EditableField): string => {
+    switch (field) {
+      case 'name': return task.name || '';
+      case 'status': return task.status || 'pending';
+      case 'priority': return task.priority || 'medium';
+      case 'startDate': return task.startDate?.split('T')[0] || '';
+      case 'endDate': return task.endDate?.split('T')[0] || '';
+      case 'progressPercentage': return String(task.progressPercentage ?? 0);
+      case 'assignedTo': return task.assignedTo || '';
+      case 'notes': return task.description || '';
+      case 'duration': {
+        if (task.startDate && task.endDate) {
+          const diff = (workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0);
+          return String(diff > 0 ? diff : 0);
+        }
+        return task.estimatedDays != null ? String(task.estimatedDays) : '';
+      }
+      case 'dependency': {
+        const deps = task.dependencies;
+        if (!deps || deps.length === 0) {
+          if (!task.dependency) return '';
+          const depRowNum = rowNumMap.get(task.dependency);
+          if (!depRowNum) return '';
+          const type = task.dependencyType || 'FS';
+          const lag = task.dependencyLagDays || 0;
+          let label = String(depRowNum);
+          if (type !== 'FS') label += type;
+          if (lag !== 0) label += (lag > 0 ? `+${lag}d` : `${lag}d`);
+          return label;
+        }
+        return deps.map(d => {
+          const depRowNum = rowNumMap.get(d.dependencyId);
+          if (!depRowNum) return '';
+          let label = String(depRowNum);
+          if (d.dependencyType !== 'FS') label += d.dependencyType;
+          if (d.lagDays !== 0) label += (d.lagDays > 0 ? `+${d.lagDays}d` : `${d.lagDays}d`);
+          return label;
+        }).filter(Boolean).join(',');
+      }
+      case 'budgetAllocated': return (task as any).budgetAllocated != null ? String((task as any).budgetAllocated) : '';
+      case 'actualCost': return (task as any).actualCost != null ? String((task as any).actualCost) : '';
+      case 'actualStartDate': return (task as any).actualStartDate || '';
+      case 'actualEndDate': return (task as any).actualEndDate || '';
+      case 'constraintType': return (task as any).constraintType || 'ASAP';
+      case 'constraintDate': return (task as any).constraintDate || '';
+      default: return '';
+    }
+  }, [rowNumMap, workCalendar]);
+
+  // Inline editing state & helpers (shared with the Gantt grid: shared/hooks/useInlineCellEdit)
+  const {
+    editingCell, editValue, setEditValue, savingCell, setSavingCell, savedCell, setSavedCell, savedTimerRef,
+    depError, setDepError,
+    startEditing, cancelEditing, saveEdit, handleKeyDown, handleSelectChange, handleDateChange,
+  } = useInlineCellEdit<EditableField>({
+    tasks, onTaskUpdate, getTaskFieldValue, rowNumToTaskId, workCalendar, rules: TABLE_EDIT_RULES,
+  });
 
   useEffect(() => {
     if (editingCell && inputRef.current) inputRef.current.focus();
   }, [editingCell]);
-
-  useEffect(() => {
-    return () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); };
-  }, []);
 
   // CPM lookup map
   const cpmMap = useMemo(() => {
@@ -377,17 +436,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     document.addEventListener('mouseup', onUp);
   }, [canDragRows, onTaskReorder, visibleSorted, getDescendantIds]);
 
-  // Row number maps
-  // Fixed row numbers (MS Project-style ID): position in the full plan, unaffected by
-  // sort, filter or collapse
-  const rowNumMap = useMemo(() => buildRowNumberMap(allTasks ?? tasks), [allTasks, tasks]);
-
-  const rowNumToTaskId = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const [taskId, n] of rowNumMap) map.set(n, taskId);
-    return map;
-  }, [rowNumMap]);
-
   // Successor map
   const successorMap = useMemo(() => {
     const map = new Map<string, Array<{ successorId: string; type: string; lag: number }>>();
@@ -402,8 +450,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     return map;
   }, [tasks]);
 
-  const [depError, setDepError] = useState<{ taskId: string; message: string } | null>(null);
-
   const getDepHealth = useCallback((depTaskId: string): 'satisfied' | 'in_progress' | 'at_risk' => {
     const depTask = tasks.find(t => t.id === depTaskId);
     if (!depTask) return 'at_risk';
@@ -413,55 +459,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     if (depTask.endDate && isCalendarOverdue(depTask.endDate)) return 'at_risk';
     return 'in_progress';
   }, [tasks]);
-
-  const getTaskFieldValue = useCallback((task: GanttTask, field: EditableField): string => {
-    switch (field) {
-      case 'name': return task.name || '';
-      case 'status': return task.status || 'pending';
-      case 'priority': return task.priority || 'medium';
-      case 'startDate': return task.startDate?.split('T')[0] || '';
-      case 'endDate': return task.endDate?.split('T')[0] || '';
-      case 'progressPercentage': return String(task.progressPercentage ?? 0);
-      case 'assignedTo': return task.assignedTo || '';
-      case 'notes': return task.description || '';
-      case 'duration': {
-        if (task.startDate && task.endDate) {
-          const diff = (workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0);
-          return String(diff > 0 ? diff : 0);
-        }
-        return task.estimatedDays != null ? String(task.estimatedDays) : '';
-      }
-      case 'dependency': {
-        const deps = task.dependencies;
-        if (!deps || deps.length === 0) {
-          if (!task.dependency) return '';
-          const depRowNum = rowNumMap.get(task.dependency);
-          if (!depRowNum) return '';
-          const type = task.dependencyType || 'FS';
-          const lag = task.dependencyLagDays || 0;
-          let label = String(depRowNum);
-          if (type !== 'FS') label += type;
-          if (lag !== 0) label += (lag > 0 ? `+${lag}d` : `${lag}d`);
-          return label;
-        }
-        return deps.map(d => {
-          const depRowNum = rowNumMap.get(d.dependencyId);
-          if (!depRowNum) return '';
-          let label = String(depRowNum);
-          if (d.dependencyType !== 'FS') label += d.dependencyType;
-          if (d.lagDays !== 0) label += (d.lagDays > 0 ? `+${d.lagDays}d` : `${d.lagDays}d`);
-          return label;
-        }).filter(Boolean).join(',');
-      }
-      case 'budgetAllocated': return (task as any).budgetAllocated != null ? String((task as any).budgetAllocated) : '';
-      case 'actualCost': return (task as any).actualCost != null ? String((task as any).actualCost) : '';
-      case 'actualStartDate': return (task as any).actualStartDate || '';
-      case 'actualEndDate': return (task as any).actualEndDate || '';
-      case 'constraintType': return (task as any).constraintType || 'ASAP';
-      case 'constraintDate': return (task as any).constraintDate || '';
-      default: return '';
-    }
-  }, [rowNumMap, workCalendar]);
 
   // Column auto-fit
   const getCellText = useCallback((task: GanttTask, colKey: ColumnKey): string => {
@@ -523,15 +520,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     setColWidths(prev => ({ ...prev, [colKey]: newWidth }));
   }, [visibleColumns, visibleSorted, getCellText, setColWidths]);
 
-  const startEditing = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
-    // % complete from approved hours can't be typed (mark the task done instead)
-    if (field === 'progressPercentage' && progressFromHours(task as any)) return;
-    if (!onTaskUpdate) return; // read-only mode
-    if (isSummaryRollupCell(task, field)) return;
-    setEditingCell({ taskId, field });
-    setEditValue(getTaskFieldValue(task, field));
-  }, [getTaskFieldValue, onTaskUpdate]);
-
   // Dropdown fields open immediately on first click (no select-first requirement)
   const IMMEDIATE_EDIT_FIELDS = new Set<EditableField>(['assignedTo', 'status', 'priority']);
   const handleCellClick = useCallback((taskId: string, field: EditableField, task: GanttTask) => {
@@ -544,91 +532,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       setFocusedCell({ taskId, field });
     }
   }, [editingCell, activeTaskId, startEditing, onTaskSelect]);
-
-  const cancelEditing = useCallback(() => {
-    setEditingCell(null);
-    setEditValue('');
-  }, []);
-
-  const saveEdit = useCallback((taskId: string, field: EditableField, value: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (!task) return;
-
-    const originalValue = getTaskFieldValue(task, field);
-    if (value === originalValue) { cancelEditing(); return; }
-
-    if (field === 'duration') {
-      const plan = planDurationEdit(task, value, workCalendar);
-      if (!plan.ok) { cancelEditing(); return; }
-      setSavingCell({ taskId, field });
-      setEditingCell(null);
-      setEditValue('');
-      onTaskUpdate?.(taskId, plan.patch);
-      setTimeout(() => {
-        setSavingCell(null);
-        setSavedCell({ taskId, field });
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-      }, 300);
-      return;
-    }
-
-    if (field === 'dependency') {
-      const plan = planPredecessorEdit(value, taskId, rowNumToTaskId);
-      if (!plan.ok) {
-        setDepError({ taskId, message: plan.message });
-        return;
-      }
-      setDepError(null);
-      setSavingCell({ taskId, field });
-      setEditingCell(null);
-      setEditValue('');
-      onTaskUpdate?.(taskId, plan.patch);
-      setTimeout(() => {
-        setSavingCell(null);
-        setSavedCell({ taskId, field });
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-        savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-      }, 300);
-      return;
-    }
-
-    const saveValue = field === 'progressPercentage'
-      ? Math.max(0, Math.min(100, Number(value)))
-      : (field === 'budgetAllocated' || field === 'actualCost')
-        ? (value === '' ? null : Math.max(0, Number(value.replace(/[,$]/g, ''))))
-        : value;
-
-    setSavingCell({ taskId, field });
-    setEditingCell(null);
-    setEditValue('');
-
-    const apiField = field === 'notes' ? 'description' : field;
-    onTaskUpdate?.(taskId, { [apiField]: saveValue });
-
-    setTimeout(() => {
-      setSavingCell(null);
-      setSavedCell({ taskId, field });
-      announce(`${field} saved`);
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSavedCell(null), 1200);
-    }, 300);
-  }, [tasks, getTaskFieldValue, cancelEditing, onTaskUpdate, rowNumToTaskId, workCalendar]);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent, taskId: string, field: EditableField) => {
-    if (e.key === 'Enter') { e.preventDefault(); saveEdit(taskId, field, editValue); }
-    else if (e.key === 'Escape') { e.preventDefault(); cancelEditing(); }
-  }, [saveEdit, editValue, cancelEditing]);
-
-  const handleSelectChange = useCallback((taskId: string, field: EditableField, value: string) => {
-    setEditValue(value);
-    saveEdit(taskId, field, value);
-  }, [saveEdit]);
-
-  const handleDateChange = useCallback((taskId: string, field: EditableField, value: string) => {
-    setEditValue(value);
-    saveEdit(taskId, field, value);
-  }, [saveEdit]);
 
   const isEditing = (taskId: string, field: string) =>
     editingCell?.taskId === taskId && editingCell.field === field;

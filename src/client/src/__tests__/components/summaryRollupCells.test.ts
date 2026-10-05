@@ -40,10 +40,12 @@ describe('Gantt and Table refuse the same cells on summary rows', () => {
     return src.slice(i, src.indexOf('}, [', i));
   };
 
-  // The Gantt grid's paste path lives in gantt/hooks/useGridKeyboard.ts (moved out of GanttChart.tsx 2026-10-04)
+  // The Gantt grid's paste path lives in gantt/hooks/useGridKeyboard.ts (moved out of GanttChart.tsx 2026-10-04);
+  // typing into a cell, for both views, lives in shared/hooks/useInlineCellEdit.ts (2026-10-05)
   const GANTT_KEYBOARD = 'gantt/hooks/useGridKeyboard.ts';
+  const SHARED_EDIT = 'shared/hooks/useInlineCellEdit.ts';
   for (const file of ['GanttChart.tsx', 'TableView.tsx']) {
-    const src = file === 'GanttChart.tsx' ? `${read(file)}\n${read(GANTT_KEYBOARD)}` : read(file);
+    const src = (file === 'GanttChart.tsx' ? `${read(file)}\n${read(GANTT_KEYBOARD)}` : read(file)) + `\n${read(SHARED_EDIT)}`;
     it(`${file}: a summary's rolled-up cell does not open for typing`, () => {
       expect(fnBody(src, 'const startEditing = useCallback(')).toContain('isSummaryRollupCell(task, field)');
     });
