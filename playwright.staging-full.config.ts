@@ -9,7 +9,7 @@ import { defineConfig } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['pre-launch.spec.ts', 'gantt-columns.spec.ts', 'team-planner.spec.ts', 'timesheets.spec.ts', 'financials.spec.ts', 'weekly-review.spec.ts', 'platform-admin.spec.ts', 'key-rights.spec.ts', 'people-rights.spec.ts', 'child-in-project.spec.ts', 'schedule-behaviour.spec.ts'],
+  testMatch: ['pre-launch.spec.ts', 'gantt-columns.spec.ts', 'team-planner.spec.ts', 'timesheets.spec.ts', 'financials.spec.ts', 'weekly-review.spec.ts', 'platform-admin.spec.ts', 'key-rights.spec.ts', 'people-rights.spec.ts', 'child-in-project.spec.ts', 'ai-only-when-asked.spec.ts', 'schedule-behaviour.spec.ts'],
   globalSetup: './e2e/staging-auth.setup.ts',
   timeout: 60_000,
   expect: { timeout: 15_000 },
