@@ -40,21 +40,30 @@ describe('Gantt and Table refuse the same cells on summary rows', () => {
     return src.slice(i, src.indexOf('}, [', i));
   };
 
-  // The Gantt grid's paste path lives in gantt/hooks/useGridKeyboard.ts (moved out of GanttChart.tsx 2026-10-04);
-  // typing into a cell, for both views, lives in shared/hooks/useInlineCellEdit.ts (2026-10-05)
-  const GANTT_KEYBOARD = 'gantt/hooks/useGridKeyboard.ts';
+  // Each view's keyboard lives in its own hook (gantt/hooks/useGridKeyboard.ts, table/hooks/useTableKeyboard.ts);
+  // pasting into a cell, for both views, lives in shared/hooks/useGridKeyboardPaste.ts and typing
+  // into one in shared/hooks/useInlineCellEdit.ts (2026-10-05)
+  const KEYBOARD: Record<string, string> = { 'GanttChart.tsx': 'gantt/hooks/useGridKeyboard.ts', 'TableView.tsx': 'table/hooks/useTableKeyboard.ts' };
+  const SHARED_PASTE = 'shared/hooks/useGridKeyboardPaste.ts';
   const SHARED_EDIT = 'shared/hooks/useInlineCellEdit.ts';
   for (const file of ['GanttChart.tsx', 'TableView.tsx']) {
-    const src = (file === 'GanttChart.tsx' ? `${read(file)}\n${read(GANTT_KEYBOARD)}` : read(file)) + `\n${read(SHARED_EDIT)}`;
+    const src = `${read(file)}\n${read(KEYBOARD[file])}\n${read(SHARED_EDIT)}`;
     it(`${file}: a summary's rolled-up cell does not open for typing`, () => {
       expect(fnBody(src, 'const startEditing = useCallback(')).toContain('isSummaryRollupCell(task, field)');
     });
     it(`${file}: Ctrl+V into a summary's rolled-up cell is refused`, () => {
-      const paste = src.slice(src.indexOf('copiedValue.field === focusedCell.field'));
-      const guard = paste.indexOf('isSummaryRollupCell(pasteTarget, focusedCell.field)');
-      const firstUpdate = paste.indexOf('onTaskUpdate');
+      // the view sends a paste into a cell of the matching column to the shared paste step ...
+      const keyboard = read(KEYBOARD[file]);
+      const paste = keyboard.slice(keyboard.indexOf('copiedValue.field === focusedCell.field'));
+      const handOff = paste.indexOf('pasteIntoFocusedCell(');
+      expect(handOff).toBeGreaterThan(-1);
+      expect(paste.slice(0, handOff)).not.toContain('onTaskUpdate');
+      // ... which refuses a summary's rolled-up cell before any update
+      const shared = read(SHARED_PASTE);
+      const body = shared.slice(shared.indexOf('export function pasteIntoFocusedCell'));
+      const guard = body.indexOf('isSummaryRollupCell(pasteTarget, focusedCell.field)');
       expect(guard).toBeGreaterThan(-1);
-      expect(guard).toBeLessThan(firstUpdate);
+      expect(guard).toBeLessThan(body.indexOf('onTaskUpdate?.('));
     });
   }
 

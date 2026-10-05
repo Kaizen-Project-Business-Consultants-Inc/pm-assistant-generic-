@@ -1,10 +1,13 @@
-import { useMemo, useEffect } from 'react';
-import { type GanttTask, type FlatRow, type EditableField, type GanttColDef } from '../types';
-import { type WorkCalendar } from '../../../../utils/workingDays';
-import {
-  useGridCellState, useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell,
-  handleGridNavKey, GANTT_KEYBOARD_RULES,
-} from '../../shared/hooks/useGridKeyboardPaste';
+// REFERENCE COPY for tests only: gantt/hooks/useGridKeyboard.ts exactly as it was at f6793313,
+// before it used shared/hooks/useGridKeyboardPaste.ts. The equivalence test drives this and the
+// new hook with the same key sequences and expects identical results. Do not edit.
+/* eslint-disable */
+import { useState, useMemo, useEffect } from 'react';
+import { type GanttTask, type FlatRow, type EditableField, type GanttColDef } from '../../../components/schedule/gantt/types';
+import { type WorkCalendar } from '../../../utils/workingDays';
+import { planDurationEdit } from '../../../components/schedule/durationEdit';
+import { planPredecessorEdit } from '../../../components/schedule/predecessorEdit';
+import { isSummaryRollupCell } from '../../../components/schedule/summaryRollup';
 
 /**
  * The Gantt grid's keyboard: the focused cell (moved with the arrow keys, Enter/F2 to edit,
@@ -14,14 +17,9 @@ import {
  * listener, off while a cell is being edited or the plan is read-only; keys typed in an
  * input, textarea or select are left alone. Editing state, selection, columns and the bulk
  * message stay owned by GanttChart / other hooks and are passed in.
- * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4). The steps it does
- * the same way as the Table view (cell state, copy, paste, row pick, arrows / Enter / F2 /
- * Escape, focus back after an edit) are shared: shared/hooks/useGridKeyboardPaste.ts with
- * GANTT_KEYBOARD_RULES (2026-10-05). What stays here is the Gantt's own: the listener is off
- * while editing or read-only, Tab passes through from a checkbox, Alt+Up/Down reorder, cell
- * copy/paste kept apart from row copy/paste, the 2 s "Copied" message, and indent / outdent.
+ * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4).
  */
-export function useGridKeyboard({
+export function useGridKeyboardBefore({
   tasks,
   rows,
   editingCell,
@@ -60,12 +58,17 @@ export function useGridKeyboard({
   orderedColumns: GanttColDef[];
   isColVisible: (col: GanttColDef) => boolean;
 }) {
-  // Focused cell, copied cell value, copied rows, pasted-cell flash (shared with the Table)
-  const {
-    focusedCell, setFocusedCell, copiedValue, setCopiedValue, pasteFlash, flashPaste, copiedTasks, setCopiedTasks,
-  } = useGridCellState<EditableField>();
+  // -----------------------------------------------------------------------
+  // Focused cell state (keyboard navigation without editing)
+  // -----------------------------------------------------------------------
+  const [focusedCell, setFocusedCell] = useState<{ taskId: string; field: EditableField } | null>(null);
 
-  const rowTasks = useMemo(() => rows.map(r => r.task), [rows]);
+  // -----------------------------------------------------------------------
+  // Copy/paste cell state + row copy state
+  // -----------------------------------------------------------------------
+  const [copiedValue, setCopiedValue] = useState<{ field: EditableField; value: string } | null>(null);
+  const [pasteFlash, setPasteFlash] = useState<{ taskId: string; field: string } | null>(null);
+  const [copiedTasks, setCopiedTasks] = useState<GanttTask[]>([]);
 
   /** Get visible FIELD_ORDER (only fields whose columns are visible) */
   const visibleFieldOrder = useMemo(() => {
@@ -110,16 +113,42 @@ export function useGridKeyboard({
           // Cell copy/paste
           if (e.key === 'c') {
             e.preventDefault();
-            copyFocusedCell(tasks, focusedCell, getTaskFieldValue, setCopiedValue);
+            const task = tasks.find(t => t.id === focusedCell.taskId);
+            if (task) {
+              const val = getTaskFieldValue(task, focusedCell.field);
+              setCopiedValue({ field: focusedCell.field, value: val });
+              navigator.clipboard.writeText(val).catch(() => {});
+            }
             return;
           }
           if (e.key === 'v') {
             if (copiedValue && copiedValue.field === focusedCell.field) {
               e.preventDefault();
-              pasteIntoFocusedCell({
-                tasks, focusedCell, copiedValue, rowNumToTaskId, workCalendar, onTaskUpdate, flashPaste,
-                rules: GANTT_KEYBOARD_RULES,
-              });
+              const pasteTarget = tasks.find(t => t.id === focusedCell.taskId);
+              // A summary's dates, % and status come from its tasks: refuse quietly, as typing does
+              if (isSummaryRollupCell(pasteTarget, focusedCell.field)) return;
+              // Predecessors: the same parse and the same update as typing them
+              if (focusedCell.field === 'dependency') {
+                const plan = planPredecessorEdit(copiedValue.value, focusedCell.taskId, rowNumToTaskId);
+                if (!plan.ok) return;
+                onTaskUpdate(focusedCell.taskId, plan.patch);
+                setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+                setTimeout(() => setPasteFlash(null), 800);
+                return;
+              }
+              // Duration isn't stored: a pasted duration moves the finish, by the same rule as typing one
+              if (focusedCell.field === 'duration') {
+                const pasteTask = pasteTarget;
+                const plan = pasteTask ? planDurationEdit(pasteTask, copiedValue.value, workCalendar) : null;
+                if (!plan?.ok) return;
+                onTaskUpdate(focusedCell.taskId, plan.patch);
+                setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+                setTimeout(() => setPasteFlash(null), 800);
+                return;
+              }
+              onTaskUpdate(focusedCell.taskId, { [focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
+              setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
+              setTimeout(() => setPasteFlash(null), 800);
             }
             return;
           }
@@ -127,7 +156,11 @@ export function useGridKeyboard({
           // Row copy/paste
           if (e.key === 'c') {
             e.preventDefault();
-            const toCopy = rowsToCopy(rowTasks, someSelected, selectedIds, activeTaskId);
+            const toCopy = someSelected
+              ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task)
+              : activeTaskId
+                ? rows.filter(r => r.task.id === activeTaskId).map(r => r.task)
+                : [];
             if (toCopy.length > 0) {
               setCopiedTasks(toCopy);
               setBulkMessage(`Copied ${toCopy.length} task${toCopy.length > 1 ? 's' : ''}`);
@@ -146,7 +179,11 @@ export function useGridKeyboard({
       // Ctrl+D: Duplicate active task or selected tasks
       if ((e.ctrlKey || e.metaKey) && e.key === 'd' && onDuplicateTasks) {
         e.preventDefault();
-        const toDup = rowsToCopy(rowTasks, someSelected, selectedIds, activeTaskId);
+        const toDup = someSelected
+          ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task)
+          : activeTaskId
+            ? rows.filter(r => r.task.id === activeTaskId).map(r => r.task)
+            : [];
         if (toDup.length > 0) onDuplicateTasks(toDup);
         return;
       }
@@ -214,18 +251,70 @@ export function useGridKeyboard({
         return;
       }
 
-      // Arrows, Enter/F2 to edit, Escape to leave the cell; Enter on a row focuses its first field
-      handleGridNavKey(e, {
-        focusedCell, rowTasks, fieldOrder: visibleFieldOrder, activeTaskId, setFocusedCell, onTaskSelect, startEditing,
-        rules: GANTT_KEYBOARD_RULES,
-      });
+      if (!focusedCell) {
+        // If no cell focused, Enter on a selected row focuses the first field
+        if (e.key === 'Enter' && activeTaskId) {
+          e.preventDefault();
+          const field = visibleFieldOrder[0] || 'name';
+          setFocusedCell({ taskId: activeTaskId, field });
+        }
+        return;
+      }
+      const rowIdx = rows.findIndex(r => r.task.id === focusedCell.taskId);
+      const fieldIdx = visibleFieldOrder.indexOf(focusedCell.field);
+      if (rowIdx === -1 || fieldIdx === -1) return;
+
+      switch (e.key) {
+        case 'ArrowRight':
+          e.preventDefault();
+          if (fieldIdx < visibleFieldOrder.length - 1) {
+            setFocusedCell({ taskId: focusedCell.taskId, field: visibleFieldOrder[fieldIdx + 1] });
+          }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          if (fieldIdx > 0) {
+            setFocusedCell({ taskId: focusedCell.taskId, field: visibleFieldOrder[fieldIdx - 1] });
+          }
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          if (rowIdx < rows.length - 1) {
+            const nextTask = rows[rowIdx + 1].task;
+            setFocusedCell({ taskId: nextTask.id, field: focusedCell.field });
+            onTaskSelect?.(nextTask);
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (rowIdx > 0) {
+            const prevTask = rows[rowIdx - 1].task;
+            setFocusedCell({ taskId: prevTask.id, field: focusedCell.field });
+            onTaskSelect?.(prevTask);
+          }
+          break;
+        case 'Enter':
+        case 'F2':
+          e.preventDefault();
+          startEditing(focusedCell.taskId, focusedCell.field, rows[rowIdx].task);
+          break;
+        case 'Escape':
+          e.preventDefault();
+          setFocusedCell(null);
+          break;
+      }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId]);
+  }, [focusedCell, editingCell, rows, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId]);
 
   // When editing ends, restore focus to that cell
-  useRestoreFocusAfterEdit(editingCell, setFocusedCell);
+  useEffect(() => {
+    if (!editingCell) return;
+    return () => {
+      setFocusedCell(editingCell);
+    };
+  }, [editingCell]);
 
   return {
     focusedCell,
