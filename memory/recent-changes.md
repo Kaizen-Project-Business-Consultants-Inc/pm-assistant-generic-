@@ -1,6 +1,7 @@
 # Recent changes and open items (rolling log — newest first)
 
-
+## 2026-10-05 — Item 4 Phase 4 batch A: Gantt left grid + right timeline moved into their own components
+Branch `phase4` (not merged/deployed). No behaviour change; DOM byte-identical. `gantt/GanttGridPanel.tsx` (column headers, task rows, inline insert-before/after rows, quick-add rows) and `gantt/GanttTimelinePanel.tsx` (timescale header, grid lines, non-working shading, stripes, today line, baseline ghosts, link-draw/create previews, bars, dependency arrows SVG) — JSX moved verbatim (only `_columnState` → `columnState` prop name), no state inside, all values/handlers passed as typed props (types derived from the hooks' return types and the row/bar prop interfaces), `leftPanelRef`/`timelineRef` objects reach the same divs, the `panelMode` conditions, splitter, "No tasks" early return and Timeline strip stay in GanttChart. Not React.memo (deliberate: re-renders exactly as before). GanttChart 1,738 → 1,319 lines. Guard: `__tests__/components/ganttChartDom.test.tsx` compares full `container.innerHTML` in 12 states with fixtures captured on 51a8eeb8 before the move (`__fixtures__/ganttChartDom/*.html`; re-capture only with `GANTT_DOM_WRITE=1` on a known-good commit) + row click/double-click, cell edit, bar drag, inline insert callbacks; a one-character change to the TODAY badge fails 7 of them. typeScaleGuard's small-text allowlist now names GanttTimelinePanel.tsx (the TODAY badge moved there) instead of GanttChart.tsx.
 
 ## 2026-10-05 — Items matched to their own project (audit high "wrong project")
 
