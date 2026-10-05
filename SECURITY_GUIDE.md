@@ -169,6 +169,15 @@ owner  >  manager  >  viewer   (editor = viewer)
 
 **Why the gaps existed (for the record):** the check was added on 4 Jul 2026 route by route (opt-in); later routes (bulk tools 15 Jul, bulk delete 5 Sep, many others) never got it; the middleware silently passed when it couldn't find a project; nothing tested for it.
 
+### An item id in the URL belongs to the project in the URL (Oct 2026)
+Access is checked on the project/schedule in the URL, so a child id in the same URL must belong to
+it. Plugin-level preHandler hooks do this for every route that names an item: RAID items (`risks.ts`),
+documents (`documentIntelligence.ts`, added 2026-10-05 — edit/delete/reprocess/read of another
+project's document were open), automations, tasks/epics/baselines/scenarios under a schedule
+(`schedules.ts`). Task comments are deleted only on their own task (`WHERE id = ? AND task_id = ?`);
+"save project as template" needs the project's Manager/Owner. Guard: `__tests__/routes/childInProject.test.ts`
+fails when a new `/:projectId/…/:xId` route file has no such check.
+
 ### People list — risky changes are the owner's or a PMO's (Oct 2026)
 `services/peopleRights.ts` (user decision 2026-10-05, "Option B"): project managers manage ordinary
 people, but only the company owner or a PMO may choose/change a line manager (= timesheet approver),

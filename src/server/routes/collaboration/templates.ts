@@ -5,6 +5,7 @@ import { createFromTemplateSchema, saveAsTemplateSchema } from '../../schemas/te
 import { templateMarketplaceRepository } from '../../database/TemplateMarketplaceRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
@@ -183,6 +184,10 @@ export async function templateRoutes(fastify: FastifyInstance) {
     try {
       const data = saveAsTemplateSchema.parse(request.body ?? {});
       const userId = request.user!.userId;
+      // Only the project's Manager/Owner copies a project's plan into a template — it read any
+      // project in the company by id (2026-10-04 audit)
+      const access = await checkProjectRole(request, data.projectId, 'manager');
+      if (!access.ok) return reply.status(access.status).send(access.body);
       const template = await templateService.saveFromProject({
         ...data,
         templateName: data.templateName,

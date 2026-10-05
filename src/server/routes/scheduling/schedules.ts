@@ -764,8 +764,9 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     schema: { description: 'Delete a comment', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { commentId } = request.params as { commentId: string };
-      const deleted = await scheduleService.deleteComment(commentId);
+      // Only a comment on this task — a comment id from another project's task matches nothing
+      const { taskId, commentId } = request.params as { taskId: string; commentId: string };
+      const deleted = await scheduleService.deleteComment(commentId, taskId);
       if (!deleted) return reply.status(404).send({ error: 'Comment not found' });
       return { message: 'Comment deleted' };
     } catch (error) {

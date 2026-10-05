@@ -1,6 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+
+## 2026-10-05 — Items matched to their own project (audit high "wrong project")
+
+Open: documents (PATCH/GET/download/DELETE/reprocess by documentId under any project the PM manages) → plugin hook in documentIntelligence.ts like risks.ts; task comment delete (DELETE … WHERE id = ? only) → `deleteComment(commentId, taskId)`; save-from-project template → checkProjectRole manager. The audit's RAID claims (cancel, suggest-mitigation) were WRONG — risks.ts already has a plugin hook for every :riskId route, updates matched to their item. Guard: childInProject.test.ts; e2e child-in-project.spec.ts.
+
 ## 2026-10-05 — People list: risky changes are the owner's or a PMO's (audit high #1)
 
 User chose Option B. `services/peopleRights.ts` checkCreate/checkUpdate/checkDelete/removeLogin wired into resources.ts POST/PUT/DELETE/bulk-delete/import: PMs manage ordinary people; owner/PMO only for line manager changes, email of someone with a login (or an email that is a login), deleting people with a login, removing a login; never the owner's own record. "Remove their login" never worked (read company off request.user) — now works for owner/PMO. Same request.user mistake broke the Invite button (same-company people told "another company") and inviter names in invite emails (resources.ts, projectMembers.ts) — fixed + guard. Client: useCanManagePeople hides line-manager select, login email, delete for login rows, remove-login tick for PMs. Tests: peopleRights.test.ts.

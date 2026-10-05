@@ -296,8 +296,9 @@ export class TaskRepository {
     return rows.map(rowToComment);
   }
 
-  async deleteComment(commentId: string): Promise<boolean> {
-    const result: any = await databaseService.query('DELETE FROM task_comments WHERE id = ?', [commentId]);
+  /** Only the comment on THIS task (the route checks the task is in the plan; 2026-10-05 audit) */
+  async deleteComment(commentId: string, taskId: string): Promise<boolean> {
+    const result: any = await databaseService.query('DELETE FROM task_comments WHERE id = ? AND task_id = ?', [commentId, taskId]);
     return (result.affectedRows ?? 0) > 0;
   }
 

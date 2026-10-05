@@ -1253,8 +1253,8 @@ export class ScheduleService {
     return taskRepository.getComments(taskId);
   }
 
-  async deleteComment(commentId: string): Promise<boolean> {
-    return taskRepository.deleteComment(commentId);
+  async deleteComment(commentId: string, taskId: string): Promise<boolean> {
+    return taskRepository.deleteComment(commentId, taskId);
   }
 
   async logActivity(

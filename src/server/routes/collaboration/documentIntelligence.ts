@@ -27,6 +27,15 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // Every route that names a document must name it under its own project — otherwise access
+  // checked against project A could edit, delete or reprocess project B's document (found by
+  // the 2026-10-04 audit; same rule as routes/collaboration/risks.ts).
+  fastify.addHook('preHandler', async (request, reply) => {
+    const p = request.params as { projectId?: string; documentId?: string } | undefined;
+    if (!p?.documentId || !p.projectId || reply.sent) return;
+    const doc = await projectDocumentRepository.findById(p.documentId);
+    if (!doc || doc.projectId !== p.projectId) return reply.status(404).send({ error: 'Document not found' });
+  });
 
   // POST /:projectId/documents/upload — multipart file upload
   fastify.post('/:projectId/documents/upload', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
