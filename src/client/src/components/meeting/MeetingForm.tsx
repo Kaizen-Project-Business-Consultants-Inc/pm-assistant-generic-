@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
 
 interface AgendaItem {
@@ -47,6 +47,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
   onClose,
   isSubmitting,
 }) => {
+  const uid = useId();
   const [title, setTitle] = useState(initialData?.title || '');
   const [meetingType, setMeetingType] = useState(initialData?.meetingType || 'ad_hoc');
   const [scheduledDate, setScheduledDate] = useState(initialData?.scheduledDate || '');
@@ -106,7 +107,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             {initialData?.title ? 'Edit Meeting' : 'New Meeting'}
           </h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+          <button aria-label="Close" onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
             <X className="w-5 h-5 text-gray-500" />
           </button>
         </div>
@@ -114,8 +115,9 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Title */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Title *</label>
+            <label htmlFor={`${uid}-title`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Title *</label>
             <input
+              id={`${uid}-title`}
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -128,16 +130,17 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
           {/* Type + Date row */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Type</label>
-              <select value={meetingType} onChange={e => setMeetingType(e.target.value)} className="input w-full">
+              <label htmlFor={`${uid}-type`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Type</label>
+              <select id={`${uid}-type`} value={meetingType} onChange={e => setMeetingType(e.target.value)} className="input w-full">
                 {MEETING_TYPES.map(t => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date & Time *</label>
+              <label htmlFor={`${uid}-date-time`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date & Time *</label>
               <input
+                id={`${uid}-date-time`}
                 type="datetime-local"
                 value={scheduledDate}
                 onChange={e => setScheduledDate(e.target.value)}
@@ -146,8 +149,9 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Duration (min)</label>
+              <label htmlFor={`${uid}-duration`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Duration (min)</label>
               <input
+                id={`${uid}-duration`}
                 type="number"
                 value={durationMinutes}
                 onChange={e => setDurationMinutes(Number(e.target.value))}
@@ -160,8 +164,9 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
 
           {/* Location */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Location</label>
+            <label htmlFor={`${uid}-location`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Location</label>
             <input
+              id={`${uid}-location`}
               type="text"
               value={location}
               onChange={e => setLocation(e.target.value)}
@@ -172,9 +177,10 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
 
           {/* Attendees */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Attendees</label>
+            <label htmlFor={`${uid}-attendees`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Attendees</label>
             <div className="flex gap-2 mb-2">
               <input
+                id={`${uid}-attendees`}
                 type="text"
                 value={attendeeInput}
                 onChange={e => setAttendeeInput(e.target.value)}
@@ -188,7 +194,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
                   <option key={m.id} value={m.name} />
                 ))}
               </datalist>
-              <button type="button" onClick={addAttendee} className="btn btn-secondary px-3">
+              <button type="button" onClick={addAttendee} aria-label="Add attendee" className="btn btn-secondary px-3">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
@@ -197,7 +203,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
                 {attendees.map((name, idx) => (
                   <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
                     {name}
-                    <button type="button" onClick={() => removeAttendee(idx)} className="hover:text-red-500">
+                    <button type="button" onClick={() => removeAttendee(idx)} aria-label={`Remove ${name}`} className="hover:text-red-500">
                       <X className="w-3 h-3" />
                     </button>
                   </span>
@@ -221,6 +227,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
                     type="text"
                     value={item.title}
                     onChange={e => updateAgendaItem(idx, 'title', e.target.value)}
+                    aria-label={`Agenda item ${idx + 1}`}
                     className="input w-full text-sm"
                     placeholder={`Agenda item ${idx + 1}`}
                   />
@@ -229,12 +236,14 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
                       type="text"
                       value={item.presenter || ''}
                       onChange={e => updateAgendaItem(idx, 'presenter', e.target.value)}
+                      aria-label={`Presenter for agenda item ${idx + 1}`}
                       className="input w-full text-xs"
                       placeholder="Presenter"
                     />
                     <input
                       type="number"
                       value={item.durationMinutes || ''}
+                      aria-label={`Minutes for agenda item ${idx + 1}`}
                       onChange={e => updateAgendaItem(idx, 'durationMinutes', Number(e.target.value) || undefined)}
                       className="input w-full text-xs"
                       placeholder="Duration (min)"
@@ -243,7 +252,7 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
                     />
                   </div>
                 </div>
-                <button type="button" onClick={() => removeAgendaItem(idx)} className="p-1 hover:text-red-500 mt-1">
+                <button type="button" onClick={() => removeAgendaItem(idx)} aria-label={`Remove agenda item ${idx + 1}`} className="p-1 hover:text-red-500 mt-1">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -252,8 +261,9 @@ export const MeetingForm: React.FC<MeetingFormProps> = ({
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Notes</label>
+            <label htmlFor={`${uid}-notes`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Notes</label>
             <textarea
+              id={`${uid}-notes`}
               value={notes}
               onChange={e => setNotes(e.target.value)}
               className="input w-full resize-y"

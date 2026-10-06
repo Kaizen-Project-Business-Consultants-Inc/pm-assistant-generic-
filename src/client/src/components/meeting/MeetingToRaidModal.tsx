@@ -148,7 +148,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
               Review and import meeting items into the RAID log
             </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">
+          <button aria-label="Close" onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -206,7 +206,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                             }`}
                           >
                             <div className="flex items-start gap-3 px-4 py-3">
-                              <button onClick={() => toggleSelect(idx)} className="mt-0.5 flex-shrink-0">
+                              <button onClick={() => toggleSelect(idx)} aria-label={`Select ${eff.title}`} aria-pressed={isSelected} className="mt-0.5 flex-shrink-0">
                                 {isSelected
                                   ? <CheckSquare className="w-4.5 h-4.5 text-primary-600 dark:text-primary-400" />
                                   : <Square className="w-4.5 h-4.5 text-gray-500 dark:text-gray-400" />
@@ -219,6 +219,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                     type="text"
                                     value={eff.title}
                                     onChange={e => updateEdit(idx, 'title', e.target.value)}
+                                    aria-label={`Title for ${eff.title}`}
                                     className="flex-1 min-w-[200px] text-sm font-medium text-gray-900 dark:text-white bg-transparent border-b border-transparent hover:border-gray-300 dark:hover:border-gray-600 focus:border-primary-500 focus:outline-none px-0 py-0.5"
                                   />
 
@@ -240,6 +241,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                   <select
                                     value={eff.severity}
                                     onChange={e => updateEdit(idx, 'severity', e.target.value)}
+                                    aria-label={`Severity for ${eff.title}`}
                                     className={`px-2 py-0.5 rounded-full text-xs font-medium border-0 cursor-pointer ${severityColor(eff.severity)}`}
                                   >
                                     {SEVERITIES.map(s => (
@@ -251,6 +253,7 @@ export function MeetingToRaidModal({ isOpen, onClose, onImport, candidates, impo
                                     <select
                                       value={eff.category}
                                       onChange={e => updateEdit(idx, 'category', e.target.value)}
+                                      aria-label={`Category for ${eff.title}`}
                                       className="px-2 py-0.5 rounded text-xs font-medium border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-pointer capitalize"
                                     >
                                       {CATEGORIES.map(cat => (

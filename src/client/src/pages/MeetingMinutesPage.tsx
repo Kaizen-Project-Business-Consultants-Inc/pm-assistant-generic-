@@ -632,6 +632,7 @@ export const MeetingMinutesPage: React.FC = () => {
                   type="file"
                   accept=".txt,.vtt,.srt"
                   onChange={handleFileSelect}
+                  aria-label="Upload a transcript"
                   className="hidden"
                 />
                 <div
@@ -671,7 +672,7 @@ export const MeetingMinutesPage: React.FC = () => {
                 {uploadError && (
                   <div className="mt-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 flex items-center justify-between">
                     <span>{uploadError}</span>
-                    <button onClick={() => setUploadError(null)} className="ml-2"><X className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setUploadError(null)} aria-label="Dismiss" className="ml-2"><X className="w-3.5 h-3.5" /></button>
                   </div>
                 )}
               </div>
@@ -861,6 +862,7 @@ export const MeetingMinutesPage: React.FC = () => {
                     type="text"
                     value={historySearch}
                     onChange={(e) => setHistorySearch(e.target.value)}
+                    aria-label="Search analyses"
                     placeholder="Search analyses..."
                     className="input w-full pl-8 text-xs py-1.5"
                   />
@@ -1025,6 +1027,7 @@ export const MeetingMinutesPage: React.FC = () => {
               Enter recipient email addresses (comma or newline separated):
             </p>
             <textarea
+              aria-label="Recipient email addresses"
               value={minutesEmails}
               onChange={e => setMinutesEmails(e.target.value)}
               className="input w-full resize-y text-sm mb-3"

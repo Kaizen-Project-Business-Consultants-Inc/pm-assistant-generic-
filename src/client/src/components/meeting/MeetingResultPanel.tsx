@@ -346,6 +346,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                             type="checkbox"
                             checked={selectedIndices.size === taskUpdates.length}
                             onChange={toggleAll}
+                            aria-label="Select all task updates"
                             className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                           />
                         </th>
@@ -368,6 +369,7 @@ export const MeetingResultPanel: React.FC<MeetingResultPanelProps> = ({
                               type="checkbox"
                               checked={selectedIndices.has(idx)}
                               onChange={() => toggleIndex(idx)}
+                              aria-label={`Select ${tu.taskName}`}
                               className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
                             />
                           </td>

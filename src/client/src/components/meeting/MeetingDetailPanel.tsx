@@ -194,7 +194,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <button onClick={onBack} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded mt-0.5">
+          <button onClick={onBack} aria-label="Back to meetings" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded mt-0.5">
             <ArrowLeft className="w-5 h-5 text-gray-500" />
           </button>
           <div>
@@ -229,6 +229,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
             type="file"
             accept=".txt,.vtt,.srt"
             onChange={handleFileSelect}
+            aria-label="Upload a transcript"
             className="hidden"
           />
           <button
@@ -259,7 +260,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
       {uploadError && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 flex items-center justify-between">
           <span>{uploadError}</span>
-          <button onClick={() => setUploadError(null)} className="ml-2"><X className="w-3.5 h-3.5" /></button>
+          <button onClick={() => setUploadError(null)} aria-label="Dismiss" className="ml-2"><X className="w-3.5 h-3.5" /></button>
         </div>
       )}
 
@@ -335,6 +336,7 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
         </div>
         {notesEditing ? (
           <textarea
+            aria-label="Meeting notes"
             value={notes}
             onChange={e => setNotes(e.target.value)}
             className="input w-full resize-y text-sm"
@@ -420,12 +422,13 @@ export const MeetingDetailPanel: React.FC<MeetingDetailPanelProps> = ({
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                 <Mail className="w-4 h-4" /> Send Meeting Minutes
               </h3>
-              <button onClick={() => setSendMinutesAnalysisId(null)}><X className="w-4 h-4 text-gray-500" /></button>
+              <button onClick={() => setSendMinutesAnalysisId(null)} aria-label="Close"><X className="w-4 h-4 text-gray-500" /></button>
             </div>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
               Enter recipient email addresses (comma or newline separated):
             </p>
             <textarea
+              aria-label="Recipient email addresses"
               value={minutesEmails}
               onChange={e => setMinutesEmails(e.target.value)}
               className="input w-full resize-y text-sm mb-3"

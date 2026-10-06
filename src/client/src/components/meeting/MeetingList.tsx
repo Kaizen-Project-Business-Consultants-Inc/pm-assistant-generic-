@@ -130,6 +130,8 @@ export const MeetingList: React.FC<MeetingListProps> = ({
                 <div className="relative">
                   <button
                     onClick={e => { e.stopPropagation(); setMenuOpen(menuOpen === meeting.id ? null : meeting.id); }}
+                    aria-label={`Actions for ${meeting.title}`}
+                    aria-expanded={menuOpen === meeting.id}
                     className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   >
                     <MoreVertical className="w-4 h-4 text-gray-500" />
