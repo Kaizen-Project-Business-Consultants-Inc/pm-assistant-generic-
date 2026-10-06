@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -101,6 +101,7 @@ function formatCurrency(amount: number): string {
 
 
 export default function PortalViewPage() {
+  const uid = useId();
   const { token } = useParams<{ token: string }>();
   const queryClient = useQueryClient();
   const [authorName, setAuthorName] = useState('');
@@ -461,10 +462,11 @@ export default function PortalViewPage() {
             {/* Add Comment Form */}
             <form onSubmit={handleSubmitComment} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+                <label htmlFor={`${uid}-your-name`} className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Your Name
                 </label>
                 <input
+                  id={`${uid}-your-name`}
                   type="text"
                   value={authorName}
                   onChange={(e) => setAuthorName(e.target.value)}
@@ -474,10 +476,11 @@ export default function PortalViewPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
+                <label htmlFor={`${uid}-comment`} className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Comment
                 </label>
                 <textarea
+                  id={`${uid}-comment`}
                   value={commentContent}
                   onChange={(e) => setCommentContent(e.target.value)}
                   placeholder="Write your comment..."

@@ -124,7 +124,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit, canE
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+          <button onClick={onBack} aria-label="Back to automations" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
             <ArrowLeft className="w-5 h-5 text-gray-500" />
           </button>
           <div>

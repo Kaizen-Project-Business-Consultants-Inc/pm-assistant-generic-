@@ -73,6 +73,7 @@ export const WaitlistAdminPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <input
               type="password"
+              aria-label="Admin password"
               value={key}
               onChange={e => setKey(e.target.value)}
               placeholder="Admin password"

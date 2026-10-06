@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download, SlidersHorizontal, Clock, ListOrdered, ChevronRight, Settings2, ShieldAlert } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -317,6 +317,7 @@ function VarianceParetoChart({ variances }: { variances: TaskVariance[] }) {
 // ---------------------------------------------------------------------------
 
 export function EVMDashboardPage() {
+  const uid = useId();
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [exporting, setExporting] = useState(false);
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -493,6 +494,7 @@ export function EVMDashboardPage() {
       {/* Project selector */}
       <div className="relative inline-block">
         <select
+          aria-label="Project"
           value={selectedProjectId}
           onChange={(e) => setSelectedProjectId(e.target.value)}
           className="appearance-none bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -1077,11 +1079,12 @@ export function EVMDashboardPage() {
                 <div className="px-5 pb-5 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                      <label htmlFor={`${uid}-target-cpi`} className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
                         Target CPI: <span className="font-bold text-gray-900 dark:text-white">{simCPI.toFixed(2)}</span>
                         <span className="text-gray-500 ml-1">(current: {m.CPI.toFixed(2)})</span>
                       </label>
                       <input
+                        id={`${uid}-target-cpi`}
                         type="range"
                         min="0.5"
                         max="1.5"
@@ -1095,10 +1098,11 @@ export function EVMDashboardPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
+                      <label htmlFor={`${uid}-budget-adjustment`} className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1">
                         Budget Adjustment: <span className="font-bold text-gray-900 dark:text-white">{whatIfBudgetAdd >= 0 ? '+' : ''}{formatCurrency(whatIfBudgetAdd)}</span>
                       </label>
                       <input
+                        id={`${uid}-budget-adjustment`}
                         type="range"
                         min={-m.BAC * 0.3}
                         max={m.BAC * 0.5}

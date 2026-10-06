@@ -331,6 +331,7 @@ export function AdminUsersPage() {
                 type="text"
                 value={searchText}
                 onChange={e => setSearchText(e.target.value)}
+                aria-label="Search users"
                 placeholder="Search name, email, username, org..."
                 className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400"
               />
@@ -339,6 +340,7 @@ export function AdminUsersPage() {
             <select
               value={roleFilter}
               onChange={e => setRoleFilter(e.target.value)}
+              aria-label="Filter by role"
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
               <option value="">All roles</option>
@@ -350,6 +352,7 @@ export function AdminUsersPage() {
             <select
               value={tierFilter}
               onChange={e => setTierFilter(e.target.value)}
+              aria-label="Filter by plan"
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
               <option value="">All tiers</option>
@@ -361,6 +364,7 @@ export function AdminUsersPage() {
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
+              aria-label="Filter by status"
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
               <option value="">All statuses</option>
@@ -371,6 +375,7 @@ export function AdminUsersPage() {
             <select
               value={subStatusFilter}
               onChange={e => setSubStatusFilter(e.target.value)}
+              aria-label="Filter by subscription status"
               className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
               <option value="">All subscriptions</option>
@@ -389,7 +394,7 @@ export function AdminUsersPage() {
             <div className="mb-4 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-800 dark:text-red-300">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>{deactivateError}</span>
-              <button onClick={() => setDeactivateError(null)} className="ml-auto text-red-400 hover:text-red-600">
+              <button onClick={() => setDeactivateError(null)} aria-label="Dismiss" className="ml-auto text-red-400 hover:text-red-600">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -494,6 +499,7 @@ export function AdminUsersPage() {
                         {editingTierId === u.id ? (
                           <select
                             value={u.subscriptionTier || 'trial'}
+                            aria-label={`Plan for ${u.fullName || u.email}`}
                             onChange={e => { changeTier.mutate({ id: u.id, tier: e.target.value }); }}
                             onBlur={() => setEditingTierId(null)}
                             className="px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
@@ -569,6 +575,7 @@ export function AdminUsersPage() {
                               type="text"
                               value={budgetInput}
                               onChange={e => setBudgetInput(e.target.value)}
+                              aria-label={`AI budget for ${u.fullName || u.email}`}
                               onKeyDown={e => { if (e.key === 'Enter') handleBudgetSave(u.id); if (e.key === 'Escape') setEditingBudgetId(null); }}
                               placeholder="tier default"
                               className="w-24 px-1.5 py-0.5 text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
@@ -675,7 +682,7 @@ export function AdminUsersPage() {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Subscription History &mdash; {historyUserName}</h3>
-              <button onClick={() => setHistoryUserId(null)} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-200">
+              <button onClick={() => setHistoryUserId(null)} aria-label="Close" className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-200">
                 <X className="w-4 h-4" />
               </button>
             </div>

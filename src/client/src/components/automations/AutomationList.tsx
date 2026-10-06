@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Zap, ToggleLeft, ToggleRight, Pencil, Trash2, Sparkles, ChevronDown, ChevronRight, X, Check, ShieldCheck, Store, Clock } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -53,6 +53,7 @@ function formatRelativeDate(d: string | null): string {
 }
 
 export function AutomationList({ projectId, onSelect, onNew, onEdit, canEdit = true }: AutomationListProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -173,8 +174,9 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit, canEdit = t
       {/* Filter */}
       {automations.length > 0 && (
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status:</label>
+          <label htmlFor={`${uid}-status`} className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status:</label>
           <select
+            id={`${uid}-status`}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -387,7 +389,7 @@ export function AutomationList({ projectId, onSelect, onNew, onEdit, canEdit = t
               <Store className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Automation Marketplace</span>
             </div>
-            <button onClick={() => setShowMarketplace(false)} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+            <button aria-label="Close" onClick={() => setShowMarketplace(false)} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
               <X className="w-4 h-4" />
             </button>
           </div>

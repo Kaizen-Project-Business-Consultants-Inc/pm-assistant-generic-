@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, Pause, Play, AlertCircle, ChevronDown } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -41,6 +41,7 @@ function formatFrequency(s: any) {
 type StatusFilter = 'all' | 'active' | 'paused' | 'error';
 
 export function AdminSchedulesPage() {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
@@ -76,9 +77,10 @@ export function AdminSchedulesPage() {
     <AdminPageWrapper title="Scheduled Reports" subtitle="View and manage all scheduled reports across users">
       {/* Filter */}
       <div className="flex items-center gap-3 mb-4">
-        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</label>
+        <label htmlFor={`${uid}-status`} className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</label>
         <div className="relative">
           <select
+            id={`${uid}-status`}
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as StatusFilter)}
             className="input text-xs py-1.5 pr-7 appearance-none"

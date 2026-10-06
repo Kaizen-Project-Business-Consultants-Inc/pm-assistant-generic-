@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useId } from 'react';
 import { apiService } from '../../services/api';
 import { Search, History, Edit3, Trash2, RotateCcw, User, Building2, FolderOpen } from 'lucide-react';
 
@@ -41,6 +41,7 @@ const SCOPE_COLORS: Record<string, string> = {
 };
 
 export const MemoryBrowser: React.FC = () => {
+  const uid = useId();
   const [memories, setMemories] = useState<VersionedMemory[]>([]);
   const [search, setSearch] = useState('');
   const [selectedMemory, setSelectedMemory] = useState<VersionedMemory | null>(null);
@@ -159,6 +160,7 @@ export const MemoryBrowser: React.FC = () => {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search memories by key, agent, or value..."
+            aria-label="Search memories"
             className="w-full pl-10 pr-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-gray-100"
           />
         </div>
@@ -245,10 +247,11 @@ export const MemoryBrowser: React.FC = () => {
       {/* Edit modal */}
       {editing && selectedMemory && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-          <h3 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">
+          <h3 id={`${uid}-editing-label`} className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">
             Editing: {selectedMemory.keyName}
           </h3>
           <textarea
+            aria-labelledby={`${uid}-editing-label`}
             value={editValue}
             onChange={e => setEditValue(e.target.value)}
             rows={10}

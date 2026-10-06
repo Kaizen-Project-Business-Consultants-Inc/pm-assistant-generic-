@@ -461,6 +461,7 @@ export const OnboardingPage: React.FC = () => {
               <div className="flex gap-2 mb-4">
                 <input
                   type="email"
+                  aria-label="Email address to invite"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddInvite(); } }}
@@ -470,6 +471,7 @@ export const OnboardingPage: React.FC = () => {
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
+                  aria-label="Role"
                   className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-2 text-sm text-gray-900 dark:text-white"
                 >
                   {TEAM_ROLE_OPTIONS.map(r => (
@@ -480,6 +482,7 @@ export const OnboardingPage: React.FC = () => {
                   type="button"
                   onClick={handleAddInvite}
                   disabled={!inviteEmail.trim()}
+                  aria-label="Add invite"
                   className="px-3 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Plus className="w-4 h-4" />
@@ -506,6 +509,7 @@ export const OnboardingPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleRemoveInvite(invite.email)}
+                        aria-label={`Remove ${invite.email}`}
                         className="text-gray-500 hover:text-red-500 transition-colors flex-shrink-0 ml-2"
                       >
                         <X className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Plus, Trash2, GripVertical, Save, Sparkles, Wand2, Clock } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -252,6 +252,7 @@ function ConditionEditor({ group, fields, onChange, onRemove, depth = 0 }: {
     <div className={`space-y-2 ${depth > 0 ? 'ml-4 pl-3 border-l-2 border-gray-200 dark:border-gray-600' : ''}`}>
       <div className="flex items-center gap-2">
         <select
+          aria-label="Match all or any of these conditions"
           value={group.logic}
           onChange={(e) => onChange({ ...group, logic: e.target.value as 'and' | 'or' })}
           className="text-xs font-medium border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -284,6 +285,7 @@ function ConditionEditor({ group, fields, onChange, onRemove, depth = 0 }: {
             <select
               value={cond.field}
               onChange={(e) => updateCondition(idx, { ...cond, field: e.target.value })}
+              aria-label={`Field for condition ${idx + 1}`}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               {fields.map((f) => (
@@ -294,6 +296,7 @@ function ConditionEditor({ group, fields, onChange, onRemove, depth = 0 }: {
             <select
               value={cond.operator}
               onChange={(e) => updateCondition(idx, { ...cond, operator: e.target.value })}
+              aria-label={`Operator for condition ${idx + 1}`}
               className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               {OPERATORS.map((op) => (
@@ -305,11 +308,12 @@ function ConditionEditor({ group, fields, onChange, onRemove, depth = 0 }: {
                 type="text"
                 value={cond.value ?? ''}
                 onChange={(e) => updateCondition(idx, { ...cond, value: e.target.value })}
+                aria-label={`Value for condition ${idx + 1}`}
                 placeholder="Value"
                 className="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white w-32"
               />
             )}
-            <button onClick={() => removeCondition(idx)} className="text-red-500 hover:text-red-700 p-0.5">
+            <button onClick={() => removeCondition(idx)} aria-label={`Remove condition ${idx + 1}`} className="text-red-500 hover:text-red-700 p-0.5">
               <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -336,6 +340,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
   onUpdate: (a: ActionDef) => void;
   onRemove: () => void;
 }) {
+  const uid = useId();
   const typeDef = ACTION_TYPES.find((t) => t.value === action.type);
 
   return (
@@ -347,6 +352,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
           <select
             value={action.type}
             onChange={(e) => onUpdate({ ...action, type: e.target.value, params: {} })}
+            aria-label={`Type of action ${index + 1}`}
             className="text-sm font-medium border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             {ACTION_TYPES.map((t) => (
@@ -354,7 +360,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
             ))}
           </select>
         </div>
-        <button onClick={onRemove} className="text-red-500 hover:text-red-700 p-1">
+        <button onClick={onRemove} aria-label={`Remove action ${index + 1}`} className="text-red-500 hover:text-red-700 p-1">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
@@ -365,9 +371,10 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {typeDef.params.map((param) => (
               <div key={param.key} className={param.fullWidth ? 'sm:col-span-2' : ''}>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{param.label}</label>
+                <label htmlFor={`${uid}-${param.key}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5">{param.label}</label>
                 {param.inputType === 'textarea' ? (
                   <textarea
+                    id={`${uid}-${param.key}`}
                     value={action.params[param.key] || ''}
                     onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value } })}
                     rows={3}
@@ -376,6 +383,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
                   />
                 ) : param.inputType === 'select' && param.options ? (
                   <select
+                    id={`${uid}-${param.key}`}
                     value={action.params[param.key] || param.options[0]?.value || ''}
                     onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value } })}
                     className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -386,6 +394,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
                   </select>
                 ) : param.inputType === 'number' ? (
                   <input
+                    id={`${uid}-${param.key}`}
                     type="number"
                     value={action.params[param.key] ?? ''}
                     onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value ? Number(e.target.value) : undefined } })}
@@ -394,6 +403,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
                   />
                 ) : (
                   <input
+                    id={`${uid}-${param.key}`}
                     type="text"
                     value={action.params[param.key] || ''}
                     onChange={(e) => onUpdate({ ...action, params: { ...action.params, [param.key]: e.target.value } })}
@@ -414,6 +424,7 @@ function ActionEditor({ action, index, onUpdate, onRemove }: {
 }
 
 export function AutomationForm({ projectId, automationId, onClose, onSaved }: AutomationFormProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const isEdit = !!automationId;
 
@@ -552,7 +563,7 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+        <button onClick={onClose} aria-label="Back" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
           <ArrowLeft className="w-5 h-5 text-gray-500" />
         </button>
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -576,11 +587,12 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
 
       {aiMode && (
         <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-medium text-purple-800 dark:text-purple-300">
+          <div id={`${uid}-describe-your-automation-label`} className="flex items-center gap-2 text-sm font-medium text-purple-800 dark:text-purple-300">
             <Sparkles className="w-4 h-4" />
             Describe your automation
           </div>
           <textarea
+            aria-labelledby={`${uid}-describe-your-automation-label`}
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
             placeholder='e.g., "When a task is completed, notify the project owner and add an audit log entry"'
@@ -609,8 +621,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Basic Info</h4>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
+          <label htmlFor={`${uid}-name`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</label>
           <input
+            id={`${uid}-name`}
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -619,8 +632,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+          <label htmlFor={`${uid}-description`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
           <input
+            id={`${uid}-description`}
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -658,8 +672,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">When (Trigger)</h4>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Type *</label>
+          <label htmlFor={`${uid}-event-type`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Event Type *</label>
           <select
+            id={`${uid}-event-type`}
             value={triggerEventType}
             onChange={(e) => {
               const val = e.target.value;
@@ -711,8 +726,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
 
           {scheduleConfig.type === 'interval' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Run every (minutes)</label>
+              <label htmlFor={`${uid}-run-every`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Run every (minutes)</label>
               <input
+                id={`${uid}-run-every`}
                 type="number"
                 min={5} max={1440}
                 value={scheduleConfig.intervalMinutes ?? 30}
@@ -725,8 +741,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
 
           {scheduleConfig.type === 'daily' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+              <label htmlFor={`${uid}-time`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
               <input
+                id={`${uid}-time`}
                 type="time"
                 value={scheduleConfig.time ?? '09:00'}
                 onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
@@ -738,8 +755,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
           {scheduleConfig.type === 'weekly' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
+                <label htmlFor={`${uid}-day-of-week`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
                 <select
+                  id={`${uid}-day-of-week`}
                   value={scheduleConfig.dayOfWeek ?? 1}
                   onChange={(e) => setScheduleConfig({ ...scheduleConfig, dayOfWeek: parseInt(e.target.value) })}
                   className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -750,8 +768,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                <label htmlFor={`${uid}-time-2`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
                 <input
+                  id={`${uid}-time-2`}
                   type="time"
                   value={scheduleConfig.time ?? '09:00'}
                   onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
@@ -764,8 +783,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
           {scheduleConfig.type === 'monthly' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
+                <label htmlFor={`${uid}-day-of-month`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
                 <input
+                  id={`${uid}-day-of-month`}
                   type="number"
                   min={1} max={31}
                   value={scheduleConfig.dayOfMonth ?? 1}
@@ -774,8 +794,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                <label htmlFor={`${uid}-time-3`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
                 <input
+                  id={`${uid}-time-3`}
                   type="time"
                   value={scheduleConfig.time ?? '09:00'}
                   onChange={(e) => setScheduleConfig({ ...scheduleConfig, time: e.target.value })}
@@ -787,8 +808,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
 
           {scheduleConfig.type === 'cron' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cron Expression</label>
+              <label htmlFor={`${uid}-cron-expression`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cron Expression</label>
               <input
+                id={`${uid}-cron-expression`}
                 type="text"
                 value={scheduleConfig.expression ?? ''}
                 onChange={(e) => setScheduleConfig({ ...scheduleConfig, expression: e.target.value })}
@@ -803,8 +825,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
 
           {/* Timezone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
+            <label htmlFor={`${uid}-timezone`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
             <select
+              id={`${uid}-timezone`}
               value={timezone}
               onChange={(e) => setTimezone(e.target.value)}
               className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -894,8 +917,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
         <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Safety Limits</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max runs per day</label>
+            <label htmlFor={`${uid}-max-runs-per`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max runs per day</label>
             <input
+              id={`${uid}-max-runs-per`}
               type="number"
               value={maxRunsPerDay}
               onChange={(e) => setMaxRunsPerDay(Math.max(1, parseInt(e.target.value) || 1))}
@@ -904,8 +928,9 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cooldown (seconds)</label>
+            <label htmlFor={`${uid}-cooldown`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Cooldown (seconds)</label>
             <input
+              id={`${uid}-cooldown`}
               type="number"
               value={cooldownSeconds}
               onChange={(e) => setCooldownSeconds(Math.max(0, parseInt(e.target.value) || 0))}

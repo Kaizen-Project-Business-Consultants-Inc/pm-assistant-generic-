@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -35,6 +35,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUpdated }) => {
+  const uid = useId();
   const [reviewStatus, setReviewStatus] = useState('under_review');
   const [reviewNotes, setReviewNotes] = useState('');
   const [showConvertConfirm, setShowConvertConfirm] = useState(false);
@@ -236,8 +237,9 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Review Notes</label>
+            <label htmlFor={`${uid}-review-notes`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Review Notes</label>
             <textarea
+              id={`${uid}-review-notes`}
               value={reviewNotes}
               onChange={(e) => setReviewNotes(e.target.value)}
               rows={3}

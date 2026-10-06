@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Bot,
@@ -584,6 +584,7 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
                     <textarea
                       value={feedbackComment}
                       onChange={e => setFeedbackComment(e.target.value)}
+                      aria-label="Optional comment"
                       placeholder="Optional comment..."
                       rows={2}
                       className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-neutral-800 dark:text-neutral-100 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 mb-2"
@@ -609,6 +610,7 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
                 <input
                   value={comment}
                   onChange={e => setComment(e.target.value)}
+                  aria-label="Optional comment"
                   placeholder="Optional comment..."
                   className="flex-1 border border-neutral-300 dark:border-neutral-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-neutral-800 dark:text-neutral-100"
                 />
@@ -649,6 +651,7 @@ function AgentEligibilityCard({ agentId, config, isAdmin }: {
   config?: AutonomyConfig;
   isAdmin: boolean;
 }) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [threshold, setThreshold] = useState(config?.minConfidenceThreshold ?? 80);
@@ -789,8 +792,9 @@ function AgentEligibilityCard({ agentId, config, isAdmin }: {
                   <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-3">Promote to Tier 3</h4>
                   <div className="flex items-end gap-4">
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Min Confidence</label>
+                      <label htmlFor={`${uid}-min-confidence`} className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Min Confidence</label>
                       <select
+                        id={`${uid}-min-confidence`}
                         value={threshold}
                         onChange={e => setThreshold(Number(e.target.value))}
                         className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"
@@ -801,8 +805,9 @@ function AgentEligibilityCard({ agentId, config, isAdmin }: {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Max Risk Level</label>
+                      <label htmlFor={`${uid}-max-risk-level`} className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Max Risk Level</label>
                       <select
+                        id={`${uid}-max-risk-level`}
                         value={maxRisk}
                         onChange={e => setMaxRisk(e.target.value)}
                         className="border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-200 focus:ring-2 focus:ring-primary-500"

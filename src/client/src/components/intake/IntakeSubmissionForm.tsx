@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { ArrowLeft, ClipboardList } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -10,6 +10,7 @@ interface Props {
 }
 
 export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmitted }) => {
+  const uid = useId();
   const [values, setValues] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -111,13 +112,14 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
             return (
               <div key={field.id}>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor={`${uid}-${field.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-0.5">*</span>}
                 </label>
 
                 {field.type === 'text' && (
                   <input
+                    id={`${uid}-${field.id}`}
                     type="text"
                     value={values[field.id] || ''}
                     onChange={(e) => setValue(field.id, e.target.value)}
@@ -128,6 +130,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
                 {field.type === 'number' && (
                   <input
+                    id={`${uid}-${field.id}`}
                     type="number"
                     value={values[field.id] ?? ''}
                     onChange={(e) => setValue(field.id, e.target.value)}
@@ -138,6 +141,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
                 {field.type === 'date' && (
                   <input
+                    id={`${uid}-${field.id}`}
                     type="date"
                     value={values[field.id] || ''}
                     onChange={(e) => setValue(field.id, e.target.value)}
@@ -147,6 +151,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
                 {field.type === 'textarea' && (
                   <textarea
+                    id={`${uid}-${field.id}`}
                     value={values[field.id] || ''}
                     onChange={(e) => setValue(field.id, e.target.value)}
                     rows={4}
@@ -171,6 +176,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
 
                 {field.type === 'dropdown' && (
                   <select
+                    id={`${uid}-${field.id}`}
                     value={values[field.id] || ''}
                     onChange={(e) => setValue(field.id, e.target.value)}
                     className={inputClasses}

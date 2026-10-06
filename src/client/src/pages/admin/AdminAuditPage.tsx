@@ -79,6 +79,7 @@ export function AdminAuditPage() {
         <select
           value={action}
           onChange={e => { setAction(e.target.value); setPage(0); }}
+          aria-label="Filter by action"
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
         >
           <option value="">All actions</option>
@@ -90,6 +91,7 @@ export function AdminAuditPage() {
         <select
           value={entityType}
           onChange={e => { setEntityType(e.target.value); setPage(0); }}
+          aria-label="Filter by item type"
           className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
         >
           <option value="">All entities</option>
@@ -105,6 +107,7 @@ export function AdminAuditPage() {
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
             placeholder="Search entries..."
+            aria-label="Search entries"
             className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 placeholder-gray-400"
           />
         </div>

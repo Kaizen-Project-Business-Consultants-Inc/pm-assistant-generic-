@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { Bell, Shield, DollarSign, Clock, Users, Info, Check, RefreshCw, TrendingDown, BarChart2, MessageSquare, Filter, CheckCheck, UserPlus, CheckCircle, AlertTriangle, MessageCircle, Bot, AlertCircle, CheckCircle2, XCircle, RotateCcw, Flag, GitBranch, AtSign, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../stores/uiStore';
@@ -102,6 +102,7 @@ function groupRepeats(list: Notification[]): Array<{ key: string; items: Notific
 }
 
 export function NotificationsPage() {
+  const uid = useId();
   const navigate = useNavigate();
   const notifications = useUIStore((state) => state.notifications);
   const addNotification = useUIStore((state) => state.addNotification);
@@ -248,8 +249,9 @@ export function NotificationsPage() {
       {/* Filters */}
       {showFilters && (
         <div className="flex items-center gap-3 flex-wrap bg-gray-50 dark:bg-gray-700 rounded-lg px-4 py-3 border border-gray-200 dark:border-gray-600">
-          <span className="text-xs font-semibold text-gray-500">Type:</span>
+          <span id={`${uid}-type`} className="text-xs font-semibold text-gray-500">Type:</span>
           <select
+            aria-labelledby={`${uid}-type`}
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="text-xs border border-gray-300 rounded-md px-2 py-1 bg-white dark:bg-gray-800"
@@ -259,8 +261,9 @@ export function NotificationsPage() {
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
-          <span className="text-xs font-semibold text-gray-500">Severity:</span>
+          <span id={`${uid}-severity`} className="text-xs font-semibold text-gray-500">Severity:</span>
           <select
+            aria-labelledby={`${uid}-severity`}
             value={filterSeverity}
             onChange={(e) => setFilterSeverity(e.target.value)}
             className="text-xs border border-gray-300 rounded-md px-2 py-1 bg-white dark:bg-gray-800"

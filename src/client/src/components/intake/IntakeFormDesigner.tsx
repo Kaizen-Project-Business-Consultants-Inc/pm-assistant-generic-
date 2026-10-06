@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   ArrowUp,
@@ -49,6 +49,7 @@ let fieldCounter = 0;
 const nextFieldId = () => `field_${++fieldCounter}_${Date.now()}`;
 
 export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }) => {
+  const uid = useId();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [fields, setFields] = useState<FormField[]>([]);
@@ -163,8 +164,9 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
           {/* Form metadata */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Form Name</label>
+              <label htmlFor={`${uid}-form-name`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Form Name</label>
               <input
+                id={`${uid}-form-name`}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -173,8 +175,9 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
               <textarea
+                id={`${uid}-description`}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the purpose of this form..."
@@ -192,6 +195,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                 <select
                   value={addType}
                   onChange={(e) => setAddType(e.target.value as FieldType)}
+                  aria-label="Type of field to add"
                   className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 dark:text-white"
                 >
                   {fieldTypes.map((ft) => (
@@ -256,10 +260,11 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                    <label htmlFor={`${uid}-${field.id}-label`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Field Label
                     </label>
                     <input
+                      id={`${uid}-${field.id}-label`}
                       type="text"
                       value={field.label}
                       onChange={(e) => updateField(field.id, { label: e.target.value })}
@@ -270,10 +275,11 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
 
                   {field.type === 'dropdown' && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                      <label htmlFor={`${uid}-${field.id}-options`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                         Options (comma-separated)
                       </label>
                       <input
+                        id={`${uid}-${field.id}-options`}
                         type="text"
                         value={field.options}
                         onChange={(e) => updateField(field.id, { options: e.target.value })}
@@ -342,12 +348,13 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
               <div className="space-y-4">
                 {fields.map((field) => (
                   <div key={field.id}>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label htmlFor={`${uid}-${field.id}-preview`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {field.label || 'Untitled Field'}
                       {field.required && <span className="text-red-500 ml-0.5">*</span>}
                     </label>
                     {field.type === 'text' && (
                       <input
+                        id={`${uid}-${field.id}-preview`}
                         type="text"
                         disabled
                         placeholder="Text input"
@@ -356,6 +363,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                     )}
                     {field.type === 'number' && (
                       <input
+                        id={`${uid}-${field.id}-preview`}
                         type="number"
                         disabled
                         placeholder="0"
@@ -364,6 +372,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                     )}
                     {field.type === 'date' && (
                       <input
+                        id={`${uid}-${field.id}-preview`}
                         type="date"
                         disabled
                         className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 dark:text-gray-400"
@@ -371,6 +380,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                     )}
                     {field.type === 'textarea' && (
                       <textarea
+                        id={`${uid}-${field.id}-preview`}
                         disabled
                         placeholder="Long text input"
                         rows={3}
@@ -379,7 +389,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                     )}
                     {field.type === 'checkbox' && (
                       <div className="flex items-center gap-2">
-                        <input type="checkbox" disabled className="rounded border-gray-300 dark:border-gray-600" />
+                        <input id={`${uid}-${field.id}-preview`} type="checkbox" disabled className="rounded border-gray-300 dark:border-gray-600" />
                         <span className="text-sm text-gray-500 dark:text-gray-400">
                           {field.label || 'Checkbox'}
                         </span>
@@ -387,6 +397,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                     )}
                     {field.type === 'dropdown' && (
                       <select
+                        id={`${uid}-${field.id}-preview`}
                         disabled
                         className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 dark:text-gray-400"
                       >

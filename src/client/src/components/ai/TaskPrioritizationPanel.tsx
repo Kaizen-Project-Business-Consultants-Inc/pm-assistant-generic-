@@ -297,6 +297,8 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
                     {/* Expand Toggle */}
                     <button
                       onClick={() => toggleExpand(task.taskId)}
+                      aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${task.taskName}`}
+                      aria-expanded={isExpanded}
                       className="flex-shrink-0 p-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                       {isExpanded ? (

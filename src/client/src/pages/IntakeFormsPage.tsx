@@ -232,6 +232,7 @@ export const IntakeFormsPage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setConfirmDeleteFormId(form.id)}
+                      aria-label={`Delete ${form.name}`}
                       className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors ml-auto"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

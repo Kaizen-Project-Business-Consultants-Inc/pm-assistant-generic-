@@ -237,6 +237,7 @@ export function AdminFeedbackPage() {
                       Internal Notes <span className="text-gray-500">(not visible to user)</span>
                     </label>
                     <textarea
+                      aria-label="Internal notes (not visible to user)"
                       defaultValue={item.adminNotes || ''}
                       rows={2}
                       className="w-full rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white resize-none"
@@ -264,6 +265,7 @@ export function AdminFeedbackPage() {
                     <div className="flex gap-2">
                       <textarea
                         value={replyDrafts[item.id] ?? ''}
+                        aria-label="Reply to user"
                         onChange={(e) => setReplyDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
                         rows={2}
                         placeholder={item.adminReply ? 'Update your reply...' : 'Write a reply...'}

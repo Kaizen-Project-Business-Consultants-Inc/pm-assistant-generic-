@@ -437,6 +437,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
             ref={inputRef}
             type="text"
             placeholder="Type a command or search..."
+            aria-label="Type a command or search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full h-12 pl-3 pr-4 text-sm bg-transparent border-0 focus-visible:ring-2 focus-visible:ring-primary-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"

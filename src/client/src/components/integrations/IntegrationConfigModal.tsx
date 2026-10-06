@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { X, Save, Plug, Check, RefreshCw } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -153,6 +153,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
   onClose,
   onSaved,
 }) => {
+  const uid = useId();
   const isEdit = !!integrationId;
   const fields = PROVIDER_FIELDS[provider] ?? [];
   const providerName = PROVIDER_NAMES[provider] ?? provider;
@@ -419,13 +420,14 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
         <div className="p-5 overflow-y-auto flex-1 space-y-4">
           {fields.map((field) => (
             <div key={field.key}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor={`${uid}-${field.key}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {field.label}
                 {field.required && (
                   <span className="text-red-500 ml-0.5">*</span>
                 )}
               </label>
               <input
+                id={`${uid}-${field.key}`}
                 type={field.type}
                 value={formValues[field.key] || ''}
                 onChange={(e) => handleChange(field.key, e.target.value)}
@@ -562,10 +564,11 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
           {isChatProvider && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor={`${uid}-project`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Project
                 </label>
                 <select
+                  id={`${uid}-project`}
                   value={selectedProjectId}
                   onChange={(e) => setSelectedProjectId(e.target.value)}
                   className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white"

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { X, Star, Send, Camera, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -52,6 +52,7 @@ function StarRating({ value, onChange, size = 'md' }: { value: number; onChange:
 }
 
 export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
+  const uid = useId();
   const [overallRating, setOverallRating] = useState(0);
   const [featureRatings, setFeatureRatings] = useState<Record<string, number>>({});
   const [category, setCategory] = useState('general');
@@ -157,7 +158,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Share Your Feedback</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+          <button aria-label="Close" onClick={onClose} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -195,8 +196,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
 
           {/* Category */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+            <label htmlFor={`${uid}-category`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
             <select
+              id={`${uid}-category`}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
@@ -209,10 +211,11 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
 
           {/* Comment */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor={`${uid}-what-would-you`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               What would you most like improved?
             </label>
             <textarea
+              id={`${uid}-what-would-you`}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               rows={3}
@@ -257,6 +260,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              aria-label="Attach screenshot"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];

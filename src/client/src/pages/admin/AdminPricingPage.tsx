@@ -82,6 +82,7 @@ function TierCard({ tier, onSave }: { tier: PricingConfig; onSave: (data: Partia
       {editing ? (
         <input
           type={type}
+          aria-label={label}
           value={form[key] as string | number}
           onChange={(e) => setForm({ ...form, [key]: type === 'number' ? Number(e.target.value) : e.target.value })}
           className="w-32 text-right text-sm px-2 py-1 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -186,6 +187,8 @@ function FeatureMatrix({
                   <td key={t.tier} className="py-2.5 text-center">
                     <button
                       onClick={() => onToggle(t.tier, key, !enabled)}
+                      aria-label={`${FEATURE_LABELS[key]} for ${t.tier}`}
+                      aria-pressed={enabled}
                       className={`w-8 h-5 rounded-full relative inline-flex items-center transition-colors ${
                         enabled ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
                       }`}

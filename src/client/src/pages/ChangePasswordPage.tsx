@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 
 export function ChangePasswordPage() {
+  const uid = useId();
   const navigate = useNavigate();
   const { user, setUser } = useAuthStore();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -63,10 +64,11 @@ export function ChangePasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor={`${uid}-temporary-password`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Temporary Password
               </label>
               <input
+                id={`${uid}-temporary-password`}
                 type="password"
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
@@ -76,10 +78,11 @@ export function ChangePasswordPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor={`${uid}-new-password`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 New Password
               </label>
               <input
+                id={`${uid}-new-password`}
                 type="password"
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
@@ -90,10 +93,11 @@ export function ChangePasswordPage() {
               <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label htmlFor={`${uid}-confirm-new-password`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Confirm New Password
               </label>
               <input
+                id={`${uid}-confirm-new-password`}
                 type="password"
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
