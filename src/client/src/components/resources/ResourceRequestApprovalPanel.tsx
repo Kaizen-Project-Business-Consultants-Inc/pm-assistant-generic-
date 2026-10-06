@@ -100,6 +100,7 @@ export function ResourceRequestApprovalPanel() {
           {/* Comment + actions */}
           <div className="flex items-end gap-2">
             <input
+              aria-label={`Comment on the ${rr.resourceRole} request`}
               value={commentMap[rr.id] || ''}
               onChange={e => setCommentMap(prev => ({ ...prev, [rr.id]: e.target.value }))}
               placeholder="Comment (required for rejection)"

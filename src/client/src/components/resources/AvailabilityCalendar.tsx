@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -30,6 +30,7 @@ interface AvailabilityCalendarProps {
 }
 
 export function AvailabilityCalendar({ resourceId, resourceName, canEdit = false }: AvailabilityCalendarProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [currentMonth, setCurrentMonth] = useState(() => {
     const now = new Date();
@@ -169,16 +170,16 @@ export function AvailabilityCalendar({ resourceId, resourceName, canEdit = false
       {showForm && (
         <form onSubmit={handleSubmit} className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 flex items-end gap-3 flex-wrap">
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">From</label>
-            <input type="date" value={formData.dateFrom} onChange={e => setFormData(p => ({ ...p, dateFrom: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1" required />
+            <label htmlFor={`${uid}-from`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">From</label>
+            <input id={`${uid}-from`} type="date" value={formData.dateFrom} onChange={e => setFormData(p => ({ ...p, dateFrom: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">To</label>
-            <input type="date" value={formData.dateTo} onChange={e => setFormData(p => ({ ...p, dateTo: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1" required />
+            <label htmlFor={`${uid}-to`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">To</label>
+            <input id={`${uid}-to`} type="date" value={formData.dateTo} onChange={e => setFormData(p => ({ ...p, dateTo: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1" required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Type</label>
-            <select value={formData.type} onChange={e => setFormData(p => ({ ...p, type: e.target.value as any }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1">
+            <label htmlFor={`${uid}-type`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Type</label>
+            <select id={`${uid}-type`} value={formData.type} onChange={e => setFormData(p => ({ ...p, type: e.target.value as any }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1">
               <option value="vacation">Vacation</option>
               <option value="holiday">Holiday</option>
               <option value="unavailable">Unavailable</option>
@@ -187,13 +188,13 @@ export function AvailabilityCalendar({ resourceId, resourceName, canEdit = false
           </div>
           {formData.type === 'reduced' && (
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Hours/day</label>
-              <input type="number" min="0" max="24" step="0.5" value={formData.hoursAvailable} onChange={e => setFormData(p => ({ ...p, hoursAvailable: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1 w-16" />
+              <label htmlFor={`${uid}-hours-day`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Hours/day</label>
+              <input id={`${uid}-hours-day`} type="number" min="0" max="24" step="0.5" value={formData.hoursAvailable} onChange={e => setFormData(p => ({ ...p, hoursAvailable: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1 w-16" />
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Note</label>
-            <input type="text" value={formData.note} onChange={e => setFormData(p => ({ ...p, note: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1 w-32" placeholder="Optional" />
+            <label htmlFor={`${uid}-note`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Note</label>
+            <input id={`${uid}-note`} type="text" value={formData.note} onChange={e => setFormData(p => ({ ...p, note: e.target.value }))} className="text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded px-2 py-1 w-32" placeholder="Optional" />
           </div>
           <button type="submit" disabled={createMutation.isPending} className="text-xs px-3 py-1 bg-primary-600 text-white rounded hover:bg-primary-700 disabled:opacity-50">
             Save

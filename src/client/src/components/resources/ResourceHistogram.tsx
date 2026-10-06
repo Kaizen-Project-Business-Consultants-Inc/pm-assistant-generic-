@@ -245,6 +245,7 @@ export function ResourceHistogram({ data }: ResourceHistogramProps) {
 
         {/* Resource filter dropdown */}
         <select
+          aria-label="Filter by resource"
           value={selectedResource}
           onChange={(e) => {
             setSelectedResource(e.target.value);

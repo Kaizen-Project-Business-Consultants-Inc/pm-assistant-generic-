@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Plus, Trash2, BarChart3, X, Users, User, TrendingDown, TrendingUp, Grid3X3, Sparkles, CalendarDays } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -37,6 +37,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export function TimeTrackingTab({ projectId }: { projectId: string }) {
+  const uid = useId();
   const { canEdit: canManageTime } = useProjectRole(projectId);
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
@@ -228,6 +229,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-2">
             {/* Category filter */}
             <select
+              aria-label="Filter by category"
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value)}
               className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
@@ -315,13 +317,14 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                 </span>
               )}
             </div>
-            <button onClick={() => setShowLogForm(false)} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"><X className="w-4 h-4" /></button>
+            <button onClick={() => setShowLogForm(false)} aria-label="Close" className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {schedules.length > 1 && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Schedule</label>
+                <label htmlFor={`${uid}-schedule`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Schedule</label>
                 <select
+                  id={`${uid}-schedule`}
                   value={formScheduleId}
                   onChange={(e) => { setFormScheduleId(e.target.value); setFormTaskId(''); }}
                   className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100"
@@ -331,8 +334,9 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Task</label>
+              <label htmlFor={`${uid}-task`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Task</label>
               <select
+                id={`${uid}-task`}
                 value={formTaskId}
                 onChange={(e) => setFormTaskId(e.target.value)}
                 className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100"
@@ -342,16 +346,16 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
-              <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" />
+              <label htmlFor={`${uid}-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
+              <input id={`${uid}-date`} type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours</label>
-              <input type="number" step="0.25" min="0.25" value={formHours} onChange={(e) => setFormHours(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="0.0" />
+              <label htmlFor={`${uid}-hours`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours</label>
+              <input id={`${uid}-hours`} type="number" step="0.25" min="0.25" value={formHours} onChange={(e) => setFormHours(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="0.0" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
-              <input type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="Optional" />
+              <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
+              <input id={`${uid}-description`} type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="Optional" />
             </div>
           </div>
           <div className="flex items-center justify-between">
@@ -424,7 +428,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{e.description || '\u2014'}</td>
                     <td className="px-4 py-3 text-center">{e.billable ? <span className="text-green-600 text-xs font-medium">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
                     <td className="px-4 py-3 text-right">
-                      <button onClick={() => deleteMutation.mutate(e.id)} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => deleteMutation.mutate(e.id)} aria-label={`Delete time entry for ${e.taskName || e.taskId}`} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
                     </td>
                   </tr>
                 ))}

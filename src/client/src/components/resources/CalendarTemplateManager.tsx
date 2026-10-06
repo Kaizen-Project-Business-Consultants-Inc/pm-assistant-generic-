@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Edit2, Trash2, X, Calendar } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -23,6 +23,7 @@ const DAY_OPTIONS = [
 ];
 
 export function CalendarTemplateManager() {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,16 +105,16 @@ export function CalendarTemplateManager() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-primary-200 dark:border-primary-700 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-900 dark:text-white">{editingId ? 'Edit Template' : 'New Template'}</span>
-            <button onClick={resetForm} className="text-gray-500 hover:text-gray-600"><X className="w-4 h-4" /></button>
+            <button onClick={resetForm} aria-label="Close" className="text-gray-500 hover:text-gray-600"><X className="w-4 h-4" /></button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
-              <input type="text" value={formName} onChange={e => setFormName(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="e.g. 4x10 Schedule" />
+              <label htmlFor={`${uid}-name`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
+              <input id={`${uid}-name`} type="text" value={formName} onChange={e => setFormName(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="e.g. 4x10 Schedule" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Day</label>
-              <input type="number" value={formHours} onChange={e => setFormHours(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0.5" max="24" step="0.5" />
+              <label htmlFor={`${uid}-hours-day`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Day</label>
+              <input id={`${uid}-hours-day`} type="number" value={formHours} onChange={e => setFormHours(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0.5" max="24" step="0.5" />
             </div>
             <div className="flex items-end">
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">

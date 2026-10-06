@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Plus } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -13,6 +13,7 @@ const PRIORITY_OPTIONS = ['low', 'medium', 'high', 'urgent'] as const;
 const ROLE_PRESETS = ['Developer', 'Designer', 'Project Manager', 'QA Engineer', 'Business Analyst', 'DevOps Engineer', 'Data Analyst'];
 
 export function ResourceRequestForm({ isOpen, onClose, editingRequest }: ResourceRequestFormProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const isEdit = !!editingRequest;
 
@@ -77,7 +78,7 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {isEdit ? 'Edit Resource Request' : 'New Resource Request'}
           </h2>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+          <button onClick={onClose} aria-label="Close" className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -86,8 +87,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
           {/* Project */}
           {!isEdit && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project</label>
+              <label htmlFor={`${uid}-project`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project</label>
               <select
+                id={`${uid}-project`}
                 value={projectId}
                 onChange={e => setProjectId(e.target.value)}
                 required
@@ -101,8 +103,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
 
           {/* Role */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role Needed</label>
+            <label htmlFor={`${uid}-role-needed`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role Needed</label>
             <input
+              id={`${uid}-role-needed`}
               value={resourceRole}
               onChange={e => setResourceRole(e.target.value)}
               required
@@ -117,8 +120,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
 
           {/* Group */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resource Group (optional)</label>
+            <label htmlFor={`${uid}-resource-group`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Resource Group (optional)</label>
             <input
+              id={`${uid}-resource-group`}
               value={resourceGroup}
               onChange={e => setResourceGroup(e.target.value)}
               placeholder="e.g., Engineering"
@@ -129,8 +133,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
           {/* Hours & Priority */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hours Needed</label>
+              <label htmlFor={`${uid}-hours-needed`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Hours Needed</label>
               <input
+                id={`${uid}-hours-needed`}
                 type="number"
                 value={hoursNeeded}
                 onChange={e => setHoursNeeded(e.target.value)}
@@ -141,8 +146,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+              <label htmlFor={`${uid}-priority`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
               <select
+                id={`${uid}-priority`}
                 value={priority}
                 onChange={e => setPriority(e.target.value)}
                 className="w-full border rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -157,8 +163,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
+              <label htmlFor={`${uid}-start-date`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
               <input
+                id={`${uid}-start-date`}
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
@@ -167,8 +174,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
+              <label htmlFor={`${uid}-end-date`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
               <input
+                id={`${uid}-end-date`}
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
@@ -185,7 +193,7 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
               {skills.map(s => (
                 <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 text-xs">
                   {s}
-                  <button type="button" onClick={() => setSkills(skills.filter(sk => sk !== s))} className="hover:text-red-500">
+                  <button type="button" onClick={() => setSkills(skills.filter(sk => sk !== s))} aria-label={`Remove skill ${s}`} className="hover:text-red-500">
                     <X className="w-3 h-3" />
                   </button>
                 </span>
@@ -193,13 +201,14 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
             </div>
             <div className="flex gap-2">
               <input
+                aria-label="Add skill"
                 value={newSkill}
                 onChange={e => setNewSkill(e.target.value)}
                 placeholder="Add skill..."
                 className="flex-1 border rounded-lg px-3 py-1.5 text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
               />
-              <button type="button" onClick={addSkill} className="px-2 py-1.5 text-primary-600 hover:text-primary-700">
+              <button type="button" onClick={addSkill} aria-label="Add skill" className="px-2 py-1.5 text-primary-600 hover:text-primary-700">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
@@ -207,8 +216,9 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
 
           {/* Justification */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Justification</label>
+            <label htmlFor={`${uid}-justification`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Justification</label>
             <textarea
+              id={`${uid}-justification`}
               value={justification}
               onChange={e => setJustification(e.target.value)}
               rows={3}

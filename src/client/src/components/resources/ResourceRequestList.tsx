@@ -69,6 +69,7 @@ export function ResourceRequestList({ projectId }: { projectId?: string }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <select
+            aria-label="Filter by status"
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
             className="text-sm border rounded-lg px-2 py-1.5 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200"

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, Plus } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -12,6 +12,7 @@ interface TimeLogFormProps {
 }
 
 export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(false);
   const [form, setForm] = useState({
@@ -56,8 +57,9 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
       </h5>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Date</label>
+          <label htmlFor={`${uid}-date`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Date</label>
           <input
+            id={`${uid}-date`}
             type="date"
             value={form.date}
             onChange={(e) => setForm(p => ({ ...p, date: e.target.value }))}
@@ -65,8 +67,9 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Hours</label>
+          <label htmlFor={`${uid}-hours`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Hours</label>
           <input
+            id={`${uid}-hours`}
             type="number"
             step="0.25"
             min="0.25"
@@ -78,8 +81,9 @@ export function TimeLogForm({ taskId, scheduleId, projectId }: TimeLogFormProps)
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Description</label>
+        <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-0.5">Description</label>
         <input
+          id={`${uid}-description`}
           type="text"
           value={form.description}
           onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))}

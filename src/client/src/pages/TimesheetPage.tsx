@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Clock, BarChart3, Plus, X, ClipboardCheck } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -11,6 +11,7 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 type Tab = 'my-timesheet' | 'project-summary' | 'approvals';
 
 export function TimesheetPage() {
+  const uid = useId();
   const queryClient = useQueryClient();
   const breakpoint = useBreakpoint();
   const isMobile = breakpoint === 'mobile';
@@ -114,8 +115,9 @@ export function TimesheetPage() {
           </div>
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2 lg:grid-cols-4'} gap-3`}>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Project</label>
+              <label htmlFor={`${uid}-project`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Project</label>
               <select
+                id={`${uid}-project`}
                 value={logProjectId}
                 onChange={(e) => { setLogProjectId(e.target.value); setLogScheduleId(''); setLogTaskId(''); }}
                 className="input w-full text-sm"
@@ -125,8 +127,9 @@ export function TimesheetPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Schedule</label>
+              <label htmlFor={`${uid}-schedule`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Schedule</label>
               <select
+                id={`${uid}-schedule`}
                 value={logScheduleId}
                 onChange={(e) => { setLogScheduleId(e.target.value); setLogTaskId(''); }}
                 className="input w-full text-sm"
@@ -137,8 +140,9 @@ export function TimesheetPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Task</label>
+              <label htmlFor={`${uid}-task`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Task</label>
               <select
+                id={`${uid}-task`}
                 value={logTaskId}
                 onChange={(e) => setLogTaskId(e.target.value)}
                 className="input w-full text-sm"
@@ -149,18 +153,18 @@ export function TimesheetPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date</label>
-              <input type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} className="input w-full text-sm" />
+              <label htmlFor={`${uid}-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Date</label>
+              <input id={`${uid}-date`} type="date" value={logDate} onChange={(e) => setLogDate(e.target.value)} className="input w-full text-sm" />
             </div>
           </div>
           <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-3'} gap-3`}>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Hours</label>
-              <input type="number" step="0.25" min="0.25" max="24" value={logHours} onChange={(e) => setLogHours(e.target.value)} className="input w-full text-sm" placeholder="e.g. 2.5" />
+              <label htmlFor={`${uid}-hours`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Hours</label>
+              <input id={`${uid}-hours`} type="number" step="0.25" min="0.25" max="24" value={logHours} onChange={(e) => setLogHours(e.target.value)} className="input w-full text-sm" placeholder="e.g. 2.5" />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Description (optional)</label>
-              <input type="text" value={logDescription} onChange={(e) => setLogDescription(e.target.value)} className="input w-full text-sm" placeholder="What did you work on?" />
+              <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Description (optional)</label>
+              <input id={`${uid}-description`} type="text" value={logDescription} onChange={(e) => setLogDescription(e.target.value)} className="input w-full text-sm" placeholder="What did you work on?" />
             </div>
           </div>
           <div className="flex justify-end">
@@ -213,6 +217,7 @@ export function TimesheetPage() {
         <div className="space-y-4">
           <div className={`flex ${isMobile ? 'flex-col' : 'items-center'} gap-4`}>
             <select
+              aria-label="Project"
               value={selectedProjectId}
               onChange={(e) => { setSelectedProjectId(e.target.value); setSelectedScheduleId(''); }}
               className="input text-sm"
@@ -224,6 +229,7 @@ export function TimesheetPage() {
             </select>
             {selectedProjectId && (
               <select
+                aria-label="Schedule"
                 value={selectedScheduleId}
                 onChange={(e) => setSelectedScheduleId(e.target.value)}
                 className="input text-sm"

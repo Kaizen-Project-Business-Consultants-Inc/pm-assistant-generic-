@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Grid3X3 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -27,6 +27,7 @@ function getUtilColor(util: number): string {
 }
 
 export function UtilizationHeatmap({ projectId }: { projectId: string }) {
+  const uid = useId();
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 28);
@@ -70,12 +71,12 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
       {/* Date range picker */}
       <div className="flex items-center gap-3">
         <div>
-          <label className="block text-xs text-gray-500 mb-0.5">From</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
+          <label htmlFor={`${uid}-from`} className="block text-xs text-gray-500 mb-0.5">From</label>
+          <input id={`${uid}-from`} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
         </div>
         <div>
-          <label className="block text-xs text-gray-500 mb-0.5">To</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
+          <label htmlFor={`${uid}-to`} className="block text-xs text-gray-500 mb-0.5">To</label>
+          <input id={`${uid}-to`} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
         </div>
       </div>
 

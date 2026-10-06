@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useProjectRole } from '../../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, Plus, Trash2, Activity } from 'lucide-react';
@@ -22,14 +22,16 @@ function SectionSpinner() {
 }
 
 function ResourceAvailabilitySection({ resources, canEdit }: { resources: any[]; canEdit: boolean }) {
+  const uid = useId();
   const [selectedResourceId, setSelectedResourceId] = useState(resources[0]?.id || '');
   const selectedResource = resources.find((r: any) => r.id === selectedResourceId);
 
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-200">Availability for:</label>
+        <label htmlFor={`${uid}-availability-for`} className="text-sm font-medium text-gray-700 dark:text-gray-200">Availability for:</label>
         <select
+          id={`${uid}-availability-for`}
           value={selectedResourceId}
           onChange={e => setSelectedResourceId(e.target.value)}
           className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -202,6 +204,7 @@ export function TeamTab({ projectId }: { projectId: string }) {
               <input
                 type="text"
                 placeholder="Name"
+                aria-label="Name"
                 value={newMember.userName}
                 onChange={e => setNewMember({ ...newMember, userName: e.target.value })}
                 className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
@@ -209,11 +212,13 @@ export function TeamTab({ projectId }: { projectId: string }) {
               <input
                 type="email"
                 placeholder="Email"
+                aria-label="Email"
                 value={newMember.email}
                 onChange={e => setNewMember({ ...newMember, email: e.target.value })}
                 className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
               />
               <select
+                aria-label="Role"
                 value={newMember.role}
                 onChange={e => setNewMember({ ...newMember, role: e.target.value })}
                 className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500"
