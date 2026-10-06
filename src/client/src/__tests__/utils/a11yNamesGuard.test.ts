@@ -13,12 +13,7 @@ import { scanClient, scanSource, countByFile } from '../../../../../scripts/a11y
  * test fails until you do). Each entry says why it is still allowed.
  *   List them:  npx tsx scripts/a11y-scan.ts
  */
-const ALLOWED: Record<string, { count: number; reason: string }> = {
-  'components/layout/UpgradePrompt.tsx': {
-    count: 1,
-    reason: 'icon-only close button; the file belonged to another piece of work in progress on 2026-10-06 — name it when that lands',
-  },
-};
+const ALLOWED: Record<string, { count: number; reason: string }> = {};
 
 describe('accessible-name guard', () => {
   const found = scanClient();
