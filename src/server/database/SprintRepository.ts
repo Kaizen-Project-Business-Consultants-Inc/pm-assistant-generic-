@@ -13,6 +13,7 @@ interface SprintRow {
   end_date: string;
   status: string;
   velocity_commitment: number | null;
+  velocity_actual: number | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -37,6 +38,7 @@ function rowToSprint(row: any): Sprint {
     endDate: typeof row.end_date === 'string' ? row.end_date : new Date(row.end_date).toISOString().slice(0, 10),
     status: row.status,
     velocityCommitment: row.velocity_commitment != null ? Number(row.velocity_commitment) : null,
+    velocityActual: row.velocity_actual != null ? Number(row.velocity_actual) : null,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -121,7 +123,31 @@ export class SprintRepository extends BaseRepository<Sprint> {
   }
 
   async updateStatus(id: string, status: string): Promise<Sprint> {
-    await this.queryRaw(`UPDATE sprints SET status = ? WHERE id = ?`, [status, id]);
+    if (status === 'completed') return this.completeWithVelocity(id);
+    // Re-opening a closed sprint drops its saved velocity; closing it again saves a new one.
+    await this.queryRaw(`UPDATE sprints SET status = ?, velocity_actual = NULL WHERE id = ?`, [status, id]);
+    return (await this.findById(id))!;
+  }
+
+  /**
+   * Close the sprint and save its ACTUAL VELOCITY in the same statement: the story points of
+   * its tasks that are completed right now. Saved so a task reopened or finished after the close
+   * does not rewrite this sprint's velocity. Closing an already-closed sprint changes nothing
+   * (the figure saved at the first close stands).
+   */
+  async completeWithVelocity(id: string): Promise<Sprint> {
+    await this.queryRaw(
+      `UPDATE sprints s
+       SET s.velocity_actual = (
+             SELECT COALESCE(SUM(st.story_points), 0)
+             FROM sprint_tasks st
+             JOIN tasks t ON t.id = st.task_id
+             WHERE st.sprint_id = s.id AND t.status = 'completed'
+           ),
+           s.status = 'completed'
+       WHERE s.id = ? AND s.status <> 'completed'`,
+      [id],
+    );
     return (await this.findById(id))!;
   }
 
@@ -284,7 +310,8 @@ export class SprintRepository extends BaseRepository<Sprint> {
 
   async getVelocityHistory(projectId: string): Promise<Array<{ name: string; velocity: number; commitment: number }>> {
     const rows = await this.queryRaw(
-      `SELECT s.*, COALESCE(SUM(CASE WHEN t.status = 'completed' THEN st.story_points ELSE 0 END), 0) as completed_points
+      // The figure saved when the sprint closed; a live sum only for a sprint closed before it was saved.
+      `SELECT s.*, COALESCE(s.velocity_actual, SUM(CASE WHEN t.status = 'completed' THEN st.story_points ELSE 0 END), 0) as completed_points
        FROM sprints s
        LEFT JOIN sprint_tasks st ON st.sprint_id = s.id
        LEFT JOIN tasks t ON t.id = st.task_id

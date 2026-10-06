@@ -1211,7 +1211,8 @@ All sprints are displayed as clickable cards. Click a sprint to open it in the P
 - **Active sprint highlight** -- Active sprints have a blue left border and tinted background.
 - **Progress bars** -- Each sprint card shows task completion progress with point totals.
 - **Sorting** -- Click the sort toggle to cycle between Status (active first), Date (newest first), and Name (alphabetical) order.
-- **Velocity sparkline** -- A mini SVG chart in the list header shows velocity trend across the last 6 completed sprints.
+- **Velocity sparkline** -- A mini SVG chart in the list header shows velocity trend across the last 6 completed sprints, oldest on the left.
+- **Points vs commitment** -- Sprints with a velocity commitment show "done / committed pts" on the right. For a running sprint that is the points done so far; for a completed sprint it is the sprint's **actual velocity** (see below).
 - **AI Retrospective** -- Completed sprints show a book icon. Click it to generate an AI-powered retrospective summary.
 
 ### Creating a Sprint
@@ -1265,6 +1266,8 @@ Track sprint progress with the interactive burndown chart:
 ### Velocity Chart
 
 View historical velocity across completed sprints. The chart shows story points completed per sprint, helping calibrate future commitments. The sprint list header also includes a velocity sparkline for quick trend visibility.
+
+**Actual velocity** is the story points of the sprint's tasks that were Completed at the moment you clicked **Complete sprint**. It is saved then, so it does not change afterwards: reopening one of those tasks, or finishing a leftover task later, leaves the sprint's velocity as it was. Tasks without story points count as 0. If you restart a completed sprint, its saved figure is cleared and saved again when you complete it the next time. The sprint list, velocity chart, dashboard Sprint Velocity widget, capacity card (average velocity), Agile EVM, the AI retrospective and the Kovarti MCP tools all use this same figure.
 
 ### Completing a Sprint
 

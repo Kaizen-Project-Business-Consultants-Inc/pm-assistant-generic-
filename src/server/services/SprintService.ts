@@ -17,6 +17,8 @@ export interface Sprint {
   endDate: string;
   status: string;
   velocityCommitment: number | null;
+  /** Story points completed by the time the sprint closed — saved on close; null until then */
+  velocityActual: number | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -151,7 +153,8 @@ export class SprintService {
 
   async completeSprint(id: string): Promise<Sprint> {
     const before = await this.getById(id);
-    const sprint = await sprintRepository.updateStatus(id, 'completed');
+    // Saves the sprint's actual velocity in the same statement (see completeWithVelocity)
+    const sprint = await sprintRepository.completeWithVelocity(id);
 
     auditLedgerService.append({
       actorId: sprint.createdBy,
@@ -266,6 +269,16 @@ export class SprintService {
 
   async getBacklogTasks(scheduleId: string): Promise<any[]> {
     return sprintRepository.getBacklogTasks(scheduleId);
+  }
+
+  /**
+   * The sprint's actual velocity: for a closed sprint, the points saved when it closed (so later
+   * task changes don't rewrite it); otherwise the points of its tasks completed so far.
+   * Every screen and AI prompt that states a sprint's velocity uses this, so they agree.
+   */
+  actualVelocity(sprint: Pick<Sprint, 'status' | 'velocityActual'>, tasks: Array<{ status: string; storyPoints?: number | null }>): number {
+    if (sprint.status === 'completed' && sprint.velocityActual != null) return sprint.velocityActual;
+    return tasks.filter(t => t.status === 'completed').reduce((sum, t) => sum + (Number(t.storyPoints) || 0), 0);
   }
 
   async getVelocityHistory(projectId: string): Promise<{

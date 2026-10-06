@@ -495,6 +495,7 @@ const sections: Section[] = [
       'Assign story points to each sprint task for capacity tracking',
       'Start the sprint and use the Kanban board to track progress (Todo → In Progress → Done)',
       'View sprint burndown charts and velocity history across completed sprints',
+      'Actual velocity = story points of tasks Completed when you click Complete sprint; it is saved then, so reopening a task later does not change it',
     ],
   },
   {

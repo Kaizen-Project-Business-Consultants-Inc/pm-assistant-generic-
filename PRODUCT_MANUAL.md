@@ -686,7 +686,8 @@ The Sprint tab header shows at-a-glance status for the active sprint:
 All sprints displayed as cards with status badges, date ranges, task progress bars, and velocity data. Features:
 
 - **Sorting** — Cycle between status-first (active → planning → completed → cancelled), date, and name sorting via the sort toggle button.
-- **Velocity sparkline** — Mini SVG chart in the header showing velocity trend across the last 6 completed sprints.
+- **Velocity sparkline** — Mini SVG chart in the header showing the actual velocity of the last 6 completed sprints, oldest on the left.
+- **Points vs commitment** — "done / committed pts": points done so far on a running sprint, the saved actual velocity on a completed one.
 - **AI Retrospective** — Completed sprints show a book icon to generate an AI-powered retrospective summary.
 
 ### Sprint Planning
@@ -720,7 +721,10 @@ The `BurndownService` computes daily remaining work for a sprint, producing the 
 
 ### Velocity Tracking
 
-Historical sprint velocity (story points or task count completed per sprint) is tracked across sprints to support future capacity planning.
+Historical sprint velocity (story points completed per sprint) is tracked across sprints to support future capacity planning.
+
+- **Actual velocity is saved when the sprint is completed** (`sprints.velocity_actual`, tenant migration T082): the story points of the sprint's tasks whose status is Completed at that moment, saved in the same database statement that closes the sprint. Reopening a task or finishing a leftover task afterwards does not change it; tasks without points count as 0. Completing an already-completed sprint keeps the first figure; restarting a completed sprint clears it, and the next completion saves a new one. Sprints completed before T082 were backfilled with their completed points on the day of the upgrade.
+- **One figure everywhere** — the velocity history (`GET /api/v1/sprints/velocity/:projectId`, MCP `get-velocity`) reads the saved figure, so the velocity chart, the dashboard Sprint Velocity widget, the capacity card's average, Agile EVM, and the AI retrospective prompts agree. The sprint list shows it as "actual / committed pts" on completed sprints (running sprints show points done so far). MCP `complete-sprint` goes through the same complete endpoint.
 
 ### Dark Mode & Mobile
 

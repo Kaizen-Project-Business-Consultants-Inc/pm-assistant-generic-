@@ -20,10 +20,17 @@ vi.mock('../../services/SprintService', () => ({
     getSprintBoard: vi.fn().mockResolvedValue({ tasks: [] }),
     getSprintBurndown: vi.fn().mockResolvedValue({ totalPoints: 0, actual: [] }),
     getVelocityHistory: vi.fn().mockResolvedValue({ sprints: [] }),
+    actualVelocity: vi.fn().mockReturnValue(0),
   },
 }));
 
+const mockComplete = vi.fn().mockResolvedValue({ content: '{"went_well":[],"to_improve":[],"action_items":[]}' });
+vi.mock('../../services/claudeService', () => ({
+  claudeService: { complete: (...args: any[]) => mockComplete(...args) },
+}));
+
 import { retrospectiveRepository } from '../../database/RetrospectiveRepository';
+import { sprintService } from '../../services/SprintService';
 
 const mockRepo = retrospectiveRepository as any;
 
@@ -101,6 +108,24 @@ describe('RetrospectiveService', () => {
       });
       await expect(retrospectiveService.convertToTask('ri1', 'sch1', 'u1'))
         .rejects.toThrow('already converted');
+    });
+  });
+
+  describe('seedFromAI', () => {
+    it("states the velocity saved when the sprint closed, not today's task statuses", async () => {
+      // closed with 13 points done; the 8-point task has since been reopened, so a live sum would say 5
+      const tasks = [
+        { id: 't1', name: 'A', status: 'completed', storyPoints: 5 },
+        { id: 't2', name: 'B', status: 'in_progress', storyPoints: 8 },
+      ];
+      (sprintService.getSprintBoard as any).mockResolvedValueOnce({ tasks });
+      (sprintService.actualVelocity as any).mockReturnValueOnce(13);
+
+      await retrospectiveService.seedFromAI('s1', 'p1', 'u1');
+
+      expect(sprintService.actualVelocity).toHaveBeenCalledWith(expect.objectContaining({ id: 's1', status: 'completed' }), tasks);
+      const prompt: string = mockComplete.mock.calls[0][0].userMessage;
+      expect(prompt).toContain('Velocity: 13/13 pts');
     });
   });
 });

@@ -12,6 +12,7 @@ vi.mock('../../database/SprintRepository', () => {
     addTask: vi.fn(),
     removeTask: vi.fn(),
     updateStatus: vi.fn(),
+    completeWithVelocity: vi.fn(),
     getSprintBoard: vi.fn().mockResolvedValue({ scheduleId: null, tasks: [] }),
     getTotalPoints: vi.fn().mockResolvedValue(0),
     getCompletedTasksWithDates: vi.fn().mockResolvedValue([]),
@@ -47,7 +48,7 @@ const mockRepo = sprintRepository as any;
 const sampleSprint = {
   id: 's1', projectId: 'p1', scheduleId: 'sch1', name: 'Sprint 1',
   goal: 'Deliver MVP', startDate: '2026-01-01', endDate: '2026-01-14',
-  status: 'planning', velocityCommitment: 20, createdBy: 'u1',
+  status: 'planning', velocityCommitment: 20, velocityActual: null, createdBy: 'u1',
   createdAt: '2026-01-01', updatedAt: '2026-01-01',
 };
 
@@ -103,11 +104,49 @@ describe('SprintService', () => {
   });
 
   describe('completeSprint', () => {
-    it('updates status to completed', async () => {
+    it('closes the sprint AND saves its actual velocity in one step', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleSprint);
-      mockRepo.updateStatus.mockResolvedValueOnce({ ...sampleSprint, status: 'completed' });
+      mockRepo.completeWithVelocity.mockResolvedValueOnce({ ...sampleSprint, status: 'completed', velocityActual: 13 });
       const sprint = await service.completeSprint('s1');
       expect(sprint.status).toBe('completed');
+      expect(sprint.velocityActual).toBe(13);
+      expect(mockRepo.completeWithVelocity).toHaveBeenCalledWith('s1');
+      // not the plain status change, which would leave velocity unsaved
+      expect(mockRepo.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('actualVelocity', () => {
+    const tasks = [
+      { status: 'completed', storyPoints: 5 },
+      { status: 'completed', storyPoints: 8 },
+      { status: 'in_progress', storyPoints: 3 },
+      { status: 'pending', storyPoints: 2 },
+    ];
+
+    it('open sprint: counts only the points of completed tasks', () => {
+      expect(service.actualVelocity({ status: 'active', velocityActual: null }, tasks)).toBe(13);
+    });
+
+    it('a sprint with no story points has velocity 0, not NaN', () => {
+      const noPoints = [{ status: 'completed', storyPoints: null }, { status: 'completed' }, { status: 'pending', storyPoints: null }];
+      expect(service.actualVelocity({ status: 'active', velocityActual: null }, noPoints)).toBe(0);
+      expect(service.actualVelocity({ status: 'completed', velocityActual: 0 }, noPoints)).toBe(0);
+    });
+
+    it('closed sprint: the figure saved at close stands when a task is reopened afterwards', () => {
+      // closed with 13 done; the 8-point task was reopened later
+      const afterReopen = tasks.map(t => (t.storyPoints === 8 ? { ...t, status: 'in_progress' } : t));
+      expect(service.actualVelocity({ status: 'completed', velocityActual: 13 }, afterReopen)).toBe(13);
+    });
+
+    it('closed sprint: a leftover task finished after the close does not add to it', () => {
+      const afterLateFinish = tasks.map(t => ({ ...t, status: 'completed' }));
+      expect(service.actualVelocity({ status: 'completed', velocityActual: 13 }, afterLateFinish)).toBe(13);
+    });
+
+    it('closed sprint with nothing saved (should not happen after T082) falls back to the live sum', () => {
+      expect(service.actualVelocity({ status: 'completed', velocityActual: null }, tasks)).toBe(13);
     });
   });
 

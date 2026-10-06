@@ -19,7 +19,8 @@ interface Sprint {
   startDate?: string;
   endDate?: string;
   velocityCommitment?: number;
-  velocityActual?: number;
+  /** Story points completed by the time the sprint closed (saved on close); null while open */
+  velocityActual?: number | null;
   taskStats?: SprintTaskStats;
 }
 
@@ -53,7 +54,10 @@ function formatDate(s?: string): string {
 }
 
 function VelocitySparkline({ sprints }: { sprints: Sprint[] }) {
-  const completed = sprints.filter((s) => s.status === 'completed' && s.velocityActual != null);
+  // Oldest → newest, so the line reads left to right in time (the API lists newest first)
+  const completed = sprints
+    .filter((s) => s.status === 'completed' && s.velocityActual != null)
+    .sort((a, b) => (a.startDate ?? '').localeCompare(b.startDate ?? ''));
   if (completed.length < 2) return null;
   const last = completed.slice(-6);
   const vals = last.map((s) => s.velocityActual!);
@@ -228,9 +232,16 @@ export function SprintList({ projectId, onSelect, onCreate, onRetro, canEdit = t
                   {/* Velocity + Retro */}
                   <div className="text-right flex-shrink-0 flex items-center gap-2">
                     {sprint.velocityCommitment != null && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block">
+                      <div
+                        className="text-xs text-gray-500 dark:text-gray-400 hidden sm:block"
+                        title={sprint.status === 'completed'
+                          ? 'Actual velocity: points completed by the time the sprint closed, of the points committed'
+                          : 'Points completed so far, of the points committed'}
+                      >
                         <span className="font-medium text-gray-700 dark:text-gray-300">
-                          {sprint.velocityActual ?? '?'}
+                          {sprint.status === 'completed'
+                            ? (sprint.velocityActual ?? sprint.taskStats?.completedPoints ?? 0)
+                            : (sprint.taskStats?.completedPoints ?? 0)}
                         </span>
                         <span className="text-gray-500 dark:text-gray-400"> / {sprint.velocityCommitment} pts</span>
                       </div>

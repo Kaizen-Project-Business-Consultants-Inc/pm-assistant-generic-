@@ -294,7 +294,8 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const completed = tasks.filter((t: any) => t.status === 'completed');
       const incomplete = tasks.filter((t: any) => t.status !== 'completed');
       const totalPoints = tasks.reduce((s: number, t: any) => s + (t.storyPoints || 0), 0);
-      const completedPoints = completed.reduce((s: number, t: any) => s + (t.storyPoints || 0), 0);
+      // The velocity saved when the sprint closed — not today's task statuses
+      const completedPoints = sprintService.actualVelocity(sprint, tasks);
       const velocities = velocity.sprints.map(s => s.velocity);
       const avgVelocity = velocities.length > 0 ? Math.round(velocities.reduce((a, b) => a + b, 0) / velocities.length) : 0;
 
