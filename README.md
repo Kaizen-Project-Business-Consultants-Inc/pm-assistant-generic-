@@ -2,7 +2,7 @@
 
 **Enterprise Project Management Platform with Agentic AI**
 
-A full-featured, production-grade project management SaaS application combining traditional PM methodologies (CPM, EVM, Agile) with an autonomous AI agent system. 14 specialized agents continuously monitor projects, reason about issues via Claude, and propose (or auto-execute) corrective actions — all with human-in-the-loop governance, confidence scoring, and full audit trails. Built with Fastify, React, and the Anthropic Claude SDK.
+A full-featured, production-grade project management SaaS application combining traditional PM methodologies (CPM, EVM, Agile) with AI assistance that only acts when a person asks. Rule-based checks (Schedule Review, RAID Review, the Weekly PM review) flag problems; AI drafts suggestions and reports on request; the project's PM approves every change, with full audit trails. (The earlier autonomous agents were retired in October 2026, and the nightly checks are switched off.) Built with Fastify, React, and the Anthropic Claude SDK.
 
 **Production:** [https://kovarti.com](https://kovarti.com)
 **Staging:** [https://pm.kpbc.ca](https://pm.kpbc.ca) (basic auth required)
@@ -38,7 +38,7 @@ A full-featured, production-grade project management SaaS application combining 
 | **Validation** | Zod |
 | **API Docs** | OpenAPI / Swagger |
 | **MCP** | Model Context Protocol server for Claude Desktop and Claude Web |
-| **Deployment** | LiteSpeed (static assets) + Passenger (Node.js API) on TMD Hosting |
+| **Deployment** | Nginx (static assets + reverse proxy) + systemd (`pm-app` Node.js service) on Oracle Cloud; MariaDB and Redis on the same server |
 
 ---
 
@@ -185,10 +185,10 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - **Cross-Project Intelligence** -- Insights across the portfolio
 - **What-If Scenario Modeling** -- Simulate schedule and resource changes
 
-### Agentic System (requires `AGENT_ENABLED=true`)
+### Agentic System (requires `AGENT_ENABLED=true` — switched off on staging and production)
 - **Nightly checks (no AI)** -- slipping tasks (working days; then AI Reschedule proposes dates on request), budget performance from EVM (labour + expenses), and Monte Carlo schedule risk. Each alerts the project's PM once per unread alert.
 - **Agents only suggest; the PM decides.** Twelve earlier agents were removed in October 2026 (they duplicated Schedule Review, the Team Planner, EVM, status reports and Lessons, and their AI output was unreliable). PM playbooks are the planned next step.
-- **Autonomous Execution (SME/Enterprise)** -- Agents with proven track records (30+ days, 20+ proposals, 80%+ acceptance, zero rollbacks) can be promoted to auto-execute low-risk, high-confidence proposals
+- **Autonomous Execution** -- Not offered in the app (October 2026): agents only suggest and the PM decides. The API still accepts per-project promotion by that project's Manager/Owner; acting by themselves is a long-term goal
 - **Confidence Scoring** -- Weighted confidence (data quality + historical accuracy + model certainty) controls what agents can propose
 - **Proposal Lifecycle** -- pending -> approved/rejected -> executed/rolled_back with full audit trail
 - **Emergency Kill Switch** -- Global, per-agent, and per-project agent shutdown via API with audit logging
@@ -197,7 +197,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - **Degradation Handling** -- Graceful scope reduction when Claude API or database is unhealthy
 - **Feedback Loop** -- Users rate proposal outcomes; feedback improves future confidence scores
 - **Agent Memory Layer** -- Persistent memory across sessions: session, project, role, and reflection memory types with TTL expiry. Agents store reflections after each action (what was decided, why, outcome). Memory API: `GET/POST/DELETE /api/v1/agent/memory`
-- **Agent Proposals UI** -- Dedicated page (`/agent`) for managers/admins to review, approve/reject, execute, rollback, and rate agent proposals with full reasoning and action detail; "Load More" pagination for large proposal lists
+- **Agent Proposals UI** -- Dedicated page (`/agent`, sidebar **AI Proposals**) where the project's Manager/Owner can review, approve/reject, execute, rollback, and rate agent proposals with full reasoning and action detail; "Load More" pagination for large proposal lists
 
 ### Reporting & Analytics
 - Custom report builder with saved templates; KPI, chart, and table sections render correctly with proper data shapes; SQL injection protection on groupBy; regular users can delete their own templates; report designer properly saves sections on template update
@@ -428,15 +428,15 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 
 ```
                     +-----------+
-                    | LiteSpeed |  (static assets: HTML, CSS, JS, images)
+                    |   Nginx   |  (static assets: HTML, CSS, JS, images)
                     +-----+-----+
                           |
               +-----------+-----------+
               |                       |
         /api/* routes           static files
               |
-     +--------v--------+
-     |  Passenger (Node) |
+     +--------v---------+
+     | systemd (pm-app) |
      +--------+---------+
               |
      +--------v---------+
@@ -451,8 +451,8 @@ This starts both the Fastify API server and the Vite dev server concurrently.
  (MariaDB)  (AI)   (Billing)
 ```
 
-- **Frontend** is a Vite-built React SPA served as static files by LiteSpeed. Production bundle uses manual chunk splitting (`vendor-react`, `vendor-query`) defined in `vite.config.ts` to improve cache efficiency.
-- **Backend** is a Fastify app running under Passenger, handling all `/api/v1/` routes.
+- **Frontend** is a Vite-built React SPA served as static files by Nginx. Production bundle uses manual chunk splitting (`vendor-react`, `vendor-query`) defined in `vite.config.ts` to improve cache efficiency.
+- **Backend** is a Fastify app run by systemd (`pm-app` service) behind Nginx, handling all `/api/v1/` routes.
 - **Analytics & SEO** — GA4 (measurement ID `G-F99Q92ED7M`) is loaded in `index.html` (hardcoded, no env var). `index.html` also includes Open Graph and Twitter Card meta tags. `public/robots.txt` and `public/sitemap.xml` are included for search engine indexing.
 - **Repository layer** (`BaseRepository` + entity repos) centralizes SQL and row mapping for core entities; services keep business logic.
 - **Structured metrics** via `MetricsService` (request counts, latency percentiles, AI token usage). Admin endpoint: `GET /api/v1/metrics`.

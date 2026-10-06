@@ -5,13 +5,13 @@
 **Architecture:** Fastify + TypeScript backend, React frontend, MySQL database
 **AI Kill Switch:** `AI_ENABLED` environment variable disables all AI features globally
 **Agent Kill Switch:** `KillSwitchService` provides runtime API-controlled agent shutdown (global, per-agent, per-project) with audit trail — distinct from the env-var kill switch
-**Agentic System:** 14 autonomous agents with 3-tier autonomy model (Notify → Propose → Auto-Execute)
+**Agentic System:** three rule-based nightly checks (no AI) that propose, never act — **switched off** (`AGENT_ENABLED` unset on staging and production). The earlier 14 AI agents and the auto-execute tier were retired in October 2026.
 
 ---
 
 ## Overview
 
-PM Assistant is an agentic AI-native project management platform. 14 specialized agents continuously monitor projects, detect issues, reason about solutions via Claude, and propose (or autonomously execute) corrective actions — all governed by confidence scoring, risk classification, and human-in-the-loop controls. Every AI capability is powered by the Anthropic Claude SDK, with structured JSON output validated by Zod schemas. All features degrade gracefully when AI is unavailable -- the application remains fully functional without AI.
+PM Assistant is an AI-assisted project management platform. AI runs when a person asks for it (a button, opening a tab, a chat question) and every change it suggests waits for the project's PM. Rule-based checks (Schedule Review, RAID Review, the Weekly PM review) find problems without AI. The earlier autonomous agents that "continuously monitored" projects were retired in October 2026, and the remaining nightly checks are switched off. Every AI capability is powered by the Anthropic Claude SDK, with structured JSON output validated by Zod schemas. All features degrade gracefully when AI is unavailable -- the application remains fully functional without AI.
 
 Key architectural components:
 - **Claude Service** (`claudeService.ts`) -- Core SDK integration with streaming, JSON schema mode, tool use, rate limiting, retry logic, and token tracking
@@ -20,7 +20,7 @@ Key architectural components:
 - **AI Tool Definitions** (`aiToolDefinitions.ts`) -- Claude tool schemas for agentic tool-use in chat
 - **AI Usage Logger** (`aiUsageLogger.ts`) -- Tracks every AI request: tokens, cost, latency, success/failure
 - **Prompt Templates** -- Versioned `PromptTemplate` class with variable interpolation; all prompts are version-controlled, not hardcoded strings
-- **Agent Scheduler** (`AgentSchedulerService.ts`) -- Cron-based background AI analysis across all active projects
+- **Agent Scheduler** (`AgentSchedulerService.ts`) -- Runs the three rule-based checks (no AI) from the `pm-cron@agent-scan` timer when `AGENT_ENABLED=true` (off today), or for one project on demand from its Agent Activity tab
 - **Agentic Pipeline** (`services/agents/`) -- Autonomous reasoning, proposal creation, and controlled execution:
   - **ReasoningEngine** -- Assembles context, calls Claude with structured prompts, parses recovery/scope analysis plans
   - **ActionProposalService** -- Creates and manages proposals with lifecycle tracking (pending -> approved -> executed)
@@ -49,7 +49,7 @@ Mjuzi is the persistent, context-aware conversational AI assistant available thr
 - Context-aware: knows which page and project the user is viewing (`dashboard`, `project`, `schedule`, `reports`, `general`)
 - Agentic tool use: Claude can call tools to create tasks, update projects, assign resources, and more -- all gated by the policy engine
 - **Database-backed persistence:** conversations and messages stored in `chat_conversations` and `chat_messages` tables via `ChatRepository`. Survives server restarts.
-- **Agent memory integration:** injects `InterAgentQueryService` scan findings, prior conversation count, and Mjuzi's own project memories (`agentMemoryService.recall('mjuzi-chat', ...)`) into the system prompt
+- **Agent memory integration:** injects `InterAgentQueryService` scan findings (none today — the nightly scan is switched off, `AGENT_ENABLED` unset), prior conversation count, and Mjuzi's own project memories (`agentMemoryService.recall('mjuzi-chat', ...)`) into the system prompt
 - **Action memory:** after tool use, stores a summary via `agentMemoryService.store()` for future reference
 - Action results embedded in responses (e.g., "I created task X" with confirmation)
 - Conversation history UI: browse, switch, and resume past conversations
@@ -581,9 +581,9 @@ Registered capabilities (`agentCapabilities.ts`, invocable from workflows): `aut
 
 **Removed (2026-10-04):** schedule-recovery, scope-creep-detection, budget-intelligence, resource-optimization, cross-project-intelligence, risk-escalation, stakeholder-communication, project-hygiene, dependency-risk, lessons-learned, predictive-alerting and meeting-followup — with `ReasoningEngine` and `agents/reasoning/*`. The review found they duplicated Schedule Review, the Team Planner, EVM, status reports, Lessons and the Morning Briefing; their AI replies failed their schemas (free-text JSON, never `completeWithJsonSchema`); their suggested actions couldn't be executed (no assignee / title, unsupported action types); some read columns or tables that don't exist; and the portfolio ones ignored project permissions. Control-plane migrations 128–129 and tenant T077–T078 remove their `agents` rows (and the unused budget-forecast wrapper and the never-built rag-query entry). The nightly scan runs one scan per company at a time (it was one lock for the whole server, so companies scanned in parallel were skipped). The planned replacement is PM **playbooks** run on working features (`docs/playbooks/`).
 
-### Autonomous Execution (Tier 3)
+### Autonomous Execution (Tier 3) — not offered
 
-Agents with proven track records can be promoted from Tier 2 (propose-only) to Tier 3 (auto-execute):
+History: agents with proven track records could be promoted from Tier 2 (propose-only) to Tier 3 (auto-execute):
 
 - **Promotion criteria:** >= 30 days, >= 20 proposals, >= 80% acceptance, >= 70% effectiveness, zero rollbacks
 - **Auto-execute gates:** Tier 3 AND confidence >= threshold (default 80) AND risk <= max level (default `low`)
