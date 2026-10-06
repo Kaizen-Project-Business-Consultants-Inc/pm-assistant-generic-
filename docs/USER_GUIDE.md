@@ -154,31 +154,35 @@ Click **Customize** next to the dashboard title to toggle widget sections on/off
 
 ### Sidebar Navigation
 
-The left sidebar provides access to all areas of the application:
+The left sidebar is grouped into sections. Some items only show for certain roles; team members and viewers see the others greyed out with a lock.
 
-| Menu Item      | Description                                 |
-|----------------|---------------------------------------------|
-| Dashboard      | Portfolio overview with KPI tiles, daily briefing, and widgets (default landing page) |
-| Projects       | Create and manage projects                  |
-| Reports        | Pre-built report templates                  |
-| Portfolio      | Cross-project Gantt and portfolio view      |
-| Analytics      | Summary analytics and dashboards            |
-| Workflows      | DAG-based automation workflows              |
-| Intelligence   | Scenario modeling and cross-project analysis|
-| Resources      | Resource workload heatmap, histogram, and capacity forecast |
-| EVM            | Earned value KPIs, trend charts, forecasts, and AI predictions |
-| Simulation     | Monte Carlo schedule simulation             |
-| Intelligence   | Meeting transcript analysis, RAID import, and history     |
-| Lessons        | Lessons learned knowledge base              |
-| Timesheets     | Time tracking and actual vs. estimated      |
-| Integrations   | Jira, GitHub, Slack, Trello connections     |
-| Report Builder | Custom report designer                      |
-| Intake         | Project intake forms and submissions        |
-| AI Query       | Natural language query interface (Mjuzi AI) |
-| AI Proposals   | AI-generated agentic proposals (Mjuzi AI)   |
-| Help           | In-app help and user guide                  |
-| Account        | Billing and subscription management         |
-| Settings       | User preferences and API keys (admin/manager)|
+| Section | Menu item | What it's for | Who |
+|---------|-----------|---------------|-----|
+| **Work** | Dashboard | Portfolio overview with KPI tiles, daily briefing, and widgets (default landing page) | Everyone |
+| | Projects | Create and manage projects | Everyone |
+| | Portfolio | Cross-project Gantt and portfolio view | PMO, executives |
+| **Manage** | Resources | People list, Team Planner, workload heatmap, histogram, capacity forecast | PMs, PMO, executives |
+| | Meeting Intelligence | Meeting transcript analysis, RAID import, and history | PMs, PMO, executives |
+| | Lessons | Lessons learned knowledge base | Everyone |
+| | Change Requests | Change requests across your projects | PMs, PMO, executives |
+| | Workflows | DAG-based automation workflows | PMs, PMO, executives |
+| | Intake | Project intake forms and submissions | PMs, PMO, executives |
+| | Integrations | Jira, GitHub, Slack, Trello and calendar connections | PMs, PMO |
+| **Insights** | Analytics | Summary analytics and dashboards | PMs, PMO, executives |
+| | EVM Dashboard | Earned value KPIs, trend charts, forecasts, and AI predictions | PMs, PMO, executives |
+| | Simulation | Monte Carlo schedule simulation | PMs, PMO, executives |
+| | Scenario Modeling | What-if scenarios and cross-project analysis | PMs, PMO, executives |
+| | Reports | Pre-built report templates | Everyone |
+| | Report Builder | Custom report designer | PMs, PMO, executives |
+| **Mjuzi AI** | AI Query | Natural language questions about your data | Everyone |
+| | AI Proposals | Proposals waiting for a PM's decision | PMs, PMO |
+| **Personal** | Notifications | All your alerts | Everyone |
+| | Timesheets | Your weekly timesheet, and approvals if you're a line manager | Everyone |
+| | Goals | Objectives and key results | Everyone |
+| | My Feedback | Feedback you've sent us | Everyone |
+| | Settings | Your profile and preferences; team, rate card and company settings for those who manage them | Everyone |
+
+The company owner works as PMO, so sees the PMO items. **Help** is in the menu under your name (top right) → **Help & Support**. **Account** (plan and billing) opens from the command palette (**Go to Account & Billing**) or from the AI usage indicator in the sidebar.
 
 The sidebar can be collapsed using the toggle at the bottom. On mobile devices, it slides in as an overlay.
 
@@ -223,9 +227,11 @@ Click **Create New Project** from the Dashboard or Projects page. You'll see thr
 
 Open a project from the Dashboard or Projects page. Edit any field (name, description, status, priority, methodology, budget, dates, assigned PM) and save your changes. Changing the methodology immediately updates the tab ordering, readiness bar, and context cards.
 
-### Deleting a Project
+### Archiving a Project (instead of deleting)
 
-From the project detail view, use the delete option. This action requires appropriate permissions and will remove the project and all associated schedules, tasks, and data.
+When a project is finished or stopped, **archive** it: in the **Projects** list, press the **Archive project** button on its card (the project's Manager or Owner can do this). An archived project leaves your active lists and totals, and every record is kept. You can **Unarchive** it at any time.
+
+**Deleting** is only possible on single-user plans (trial and consultant), and only for the project's Owner: **Edit project → Delete Project**, then type the project's name to confirm. This removes the project and all its schedules, tasks and data for good. On team plans (SME and Enterprise) projects can't be deleted — archive them instead. The sample project can't be deleted.
 
 ### Project Detail View
 
@@ -236,7 +242,7 @@ The project detail page adapts its layout based on the project's **methodology**
 | Aspect | Waterfall (default) | Agile | Hybrid |
 |--------|-------------------|-------|--------|
 | **Default view** | Gantt | Kanban | Gantt |
-| **Primary tabs** | Overview, Schedule, Team, Risks & Issues, Financials, Changes | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
+| **Primary tabs** | Overview, Schedule, Team, Risks & Issues, Financials | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
 | **Context card 1** | Progress % | Velocity (avg pts/sprint) | Progress % |
 | **Context card 5** | Status | Sprint count | Velocity (avg pts/sprint) |
 
@@ -256,15 +262,17 @@ Each step turns green when complete. All steps are data-driven and auto-detect c
 
 #### Tabs
 
-The project detail page shows **6 primary tabs** plus a single **More** overflow menu. Which tabs appear as primary depends on the project methodology:
+The project detail page shows a few **primary tabs** plus a single **More** menu at the end of the tab bar (when you open a tab from More, the More button shows that tab's name). Which tabs appear as primary depends on the project methodology:
 
-| Methodology | Primary tabs (left → right) |
-|-------------|----------------------------|
-| **Waterfall** | Overview, Schedule, Team, Risks & Issues, Financials, Changes |
-| **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team |
-| **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
+| Methodology | Primary tabs (left → right) | Also in **More** |
+|-------------|----------------------------|------------------|
+| **Waterfall** | Overview, Schedule, Team, Risks & Issues, Financials | Changes, Sprints, Backlog, What-If |
+| **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team | Financials, Changes, What-If |
+| **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team | Financials, Changes, What-If |
 
-**More overflow menu (all methodologies):** Time, Files, Performance, AI Insights, Resources, Agent Activity — plus any methodology-specific tabs not shown as primary.
+**More menu (all methodologies):** Time, Files, Insights, Resources, Agent Activity, Automations, Doc Intelligence — followed by the methodology's extra tabs above.
+
+**Insights** has two parts: **Performance** (earned value and cost forecast) and **AI Predictions**. The **Weekly review** opens from its card on the Overview tab (project's PM only).
 
 > **Note:** The RAID log is labelled **Risks & Issues** in the tab bar. The tab badge shows the **critical-item count only** (not the total of all open items) to surface the most urgent items at a glance.
 
@@ -276,7 +284,7 @@ Available cards:
 - **Timeline Progress** -- Elapsed vs complete percentage with on-track/behind/overdue indicator and progress bar.
 - **Key Milestones** -- Up to 5 milestones sorted by date with status icons and dates. Click to navigate to the Schedule tab.
 - **Health Score** -- Current project health score with a 30-day **sparkline trend chart** (SVG) showing health history. Trend arrow (up/down/stable) with colour coding.
-- **EVM Metrics** -- CPI and SPI gauges with earned value, planned value, and cost/schedule variance. Click to navigate to the Performance tab.
+- **EVM Metrics** -- CPI and SPI gauges with earned value, planned value, and cost/schedule variance. Click to open **Insights → Performance**.
 - **Budget** -- Budget allocated vs spent with utilization percentage bar, currency formatting, and over-budget warning.
 - **Due Soon** -- Tasks due within the next 7 days, sorted by urgency.
 - **RAID Summary** -- Grid showing open risks, open issues, open actions, pending decisions, open assumptions, and open dependencies with critical/triggered badges. Click to navigate to the RAID tab.
@@ -391,11 +399,13 @@ Tasks can be organized hierarchically:
 
 ### Task Budget
 
-Each task can track budget and cost:
+Each task shows its cost. Both figures are **worked out by the app, not typed in**:
 
-- **Budget ($)** -- Planned budget for the task. Set in the Task Form modal or inline in the Table view (Cost column group).
-- **Actual Cost ($)** -- Actual spend to date.
-- **Cost Variance** -- Computed as Budget minus Actual Cost. Shown colour-coded: green (under budget), red (over budget).
+- **Planned cost** (the task's budget) -- the task's planned hours × each assigned person's rate, kept up to date when dates, people or rates change.
+- **Actual cost** -- approved hours × rate. Non-labour costs (licences, vendors) go in the project's **Financials → Expenses**.
+- **Cost Variance** -- Planned cost minus Actual cost. Shown colour-coded: green (under budget), red (over budget).
+
+The task form shows both figures read-only (see *What approval does to the plan and the budget* under Time Tracking).
 
 Enable cost columns via the **Columns** picker > **Cost** group.
 
@@ -440,7 +450,7 @@ A project's own day off always wins; its extra working day beats a company holid
 
 The Gantt shades days off (day and week zoom), and the **Duration** column counts working days.
 
-**Numbers and charts use working days too:** critical path and float (and the Early/Late Start/Finish columns), Monte Carlo finish dates (never on a weekend or holiday), Schedule Review checks (rules v1.6 — e.g. a duration that matches the working-day span is no longer flagged just because the task crosses a weekend; "month-long" reporting tasks means 20 working days), baseline variance ("+3d" means 3 working days late; a finish that only moved over a weekend is not a slip), earned value and the S-curve (planned value grows only on working days), the sprint burndown's ideal line (flat on weekends; "Days left" counts working days), and the what-if model.
+**Numbers and charts use working days too:** critical path and float (and the Early/Late Start/Finish columns), Monte Carlo finish dates (never on a weekend or holiday), Schedule Review checks (since rules v1.6; the current rules are v1.8 — e.g. a duration that matches the working-day span is no longer flagged just because the task crosses a weekend; "month-long" reporting tasks means 20 working days), baseline variance ("+3d" means 3 working days late; a finish that only moved over a weekend is not a slip), earned value and the S-curve (planned value grows only on working days), the sprint burndown's ideal line (flat on weekends; "Days left" counts working days), and the what-if model.
 
 ### Dependencies
 
@@ -769,7 +779,7 @@ A visual plot of PV, EV, and AC over time. The S-curve shows:
 - Whether the project is over or under budget (EV vs. AC gap).
 - Trend lines for forecasting completion.
 
-> **Accuracy note:** When your tasks have per-task **Actual Cost** values recorded (via the Budget Allocated / Actual Cost fields on each task), the AC series is calculated from those real figures rather than approximated from the overall project spend. This makes CPI and all cost-derived metrics more accurate. If no per-task costs exist, the system falls back to distributing the project-level budget-spent figure linearly over the project timeline.
+> **Where the AC line comes from:** the actual-cost line uses the same real spend as the Actual Cost figure above — approved hours at each person's rate on the day worked, plus expenses on their own date. Costs are not typed into tasks.
 
 ### Agile EVM
 
@@ -805,6 +815,7 @@ The EVM Forecast Dashboard shows:
 - **Cost at completion forecasts** based on current CPI.
 - **Forecast comparison charts** showing optimistic, most likely, and pessimistic scenarios.
 - **AI-generated alerts** when metrics indicate critical or warning thresholds.
+- **When the AI part loads:** the AI analysis of a project's cost forecast is asked for only when you open that project's **Insights → Performance** view — opening the project or another tab doesn't use AI credit. If the AI can't be reached, the panel says "AI analysis is unavailable right now" and the numbers still show.
 - **Management Reserve (MR) tracking** -- Enter a Management Reserve amount in the Forecast Comparison section header. A purple "BAC+MR" dashed reference line appears on the forecast bar chart, showing the total authorized budget ceiling. A summary row in the forecast table shows the MR amount and whether the worst-case forecast stays within the reserve. The value is remembered per project in your browser.
 
 ### EVM Trend Chart
@@ -818,9 +829,9 @@ Track how SPI and CPI change over time to identify whether performance is improv
 - **Period | Cumulative toggle** -- A toggle in the chart header switches between "Period" (weekly CPI/SPI values) and "Cumulative" (running CPI = EV/AC and SPI = EV/PV computed from S-curve data). Use Cumulative to see the overall project-to-date trend without weekly noise.
 - **Configurable threshold lines** -- Click the ⚙ gear icon in the chart header to open a threshold config panel. Set your own CPI and SPI amber and red warning levels (defaults: 0.95 amber, 0.85 red). The thresholds appear as dashed horizontal reference lines on the chart and are remembered in your browser across sessions.
 
-### Budget Tab
+### Financials Tab (Budget)
 
-The Budget tab within each project provides comprehensive expense tracking and budget visualization.
+The **Financials** tab within each project provides comprehensive expense tracking and budget visualization.
 
 #### Overview
 
@@ -1104,7 +1115,7 @@ Change requests capture proposed modifications to project scope, schedule, budge
 
 Before submitting change requests, project editors/managers can define approval workflows:
 
-1. In the Change Requests tab, open the **Workflows** section.
+1. In the project's **Changes** tab (in the **More** menu), click **Manage Workflows**.
 2. Click **Create Workflow** and define:
    - **Name** and **Description**
    - **Entity Type** (e.g., "release", "scope change")
@@ -1666,7 +1677,7 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 - Click the **History** button (clock icon) in the chat header to browse past conversations.
 - Click any conversation to reload it and continue where you left off.
 - Click the **+** button to start a new conversation.
-- Mjuzi remembers past interactions about a project and incorporates agent scan findings for richer, more informed responses.
+- Mjuzi remembers past interactions about a project for richer, more informed responses. (It can also use the nightly checks' findings, but those checks are switched off today, so there are none to use.)
 
 **Self-learning**
 
@@ -1719,7 +1730,7 @@ The Task Prioritization Panel analyzes your backlog and suggests an optimal task
 
 ### Meeting Intelligence
 
-Navigate to **Intelligence** in the sidebar (Brain icon) to reach the Meeting Intelligence Hub at `/meetings`. This is a single-page flow — there are no tabs.
+Navigate to **Meeting Intelligence** in the sidebar (under Manage, Brain icon) to reach the Meeting Intelligence Hub at `/meetings`. This is a single-page flow — there are no tabs.
 
 #### Providing Transcript Input
 
@@ -1824,7 +1835,7 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 
 > **Trial accounts — Workflow Automation:** If you are on a trial plan, the Workflows page shows 3 sample workflow definitions (Task Status Notification, Overdue Escalation, Budget Alert) with an amber banner. The **New Workflow** button and AI Generate section are hidden. Upgrade to a paid plan to build and run your own automations.
 
-> **Trial accounts — Resource Management:** If you are on a trial plan, the Resource Management page shows 4 sample resources (Project Manager, Developer, QA Engineer, Designer — with skills and hourly rates) with an amber banner. The **Add Resource** button is hidden. Upgrade to a paid plan to manage your real team resources.
+> **Trial accounts — Resource Management:** If you are on a trial plan, the Resource Management page shows 4 sample resources (Project Manager, Developer, QA Engineer, Designer — with skills and hourly rates) with an amber banner. The **Add person** and **Add generic role** buttons are hidden. Upgrade to a paid plan to manage your real team resources.
 
 > **Trial accounts — Auto-Reschedule:** If you are on a trial plan, the Auto-Reschedule panel shows 3 sample detected delays (API Integration, Database Migration, UI Redesign) and 1 sample AI proposal with an amber banner. The **Generate Proposal** button is disabled. No AI tokens are consumed. Upgrade to a paid plan to run AI-powered reschedule analysis on your real schedule.
 
@@ -1842,7 +1853,7 @@ When delays are detected, the AI can suggest schedule adjustments that minimize 
 
 ### Task Slip Predictions
 
-In the **AI Insights** tab of any project, the Task Slip Predictions section shows which tasks are most likely to slip. Each task is scored (0-100%) based on:
+In **More → Insights → AI Predictions** on any project, the Task Slip Predictions section shows which tasks are most likely to slip. Each task is scored (0-100%) based on:
 
 - Whether it's already overdue
 - Progress gap (actual vs expected)
@@ -1853,7 +1864,7 @@ Tasks are shown sorted by slip probability with color-coded bars and suggested a
 
 ### Scope Creep Detector
 
-Also in the **AI Insights** tab, the Scope Creep Detector compares the current project state against its baseline. It shows:
+Also in **Insights → AI Predictions**, the Scope Creep Detector compares the current project state against its baseline. It shows:
 
 - New tasks added since the baseline
 - Estimate growth (total days added)
@@ -2237,7 +2248,7 @@ Click the **Resources** toggle to see cross-project resource utilization:
 
 ### Scenario Modeling
 
-Navigate to **Intelligence** in the sidebar to access:
+Navigate to **Scenario Modeling** in the sidebar (under Insights) to access:
 
 - **Portfolio Risk Heatmap** -- A matrix showing each project's health score, risk level, budget utilization, and progress. Color-coded for quick identification of problem areas.
 - **Budget Reallocation** -- Identifies projects with surplus budget and those in deficit, with recommendations for reallocation.
@@ -2402,11 +2413,19 @@ Lessons surface automatically at key moments so you benefit from past experience
 
 ## 21. Agent Proposals
 
-AI agents continuously monitor your projects for schedule delays, scope creep, and other issues. When an agent detects something actionable, it creates a **proposal** -- a recommended set of changes for human review.
+A **proposal** is a recommended set of changes that waits for the project's PM to review it. Nothing is changed until the PM approves and executes it.
 
-**October 2026:** the nightly checks are now three, with no AI: **slipping tasks** (counted in working days — open the schedule and use AI Reschedule for proposed dates), **budget** (cost performance from the real spend, labour + expenses) and **schedule risk** (Monte Carlo finish later than the plan's end). You get one alert per plan or project until you've read it, not one every night. The other agents were removed — Schedule Review, the Team Planner, EVM, status reports and Lessons already do their jobs better.
+**Nightly checks are switched off.** The automatic nightly checks are not running on Kovarti today, so no new proposals or alerts arrive by themselves. (The earlier promise that "AI agents continuously monitor your projects" no longer applies: those agents were retired in October 2026.) A PM can still run the checks for one project on demand from the project's **Agent Activity** tab (see below).
 
-Access the Agent Proposals page from the **Agent** link in the sidebar (visible to managers and admins).
+**October 2026:** the checks are now three, with no AI: **slipping tasks** (counted in working days — open the schedule and use AI Reschedule for proposed dates), **budget** (cost performance from the real spend, labour + expenses) and **schedule risk** (Monte Carlo finish later than the plan's end). You get one alert per plan or project until you've read it, not one every night. The other agents were removed — Schedule Review, the Team Planner, EVM, status reports and Lessons already do their jobs better.
+
+Access the proposals page from **AI Proposals** in the sidebar (under **Mjuzi AI**; project managers and PMOs).
+
+### Agent Activity tab (on each project)
+
+**More → Agent Activity** on a project lists every check that ran for it: when, which check (Auto-Reschedule, Budget or Monte Carlo), and the result (**Alert Created**, **Skipped** — nothing wrong — or **Error**). Filter by check with the **All Agents** list.
+
+People who can edit the project see **Run AI Analysis**. Despite the name it **uses no AI** and costs no AI credit: it runs the same three rule-based checks for this project straight away, even though the nightly run is switched off.
 
 ### Viewing Proposals
 
@@ -2438,11 +2457,11 @@ For **pending** proposals:
 
 ### Executing Proposals
 
-After approval, an admin can click **Execute Proposal** to apply all proposed actions to the project. Each action is executed in order with rollback support if any step fails.
+After approval, the project's Manager or Owner clicks **Execute** to apply all proposed actions to the project. Each action is executed in order with rollback support if any step fails.
 
 ### Rollback
 
-If an executed proposal caused unintended effects, admins can click **Rollback** to reverse all changes to their original state.
+If an executed proposal caused unintended effects, the project's Manager or Owner can click **Rollback** to reverse all changes to their original state.
 
 ### Providing Feedback
 
@@ -2472,7 +2491,7 @@ Each proposal has a risk level that determines its approval requirements:
 
 ### Account and Billing
 
-Navigate to **Account** in the sidebar to manage:
+Open **Account** (command palette → **Go to Account & Billing**, or the AI usage indicator in the sidebar) to manage:
 
 - **Subscription plan**: The billing page displays your current plan name based on your actual subscription tier (e.g., "Trial", "Consultant Basic Plan", "Consultant Pro Plan", "SME Plan", or "Enterprise Plan"). Paid plans: Consultant Basic ($19/mo or $190/yr, core PM + resources + reports + workflows, no AI), Consultant Pro ($29/mo or $290/yr, core PM + all AI features), SME ($39/mo or $390/yr), and Enterprise ($79/mo or $790/yr). Annual billing saves ~17%. Visit the **Pricing** page to see a full feature comparison matrix across all tiers, with practical usage equivalents explaining what each token budget means (e.g., "~100 AI chats, 50 risk scans").
 - **Payment method**: Managed via Stripe's secure billing portal.
@@ -2515,8 +2534,8 @@ Navigate to **Settings** to configure:
   The digest email uses color-coded sections (red for overdue, amber for deadlines, purple for overdue RAID actions, blue for upcoming meetings, green for sprint status, cyan for recent activity). System alerts are always delivered to admin users.
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
-- **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner or an admin adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
-- **Sample project** (company owner, admin or PMO) -- Shows whether the read-only example "Sample Web App Development" is loaded. **Remove…** asks you to confirm, then deletes the sample project and its example people, sprints, meetings, timesheets and costs; your own projects are not touched. If your own work uses one of the example people (for example a task assigned to them), that person is kept and the page tells you who. **Load** adds it back. While it is loaded it is left out of every total, report and workload. Other people never see this tab.
+- **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner (who works as PMO) or a PMO adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
+- **Sample project** (company owner or PMO) -- Shows whether the read-only example "Sample Web App Development" is loaded. **Remove…** asks you to confirm, then deletes the sample project and its example people, sprints, meetings, timesheets and costs; your own projects are not touched. If your own work uses one of the example people (for example a task assigned to them), that person is kept and the page tells you who. **Load** adds it back. While it is loaded it is left out of every total, report and workload. Other people never see this tab.
 - **Rate card** -- Hourly cost rates by role, each with its start date (admins, PMO and project managers only). See [Rate Card](#rate-card).
 - **Support visits** (company owner and PMO) -- Every time Kovarti support looked at your workspace to help with a problem: when, how long and the reason given. Support visits are **read-only** — support can see your projects but can never change anything — and last at most 30 minutes. A visit happening right now is marked **Happening now**.
 
@@ -2651,11 +2670,11 @@ Destructive actions throughout the application (deleting integrations, change re
 
 ### User Roles
 
-Buttons that change company-wide things — New Project, Start, Add Resource, New Change Request, New Workflow, portal links, availability blocks and the project's Get Started checklist — are shown only to roles that can make changes (Admin, PMO, Project Manager, Scrum Master, Risk Manager, BA, QA, DevOps) and, inside a project, to its Owner or Manager. Read-only people simply don't see them, rather than seeing buttons that fail.
+Buttons that change company-wide things — New Project, Start, Add person, New Change Request, New Workflow, portal links, availability blocks and the project's Get Started checklist — are shown only to roles that can make changes (Admin, PMO, Project Manager, Scrum Master, Risk Manager, BA, QA, DevOps) and, inside a project, to its Owner or Manager. Read-only people simply don't see them, rather than seeing buttons that fail.
 
 | Role | Permissions |
 |------|-------------|
-| **Admin** | Full access to all features, user management, settings, and admin panel. |
+| **Admin** | The Kovarti platform team only (October 2026) — not part of any company. Runs the admin pages and can look into a company only through the read-only, recorded Support view. A company owner can't give anyone this role. |
 | **Company owner** | The person who set up the company (October 2026): whatever their role says, they can do everything a **PMO** can inside the company — every project, company-wide workflows and AI settings, resource requests, the people list, holidays, the rate card. Their own role is still what's shown as "your role". |
 | **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
 | **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). |
@@ -2842,19 +2861,22 @@ looks long, which moves the conversation off opinion.
 
 ## 26. Resource Management Page
 
-The Resource Management page (`/resources`) provides a centralized view of resource utilization and capacity, as well as team management. Access it from the sidebar under the **Analyze** section.
+The Resource Management page (`/resources`) provides a centralized view of resource utilization and capacity, as well as team management. Open it from **Resources** in the sidebar, under **Manage** (project managers, PMOs and executives).
 
-1. Select a project from the **project selector** dropdown at the top.
-2. Review the **summary cards**: Total Resources, Over-allocated count, Average Utilization, and Estimated Cost (shown when resources have hourly cost rates set).
-3. Switch between four tabs:
+The page has eight tabs: **Team**, **Team Planner** (only for people who can change things), **Workload Heatmap**, **Resource Histogram**, **Capacity Forecast**, **Trends**, **Calendar Templates** and **Requests**. Team Planner, Trends, Calendar Templates and Requests are described in their own sections; the others are below.
+
+On the Workload Heatmap, Resource Histogram and Capacity Forecast tabs, pick a project with the **project selector** first. Summary cards show Total Resources, Over-allocated count, Average Utilization, and Estimated Cost (when people have hourly cost rates).
 
 ### Team
 
-A table listing all resources with columns for name, role, capacity, and cost rate. From this tab you can:
+A table listing everyone on your company's people list, with name, role, capacity, cost rate and the projects they're on. From this tab you can:
 
-- Click **"Add Resource"** to create a new team member (fill in name, role, capacity hours/day, and hourly rate).
-- Click the **edit** icon on any row to update a resource's details inline.
-- Click the **delete** icon to remove a resource (with confirmation).
+- Click **Add person** to add someone (name, role, email, line manager, hours per week, cost rate, department, skills). Saving doesn't send an invite.
+- Click **Add generic role** for work you haven't staffed yet (e.g. "Generic Developer").
+- Click the **edit** icon on any row to update a person's details.
+- Click the **delete** icon to remove a person (with confirmation).
+
+**Who can do what:** project managers add and edit ordinary people. Only the **company owner (who works as PMO) or a PMO** can choose or change someone's **line manager**, change the email of someone who signs in to Kovarti, or remove someone who signs in (or their login). If you can't, the form explains why.
 
 ### Workload Heatmap
 
@@ -2875,7 +2897,7 @@ An SVG bar chart per resource showing daily demand hours alongside an 8-hour cap
 
 ### Capacity Forecast
 
-An 8-week bottleneck predictions table with columns for resource, week, demand, capacity, and severity. Below the table, AI-generated recommendations suggest actions to resolve upcoming bottlenecks.
+An 8-week bottleneck predictions table with columns for resource, week, demand, capacity, and severity. This tab uses no AI. For AI ideas on rebalancing a project's work, the project's PM presses **Suggest how to rebalance** on that project's **Team** tab — AI runs only then.
 
 ---
 
@@ -2985,7 +3007,7 @@ To link a resource to a user, open the resource edit form and select the user fr
 
 ## 27. EVM Dashboard Page
 
-The EVM Dashboard (`/evm`) provides a comprehensive earned value management view. Access it from the sidebar under the **Analyze** section.
+The EVM Dashboard (`/evm`) provides a comprehensive earned value management view. Access it from **EVM Dashboard** in the sidebar, under **Insights**.
 
 > **Trial plan:** If you are on a trial plan, the EVM Dashboard displays a sample dashboard with demo data rather than your actual project metrics. An amber banner at the top of the page indicates this. Upgrade to a paid plan to unlock EVM metrics calculated from your real project budgets, costs, and schedule performance.
 
@@ -3058,9 +3080,9 @@ The **History** button on the schedule toolbar (next to AI Reschedule) is a **re
 
 **Undoing an import** (October 2026) takes out everything the import added: its tasks (with their links and booked hours), the "Imported baseline" if it saved one, and any people it created for names it didn't recognise — unless someone has since put them on other work or edited them, in which case they stay. The line says "Imported 42 tasks from plan.xlsx" and lists what was added. As always, only while the import is the newest change and nothing in the plan has changed since — deleting a task counts as a change.
 
-**Clicking a notification takes you to what it is about** (September 2026) — in the bell, on the Notifications page, in the dashboard feeds, and from the **View Details** button in notification emails: a task notification opens its schedule on that row, highlighted; a RAID item opens the project's RAID tab; a change request its Change Requests tab; a Schedule Review alert the schedule; a budget (EVM) alert the Performance tab; time alerts the Time tab or your Timesheet; meeting items the Meetings page; agent proposals the Agent page; resource requests the Resources page. (Before this, only agent proposals could be clicked, and email buttons led to "page not found".)
+**Clicking a notification takes you to what it is about** (September 2026) — in the bell, on the Notifications page, in the dashboard feeds, and from the **View Details** button in notification emails: a task notification opens its schedule on that row, highlighted; a RAID item opens the project's Risks & Issues tab; a change request its Changes tab; a Schedule Review alert the schedule; a budget (EVM) alert Insights → Performance; time alerts the Time tab or your Timesheet; meeting items the Meetings page; agent proposals the AI Proposals page; resource requests the Resources page. (Before this, only agent proposals could be clicked, and email buttons led to "page not found".)
 
-The full-page Notifications Center is available at `/notifications`. Access it from the sidebar ("Notifications" under Workspace) or by clicking "View all alerts" in the notification bell dropdown.
+The full-page Notifications Center is available at `/notifications`. Access it from the sidebar ("Notifications" under Personal) or by clicking "View all alerts" in the notification bell dropdown.
 
 ### Severity Summary Cards
 
@@ -3162,7 +3184,7 @@ The Dashboard and Projects pages provide a lean, action-oriented project managem
 
 ### Dashboard (`/dashboard`)
 
-Access via the sidebar under **Plan → Dashboard**.
+Access via the sidebar under **Work → Dashboard**.
 
 - **Scope Toggle** — Switch between "My Projects" and "All Projects" to control which data is displayed.
 - **KPI Tiles** — 6 tiles showing Portfolio Health, Overdue Tasks, Open Risks, At-Risk Projects, Budget Variance, and Budget Utilization. Each has a colored status dot and click-through to drill-in pages. Health and Overdue tiles show 7-day trend arrows: green up arrow (improving), red down arrow (declining), or gray dash (stable).
@@ -3193,7 +3215,7 @@ The **Open Risks** tile next to Portfolio Health counts how many active projects
 
 ### Projects (`/projects`)
 
-Access via the sidebar under **Plan → Projects**.
+Access via the sidebar under **Work → Projects**.
 
 - **Filter Bar** — Search by name, filter by health band and status.
 - **AI Portfolio Insights** — 3 insight tiles pulled from analytics summary, enriched with 7-day trend context (e.g., "Up from last week", "Completion rate is trending up").

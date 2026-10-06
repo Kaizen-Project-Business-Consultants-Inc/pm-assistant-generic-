@@ -91,6 +91,8 @@ const sections: Section[] = [
       'Switch between Gantt, Kanban, Table, and Calendar views',
       'Timeline: the whole project on one line (phases, milestones, today) — click to jump, export as an image for reports',
       'The summary cards show on Overview; other tabs show one line (Show details brings the cards back) so the work area starts higher',
+      'Fewer tabs show in the bar; the rest (Time, Files, Insights, Resources, Agent Activity, Changes and more) are under More at the end of the tab bar',
+      'Finished with a project? Archive it from its card in the Projects list — nothing is lost and you can unarchive it. Team plans cannot delete projects',
       'Add, edit, and delete tasks with dependencies',
       'Assign resources and track progress percentages',
       'Drag-and-drop tasks in Kanban and Gantt views',
@@ -112,7 +114,7 @@ const sections: Section[] = [
       'A milestone takes zero days — name it as the outcome ("Design Approved"); name tasks verb + object ("Review Design")',
       'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved, or linking the next step after a task that feeds nothing',
       'Click a suggestion to see its rows: they turn amber in the schedule. Only the tick box chooses the fix',
-      'Every applied fix can be undone in one step',
+      'Right after you apply, Undo in the panel puts that batch of fixes back in one step',
       'It also points out bottleneck tasks (4+ unfinished tasks wait on them — shown for information, no score change) and sprints left open after their end',
     ],
   },
@@ -158,7 +160,7 @@ const sections: Section[] = [
       'Rows in the list are flagged with their most important problem',
       'Propose fixes: tick the changes you want (move to Actions, name one owner, set a due date or response strategy) and apply; Undo puts them back',
       'Switch a check off for one project if it doesn\'t fit (e.g. agreed joint owners)',
-      'Name the project sponsor in Edit project → Sponsor. A Critical risk or issue prompts you "Escalate to sponsor?" — nothing is sent unless you press Send, with your own note',
+      'Name the project sponsor in Edit project → Sponsor. A Critical risk or issue prompts you "Escalate to sponsor?" — nothing is sent unless you press Send to sponsor, with your own note',
     ],
   },
   {
@@ -200,6 +202,7 @@ const sections: Section[] = [
       'Monitor CPI, SPI, EAC, and other EVM indicators',
       'View S-curve charts comparing planned vs. actual progress',
       'Use auto-reschedule to adjust timelines based on current performance',
+      'On a project, More → Insights → Performance shows the cost forecast; its AI analysis is asked for only when you open that view',
       'Identify cost and schedule variances early',
     ],
   },
@@ -318,11 +321,12 @@ const sections: Section[] = [
     title: 'Agent Activity',
     icon: Activity,
     description:
-      'See what each AI agent decided for your project and why.',
+      'See what the project checks found and why. The checks follow simple rules and use no AI.',
     items: [
-      'View the "Agent Activity" tab on any project detail page',
-      'Each agent run logs its decision: alert created, skipped, or error',
-      'Filter by agent (Auto-Reschedule, Budget, Monte Carlo, Meeting)',
+      'Open More → Agent Activity on any project',
+      'Each check logs its result: alert created, skipped (nothing wrong), or error',
+      'Filter by check (Auto-Reschedule, Budget, Monte Carlo)',
+      'The nightly checks are switched off; people who can edit the project can press Run AI Analysis to run them now (despite the name, it uses no AI)',
       'Summaries explain why an alert was or wasn\'t created (e.g., thresholds, metrics)',
       'Paginated log with timestamps for full audit trail',
     ],
@@ -385,7 +389,7 @@ const sections: Section[] = [
     description:
       'Visualize task dependencies as an interactive network (precedence) diagram with critical path highlighting.',
     items: [
-      'Open the "Network Diagram" tab on any project with dependencies',
+      'On the project Schedule tab, switch to the Network view (works when tasks are linked)',
       'Critical path tasks and edges are highlighted in red',
       'Hover over any node to see ES, EF, LS, LF, and total float values',
       'Zoom with the mouse wheel and pan by dragging',
@@ -399,7 +403,7 @@ const sections: Section[] = [
     description:
       'Track project progress with burndown/burnup lines and team velocity trends.',
     items: [
-      'Open the "Burndown" tab on any project',
+      'On the project Schedule tab, switch to the Burndown view (Agile and Hybrid projects; Waterfall projects show an S-curve instead)',
       'View KPI cards: total scope, % complete, velocity, and estimated completion',
       'Burndown chart shows ideal line (dashed), actual remaining (indigo), and completed (green)',
       'A "Today" marker shows current position in the timeline',
@@ -413,7 +417,7 @@ const sections: Section[] = [
     description:
       'Define multi-step approval workflows and manage formal change requests with full audit trails.',
     items: [
-      'Open the "Change Requests" tab on any project',
+      'Open the Changes tab on any project (in the More menu)',
       'Click "Manage Workflows" to define approval steps with roles and actions',
       'Create a change request with title, description, category, priority, and impact summary',
       'Submit a CR for approval — it progresses through each workflow step',
@@ -484,7 +488,7 @@ const sections: Section[] = [
     description:
       'Plan sprints, manage backlogs, track velocity, and use Kanban boards for agile workflows.',
     items: [
-      'Open the "Sprints" tab on any project',
+      'Open the Sprints tab on any project (in the More menu on Waterfall projects)',
       'Create a sprint with name, goal, date range, and velocity commitment',
       'Use the planning view to drag tasks from the backlog into the sprint',
       'Assign story points to each sprint task for capacity tracking',
