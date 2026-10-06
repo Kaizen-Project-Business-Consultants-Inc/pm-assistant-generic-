@@ -633,3 +633,12 @@ Agent detects issue
 - **Schema validation:** All AI outputs are validated against Zod schemas before being returned to clients, preventing malformed or hallucinated data from reaching the UI.
 - **Prompt versioning:** All prompts use the `PromptTemplate` class with semantic version numbers.
 - **Feature flags:** AI is globally controlled by `AI_ENABLED`; the agent scheduler by `AGENT_ENABLED`; runtime agent control via `KillSwitchService` API (global/per-agent/per-project). Individual features degrade independently.
+
+## AI spend controls (Oct 2026, from the 2026-10-04 audit)
+
+- **The breaker stops on account problems.** `claudeService` reports every failed call to its circuit breaker (`noteError`). Overload, rate limit and timeouts count towards opening it (5 in a row, 1 minute); **no credit or a bad key (400 "credit balance", 401, 403) opens it at once for 10 minutes**, so pages and jobs stop calling Anthropic while it can't answer. Before, those errors were ignored and every action kept trying.
+- **Every entry point checks the per-user budget** — `completeWithTools` (Mjuzi chat with tools) was missing it.
+- **Background AI has an owner or no AI.** Automation `ai_generate` steps run on the automation owner's budget and plan (`context._aiBillTo`); a basic plan's zero budget stops them. Weekly coaching tips and the Log-time prefill no longer use AI.
+- **Repeat visits reuse the answer.** `utils/aiResultCache.ts` `cachedAIResult` keeps an AI-written answer for 30 minutes, keyed inside the company: AI Predictions tab (risks, weather, budget — per project) and the Scenarios page (anomalies, cross-project — per person). Fallback answers aren't kept.
+- **Portfolio Intelligence panel** waits 10 minutes after a failed AI ask instead of retrying every minute.
+- Tests: `__tests__/services/aiSpend.test.ts`, `claudeService.test.ts`.

@@ -311,7 +311,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Log Time</h3>
               {suggestion && (
                 <span className="flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300">
-                  <Sparkles className="w-3 h-3" /> AI suggested
+                  <Sparkles className="w-3 h-3" /> From your recent entries
                 </span>
               )}
             </div>

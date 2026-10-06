@@ -30,6 +30,8 @@ const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 // and Projects pages asked again every 5 minutes (the largest routine AI cost). Refresh button: see below.
 const DASHBOARD_CACHE_TTL = 6 * 60 * 60; // 6 hours
 const DASHBOARD_REFRESH_MIN_S = 10 * 60; // a manual refresh at most every 10 minutes per person
+/** After the AI failed for the panel, don't ask again for this long */
+const DASHBOARD_AI_FAILURE_PAUSE_S = 10 * 60;
 // "Just when a change is made" (user, Sep 2026): the numbers (rules only, free) are kept until something
 // in the organisation changes; the AI highlights are re-asked only when the numbers came out different,
 // once editing has been quiet for 2 minutes, so moving 20 tasks in a row costs one AI call, not 20.
@@ -752,7 +754,11 @@ export class PredictiveIntelligenceService {
         await redisService.set(throttleKey, '1', DASHBOARD_REFRESH_MIN_S);
       }
     }
-    if (forced || (!unchanged && !settling)) {
+    // After a failed ask, wait 10 minutes before asking again — a failure left no AI answer, so
+    // the panel asked again every minute for as long as the AI was down (2026-10-04 audit)
+    const failedKey = `${cacheKey}:failed`;
+    const pausedAfterFailure = !forced && !!(await redisService.get(failedKey).catch(() => null));
+    if (!pausedAfterFailure && (forced || (!unchanged && !settling))) {
       // One AI call per person at a time (the panel and the page can ask together)
       const inflightKey = `${cacheKey}:inflight`;
       const busy = await redisService.get(inflightKey).catch(() => null);
@@ -760,7 +766,10 @@ export class PredictiveIntelligenceService {
         await redisService.set(inflightKey, '1', 120).catch(() => {});
         computed ??= await this.computeDashboardNumbers(userId, userRole);
         this.enrichDashboardWithAI(aiKey, computed.portfolio, computed.fallbackPredictions, computed.weatherOverview, userId, fingerprint)
-          .catch((err) => { logger.warn('Background AI dashboard enrichment failed: ' + String(err)); })
+          .catch((err) => {
+            logger.warn('Background AI dashboard enrichment failed: ' + String(err));
+            redisService.set(failedKey, '1', DASHBOARD_AI_FAILURE_PAUSE_S).catch(() => {});
+          })
           .finally(() => { redisService.del(inflightKey).catch(() => {}); });
       }
     }

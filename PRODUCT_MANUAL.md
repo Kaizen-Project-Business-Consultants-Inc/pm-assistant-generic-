@@ -851,9 +851,9 @@ Each time entry is automatically categorized based on task name/description keyw
 
 Categories appear as colored pills in the entries table. A dropdown filter allows filtering by category. Computed server-side and included in the `/time-entries/project/:projectId` response.
 
-#### Smart Time Suggestions (Phase 2, AI)
+#### Smart Time Suggestions (no AI since Oct 2026)
 
-When the Log Time form opens, fetches an AI-powered suggestion based on the user's last 10 entries and active tasks. Pre-fills task, hours, and description fields only if they're still at defaults (never overwrites user input). Shows an "AI suggested" pill with Sparkles icon. Falls back to most-frequently-logged task + modal hours when AI is disabled.
+When the Log Time form opens, pre-fills the user's most-logged task on the project (from their last 10 entries) and their average hours for it, only if the fields are still at defaults (never overwrites user input). Shows a "From your recent entries" pill. It used to ask the AI on every form open (2026-10-04 audit).
 
 - **Endpoint:** `GET /time-entries/suggest?projectId=&date=`
 
@@ -861,7 +861,7 @@ When the Log Time form opens, fetches an AI-powered suggestion based on the user
 
 A Monday 09:00 cron job identifies team members who are under-utilized (<60% of 8h target) or over-utilized (>110%) over the last 2 weeks:
 
-- AI generates personalized 1-paragraph coaching tips per flagged user.
+- A written 1-paragraph coaching tip per flagged user (no AI since Oct 2026 — it was an unbudgeted background AI call per person).
 - Delivered as `time_coaching` notifications (mapped to 'tasks' category).
 - Redis dedup with 7-day TTL prevents duplicate coaching per user per week.
 - Capped at 20 coaching notifications per cron run per tenant.

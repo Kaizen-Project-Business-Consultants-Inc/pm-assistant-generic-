@@ -234,7 +234,7 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     });
   },
 
-  async ai_generate(params, context, _event) {
+  async ai_generate(params, context, event) {
     const { claudeService } = await import('../claudeService');
     const outputKey = params.outputKey || 'output';
     if (!claudeService.isAvailable()) {
@@ -244,6 +244,9 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       return;
     }
     const result = await claudeService.complete({
+      // the automation owner's budget and plan (a basic plan has no AI budget) — a background
+      // run has no signed-in user, so it used to have no limit at all (2026-10-04 audit)
+      userId: context._aiBillTo || event.userId,
       systemPrompt: 'You are a project management automation assistant. Generate concise, actionable content based on the prompt. Output only the requested content, no markdown formatting or explanations.',
       userMessage: params.prompt,
       maxTokens: params.maxTokens || 500,

@@ -522,16 +522,26 @@ describe('ClaudeService', () => {
       expect(service.getCircuitBreakerStatus()).toEqual({ state: 'closed', failures: 0 });
     });
 
-    it('does not count non-transient errors toward circuit breaker', async () => {
+    it('does not count an ordinary bad request toward circuit breaker', async () => {
       const service = makeService();
 
       for (let i = 0; i < 10; i++) {
-        mockCreate.mockRejectedValueOnce(new Anthropic.APIError(401, 'unauthorized'));
+        mockCreate.mockRejectedValueOnce(new Anthropic.APIError(400, 'max_tokens too large'));
         await expect(service.complete(defaultOptions())).rejects.toThrow();
       }
 
-      // Should still be closed since 401 is not transient
+      // Still closed: a bad request is this call's problem, not the AI's
       expect(service.getCircuitBreakerStatus()).toEqual({ state: 'closed', failures: 0 });
+    });
+
+    it('a bad key opens the breaker at once (no point asking again for a while)', async () => {
+      const service = makeService();
+      mockCreate.mockRejectedValueOnce(new Anthropic.APIError(401, 'unauthorized'));
+      await expect(service.complete(defaultOptions())).rejects.toThrow();
+      expect(service.getCircuitBreakerStatus().state).toBe('open');
+      // the next call doesn't reach Anthropic
+      await expect(service.complete(defaultOptions())).rejects.toThrow(/temporarily unavailable/);
+      expect(mockCreate).toHaveBeenCalledTimes(1);
     });
   });
 

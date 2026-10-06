@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-06 — Audit AI spend (batch 2)
+claudeService breaker: noteError() at every failure site; 400 credit / 401 / 403 open it for 10 min (were ignored). completeWithTools now checks the per-user budget. Automation ai_generate bills the automation owner (context._aiBillTo). Coaching tips + Log-time prefill: no AI (pill now "From your recent entries"). utils/aiResultCache.ts cachedAIResult (30 min, per company, AI answers only): predictions risks/weather/budget, intelligence anomalies/cross-project. Portfolio panel: 10-min pause after a failed ask. Removed 3 dead client wrappers (/ai-scheduling/breakdown|dependencies|optimization — no such server routes, no callers); server /ai-scheduling/* and /narratives/project left (API-reachable, no app caller). Guard aiSpend.test.ts. autoRerun.test 'burst' flaked once in the full run, passes alone.
+
 ## 2026-10-05 — Audit security lows (batch 1)
 Expired guests: guestGuard was a global onRequest hook (runs before auth → never saw anyone); now called inside authMiddleware on cookie AND key paths; expiry → 401; login + refresh refuse expired guests. NB this also switches ON the guest blocked areas (/org, /seats, /stripe, /admin, /api-keys, /webhooks, /pricing) that never worked. WebSocket: join checked in the connection's company for all roles (canJoin), no-project broadcast sends nothing. Parent/epic same-schedule (validateSameScheduleRef), bulk predecessor/parent same-schedule. No time on the sample; alerts execute-action write + AI plan; timesheet flag only for tasks on that sheet. Guard __tests__/security/auditLows.test.ts. SECURITY_GUIDE 14b.
 

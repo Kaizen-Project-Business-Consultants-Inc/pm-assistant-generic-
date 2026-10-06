@@ -143,29 +143,6 @@ export class AiApi extends ApiBase {
   }
 
   // -------------------------------------------------------------------------
-  // AI Scheduling endpoints
-  // -------------------------------------------------------------------------
-
-  async getTaskBreakdown(data: {
-    projectDescription: string;
-    projectType?: string;
-    estimatedDurationMonths?: number;
-  }) {
-    const response = await this.api.post('/ai-scheduling/breakdown', data);
-    return response.data;
-  }
-
-  async getSchedulingDependencies(data: { tasks: Array<{ id: string; name: string }> }) {
-    const response = await this.api.post('/ai-scheduling/dependencies', data);
-    return response.data;
-  }
-
-  async getSchedulingOptimization(data: { projectId: string }) {
-    const response = await this.api.post('/ai-scheduling/optimization', data);
-    return response.data;
-  }
-
-  // -------------------------------------------------------------------------
   // Learning & Feedback endpoints
   // -------------------------------------------------------------------------
 

@@ -100,6 +100,8 @@ export class AutomationEventBus {
 
     // Initialize AI outputs container for ai_generate → template chaining
     if (!context._aiOutputs) context._aiOutputs = {};
+    // AI steps count against the owner's budget and plan (they ran with none — 2026-10-04 audit)
+    context._aiBillTo = automation.ownerUserId;
 
     // Execute actions in order
     const actions = [...automation.definition.actions].sort((a, b) => a.runOrder - b.runOrder);

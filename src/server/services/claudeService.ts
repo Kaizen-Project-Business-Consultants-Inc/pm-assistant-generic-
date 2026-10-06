@@ -60,6 +60,8 @@ const REQUEST_TIMEOUT_MS = 90_000;
 const CB_MAX_FAILURES = 5;
 const CB_RESET_MS = 60_000; // 1 minute cooldown (fast recovery for user-facing)
 const CB_HALF_OPEN_MAX = 1; // allow 1 probe request in half-open state
+/** No credit / bad key: nothing fixes itself in a minute, so stop asking for longer */
+const CB_ACCOUNT_RESET_MS = 10 * 60_000;
 
 /** The first service outside this file on the call stack, e.g. "ScheduleFixProposerService" */
 function callerFeature(): string {
@@ -105,23 +107,25 @@ class AICircuitBreaker {
   private failures = 0;
   private lastFailureAt = 0;
   private halfOpenAttempts = 0;
+  /** How long the breaker stays open this time (longer for account problems) */
+  private openMs = CB_RESET_MS;
 
   assertClosed(): void {
     if (this.state === 'closed') return;
 
     if (this.state === 'open') {
       const elapsed = Date.now() - this.lastFailureAt;
-      if (elapsed >= CB_RESET_MS) {
+      if (elapsed >= this.openMs) {
         this.state = 'half_open';
         this.halfOpenAttempts = 0;
         return; // allow probe
       }
-      throw new AICircuitBreakerError(CB_RESET_MS - elapsed);
+      throw new AICircuitBreakerError(this.openMs - elapsed);
     }
 
     // half_open — allow limited probes
     if (this.halfOpenAttempts >= CB_HALF_OPEN_MAX) {
-      throw new AICircuitBreakerError(CB_RESET_MS);
+      throw new AICircuitBreakerError(this.openMs);
     }
     this.halfOpenAttempts++;
   }
@@ -130,11 +134,36 @@ class AICircuitBreaker {
     this.state = 'closed';
     this.failures = 0;
     this.halfOpenAttempts = 0;
+    this.openMs = CB_RESET_MS;
+  }
+
+  /**
+   * Every failed call reports here. Overload / rate limit / timeouts count towards opening; no
+   * credit or a bad key opens it at once for 10 minutes — those used to be ignored, so every
+   * page and job kept calling Anthropic and failing (2026-10-04 audit).
+   */
+  noteError(error: unknown): void {
+    if (this.isAccountError(error)) {
+      this.state = 'open';
+      this.lastFailureAt = Date.now();
+      this.openMs = CB_ACCOUNT_RESET_MS;
+      return;
+    }
+    if (this.isTransientError(error)) this.recordFailure();
+  }
+
+  isAccountError(error: unknown): boolean {
+    if (error instanceof Anthropic.APIError) {
+      if (error.status === 401 || error.status === 403) return true;
+      if (error.status === 400 && /credit balance/i.test(error.message)) return true;
+    }
+    return false;
   }
 
   recordFailure(): void {
     this.failures++;
     this.lastFailureAt = Date.now();
+    this.openMs = CB_RESET_MS;
 
     if (this.state === 'half_open') {
       // half-open probe failed — reopen
@@ -588,16 +617,12 @@ export class ClaudeService {
 
           return { content, usage, latencyMs, model: fallbackResponse.model };
         } catch (fallbackError: unknown) {
-          if (this.circuitBreaker.isTransientError(fallbackError)) {
-            this.circuitBreaker.recordFailure();
-          }
+          this.circuitBreaker.noteError(fallbackError);
           throw this.wrapError(fallbackError, 'complete(fallback)');
         }
       }
 
-      if (this.circuitBreaker.isTransientError(error)) {
-        this.circuitBreaker.recordFailure();
-      }
+      this.circuitBreaker.noteError(error);
       throw this.wrapError(error, 'complete');
     }
   }
@@ -663,9 +688,7 @@ export class ClaudeService {
       yield { type: 'usage', usage: finalUsage };
       yield { type: 'done' };
     } catch (error: unknown) {
-      if (this.circuitBreaker.isTransientError(error)) {
-        this.circuitBreaker.recordFailure();
-      }
+      this.circuitBreaker.noteError(error);
       throw this.wrapError(error, 'stream');
     }
   }
@@ -734,7 +757,9 @@ export class ClaudeService {
   }> {
     this.assertAvailable();
     this.circuitBreaker.assertClosed();
-
+    // per-user budget, like every other entry point (it was missing here — 2026-10-04 audit)
+    const budgetUserId = this.resolveUserId(options);
+    if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
     await this.assertAccountCap();
     const startMs = Date.now();
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
@@ -770,9 +795,7 @@ export class ClaudeService {
         stopReason: response.stop_reason ?? 'end_turn',
       };
     } catch (error: unknown) {
-      if (this.circuitBreaker.isTransientError(error)) {
-        this.circuitBreaker.recordFailure();
-      }
+      this.circuitBreaker.noteError(error);
       throw this.wrapError(error, 'completeWithTools');
     }
   }

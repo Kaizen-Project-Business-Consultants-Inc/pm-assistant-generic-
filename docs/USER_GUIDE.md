@@ -1412,11 +1412,11 @@ A **Category filter** dropdown at the top of the entries table lets you filter b
 
 ### Smart Time Suggestions
 
-When you open the **Log Time** form, the system suggests a task, hours, and description based on your recent time logging patterns:
+When you open the **Log Time** form, it fills in the task you log most often on this project and your usual hours for it, from your last 10 entries:
 
 - Fields are pre-filled only if you haven't already typed something (never overwrites your input).
-- An **"AI suggested"** pill with Sparkles icon appears next to the form title when a suggestion is active.
-- With AI enabled, suggestions are based on pattern analysis. Without AI, the most frequently logged task and average hours are used.
+- A **"From your recent entries"** pill appears next to the form title when the form was pre-filled.
+- No AI is used for this — opening the form never uses your AI allowance.
 
 ### Compliance Reminders
 
@@ -1430,7 +1430,7 @@ The system automatically checks for missing time entries on weekdays at 4:00 PM:
 
 Every Monday at 9:00 AM, the system analyzes team members' time utilization over the past 2 weeks:
 
-- Members with **<60% utilization** (under-utilized) or **>110% utilization** (over-utilized) receive personalized coaching tips.
+- Members with **<60% utilization** (under-utilized) or **>110% utilization** (over-utilized) receive a short coaching tip with their average daily hours (written by Kovarti, no AI).
 - Tips are delivered as notifications and suggest actionable steps.
 - Each user receives at most one coaching notification per week (Redis dedup with 7-day TTL).
 

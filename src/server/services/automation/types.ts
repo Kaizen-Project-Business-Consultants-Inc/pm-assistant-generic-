@@ -130,6 +130,8 @@ export interface AutomationContext {
   project?: Record<string, any>;
   user?: Record<string, any>;
   _aiOutputs?: Record<string, string>;
+  /** Whose AI budget (and plan) an ai_generate step uses: the automation's owner */
+  _aiBillTo?: string;
 }
 
 export interface ConditionTraceNode {

@@ -9,6 +9,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { runHealthSnapshot } from '../../services/scheduling/healthSnapshotJob';
 import { platformAdminOnly } from '../../utils/platformAdmin';
+import { cachedAIResult } from '../../utils/aiResultCache';
 
 export async function predictionRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -39,7 +40,8 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
-      const { assessment, aiPowered } = await service.assessProjectRisks(projectId, userId);
+      // the project's answer, reused for 30 minutes (it asked the AI on every visit)
+      const { assessment, aiPowered } = await cachedAIResult(`risks:${projectId}`, () => service.assessProjectRisks(projectId, userId));
       return reply.send({ data: assessment, aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Risk assessment failed');
@@ -54,7 +56,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
-      const { impact, aiPowered } = await service.analyzeWeatherImpact(projectId, userId);
+      const { impact, aiPowered } = await cachedAIResult(`weather:${projectId}`, () => service.analyzeWeatherImpact(projectId, userId));
       return reply.send({ data: impact, aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Weather impact analysis failed');
@@ -69,7 +71,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
-      const { forecast, aiPowered } = await service.forecastBudget(projectId, userId);
+      const { forecast, aiPowered } = await cachedAIResult(`budget:${projectId}`, () => service.forecastBudget(projectId, userId));
       return reply.send({ data: forecast, aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Budget forecast failed');

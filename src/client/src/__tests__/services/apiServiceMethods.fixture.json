@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 649,
+  "count": 646,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -385,8 +385,6 @@
     "getScheduleReviewHistory",
     "getScheduleReviewLatest",
     "getSchedules",
-    "getSchedulingDependencies",
-    "getSchedulingOptimization",
     "getScopeCreepIndicators",
     "getScrumDefinitions",
     "getSeatInfo",
@@ -407,7 +405,6 @@
     "getSubscriptionStatus",
     "getSupportVisits",
     "getTaskActivity",
-    "getTaskBreakdown",
     "getTaskChecklists",
     "getTaskComments",
     "getTaskPrioritization",

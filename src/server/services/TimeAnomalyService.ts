@@ -644,7 +644,7 @@ class TimeAnomalyService {
   }
 
   // ---------------------------------------------------------------------------
-  // Feature 1: Smart Time Suggestions (AI with fallback)
+  // Feature 1: Smart Time Suggestions (from the person's own recent entries, no AI)
   // ---------------------------------------------------------------------------
   async getTimeSuggestion(userId: string, projectId: string, date: string): Promise<TimeSuggestion | null> {
     // Fetch last 10 user entries for this project
@@ -665,39 +665,8 @@ class TimeAnomalyService {
 
     if (recentEntries.length === 0) return null;
 
-    // Try AI suggestion
-    if (config.AI_ENABLED) {
-      try {
-        const { claudeService } = await import('./claudeService');
-        const { z } = await import('zod');
-
-        const activeTasks = await databaseService.query(
-          `SELECT t.id, t.name FROM tasks t
-           JOIN schedules s ON s.id = t.schedule_id
-           WHERE s.project_id = ? AND t.status NOT IN ('completed', 'cancelled')
-           LIMIT 20`,
-          [projectId],
-        );
-
-        const result = await claudeService.completeWithJsonSchema({
-          systemPrompt: 'You are a time tracking assistant. Based on the user\'s recent time entries and active tasks, predict what task they are most likely to log time for today. Return a JSON object.',
-          userMessage: `Recent entries:\n${recentEntries.map(e => `- ${e.task_name}: ${e.hours}h on ${String(e.date).slice(0, 10)} "${e.description || ''}"` ).join('\n')}\n\nActive tasks:\n${activeTasks.map((t: any) => `- ${t.name} (${t.id})`).join('\n')}\n\nDate: ${date}\nPredict the most likely task, hours, and optional description.`,
-          schema: z.object({
-            taskName: z.string(),
-            taskId: z.string().optional(),
-            hours: z.number(),
-            description: z.string().optional(),
-          }),
-          maxTokens: 200,
-          temperature: 0.3,
-        });
-
-        return result.data;
-      } catch (err) {
-        logger.warn('[TimeAnomaly] AI suggestion failed, using fallback', { error: err });
-      }
-    }
-
+    // No AI: opening the Log-time form used to call Claude every time (2026-10-04 audit). The
+    // person's most-logged task here and their usual hours for it are what the form needs.
     // Fallback: most frequently logged task + modal hours
     const taskFreq = new Map<string, { count: number; taskName: string; taskId: string; totalHours: number }>();
     for (const e of recentEntries) {
@@ -757,7 +726,7 @@ class TimeAnomalyService {
       }
     }
 
-    // Static fallback
+
     const fallbacks: Record<string, AnomalyExplanation> = {
       excessive_hours: { rootCause: 'User logged more hours than expected for a single day or week.', suggestedActions: ['Verify entries are accurate', 'Check if overtime was approved', 'Review task scope'], riskLevel: 'medium' },
       duplicate_entry: { rootCause: 'Multiple time entries exist for the same user, task, and date.', suggestedActions: ['Review and merge duplicate entries', 'Check for accidental double submissions'], riskLevel: 'low' },
@@ -799,27 +768,14 @@ class TimeAnomalyService {
   }
 
   // ---------------------------------------------------------------------------
-  // Feature 4: Utilization Coaching Tip (AI with fallback)
+  // Feature 4: Utilization Coaching Tip (written, no AI)
   // ---------------------------------------------------------------------------
+  /**
+   * A weekly background job sends these; nobody asks for them, so no AI (it was an AI call per
+   * person per week with no budget — 2026-10-04 audit).
+   */
   async generateCoachingTip(userName: string, pattern: 'under' | 'over', avgDailyHours: number, projectName: string): Promise<string> {
-    if (config.AI_ENABLED) {
-      try {
-        const { claudeService } = await import('./claudeService');
 
-        const result = await claudeService.complete({
-          systemPrompt: 'You are a supportive project management coach. Write a brief, encouraging 1-paragraph coaching tip for a team member based on their time utilization pattern. Be specific and actionable. Do not use markdown.',
-          userMessage: `Team member: ${userName}\nProject: ${projectName}\nPattern: ${pattern === 'under' ? 'Under-utilized' : 'Over-utilized'}\nAverage daily hours: ${avgDailyHours.toFixed(1)}h (target: 8h)\n${pattern === 'under' ? 'They are logging significantly fewer hours than expected.' : 'They are consistently logging more hours than sustainable.'}`,
-          maxTokens: 150,
-          temperature: 0.6,
-        });
-
-        return result.content.trim();
-      } catch (err) {
-        logger.warn('[TimeAnomaly] AI coaching tip failed, using fallback', { error: err });
-      }
-    }
-
-    // Static fallback
     if (pattern === 'under') {
       return `Hi ${userName}, your average daily hours on ${projectName} have been ${avgDailyHours.toFixed(1)}h, which is below the expected 8h target. If you're blocked or need support, please reach out to your project manager.`;
     }
