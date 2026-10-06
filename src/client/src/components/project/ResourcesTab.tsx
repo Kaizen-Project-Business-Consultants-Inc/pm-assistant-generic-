@@ -369,7 +369,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 onClick={() => { resetForm(); setShowResourceForm(true); }}
                 className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
               >
-                <Plus className="w-4 h-4" /> Add Resource
+                <Plus className="w-4 h-4" /> Add person
               </button>
             </div>
           </div>
@@ -377,7 +377,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
           {showResourceForm && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-primary-200 dark:border-primary-700 p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{editingResource ? 'Edit Resource' : 'New Resource'}</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{editingResource ? 'Edit person' : 'Add person'}</h3>
                 <button onClick={resetForm} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close resource form"><X className="w-4 h-4" /></button>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">

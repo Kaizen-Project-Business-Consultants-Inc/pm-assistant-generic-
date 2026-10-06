@@ -72,7 +72,6 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
             <option value="auto_reschedule">Auto-Reschedule</option>
             <option value="budget">Budget</option>
             <option value="monte_carlo">Monte Carlo</option>
-            <option value="meeting">Meeting</option>
           </select>
         </div>
       </div>
