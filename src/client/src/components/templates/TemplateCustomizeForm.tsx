@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useId } from 'react';
 import { ArrowLeft, Calendar, DollarSign, MapPin, ChevronDown, Lock } from 'lucide-react';
 
 interface TemplateTask {
@@ -45,6 +45,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   isSubmitting,
   extraContent,
 }) => {
+  const uid = useId();
   const today = new Date().toISOString().split('T')[0];
   const [projectName, setProjectName] = useState(templateName || '');
   const [startDate, setStartDate] = useState(today);
@@ -209,8 +210,9 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
 
       <form onSubmit={handleSubmit} className="flex-1 space-y-4">
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name *</label>
+          <label htmlFor={`${uid}-project-name`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name *</label>
           <input
+            id={`${uid}-project-name`}
             type="text"
             value={projectName}
             onChange={(e) => setProjectName(e.target.value)}
@@ -221,11 +223,12 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor={`${uid}-start-date`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             <Calendar className="w-3 h-3 inline mr-1" />
             Start Date *
           </label>
           <input
+            id={`${uid}-start-date`}
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -235,11 +238,12 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor={`${uid}-budget`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             <DollarSign className="w-3 h-3 inline mr-1" />
             Budget (USD)
           </label>
           <input
+            id={`${uid}-budget`}
             type="number"
             value={budget}
             onChange={(e) => setBudget(e.target.value)}
@@ -252,8 +256,9 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+            <label htmlFor={`${uid}-priority`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
             <select
+              id={`${uid}-priority`}
               value={priority}
               onChange={(e) => setPriority(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 bg-white"
@@ -265,8 +270,9 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Methodology</label>
+            <label htmlFor={`${uid}-methodology`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Methodology</label>
             <select
+              id={`${uid}-methodology`}
               value={methodology}
               onChange={(e) => setMethodology(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 bg-white"
@@ -279,11 +285,12 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label htmlFor={`${uid}-location`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
             <MapPin className="w-3 h-3 inline mr-1" />
             Location
           </label>
           <input
+            id={`${uid}-location`}
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}

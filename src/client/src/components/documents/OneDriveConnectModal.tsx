@@ -96,7 +96,7 @@ export function OneDriveConnectModal({ projectId, onClose }: OneDriveConnectModa
             <Cloud className="w-5 h-5 text-blue-500" />
             Connect OneDrive
           </h2>
-          <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" onClick={onClose}>
+          <button aria-label="Close" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" onClick={onClose}>
             <X className="w-5 h-5" />
           </button>
         </div>

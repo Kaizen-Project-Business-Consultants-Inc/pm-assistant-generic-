@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -34,6 +34,7 @@ interface EditProjectModalProps {
 }
 
 export function EditProjectModal({ project, onSave, onClose, saving, onDelete, deleting, canDelete }: EditProjectModalProps) {
+  const uid = useId();
   const [name, setName] = useState(project.name || '');
   const [description, setDescription] = useState(project.description || '');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -132,19 +133,19 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
 
       <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
         <div>
-          <label className={labelClass}>Project Name *</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} />
+          <label htmlFor={`${uid}-project-name`} className={labelClass}>Project Name *</label>
+          <input id={`${uid}-project-name`} type="text" value={name} onChange={(e) => setName(e.target.value)} required className={inputClass} />
         </div>
 
         <div>
-          <label className={labelClass}>Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={inputClass} />
+          <label htmlFor={`${uid}-description`} className={labelClass}>Description</label>
+          <textarea id={`${uid}-description`} value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={inputClass} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Priority</label>
-            <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
+            <label htmlFor={`${uid}-priority`} className={labelClass}>Priority</label>
+            <select id={`${uid}-priority`} value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -152,16 +153,16 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
             </select>
           </div>
           <div>
-            <label className={labelClass}>Project Type</label>
-            <select value={projectType} onChange={(e) => setProjectType(e.target.value)} className={inputClass}>
+            <label htmlFor={`${uid}-project-type`} className={labelClass}>Project Type</label>
+            <select id={`${uid}-project-type`} value={projectType} onChange={(e) => setProjectType(e.target.value)} className={inputClass}>
               {PROJECT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         </div>
 
         <div>
-          <label className={labelClass}>Methodology</label>
-          <select value={methodology} onChange={(e) => setMethodology(e.target.value)} className={inputClass}>
+          <label htmlFor={`${uid}-methodology`} className={labelClass}>Methodology</label>
+          <select id={`${uid}-methodology`} value={methodology} onChange={(e) => setMethodology(e.target.value)} className={inputClass}>
             <option value="waterfall">Waterfall</option>
             <option value="agile">Agile</option>
             <option value="hybrid">Hybrid</option>
@@ -169,14 +170,15 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
         </div>
 
         <div>
-          <label className={labelClass}>Category</label>
-          <input type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. technology, commercial" className={inputClass} />
+          <label htmlFor={`${uid}-category`} className={labelClass}>Category</label>
+          <input id={`${uid}-category`} type="text" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. technology, commercial" className={inputClass} />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Budget</label>
+            <label htmlFor={`${uid}-budget`} className={labelClass}>Budget</label>
             <input
+              id={`${uid}-budget`}
               type="number"
               value={budgetAllocated}
               onChange={(e) => setBudgetAllocated(e.target.value)}
@@ -187,8 +189,8 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
             />
           </div>
           <div>
-            <label className={labelClass}>Currency</label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
+            <label htmlFor={`${uid}-currency`} className={labelClass}>Currency</label>
+            <select id={`${uid}-currency`} value={currency} onChange={(e) => setCurrency(e.target.value)} className={inputClass}>
               <option value="USD">USD</option>
               <option value="CAD">CAD</option>
               <option value="EUR">EUR</option>
@@ -200,12 +202,12 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Start Date</label>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+            <label htmlFor={`${uid}-start-date`} className={labelClass}>Start Date</label>
+            <input id={`${uid}-start-date`} type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
           </div>
           <div>
-            <label className={labelClass}>End Date</label>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
+            <label htmlFor={`${uid}-end-date`} className={labelClass}>End Date</label>
+            <input id={`${uid}-end-date`} type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className={inputClass} />
           </div>
         </div>
 
@@ -252,8 +254,8 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
         )}
 
         <div>
-          <label className={labelClass}>Location</label>
-          <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. New York, NY" className={inputClass} />
+          <label htmlFor={`${uid}-location`} className={labelClass}>Location</label>
+          <input id={`${uid}-location`} type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. New York, NY" className={inputClass} />
         </div>
 
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
@@ -284,10 +286,11 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
                 This will <span className="font-semibold">permanently delete</span> the project, all tasks, schedules, and associated data. This cannot be undone.
               </p>
               <div>
-                <label className="block text-xs font-medium text-red-700 dark:text-red-400 mb-1">
+                <label htmlFor={`${uid}-type-to-confirm`} className="block text-xs font-medium text-red-700 dark:text-red-400 mb-1">
                   Type <span className="font-mono font-bold">{project.name}</span> to confirm
                 </label>
                 <input
+                  id={`${uid}-type-to-confirm`}
                   type="text"
                   value={deleteConfirmName}
                   onChange={(e) => setDeleteConfirmName(e.target.value)}

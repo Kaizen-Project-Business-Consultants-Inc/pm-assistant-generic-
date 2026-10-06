@@ -132,6 +132,7 @@ export function AttachmentPanel({ entityType, entityId, projectId }: AttachmentP
         <input
           id={`file-input-${entityId}`}
           type="file"
+          aria-label="Upload files"
           multiple
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}

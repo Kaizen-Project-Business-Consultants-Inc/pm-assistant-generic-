@@ -322,6 +322,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
           </div>
           <textarea
             ref={textareaRef}
+            aria-label="Project brief"
             value={draft}
             onChange={(e) => handleChange(e.target.value)}
             onBlur={exitEdit}

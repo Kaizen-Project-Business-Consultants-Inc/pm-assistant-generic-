@@ -187,6 +187,7 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
           <input
             type="text"
             placeholder="Label (e.g., SharePoint Folder)"
+            aria-label="Link label"
             value={form.label}
             onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
             className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -199,6 +200,7 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
           <input
             type="url"
             placeholder="URL (e.g., https://...)"
+            aria-label="Link URL"
             value={form.url}
             onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
             className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -211,6 +213,7 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
             <select
               value={form.icon}
               onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
+              aria-label="Link icon"
               className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               {ICON_OPTIONS.map(o => (

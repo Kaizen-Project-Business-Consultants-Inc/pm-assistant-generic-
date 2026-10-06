@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Save, Plus, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -12,6 +12,7 @@ interface CustomFieldEditorModalProps {
 }
 
 export function CustomFieldEditorModal({ projectId, entityType, field, onClose }: CustomFieldEditorModalProps) {
+  const uid = useId();
   const { dialogRef, handleKeyDown } = useModal(true, onClose);
   const queryClient = useQueryClient();
   const isEdit = !!field;
@@ -82,8 +83,9 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Label <span className="text-red-500">*</span></label>
+            <label htmlFor={`${uid}-label`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Label <span className="text-red-500">*</span></label>
             <input
+              id={`${uid}-label`}
               type="text"
               value={form.fieldLabel}
               onChange={(e) => setForm(p => ({ ...p, fieldLabel: e.target.value }))}
@@ -95,8 +97,9 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+            <label htmlFor={`${uid}-type`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
             <select
+              id={`${uid}-type`}
               value={form.fieldType}
               onChange={(e) => setForm(p => ({ ...p, fieldType: e.target.value }))}
               className="input w-full"
@@ -132,6 +135,7 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
                   type="text"
                   value={newOption}
                   onChange={(e) => setNewOption(e.target.value)}
+                  aria-label="Add option"
                   placeholder="Add option..."
                   className="input flex-1 text-sm"
                   onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOption(); } }}

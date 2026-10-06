@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { X, Save, Tag } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -17,6 +17,7 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({
   projectId,
   projectName,
 }) => {
+  const uid = useId();
   const [templateName, setTemplateName] = useState(`${projectName} Template`);
   const [description, setDescription] = useState('');
   const [tagInput, setTagInput] = useState('');
@@ -69,6 +70,7 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({
             <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Save as Template</h2>
           </div>
           <button
+            aria-label="Close"
             onClick={onClose}
             className="p-1.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
@@ -84,8 +86,9 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({
           className="p-6 space-y-4"
         >
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Template Name *</label>
+            <label htmlFor={`${uid}-template-name`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Template Name *</label>
             <input
+              id={`${uid}-template-name`}
               type="text"
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
@@ -95,8 +98,9 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+            <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
             <textarea
+              id={`${uid}-description`}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
@@ -106,12 +110,13 @@ export const SaveAsTemplateModal: React.FC<SaveAsTemplateModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor={`${uid}-tags`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
               <Tag className="w-3 h-3 inline mr-1" />
               Tags
             </label>
             <div className="flex gap-2">
               <input
+                id={`${uid}-tags`}
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}

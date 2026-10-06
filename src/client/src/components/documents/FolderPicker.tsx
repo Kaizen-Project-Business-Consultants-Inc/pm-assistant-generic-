@@ -124,6 +124,8 @@ function FolderLevel({
               <button
                 className="p-0.5 text-gray-500 hover:text-gray-600"
                 onClick={() => onToggleExpand(folder.id)}
+                aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${folder.name}`}
+                aria-expanded={isExpanded}
               >
                 {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               </button>
@@ -134,6 +136,8 @@ function FolderLevel({
                     : 'border-gray-300 dark:border-gray-500'
                 }`}
                 onClick={() => onToggleSelect(folder.id)}
+                aria-label={`Select ${folder.name}`}
+                aria-pressed={isSelected}
               >
                 {isSelected && <Check className="w-3 h-3" />}
               </button>

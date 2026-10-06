@@ -114,7 +114,7 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-1.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button aria-label="Close" onClick={onClose} className="p-1.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-5 h-5" />
             </button>
           </div>

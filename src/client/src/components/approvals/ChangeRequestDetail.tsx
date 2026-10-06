@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2,
@@ -56,6 +56,7 @@ function statusLabel(status: string): string {
 }
 
 export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetailProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
 
   const [actionComment, setActionComment] = useState('');
@@ -319,13 +320,14 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
           {/* Workflow selector */}
           {canSubmit && showWorkflowSelect && (
             <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Approval Workflow</label>
+              <label htmlFor={`${uid}-workflow`} className="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Approval Workflow</label>
               {isWorkflowsError && (
                 <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-400">
                   Failed to load workflows. Please try again.
                 </div>
               )}
               <select
+                id={`${uid}-workflow`}
                 value={selectedWorkflowId}
                 onChange={(e) => setSelectedWorkflowId(e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-200"
@@ -361,8 +363,9 @@ export function ChangeRequestDetail({ crId, onBack, onEdit }: ChangeRequestDetai
           {canReview && (
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Comment</label>
+                <label htmlFor={`${uid}-comment`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Comment</label>
                 <textarea
+                  id={`${uid}-comment`}
                   value={actionComment}
                   onChange={(e) => setActionComment(e.target.value)}
                   placeholder="Add a comment for your decision..."

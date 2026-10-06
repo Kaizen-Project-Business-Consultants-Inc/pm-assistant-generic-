@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
@@ -184,6 +184,7 @@ const AddLessonModal: React.FC<{
   initial?: { title: string; description: string; category: string; impact: string; recommendation: string; projectId: string; rootCause?: string; severity?: string };
   title?: string;
 }> = ({ projects, onClose, onSubmit, isSubmitting, initial, title: modalTitle }) => {
+  const uid = useId();
   const [form, setForm] = useState({
     title: initial?.title || '',
     description: initial?.description || '',
@@ -215,6 +216,7 @@ const AddLessonModal: React.FC<{
             {modalTitle || 'Add Lesson Learned'}
           </h2>
           <button
+            aria-label="Close"
             onClick={onClose}
             className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
@@ -225,21 +227,21 @@ const AddLessonModal: React.FC<{
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            <label htmlFor={`${uid}-title`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
               Title <span className="text-red-500">*</span>
             </label>
-            <input type="text" value={form.title} onChange={(e) => update('title', e.target.value)} className="input w-full" placeholder="Brief title for the lesson..." required />
+            <input id={`${uid}-title`} type="text" value={form.title} onChange={(e) => update('title', e.target.value)} className="input w-full" placeholder="Brief title for the lesson..." required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
               Description <span className="text-red-500">*</span>
             </label>
-            <textarea value={form.description} onChange={(e) => update('description', e.target.value)} className="input w-full resize-y" rows={3} placeholder="Detailed description of what was learned..." required />
+            <textarea id={`${uid}-description`} value={form.description} onChange={(e) => update('description', e.target.value)} className="input w-full resize-y" rows={3} placeholder="Detailed description of what was learned..." required />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Category</label>
+            <label htmlFor={`${uid}-category`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Category</label>
             <div className="relative">
-              <select value={form.category} onChange={(e) => update('category', e.target.value)} className="input w-full appearance-none pr-8">
+              <select id={`${uid}-category`} value={form.category} onChange={(e) => update('category', e.target.value)} className="input w-full appearance-none pr-8">
                 {CATEGORIES.filter((c) => c !== 'All').map((c) => (<option key={c} value={c}>{c}</option>))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -257,26 +259,26 @@ const AddLessonModal: React.FC<{
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Recommendation</label>
-            <textarea value={form.recommendation} onChange={(e) => update('recommendation', e.target.value)} className="input w-full resize-y" rows={2} placeholder="What should teams do differently..." />
+            <label htmlFor={`${uid}-recommendation`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Recommendation</label>
+            <textarea id={`${uid}-recommendation`} value={form.recommendation} onChange={(e) => update('recommendation', e.target.value)} className="input w-full resize-y" rows={2} placeholder="What should teams do differently..." />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Root Cause</label>
-            <textarea value={form.rootCause} onChange={(e) => update('rootCause', e.target.value)} className="input w-full resize-y" rows={2} placeholder="Underlying reason this issue occurred..." />
+            <label htmlFor={`${uid}-root-cause`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Root Cause</label>
+            <textarea id={`${uid}-root-cause`} value={form.rootCause} onChange={(e) => update('rootCause', e.target.value)} className="input w-full resize-y" rows={2} placeholder="Underlying reason this issue occurred..." />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Severity</label>
+            <label htmlFor={`${uid}-severity`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Severity</label>
             <div className="relative">
-              <select value={form.severity} onChange={(e) => update('severity', e.target.value)} className="input w-full appearance-none pr-8">
+              <select id={`${uid}-severity`} value={form.severity} onChange={(e) => update('severity', e.target.value)} className="input w-full appearance-none pr-8">
                 {SEVERITY_OPTIONS.map((s) => (<option key={s} value={s}>{s ? s.charAt(0).toUpperCase() + s.slice(1) : 'None'}</option>))}
               </select>
               <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400" />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Project</label>
+            <label htmlFor={`${uid}-project`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Project</label>
             <div className="relative">
-              <select value={form.projectId} onChange={(e) => update('projectId', e.target.value)} className="input w-full appearance-none pr-8">
+              <select id={`${uid}-project`} value={form.projectId} onChange={(e) => update('projectId', e.target.value)} className="input w-full appearance-none pr-8">
                 <option value="">None</option>
                 {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
               </select>
@@ -468,6 +470,7 @@ export const LessonsLearnedPage: React.FC = () => {
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
+              aria-label="Project"
               className="input appearance-none pr-8 text-sm py-1.5"
             >
               <option value="">Select a project...</option>
@@ -503,6 +506,8 @@ export const LessonsLearnedPage: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setShowActionsMenu(!showActionsMenu)}
+              aria-label="More actions"
+              aria-expanded={showActionsMenu}
               className="btn btn-secondary flex items-center gap-1.5 text-sm"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -609,7 +614,7 @@ export const LessonsLearnedPage: React.FC = () => {
               <BarChart3 className="w-4 h-4 text-indigo-500" />
               PMO Lessons Report
             </h3>
-            <button onClick={() => setShowPMOReport(false)} className="p-1 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button aria-label="Close" onClick={() => setShowPMOReport(false)} className="p-1 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -685,7 +690,7 @@ export const LessonsLearnedPage: React.FC = () => {
               <TrendingUp className="w-4 h-4 text-amber-500" />
               Detected Patterns
             </h2>
-            <button onClick={() => setShowPatterns(false)} className="p-1 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
+            <button aria-label="Close" onClick={() => setShowPatterns(false)} className="p-1 rounded text-gray-500 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -700,13 +705,13 @@ export const LessonsLearnedPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Search className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           <div className="relative">
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input appearance-none pr-7 text-xs py-1.5">
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filter by status" className="input appearance-none pr-7 text-xs py-1.5">
               {STATUS_FILTERS.map((s) => (<option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           </div>
           <div className="relative">
-            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="input appearance-none pr-7 text-xs py-1.5">
+            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} aria-label="Filter by category" className="input appearance-none pr-7 text-xs py-1.5">
               {CATEGORIES.map((c) => (<option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />

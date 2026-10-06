@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 
@@ -9,6 +9,7 @@ interface CustomFieldsSectionProps {
 }
 
 export function CustomFieldsSection({ entityType, entityId, projectId }: CustomFieldsSectionProps) {
+  const uid = useId();
   const [values, setValues] = useState<Record<string, any>>({});
 
   const { data, isLoading } = useQuery({
@@ -64,12 +65,13 @@ export function CustomFieldsSection({ entityType, entityId, projectId }: CustomF
       <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Custom Fields</h4>
       {fields.map((field: any) => (
         <div key={field.id}>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          <label htmlFor={`${uid}-${field.id}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
             {field.fieldLabel}
             {field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
           </label>
           {field.fieldType === 'text' && (
             <input
+              id={`${uid}-${field.id}`}
               type="text"
               value={values[field.id] || ''}
               onChange={(e) => setValues(p => ({ ...p, [field.id]: e.target.value }))}
@@ -79,6 +81,7 @@ export function CustomFieldsSection({ entityType, entityId, projectId }: CustomF
           )}
           {field.fieldType === 'number' && (
             <input
+              id={`${uid}-${field.id}`}
               type="number"
               value={values[field.id] ?? ''}
               onChange={(e) => setValues(p => ({ ...p, [field.id]: e.target.value }))}
@@ -88,6 +91,7 @@ export function CustomFieldsSection({ entityType, entityId, projectId }: CustomF
           )}
           {field.fieldType === 'date' && (
             <input
+              id={`${uid}-${field.id}`}
               type="date"
               value={values[field.id] || ''}
               onChange={(e) => { setValues(p => ({ ...p, [field.id]: e.target.value })); }}
@@ -97,6 +101,7 @@ export function CustomFieldsSection({ entityType, entityId, projectId }: CustomF
           )}
           {field.fieldType === 'dropdown' && (
             <select
+              id={`${uid}-${field.id}`}
               value={values[field.id] || ''}
               onChange={(e) => {
                 setValues(p => ({ ...p, [field.id]: e.target.value }));

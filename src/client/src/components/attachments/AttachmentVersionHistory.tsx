@@ -55,7 +55,7 @@ export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVe
       <div ref={dialogRef} onKeyDown={handleKeyDown} tabIndex={-1} className="relative w-full max-w-md mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-h-[80vh] flex flex-col" role="dialog" aria-modal="true" aria-label="Version History">
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">Version History</h3>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+          <button aria-label="Close" onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -75,7 +75,7 @@ export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVe
                   <p className="text-xs text-gray-500 dark:text-gray-400">{v.originalName} &middot; {formatSize(v.fileSize)}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{new Date(v.createdAt).toLocaleString()}</p>
                 </div>
-                <button onClick={() => handleDownload(v)} className="p-1.5 text-gray-500 hover:text-primary-600">
+                <button onClick={() => handleDownload(v)} aria-label={`Download version ${v.version}`} className="p-1.5 text-gray-500 hover:text-primary-600">
                   <Download className="w-4 h-4" />
                 </button>
               </div>
@@ -95,6 +95,7 @@ export function AttachmentVersionHistory({ attachmentId, onClose }: AttachmentVe
           <input
             id="version-upload"
             type="file"
+            aria-label="Upload new version"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];

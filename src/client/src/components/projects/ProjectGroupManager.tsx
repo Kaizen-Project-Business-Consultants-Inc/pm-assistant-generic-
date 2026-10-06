@@ -55,7 +55,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage Groups</h2>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
+          <button aria-label="Close" onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -72,6 +72,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
               {editingId === g.id ? (
                 <>
                   <input
+                    aria-label={`Name for ${g.name}`}
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
                     className="flex-1 text-sm border rounded px-2 py-1 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -86,6 +87,8 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                       <button
                         key={c}
                         onClick={() => setEditColor(c)}
+                        aria-label={`Use colour ${c}`}
+                        aria-pressed={editColor === c}
                         className={`w-4 h-4 rounded-full border-2 ${editColor === c ? 'border-gray-900 dark:border-white' : 'border-transparent'}`}
                         style={{ backgroundColor: c }}
                       />
@@ -108,6 +111,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                   </span>
                   <button
                     onClick={() => deleteMut.mutate(g.id)}
+                    aria-label={`Delete group ${g.name}`}
                     className="p-1 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -122,6 +126,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
         <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <input
+              aria-label="New group name"
               value={newName}
               onChange={e => setNewName(e.target.value)}
               placeholder="New group name"
@@ -133,6 +138,8 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                 <button
                   key={c}
                   onClick={() => setNewColor(c)}
+                  aria-label={`Use colour ${c}`}
+                  aria-pressed={newColor === c}
                   className={`w-5 h-5 rounded-full border-2 ${newColor === c ? 'border-gray-900 dark:border-white' : 'border-transparent'}`}
                   style={{ backgroundColor: c }}
                 />

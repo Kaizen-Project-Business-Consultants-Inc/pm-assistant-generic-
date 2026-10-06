@@ -252,6 +252,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
         <input
           className="w-full text-sm border rounded-lg pl-10 pr-3 py-2.5 bg-white dark:bg-gray-800 dark:border-gray-600 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
           placeholder="Search by name, description, or AI summary..."
+          aria-label="Search documents"
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
@@ -285,6 +286,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           <input
             className="text-sm border rounded-md px-2 py-1 bg-white dark:bg-gray-800 dark:border-gray-600 w-64"
             placeholder="Description (optional)"
+            aria-label="Upload description (optional)"
             value={uploadDescription}
             onChange={(e) => setUploadDescription(e.target.value)}
             maxLength={500}
@@ -307,6 +309,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
         <input
           ref={fileInputRef}
           type="file"
+          aria-label="Choose a file to upload"
           className="hidden"
           accept=".pdf,.docx,.doc,.txt,.csv,.md"
           multiple
@@ -349,6 +352,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
         <select
           className="text-sm border rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-600"
           value={typeFilter}
+          aria-label="Filter by type"
           onChange={(e) => setTypeFilter(e.target.value)}
         >
           {DOCUMENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -356,6 +360,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
         <select
           className="text-sm border rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-600"
           value={phaseFilter}
+          aria-label="Filter by phase"
           onChange={(e) => setPhaseFilter(e.target.value)}
         >
           {PHASE_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -364,6 +369,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           <select
             className="text-sm border rounded-md px-2 py-1.5 bg-white dark:bg-gray-800 dark:border-gray-600"
             value={folderFilter}
+            aria-label="Filter by folder"
             onChange={(e) => setFolderFilter(e.target.value)}
           >
             <option value="">All Folders</option>
@@ -376,6 +382,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           <input
             className="w-full text-sm border border-primary-200 dark:border-primary-700 rounded-md pl-8 pr-3 py-1.5 bg-white dark:bg-gray-800 focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
             placeholder="AI semantic search..."
+            aria-label="AI semantic search"
             value={semanticQuery}
             onChange={(e) => setSemanticQuery(e.target.value)}
           />
@@ -556,6 +563,7 @@ function DetailPanel({
           </button>
           </>)}
           <button
+            aria-label="Close"
             className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
             onClick={onClose}
           >
@@ -569,7 +577,7 @@ function DetailPanel({
         <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1 flex items-center gap-1">
           Description
           {!editingDesc && (
-            <button className="text-gray-500 hover:text-gray-600" hidden={!canEdit} onClick={() => { setDescDraft(doc.description || ''); setEditingDesc(true); }}>
+            <button className="text-gray-500 hover:text-gray-600" hidden={!canEdit} aria-label="Edit description" onClick={() => { setDescDraft(doc.description || ''); setEditingDesc(true); }}>
               <Pencil className="w-3 h-3" />
             </button>
           )}
@@ -579,14 +587,15 @@ function DetailPanel({
             <input
               className="flex-1 text-sm border rounded px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600"
               value={descDraft}
+              aria-label="Description"
               onChange={(e) => setDescDraft(e.target.value)}
               placeholder="Short description..."
               maxLength={500}
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') saveDescription(); if (e.key === 'Escape') setEditingDesc(false); }}
             />
-            <button className="p-1 text-green-600 hover:bg-green-50 rounded" onClick={saveDescription}><Check className="w-4 h-4" /></button>
-            <button className="p-1 text-gray-500 hover:bg-gray-100 rounded" onClick={() => setEditingDesc(false)}><X className="w-4 h-4" /></button>
+            <button className="p-1 text-green-600 hover:bg-green-50 rounded" onClick={saveDescription} aria-label="Save description"><Check className="w-4 h-4" /></button>
+            <button className="p-1 text-gray-500 hover:bg-gray-100 rounded" onClick={() => setEditingDesc(false)} aria-label="Cancel"><X className="w-4 h-4" /></button>
           </div>
         ) : (
           <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -600,7 +609,7 @@ function DetailPanel({
         <h4 className="text-xs font-semibold text-gray-500 uppercase mb-1 flex items-center gap-1">
           <FolderOpen className="w-3 h-3" /> Folder
           {!editingFolder && (
-            <button className="text-gray-500 hover:text-gray-600" hidden={!canEdit} onClick={() => { setFolderDraft(doc.folder || ''); setEditingFolder(true); }}>
+            <button className="text-gray-500 hover:text-gray-600" hidden={!canEdit} aria-label="Edit folder" onClick={() => { setFolderDraft(doc.folder || ''); setEditingFolder(true); }}>
               <Pencil className="w-3 h-3" />
             </button>
           )}
@@ -610,6 +619,7 @@ function DetailPanel({
             <input
               className="flex-1 text-sm border rounded px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600"
               value={folderDraft}
+              aria-label="Folder"
               onChange={(e) => setFolderDraft(e.target.value)}
               placeholder="Folder name..."
               maxLength={100}
@@ -620,8 +630,8 @@ function DetailPanel({
             <datalist id="folder-suggestions">
               {folders.map(f => <option key={f} value={f} />)}
             </datalist>
-            <button className="p-1 text-green-600 hover:bg-green-50 rounded" onClick={saveFolder}><Check className="w-4 h-4" /></button>
-            <button className="p-1 text-gray-500 hover:bg-gray-100 rounded" onClick={() => setEditingFolder(false)}><X className="w-4 h-4" /></button>
+            <button className="p-1 text-green-600 hover:bg-green-50 rounded" onClick={saveFolder} aria-label="Save folder"><Check className="w-4 h-4" /></button>
+            <button className="p-1 text-gray-500 hover:bg-gray-100 rounded" onClick={() => setEditingFolder(false)} aria-label="Cancel"><X className="w-4 h-4" /></button>
           </div>
         ) : (
           <p className="text-sm text-gray-600 dark:text-gray-300">

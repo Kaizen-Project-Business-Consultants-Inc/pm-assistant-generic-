@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save, X } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -14,6 +14,7 @@ const CATEGORIES = ['scope', 'schedule', 'budget', 'resource', 'other'] as const
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
 export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeRequestFormProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
 
   const [title, setTitle] = useState('');
@@ -77,7 +78,7 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             {crId ? 'Edit Change Request' : 'New Change Request'}
           </h3>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+          <button aria-label="Close" onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -91,8 +92,9 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+              <label htmlFor={`${uid}-title`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
               <input
+                id={`${uid}-title`}
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -104,8 +106,9 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <label htmlFor={`${uid}-description`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
               <textarea
+                id={`${uid}-description`}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Detailed description of the proposed change..."
@@ -117,8 +120,9 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
             {/* Category + Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <label htmlFor={`${uid}-category`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
                 <select
+                  id={`${uid}-category`}
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-900 dark:text-white"
@@ -131,8 +135,9 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+                <label htmlFor={`${uid}-priority`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
                 <select
+                  id={`${uid}-priority`}
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-gray-900 dark:text-white"
@@ -148,8 +153,9 @@ export function ChangeRequestForm({ projectId, crId, onClose, onSaved }: ChangeR
 
             {/* Impact Summary */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Impact Summary</label>
+              <label htmlFor={`${uid}-impact-summary`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Impact Summary</label>
               <textarea
+                id={`${uid}-impact-summary`}
                 value={impactSummary}
                 onChange={(e) => setImpactSummary(e.target.value)}
                 placeholder="Describe the expected impact on scope, schedule, budget, or resources..."

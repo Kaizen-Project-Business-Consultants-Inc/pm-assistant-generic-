@@ -146,7 +146,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             <Cloud className="w-5 h-5 text-blue-500" />
             Connect Storage
           </h2>
-          <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" onClick={onClose}>
+          <button aria-label="Close" className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700" onClick={onClose}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -249,6 +249,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             <input
               className="w-full text-sm border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600"
               placeholder="Paste the sharing link you received"
+              aria-label="Sharing link"
               value={shareUrl}
               onChange={(e) => setShareUrl(e.target.value)}
               autoFocus
@@ -285,6 +286,7 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             <input
               className="w-full text-sm border rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600"
               placeholder="https://yourcompany.sharepoint.com/sites/YourSite"
+              aria-label="SharePoint site URL"
               value={siteUrl}
               onChange={(e) => setSiteUrl(e.target.value)}
               autoFocus

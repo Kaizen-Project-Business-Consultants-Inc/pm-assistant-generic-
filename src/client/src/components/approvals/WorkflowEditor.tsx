@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowUp,
@@ -32,6 +32,7 @@ function entityTypeLabel(et: string): string {
 }
 
 export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: WorkflowEditorProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
 
   const [name, setName] = useState('');
@@ -153,8 +154,9 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Workflow Name</label>
+              <label htmlFor={`${uid}-workflow-name`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Workflow Name</label>
               <input
+                id={`${uid}-workflow-name`}
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -166,8 +168,9 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+              <label htmlFor={`${uid}-description`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
               <textarea
+                id={`${uid}-description`}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe when this workflow should be used..."
@@ -178,8 +181,9 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
 
             {/* Entity Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity Type</label>
+              <label htmlFor={`${uid}-entity-type`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity Type</label>
               <select
+                id={`${uid}-entity-type`}
                 value={entityType}
                 onChange={(e) => setEntityType(e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -227,6 +231,7 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
                         type="text"
                         value={step.role}
                         onChange={(e) => handleStepChange(index, 'role', e.target.value)}
+                        aria-label={`Role for step ${step.stepOrder}`}
                         placeholder="Role (e.g., Project Manager)"
                         className="flex-1 border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                       />
@@ -235,6 +240,7 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
                       <select
                         value={step.action}
                         onChange={(e) => handleStepChange(index, 'action', e.target.value)}
+                        aria-label={`Action for step ${step.stepOrder}`}
                         className="border border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-28 flex-shrink-0"
                       >
                         {STEP_ACTIONS.map((a) => (

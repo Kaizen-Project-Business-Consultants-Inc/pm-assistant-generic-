@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DollarSign, Plus, Trash2, X, TrendingUp, AlertTriangle, PieChart, Search, Download } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -123,6 +123,7 @@ function BudgetGauge({ pct, status }: { pct: number; status: string }) {
 }
 
 export function BudgetTab({ projectId, project }: { projectId: string; project: any }) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [subTab, setSubTab] = useState<SubTab>('overview');
   const [showForm, setShowForm] = useState(false);
@@ -402,26 +403,26 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
-                  <input type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
+                  <label htmlFor={`${uid}-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                  <input id={`${uid}-date`} type="date" value={formDate} onChange={(e) => setFormDate(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Amount</label>
-                  <input type="number" step="0.01" min="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" placeholder="0.00" />
+                  <label htmlFor={`${uid}-amount`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Amount</label>
+                  <input id={`${uid}-amount`} type="number" step="0.01" min="0.01" value={formAmount} onChange={(e) => setFormAmount(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" placeholder="0.00" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
-                  <select value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none">
+                  <label htmlFor={`${uid}-category`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
+                  <select id={`${uid}-category`} value={formCategory} onChange={(e) => setFormCategory(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none">
                     {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{capitalize(c)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Vendor</label>
-                  <input type="text" value={formVendor} onChange={(e) => setFormVendor(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
+                  <label htmlFor={`${uid}-vendor`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Vendor</label>
+                  <input id={`${uid}-vendor`} type="text" value={formVendor} onChange={(e) => setFormVendor(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
-                  <input type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
+                  <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
+                  <input id={`${uid}-description`} type="text" value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 outline-none" placeholder="Optional" />
                 </div>
               </div>
               <div className="flex justify-end">
@@ -444,6 +445,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
                 type="text"
                 value={expenseSearch}
                 onChange={(e) => setExpenseSearch(e.target.value)}
+                aria-label="Search expenses"
                 placeholder="Search vendor, description, category..."
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-primary-500 outline-none"
               />
@@ -451,6 +453,7 @@ export function BudgetTab({ projectId, project }: { projectId: string; project: 
             <select
               value={expenseCategoryFilter}
               onChange={(e) => setExpenseCategoryFilter(e.target.value)}
+              aria-label="Filter by category"
               className="text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg px-3 py-2 outline-none"
             >
               <option value="all">All categories</option>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { GitPullRequest, Plus, Settings2, Trash2 } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -13,6 +13,7 @@ type Tab = 'requests' | 'workflows';
 type View = 'list' | 'detail' | 'form' | 'workflow-editor';
 
 export const ChangeRequestsPage: React.FC = () => {
+  const uid = useId();
   const canChange = useCanChangeData();
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>('requests');
@@ -68,8 +69,9 @@ export const ChangeRequestsPage: React.FC = () => {
 
       {/* Project Selector */}
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-600 dark:text-gray-300">Project:</label>
+        <label htmlFor={`${uid}-project`} className="text-sm font-medium text-gray-600 dark:text-gray-300">Project:</label>
         <select
+          id={`${uid}-project`}
           value={selectedProjectId}
           onChange={(e) => {
             setSelectedProjectId(e.target.value);

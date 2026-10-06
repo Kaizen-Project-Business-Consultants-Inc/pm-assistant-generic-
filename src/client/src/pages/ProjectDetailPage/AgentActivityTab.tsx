@@ -64,6 +64,7 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
             <span className="text-xs text-green-600">Scan complete</span>
           )}
           <select
+            aria-label="Filter by agent"
             value={agentFilter}
             onChange={(e) => { setAgentFilter(e.target.value); setPage(0); }}
             className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm bg-white dark:bg-gray-800 dark:text-gray-200"

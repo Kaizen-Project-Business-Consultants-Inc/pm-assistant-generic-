@@ -83,6 +83,7 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
         <div className="flex items-center gap-2">
           <input
             type="date"
+            aria-label="Week starting"
             value={weekStart}
             onChange={(e) => { e.stopPropagation(); setWeekStart(e.target.value); }}
             onClick={(e) => e.stopPropagation()}

@@ -281,6 +281,7 @@ export function ProjectsPM() {
             <select
               value={groupFilter}
               onChange={e => setGroupFilter(e.target.value)}
+              aria-label="Filter by group"
               className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
               <option value="all">All Groups</option>

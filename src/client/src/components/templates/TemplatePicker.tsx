@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -92,6 +92,7 @@ function parseCSV(text: string): ParsedCSV {
 // ---------------------------------------------------------------------------
 
 export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose }) => {
+  const uid = useId();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('start');
@@ -470,6 +471,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             </div>
           </div>
           <button
+            aria-label="Close"
             onClick={handleClose}
             className="p-1.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
@@ -568,6 +570,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                 ref={fileInputRef}
                 type="file"
                 accept=".csv,.xlsx,.xls"
+                aria-label="Choose a file to import"
                 className="hidden"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -599,8 +602,9 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               {/* Sheet selector for multi-sheet Excel files */}
               {sheetNames.length > 1 && (
                 <div>
-                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Select Sheet</label>
+                  <label htmlFor={`${uid}-select-sheet`} className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 block">Select Sheet</label>
                   <select
+                    id={`${uid}-select-sheet`}
                     value={selectedSheet}
                     onChange={(e) => handleSheetSelect(e.target.value)}
                     className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 w-full"

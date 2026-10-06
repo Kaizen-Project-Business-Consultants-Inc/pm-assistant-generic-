@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Link,
@@ -47,6 +47,7 @@ const defaultForm: CreateLinkForm = {
 
 /** canEdit: the project's Manager/Owner. Everyone else sees the links read-only (hide, don't disable). */
 export function PortalLinkManager({ projectId, canEdit = false }: { projectId: string; canEdit?: boolean }) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState<CreateLinkForm>(defaultForm);
@@ -199,10 +200,11 @@ export function PortalLinkManager({ projectId, canEdit = false }: { projectId: s
       {showCreateForm && (
         <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-700 space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor={`${uid}-link-label`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
               Link Label
             </label>
             <input
+              id={`${uid}-link-label`}
               type="text"
               value={form.label}
               onChange={(e) => setForm({ ...form, label: e.target.value })}
@@ -239,10 +241,11 @@ export function PortalLinkManager({ projectId, canEdit = false }: { projectId: s
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label htmlFor={`${uid}-expires-at`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
               Expires At (optional)
             </label>
             <input
+              id={`${uid}-expires-at`}
               type="date"
               value={form.expiresAt}
               onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Target, Plus, ChevronDown, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -144,6 +144,7 @@ const GoalModal: React.FC<{
   /** Why the server refused the save (shown in the form, so a failure is never silent) */
   error?: string | null;
 }> = ({ initial, objectives, projects, onClose, onSubmit, isSubmitting, title, error }) => {
+  const uid = useId();
   const [form, setForm] = useState<GoalFormData>(initial || EMPTY_FORM);
   const update = (field: keyof GoalFormData, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -170,26 +171,26 @@ const GoalModal: React.FC<{
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name <span className="text-red-500">*</span></label>
-            <input type="text" value={form.name} onChange={(e) => update('name', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" required />
+            <label htmlFor={`${uid}-name`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name <span className="text-red-500">*</span></label>
+            <input id={`${uid}-name`} type="text" value={form.name} onChange={(e) => update('name', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" required />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
-            <textarea value={form.description} onChange={(e) => update('description', e.target.value)} className="input w-full resize-y dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" rows={2} />
+            <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</label>
+            <textarea id={`${uid}-description`} value={form.description} onChange={(e) => update('description', e.target.value)} className="input w-full resize-y dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" rows={2} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
-              <select value={form.goalType} onChange={(e) => update('goalType', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+              <label htmlFor={`${uid}-type`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Type</label>
+              <select id={`${uid}-type`} value={form.goalType} onChange={(e) => update('goalType', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
                 <option value="objective">Objective</option>
                 <option value="key_result">Key Result</option>
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
-              <select value={form.status} onChange={(e) => update('status', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+              <label htmlFor={`${uid}-status`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
+              <select id={`${uid}-status`} value={form.status} onChange={(e) => update('status', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s.replace('_', ' ')}</option>
                 ))}
@@ -199,8 +200,8 @@ const GoalModal: React.FC<{
 
           {form.goalType === 'key_result' && (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Parent Objective</label>
-              <select value={form.parentId} onChange={(e) => update('parentId', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+              <label htmlFor={`${uid}-parent-objective`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Parent Objective</label>
+              <select id={`${uid}-parent-objective`} value={form.parentId} onChange={(e) => update('parentId', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
                 <option value="">None</option>
                 {objectives.map((o) => (
                   <option key={o.id} value={o.id}>{o.name}</option>
@@ -211,33 +212,33 @@ const GoalModal: React.FC<{
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Target Value</label>
-              <input type="number" value={form.targetValue} onChange={(e) => update('targetValue', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <label htmlFor={`${uid}-target-value`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Target Value</label>
+              <input id={`${uid}-target-value`} type="number" value={form.targetValue} onChange={(e) => update('targetValue', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Current Value</label>
-              <input type="number" value={form.currentValue} onChange={(e) => update('currentValue', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <label htmlFor={`${uid}-current-value`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Current Value</label>
+              <input id={`${uid}-current-value`} type="number" value={form.currentValue} onChange={(e) => update('currentValue', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Unit</label>
-              <input type="text" value={form.unit} onChange={(e) => update('unit', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" placeholder="e.g. %" />
+              <label htmlFor={`${uid}-unit`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Unit</label>
+              <input id={`${uid}-unit`} type="text" value={form.unit} onChange={(e) => update('unit', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" placeholder="e.g. %" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
-              <input type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <label htmlFor={`${uid}-start-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
+              <input id={`${uid}-start-date`} type="date" value={form.startDate} onChange={(e) => update('startDate', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Due Date</label>
-              <input type="date" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
+              <label htmlFor={`${uid}-due-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Due Date</label>
+              <input id={`${uid}-due-date`} type="date" value={form.dueDate} onChange={(e) => update('dueDate', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600" />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Project</label>
-            <select value={form.projectId} onChange={(e) => update('projectId', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+            <label htmlFor={`${uid}-project`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Project</label>
+            <select id={`${uid}-project`} value={form.projectId} onChange={(e) => update('projectId', e.target.value)} className="input w-full dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
               <option value="">None (standalone goal)</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
@@ -425,13 +426,13 @@ export const GoalsPage: React.FC = () => {
 
       {/* Filters */}
       <div className="flex items-center gap-4 flex-wrap">
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input text-sm dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filter by status" className="input text-sm dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
           <option value="">All Statuses</option>
           {STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>{s.replace('_', ' ')}</option>
           ))}
         </select>
-        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="input text-sm dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
+        <select value={filterType} onChange={(e) => setFilterType(e.target.value)} aria-label="Filter by type" className="input text-sm dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600">
           <option value="">All Types</option>
           <option value="objective">Objectives</option>
           <option value="key_result">Key Results</option>

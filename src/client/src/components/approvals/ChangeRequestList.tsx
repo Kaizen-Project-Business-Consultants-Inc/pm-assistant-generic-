@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, GitPullRequest, Clock, ArrowUpDown } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -35,6 +35,7 @@ function statusLabel(status: string): string {
 }
 
 export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestListProps) {
+  const uid = useId();
   const canChange = useCanChangeData();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
@@ -74,8 +75,9 @@ export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestL
       {/* Filters */}
       <div className="flex items-center gap-4 flex-wrap">
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status:</label>
+          <label htmlFor={`${uid}-status`} className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status:</label>
           <select
+            id={`${uid}-status`}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -88,8 +90,9 @@ export function ChangeRequestList({ projectId, onSelect, onNew }: ChangeRequestL
           </select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority:</label>
+          <label htmlFor={`${uid}-priority`} className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Priority:</label>
           <select
+            id={`${uid}-priority`}
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             className="text-sm border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
