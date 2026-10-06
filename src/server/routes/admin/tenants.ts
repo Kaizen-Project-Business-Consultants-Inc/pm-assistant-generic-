@@ -8,6 +8,7 @@ import { provisionTenantDatabase } from '../../database/tenantProvisioner';
 import { runTenantMigrations } from '../../database/tenantMigrationRunner';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
+import { neverConfirmedSql } from '../../constants/neverConfirmed';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user!;
   if (!isPlatformAdmin(user)) {
@@ -36,6 +37,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
       const rows = await databaseService.queryControlPlane(
         `SELECT o.*,
           u.full_name AS owner_name, u.email AS owner_email,
+          ${neverConfirmedSql('u')} AS never_confirmed,
           (SELECT COUNT(*) FROM users WHERE organization_id = o.id) AS user_count
         FROM organizations o
         LEFT JOIN users u ON u.id = o.owner_user_id

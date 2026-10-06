@@ -28,6 +28,7 @@ import {
   AlertOctagon,
 } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { NeverConfirmedBadge } from '../../components/admin/NeverConfirmedBadge';
 
 interface SystemData {
   uptime: number;
@@ -51,6 +52,8 @@ interface Warning {
 interface TenantRow {
   id: string; name: string; slug: string;
   totalUsers: number; activeUsers: number;
+  /** The owner never confirmed their email: its users aren't counted */
+  neverConfirmed?: boolean;
   apiRequestsToday: number; apiRequestsWeek: number;
   aiTokensThisMonth: number; aiCostThisMonth: number;
   projectCount: number; taskCount: number;
@@ -402,7 +405,7 @@ export function AdminOperationsPage() {
                         <tbody>
                           {data.tenants.map(t => (
                             <tr key={t.id} className="border-b border-gray-100 dark:border-gray-700/50">
-                              <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{t.name}</td>
+                              <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{t.name}{t.neverConfirmed && <span className="ml-2"><NeverConfirmedBadge subject="company" /></span>}</td>
                               <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{t.totalUsers}</td>
                               <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{t.activeUsers}</td>
                               <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{t.projectCount}</td>

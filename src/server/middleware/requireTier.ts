@@ -4,7 +4,9 @@ import { pricingConfigService } from '../services/PricingConfigService';
 import { createError } from '@fastify/error';
 import type { FeatureKey } from '../constants/planFeatures';
 
-const UpgradeRequiredError = createError('UPGRADE_REQUIRED', 'This feature requires a paid subscription.', 403);
+/** The app shows this in its upgrade window when someone tries a paid-plan feature */
+export const UPGRADE_REQUIRED_MESSAGE = "This is part of Kovarti's paid plans. Choose a plan to use it — everything you've set up stays as it is.";
+const UpgradeRequiredError = createError('UPGRADE_REQUIRED', UPGRADE_REQUIRED_MESSAGE, 403);
 const AuthRequiredError = createError('AUTH_REQUIRED', 'Authentication required', 401);
 
 export function requireTier(...allowedTiers: string[]) {

@@ -6,7 +6,10 @@ export interface User {
   username: string;
   email: string;
   fullName: string;
+  /** What the person may do — the company owner gets a PMO's permissions (server utils/companyOwner.ts) */
   role: 'admin' | 'executive' | 'project_manager' | 'team_member' | 'scrum_master' | 'finance_officer' | 'risk_manager' | 'pmo' | 'ba' | 'qa' | 'tester' | 'devops' | 'claude_sme' | 'viewer';
+  /** Their own role, as shown on screen ("your role") */
+  accountRole?: string;
   subscriptionTier?: 'trial' | 'consultant_basic' | 'consultant_pro' | 'sme' | 'enterprise';
   subscriptionStatus?: 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'none';
   /** Plan an unpaid signup is buying. Set while 'incomplete', cleared once they pay. */

@@ -83,6 +83,19 @@ export class ApiBase {
           }));
         }
 
+        // A paid-plan feature: when the person tried to DO something (not a page quietly loading
+        // its panels), show the upgrade window instead of a bare error (user, 2026-10-05)
+        const method = String(error.config?.method ?? 'get').toLowerCase();
+        if (
+          error.response?.status === 403 &&
+          error.response?.data?.code === 'UPGRADE_REQUIRED' &&
+          method !== 'get'
+        ) {
+          window.dispatchEvent(new CustomEvent('subscription-required', {
+            detail: { message: error.response.data.message, upgrade: true },
+          }));
+        }
+
         return Promise.reject(error);
       }
     );

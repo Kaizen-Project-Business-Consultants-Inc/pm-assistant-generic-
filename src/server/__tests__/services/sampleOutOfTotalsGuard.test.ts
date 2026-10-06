@@ -20,7 +20,9 @@ const EXCLUSION = /is_demo|isDemo|isExamplePerson|NOT_SAMPLE|demo-%/g;
 const AGGREGATES: Array<{ file: string; min: number; what: string }> = [
   // already excluding before the sweep
   { file: 'database/ResourceRepository.ts', min: 2, what: 'workload / histogram / forecast bookings' },
-  { file: 'services/TeamPlannerService.ts', min: 2, what: 'Team Planner' },
+  // the managed-projects query moved to ProjectRepository.findManagedIds (2026-10-06)
+  { file: 'services/TeamPlannerService.ts', min: 1, what: 'Team Planner' },
+  { file: 'database/ProjectRepository.ts', min: 1, what: 'Team Planner — projects you manage' },
   { file: 'services/NotificationService.ts', min: 1, what: 'notifications' },
   { file: 'services/proactiveAlertService.ts', min: 1, what: 'proactive alerts' },
   // fixed 2026-10-03

@@ -41,7 +41,7 @@ describe('expired guests lose access', () => {
     expect(src('routes.ts')).not.toMatch(/addHook\('onRequest', guestGuard\)/);
     const auth = src('middleware', 'auth.ts');
     expect(auth.match(/await guestGuard\(request, reply\)/g)?.length).toBe(2);
-    expect(auth).toMatch(/SELECT organization_id, is_guest, guest_expires_at FROM users/);
+    expect(auth).toMatch(/SELECT u\.organization_id, u\.is_guest, u\.guest_expires_at/);
   });
 
   it('sign-in and session refresh refuse an expired guest', () => {

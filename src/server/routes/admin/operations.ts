@@ -10,6 +10,7 @@ import { config } from '../../config';
 import { EmailService } from '../../services/EmailService';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
+import { neverConfirmedSql } from '../../constants/neverConfirmed';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
   const user = request.user!;
   if (!isPlatformAdmin(user)) {
@@ -194,17 +195,20 @@ async function getTenantStats(): Promise<any[]> {
   if (config.MULTI_TENANT_ENABLED) {
     try {
       const orgs = await databaseService.queryControlPlane<{ id: string; name: string; slug: string }>(
-        `SELECT id, name, slug FROM organizations WHERE is_active = 1`
+        `SELECT o.id, o.name, o.slug, ${neverConfirmedSql('u')} AS never_confirmed
+           FROM organizations o LEFT JOIN users u ON u.id = o.owner_user_id WHERE o.is_active = 1`
       );
       for (const org of orgs) {
+        // never-confirmed sign-ups aren't counted as users (they never signed in)
         const userRows = await databaseService.queryControlPlane<{ total: number; active: number }>(
-          `SELECT COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active FROM users WHERE organization_id = ?`,
+          `SELECT COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active FROM users WHERE organization_id = ? AND NOT ${neverConfirmedSql()}`,
           [org.id]
         );
         tenants.push({
           id: org.id,
           name: org.name,
           slug: org.slug,
+          neverConfirmed: !!Number((org as any).never_confirmed),
           totalUsers: Number(userRows[0]?.total || 0),
           activeUsers: Number(userRows[0]?.active || 0),
           apiRequestsToday: 0,

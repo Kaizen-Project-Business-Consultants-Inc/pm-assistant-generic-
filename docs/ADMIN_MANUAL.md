@@ -15,6 +15,8 @@ This manual is for **system administrators** who manage users, projects, and pla
 
 Managers operate within projects they own or are assigned to. Members participate in their assigned work.
 
+**The company owner works as PMO (October 2026).** Whatever role the owner has, the server gives them a PMO's permissions inside their company (`utils/companyOwner.ts` → `permissionRole`, applied in `authMiddleware` for cookie and API-key/Claude sign-ins, and sent as `role` by `/auth/login` and `/auth/me`; `accountRole` is their own role, shown as "your role"). Never during the admin's Support view; guests are never elevated.
+
 **"Admin" means the Kovarti platform admin — and nothing else (October 2026).** The platform admin is the account with the `admin` role **and no company**: it owns nothing and has no projects. It reaches the admin pages (all companies, plans, users and password resets, revenue, logs, waitlist, feedback, the AI kill switch and skills) and can open a read-only, recorded **Support view** into one company. Company owners **cannot** give anyone the admin role: it isn't in Settings → Team, and the server refuses it ("Admin is reserved for the Kovarti platform team…"). The owner's own role can't be changed by anyone else, and a member removed from a company never keeps the admin role. The account is created by hand on the server (`seed-admin.sql`); never give it a company. Before October 2026 the admin pages only checked the role, and the company invite list offered "Admin" — that is how a company member could have become a platform admin.
 
 ---
@@ -45,7 +47,7 @@ The **Admin > Users** table displays 14 sortable columns. Click any column heade
 | Tier | Subscription tier badge (Trial, Consultant, SME, Enterprise) |
 | Organization | Multi-tenant organization name (or "none") |
 | Signed up | Account creation date |
-| Login status | Verified / Unverified / Pending login / Expired token |
+| Login status | Verified / **Never confirmed** / Pending login / Expired token |
 | Last login | Most recent login timestamp |
 | Projects | Number of projects owned |
 | AI Usage | Token consumption progress bar with percentage (current month vs budget) |
@@ -55,6 +57,8 @@ The **Admin > Users** table displays 14 sortable columns. Click any column heade
 | Actions | Reset PW, Unlock (for stuck login tokens), View subscription event history |
 
 **Filters:** Text search (name, email, username, organization), role dropdown, tier dropdown, status dropdown, subscription status dropdown.
+
+**Never confirmed sign-ups (October 2026).** Someone who filled in the sign-up form but never clicked "confirm your email" (so never signed in) is labelled **Never confirmed** — on Users, on the Tenants list when the company's owner is one, and on Operations. They are left out of the user counts (System tab: Total / Active users; Operations: per company and in total); the System tab shows how many there are as **Never confirmed (not counted)**. Nothing is deleted: if they confirm later they become a normal account and trial. Rule: `constants/neverConfirmed.ts` (email not verified and never logged in). The System tab's numbers were blank before this (it read field names the API never sends).
 
 ### Subscription Event History
 
@@ -159,6 +163,7 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - Who may: the company owner, admin or PMO (`/api/v1/sample-project`, `…/remove`, `…/load`); everyone else gets 403. Kovarti support never loads or removes it for a customer (admin is read-only on customer data).
 - Removing deletes, in one transaction, every row pointing at the sample project, its schedules, its tasks or its example people (found through `information_schema`), then the seed's own `demo-` rows. Nothing without a `demo-` link is touched. The append-only audit ledger is never deleted from. An example person the company's own work uses (a real task assigned to them, a booking, a RAID owner) is **kept** with their rows, and the page names them.
 - While loaded, the sample is excluded from company-wide totals (portfolio, dashboard, budgets/EVM, capacity and workload, Team Planner, briefing, alerts, reports).
+- **No weekend dates (October 2026).** The seed's fixed dates put some tasks, sprints, meetings, a timesheet line, expenses, risk dates and a time-off block on Saturdays/Sundays. `T081_sample_no_weekends.sql` moves each to the Friday before, in every company (sample rows only). **Load** runs the seed and then its fixes (`SampleProjectService.SAMPLE_FIX_FILES`: T076 spend, T081 weekends), so a reloaded sample matches.
 
 ---
 

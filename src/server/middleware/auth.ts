@@ -4,6 +4,7 @@ import { config } from '../config';
 import type { JwtPayload } from '../types/fastify';
 import { apiKeyService } from '../services/ApiKeyService';
 import { guestGuard } from './guestGuard';
+import { permissionRole } from '../utils/companyOwner';
 import { databaseService } from '../database/connection';
 import { redisService } from '../services/RedisService';
 import { subscriptionGuard } from './requireSubscription';
@@ -47,14 +48,17 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         });
       }
 
-      const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null; is_guest: number; guest_expires_at: string | null }>(
-        'SELECT organization_id, is_guest, guest_expires_at FROM users WHERE id = ? LIMIT 1',
+      const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null; is_guest: number; guest_expires_at: string | null; is_owner: number | null }>(
+        `SELECT u.organization_id, u.is_guest, u.guest_expires_at, (o.owner_user_id = u.id) AS is_owner
+           FROM users u LEFT JOIN organizations o ON o.id = u.organization_id WHERE u.id = ? LIMIT 1`,
         [keyInfo.userId],
       );
       request.user = {
         userId: keyInfo.userId,
         username: 'api-key',
-        role: keyInfo.userRole,
+        // the company owner has a PMO's permissions (utils/companyOwner.ts)
+        role: permissionRole(keyInfo.userRole, { isOwner: !!Number(keyOwner[0]?.is_owner), isGuest: !!keyOwner[0]?.is_guest }),
+        accountRole: keyInfo.userRole,
         // unknown (no row) counts as having a company: never mistaken for the platform admin
         hasCompany: keyOwner.length > 0 ? keyOwner[0].organization_id != null : true,
       };
@@ -111,10 +115,16 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     // Fetch extra user flags (must_change_password, is_guest)
     const url = request.url;
     const isPasswordChangeAllowed = url.includes('/auth/change-password') || url.includes('/auth/logout') || url.includes('/auth/me');
-    const rows = await databaseService.queryControlPlane<{ must_change_password: number; is_guest: number; guest_expires_at: string | null; organization_id: string | null }>(
-      'SELECT must_change_password, is_guest, guest_expires_at, organization_id FROM users WHERE id = ? LIMIT 1',
+    const rows = await databaseService.queryControlPlane<{ must_change_password: number; is_guest: number; guest_expires_at: string | null; organization_id: string | null; is_owner: number | null }>(
+      `SELECT u.must_change_password, u.is_guest, u.guest_expires_at, u.organization_id, (o.owner_user_id = u.id) AS is_owner
+         FROM users u LEFT JOIN organizations o ON o.id = u.organization_id WHERE u.id = ? LIMIT 1`,
       [decoded.userId],
     );
+    // the company owner has a PMO's permissions (utils/companyOwner.ts); never during Support view
+    if (rows.length > 0 && !request.supportSession) {
+      request.user.accountRole = request.user.role;
+      request.user.role = permissionRole(request.user.role, { isOwner: !!Number(rows[0].is_owner), isGuest: !!rows[0].is_guest });
+    }
     // unknown (no row) counts as having a company: never mistaken for the platform admin
     request.user.hasCompany = rows.length > 0 ? rows[0].organization_id != null : true;
 

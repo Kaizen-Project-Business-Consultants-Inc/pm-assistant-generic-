@@ -16,6 +16,7 @@ import logger from '../../utils/logger';
 import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
+import { neverConfirmedSql } from '../../constants/neverConfirmed';
 const statusSchema = z.object({
   active: z.boolean(),
 });
@@ -298,8 +299,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
     try {
       const rows = await databaseService.queryControlPlane(
         `SELECT
-          (SELECT COUNT(*) FROM users) AS total_users,
-          (SELECT COUNT(*) FROM users WHERE is_active = 1) AS active_users,
+          (SELECT COUNT(*) FROM users WHERE NOT ${neverConfirmedSql()}) AS total_users,
+          (SELECT COUNT(*) FROM users WHERE is_active = 1 AND NOT ${neverConfirmedSql()}) AS active_users,
+          (SELECT COUNT(*) FROM users WHERE ${neverConfirmedSql()}) AS never_confirmed_users,
           (SELECT COUNT(*) FROM projects) AS total_projects,
           (SELECT COUNT(*) FROM ai_usage_log) AS total_ai_calls,
           (SELECT COALESCE(SUM(cost_estimate), 0) FROM ai_usage_log) AS total_ai_cost,

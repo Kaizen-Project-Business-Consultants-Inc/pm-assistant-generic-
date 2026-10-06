@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { authMiddleware } from '../../middleware/auth';
 import { guestExpired, GUEST_EXPIRED_MESSAGE } from '../../middleware/guestGuard';
+import { permissionRole } from '../../utils/companyOwner';
 import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { stripeService } from '../../services/StripeService';
@@ -197,7 +198,9 @@ export async function authRoutes(fastify: FastifyInstance) {
           username: user.username,
           email: user.email,
           fullName: user.fullName,
-          role: user.role,
+          // what they may do (the company owner: a PMO's permissions); accountRole is their own role
+          role: permissionRole(user.role, { isOwner: !!organization?.isOwner, isGuest: !!user.isGuest }),
+          accountRole: user.role,
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
           pendingTier: user.role === 'admin' ? null : (user.pendingTier ?? null),
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
@@ -653,7 +656,8 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Support view: while the admin's read-only visit is active, the app shows the visited
       // company as a read-only executive would see it, with the support banner
       let supportSession: { organizationName: string; reason: string; expiresAt: string } | null = null;
-      let effectiveRole: string = user.role;
+      // what they may do (the company owner: a PMO's permissions); accountRole is their own role
+      let effectiveRole: string = permissionRole(user.role, { isOwner: !!organization?.isOwner, isGuest: !!user.isGuest });
       if (user.role === 'admin') {
         const visit = await supportSessionService.findActive(request.cookies?.[SUPPORT_COOKIE], user.id);
         if (visit) {
@@ -670,6 +674,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           email: user.email,
           fullName: user.fullName,
           role: effectiveRole,
+          accountRole: user.role,
           subscriptionTier: user.role === 'admin' ? 'enterprise' : user.subscriptionTier,
           pendingTier: user.role === 'admin' ? null : (user.pendingTier ?? null),
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,

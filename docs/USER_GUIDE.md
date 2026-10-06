@@ -61,6 +61,8 @@ A comprehensive guide for using PM Assistant, an AI-powered enterprise project m
 
 > **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
+> **Paid-plan features:** If your trial or plan doesn't include something you try to do (for example a company-wide workflow or a portal link), a **Part of a paid plan** window opens with **View Plans** — nothing you've set up is lost. Pages that merely load in the background never pop this window up.
+
 > **Trial reminders:** You'll receive email reminders at 7 days, 3 days and 1 day before your trial ends, plus a final notice when it expires. These emails include a direct link to the pricing page so you can upgrade with one click. After your trial ends, your account becomes read-only — all your data is preserved and you can subscribe at any time to restore full access.
 
 ### Logging In
@@ -87,7 +89,7 @@ A **3-step wizard** guides you through initial setup:
 **Step 2 — Create Your First Project (optional)**
 - Pick a project template from the library to pre-populate tasks, milestones, and dependencies. Templates are sorted to match your methodology choice, and up to 6 are shown.
 - You can skip this step — just click **Skip** to go straight to the confirmation screen. You can always create a project manually from the Projects page later.
-- **Explore a sample project first** (company owner or PMO, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it.
+- **Explore a sample project first** (company owner or PMO, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it. Nothing in the sample falls on a Saturday or Sunday (tasks, sprints, meetings, timesheets, costs).
 
 **Step 3 — You're all set**
 - A confirmation screen shows your trial details (start date, end date, and what's included).
@@ -2654,6 +2656,7 @@ Buttons that change company-wide things — New Project, Start, Add Resource, Ne
 | Role | Permissions |
 |------|-------------|
 | **Admin** | Full access to all features, user management, settings, and admin panel. |
+| **Company owner** | The person who set up the company (October 2026): whatever their role says, they can do everything a **PMO** can inside the company — every project, company-wide workflows and AI settings, resource requests, the people list, holidays, the rate card. Their own role is still what's shown as "your role". |
 | **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
 | **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). |
 | **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |

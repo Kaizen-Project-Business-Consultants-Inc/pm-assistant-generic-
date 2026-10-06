@@ -5,6 +5,8 @@ import { Crown, X } from 'lucide-react';
 interface BlockDetail {
   message?: string;
   awaitingPayment?: boolean;
+  /** A paid-plan feature (the trial or plan doesn't include it) — not an ended trial */
+  upgrade?: boolean;
 }
 
 const TIER_ONLY_FALLBACK = 'Your trial has ended. Subscribe to continue creating and editing.';
@@ -28,7 +30,7 @@ export function UpgradePrompt() {
   // expired, they simply never finished checkout. Saying "your trial has ended" to
   // someone who never had a trial is both confusing and wrong.
   const awaitingPayment = !!detail?.awaitingPayment;
-  const heading = awaitingPayment ? 'Payment Required' : 'Subscription Required';
+  const heading = awaitingPayment ? 'Payment Required' : detail?.upgrade ? 'Part of a paid plan' : 'Subscription Required';
   const body = detail?.message || TIER_ONLY_FALLBACK;
   const ctaLabel = awaitingPayment ? 'Complete Checkout' : 'View Plans';
 

@@ -39,13 +39,16 @@ interface AdminUser {
   project_count: number;
 }
 
+/** As GET /admin/stats sends it — the API turns column names into camelCase (this page read
+ *  snake_case names that never arrived, so the cards were blank — found 2026-10-06) */
 interface AdminStats {
-  total_users: number;
-  active_users: number;
-  total_projects: number;
-  total_ai_calls: number;
-  total_ai_cost: number;
-  total_tokens: number;
+  totalUsers: number;
+  activeUsers: number;
+  neverConfirmedUsers: number;
+  totalProjects: number;
+  totalAiCalls: number;
+  totalAiCost: number;
+  totalTokens: number;
 }
 
 interface AiUsageRow {
@@ -263,12 +266,13 @@ function SystemTab() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      <StatCard icon={Users} label="Total Users" value={s.total_users} color="bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400" />
-      <StatCard icon={Activity} label="Active Users" value={s.active_users} color="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400" />
-      <StatCard icon={FolderKanban} label="Total Projects" value={s.total_projects} color="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" />
-      <StatCard icon={Cpu} label="AI API Calls" value={Number(s.total_ai_calls).toLocaleString()} color="bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400" />
-      <StatCard icon={TrendingUp} label="Total Tokens" value={Number(s.total_tokens).toLocaleString()} color="bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400" />
-      <StatCard icon={DollarSign} label="Total AI Cost" value={fmtCost(s.total_ai_cost)} color="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400" />
+      <StatCard icon={Users} label="Total Users" value={s.totalUsers} color="bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400" />
+      <StatCard icon={Activity} label="Active Users" value={s.activeUsers} color="bg-green-100 dark:bg-green-900/40 text-green-600 dark:text-green-400" />
+      <StatCard icon={Users} label="Never confirmed (not counted)" value={s.neverConfirmedUsers} color="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300" />
+      <StatCard icon={FolderKanban} label="Total Projects" value={s.totalProjects} color="bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400" />
+      <StatCard icon={Cpu} label="AI API Calls" value={Number(s.totalAiCalls).toLocaleString()} color="bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400" />
+      <StatCard icon={TrendingUp} label="Total Tokens" value={Number(s.totalTokens).toLocaleString()} color="bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400" />
+      <StatCard icon={DollarSign} label="Total AI Cost" value={fmtCost(s.totalAiCost)} color="bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400" />
     </div>
   );
 }

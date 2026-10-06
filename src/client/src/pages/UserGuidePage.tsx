@@ -61,6 +61,8 @@ const sections: Section[] = [
       'View project summaries, upcoming deadlines, and key metrics at a glance',
       'Use the sidebar to navigate between features',
       'Want to see every feature filled in? Tick "Explore a sample project first" in setup, or load it later in Settings → Sample project (company owner or PMO). It is read-only, never counts in your totals, and can be removed any time',
+      'The person who set up the company (the owner) can do everything a PMO can — every project and the company-wide settings — whatever role they picked',
+      'Something not in your plan? A "Part of a paid plan" window shows the plans; nothing you have set up is lost',
     ],
   },
   {

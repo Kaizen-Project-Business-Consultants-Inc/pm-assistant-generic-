@@ -300,7 +300,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
                 {user?.fullName || 'User'}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate leading-tight">
-                {user?.role ? roleLabel(user.role) : 'Member'}
+                {user?.role ? roleLabel(user.accountRole ?? user.role) : 'Member'}
               </p>
             </div>
           </button>

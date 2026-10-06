@@ -69,8 +69,8 @@ interface NavSection {
   items: NavItem[];
 }
 
-// All roles except viewer and team_member
-const NON_VIEWER_ROLES: NavItem['roles'] = ['admin', 'executive', 'project_manager'];
+// All roles except viewer and team_member (PMO was missing — and the company owner works as PMO)
+const NON_VIEWER_ROLES: NavItem['roles'] = ['admin', 'executive', 'project_manager', 'pmo'];
 
 const pmNavSections: NavSection[] = [
   {
@@ -588,7 +588,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
               {user?.fullName || 'Unknown User'}
             </p>
             <p className="text-xs text-sidebar-text/60 truncate capitalize">
-              {user?.role ? roleLabel(user.role) : 'No role'}
+              {user?.role ? roleLabel(user.accountRole ?? user.role) : 'No role'}
             </p>
           </div>
         </div>

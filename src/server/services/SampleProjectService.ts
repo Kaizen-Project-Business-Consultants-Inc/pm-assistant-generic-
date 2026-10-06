@@ -17,6 +17,12 @@ import logger from '../utils/logger';
 export const SAMPLE_PROJECT_ID = 'demo-sample-webapp';
 const SEED_FILE = path.join(__dirname, '..', 'database', 'tenant-migrations', 'T033_sample_project_seed.sql');
 const SAMPLE_PREFIX = 'demo-';
+/**
+ * Later migrations that correct the seed's own rows: a reloaded sample runs them too, or it would
+ * come back with the old figures (T076 spend) and weekend dates (T081).
+ */
+export const SAMPLE_FIX_FILES = ['T076_sample_spent_fix.sql', 'T081_sample_no_weekends.sql']
+  .map(f => path.join(__dirname, '..', 'database', 'tenant-migrations', f));
 
 /** The seed file split into statements, the same way the tenant migration runner splits it */
 export function seedStatements(sql: string = fs.readFileSync(SEED_FILE, 'utf-8')): string[] {
@@ -139,12 +145,15 @@ class SampleProjectService {
     } finally { conn.release(); }
   }
 
-  /** Load the sample (the T033 seed again — INSERT IGNORE, so loading twice is harmless) */
+  /** Load the sample (the T033 seed again — INSERT IGNORE, so loading twice is harmless — then its fixes) */
   async load(dbName?: string): Promise<void> {
     const conn = await this.connect(dbName);
     try {
       await conn.beginTransaction();
       for (const stmt of seedStatements()) await databaseService.queryOn(conn, stmt, []);
+      for (const file of SAMPLE_FIX_FILES) {
+        for (const stmt of seedStatements(fs.readFileSync(file, 'utf-8'))) await databaseService.queryOn(conn, stmt, []);
+      }
       await conn.commit();
       logger.info('[sample-project] loaded', { dbName });
     } catch (err) {

@@ -14,6 +14,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { NeverConfirmedBadge } from '../../components/admin/NeverConfirmedBadge';
 
 /** As GET /api/v1/admin/tenants sends it (camelCase). The page used to read snake_case names
  *  that never existed, so every company showed as Inactive / not provisioned (found 2026-09-30). */
@@ -31,6 +32,8 @@ export interface AdminTenant {
   isActive: number | boolean;
   isProvisioned: number | boolean;
   createdAt: string;
+  /** The owner never confirmed their email (labelled, not counted) */
+  neverConfirmed?: number | boolean;
 }
 
 function fmt(date: string | null) {
@@ -107,6 +110,7 @@ export function AdminTenantsPage() {
                       <td className="py-3 pr-4">
                         <div className="font-medium text-gray-900 dark:text-white">{t.name}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{t.slug}</div>
+                        {Boolean(Number(t.neverConfirmed)) && <div className="mt-1"><NeverConfirmedBadge subject="company" /></div>}
                       </td>
                       <td className="py-3 pr-4">
                         {t.ownerName ? (
