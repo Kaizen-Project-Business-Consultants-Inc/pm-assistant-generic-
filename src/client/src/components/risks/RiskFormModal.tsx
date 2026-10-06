@@ -418,8 +418,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
 
           {/* Title */}
           <div>
-            <label className={labelClass}>Title *</label>
+            <label htmlFor="raid-title" className={labelClass}>Title *</label>
             <input
+              id="raid-title"
               type="text"
               value={form.title}
               onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}

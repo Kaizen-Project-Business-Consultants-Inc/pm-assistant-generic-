@@ -329,7 +329,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">Schedule:</span>
           <select
-            value={selectedScheduleId}
+            aria-label="Schedule" value={selectedScheduleId}
             onChange={(e) => setSelectedScheduleId(e.target.value)}
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           >
@@ -349,7 +349,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
               {/* Group filter */}
               {allGroups.length > 0 && (
                 <select
-                  value={groupFilter}
+                  aria-label="Filter by department" value={groupFilter}
                   onChange={(e) => setGroupFilter(e.target.value)}
                   className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs focus:ring-2 focus:ring-primary-500"
                 >
@@ -383,12 +383,12 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
-                  <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="Full name" />
+                  <input type="text" aria-label="Name" value={formName} onChange={(e) => setFormName(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="Full name" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Role</label>
                   <select
-                    value={isCustomRole ? '__custom__' : formRole}
+                    aria-label="Role" value={isCustomRole ? '__custom__' : formRole}
                     onChange={(e) => {
                       if (e.target.value === '__custom__') { setIsCustomRole(true); setFormRole(''); }
                       else { setIsCustomRole(false); setFormRole(e.target.value); }
@@ -400,30 +400,30 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                     <option value="__custom__">Other (custom)...</option>
                   </select>
                   {isCustomRole && (
-                    <input type="text" value={formRole} onChange={(e) => setFormRole(e.target.value)} className="input w-full text-sm mt-1 dark:bg-gray-700 dark:text-gray-100" placeholder="Enter custom role" autoFocus />
+                    <input type="text" aria-label="Custom role" value={formRole} onChange={(e) => setFormRole(e.target.value)} className="input w-full text-sm mt-1 dark:bg-gray-700 dark:text-gray-100" placeholder="Enter custom role" autoFocus />
                   )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
-                  <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="email@example.com" />
+                  <input type="email" aria-label="Email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" placeholder="email@example.com" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Week</label>
-                  <input type="number" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="1" max="80" />
+                  <input type="number" aria-label="Hours per week" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="1" max="80" />
                 </div>
                 <RateSourceField role={formRole} useRateCard={formUseRateCard} onChange={setFormUseRateCard}>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cost Rate ($/hr)</label>
-                  <input type="number" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
+                  <input type="number" aria-label="Cost rate ($/hr)" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">OT Rate ($/hr)</label>
-                  <input type="number" value={formOvertimeRate} onChange={(e) => setFormOvertimeRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
+                  <input type="number" aria-label="Overtime rate ($/hr)" value={formOvertimeRate} onChange={(e) => setFormOvertimeRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
                 </RateSourceField>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Department</label>
-                  <select value={formGroup} onChange={(e) => setFormGroup(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
+                  <select aria-label="Department" value={formGroup} onChange={(e) => setFormGroup(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">
                     <option value="">No department</option>
                     {RESOURCE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
@@ -436,20 +436,20 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                   {formSkills.map((s, i) => (
                     <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-50 dark:bg-primary-900/30 text-xs text-primary-700 dark:text-primary-300 border border-primary-200 dark:border-primary-700">
                       {s.name} <span className="text-xs opacity-70">({PROFICIENCY_LABELS[s.level] || s.level})</span>
-                      <button type="button" onClick={() => removeSkill(i)} className="ml-0.5 text-primary-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                      <button type="button" aria-label={`Remove skill ${s.name}`} onClick={() => removeSkill(i)} className="ml-0.5 text-primary-400 hover:text-red-500"><X className="w-3 h-3" /></button>
                     </span>
                   ))}
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
-                    value={newSkillName}
+                    aria-label="Add skill" value={newSkillName}
                     onChange={(e) => setNewSkillName(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill(); } }}
                     className="input text-sm dark:bg-gray-700 dark:text-gray-100 flex-1"
                     placeholder="Add skill..."
                   />
-                  <select value={newSkillLevel} onChange={(e) => setNewSkillLevel(Number(e.target.value))} className="input text-sm dark:bg-gray-700 dark:text-gray-100 w-32">
+                  <select aria-label="Skill level" value={newSkillLevel} onChange={(e) => setNewSkillLevel(Number(e.target.value))} className="input text-sm dark:bg-gray-700 dark:text-gray-100 w-32">
                     {[1, 2, 3, 4, 5].map(l => <option key={l} value={l}>{PROFICIENCY_LABELS[l]}</option>)}
                   </select>
                   <button type="button" onClick={addSkill} disabled={!newSkillName.trim()} className="px-3 py-1.5 text-xs font-medium bg-primary-100 text-primary-700 rounded hover:bg-primary-200 disabled:opacity-40">Add</button>
@@ -504,6 +504,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                       <input
                         type="checkbox"
                         checked={filteredResources.length > 0 && filteredResources.every(r => selectedIds.has(r.id))}
+                        aria-label="Select all resources"
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedIds(new Set(filteredResources.map(r => r.id)));
@@ -532,6 +533,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                         <input
                           type="checkbox"
                           checked={selectedIds.has(r.id)}
+                          aria-label={`Select ${r.name}`}
                           onChange={(e) => {
                             const next = new Set(selectedIds);
                             if (e.target.checked) next.add(r.id); else next.delete(r.id);
@@ -893,7 +895,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
           <div className="flex items-center gap-3">
             <label className="text-sm text-gray-500">Resource:</label>
             <select
-              value={trendResourceId}
+              aria-label="Resource" value={trendResourceId}
               onChange={(e) => setTrendResourceId(e.target.value)}
               className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500"
             >

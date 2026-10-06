@@ -185,6 +185,7 @@ export function GanttGridPanel({
                   type="text"
                   autoFocus
                   placeholder="Type task name and press Enter…"
+                  aria-label="New task name"
                   className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
                   onKeyDown={(e) => {
                     const input = e.currentTarget;
@@ -292,6 +293,7 @@ export function GanttGridPanel({
                   type="text"
                   autoFocus
                   placeholder="Type task name and press Enter…"
+                  aria-label="New task name"
                   className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset"
                   onKeyDown={(e) => {
                     const input = e.currentTarget;
@@ -360,6 +362,7 @@ export function GanttGridPanel({
             <input
               type="text"
               placeholder={i === 0 ? 'Type a task name…' : ''}
+              aria-label="New task name"
               className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
               onKeyDown={(e) => {
                 const input = e.currentTarget;

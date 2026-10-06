@@ -384,6 +384,7 @@ export function ProjectDetailPage() {
               {canEditStatus && !isDemo ? (
                 <select
                   value={project.status}
+                  aria-label="Project status"
                   onChange={(e) => {
                     const newStatus = e.target.value;
                     if (newStatus === 'cancelled') {
@@ -668,7 +669,10 @@ export function ProjectDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700">
-        <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6" role="tablist">
+        {/* The tablist holds only the tabs; the More menu sits beside it (a plain button
+            inside a tablist confuses screen readers). Same gaps inside and out, same look. */}
+        <nav className="-mb-px flex gap-3 sm:gap-4 md:gap-6" aria-label="Project sections">
+          <div className="flex gap-3 sm:gap-4 md:gap-6" role="tablist">
           {getPrimaryTabs(methodology).map((tab) => {
             const criticalCount = tab.id === 'raid' ? (riskStats?.critical ?? 0) : 0;
             return (
@@ -692,6 +696,7 @@ export function ProjectDetailPage() {
             </button>
             );
           })}
+          </div>
           <TabOverflow
             tabs={getOverflowTabs(methodology)}
             activeTab={activeTab}
@@ -763,7 +768,7 @@ export function ProjectDetailPage() {
               Please provide a reason for cancelling this project. This action will be recorded in the audit trail.
             </p>
             <textarea
-              value={cancelReason}
+              aria-label="Reason for cancellation" value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
               placeholder="Reason for cancellation..."
               rows={3}
@@ -950,6 +955,8 @@ function TabOverflow({
     <div className="relative flex-shrink-0" ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
+        aria-haspopup="true"
+        aria-expanded={open}
         className={`border-b-2 pb-3 text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
           isActiveInOverflow
             ? 'border-primary-600 text-primary-600 dark:text-primary-400'

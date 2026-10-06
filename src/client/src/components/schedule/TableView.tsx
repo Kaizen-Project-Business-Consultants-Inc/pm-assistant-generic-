@@ -31,6 +31,7 @@ import {
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { isSummaryRollupCell } from './summaryRollup';
+import { cellEditLabel } from './cellEditLabel';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -761,6 +762,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'name') ? (
               <input
+                aria-label={cellEditLabel('name', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="text"
                 className="w-full text-sm border-0 bg-transparent px-0 py-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset font-medium text-gray-900 dark:text-white"
@@ -805,6 +807,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'status') ? (
               <select
+                aria-label={cellEditLabel('status', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
@@ -835,6 +838,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'priority') ? (
               <select
+                aria-label={cellEditLabel('priority', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
                 value={editValue}
@@ -865,6 +869,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'startDate') ? (
               <input
+                aria-label={cellEditLabel('startDate', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="date"
                 className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
@@ -890,6 +895,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'endDate') ? (
               <input
+                aria-label={cellEditLabel('endDate', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="date"
                 className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
@@ -915,6 +921,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'progressPercentage') ? (
               <input
+                aria-label={cellEditLabel('progressPercentage', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="number"
                 min={0}
@@ -984,6 +991,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
             onClick={() => handleCellClick(task.id, 'duration', task)}>
             {isEditing(task.id, 'duration') ? (
               <input
+                aria-label={cellEditLabel('duration', task.name)}
                 autoFocus
                 type="text"
                 className="w-full text-xs border-0 bg-transparent px-0 py-0 focus-visible:ring-2 focus-visible:ring-primary-500 text-gray-600 dark:text-gray-300"
@@ -1055,6 +1063,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, adField) ? (
               <input
+                aria-label={cellEditLabel(adField, task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="date"
                 className="w-full text-xs border-0 bg-transparent px-0 py-0 focus-visible:ring-2 focus-visible:ring-primary-500 dark:text-gray-100"
@@ -1085,6 +1094,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'dependency') ? (
               <input
+                aria-label={cellEditLabel('dependency', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="text"
                 placeholder="e.g. 3FS+2d,5SS"
@@ -1218,6 +1228,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, budgetField) ? (
               <input
+                aria-label={cellEditLabel(budgetField, task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="number"
                 min="0"
@@ -1251,6 +1262,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'constraintType' as EditableField) ? (
               <select
+                aria-label={cellEditLabel('constraintType', task.name)}
                 ref={el => { inputRef.current = el as any; }}
                 className="w-full text-xs border-0 bg-transparent px-0 py-0 focus-visible:ring-2 focus-visible:ring-primary-500"
                 value={editValue}
@@ -1284,6 +1296,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           >
             {isEditing(task.id, 'constraintDate' as EditableField) ? (
               <input
+                aria-label={cellEditLabel('constraintDate', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="date"
                 className="w-full text-xs border-0 bg-transparent px-0 py-0 focus-visible:ring-2 focus-visible:ring-primary-500"
@@ -1429,6 +1442,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                         <input
                           type="checkbox"
                           checked={isSelected}
+                          aria-label={`Select ${task.name}`}
                           onChange={() => toggleSelect(task.id)}
                           onClick={(e) => e.stopPropagation()}
                           className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
@@ -1490,6 +1504,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                         <input
                           type="text"
                           autoFocus
+                          aria-label="New task name"
                           placeholder="Type task name and press Enter…"
                           className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus-visible:ring-2 focus-visible:ring-primary-500"
                           onKeyDown={(e) => {
@@ -1598,6 +1613,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                       ) : col.key === 'name' ? (
                         <input
                           type="text"
+                          aria-label="New task name"
                           placeholder={i === 0 ? 'Type a task name…' : ''}
                           className="w-full text-xs bg-transparent border-0 text-gray-900 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus-visible:ring-2 focus-visible:ring-primary-500 focus:placeholder-gray-400 dark:focus:placeholder-gray-500"
                           onKeyDown={(e) => {

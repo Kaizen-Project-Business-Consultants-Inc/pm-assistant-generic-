@@ -530,7 +530,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
             <input
               type="text"
-              value={searchText}
+              aria-label="Search RAID items" value={searchText}
               onChange={e => setSearchText(e.target.value)}
               placeholder="Search..."
               className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 w-40 focus:ring-2 focus:ring-primary-500"
@@ -555,7 +555,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         {/* Collapsible filter row */}
         {showFilters && (
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <select value={filterType} onChange={e => setFilterType(e.target.value)} className={selectClass}>
+            <select aria-label="Filter by type" value={filterType} onChange={e => setFilterType(e.target.value)} className={selectClass}>
               <option value="">All Types</option>
               <option value="risk">Risks</option>
               <option value="issue">Issues</option>
@@ -564,7 +564,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               <option value="assumption">Assumptions</option>
               <option value="dependency">Dependencies</option>
             </select>
-            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectClass}>
+            <select aria-label="Filter by status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectClass}>
               <option value="">All Statuses</option>
               <option value="open">Open</option>
               <option value="monitoring">Monitoring</option>
@@ -585,14 +585,14 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
               <option value="pending">Pending</option>
               <option value="closed">Closed</option>
             </select>
-            <select value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)} className={selectClass}>
+            <select aria-label="Filter by severity" value={filterSeverity} onChange={e => setFilterSeverity(e.target.value)} className={selectClass}>
               <option value="">All Severities</option>
               <option value="critical">Critical</option>
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
-            <select value={filterSource} onChange={e => setFilterSource(e.target.value)} className={selectClass}>
+            <select aria-label="Filter by source" value={filterSource} onChange={e => setFilterSource(e.target.value)} className={selectClass}>
               <option value="">All Sources</option>
               <option value="manual">Manual</option>
               <option value="ai_detected">AI Detected</option>
@@ -614,7 +614,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{selectedIds.size} selected</span>
           <select
             defaultValue=""
-            onChange={e => { if (e.target.value) handleBulkStatus(e.target.value); e.target.value = ''; }}
+            aria-label="Set status for selected items" onChange={e => { if (e.target.value) handleBulkStatus(e.target.value); e.target.value = ''; }}
             className={selectClass}
           >
             <option value="" disabled>Set Status...</option>
@@ -628,7 +628,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           </select>
           <select
             defaultValue=""
-            onChange={e => { if (e.target.value) handleBulkSeverity(e.target.value); e.target.value = ''; }}
+            aria-label="Set severity for selected items" onChange={e => { if (e.target.value) handleBulkSeverity(e.target.value); e.target.value = ''; }}
             className={selectClass}
           >
             <option value="" disabled>Set Severity...</option>
@@ -664,6 +664,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <input
               type="checkbox"
               checked={selectedIds.size === sortedRisks.length && sortedRisks.length > 0}
+              aria-label="Select all items"
               onChange={toggleSelectAll}
               className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600"
             />
@@ -690,6 +691,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                   <input
                     type="checkbox"
                     checked={selectedIds.has(risk.id)}
+                    aria-label={`Select ${risk.title}`}
                     onChange={() => toggleSelect(risk.id)}
                     onClick={e => e.stopPropagation()}
                     className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600"
@@ -732,7 +734,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                       <select
                         autoFocus
                         value={risk.status}
-                        onChange={e => handleInlineStatus(risk.id, e.target.value)}
+                        aria-label={`Status for ${risk.title}`} onChange={e => handleInlineStatus(risk.id, e.target.value)}
                         onBlur={() => setInlineStatusId(null)}
                         className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-1 py-0.5 w-full"
                       >

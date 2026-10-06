@@ -52,6 +52,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
           <input
             type="checkbox"
             checked={allSelected}
+            aria-label="Select all tasks"
             onChange={onToggleSelectAll}
             className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
           />

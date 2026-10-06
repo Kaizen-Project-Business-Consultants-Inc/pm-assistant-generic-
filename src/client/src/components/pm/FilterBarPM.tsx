@@ -38,6 +38,7 @@ export function FilterBarPM({
           <input
             type="text"
             placeholder="Search projects or clients…"
+            aria-label="Search projects or clients"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
@@ -48,6 +49,7 @@ export function FilterBarPM({
         <select
           value={healthFilter}
           onChange={(e) => onHealthChange(e.target.value)}
+          aria-label="Filter by health"
           className={`${selectBase} ${healthFilter !== 'all' ? selectActive : ''}`}
         >
           <option value="all">All Health</option>
@@ -60,6 +62,7 @@ export function FilterBarPM({
         <select
           value={statusFilter}
           onChange={(e) => onStatusChange(e.target.value)}
+          aria-label="Filter by status"
           className={`${selectBase} ${statusFilter !== 'all' ? selectActive : ''}`}
         >
           <option value="all">All Status</option>

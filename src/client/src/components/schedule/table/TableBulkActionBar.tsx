@@ -47,6 +47,7 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
         <select
           className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400"
           value={bulkStatus}
+          aria-label="Status for selected tasks"
           onChange={e => onBulkStatusChange(e.target.value)}
           disabled={bulkLoading}
         >
@@ -70,6 +71,7 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
         <select
           className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400"
           value={bulkPriority}
+          aria-label="Priority for selected tasks"
           onChange={e => onBulkPriorityChange(e.target.value)}
           disabled={bulkLoading}
         >
@@ -93,6 +95,7 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
         <input
           type="text"
           placeholder="Assign to..."
+          aria-label="Assign selected tasks to"
           className="text-xs px-2 py-1 rounded border border-primary-200 dark:border-primary-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-400 w-28"
           value={bulkAssignee}
           onChange={e => onBulkAssigneeChange(e.target.value)}

@@ -51,6 +51,7 @@ export const TableToolbar = React.memo(function TableToolbar({
         <select
           value={groupBy}
           onChange={(e) => onGroupByChange(e.target.value as GroupByField)}
+          aria-label="Group by"
           className="text-xs border border-gray-200 dark:border-gray-600 rounded px-1.5 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
         >
           <option value="">No grouping</option>

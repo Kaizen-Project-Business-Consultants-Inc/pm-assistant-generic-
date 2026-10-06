@@ -5,6 +5,7 @@ import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { apiService } from '../../../services/api';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 import { isSummaryRollupCell } from '../summaryRollup';
+import { cellEditLabel } from '../cellEditLabel';
 import {
   type GanttTask,
   type GanttColDef,
@@ -252,6 +253,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           <input
             type="checkbox"
             checked={isSelected}
+            aria-label={`Select ${task.name}`}
             onChange={() => {}}
             onClick={(e) => { e.stopPropagation(); toggleSelect(task.id, e.shiftKey); }}
             className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
@@ -281,6 +283,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
       >
         {isEditingField(editingField, 'name') ? (
           <input
+            aria-label={cellEditLabel('name', task.name)}
             ref={el => { inputRef.current = el; }}
             className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-1"
             value={editValue}
@@ -361,6 +364,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             {isEditingField(editingField, 'dependency') ? (
               <div>
                 <input
+                  aria-label={cellEditLabel('dependency', task.name)}
                   ref={el => { inputRef.current = el; }}
                   className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center font-mono"
                   value={editValue}
@@ -434,6 +438,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'startDate') ? (
               <input
+                aria-label={cellEditLabel('startDate', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="date"
                 className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5"
@@ -457,6 +462,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'endDate') ? (
               <input
+                aria-label={cellEditLabel('endDate', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="date"
                 className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5"
@@ -480,6 +486,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'duration') ? (
               <input
+                aria-label={cellEditLabel('duration', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center"
                 value={editValue}
@@ -503,6 +510,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'estimatedDays') ? (
               <input
+                aria-label={cellEditLabel('estimatedDays', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="number"
                 min="0"
@@ -527,6 +535,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'estimatedDurationHours') ? (
               <input
+                aria-label={cellEditLabel('estimatedDurationHours', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="number"
                 min="0"
@@ -552,6 +561,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'progressPercentage') ? (
               <input
+                aria-label={cellEditLabel('progressPercentage', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="number"
                 min="0"
@@ -577,6 +587,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'priority') ? (
               <select
+                aria-label={cellEditLabel('priority', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset"
                 value={editValue}
@@ -670,6 +681,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           >
             {isEditingField(editingField, 'status') ? (
               <select
+                aria-label={cellEditLabel('status', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset"
                 value={editValue}
