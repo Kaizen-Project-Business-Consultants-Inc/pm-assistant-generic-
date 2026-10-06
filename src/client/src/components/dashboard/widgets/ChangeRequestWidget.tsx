@@ -5,6 +5,7 @@ import { apiService } from '../../../services/api';
 import { routeTo } from '../../../routes';
 
 interface CRSummary {
+  /** Keyed by status — camelCased by the server like every response key ('in_review' arrives as 'inReview') */
   byStatus: Record<string, number>;
   byCategory: Record<string, number>;
   recentPending: Array<{
@@ -19,12 +20,20 @@ interface CRSummary {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  in_review: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  inReview: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   approved: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   withdrawn: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
   draft: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400',
 };
+
+/** 'inReview' (or 'in_review') → 'In Review' */
+function statusLabel(status: string): string {
+  return status
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
 
 export function ChangeRequestWidget() {
   const { data, isLoading } = useQuery<CRSummary>({
@@ -40,7 +49,7 @@ export function ChangeRequestWidget() {
   if (!data) return null;
 
   const total = Object.values(data.byStatus).reduce((s, n) => s + n, 0);
-  const pendingCount = (data.byStatus.pending || 0) + (data.byStatus.in_review || 0);
+  const pendingCount = (data.byStatus.pending || 0) + (data.byStatus.inReview || 0);
 
   return (
     <div className="space-y-4">
@@ -51,7 +60,7 @@ export function ChangeRequestWidget() {
             key={status}
             className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[status] || 'bg-gray-100 text-gray-600'}`}
           >
-            {status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}: {count}
+            {statusLabel(status)}: {count}
           </span>
         ))}
         {total === 0 && (
