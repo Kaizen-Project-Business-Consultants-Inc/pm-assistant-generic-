@@ -70,6 +70,7 @@ export function StandupSummaryWidget({ projects }: Props) {
         </button>
         <div className="flex items-center gap-2">
           <select
+            aria-label="Project"
             value={projectId}
             onChange={e => handleProjectChange(e.target.value)}
             className="text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300"
