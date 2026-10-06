@@ -87,11 +87,6 @@ export class AdminApi extends ApiBase {
     return response.data;
   }
 
-  async getAdminStats() {
-    const response = await this.api.get('/admin/stats');
-    return response.data;
-  }
-
   async getAdminConfig() {
     const response = await this.api.get('/admin/config');
     return response.data;

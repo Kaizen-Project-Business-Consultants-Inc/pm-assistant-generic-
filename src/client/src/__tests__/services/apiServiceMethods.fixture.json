@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 646,
+  "count": 645,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -194,7 +194,6 @@
     "getAdminPricing",
     "getAdminReportSchedules",
     "getAdminRevenue",
-    "getAdminStats",
     "getAdminTenant",
     "getAdminTenants",
     "getAdminUsageAnalytics",
