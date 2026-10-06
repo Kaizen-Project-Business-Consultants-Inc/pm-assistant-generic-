@@ -206,14 +206,43 @@ describe('useDependencyDraw — drawing a link bar to bar', () => {
     expect(props.onTaskUpdate).not.toHaveBeenCalled();
   });
 
-  it('Escape does not cancel a link being drawn today (unchanged behaviour); the next mouseup ends it', () => {
-    const { result, props, rows } = setup();
-    act(() => { result.current.handleDepDrawMouseDown(reactMouse(0, rowY(0)), rows[0].task, 'finish'); });
-    act(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
-    expect(result.current.depDraw).not.toBeNull();
-    docMouse('mouseup', 0, 0); // header area → no row
+  it('Escape cancels a link being drawn: nothing saved, and letting go afterwards does nothing', () => {
+    const tasks: GanttTask[] = TASKS.map(t => (t.id === 'b' ? { ...t, dependencies: [] } : t));
+    const { result, props, rows } = setup({ tasks });
+    const aIdx = rows.findIndex(r => r.task.id === 'a');
+    const bIdx = rows.findIndex(r => r.task.id === 'b');
+    act(() => { result.current.handleDepDrawMouseDown(reactMouse(dayX('2026-03-06'), rowY(aIdx)), rows[aIdx].task, 'finish'); });
+    docMouse('mousemove', dayX('2026-03-09') + 2, rowY(bIdx));
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    act(() => { document.dispatchEvent(esc); });
     expect(result.current.depDraw).toBeNull();
+    expect(esc.defaultPrevented).toBe(true);
+    // Releasing on B (which would have linked it) now saves nothing
+    docMouse('mouseup', dayX('2026-03-09') + 2, rowY(bIdx));
     expect(props.onTaskUpdate).not.toHaveBeenCalled();
+    // Drawing still works afterwards
+    act(() => { result.current.handleDepDrawMouseDown(reactMouse(dayX('2026-03-06'), rowY(aIdx)), rows[aIdx].task, 'finish'); });
+    docMouse('mouseup', dayX('2026-03-09') + 2, rowY(bIdx));
+    expect(props.onTaskUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('while drawing, Escape reaches no other Escape handler (grid keyboard, editor, menus); when not drawing it does', () => {
+    const { result, rows } = setup();
+    const other = vi.fn();
+    document.addEventListener('keydown', other);
+    try {
+      act(() => { result.current.handleDepDrawMouseDown(reactMouse(0, rowY(0)), rows[0].task, 'finish'); });
+      act(() => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+      expect(other).not.toHaveBeenCalled();
+      // Other keys during the draw pass through untouched
+      act(() => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })); });
+      expect(other).toHaveBeenCalledTimes(1);
+      // Escape ended the draw; the next Escape is back to normal
+      act(() => { document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
+      expect(other).toHaveBeenCalledTimes(2);
+    } finally {
+      document.removeEventListener('keydown', other);
+    }
   });
 
   it('read-only (no onTaskUpdate): mousedown does not start drawing', () => {

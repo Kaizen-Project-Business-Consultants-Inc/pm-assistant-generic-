@@ -9,6 +9,7 @@ import {
   AUTO_SCROLL_EDGE,
   AUTO_SCROLL_SPEED,
 } from '../types';
+import { listenForEscapeCancel } from '../../shared/escapeCancel';
 import { addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../../../utils/workingDays';
 
 /**
@@ -18,6 +19,7 @@ import { addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpan
  * values through refs ("refs for stable access from document listeners") so they are never torn
  * down and re-attached mid-drag. The timeline DOM ref stays owned by GanttChart and is passed in,
  * as are the values owned by other hooks (rows, dates, selection, the link being drawn).
+ * Escape during any of these drags cancels it: the bar goes back, nothing is saved or created.
  * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4).
  */
 export function useBarDrag({
@@ -107,16 +109,20 @@ export function useBarDrag({
     };
     const onTouchMove = (e: TouchEvent) => { if (e.touches.length === 1) { e.preventDefault(); onMove(e.touches[0] as unknown as MouseEvent); } };
     const onTouchEnd = () => onUp();
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd);
-    return () => {
+    const detach = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
+      stopEscape();
     };
+    // Escape: the % goes back, nothing saved
+    const stopEscape = listenForEscapeCancel(() => { detach(); setProgressDrag(null); });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    return detach;
   }, [progressDrag, onTaskUpdate]);
 
   const startBarDrag = useCallback(
@@ -239,16 +245,20 @@ export function useBarDrag({
     };
     const onTouchMove = (e: TouchEvent) => { if (e.touches.length === 1) { e.preventDefault(); onMove(e.touches[0] as unknown as MouseEvent); } };
     const onTouchEnd = () => onUp();
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchmove', onTouchMove, { passive: false });
-    document.addEventListener('touchend', onTouchEnd);
-    return () => {
+    const detach = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
+      stopEscape();
     };
+    // Escape: the outline goes away, no task is created
+    const stopEscape = listenForEscapeCancel(() => { detach(); setCreateDrag(null); });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd);
+    return detach;
   }, [createDrag, onCreateTaskWithDates, dayPx, minDate, rows, parentTaskIds, workCalendar]);
 
   // Auto-scroll state for bar drag
@@ -355,17 +365,26 @@ export function useBarDrag({
     };
     const handleTouchEnd = () => handleMouseUp();
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd);
-    return () => {
+    const detach = () => {
       stopAutoScroll();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
+      stopEscape();
     };
+    // Escape: the bar(s) go back where they were, nothing saved
+    const stopEscape = listenForEscapeCancel(() => {
+      detach();
+      dragRef.current = null;
+      setDrag(null);
+    });
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+    return detach;
     // Only attach/detach when drag starts/ends (null → object or object → null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!drag]);

@@ -33,6 +33,7 @@ import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { isSummaryRollupCell } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
+import { listenForEscapeCancel } from './shared/escapeCancel';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -390,6 +391,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     const onUp = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      stopEscape();
       setRowDrag(prev => {
         if (!prev || !onTaskReorder || prev.startIdx === prev.targetIdx) return null;
 
@@ -436,6 +438,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       });
     };
 
+    // Escape: the row stays where it was, nothing saved
+    const stopEscape = listenForEscapeCancel(() => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      stopEscape();
+      setRowDrag(null);
+    });
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   }, [canDragRows, onTaskReorder, visibleSorted, getDescendantIds]);

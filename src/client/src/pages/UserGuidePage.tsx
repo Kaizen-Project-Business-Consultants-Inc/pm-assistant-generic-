@@ -96,6 +96,7 @@ const sections: Section[] = [
       'Add, edit, and delete tasks with dependencies',
       'Assign resources and track progress percentages',
       'Drag-and-drop tasks in Kanban and Gantt views',
+      'Changed your mind while dragging a bar or drawing a link in the Gantt (or moving a Table row)? Press Escape before letting go — nothing is saved',
       'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',
       'Tick several tasks and use Group to put them under a new heading (summary task)',
       'Progress chart: Burndown for Agile and Hybrid projects, S-curve (planned vs earned vs actual cost) for Waterfall',

@@ -9,12 +9,13 @@ import {
   healthColor,
 } from '../types';
 import { isCalendarOverdue } from '../../../../utils/dateUtils';
+import { listenForEscapeCancel } from '../../shared/escapeCancel';
 
 /**
  * The Gantt's dependencies: the successor map, each link's health (satisfied / in progress /
  * at risk), click-drag link drawing from one bar to another (state, mousedown handler and the
  * document-level mousemove/mouseup listeners that create the link on drop), and the
- * pre-computed dependency arrow paths. The timeline DOM ref stays owned by GanttChart and is
+ * pre-computed dependency arrow paths. Escape while drawing cancels the link (nothing saved). The timeline DOM ref stays owned by GanttChart and is
  * passed in, as are the layout values from useGanttLayout.
  * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4).
  */
@@ -153,12 +154,16 @@ export function useDependencyDraw({
         dependencies: [...existing, { dependencyId: depDraw.sourceTaskId, dependencyType: depType, lagDays: 0 }],
       });
     };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    return () => {
+    const detach = () => {
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      stopEscape();
     };
+    // Escape: stop drawing, save nothing (the later mouseup is ignored)
+    const stopEscape = listenForEscapeCancel(() => { detach(); setDepDraw(null); });
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return detach;
   }, [depDraw, onTaskUpdate, rows, parentTaskIds, minDate, dayPx]);
 
   // Pre-compute dependency arrow paths so render doesn't recalculate

@@ -484,3 +484,98 @@ describe('useBarDrag — drag-to-create', () => {
     expect(s.props.onCreateTaskWithDates).not.toHaveBeenCalled();
   });
 });
+
+describe('useBarDrag — Escape cancels a drag: everything goes back, nothing is saved', () => {
+  const pressEscape = () => {
+    const e = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    act(() => { document.body.dispatchEvent(e); });
+    return e;
+  };
+  const rowY = (idx: number) => HEADER_H + idx * ROW_H + ROW_H / 2;
+
+  it('bar move (with other selected bars): bars go back, no dates saved, letting go afterwards does nothing', () => {
+    const { result, props } = setup({ selectedIds: new Set(['a', 'b']) });
+    act(() => { result.current.handleBarMouseDown(barEvent(MOVE_X), task('a')); });
+    docMouse('mousemove', MOVE_X + 30);
+    expect(result.current.getDragOffset('b')).toEqual({ leftDelta: 30, widthDelta: 0 });
+    expect(pressEscape().defaultPrevented).toBe(true);
+    expect(result.current.drag).toBeNull();
+    expect(result.current.getDragOffset('a')).toEqual({ leftDelta: 0, widthDelta: 0 });
+    expect(result.current.getDragOffset('b')).toEqual({ leftDelta: 0, widthDelta: 0 });
+    docMouse('mousemove', MOVE_X + 60);
+    docMouse('mouseup', MOVE_X + 60);
+    expect(props.onTaskDragEnd).not.toHaveBeenCalled();
+    expect(result.current.dragDidCompleteRef.current).toBe(false);
+    // The next drag works normally
+    act(() => { result.current.handleBarMouseDown(barEvent(MOVE_X), task('a')); });
+    docMouse('mousemove', MOVE_X + 30);
+    docMouse('mouseup', MOVE_X + 30);
+    expect(props.onTaskDragEnd).toHaveBeenCalledWith('a', '2026-03-05', '2026-03-12');
+  });
+
+  it('bar resize: nothing saved', () => {
+    const { result, props } = setup();
+    act(() => { result.current.handleBarMouseDown(barEvent(RESIZE_X), task('a')); });
+    docMouse('mousemove', RESIZE_X + 40);
+    pressEscape();
+    expect(result.current.drag).toBeNull();
+    docMouse('mouseup', RESIZE_X + 40);
+    expect(props.onTaskDragEnd).not.toHaveBeenCalled();
+  });
+
+  it('bar move stops auto-scrolling on Escape', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(cb => { frames.push(cb); return frames.length; });
+    const cancel = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const tl = makeTimeline();
+    Object.defineProperty(tl, 'scrollWidth', { value: 5000 });
+    Object.defineProperty(tl, 'clientWidth', { value: 1000 });
+    const { result } = setup({ timelineRef: { current: tl } });
+    act(() => { result.current.handleBarMouseDown(barEvent(MOVE_X), task('a')); });
+    docMouse('mousemove', 980);
+    expect(frames.length).toBe(1);
+    pressEscape();
+    expect(cancel).toHaveBeenCalled();
+  });
+
+  it('progress handle: the % goes back, nothing saved', () => {
+    const { result, props } = setup();
+    const ev = { stopPropagation: vi.fn(), preventDefault: vi.fn() } as unknown as React.MouseEvent;
+    act(() => { result.current.handleProgressMouseDown(ev, { ...task('a'), progressPercentage: 10 }, 200, 100); });
+    docMouse('mousemove', 200);
+    expect(result.current.progressDrag?.currentPct).toBe(50);
+    pressEscape();
+    expect(result.current.progressDrag).toBeNull();
+    docMouse('mouseup', 200);
+    expect(props.onTaskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('drag-to-create: no task is created', () => {
+    const s = setup();
+    const tl = s.props.timelineRef.current!;
+    act(() => {
+      s.result.current.handleTimelineMouseDown({ clientX: 145, clientY: rowY(1), currentTarget: tl, target: tl } as unknown as React.MouseEvent);
+    });
+    docMouse('mousemove', 185);
+    expect(s.result.current.createDrag).not.toBeNull();
+    pressEscape();
+    expect(s.result.current.createDrag).toBeNull();
+    docMouse('mouseup', 185);
+    expect(s.props.onCreateTaskWithDates).not.toHaveBeenCalled();
+  });
+
+  it('while dragging, Escape reaches no other Escape handler; when not dragging it does', () => {
+    const other = vi.fn();
+    document.addEventListener('keydown', other);
+    try {
+      const { result } = setup();
+      act(() => { result.current.handleBarMouseDown(barEvent(MOVE_X), task('a')); });
+      pressEscape();
+      expect(other).not.toHaveBeenCalled();
+      pressEscape();
+      expect(other).toHaveBeenCalledTimes(1);
+    } finally {
+      document.removeEventListener('keydown', other);
+    }
+  });
+});
