@@ -233,7 +233,7 @@ describe('EVMForecastService', () => {
       expect(result.forecastComparison).toHaveLength(4); // 3 traditional + AI
       expect(result.forecastComparison[3].method).toBe('AI-Adjusted EAC');
       expect(mockRedisSet).toHaveBeenCalledWith(
-        'evm:ai:proj-1',
+        'single:evm:ai:proj-1',
         expect.any(String),
         1800,
       );
@@ -429,7 +429,7 @@ describe('EVMForecastService', () => {
 
       expect(result).toEqual(mockAIPredictions);
       expect(mockClaudeCompleteWithJsonSchema).toHaveBeenCalled();
-      expect(mockRedisSet).toHaveBeenCalledWith('evm:ai:proj-1', JSON.stringify(mockAIPredictions), 1800);
+      expect(mockRedisSet).toHaveBeenCalledWith('single:evm:ai:proj-1', JSON.stringify(mockAIPredictions), 1800);
     });
 
     it('should throw when project is not found', async () => {

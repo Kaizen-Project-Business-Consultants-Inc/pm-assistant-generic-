@@ -30,7 +30,7 @@ describe('an AI answer is reused for a while', () => {
     const second = await cachedAIResult('risks:p1', compute);
     expect(compute).toHaveBeenCalledTimes(1);
     expect(second.text).toBe('x');
-    expect([...redis.store.keys()]).toEqual(['ai:result:pmassist_t_one:risks:p1']);
+    expect([...redis.store.keys()]).toEqual(['pmassist_t_one:ai:result:risks:p1']);
   });
 
   it('does not keep a fallback (no AI) answer', async () => {

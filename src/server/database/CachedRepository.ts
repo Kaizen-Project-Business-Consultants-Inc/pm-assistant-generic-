@@ -1,11 +1,18 @@
 import { redisService } from '../services/RedisService';
 import logger from '../utils/logger';
+import { companyCacheKey } from '../utils/companyCacheKey';
 
 interface CacheOptions {
   prefix: string;       // Redis key prefix, e.g. 'cache:project'
   ttlSeconds: number;   // Cache TTL, e.g. 300 (5 minutes)
 }
 
+/**
+ * Keys are per company (the tenant database). They used to be `prefix:id` only, so a project
+ * cached while one company used it was returned to ANOTHER company asking for the same id
+ * within 5 minutes (found 2026-10-06 by the staging suite). Every lookup and invalidation runs
+ * inside a company's request or job context.
+ */
 export class CachedRepository<T> {
   constructor(
     private readonly delegate: { findById(id: string): Promise<T | null> },
@@ -13,7 +20,7 @@ export class CachedRepository<T> {
   ) {}
 
   async findById(id: string): Promise<T | null> {
-    const cacheKey = `${this.options.prefix}:${id}`;
+    const cacheKey = this.keyFor(id);
 
     // Try cache first
     if (redisService.isConnected()) {
@@ -39,8 +46,12 @@ export class CachedRepository<T> {
   }
 
   async invalidate(id: string): Promise<void> {
-    const cacheKey = `${this.options.prefix}:${id}`;
+    const cacheKey = this.keyFor(id);
     await redisService.del(cacheKey);
+  }
+
+  private keyFor(id: string): string {
+    return companyCacheKey(`${this.options.prefix}:${id}`);
   }
 
   async invalidateAll(): Promise<void> {

@@ -1,5 +1,5 @@
 import { redisService } from '../services/RedisService';
-import { getRequestContext } from '../middleware/requestContext';
+import { companyCacheKey } from './companyCacheKey';
 
 /** How long an AI answer on a read-only screen is reused */
 export const AI_RESULT_TTL_SECONDS = 30 * 60;
@@ -16,7 +16,7 @@ export async function cachedAIResult<T extends { aiPowered: boolean }>(
   compute: () => Promise<T>,
   ttlSeconds = AI_RESULT_TTL_SECONDS,
 ): Promise<T> {
-  const fullKey = `ai:result:${getRequestContext()?.tenantDbName ?? 'single'}:${key}`;
+  const fullKey = companyCacheKey(`ai:result:${key}`);
   if (redisService.isConnected()) {
     try {
       const hit = await redisService.get(fullKey);

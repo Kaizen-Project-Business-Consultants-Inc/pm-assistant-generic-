@@ -3,6 +3,7 @@ import { notificationService } from '../NotificationService';
 import { redisService } from '../RedisService';
 import { scheduleReviewService } from '../ScheduleReviewService';
 import logger from '../../utils/logger';
+import { companyCacheKey } from '../../utils/companyCacheKey';
 
 /**
  * Weekly "living document" re-review. For every active schedule it runs the
@@ -43,7 +44,7 @@ export async function runScheduleReview(): Promise<number> {
       if (!scoreDropped && !newCritical && !newHigh) continue;
 
       // Dedup on schedule + score so the same standing drop is not re-sent weekly.
-      const redisKey = `schedule-review-notified:${row.id}:${current.score}`;
+      const redisKey = companyCacheKey(`schedule-review-notified:${row.id}:${current.score}`);
       if (redisService.isConnected()) {
         const existing = await redisService.get(redisKey);
         if (existing) continue;

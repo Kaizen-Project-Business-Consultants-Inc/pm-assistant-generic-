@@ -17,6 +17,7 @@ import {
   type EVMForecastComparison,
   type EVMForecastAIResponse,
 } from '../schemas/evmForecastSchemas';
+import { companyCacheKey } from '../utils/companyCacheKey';
 
 const AI_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
 /** After the AI turned out to be unreachable (no credit, overload…), don't ask again for this long */
@@ -132,7 +133,7 @@ export class EVMForecastService {
 
     // 8. Check Redis cache for AI predictions
     let aiPredictions: EVMForecastAIResponse | undefined;
-    const cacheKey = `evm:ai:${projectId}`;
+    const cacheKey = companyCacheKey(`evm:ai:${projectId}`);
 
     if (config.AI_ENABLED && claudeService.isAvailable()) {
       try {
@@ -213,7 +214,7 @@ export class EVMForecastService {
 
     // Check Redis cache — if AI is cached, include it for free
     let aiPredictions: EVMForecastAIResponse | undefined;
-    const cacheKey = `evm:ai:${projectId}`;
+    const cacheKey = companyCacheKey(`evm:ai:${projectId}`);
     try {
       const cached = await redisService.get(cacheKey);
       if (cached) {
@@ -271,7 +272,7 @@ export class EVMForecastService {
   async generateAIPredictions(projectId: string, userId?: string): Promise<EVMForecastAIResponse | null> {
     if (!config.AI_ENABLED || !claudeService.isAvailable()) return null;
 
-    const cacheKey = `evm:ai:${projectId}`;
+    const cacheKey = companyCacheKey(`evm:ai:${projectId}`);
 
     // Check cache first
     try {

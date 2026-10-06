@@ -5,6 +5,7 @@ import { redisService } from '../RedisService';
 import logger from '../../utils/logger';
 import { isLocalHour, timezonesFor } from '../../utils/recipientTime';
 import { today as todayIn } from '../../utils/calendarDate';
+import { companyCacheKey } from '../../utils/companyCacheKey';
 
 /** Local hour at which to send. */
 const SEND_HOUR = 8;
@@ -57,7 +58,7 @@ export async function runDeadlineNotifications(): Promise<number> {
     if (!isLocalHour(zone, SEND_HOUR)) continue;
 
     // Dedup by the recipient's own day, so someone who changes zone is not notified twice.
-    const redisKey = `deadline-notified:${row.id}:${todayIn(zone)}`;
+    const redisKey = companyCacheKey(`deadline-notified:${row.id}:${todayIn(zone)}`);
 
     // Check Redis dedup (skip if already notified today)
     if (redisService.isConnected()) {

@@ -442,6 +442,8 @@ User decision on the audit: the owner may do everything a PMO can inside their c
 
 **Global roles only reach projects that exist in their company.** PMO/executive (and so the owner) skipped the project check, so another company's project id passed and the route answered with an empty result (no data crossed — each company has its own database — but "OK" instead of "not found"). `checkProjectRoleFor` and `checkEntityProjectAccess` now look the project up in the caller's company first and answer 404 if it isn't there. Found by the staging suite (`weekly-review.spec.ts` "another company is refused") right after the owner change.
 
+**Caches are per company.** The real reason that check still passed: the project cache (`CachedRepository`, 5 minutes) keyed entries by project id only, so a project cached while company A used it was returned to company B asking for the same id. Keys now carry the company (`utils/companyCacheKey.ts`), as do the EVM AI cache and the "already notified" markers of the deadline and schedule-review jobs (every company's sample project shares the same ids). Exploiting the old key needed another company's project UUID (not guessable); the sample's shared id was the realistic case. Test: `__tests__/database/cachedRepositoryTenant.test.ts`.
+
 ## 15. Stakeholder Portal Access
 
 The stakeholder portal (`PortalService.ts`, `src/server/routes/portal.ts`) provides limited external access:
