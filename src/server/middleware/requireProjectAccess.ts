@@ -102,6 +102,14 @@ export async function checkProjectRoleFor(
   projectId: string,
   minRole: ProjectRole,
 ): Promise<Decision> {
+  const notFound: Decision = { ok: false, status: 404, body: { error: 'Not found', message: 'The requested resource was not found' } };
+  // Global roles see every project of THEIR company — but only projects that exist there: a
+  // project id from another company used to pass, and the route then answered with an empty
+  // result (no data — each company has its own database — but "OK" instead of "not found";
+  // found 2026-10-06 when the company owner started working as PMO)
+  if (!user.isGuest && (GLOBAL_FULL_ACCESS.includes(user.role) || GLOBAL_READ_ONLY.includes(user.role))) {
+    if (!(await projectService.findById(projectId))) return notFound;
+  }
   // Global role bypasses (guests never get global bypass)
   if (!user.isGuest && GLOBAL_FULL_ACCESS.includes(user.role)) {
     return { ok: true, membership: { projectId, userId: user.userId, role: 'owner' } as Membership };

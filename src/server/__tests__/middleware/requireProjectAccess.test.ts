@@ -163,6 +163,20 @@ describe('requireProjectAccess', () => {
   // Global role bypasses
   // -----------------------------------------------------------------------
   describe('global role bypasses', () => {
+    // the project exists in their company (a global role still needs that — see below)
+    beforeEach(() => { mockProjectFindById.mockResolvedValue({ id: 'proj1', isDemo: false }); });
+
+    it('a project that is not in their company is "not found" for PMO and executives (2026-10-06)', async () => {
+      mockProjectFindById.mockResolvedValue(null);
+      for (const role of ['pmo', 'executive']) {
+        const handler = requireProjectAccess('viewer');
+        const req = makeRequest({ user: { userId: 'u1', username: role, role }, params: { projectId: 'elsewhere' } });
+        const reply = makeReply();
+        await handler(req, reply);
+        expect(reply.status).toHaveBeenCalledWith(404);
+      }
+    });
+
     it('admin bypasses all access checks', async () => {
       for (const minRole of ['viewer', 'editor', 'manager', 'owner'] as const) {
         const handler = requireProjectAccess(minRole);

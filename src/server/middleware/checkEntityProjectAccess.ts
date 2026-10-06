@@ -17,6 +17,13 @@ export async function checkEntityProjectAccess(
   minRole: ProjectRole,
   reply: FastifyReply,
 ): Promise<boolean> {
+  // Global roles: any project of their company — one that exists there (another company's id
+  // used to pass and get an empty answer; 2026-10-06)
+  if (['admin', 'pmo', 'executive'].includes(userGlobalRole) && !(await projectService.findById(projectId))) {
+    reply.status(404).send({ error: 'Not found', message: 'The requested resource was not found' });
+    return false;
+  }
+
   // Global admin/pmo bypass
   if (userGlobalRole === 'admin' || userGlobalRole === 'pmo') return true;
 

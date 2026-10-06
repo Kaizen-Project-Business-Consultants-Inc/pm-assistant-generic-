@@ -440,6 +440,8 @@ Found in the 2026-10-03 agent review; fixed before any agent was switched on.
 
 User decision on the audit: the owner may do everything a PMO can inside their company. One rule (`utils/companyOwner.ts` `permissionRole`): `authMiddleware` looks up `organizations.owner_user_id` with the user row (cookie and API-key paths) and sets `request.user.role = 'pmo'` for the owner (`accountRole` keeps their own). So every existing PMO check — project access (`GLOBAL_FULL_ACCESS`), company-wide workflows, AI context settings, resource requests, Team Planner, scopes — applies to the owner with no per-route changes. Not applied during the platform admin's Support view (that stays a read-only executive) and never to guests or the platform admin. `/auth/login` and `/auth/me` send the same role so the app's menus match. Tests: `__tests__/utils/companyOwner.test.ts`.
 
+**Global roles only reach projects that exist in their company.** PMO/executive (and so the owner) skipped the project check, so another company's project id passed and the route answered with an empty result (no data crossed — each company has its own database — but "OK" instead of "not found"). `checkProjectRoleFor` and `checkEntityProjectAccess` now look the project up in the caller's company first and answer 404 if it isn't there. Found by the staging suite (`weekly-review.spec.ts` "another company is refused") right after the owner change.
+
 ## 15. Stakeholder Portal Access
 
 The stakeholder portal (`PortalService.ts`, `src/server/routes/portal.ts`) provides limited external access:
