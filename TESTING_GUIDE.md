@@ -1447,6 +1447,10 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 - To see the current tangles: `PRINT_TANGLES=1 npx vitest run src/server/__tests__/utils/importCycleGuard.test.ts`.
 - If it fails on your change: don't raise the ceiling. Announce the change instead of calling the other part directly, or move the shared piece down a layer.
 
+## Accessible-name guard (Oct 2026)
+
+`src/client/src/__tests__/utils/a11yNamesGuard.test.ts` runs the scanner `scripts/a11yScan.ts` (TypeScript parser) over every client `.tsx` and fails if any `<input>`, `<select>`, `<textarea>` or icon-only `<button>` has no accessible name (label `htmlFor` + `id`, wrapping `<label>`, `aria-labelledby`, or `aria-label` when there is no visible text) — a ratchet: unlisted files must have none, listed allowances only go down (529 → 1 on 2026-10-06). List them with `npx tsx scripts/a11y-scan.ts`.
+
 ## Production smoke tests (Oct 2026)
 
 `SMOKE_CREDENTIALS=path/to/prod-smoke-account.json npx playwright test -c playwright.prod.config.ts` — 10 read-only page checks on kovarti.com. The login comes from the same credentials file as `scripts/prod-smoke.cjs` (kept outside the repository); the checks reuse the session the setup step saves. Staging tests use the QA logins (qa.pm / qa.team / qa.outsider @pm.kpbc.ca, see `e2e/staging-helpers.ts`).
