@@ -39,7 +39,15 @@ function db() {
     return Promise.resolve([]);
   });
 }
-const budgetOf = (taskId: string) => query.mock.calls.find(([sql, p]) => String(sql).startsWith('UPDATE tasks SET budget_allocated') && p[1] === taskId)?.[1][0];
+/** The budget written for a task (writes are batched: params are id, budget pairs, then the ids) */
+const budgetOf = (taskId: string) => {
+  for (const [sql, p] of query.mock.calls) {
+    if (!String(sql).startsWith('UPDATE tasks SET budget_allocated')) continue;
+    const pairs = (String(sql).match(/WHEN \? THEN \?/g) ?? []).length;
+    for (let i = 0; i < pairs; i++) if (p[2 * i] === taskId) return p[2 * i + 1];
+  }
+  return undefined;
+};
 
 describe('TaskBudgetService — budget = planned hours × rate, never typed', () => {
   beforeEach(() => {

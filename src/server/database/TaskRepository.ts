@@ -276,6 +276,30 @@ export class TaskRepository {
     await moveBookingsWithTasks(run, before);
   }
 
+  /**
+   * New dates for many tasks at once: one UPDATE per 100 tasks, and their booked hours move with
+   * them. Moving a chain of successors used to cost ~6 queries per task (2026-10-04 audit).
+   */
+  async updateDatesMany(changes: Array<{ id: string; startDate: string | null; endDate: string | null }>): Promise<void> {
+    if (changes.length === 0) return;
+    const run = (sql: string, params: any[]) => databaseService.query(sql, params);
+    const before = await taskDatesOf(run, changes.map(c => c.id));
+    for (let i = 0; i < changes.length; i += 100) {
+      const chunk = changes.slice(i, i + 100);
+      const cases = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+      await databaseService.query(
+        `UPDATE tasks SET start_date = CASE id ${cases} END, end_date = CASE id ${cases} END
+         WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [
+          ...chunk.flatMap(c => [c.id, c.startDate]),
+          ...chunk.flatMap(c => [c.id, c.endDate]),
+          ...chunk.map(c => c.id),
+        ],
+      );
+    }
+    await moveBookingsWithTasks(run, before);
+  }
+
   // --- Comments ---
 
   async addComment(taskId: string, text: string, userId: string, userName: string): Promise<TaskComment> {
@@ -321,6 +345,18 @@ export class TaskRepository {
     );
     const rows = await databaseService.query('SELECT * FROM task_activities WHERE id = ?', [id]);
     return rowToActivity(rows[0]);
+  }
+
+  /** Several activity lines in one INSERT (nothing read back) */
+  async logActivities(rows: Array<{ taskId: string; userId: string; userName: string; action: string; field?: string; oldValue?: string; newValue?: string }>): Promise<void> {
+    for (let i = 0; i < rows.length; i += 100) {
+      const chunk = rows.slice(i, i + 100);
+      await databaseService.query(
+        `INSERT INTO task_activities (id, task_id, user_id, user_name, action, field, old_value, new_value)
+         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flatMap(r => [uuidv4(), r.taskId, r.userId, r.userName, r.action, r.field || null, r.oldValue || null, r.newValue || null]),
+      );
+    }
   }
 
   async getActivities(taskId: string): Promise<TaskActivityEntry[]> {

@@ -4,6 +4,9 @@ import { organizationTimezone } from '../StatusDateService';
 import { weeklyReviewService } from '../WeeklyReviewService';
 import logger from '../../utils/logger';
 
+/** Projects reviewed at the same time (the database pool is small) */
+export const REVIEWS_AT_ONCE = 3;
+
 /**
  * Weekly PM review — Friday run (user decision 2026-10-04). The timer fires every hour from
  * Thursday to Saturday UTC; each company's run happens in the hour when it is Friday
@@ -53,15 +56,19 @@ export async function runPmWeeklyReviews(opts: { orgId?: string | null; now?: Da
   );
   if (projects.length === 0) return 0;
 
-  // Run each project's review; remember how many decisions it left open
+  // Run each project's review, a few at a time (one at a time was slow for a big company — the
+  // 2026-10-04 audit; all at once would swamp the small database pool). Remember how many
+  // decisions each left open. A run cut short is picked up next hour (finished ones are skipped).
   const done = new Map<string, { name: string; open: number }>();
-  for (const p of projects) {
-    try {
-      const review = await weeklyReviewService.run(p.id, 'friday', null);
-      done.set(p.id, { name: p.name, open: review.items.length }); // a fresh run has no responses yet
-    } catch (err: any) {
-      logger.error('[PmWeeklyReview] review failed', { projectId: p.id, error: err?.message });
-    }
+  for (let i = 0; i < projects.length; i += REVIEWS_AT_ONCE) {
+    await Promise.all(projects.slice(i, i + REVIEWS_AT_ONCE).map(async (p) => {
+      try {
+        const review = await weeklyReviewService.run(p.id, 'friday', null);
+        done.set(p.id, { name: p.name, open: review.items.length }); // a fresh run has no responses yet
+      } catch (err: any) {
+        logger.error('[PmWeeklyReview] review failed', { projectId: p.id, error: err?.message });
+      }
+    }));
   }
   if (done.size === 0) return 0;
 

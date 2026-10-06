@@ -38,12 +38,14 @@ export class TaskBudgetService {
     const rateCard = await rateCardService.listSafe();
     const isWorking = (await calendarsFor([scheduleId], (id) => scheduleService.workingDayTest(id)))(scheduleId);
 
-    let changed = 0;
     const parents = new Set<string>();
+    const writes: Array<{ id: string; budget: number | null }> = [];
+    const bookingsByTask = new Map<string, typeof bookings>();
+    for (const b of bookings) bookingsByTask.set(b.taskId, [...(bookingsByTask.get(b.taskId) ?? []), b]);
     for (const t of tasks) {
       let cost = 0;
       let priced = false;
-      for (const b of bookings.filter(x => x.taskId === t.id)) {
+      for (const b of bookingsByTask.get(t.id) ?? []) {
         const person = byId.get(b.resourceId);
         if (!person) continue;
         const rate = ratesOn(person, b.startDate.slice(0, 10), rateCard).standard;
@@ -54,13 +56,22 @@ export class TaskBudgetService {
       const budget = priced ? Math.round(cost * 100) / 100 : null;
       const before = t.budget_allocated != null ? Number(t.budget_allocated) : null;
       if (budget !== before) {
-        // A worked-out figure, not an edit: updated_at stays, so a background re-price ~20 s after
-        // a change doesn't count as "the plan changed since" and block its Undo in Schedule History
-        await databaseService.query('UPDATE tasks SET budget_allocated = ?, updated_at = updated_at WHERE id = ?', [budget, t.id]);
-        changed++;
+        writes.push({ id: t.id, budget });
         if (t.parent_task_id) parents.add(t.parent_task_id);
       }
     }
+    // Written 100 at a time (it was one UPDATE per task — 2026-10-04 audit). A worked-out figure,
+    // not an edit: updated_at stays, so a background re-price ~20 s after a change doesn't count as
+    // "the plan changed since" and block its Undo in Schedule History
+    for (let i = 0; i < writes.length; i += 100) {
+      const chunk = writes.slice(i, i + 100);
+      await databaseService.query(
+        `UPDATE tasks SET budget_allocated = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END, updated_at = updated_at
+          WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flatMap(w => [w.id, w.budget]), ...chunk.map(w => w.id)],
+      );
+    }
+    const changed = writes.length;
     for (const pid of parents) {
       await scheduleService.recomputeParentRollup(pid, 0, { quiet: true }).catch(err => logger.warn('[TaskBudget] roll-up failed', { pid, error: err?.message }));
     }

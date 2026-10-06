@@ -1326,6 +1326,8 @@ export class ScheduleService {
     const taskMap = new Map(allTasks.map(t => [t.id, t]));
     const downstream = await this.findAllDownstreamTasks(taskId);
     const affectedTasks: CascadeChange[] = [];
+    // worked out in memory, then written in one go (it was ~6 queries per moved task)
+    const writes: Array<{ id: string; startDate: string | null; endDate: string | null }> = [];
 
     for (const task of downstream) {
       let computedStart: Date | null = null;
@@ -1371,11 +1373,11 @@ export class ScheduleService {
         deltaDays: newStart && oldStart ? Math.round((newStart.getTime() - oldStart.getTime()) / 86_400_000) : deltaDays,
       };
 
-      await taskRepository.updateDates(
-        task.id,
-        newStart?.toISOString().split('T')[0] ?? null,
-        newEnd?.toISOString().split('T')[0] ?? null,
-      );
+      writes.push({
+        id: task.id,
+        startDate: newStart?.toISOString().split('T')[0] ?? null,
+        endDate: newEnd?.toISOString().split('T')[0] ?? null,
+      });
 
       // Update in-memory taskMap so subsequent tasks see new dates
       const updated = taskMap.get(task.id);
@@ -1384,13 +1386,15 @@ export class ScheduleService {
         if (newEnd) updated.endDate = newEnd.toISOString().split('T')[0];
       }
 
-      await this.logActivity(task.id, '1', 'System', 'auto-rescheduled', 'dates',
-        `${change.oldStartDate} - ${change.oldEndDate}`,
-        `${change.newStartDate} - ${change.newEndDate}`,
-      );
-
       affectedTasks.push(change);
     }
+
+    await taskRepository.updateDatesMany(writes);
+    await taskRepository.logActivities(affectedTasks.map(change => ({
+      taskId: change.taskId, userId: '1', userName: 'System', action: 'auto-rescheduled', field: 'dates',
+      oldValue: `${change.oldStartDate} - ${change.oldEndDate}`,
+      newValue: `${change.newStartDate} - ${change.newEndDate}`,
+    })));
 
     return { triggeredByTaskId: taskId, deltaDays, affectedTasks };
   }

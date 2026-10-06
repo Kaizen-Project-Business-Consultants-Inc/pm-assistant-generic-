@@ -85,6 +85,24 @@ export class ProjectRepository extends BaseRepository<Project> {
     return rows.length > 0 ? rowToProject(rows[0]) : null;
   }
 
+  /**
+   * Of these projects, the live (not archived, not the sample) ones this person manages: an
+   * Owner/Manager membership, or the creator when they have no membership row — the same rule
+   * as checkProjectRoleFor(…, 'manager'), in one query (the Team Planner checked one project at
+   * a time — 2026-10-04 audit).
+   */
+  async findManagedIds(userId: string, projectIds: string[]): Promise<string[]> {
+    if (projectIds.length === 0) return [];
+    const rows = await this.queryRaw(
+      `SELECT p.id FROM projects p
+         LEFT JOIN project_members m ON m.project_id = p.id AND m.user_id = ?
+        WHERE p.id IN (${projectIds.map(() => '?').join(',')}) AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
+          AND (m.role IN ('owner', 'manager') OR (m.user_id IS NULL AND p.created_by = ?))`,
+      [userId, ...projectIds, userId],
+    );
+    return rows.map((r: any) => r.id);
+  }
+
   async findAllPaginated(limit: number, offset: number, includeArchived = false): Promise<{ rows: Project[]; total: number }> {
     const where = includeArchived ? '1=1' : 'archived_at IS NULL';
     return this.queryPaginated(where, [], 'created_at DESC', limit, offset);

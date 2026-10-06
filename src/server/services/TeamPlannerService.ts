@@ -11,8 +11,8 @@ import { planChanged } from './domainEvents';
 import { ResourceValidationError, type ResourceAssignment } from './ResourceService';
 import { hoursInWeek, calendarsFor } from './weeklyLoad';
 import { followTask } from '../database/bookingDates';
-import { checkProjectRoleFor } from '../middleware/requireProjectAccess';
 import { readableProjectIds } from '../utils/readableProjects';
+import { projectRepository } from '../database/ProjectRepository';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import {
   type IsWorking, mondayOf, mondaysBetween, weekEndOf, addCalendarDays, onOrAfterWorking, finishFor,
@@ -129,15 +129,8 @@ export class TeamPlannerService {
     }
     const readable = await readableProjectIds(viewer);
     if (readable === 'all') return [];
-    const out: string[] = [];
-    for (const id of readable) {
-      if ((await checkProjectRoleFor(viewer, id, 'manager')).ok) out.push(id);
-    }
-    if (out.length === 0) return out;
-    // live projects only
-    const live = await databaseService.query<{ id: string }>(
-      `SELECT id FROM projects WHERE id IN (${ph(out.length)}) AND archived_at IS NULL AND COALESCE(is_demo, 0) = 0`, out);
-    return live.map(r => r.id);
+    // one query, not a role check per project (2026-10-04 audit)
+    return projectRepository.findManagedIds(viewer.userId, [...readable]);
   }
 
   async board(viewer: Viewer, from: string, weekCount = 8): Promise<PlannerBoard> {

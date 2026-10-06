@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-06 — Audit speed (batch 3)
+Moving a task: successors' new dates worked out in memory then one batched write (TaskRepository.updateDatesMany: CASE UPDATE per 100 + bookings follow once) + one activity INSERT (logActivities) — was ~6 queries per successor. Task cost re-price (TaskBudgetService.recalcSchedule): CASE UPDATE per 100, bookings grouped by task. Team Planner managed projects: ProjectRepository.findManagedIds (one query, same rule as checkProjectRoleFor manager). Friday weekly review: 3 projects at a time (REVIEWS_AT_ONCE). Spreadsheet library: schedule + RAID import windows lazy (mounted on first open, kept after), TemplatePicker imports xlsx on file read. T080 indexes: time_entries(schedule_id), notifications(user_id, created_at), tasks(start_date). Guard speedGuards.test.ts, cascadeBatched.test.ts.
+
 ## 2026-10-06 — Audit AI spend (batch 2)
 claudeService breaker: noteError() at every failure site; 400 credit / 401 / 403 open it for 10 min (were ignored). completeWithTools now checks the per-user budget. Automation ai_generate bills the automation owner (context._aiBillTo). Coaching tips + Log-time prefill: no AI (pill now "From your recent entries"). utils/aiResultCache.ts cachedAIResult (30 min, per company, AI answers only): predictions risks/weather/budget, intelligence anomalies/cross-project. Portfolio panel: 10-min pause after a failed ask. Removed 3 dead client wrappers (/ai-scheduling/breakdown|dependencies|optimization — no such server routes, no callers); server /ai-scheduling/* and /narratives/project left (API-reachable, no app caller). Guard aiSpend.test.ts. autoRerun.test 'burst' flaked once in the full run, passes alone.
 

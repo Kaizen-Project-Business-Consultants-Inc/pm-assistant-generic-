@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { useProjectRole } from '../../hooks/useProjectRole';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -12,7 +12,8 @@ import { RiskFormModal } from '../../components/risks/RiskFormModal';
 import { AIScanReviewModal } from '../../components/risks/AIScanReviewModal';
 import { RAIDDetailPanel } from '../../components/risks/RAIDDetailPanel';
 import { RAIDReportModal } from '../../components/risks/RAIDReportModal';
-import { RAIDImportModal } from '../../components/raids/RAIDImportModal';
+// brings the spreadsheet library: loaded the first time the import window is opened
+const RAIDImportModal = lazy(() => import('../../components/raids/RAIDImportModal').then(m => ({ default: m.RAIDImportModal })));
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { RaidReviewPanel } from '../../components/raids/review/RaidReviewPanel';
 import { useRaidReview } from '../../components/raids/review/useRaidReview';
@@ -73,6 +74,8 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const [inlineStatusId, setInlineStatusId] = useState<string | null>(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [importEverOpened, setImportEverOpened] = useState(false);
+  useEffect(() => { if (showImportModal) setImportEverOpened(true); }, [showImportModal]);
   const [showReview, setShowReview] = useState(false);
 
   // RAID Review — latest score for the health chip, and a flag per item from its findings
@@ -947,12 +950,16 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         aiPowered={scanAiPowered}
       />
 
-      <RAIDImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        projectId={projectId}
-        onImported={invalidateRaid}
-      />
+      {importEverOpened && (
+        <Suspense fallback={null}>
+          <RAIDImportModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            projectId={projectId}
+            onImported={invalidateRaid}
+          />
+        </Suspense>
+      )}
 
       {showReportModal && (
         <RAIDReportModal

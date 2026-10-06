@@ -18,7 +18,7 @@ import {
   Plus,
   FolderOpen,
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
+import type * as XLSXTypes from 'xlsx';
 import { apiService } from '../../services/api';
 import { TemplateCard } from './TemplateCard';
 import { TemplatePreview } from './TemplatePreview';
@@ -107,7 +107,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   const [columnMap, setColumnMap] = useState<Record<number, string>>({});
   const [sheetNames, setSheetNames] = useState<string[]>([]);
   const [selectedSheet, setSelectedSheet] = useState('');
-  const workbookRef = useRef<XLSX.WorkBook | null>(null);
+  const workbookRef = useRef<XLSXTypes.WorkBook | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isExcelFile = (file: File) => {
@@ -140,8 +140,10 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
 
     if (isExcelFile(file)) {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         try {
+          // the spreadsheet library (~440 KB) loads only when a spreadsheet is actually read
+          const XLSX = await import('xlsx');
           const data = new Uint8Array(e.target?.result as ArrayBuffer);
           const workbook = XLSX.read(data, { type: 'array' });
           if (workbook.SheetNames.length === 0) {
@@ -175,9 +177,10 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     }
   }, [loadCsvText]);
 
-  const handleSheetSelect = (name: string) => {
+  const handleSheetSelect = async (name: string) => {
     setSelectedSheet(name);
     if (workbookRef.current) {
+      const XLSX = await import('xlsx');
       const csv = sheetToCsv(XLSX, workbookRef.current.Sheets[name]);
       loadCsvText(csv, uploadedFileName || 'file');
     }

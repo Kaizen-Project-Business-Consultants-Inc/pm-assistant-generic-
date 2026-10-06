@@ -5,7 +5,7 @@
  * useScheduleMutations. Moved out of ScheduleTab.tsx unchanged, keeping its name ScheduleGantt
  * (the product manual refers to it by that name) — code health item 4, phase 4 batch B (2026-10-05).
  */
-import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -23,7 +23,9 @@ import { NetworkDiagramView } from '../../../components/network/NetworkDiagramVi
 import { BurndownPanel } from '../../../components/burndown/BurndownPanel';
 import { SCurveView } from '../../../components/evm/SCurveView';
 import { AutoReschedulePanel } from '../../../components/schedule/AutoReschedulePanel';
-import { ImportModal } from '../../../components/schedule/ImportModal';
+// The import window brings the spreadsheet library (~440 KB): loaded the first time it's opened,
+// not with every Schedule tab (2026-10-04 audit)
+const ImportModal = lazy(() => import('../../../components/schedule/ImportModal').then(m => ({ default: m.ImportModal })));
 import { ScheduleReviewPanel, type ScheduleReview } from '../../../components/schedule/review/ScheduleReviewPanel';
 import { WorkingCalendarPanel } from '../../../components/schedule/calendar/WorkingCalendarPanel';
 import { ScheduleHistoryPanel } from '../../../components/schedule/ScheduleHistoryPanel';
@@ -53,6 +55,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [createTaskDates, setCreateTaskDates] = useState<{ startDate: string; endDate: string; parentTaskId?: string; afterTaskId?: string; beforeTaskId?: string } | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [importEverOpened, setImportEverOpened] = useState(false);
+  useEffect(() => { if (showImportModal) setImportEverOpened(true); }, [showImportModal]);
   useEffect(() => {
     if (openImportOnLoad) {
       setShowImportModal(true);
@@ -836,7 +840,9 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         />
       )}
 
-      {/* Import CSV Modal */}
+      {/* Import CSV Modal — mounted once first opened, then kept (it remembers an import in progress) */}
+      {importEverOpened && (
+      <Suspense fallback={null}>
       <ImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
@@ -848,6 +854,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         }}
         onOpenReview={() => { setShowImportModal(false); setShowReviewPanel(true); }}
       />
+      </Suspense>
+      )}
 
       {/* Schedule Review panel */}
       {showHistoryPanel && (

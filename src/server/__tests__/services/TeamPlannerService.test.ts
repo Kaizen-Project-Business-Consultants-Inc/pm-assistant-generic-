@@ -30,8 +30,6 @@ vi.mock('../../services/RateCardService', () => ({
 const planChanged = vi.fn();
 vi.mock('../../services/domainEvents', () => ({ planChanged: (...a: any[]) => planChanged(...a) }));
 vi.mock('../../services/ResourceService', () => ({ ResourceValidationError: class ResourceValidationError extends Error {} }));
-const checkProjectRoleFor = vi.fn();
-vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRoleFor: (...a: any[]) => checkProjectRoleFor(...a) }));
 const readableProjectIds = vi.fn();
 vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: (...a: any[]) => readableProjectIds(...a) }));
 vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-pm' }), getActorSource: () => 'web' }));
@@ -207,7 +205,6 @@ describe('TeamPlannerService — applying a drop', () => {
 describe('TeamPlannerService — the board', () => {
   it('shows the team with work on your projects first, counts all their work, and hides the names of projects you can\'t open', async () => {
     readableProjectIds.mockResolvedValue(new Set(['p-mine', 'p-shared']));
-    checkProjectRoleFor.mockImplementation(async (_v: any, pid: string) => ({ ok: pid === 'p-mine' }));
     bookings = [
       booking('peter', 't-uat', 12, '2026-10-19', '2026-11-06', 's1'),
       booking('peter', 't-mary', 12, '2026-10-12', '2026-10-30', 's-mary'),
@@ -216,7 +213,8 @@ describe('TeamPlannerService — the board', () => {
     ];
     findEffectiveAssignments.mockImplementation(async (f: any) => bookings.filter(b => !f.scheduleIds || f.scheduleIds.includes(b.scheduleId)));
     query.mockImplementation(async (sql: string, params: any[]) => {
-      if (sql.includes('archived_at IS NULL AND COALESCE(is_demo, 0) = 0') && sql.includes('WHERE id IN')) return params.map(id => ({ id }));
+      // the projects I manage (one query): only p-mine of the two I can read
+      if (sql.includes('LEFT JOIN project_members m')) return params.slice(1, -1).filter((id: string) => id === 'p-mine').map((id: string) => ({ id }));
       if (sql.startsWith('SELECT id, name FROM projects')) return [{ id: 'p-mine', name: 'DBJ-Loans' }];
       if (sql.startsWith('SELECT id FROM schedules')) return [{ id: 's1' }];
       if (sql.includes('FROM resources WHERE COALESCE(is_active')) return [{ id: 'parth' }];
@@ -249,7 +247,7 @@ describe('TeamPlannerService — the board', () => {
 
   it('is empty for someone who manages no projects', async () => {
     readableProjectIds.mockResolvedValue(new Set(['p-mine']));
-    checkProjectRoleFor.mockResolvedValue({ ok: false });
+    query.mockResolvedValue([]);
     const b = await teamPlannerService.board({ userId: 'u-team', role: 'team_member' }, '2026-10-14', 4);
     expect(b).toMatchObject({ projects: [], people: [], unassigned: [] });
     expect(findEffectiveAssignments).not.toHaveBeenCalled();
