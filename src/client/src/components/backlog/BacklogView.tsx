@@ -163,6 +163,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
             <select
               value={selectedScheduleId}
               onChange={(e) => { setSelectedScheduleId(e.target.value); setSelectedTasks(new Set()); }}
+              aria-label="Schedule"
               className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm"
             >
               {schedules.map((s: any) => (
@@ -174,6 +175,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="Filter by type"
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm"
           >
             <option value="all">All types</option>
@@ -186,6 +188,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
+            aria-label="Filter by priority"
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm"
           >
             <option value="all">All priorities</option>
@@ -214,6 +217,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
           <select
             value={assignSprintId}
             onChange={(e) => setAssignSprintId(e.target.value)}
+            aria-label="Sprint to add the selected items to"
             className="rounded-md border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm flex-1 max-w-xs"
           >
             <option value="">Select sprint…</option>
@@ -256,6 +260,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                     type="checkbox"
                     checked={selectedTasks.size === filtered.length && filtered.length > 0}
                     onChange={toggleAll}
+                    aria-label="Select all items"
                     className="rounded border-gray-300 dark:border-gray-600"
                   />
                 </th>
@@ -329,6 +334,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                         type="checkbox"
                         checked={selectedTasks.has(task.id)}
                         onChange={() => toggleTask(task.id)}
+                        aria-label={`Select ${task.name}`}
                         className="rounded border-gray-300 dark:border-gray-600"
                       />
                     </td>

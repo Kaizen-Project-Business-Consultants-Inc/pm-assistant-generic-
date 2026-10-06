@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, X, AlertTriangle, User, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -19,6 +19,7 @@ interface StandupEntry {
 }
 
 export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [yesterday, setYesterday] = useState('');
@@ -98,6 +99,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
         </button>
         <input
           type="date"
+          aria-label="Standup date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
           className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm"
@@ -126,8 +128,9 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
           <h4 className="text-sm font-semibold text-gray-900 dark:text-white">My Standup</h4>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">What did I do yesterday?</label>
+            <label htmlFor={`${uid}-what-did-i`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">What did I do yesterday?</label>
             <textarea
+              id={`${uid}-what-did-i`}
               value={yesterday}
               onChange={(e) => setYesterday(e.target.value)}
               rows={3}
@@ -138,8 +141,9 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">What will I do today?</label>
+            <label htmlFor={`${uid}-what-will-i`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">What will I do today?</label>
             <textarea
+              id={`${uid}-what-will-i`}
               value={today}
               onChange={(e) => setToday(e.target.value)}
               rows={3}
@@ -175,6 +179,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
                 type="text"
                 value={newBlocker}
                 onChange={(e) => setNewBlocker(e.target.value)}
+                aria-label="Add a blocker"
                 onKeyDown={handleBlockerKeyDown}
                 maxLength={500}
                 placeholder="Add a blocker..."
@@ -183,6 +188,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
               <button
                 onClick={addBlocker}
                 disabled={!newBlocker.trim()}
+                aria-label="Add blocker"
                 className="px-3 py-1.5 text-xs rounded-md bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 disabled:opacity-40 transition-colors"
                 tabIndex={0}
               >

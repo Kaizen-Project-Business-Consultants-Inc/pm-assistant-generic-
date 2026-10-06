@@ -133,6 +133,7 @@ function DefinitionEditor({
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
+                aria-label="Add criterion"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') { e.preventDefault(); addCriterion(newLabel); setNewLabel(''); }
                 }}
@@ -143,6 +144,7 @@ function DefinitionEditor({
               <button
                 onClick={() => { addCriterion(newLabel); setNewLabel(''); }}
                 disabled={!newLabel.trim()}
+                aria-label="Add criterion"
                 className="px-3 py-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-40 text-sm transition-colors"
                 tabIndex={0}
               >

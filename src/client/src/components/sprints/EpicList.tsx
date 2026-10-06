@@ -119,6 +119,7 @@ export function EpicList({ scheduleId }: { scheduleId: string }) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by status"
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-1.5 text-xs"
           >
             <option value="all">All Statuses</option>

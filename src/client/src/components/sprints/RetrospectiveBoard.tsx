@@ -201,6 +201,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId, canEdit = 
                   <input
                     type="text"
                     value={newItemContent[col.id] || ''}
+                    aria-label={`Add an item to ${col.label}`}
                     onChange={(e) => setNewItemContent((prev) => ({ ...prev, [col.id]: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddItem(col.id); } }}
                     placeholder="Add item..."

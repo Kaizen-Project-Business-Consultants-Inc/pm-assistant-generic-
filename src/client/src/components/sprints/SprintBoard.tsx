@@ -123,6 +123,7 @@ const SprintCard = memo(function SprintCard({
         {editingPointsTaskId === task.id ? (
           <input
             type="number"
+            aria-label={`Story points for ${task.name}`}
             min="0"
             className="w-12 text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full border border-primary-300 dark:border-primary-600 outline-none text-center"
             value={editingPointsValue}

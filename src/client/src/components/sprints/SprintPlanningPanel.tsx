@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Play, CheckCircle2, Target, GripVertical, Search } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -105,6 +105,7 @@ function TaskCard({
 }
 
 export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit = true }: SprintPlanningPanelProps) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [backlogSearch, setBacklogSearch] = useState('');
   const [backlogPriority, setBacklogPriority] = useState<string>('all');
@@ -234,8 +235,9 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
         </div>
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Sprint Name *</label>
+            <label htmlFor={`${uid}-sprint-name`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Sprint Name *</label>
             <input
+              id={`${uid}-sprint-name`}
               type="text"
               value={createForm.name}
               onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))}
@@ -244,8 +246,9 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Goal</label>
+            <label htmlFor={`${uid}-goal`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Goal</label>
             <textarea
+              id={`${uid}-goal`}
               value={createForm.goal}
               onChange={(e) => setCreateForm((f) => ({ ...f, goal: e.target.value }))}
               className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none"
@@ -255,8 +258,9 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date *</label>
+              <label htmlFor={`${uid}-start-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date *</label>
               <input
+                id={`${uid}-start-date`}
                 type="date"
                 value={createForm.start_date}
                 onChange={(e) => setCreateForm((f) => ({ ...f, start_date: e.target.value }))}
@@ -264,8 +268,9 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">End Date *</label>
+              <label htmlFor={`${uid}-end-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">End Date *</label>
               <input
+                id={`${uid}-end-date`}
                 type="date"
                 value={createForm.end_date}
                 onChange={(e) => setCreateForm((f) => ({ ...f, end_date: e.target.value }))}
@@ -274,8 +279,9 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Velocity Commitment</label>
+            <label htmlFor={`${uid}-velocity-commitment`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Velocity Commitment</label>
             <input
+              id={`${uid}-velocity-commitment`}
               type="number"
               value={createForm.velocity_commitment}
               onChange={(e) => setCreateForm((f) => ({ ...f, velocity_commitment: e.target.value }))}
@@ -371,6 +377,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
                 type="text"
                 value={backlogSearch}
                 onChange={(e) => setBacklogSearch(e.target.value)}
+                aria-label="Search backlog"
                 placeholder="Search backlog..."
                 className="w-full pl-7 pr-2 py-1 text-xs border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 outline-none"
               />
@@ -378,6 +385,7 @@ export function SprintPlanningPanel({ projectId, scheduleId, sprintId, canEdit =
             <select
               value={backlogPriority}
               onChange={(e) => setBacklogPriority(e.target.value)}
+              aria-label="Filter by priority"
               className="text-xs border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md px-2 py-1 outline-none"
             >
               <option value="all">All priorities</option>

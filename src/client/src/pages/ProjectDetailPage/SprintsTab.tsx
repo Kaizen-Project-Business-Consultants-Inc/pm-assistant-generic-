@@ -123,6 +123,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
             <select
               value={selectedScheduleId}
               onChange={(e) => setSelectedScheduleId(e.target.value)}
+              aria-label="Schedule"
               className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-1.5 text-sm"
             >
               {schedules.map((s: any) => (
