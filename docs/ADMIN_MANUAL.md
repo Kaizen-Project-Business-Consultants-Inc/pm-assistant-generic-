@@ -118,11 +118,11 @@ Project membership is enforced on all project-scoped API routes. Only members of
 | **viewer** | Yes | Time entries on assigned tasks only; RAID items they own; comments on assigned tasks | No | No | No |
 | **Non-member** | 404 | 404 | 404 | 404 | 404 |
 
-**Global role bypasses:** Users with the `admin` or `pmo` global role can access all projects without membership. Users with the `executive` role have read-only access to all projects.
+**Global role bypasses:** A `pmo` (and the company owner, who works as PMO) can access every project **in their own company** without membership. Users with the `executive` role have read-only access to their company's projects. A project in another company answers "not found" to everyone (October 2026). The platform `admin` has no company and sees customer projects only through the read-only Support view.
 
 **Viewer time logging:** Viewers can log time entries on tasks assigned to them and edit their own time entries. They cannot delete time entries or modify schedule data (tasks, dates, assignments). Schedules are fully read-only for viewers — all editing controls are hidden in the UI.
 
-**Viewer sidebar:** Viewers and team_members see a reduced sidebar. Role-restricted items (Resources, Meetings, Change Requests, Workflows, Intake, Analytics, EVM, Monte Carlo, Scenarios, Report Builder) are displayed as disabled with a lock icon and the tooltip "Premium feature — contact your administrator" rather than being fully hidden. This gives users visibility into features available at higher tiers or roles. Accessible items for viewers/team_members: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings.
+**Viewer sidebar:** Viewers and team_members see a reduced sidebar. Role-restricted items (Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM Dashboard, Simulation, Scenario Modeling, Report Builder, AI Proposals) are displayed as disabled with a lock icon and the tooltip "Premium feature — contact your administrator" rather than being fully hidden. This gives users visibility into features available at higher tiers or roles. Accessible items for viewers/team_members: Dashboard, Projects, Lessons, Reports, AI Query, Notifications, Timesheets, Goals, My Feedback, and Settings.
 
 > **Important:** Project roles (owner/manager/editor/viewer) are separate from global user roles (admin/executive/project_manager/team_member/etc.). A user needs both: a global role with sufficient scope *and* a project role with sufficient access.
 
@@ -140,9 +140,10 @@ Each project supports a set of pinned links (e.g., Confluence pages, Figma files
 
 All endpoints require project membership enforced by `requireProjectAccess`.
 
-### Archive and Delete
-- **Archive** removes the project from active views but preserves all data.
-- **Delete** permanently removes the project (requires admin role + project owner; audit entry created).
+### Archive (and, on some plans, Delete)
+- **Archive is the normal way to retire a project.** The project's Manager or Owner presses **Archive project** on its card in the Projects list; it leaves the active views and every record is kept. **Unarchive** brings it back.
+- **Delete** permanently removes the project. It is offered only on single-user plans (trial and consultant), only to the project's Owner, from **Edit project → Delete Project** (they type the project name to confirm; an audit entry is created). Team plans (SME and Enterprise) cannot delete projects at all — the server refuses with "Archive the project instead." The sample project can never be deleted.
+- Kovarti support never deletes or archives a customer's project.
 
 ### Rate Card
 - **Settings → Rate card** holds hourly cost rates by role, each with a start date (`rate_card`, tenant migration T063 — one card per company database). Admins, PMO, project managers and the company owner see and change it; the tab is hidden from everyone else and the API answers 403.
@@ -157,10 +158,17 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - One-time clean-up after the first deploy with working calendars: `dist/server/scripts/moveTasksOffDaysOff.js` (see DEPLOYMENT_GUIDE.md checklist).
 
 
+### People, line managers, the month lock and sponsors (October 2026)
+These are company settings the owner looks after; Kovarti support never changes them.
+- **Who manages the people list.** Project managers keep adding and editing ordinary people on **Resources → Team** (**Add person**, skills, rates, availability, import). Only the **company owner or a PMO** may: choose or change someone's **line manager**; change the email of someone who signs in (or add a person whose email belongs to a login); delete someone who signs in, or remove their login. Nobody but the owner can change the owner's own record. Rule: `services/peopleRights.ts`.
+- **Line manager.** Every person has one: the person who approves their weekly timesheet. If none is chosen it is the company owner. It can be changed but not removed. The owner also sees, in their approvals queue, any sheet that has no approver.
+- **Month lock.** Hours lock month by month: a month closes on the **5th of the following month** (in the company's time zone). After that nobody can add, change, move or delete hours on a day in that month. Submitting and approving hours already entered still works. The day is fixed in the code (`MONTH_LOCK_DAY` in `WeeklyTimesheetService.ts`); there is no setting and no unlock screen.
+- **Sponsor.** Each project can name a sponsor (Edit project → Sponsor, by the project's Manager/Owner): a company user, who is added to the project as a Viewer, or a person with an email but no login. Nothing reaches the sponsor automatically — the PM escalates a RAID item with **Send to sponsor**.
+
 ### Sample Project (optional since October 2026)
 - Every company database is created by the tenant migrations, which include the read-only sample "Sample Web App Development" (`T033`, project id `demo-sample-webapp`, every row id starting `demo-`). **New companies have it removed straight after provisioning** (`tenantProvisioner.ts` → `SampleProjectService.remove`), so they start clean.
-- **Existing companies keep their sample** until their owner or an admin presses **Remove…** in **Settings → Sample project**. **Load** re-runs the seed (INSERT IGNORE, so it is safe twice). The setup wizard offers the same Load as "Explore a sample project first".
-- Who may: the company owner, admin or PMO (`/api/v1/sample-project`, `…/remove`, `…/load`); everyone else gets 403. Kovarti support never loads or removes it for a customer (admin is read-only on customer data).
+- **Existing companies keep their sample** until their owner or a PMO presses **Remove…** in **Settings → Sample project**. **Load** re-runs the seed (INSERT IGNORE, so it is safe twice). The setup wizard offers the same Load as "Explore a sample project first".
+- Who may: the company owner or a PMO (`/api/v1/sample-project`, `…/remove`, `…/load`); everyone else gets 403. Kovarti support never loads or removes it for a customer (admin is read-only on customer data).
 - Removing deletes, in one transaction, every row pointing at the sample project, its schedules, its tasks or its example people (found through `information_schema`), then the seed's own `demo-` rows. Nothing without a `demo-` link is touched. The append-only audit ledger is never deleted from. An example person the company's own work uses (a real task assigned to them, a booking, a RAID owner) is **kept** with their rows, and the page names them.
 - While loaded, the sample is excluded from company-wide totals (portfolio, dashboard, budgets/EVM, capacity and workload, Team Planner, briefing, alerts, reports).
 - **No weekend dates (October 2026).** The seed's fixed dates put some tasks, sprints, meetings, a timesheet line, expenses, risk dates and a time-off block on Saturdays/Sundays. `T081_sample_no_weekends.sql` moves each to the Friday before, in every company (sample rows only). **Load** runs the seed and then its fixes (`SampleProjectService.SAMPLE_FIX_FILES`: T076 spend, T081 weekends), so a reloaded sample matches.
@@ -191,10 +199,10 @@ Key variables in `.env` (never commit secrets):
 - When disabled, all AI endpoints return a 503 with a descriptive message.
 
 ### Server Settings
-- **Fastify** listens on `PORT` (default 3001) behind LiteSpeed + Passenger in production.
-- Static assets are served directly by LiteSpeed; API routes proxy to Fastify.
+- **Fastify** listens on `PORT` (default 3001) behind **Nginx** in production, run as the `pm-app` systemd service.
+- Static assets are served directly by Nginx from `/opt/pm-app/client-dist`; API routes proxy to Fastify.
 - CSP headers are managed by Helmet (currently in report-only mode).
-- **Health Snapshot Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 03:00 to snapshot each active project's health score into the `project_health_history` table (migration 038). This data powers the Health Trends sparklines on the dashboard. A manual trigger is available at `POST /api/v1/predictions/health/snapshot` (admin only).
+- **Health Snapshot Cron** — A daily job (`pm-cron@health-snapshot`) runs at 03:00 UTC to snapshot each active project's health score into the `project_health_history` table (migration 038). This data powers the Health Trends sparklines on the dashboard. A manual trigger is available at `POST /api/v1/predictions/health/snapshot` (admin only).
 ### Scheduled jobs — where they are defined
 
 Scheduled work does **not** run inside the app. It runs as systemd timers on each
@@ -221,7 +229,7 @@ Run one by hand: `sudo systemctl start pm-cron@<name>.service`
 
 Inspect: `systemctl list-timers 'pm-cron@*'` and `journalctl -u pm-cron@<name>.service`
 
-- **Trial Reminder Cron** — When `AGENT_ENABLED=true`, a daily cron job runs at 09:00 to send trial expiry reminder emails. It sends emails at the 7-day, 3-day and 1-day warnings, and on expiry. It only ever touches free-tier trials (`subscription_tier = 'trial'`) — a paying customer is never told their trial is expiring, and the expired-trial downgrade in the same job carries the same restriction so it cannot lock out an account that has paid. Emails use a polished dark-themed HTML template matching the Kovarti brand (teal accent bar, logo, status badge, gradient CTA button, reassurance info points, responsive layout, dark-mode CSS, Outlook VML fallback). Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`, template: `buildTrialEmailHtml()` in `EmailService.ts`.
+- **Trial Reminder Cron** — A daily job (`pm-cron@trial-reminder`) runs at 09:00 UTC to send trial expiry reminder emails. It sends emails at the 7-day, 3-day and 1-day warnings, and on expiry. It only ever touches free-tier trials (`subscription_tier = 'trial'`) — a paying customer is never told their trial is expiring, and the expired-trial downgrade in the same job carries the same restriction so it cannot lock out an account that has paid. Emails use a polished dark-themed HTML template matching the Kovarti brand (teal accent bar, logo, status badge, gradient CTA button, reassurance info points, responsive layout, dark-mode CSS, Outlook VML fallback). Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`, template: `buildTrialEmailHtml()` in `EmailService.ts`.
 - **Pending Payment Sweep** — Daily at 09:30, `src/server/services/scheduling/pendingPaymentJob.ts`. Looks after accounts stuck in `incomplete` (chose a paid plan, never completed checkout). For each one it asks Stripe directly whether the payment in fact succeeded and activates the account if so — this is the backstop behind `POST /stripe/reconcile`, which the client calls when someone returns from checkout, and it exists because a dropped webhook would otherwise lock out a customer who has paid. Genuinely unpaid signups get one reminder email after 2 days (Redis key `pending-payment-reminded:{userId}`) and the empty account is deactivated after 14 days, unless it already owns a provisioned workspace, in which case it is left for a human. An account that cannot be verified with Stripe is never acted on.
 
 ### Tier ENUM and Feature Gating
@@ -237,7 +245,7 @@ The subscription tier is stored as a `tier` ENUM column on both the `users` tabl
 | `business` | `sme` |
 | `consultant` | `enterprise` |
 
-**`requirePaidTier` middleware** blocks trial users from accessing advanced features. Any route decorated with this middleware returns `403 Forbidden` when the requesting user is on the `trial` tier. Paid tiers (consultant, sme, enterprise) pass through without restriction.
+**`requirePaidTier` middleware** blocks trial users from accessing advanced features. Any route decorated with this middleware returns `403 Forbidden` when the requesting user is on the `trial` tier. Paid tiers (consultant, sme, enterprise) pass through without restriction. When such a refusal answers a change (not a page load), the app opens the **Part of a paid plan** window with **View Plans** (October 2026); page loads stay quiet.
 
 ---
 
@@ -392,14 +400,15 @@ The following custom indexes exist beyond the default primary/foreign key indexe
 
 | Index | Table | Column(s) | Purpose |
 |-------|-------|-----------|---------|
-| `idx_tasks_end_date` | `tasks` | `end_date` | Speeds up the overdue task scan (`AgentSchedulerService`) which runs every 2 minutes |
+| `idx_tasks_end_date` | `tasks` | `end_date` | Speeds up the overdue task scan (`pm-cron@overdue-scan`, every 15 minutes — only does work when `AGENT_ENABLED=true`, which is off on both servers) |
 
 ---
 
 ## 9. Policy Engine
 
 ### Configuring Rules
-- **Settings > Policies** -- create automated rules that trigger on project or task events.
+- There is no screen for policies in the app; they are created and listed through the API (`/api/v1/policies`). The project compliance report shows how often they were checked.
+- Rules trigger on project or task events.
 - Example rules: auto-assign reviewers, enforce mandatory fields, block status transitions without approvals.
 
 ### Rule Structure
@@ -411,18 +420,17 @@ The following custom indexes exist beyond the default primary/foreign key indexe
 ## 10. Workflow Management
 
 ### DAG Workflow Engine
-- Create directed acyclic graph (DAG) workflows under **Settings > Workflows**.
+- Create directed acyclic graph (DAG) workflows on the **Workflows** page (sidebar → Manage → Workflows; PMs, PMOs and executives).
 - Six node types: trigger, condition, action, approval, delay, agent.
 - Define stages, transitions, and approval gates visually or via JSON.
 
 ### Event-Driven Triggers
 - Workflows fire automatically on task events (create, update, priority change, assignment change, dependency change).
 - Project-level triggers fire on budget threshold crossings and status changes.
-- A 15-minute overdue-task scanner detects past-due tasks and fires `date_passed` triggers.
-- Configure the scan interval with `AGENT_OVERDUE_SCAN_MINUTES` (default: 15).
+- An overdue-task scanner (`pm-cron@overdue-scan`, every 15 minutes) detects past-due tasks and fires `date_passed` triggers. **It only runs when `AGENT_ENABLED=true`, which is currently off on staging and production — so `date_passed` triggers do not fire today.** The interval is set by the timer file in `deploy/systemd/`; `AGENT_OVERDUE_SCAN_MINUTES` is no longer read.
 
 ### Monitoring Executions
-- View active workflow instances under **Projects > Workflows**.
+- View workflow runs on the **Workflows** page → **Executions** tab.
 - Track which stage each item is in, who approved, and time spent per stage.
 
 ### Approval Gates
@@ -442,13 +450,12 @@ The following custom indexes exist beyond the default primary/foreign key indexe
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AGENT_ENABLED` | Enable/disable agent scheduler | `false` |
-| `AGENT_CRON_SCHEDULE` | Cron expression for daily scan | `0 2 * * *` (2 AM) |
-| `AGENT_OVERDUE_SCAN_MINUTES` | Overdue task scan interval | `15` |
-| `AGENT_DELAY_THRESHOLD_DAYS` | Minimum delay days to flag | `3` |
-| `AGENT_BUDGET_CPI_THRESHOLD` | CPI below which budget alert fires | `0.9` |
-| `AGENT_BUDGET_OVERRUN_THRESHOLD` | AI overrun probability threshold | `60` |
-| `AGENT_MC_CONFIDENCE_LEVEL` | Monte Carlo confidence level to check | `80` |
+| `AGENT_ENABLED` | Switches on the two jobs that need it: the nightly checks (`pm-cron@agent-scan`) and the overdue-task scan (`pm-cron@overdue-scan`). **Off (`false`) on staging and production** — so neither does any work today. Every other scheduled job runs regardless. | `false` |
+| `AGENT_DELAY_THRESHOLD_DAYS` | Minimum delay days to flag (slipping-tasks check) | `3` |
+| `AGENT_BUDGET_CPI_THRESHOLD` | CPI below which the budget check alerts | `0.9` |
+| `AGENT_MC_CONFIDENCE_LEVEL` | Monte Carlo confidence level the schedule-risk check uses | `80` |
+| `AGENT_CRON_SCHEDULE`, `AGENT_OVERDUE_SCAN_MINUTES` | **Not used.** Timing comes from the timer files in `deploy/systemd/` (nightly checks 02:00 UTC, overdue scan every 15 minutes). Shown on Admin → Configuration but changing them does nothing. | — |
+| `AGENT_BUDGET_OVERRUN_THRESHOLD` | **Not used.** The budget check no longer asks AI for an overrun probability, so this threshold is never compared. | `50` |
 
 ### Kill Switch (Emergency Stop)
 
@@ -498,37 +505,6 @@ Each agent has an independent circuit breaker:
 
 Circuit breakers reset automatically — no manual intervention needed unless the root cause persists.
 
-### Autonomous Execution (Tier 3)
-
-Agents can be promoted to Tier 3 (autonomous execution) after meeting eligibility criteria:
-- 30+ days of operation history
-- 20+ proposals generated
-- 80%+ acceptance rate
-- 70%+ effectiveness rate (executed / accepted)
-- Zero rollbacks
-
-**API Endpoints:**
-
-```bash
-# List active autonomy configurations
-GET /api/v1/agent/autonomy
-
-# Check if an agent is eligible for promotion
-GET /api/v1/agent/autonomy/:agentId/eligibility?projectId=optional
-
-# Promote agent to Tier 3 (admin scope required)
-PUT /api/v1/agent/autonomy/:agentId
-Body: {"action": "promote", "projectId": "optional", "minConfidenceThreshold": 80, "maxRiskLevel": "low"}
-
-# Demote agent back to Tier 2
-PUT /api/v1/agent/autonomy/:agentId
-Body: {"action": "demote", "projectId": "optional"}
-```
-
-When an agent is at Tier 3, proposals with confidence >= threshold and risk <= max risk level are automatically approved and executed. All auto-executions are logged in the console and proposal history.
-
-**Database:** Requires migration `003_agent_autonomy.sql` to create `agent_autonomy_config` table.
-
 ### Rate Limiting
 
 Proposal creation is rate-limited to prevent alert fatigue:
@@ -538,6 +514,8 @@ Proposal creation is rate-limited to prevent alert fatigue:
 - 30 proposals across all agents per project per 7 days
 
 ### Nightly checks (October 2026)
+
+**Switched off today:** `AGENT_ENABLED` is not set on staging or production, so these checks do not run and nothing appears on a project's Agent Activity tab from them. Switch on staging first.
 
 With `AGENT_ENABLED=true` the nightly job runs three checks for every active project — no AI, nothing changed, the project's PM gets one alert per plan or project until they've read it:
 
@@ -820,7 +798,7 @@ This restores into a throwaway database and reports what came back. Until
 | Issue                        | Resolution                                                    |
 |------------------------------|---------------------------------------------------------------|
 | Users cannot log in          | Check credentials, token expiry, cookie domain, HTTPS config. If a user is stuck with an expired login token, use the **Unlock** button on Admin > Users or call `POST /api/v1/admin/users/:id/clear-login-token`. |
-| API returns 503              | Verify Fastify is running; check Passenger logs.              |
+| API returns 503              | Verify Fastify is running: `sudo systemctl status pm-app`; logs with `journalctl -u pm-app`. |
 | AI features not working      | Confirm `AI_ENABLED=true` and valid `ANTHROPIC_API_KEY`.      |
 | Agents not running           | Check `AGENT_ENABLED=true`; check kill switch state via `GET /api/v1/agent/kill-switch`. |
 | Kill switch left on          | Re-enable via `POST /api/v1/agent/kill-switch {"action":"enable"}`. |
