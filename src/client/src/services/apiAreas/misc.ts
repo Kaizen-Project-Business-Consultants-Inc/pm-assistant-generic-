@@ -42,10 +42,23 @@ export class MiscApi extends ApiBase {
     return response.data;
   }
 
-  /** Generic request helper for one-off API calls */
+  /**
+   * Generic request helper for one-off API calls. `data` is the request body for POST / PUT,
+   * the query string for GET (`?key=value`), and the JSON body for DELETE (axios `{ data }`,
+   * as the app's other DELETEs with a body send it). axios's second argument to get/delete
+   * is the request options, not a body — passing `data` there used to send nothing.
+   */
   async request(method: 'get' | 'post' | 'put' | 'delete', path: string, data?: unknown) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await this.api[method](path, data as any);
+    let response;
+    if (method === 'get') {
+      response = await this.api.get(path, data === undefined ? undefined : { params: data });
+    } else if (method === 'delete') {
+      response = await this.api.delete(path, data === undefined ? undefined : { data });
+    } else if (method === 'post') {
+      response = await this.api.post(path, data);
+    } else {
+      response = await this.api.put(path, data);
+    }
     return response.data;
   }
 
