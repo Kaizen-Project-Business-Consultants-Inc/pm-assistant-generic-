@@ -488,6 +488,7 @@ export async function operationsRoutes(fastify: FastifyInstance) {
       // Summary aggregates — query directly, don't rely on tenants array
       let totalTenants = 0;
       let totalUsers = 0;
+      let neverConfirmedUsers = 0;
       let roleBreakdown: { role: string; count: number }[] = [];
       let aiDailyUsage: { date: string; requests: number; inputTokens: number; outputTokens: number; cost: number }[] = [];
       try {
@@ -497,8 +498,12 @@ export async function operationsRoutes(fastify: FastifyInstance) {
         } else {
           totalTenants = 1;
         }
-        const userRows = await databaseService.queryControlPlane<{ cnt: number }>(`SELECT COUNT(*) as cnt FROM users WHERE is_active = 1`);
+        // never-confirmed sign-ups aren't users yet: counted apart (constants/neverConfirmed.ts)
+        const userRows = await databaseService.queryControlPlane<{ cnt: number; never: number }>(
+          `SELECT SUM(CASE WHEN NOT ${neverConfirmedSql()} THEN 1 ELSE 0 END) as cnt, SUM(CASE WHEN ${neverConfirmedSql()} THEN 1 ELSE 0 END) as never
+             FROM users WHERE is_active = 1`);
         totalUsers = Number(userRows[0]?.cnt || 0);
+        neverConfirmedUsers = Number(userRows[0]?.never || 0);
 
         // Role breakdown
         const roleRows = await databaseService.queryControlPlane<{ role: string; cnt: number }>(
@@ -561,7 +566,7 @@ export async function operationsRoutes(fastify: FastifyInstance) {
           ai: aiBudget,
           disk,
         },
-        summary: { totalTenants, totalUsers, estimatedHeadroom },
+        summary: { totalTenants, totalUsers, neverConfirmedUsers, estimatedHeadroom },
         drilldown: {
           roleBreakdown,
           aiDailyUsage,

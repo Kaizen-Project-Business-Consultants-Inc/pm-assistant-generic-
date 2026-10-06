@@ -97,7 +97,7 @@ interface WebhookStatsData {
 
 interface OperationsData {
   system: SystemData;
-  summary: { totalTenants: number; totalUsers: number; estimatedHeadroom: number };
+  summary: { totalTenants: number; totalUsers: number; neverConfirmedUsers?: number; estimatedHeadroom: number };
   drilldown: DrilldownData;
   warnings: Warning[];
   tenants: TenantRow[];
@@ -286,6 +286,11 @@ export function AdminOperationsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Total Users</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">{data.summary.totalUsers}</p>
+                    {!!data.summary.neverConfirmedUsers && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400" title="Signed up but never confirmed their email. Not counted. Nothing is deleted.">
+                        + {data.summary.neverConfirmedUsers} never confirmed (not counted)
+                      </p>
+                    )}
                   </div>
                   {expandedPanel === 'users' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
                 </div>

@@ -48,6 +48,8 @@ describe('never-confirmed sign-ups: labelled, not counted, never deleted', () =>
     for (const f of [['pages', 'admin', 'AdminTenantsPage.tsx'], ['pages', 'admin', 'AdminOperationsPage.tsx'], ['pages', 'admin', 'AdminUsersPage.tsx']]) {
       expect(client(...f)).toMatch(/<NeverConfirmedBadge/);
     }
-    expect(client('pages', 'AdminPage.tsx')).toMatch(/value=\{s\.neverConfirmedUsers\}/);
+    // the live Operations page (pages/AdminPage.tsx was never routed — the figure is shown here)
+    expect(client('pages', 'admin', 'AdminOperationsPage.tsx')).toMatch(/data\.summary\.neverConfirmedUsers/);
+    expect(server('routes', 'admin', 'operations.ts')).toMatch(/summary: \{ totalTenants, totalUsers, neverConfirmedUsers, estimatedHeadroom \}/);
   });
 });

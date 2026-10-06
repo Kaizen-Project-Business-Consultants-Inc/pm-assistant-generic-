@@ -58,7 +58,7 @@ The **Admin > Users** table displays 14 sortable columns. Click any column heade
 
 **Filters:** Text search (name, email, username, organization), role dropdown, tier dropdown, status dropdown, subscription status dropdown.
 
-**Never confirmed sign-ups (October 2026).** Someone who filled in the sign-up form but never clicked "confirm your email" (so never signed in) is labelled **Never confirmed** — on Users, on the Tenants list when the company's owner is one, and on Operations. They are left out of the user counts (System tab: Total / Active users; Operations: per company and in total); the System tab shows how many there are as **Never confirmed (not counted)**. Nothing is deleted: if they confirm later they become a normal account and trial. Rule: `constants/neverConfirmed.ts` (email not verified and never logged in). The System tab's numbers were blank before this (it read field names the API never sends).
+**Never confirmed sign-ups (October 2026).** Someone who filled in the sign-up form but never clicked "confirm your email" (so never signed in) is labelled **Never confirmed** — on Users, on the Tenants list when the company's owner is one, and on Operations. They are left out of the user counts (Operations: **Total Users**, per company and in total); the Total Users card shows how many there are underneath ("+ N never confirmed (not counted)"). Nothing is deleted: if they confirm later they become a normal account and trial. Rule: `constants/neverConfirmed.ts` (email not verified and never logged in).
 
 ### Subscription Event History
 
