@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   FileText,
@@ -209,6 +209,7 @@ const ReportViewerModal: React.FC<{
               <Download className="w-4 h-4" />
             </button>
             <button
+              aria-label="Close"
               onClick={onClose}
               className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
@@ -262,6 +263,7 @@ const ReportViewerModal: React.FC<{
 // ---------------------------------------------------------------------------
 
 export const ReportsPage: React.FC = () => {
+  const uid = useId();
   const queryClient = useQueryClient();
 
   // Project selector
@@ -772,12 +774,13 @@ export const ReportsPage: React.FC = () => {
           <div className="flex flex-wrap items-end gap-3">
             {/* Type dropdown */}
             <div className="min-w-[160px]">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label htmlFor={`${uid}-type`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 <Filter className="w-3 h-3 inline mr-1" />
                 Type
               </label>
               <div className="relative">
                 <select
+                  id={`${uid}-type`}
                   value={typeFilter}
                   onChange={e => { setTypeFilter(e.target.value); setPage(1); }}
                   className="input w-full text-xs appearance-none pr-7 py-1.5"
@@ -792,12 +795,13 @@ export const ReportsPage: React.FC = () => {
 
             {/* Search */}
             <div className="min-w-[180px] flex-1 max-w-[260px]">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label htmlFor={`${uid}-search`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 <Search className="w-3 h-3 inline mr-1" />
                 Search
               </label>
               <div className="relative">
                 <input
+                  id={`${uid}-search`}
                   type="text"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
@@ -811,11 +815,12 @@ export const ReportsPage: React.FC = () => {
 
             {/* Date From */}
             <div className="min-w-[140px]">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label htmlFor={`${uid}-from`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 <Calendar className="w-3 h-3 inline mr-1" />
                 From
               </label>
               <input
+                id={`${uid}-from`}
                 type="date"
                 value={dateFrom}
                 onChange={e => { setDateFrom(e.target.value); setPage(1); }}
@@ -825,10 +830,11 @@ export const ReportsPage: React.FC = () => {
 
             {/* Date To */}
             <div className="min-w-[140px]">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
+              <label htmlFor={`${uid}-to`} className="block text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
                 To
               </label>
               <input
+                id={`${uid}-to`}
                 type="date"
                 value={dateTo}
                 onChange={e => { setDateTo(e.target.value); setPage(1); }}

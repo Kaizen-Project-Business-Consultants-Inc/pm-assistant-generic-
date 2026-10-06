@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, X, Download, Mail, Calendar, Trash2, Lock, Pencil, Save, RotateCcw, FileDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -62,6 +62,7 @@ const RAG_COLORS: Record<string, string> = {
 };
 
 export function StatusReportModal({ projectId, projectName, onClose }: { projectId: string; projectName: string; onClose: () => void }) {
+  const uid = useId();
   const [report, setReport] = useState<any>(null);
   const [isSample, setIsSample] = useState(false);
   const [tab, setTab] = useState<'report' | 'email' | 'schedule'>('report');
@@ -379,7 +380,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+            <button aria-label="Close" onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
               <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
@@ -442,8 +443,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 <div className="space-y-5">
                   {/* Executive Summary */}
                   <div>
-                    <label className={labelClass}>Executive Summary</label>
+                    <label htmlFor={`${uid}-executive-summary`} className={labelClass}>Executive Summary</label>
                     <textarea
+                      id={`${uid}-executive-summary`}
                       value={editData.executiveSummary}
                       onChange={e => setEditData({ ...editData, executiveSummary: e.target.value })}
                       rows={4}
@@ -461,6 +463,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                           <select
                             value={area.status}
                             onChange={e => updateArea(i, 'status', e.target.value)}
+                            aria-label={`Status for ${area.name}`}
                             className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-20"
                             style={{ backgroundColor: RAG_COLORS[area.status] + '60' }}
                           >
@@ -470,6 +473,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                             type="text"
                             value={area.comments}
                             onChange={e => updateArea(i, 'comments', e.target.value)}
+                            aria-label={`Commentary for ${area.name}`}
                             placeholder="Commentary"
                             className={inputClass + ' flex-1'}
                           />
@@ -487,7 +491,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                     <div className="space-y-1 mt-1">
                       {editData.achievements.map((a, i) => (
                         <div key={i} className="flex items-center gap-1">
-                          <input type="text" value={a} onChange={e => updateAchievement(i, e.target.value)} className={inputClass + ' flex-1'} />
+                          <input type="text" value={a} onChange={e => updateAchievement(i, e.target.value)} aria-label={`Achievement ${i + 1}`} className={inputClass + ' flex-1'} />
                           <button onClick={() => removeAchievement(i)} className="p-1 text-gray-500 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
                         </div>
                       ))}
@@ -506,7 +510,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                     <div className="space-y-1 mt-1">
                       {editData.plannedActivities.map((a, i) => (
                         <div key={i} className="flex items-center gap-1">
-                          <input type="text" value={a} onChange={e => updatePlanned(i, e.target.value)} className={inputClass + ' flex-1'} />
+                          <input type="text" value={a} onChange={e => updatePlanned(i, e.target.value)} aria-label={`Planned activity ${i + 1}`} className={inputClass + ' flex-1'} />
                           <button onClick={() => removePlanned(i)} className="p-1 text-gray-500 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
                         </div>
                       ))}
@@ -529,11 +533,11 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                             <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{item.ref}</span>
                             <button onClick={() => removeAttention(i)} className="p-0.5 text-gray-500 hover:text-red-500" title="Remove"><X className="w-3 h-3" /></button>
                           </div>
-                          <input type="text" value={item.matter} onChange={e => updateAttention(i, 'matter', e.target.value)} placeholder="Matter requiring attention" className={inputClass} />
+                          <input type="text" value={item.matter} onChange={e => updateAttention(i, 'matter', e.target.value)} placeholder="Matter requiring attention" aria-label={`Matter requiring attention, ${item.ref}`} className={inputClass} />
                           <div className="grid grid-cols-3 gap-1">
-                            <input type="text" value={item.owner} onChange={e => updateAttention(i, 'owner', e.target.value)} placeholder="Owner" className={inputClass} />
-                            <input type="text" value={item.dateNeeded} onChange={e => updateAttention(i, 'dateNeeded', e.target.value)} placeholder="Date needed" className={inputClass} />
-                            <input type="text" value={item.impactIfDelayed} onChange={e => updateAttention(i, 'impactIfDelayed', e.target.value)} placeholder="Impact if delayed" className={inputClass} />
+                            <input type="text" value={item.owner} onChange={e => updateAttention(i, 'owner', e.target.value)} placeholder="Owner" aria-label={`Owner, ${item.ref}`} className={inputClass} />
+                            <input type="text" value={item.dateNeeded} onChange={e => updateAttention(i, 'dateNeeded', e.target.value)} placeholder="Date needed" aria-label={`Date needed, ${item.ref}`} className={inputClass} />
+                            <input type="text" value={item.impactIfDelayed} onChange={e => updateAttention(i, 'impactIfDelayed', e.target.value)} placeholder="Impact if delayed" aria-label={`Impact if delayed, ${item.ref}`} className={inputClass} />
                           </div>
                         </div>
                       ))}
@@ -556,8 +560,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
           {tab === 'email' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
+                <label htmlFor={`${uid}-recipients`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
                 <input
+                  id={`${uid}-recipients`}
                   type="text"
                   value={emailRecipients}
                   onChange={e => setEmailRecipients(e.target.value)}
@@ -623,8 +628,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
+                    <label htmlFor={`${uid}-frequency`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
                     <select
+                      id={`${uid}-frequency`}
                       value={scheduleFrequency}
                       onChange={e => setScheduleFrequency(e.target.value as any)}
                       className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -637,8 +643,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
 
                   {scheduleFrequency === 'weekly' && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
+                      <label htmlFor={`${uid}-day-of-week`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
                       <select
+                        id={`${uid}-day-of-week`}
                         value={scheduleDayOfWeek}
                         onChange={e => setScheduleDayOfWeek(Number(e.target.value))}
                         className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -650,8 +657,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
 
                   {scheduleFrequency === 'monthly' && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
+                      <label htmlFor={`${uid}-day-of-month`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
                       <input
+                        id={`${uid}-day-of-month`}
                         type="number"
                         min={1}
                         max={31}
@@ -663,8 +671,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                   )}
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                    <label htmlFor={`${uid}-time`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
                     <input
+                      id={`${uid}-time`}
                       type="time"
                       value={scheduleTime}
                       onChange={e => setScheduleTime(e.target.value)}
@@ -674,8 +683,9 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
+                  <label htmlFor={`${uid}-recipients-2`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
                   <input
+                    id={`${uid}-recipients-2`}
                     type="text"
                     value={scheduleRecipients}
                     onChange={e => setScheduleRecipients(e.target.value)}

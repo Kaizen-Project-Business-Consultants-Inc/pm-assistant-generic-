@@ -67,6 +67,7 @@ export const InstantReportModal: React.FC<InstantReportModalProps> = ({ title, h
               <Download className="w-4 h-4" />
             </button>
             <button
+              aria-label="Close"
               onClick={onClose}
               className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   ArrowUp,
@@ -232,6 +232,7 @@ function createEmptySection(type: SectionType): ReportSection {
 }
 
 export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerProps) {
+  const uid = useId();
   const [form, setForm] = useState<TemplateFormData>({
     name: '',
     description: '',
@@ -385,8 +386,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-5 mb-6">
         <div className="grid grid-cols-1 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Template Name *</label>
+            <label htmlFor={`${uid}-template-name`} className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Template Name *</label>
             <input
+              id={`${uid}-template-name`}
               type="text"
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -395,8 +397,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
+            <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Description</label>
             <textarea
+              id={`${uid}-description`}
               value={form.description}
               onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
               placeholder="Brief description of what this report covers..."
@@ -477,6 +480,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => moveSection(index, 'up')}
+                    aria-label={`Move ${section.title || 'section'} up`}
                     disabled={index === 0}
                     className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
                   >
@@ -484,6 +488,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                   </button>
                   <button
                     onClick={() => moveSection(index, 'down')}
+                    aria-label={`Move ${section.title || 'section'} down`}
                     disabled={index === form.sections.length - 1}
                     className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed rounded transition-colors"
                   >
@@ -491,6 +496,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                   </button>
                   <button
                     onClick={() => removeSection(section.id)}
+                    aria-label={`Remove ${section.title || 'section'}`}
                     className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 rounded transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -500,8 +506,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
 
               {/* Section Title */}
               <div className="mb-3">
-                <label className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Section Title</label>
+                <label htmlFor={`${uid}-${section.id}-title`} className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Section Title</label>
                 <input
+                  id={`${uid}-${section.id}-title`}
                   type="text"
                   value={section.title}
                   onChange={(e) => updateSection(section.id, { title: e.target.value })}
@@ -513,8 +520,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
               {/* Section Type + Data Source */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                 <div>
-                  <label className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Type</label>
+                  <label htmlFor={`${uid}-${section.id}-type`} className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Type</label>
                   <select
+                    id={`${uid}-${section.id}-type`}
                     value={section.type}
                     onChange={(e) => updateSection(section.id, { type: e.target.value as SectionType })}
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800"
@@ -525,8 +533,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Data Source</label>
+                  <label htmlFor={`${uid}-${section.id}-source`} className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Data Source</label>
                   <select
+                    id={`${uid}-${section.id}-source`}
                     value={section.dataSource}
                     onChange={(e) => updateSection(section.id, { dataSource: e.target.value as DataSource })}
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800"
@@ -537,8 +546,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Group By</label>
+                  <label htmlFor={`${uid}-${section.id}-group`} className="block text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-1 tracking-wider">Group By</label>
                   <select
+                    id={`${uid}-${section.id}-group`}
                     value={section.groupBy}
                     onChange={(e) => updateSection(section.id, { groupBy: e.target.value })}
                     className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800"
@@ -556,8 +566,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                 <p className="text-xs uppercase font-medium text-gray-500 dark:text-gray-400 mb-2 tracking-wider">Filters</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Start Date</label>
+                    <label htmlFor={`${uid}-${section.id}-start`} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Start Date</label>
                     <input
+                      id={`${uid}-${section.id}-start`}
                       type="date"
                       value={section.filters.dateStart}
                       onChange={(e) => updateSectionFilter(section.id, 'dateStart', e.target.value)}
@@ -565,8 +576,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">End Date</label>
+                    <label htmlFor={`${uid}-${section.id}-end`} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">End Date</label>
                     <input
+                      id={`${uid}-${section.id}-end`}
                       type="date"
                       value={section.filters.dateEnd}
                       onChange={(e) => updateSectionFilter(section.id, 'dateEnd', e.target.value)}
@@ -574,8 +586,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Project</label>
+                    <label htmlFor={`${uid}-${section.id}-project`} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Project</label>
                     <select
+                      id={`${uid}-${section.id}-project`}
                       value={section.filters.projectId}
                       onChange={(e) => updateSectionFilter(section.id, 'projectId', e.target.value)}
                       className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800"
@@ -587,8 +600,9 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Status</label>
+                    <label htmlFor={`${uid}-${section.id}-status`} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">Status</label>
                     <select
+                      id={`${uid}-${section.id}-status`}
                       value={section.filters.status}
                       onChange={(e) => updateSectionFilter(section.id, 'status', e.target.value)}
                       className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800"

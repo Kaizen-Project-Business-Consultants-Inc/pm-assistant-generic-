@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Clock, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -31,6 +31,7 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
   editScheduleId,
   onClose,
 }) => {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId || '');
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
@@ -177,8 +178,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
           {/* Project selector (Reports page mode) */}
           {showProjectSelector && !editScheduleId && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Project</label>
+              <label htmlFor={`${uid}-project`} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Project</label>
               <select
+                id={`${uid}-project`}
                 value={selectedProjectId}
                 onChange={(e) => setSelectedProjectId(e.target.value)}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -197,8 +199,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
 
           {/* Frequency */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Frequency</label>
+            <label htmlFor={`${uid}-frequency`} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Frequency</label>
             <select
+              id={`${uid}-frequency`}
               value={frequency}
               onChange={(e) => setFrequency(e.target.value as any)}
               className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -212,8 +215,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
           {/* Day of Week (weekly) */}
           {frequency === 'weekly' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Day of Week</label>
+              <label htmlFor={`${uid}-day-of-week`} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Day of Week</label>
               <select
+                id={`${uid}-day-of-week`}
                 value={dayOfWeek}
                 onChange={(e) => setDayOfWeek(Number(e.target.value))}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -232,8 +236,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
           {/* Day of Month (monthly) */}
           {frequency === 'monthly' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Day of Month</label>
+              <label htmlFor={`${uid}-day-of-month`} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Day of Month</label>
               <select
+                id={`${uid}-day-of-month`}
                 value={dayOfMonth}
                 onChange={(e) => setDayOfMonth(Number(e.target.value))}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -247,8 +252,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
 
           {/* Time of Day */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Time of Day</label>
+            <label htmlFor={`${uid}-time-of-day`} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Time of Day</label>
             <input
+              id={`${uid}-time-of-day`}
               type="time"
               value={timeOfDay}
               onChange={(e) => setTimeOfDay(e.target.value)}
@@ -258,8 +264,9 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
 
           {/* Recipients */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Recipients (comma-separated emails)</label>
+            <label htmlFor={`${uid}-recipients`} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Recipients (comma-separated emails)</label>
             <textarea
+              id={`${uid}-recipients`}
               value={recipients}
               onChange={(e) => setRecipients(e.target.value)}
               rows={2}
@@ -270,10 +277,11 @@ export const ReportScheduleModal: React.FC<ReportScheduleModalProps> = ({
 
           {/* Active Toggle */}
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Active</span>
+            <span id={`${uid}-active`} className="text-sm font-medium text-gray-700 dark:text-gray-200">Active</span>
             <button
               type="button"
               role="switch"
+              aria-labelledby={`${uid}-active`}
               aria-checked={isActive}
               onClick={() => setIsActive(!isActive)}
               className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
