@@ -12,6 +12,8 @@ import {
   formatShortDate,
 } from '../types';
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
+import { COLUMN_DEFS } from '../../tableColumns';
+import { GANTT_TO_TABLE_KEY, TABLE_TO_GANTT_KEY, mergeGanttOrderIntoTableOrder } from '../../columnKeyMap';
 
 /**
  * Gantt grid columns: widths (resize), visibility, order (move + drag reorder), the
@@ -89,19 +91,18 @@ export function useGanttColumns({
     }
   }, [ganttVisibleCols, scheduleId]);
 
-  // Reverse mapping: Gantt key → Table key (for checking external visibility)
-  const ganttKeyToTableKey: Record<string, string> = {
-    pred: 'dependency', succ: 'successor', start: 'startDate', end: 'endDate',
-    dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
-    assigned: 'assignedTo', priority: 'priority', status: 'status', notes: 'notes',
-  };
+  // Gantt key → Table key (shared column state); one list for both directions: columnKeyMap.ts
+  const ganttKeyToTableKey: Record<string, string> = GANTT_TO_TABLE_KEY;
 
   const isColVisible = useCallback((col: GanttColDef): boolean => {
     if (col.alwaysVisible) return true;
     // If external columnState is provided, use its visibility
     if (_columnState) {
-      const tableKey = ganttKeyToTableKey[col.key];
-      if (tableKey) return _columnState.visibleKeys.has(tableKey as any);
+      const tableKey = GANTT_TO_TABLE_KEY[col.key];
+      if (tableKey) return _columnState.visibleKeys.has(tableKey);
+      // Gantt-only columns (Est, Work) have no Table column, so the shared picker can't
+      // switch them on: hidden, as before
+      return false;
     }
     return ganttVisibleCols.has(col.key);
   }, [ganttVisibleCols, _columnState]);
@@ -158,13 +159,6 @@ export function useGanttColumns({
     });
   }, []);
 
-  // Map external columnState keys to Gantt column keys
-  const tableKeyToGanttKey: Record<string, string> = {
-    dependency: 'pred', successor: 'succ', startDate: 'start', endDate: 'end',
-    duration: 'dur', estimatedDays: 'est', estimatedDurationHours: 'work', progressPercentage: 'pct',
-    assignedTo: 'assigned', priority: 'priority', status: 'status', name: 'name',
-  };
-
   /** Columns in user-specified order — uses external columnState if available */
   const orderedColumns = useMemo(() => {
     const colMap = new Map(GANTT_COLUMNS.map(c => [c.key, c]));
@@ -173,7 +167,7 @@ export function useGanttColumns({
     if (_columnState && _columnState.columnOrder.length > 0) {
       const fixedKeys = new Set(['rowNum', 'name', 'editIcon']);
       const mapped = _columnState.columnOrder
-        .map(k => tableKeyToGanttKey[k])
+        .map(k => TABLE_TO_GANTT_KEY[k])
         .filter((k): k is string => !!k && colMap.has(k) && !fixedKeys.has(k));
       // Start with fixed columns, then mapped order, then any Gantt-only columns not in the external order
       const used = new Set([...mapped, ...fixedKeys]);
@@ -192,11 +186,8 @@ export function useGanttColumns({
     orderedKeys: ganttColDragKeys,
     onReorder: (newOrder) => {
       if (_columnState) {
-        // Map Gantt keys back to table keys for external columnState
-        const tableOrder = newOrder
-          .map(k => ganttKeyToTableKey[k] || k)
-          .filter(k => k !== 'rowNum' && k !== 'editIcon');
-        _columnState.setColumnOrder(['rowNum', ...tableOrder] as any);
+        // Write the new order back to the shared (Table) order; Table-only columns keep their places
+        _columnState.setColumnOrder(prev => mergeGanttOrderIntoTableOrder(prev, COLUMN_DEFS.map(c => c.key), newOrder));
       } else {
         setGanttColOrder(newOrder);
       }

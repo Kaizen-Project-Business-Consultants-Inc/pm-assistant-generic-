@@ -36,7 +36,7 @@ In **Gantt mode**, the GanttToolbar is the sole toolbar — the outer ScheduleTo
 [Schedule Name] [Task Count] [Critical Path] [Expand/Collapse] | [Zoom D|W|M|Q|Y] [Fit] [Undo|Redo] | [Search] [Filters] [Columns] [Add] [Delete] [Export] [Overalloc] [Timeline] [Views] [⋯] [Table|Split|Gantt]
 ```
 
-The **[Columns]** control in Gantt mode is the same shared column picker used by Table view (`ColumnPickerDropdown`), bound to the same per-schedule column state — hiding, reordering, or resetting columns in one view applies to the other.
+The **[Columns]** control in Gantt mode is the same shared column picker used by Table view (`ColumnPickerDropdown`), bound to the same per-schedule column state — hiding, reordering, or resetting columns in one view applies to the other. Every Gantt column with a Table counterpart follows it, Resource and Notes included (both were missed until Oct 2026); the Gantt↔Table key pairs are one list in `components/schedule/columnKeyMap.ts`, with a guard test that every column of both views is paired or listed as one-view-only. Dragging columns into a new order in the Gantt moves only the shared columns and leaves Table-only columns (CPM, baseline, cost, WBS…) where they were. Est Days and Work exist only in the Gantt and can't be switched on from the shared picker.
 
 In **Table**, **Kanban**, and **Calendar** modes, the ScheduleToolbar is shown instead (with search, filters, column picker, and CSV export).
 

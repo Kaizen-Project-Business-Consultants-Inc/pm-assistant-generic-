@@ -115,11 +115,60 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     expect(result.current.isColVisible(col('pct'))).toBe(true);
     expect(result.current.isColVisible(col('start'))).toBe(true);
     expect(result.current.isColVisible(col('dur'))).toBe(false); // own default says visible, Table says not
-    expect(result.current.isColVisible(col('resource'))).toBe(false); // no Table key → own state (default hidden)
+    expect(result.current.isColVisible(col('resource'))).toBe(false); // Table says hidden
     expect(keysOf(result.current.orderedColumns)).toEqual(
       ['rowNum', 'name', 'pct', 'start', 'pred', 'succ', 'end', 'dur', 'est', 'work', 'priority', 'assigned', 'resource', 'status', 'notes', 'editIcon'],
     );
     expect(result.current.ganttKeyToTableKey.pct).toBe('progressPercentage');
+  });
+
+  it('Resource and Notes follow the Table\'s saved visibility and order (both were ignored before 2026-10-06)', () => {
+    // The Gantt's own state says Resource is visible — the shared (Table) state wins
+    localStorage.setItem('gantt-visible-cols:s1', JSON.stringify(['resource']));
+    const cs = external(['notes', 'status'], ['rowNum', 'notes', 'status', 'resource']);
+    const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs }));
+    expect(result.current.isColVisible(col('notes'))).toBe(true);
+    expect(result.current.isColVisible(col('resource'))).toBe(false);
+    expect(keysOf(result.current.orderedColumns).slice(0, 5)).toEqual(['rowNum', 'name', 'notes', 'status', 'resource']);
+
+    const cs2 = external(['resource'], ['rowNum', 'resource', 'notes']);
+    const { result: r2 } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs2 }));
+    expect(r2.current.isColVisible(col('resource'))).toBe(true);
+    expect(keysOf(r2.current.orderedColumns).slice(0, 4)).toEqual(['rowNum', 'name', 'resource', 'notes']);
+  });
+
+  it('Est and Work (no Table column) stay hidden under the shared state, whatever the Gantt\'s own state says', () => {
+    localStorage.setItem('gantt-visible-cols:s1', JSON.stringify(['est', 'work']));
+    const cs = external(['status'], []);
+    const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs }));
+    expect(result.current.isColVisible(col('est'))).toBe(false);
+    expect(result.current.isColVisible(col('work'))).toBe(false);
+  });
+
+  it('dragging columns into a new order in the Gantt writes Table keys and keeps Table-only columns in place', () => {
+    const order = ['rowNum', 'name', 'earlyStart', 'status', 'notes', 'wbs', 'resource'];
+    const cs = external(['status', 'notes', 'resource'], order);
+    const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs }));
+    expect(keysOf(result.current.orderedColumns).slice(0, 5)).toEqual(['rowNum', 'name', 'status', 'notes', 'resource']);
+    // Drag Resource onto Status
+    const dt = { effectAllowed: '', dropEffect: '', setData: () => {} };
+    act(() => {
+      result.current.ganttColDrag.handleDragStart({ dataTransfer: dt } as unknown as React.DragEvent, 'resource');
+    });
+    act(() => {
+      result.current.ganttColDrag.handleDragOver({ dataTransfer: dt, preventDefault: () => {} } as unknown as React.DragEvent, 'status');
+    });
+    act(() => {
+      result.current.ganttColDrag.handleDrop({ preventDefault: () => {} } as unknown as React.DragEvent, 'status');
+    });
+    const setOrder = cs.setColumnOrder as unknown as ReturnType<typeof vi.fn>;
+    expect(setOrder).toHaveBeenCalledTimes(1);
+    const next = (setOrder.mock.calls[0][0] as (p: string[]) => string[])(order);
+    // Only the shared columns' slots changed; earlyStart and wbs stayed put; no Gantt keys leak in
+    expect(next.slice(0, 7)).toEqual(['rowNum', 'name', 'earlyStart', 'resource', 'status', 'wbs', 'notes']);
+    expect(next).not.toContain('est');
+    expect(next).not.toContain('estimatedDays');
+    expect(new Set(next).size).toBe(next.length);
   });
 
   it('an empty external order falls back to the Gantt\'s own saved order', () => {
