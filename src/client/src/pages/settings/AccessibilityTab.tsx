@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export const AccessibilityTab: React.FC = () => {
+  const uid = useId();
   const { prefs, updatePrefs } = useAccessibility();
   const [saved, setSaved] = useState(false);
 
@@ -90,10 +91,11 @@ export const AccessibilityTab: React.FC = () => {
       </div>
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Font Size</h2>
+        <h2 id={`${uid}-font-size`} className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Font Size</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Adjust the base font size across the application ({prefs.fontSize}px &middot; {Math.round((prefs.fontSize / 16) * 100)}%)</p>
         <input
           type="range"
+          aria-labelledby={`${uid}-font-size`}
           min={12}
           max={32}
           step={1}

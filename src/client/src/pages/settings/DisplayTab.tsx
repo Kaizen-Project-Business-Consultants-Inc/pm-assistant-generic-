@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Moon, Sun, Save } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { getTimezones } from '../../utils/dateFormat';
@@ -35,6 +35,7 @@ function loadDisplayPrefs(): DisplayPreferences {
 }
 
 export const DisplayTab: React.FC = () => {
+  const uid = useId();
   const [prefs, setPrefs] = useState<DisplayPreferences>(loadDisplayPrefs);
   const [saved, setSaved] = useState(false);
   const setLocale = useLocaleStore((s) => s.setLocale);
@@ -91,9 +92,10 @@ export const DisplayTab: React.FC = () => {
         </div>
       </div>
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Time Zone</h2>
+        <h2 id={`${uid}-timezone`} className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Time Zone</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">All dates and times will be displayed in this time zone.</p>
         <select
+          aria-labelledby={`${uid}-timezone`}
           value={prefs.timezone}
           onChange={(e) => setPrefs((p) => ({ ...p, timezone: e.target.value }))}
           className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 bg-white dark:bg-gray-700 dark:text-gray-100 max-w-md w-full"

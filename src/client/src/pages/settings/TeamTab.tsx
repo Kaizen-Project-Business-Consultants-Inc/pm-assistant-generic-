@@ -105,6 +105,7 @@ export const TeamTab: React.FC = () => {
           <input
             type="email"
             placeholder="email@example.com"
+            aria-label="Email address to invite"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -117,6 +118,7 @@ export const TeamTab: React.FC = () => {
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value)}
+              aria-label="Role"
               className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
             >
               {availableRoleOptions.map(r => (
@@ -181,6 +183,7 @@ export const TeamTab: React.FC = () => {
                       <select
                         value={m.role}
                         onChange={(e) => updateRoleMutation.mutate({ memberId: m.id, role: e.target.value })}
+                        aria-label={`Role for ${m.fullName || m.username}`}
                         className="rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-white"
                       >
                         {availableRoleOptions.map(r => (
@@ -307,6 +310,7 @@ const GuestSection: React.FC = () => {
           <input
             type="email"
             placeholder="guest@example.com"
+            aria-label="Guest email address"
             value={guestEmail}
             onChange={(e) => setGuestEmail(e.target.value)}
             className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
@@ -314,6 +318,7 @@ const GuestSection: React.FC = () => {
           <select
             value={guestProjectId}
             onChange={(e) => setGuestProjectId(e.target.value)}
+            aria-label="Project"
             className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500"
           >
             <option value="">Select project...</option>

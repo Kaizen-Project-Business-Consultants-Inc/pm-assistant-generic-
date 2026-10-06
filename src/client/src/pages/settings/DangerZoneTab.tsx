@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Download, Trash2, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
 export const DangerZoneTab: React.FC = () => {
+  const uid = useId();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [deleteInput, setDeleteInput] = useState('');
@@ -81,8 +82,8 @@ export const DangerZoneTab: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-red-900 dark:text-red-300">Are you absolutely sure?</p>
                   <p className="text-sm text-red-700 dark:text-red-400 mt-1">This will permanently delete your account, all projects, tasks, and data. This action is irreversible.</p>
-                  <p className="text-sm text-red-700 dark:text-red-400 mt-2">Type <span className="font-mono font-bold">DELETE</span> to confirm:</p>
-                  <input type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)} placeholder="Type DELETE to confirm" className="mt-2 w-full max-w-xs rounded-md border border-red-300 dark:border-red-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" />
+                  <p id={`${uid}-type-delete-to-label`} className="text-sm text-red-700 dark:text-red-400 mt-2">Type <span className="font-mono font-bold">DELETE</span> to confirm:</p>
+                  <input aria-labelledby={`${uid}-type-delete-to-label`} type="text" value={deleteInput} onChange={(e) => setDeleteInput(e.target.value)} placeholder="Type DELETE to confirm" className="mt-2 w-full max-w-xs rounded-md border border-red-300 dark:border-red-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500" />
                 </div>
               </div>
             </div>

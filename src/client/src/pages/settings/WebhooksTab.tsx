@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Copy, Check, Send, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -12,6 +12,7 @@ const WEBHOOK_EVENTS = [
 ];
 
 export const WebhooksTab: React.FC = () => {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -90,7 +91,7 @@ export const WebhooksTab: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-sm font-mono break-all dark:text-gray-100">{createdSecret}</code>
-                  <button onClick={() => handleCopy(createdSecret)} className="flex items-center gap-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-600">
+                  <button onClick={() => handleCopy(createdSecret)} aria-label="Copy signing secret" className="flex items-center gap-1 px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-sm hover:bg-gray-50 dark:hover:bg-gray-600">
                     {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
                   </button>
                 </div>
@@ -99,8 +100,9 @@ export const WebhooksTab: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payload URL</label>
+                  <label htmlFor={`${uid}-payload-url`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payload URL</label>
                   <input
+                    id={`${uid}-payload-url`}
                     type="url"
                     value={newUrl}
                     onChange={(e) => setNewUrl(e.target.value)}
@@ -164,6 +166,7 @@ export const WebhooksTab: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setConfirmDeleteWhId(wh.id)}
+                      aria-label={`Delete webhook ${wh.url}`}
                       className="text-sm px-3 py-1.5 rounded-md border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

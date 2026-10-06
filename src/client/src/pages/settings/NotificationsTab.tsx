@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
@@ -60,6 +60,7 @@ const MiniToggle: React.FC<{ checked: boolean; onChange: () => void; label: stri
 );
 
 export const NotificationsTab: React.FC = () => {
+  const uid = useId();
   const { user } = useAuthStore();
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [digestFrequency, setDigestFrequency] = useState<'none' | 'daily' | 'weekly'>('none');
@@ -140,7 +141,7 @@ export const NotificationsTab: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Browser Notifications</h2>
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable push notifications</p>
+              <p id={`${uid}-push`} className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable push notifications</p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {pushPermission === 'denied'
                   ? 'Notifications are blocked. Please update your browser settings.'
@@ -149,6 +150,7 @@ export const NotificationsTab: React.FC = () => {
             </div>
             <button
               type="button"
+              aria-labelledby={`${uid}-push`}
               disabled={pushLoading || pushPermission === 'denied'}
               onClick={async () => {
                 setPushLoading(true);
@@ -173,11 +175,12 @@ export const NotificationsTab: React.FC = () => {
         <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Email Notifications</h2>
         <div className="flex items-center justify-between py-3">
           <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Email Notifications</p>
+            <p id={`${uid}-email`} className="text-sm font-medium text-gray-900 dark:text-gray-100">Email Notifications</p>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Master toggle for all email notifications</p>
           </div>
           <button
             type="button"
+            aria-labelledby={`${uid}-email`}
             onClick={() => setEmailEnabled(!emailEnabled)}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${emailEnabled ? 'bg-primary-600' : 'bg-gray-200 dark:bg-gray-600'}`}
           >
@@ -191,8 +194,9 @@ export const NotificationsTab: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-4 mb-4">
           <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
+            <label htmlFor={`${uid}-frequency`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
             <select
+              id={`${uid}-frequency`}
               value={digestFrequency}
               onChange={(e) => setDigestFrequency(e.target.value as 'none' | 'daily' | 'weekly')}
               className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -204,8 +208,9 @@ export const NotificationsTab: React.FC = () => {
           </div>
           {digestFrequency !== 'none' && (
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Send Time (UTC)</label>
+              <label htmlFor={`${uid}-send-time`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Send Time (UTC)</label>
               <select
+                id={`${uid}-send-time`}
                 value={digestPreferredHour}
                 onChange={(e) => setDigestPreferredHour(Number(e.target.value))}
                 className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"

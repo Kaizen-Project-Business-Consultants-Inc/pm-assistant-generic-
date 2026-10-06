@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Copy, Check, Lock } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -6,6 +6,7 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
 export const ApiKeysTab: React.FC = () => {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
@@ -106,8 +107,9 @@ export const ApiKeysTab: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key Name</label>
+                  <label htmlFor={`${uid}-key-name`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key Name</label>
                   <input
+                    id={`${uid}-key-name`}
                     type="text"
                     value={newKeyName}
                     onChange={(e) => setNewKeyName(e.target.value)}
