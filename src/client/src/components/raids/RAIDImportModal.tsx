@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useId } from 'react';
 import { X, Upload, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
@@ -229,6 +229,7 @@ function parseCSV(text: string): ParsedCSV {
 // ---------------------------------------------------------------------------
 
 export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAIDImportModalProps) {
+  const uid = useId();
   const [csvText, setCsvText] = useState('');
   const [parsed, setParsed] = useState<ParsedCSV | null>(null);
   const [columnMap, setColumnMap] = useState<Record<number, string>>({});
@@ -512,14 +513,15 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                     <Upload size={32} className="text-gray-500 dark:text-gray-400" />
                     <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">.csv, .xlsx, .xls supported (max 5MB)</p>
-                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                    <input ref={fileRef} type="file" aria-label="Choose a file to import" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div id={`${uid}-or-paste-csv-label`} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex-1 border-t dark:border-gray-700" />or paste CSV below<span className="flex-1 border-t dark:border-gray-700" />
                   </div>
 
                   <textarea
+                    aria-labelledby={`${uid}-or-paste-csv-label`}
                     rows={5}
                     placeholder="Type,Title,Severity,Status,Owner&#10;Risk,Server outage risk,high,open,John Smith"
                     className="w-full rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 p-3 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none resize-y"
@@ -539,9 +541,10 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
               {/* Sheet selector */}
               {sheetNames.length > 1 && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Sheet</h3>
+                  <h3 id={`${uid}-sheet-label`} className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Sheet</h3>
                   <div className="flex gap-2">
                     <select
+                      aria-labelledby={`${uid}-sheet-label`}
                       value={selectedSheet}
                       onChange={(e) => handleSheetSelect(e.target.value)}
                       className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 flex-1"

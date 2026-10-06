@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Sparkles, Loader2, MessageSquare, Send, Trash2, Pencil, BookOpen, ChevronDown, ChevronUp, Shield } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -64,6 +64,7 @@ const DEFAULT_STATUS: Record<string, string> = {
 };
 
 export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, defaultType = 'risk', members = [], canUseAi = false }: RiskFormModalProps) {
+  const uid = useId();
   const [saving, setSaving] = useState(false);
   const [suggestingMitigation, setSuggestingMitigation] = useState(false);
   const [suggestingTrigger, setSuggestingTrigger] = useState(false);
@@ -438,8 +439,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
 
           {/* Description */}
           <div>
-            <label className={labelClass}>Description</label>
+            <label htmlFor={`${uid}-description`} className={labelClass}>Description</label>
             <textarea
+              id={`${uid}-description`}
               value={form.description}
               onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
               className={`${inputClass} h-20 resize-none`}
@@ -523,14 +525,14 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {/* Row: Category + Severity */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={labelClass}>Category</label>
-              <select value={form.category} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} className={inputClass}>
+              <label htmlFor={`${uid}-category`} className={labelClass}>Category</label>
+              <select id={`${uid}-category`} value={form.category} onChange={e => setForm(prev => ({ ...prev, category: e.target.value }))} className={inputClass}>
                 {CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Severity</label>
-              <select value={form.severity} onChange={e => setForm(prev => ({ ...prev, severity: e.target.value }))} className={inputClass}>
+              <label htmlFor={`${uid}-severity`} className={labelClass}>Severity</label>
+              <select id={`${uid}-severity`} value={form.severity} onChange={e => setForm(prev => ({ ...prev, severity: e.target.value }))} className={inputClass}>
                 {SEVERITIES.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
               </select>
             </div>
@@ -540,14 +542,14 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showProbImpact && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className={labelClass}>Probability (1-5)</label>
-                <select value={form.probability} onChange={e => setForm(prev => ({ ...prev, probability: Number(e.target.value) }))} className={inputClass}>
+                <label htmlFor={`${uid}-probability`} className={labelClass}>Probability (1-5)</label>
+                <select id={`${uid}-probability`} value={form.probability} onChange={e => setForm(prev => ({ ...prev, probability: Number(e.target.value) }))} className={inputClass}>
                   {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} — {['Rare', 'Unlikely', 'Possible', 'Likely', 'Certain'][n - 1]}</option>)}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Impact (1-5)</label>
-                <select value={form.impact} onChange={e => setForm(prev => ({ ...prev, impact: Number(e.target.value) }))} className={inputClass}>
+                <label htmlFor={`${uid}-impact`} className={labelClass}>Impact (1-5)</label>
+                <select id={`${uid}-impact`} value={form.impact} onChange={e => setForm(prev => ({ ...prev, impact: Number(e.target.value) }))} className={inputClass}>
                   {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} — {['Negligible', 'Minor', 'Moderate', 'Major', 'Catastrophic'][n - 1]}</option>)}
                 </select>
               </div>
@@ -563,14 +565,14 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {/* Row: Status + Owner + Raised By */}
           <div className={`grid gap-4 ${editRisk?.createdBy ? 'grid-cols-3' : 'grid-cols-2'}`}>
             <div>
-              <label className={labelClass}>Status</label>
-              <select value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className={inputClass}>
+              <label htmlFor={`${uid}-status`} className={labelClass}>Status</label>
+              <select id={`${uid}-status`} value={form.status} onChange={e => setForm(prev => ({ ...prev, status: e.target.value }))} className={inputClass}>
                 {statuses.map(s => <option key={s} value={s}>{s.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelClass}>Owner</label>
-              <select value={form.ownerId} onChange={e => setForm(prev => ({ ...prev, ownerId: e.target.value }))} className={inputClass}>
+              <label htmlFor={`${uid}-owner`} className={labelClass}>Owner</label>
+              <select id={`${uid}-owner`} value={form.ownerId} onChange={e => setForm(prev => ({ ...prev, ownerId: e.target.value }))} className={inputClass}>
                 <option value="">Unassigned</option>
                 {members.map((m: any) => (
                   <option key={m.userId || m.id} value={m.userId || m.id}>
@@ -581,6 +583,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
               {!form.ownerId && (
                 <input
                   type="text"
+                  aria-label="Owner name"
                   value={form.ownerName}
                   onChange={e => setForm(prev => ({ ...prev, ownerName: e.target.value }))}
                   className={`${inputClass} mt-1`}
@@ -602,8 +605,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showActionFields && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Due Date</label>
+                <label htmlFor={`${uid}-due-date`} className={labelClass}>Due Date</label>
                 <input
+                  id={`${uid}-due-date`}
                   type="date"
                   value={form.dueDate}
                   onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -611,8 +615,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Action Type</label>
-                <select value={form.actionType} onChange={e => setForm(prev => ({ ...prev, actionType: e.target.value }))} className={inputClass}>
+                <label htmlFor={`${uid}-action-type`} className={labelClass}>Action Type</label>
+                <select id={`${uid}-action-type`} value={form.actionType} onChange={e => setForm(prev => ({ ...prev, actionType: e.target.value }))} className={inputClass}>
                   <option value="">Select...</option>
                   <option value="preventive">Preventive</option>
                   <option value="corrective">Corrective</option>
@@ -631,8 +635,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showDecisionFields && (
             <>
               <div>
-                <label className={labelClass}>Rationale</label>
+                <label htmlFor={`${uid}-rationale`} className={labelClass}>Rationale</label>
                 <textarea
+                  id={`${uid}-rationale`}
                   value={form.rationale}
                   onChange={e => setForm(prev => ({ ...prev, rationale: e.target.value }))}
                   className={`${inputClass} h-20 resize-none`}
@@ -641,8 +646,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>Decided By</label>
-                  <select value={form.decidedBy} onChange={e => setForm(prev => ({ ...prev, decidedBy: e.target.value }))} className={inputClass}>
+                  <label htmlFor={`${uid}-decided-by`} className={labelClass}>Decided By</label>
+                  <select id={`${uid}-decided-by`} value={form.decidedBy} onChange={e => setForm(prev => ({ ...prev, decidedBy: e.target.value }))} className={inputClass}>
                     <option value="">Select...</option>
                     {members.map((m: any) => (
                       <option key={m.userId || m.id} value={m.userId || m.id}>
@@ -652,8 +657,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>Decision Date</label>
+                  <label htmlFor={`${uid}-decision-date`} className={labelClass}>Decision Date</label>
                   <input
+                    id={`${uid}-decision-date`}
                     type="date"
                     value={form.decisionDate}
                     onChange={e => setForm(prev => ({ ...prev, decisionDate: e.target.value }))}
@@ -662,8 +668,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 </div>
               </div>
               <div>
-                <label className={labelClass}>Alternatives Considered</label>
+                <label htmlFor={`${uid}-alternatives-considered`} className={labelClass}>Alternatives Considered</label>
                 <textarea
+                  id={`${uid}-alternatives-considered`}
                   value={form.alternativesConsidered}
                   onChange={e => setForm(prev => ({ ...prev, alternativesConsidered: e.target.value }))}
                   className={`${inputClass} h-16 resize-none`}
@@ -677,8 +684,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showDecisionFields && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className={labelClass}>Forum</label>
+                <label htmlFor={`${uid}-forum`} className={labelClass}>Forum</label>
                 <input
+                  id={`${uid}-forum`}
                   type="text"
                   value={form.forum}
                   onChange={e => setForm(prev => ({ ...prev, forum: e.target.value }))}
@@ -687,8 +695,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Source Meeting</label>
+                <label htmlFor={`${uid}-source-meeting`} className={labelClass}>Source Meeting</label>
                 <input
+                  id={`${uid}-source-meeting`}
                   type="text"
                   value={form.sourceMeeting}
                   onChange={e => setForm(prev => ({ ...prev, sourceMeeting: e.target.value }))}
@@ -703,8 +712,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showAssumptionFields && (
             <>
               <div>
-                <label className={labelClass}>Validation Plan</label>
+                <label htmlFor={`${uid}-validation-plan`} className={labelClass}>Validation Plan</label>
                 <textarea
+                  id={`${uid}-validation-plan`}
                   value={form.validationPlan}
                   onChange={e => setForm(prev => ({ ...prev, validationPlan: e.target.value }))}
                   className={`${inputClass} h-20 resize-none`}
@@ -713,8 +723,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>Target Validation Date</label>
+                  <label htmlFor={`${uid}-target-validation-date`} className={labelClass}>Target Validation Date</label>
                   <input
+                    id={`${uid}-target-validation-date`}
                     type="date"
                     value={form.dueDate}
                     onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -722,8 +733,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Severity if Invalid</label>
-                  <select value={form.severity} onChange={e => setForm(prev => ({ ...prev, severity: e.target.value }))} className={inputClass}>
+                  <label htmlFor={`${uid}-severity-if-invalid`} className={labelClass}>Severity if Invalid</label>
+                  <select id={`${uid}-severity-if-invalid`} value={form.severity} onChange={e => setForm(prev => ({ ...prev, severity: e.target.value }))} className={inputClass}>
                     {SEVERITIES.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
                   </select>
                 </div>
@@ -735,8 +746,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showDependencyFields && (
             <>
               <div>
-                <label className={labelClass}>Dependent Entity</label>
+                <label htmlFor={`${uid}-dependent-entity`} className={labelClass}>Dependent Entity</label>
                 <input
+                  id={`${uid}-dependent-entity`}
                   type="text"
                   value={form.dependentEntity}
                   onChange={e => setForm(prev => ({ ...prev, dependentEntity: e.target.value }))}
@@ -745,8 +757,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Required By Date</label>
+                <label htmlFor={`${uid}-required-by-date`} className={labelClass}>Required By Date</label>
                 <input
+                  id={`${uid}-required-by-date`}
                   type="date"
                   value={form.dueDate}
                   onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -790,7 +803,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showTrigger && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className={labelClass + ' mb-0'}>Trigger Condition</label>
+                <label htmlFor={`${uid}-trigger`} className={labelClass + ' mb-0'}>Trigger Condition</label>
                 {editRisk?.id && canUseAi && (
                   <button
                     type="button"
@@ -804,6 +817,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 )}
               </div>
               <textarea
+                id={`${uid}-trigger`}
                 value={form.triggerCondition}
                 onChange={e => setForm(prev => ({ ...prev, triggerCondition: e.target.value }))}
                 className={`${inputClass} h-16 resize-none`}
@@ -816,7 +830,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showMitigation && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className={labelClass + ' mb-0'}>Mitigation Plan</label>
+                <label htmlFor={`${uid}-mitigation`} className={labelClass + ' mb-0'}>Mitigation Plan</label>
                 {editRisk?.id && canUseAi && (
                   <button
                     type="button"
@@ -830,6 +844,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 )}
               </div>
               <textarea
+                id={`${uid}-mitigation`}
                 value={form.mitigationPlan}
                 onChange={e => setForm(prev => ({ ...prev, mitigationPlan: e.target.value }))}
                 className={`${inputClass} h-20 resize-none`}
@@ -842,7 +857,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showResponse && (
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className={labelClass + ' mb-0'}>Response Plan</label>
+                <label htmlFor={`${uid}-response`} className={labelClass + ' mb-0'}>Response Plan</label>
                 {editRisk?.id && canUseAi && (
                   <button
                     type="button"
@@ -856,6 +871,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 )}
               </div>
               <textarea
+                id={`${uid}-response`}
                 value={form.responsePlan}
                 onChange={e => setForm(prev => ({ ...prev, responsePlan: e.target.value }))}
                 className={`${inputClass} h-20 resize-none`}
@@ -868,8 +884,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
           {showIssueFields && (
             <>
               <div>
-                <label className={labelClass}>Root Cause</label>
+                <label htmlFor={`${uid}-root-cause`} className={labelClass}>Root Cause</label>
                 <textarea
+                  id={`${uid}-root-cause`}
                   value={form.rootCause}
                   onChange={e => setForm(prev => ({ ...prev, rootCause: e.target.value }))}
                   className={`${inputClass} h-20 resize-none`}
@@ -877,8 +894,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Impact Assessment</label>
+                <label htmlFor={`${uid}-impact-assessment`} className={labelClass}>Impact Assessment</label>
                 <textarea
+                  id={`${uid}-impact-assessment`}
                   value={form.impactAssessment}
                   onChange={e => setForm(prev => ({ ...prev, impactAssessment: e.target.value }))}
                   className={`${inputClass} h-16 resize-none`}
@@ -886,8 +904,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Workaround</label>
+                <label htmlFor={`${uid}-workaround`} className={labelClass}>Workaround</label>
                 <textarea
+                  id={`${uid}-workaround`}
                   value={form.workaround}
                   onChange={e => setForm(prev => ({ ...prev, workaround: e.target.value }))}
                   className={`${inputClass} h-16 resize-none`}
@@ -895,8 +914,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Resolution Plan</label>
+                <label htmlFor={`${uid}-resolution-plan`} className={labelClass}>Resolution Plan</label>
                 <textarea
+                  id={`${uid}-resolution-plan`}
                   value={form.mitigationPlan}
                   onChange={e => setForm(prev => ({ ...prev, mitigationPlan: e.target.value }))}
                   className={`${inputClass} h-20 resize-none`}
@@ -904,8 +924,9 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 />
               </div>
               <div>
-                <label className={labelClass}>Target Resolution Date</label>
+                <label htmlFor={`${uid}-target-resolution-date`} className={labelClass}>Target Resolution Date</label>
                 <input
+                  id={`${uid}-target-resolution-date`}
                   type="date"
                   value={form.dueDate}
                   onChange={e => setForm(prev => ({ ...prev, dueDate: e.target.value }))}
@@ -956,6 +977,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                       {editingUpdateId === u.id ? (
                         <div className="mt-1 space-y-1.5">
                           <textarea
+                            aria-label="Edit update"
                             value={editingUpdateText}
                             onChange={e => setEditingUpdateText(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white resize-none h-16"
@@ -978,6 +1000,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 type="text"
                 value={updateText}
                 onChange={e => setUpdateText(e.target.value)}
+                aria-label="Provide an update"
                 onKeyDown={e => e.key === 'Enter' && handleSendUpdate()}
                 placeholder="Provide an update..."
                 className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
@@ -986,6 +1009,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 type="button"
                 onClick={handleSendUpdate}
                 disabled={!updateText.trim() || sendingUpdate}
+                aria-label="Send update"
                 className="p-2 rounded-lg bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 text-white transition-colors"
               >
                 <Send className="w-4 h-4" />

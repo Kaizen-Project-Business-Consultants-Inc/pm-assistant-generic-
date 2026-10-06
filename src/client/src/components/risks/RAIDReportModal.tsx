@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, X, Download, Mail, Calendar, Trash2, Lock, RefreshCw } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -28,6 +28,7 @@ const TYPE_OPTIONS = [
 const SEVERITY_OPTIONS = ['critical', 'high', 'medium', 'low'];
 
 export function RAIDReportModal({ projectId, projectName, members, onClose }: Props) {
+  const uid = useId();
   const [report, setReport] = useState<any>(null);
   const [isSample, setIsSample] = useState(false);
   const [tab, setTab] = useState<'report' | 'email' | 'schedule'>('report');
@@ -154,7 +155,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
                 Download
               </button>
             )}
-            <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
+            <button onClick={onClose} aria-label="Close" className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
               <X className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
           </div>
@@ -242,8 +243,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
 
                   {/* Owner filter */}
                   <div>
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Owner</span>
+                    <label htmlFor={`${uid}-owner`} className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Owner</label>
                     <select
+                      id={`${uid}-owner`}
                       value={filters.owners[0] || ''}
                       onChange={e => setFilters(prev => ({ ...prev, owners: e.target.value ? [e.target.value] : [] }))}
                       className="mt-1 w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -293,8 +295,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
           {tab === 'email' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
+                <label htmlFor={`${uid}-recipients`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
                 <input
+                  id={`${uid}-recipients`}
                   type="text"
                   value={emailRecipients}
                   onChange={e => setEmailRecipients(e.target.value)}
@@ -358,8 +361,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
+                    <label htmlFor={`${uid}-frequency`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency</label>
                     <select
+                      id={`${uid}-frequency`}
                       value={scheduleFrequency}
                       onChange={e => setScheduleFrequency(e.target.value as any)}
                       className={inputClass}
@@ -372,8 +376,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
 
                   {scheduleFrequency === 'weekly' && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
+                      <label htmlFor={`${uid}-day-of-week`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Week</label>
                       <select
+                        id={`${uid}-day-of-week`}
                         value={scheduleDayOfWeek}
                         onChange={e => setScheduleDayOfWeek(Number(e.target.value))}
                         className={inputClass}
@@ -385,8 +390,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
 
                   {scheduleFrequency === 'monthly' && (
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
+                      <label htmlFor={`${uid}-day-of-month`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Day of Month</label>
                       <input
+                        id={`${uid}-day-of-month`}
                         type="number"
                         min={1}
                         max={31}
@@ -398,8 +404,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
                   )}
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
+                    <label htmlFor={`${uid}-time`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
                     <input
+                      id={`${uid}-time`}
                       type="time"
                       value={scheduleTime}
                       onChange={e => setScheduleTime(e.target.value)}
@@ -409,8 +416,9 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
+                  <label htmlFor={`${uid}-recipients-2`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Recipients (comma-separated emails)</label>
                   <input
+                    id={`${uid}-recipients-2`}
                     type="text"
                     value={scheduleRecipients}
                     onChange={e => setScheduleRecipients(e.target.value)}

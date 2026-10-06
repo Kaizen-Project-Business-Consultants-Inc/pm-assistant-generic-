@@ -269,6 +269,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, c
               <select
                 value={item.status}
                 onChange={e => handleStatusChange(e.target.value)}
+                aria-label="Change status"
                 className="text-xs rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-gray-700 dark:text-gray-300"
               >
                 {availableStatuses.map((s: string) => (
@@ -561,6 +562,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, c
               {(cancelMode || reverseMode) && (
                 <div className="w-full space-y-2">
                   <textarea
+                    aria-label={`Reason for ${cancelMode ? 'cancellation' : 'reversal'}`}
                     value={reasonText}
                     onChange={e => setReasonText(e.target.value)}
                     placeholder={`Reason for ${cancelMode ? 'cancellation' : 'reversal'}...`}
@@ -625,6 +627,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, c
                       {editingUpdateId === u.id ? (
                         <div className="mt-1 space-y-1.5">
                           <textarea
+                            aria-label="Edit update"
                             value={editingUpdateText}
                             onChange={e => setEditingUpdateText(e.target.value)}
                             className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white resize-none h-16"
@@ -697,6 +700,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, c
               type="text"
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
+              aria-label="Provide an update"
               onKeyDown={e => e.key === 'Enter' && handleSendUpdate()}
               placeholder="Provide an update..."
               className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
