@@ -6,6 +6,11 @@
 
 :root {
   --app-font-size: 100%;
+  /* text-gray-400 as a text colour (tailwind.config.js textColor): AA on white in light mode */
+  --text-gray-400: 115 108 103; /* #736c67 */
+}
+.dark {
+  --text-gray-400: 168 162 158; /* #a8a29e, unchanged on dark surfaces */
 }
 
 @layer base {
@@ -160,7 +165,7 @@
   --color-sidebar-bg: #1c1917;
   --color-sidebar-text: #a8a29e;
   --color-sidebar-hover: #292524;
-  --color-sidebar-active: #0d9488;
+  --color-sidebar-active: #0f766e;
   --color-sidebar-text-active: #ffffff;
 }
 

@@ -119,9 +119,27 @@ export default {
         sidebar: {
           bg: '#1c1917',
           hover: '#292524',
-          active: '#0d9488',
-          text: '#d6d3d1',
+          // Active item: white text on teal-700 = 5.5:1 (teal-600 was 3.7:1, below WCAG AA).
+          active: '#0f766e',
+          // Sidebar text is used at faint opacities (/40 section labels, /50 account link)
+          // that fell below WCAG AA (2.9:1, 3.9:1) on the dark sidebar. Readable opacities
+          // are floored at 0.6 (5.0:1). /30 stays: it marks disabled items, which are exempt.
+          text: ({ opacityValue }) => {
+            if (opacityValue === undefined) return 'rgb(214 211 209)';
+            const n = Number(opacityValue);
+            if (Number.isNaN(n)) return `rgb(214 211 209 / ${opacityValue})`;
+            return `rgb(214 211 209 / ${n > 0.3 && n < 0.6 ? 0.6 : n})`;
+          },
           'text-active': '#ffffff',
+        },
+      },
+      textColor: {
+        // Light-mode helper text: text-gray-400 (#a8a29e) is 2.5:1 on white. As a TEXT colour
+        // only, it follows a CSS variable (index.css): #736c67 in light mode (5.2:1 on white,
+        // 4.7:1 on gray-100), unchanged #a8a29e in dark mode where it sits on dark surfaces.
+        // Borders, backgrounds and placeholders keep gray-400.
+        gray: {
+          400: 'rgb(var(--text-gray-400) / <alpha-value>)',
         },
       },
       animation: {
