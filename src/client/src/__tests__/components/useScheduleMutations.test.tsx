@@ -265,7 +265,7 @@ describe('edits with undo', () => {
     const { result } = setup();
     await act(async () => { await result.current.handleBulkUpdate(['a', 'b'], 'parentTaskId', ''); });
     expect(api.bulkUpdateTasks).toHaveBeenCalledWith([{ id: 'a', scheduleId: 's1', parentTaskId: null }, { id: 'b', scheduleId: 's1', parentTaskId: null }]);
-    expect(result.current.undoDescription).toBe('Bulk update parentTaskId on 2 tasks');
+    expect(result.current.undoDescription).toBe('Outdented 2 tasks');
     await act(async () => { result.current.undo(); });
     await flush();
     expect(api.bulkUpdateTasks).toHaveBeenLastCalledWith([{ id: 'a', scheduleId: 's1', parentTaskId: null }, { id: 'b', scheduleId: 's1', parentTaskId: 'p' }]);
@@ -313,7 +313,7 @@ describe('edits with undo', () => {
     await act(async () => { await result.current.handleBulkDelete(['a', 'c']); });
     expect(api.bulkDeleteTasks).toHaveBeenCalledWith('s1', ['a', 'c']);
     expect(invalidated).toEqual([['tasks', 's1'], ['schedule-changes', 's1']]);
-    expect(result.current.undoDescription).toBe('Delete 2 tasks');
+    expect(result.current.undoDescription).toBe('Deleted 2 tasks');
     await act(async () => { result.current.undo(); });
     await flush();
     expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'd1');

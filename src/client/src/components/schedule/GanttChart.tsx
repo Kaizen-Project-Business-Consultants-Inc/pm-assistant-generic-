@@ -1,5 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { BulkDoneToast } from './shared/BulkDoneToast';
 import { apiService } from '../../services/api';
 import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
 import type { ColumnState } from '../../hooks/useColumnState';
@@ -409,6 +410,7 @@ export function GanttChart({
   const [bulkPriority, setBulkPriority] = useState('');
   const [bulkAssignee, setBulkAssignee] = useState('');
   const [bulkMessage, setBulkMessage] = useState('');
+  const [bulkDone, setBulkDone] = useState('');
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const lastClickedIdRef = useRef<string | null>(null);
@@ -473,20 +475,25 @@ export function GanttChart({
     setBulkMessage(msg);
     later(() => setBulkMessage(''), 3000);
   }, [later]);
+  // Success goes to the green message at the bottom: the bulk bar closes when the selection clears
+  const showBulkDone = useCallback((msg: string) => {
+    setBulkDone(msg);
+    later(() => setBulkDone(''), 3000);
+  }, [later]);
 
   const applyBulkUpdate = useCallback(async (field: string, value: string) => {
     if (!value || selectedIds.size === 0 || !onBulkUpdate) return;
     setBulkLoading(true);
     try {
       await onBulkUpdate(Array.from(selectedIds), field, value);
-      showBulkMessage(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
+      showBulkDone(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
       clearBulkState();
     } catch {
       showBulkMessage('Some updates failed');
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedIds, onBulkUpdate, showBulkMessage, clearBulkState]);
+  }, [selectedIds, onBulkUpdate, showBulkMessage, showBulkDone, clearBulkState]);
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.size === 0 || !onBulkDelete) return;
@@ -502,7 +509,7 @@ export function GanttChart({
       setBulkLoading(true);
       try {
         await onBulkDelete(idsToDelete);
-        showBulkMessage(`Deleted ${idsToDelete.length} task${idsToDelete.length > 1 ? 's' : ''}`);
+        showBulkDone(`Deleted ${idsToDelete.length} task${idsToDelete.length > 1 ? 's' : ''}`);
         clearBulkState();
       } catch {
         showBulkMessage('Some deletes failed');
@@ -512,7 +519,7 @@ export function GanttChart({
     } else if (onDeleteTask && idsToDelete.length === 1) {
       onDeleteTask(idsToDelete[0]);
     }
-  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, clearBulkState]);
+  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, showBulkDone, clearBulkState]);
 
   // Delete key for single or bulk delete
   useEffect(() => {
@@ -1319,6 +1326,8 @@ export function GanttChart({
           onCancel={() => setPendingDeleteIds([])}
         />
       )}
+
+      <BulkDoneToast message={bulkDone} />
     </div>
   );
 }

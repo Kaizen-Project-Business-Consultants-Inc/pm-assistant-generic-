@@ -176,6 +176,7 @@ const sections: Section[] = [
       'Deleted tasks (one or many, from anywhere in the plan) come back exactly as they were — with their links, booked hours and comments',
       'An import can be undone too: its tasks, its baseline and any people it created for unknown names',
       'To reverse an older change, make it again by hand — History shows exactly what it was',
+      'A bulk change or delete that worked shows a green "✓ Updated 3 tasks" message at the bottom, with Undo just below it',
       'If a change can\'t be saved (e.g. the server refuses it), the task goes back to its last saved version and a red message says what was not saved — close it with ✕ and try again; it is not added to Undo',
     ],
   },

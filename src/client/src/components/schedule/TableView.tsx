@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { BulkDoneToast } from './shared/BulkDoneToast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
@@ -89,6 +90,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const [bulkPriority, setBulkPriority] = useState('');
   const [bulkAssignee, setBulkAssignee] = useState('');
   const [bulkMessage, setBulkMessage] = useState('');
+  const [bulkDone, setBulkDone] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
   const [notesPopup, setNotesPopup] = useState<{ taskId: string; value: string; x: number; y: number } | null>(null);
@@ -580,6 +582,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     setBulkMessage(msg);
     later(() => setBulkMessage(''), 3000);
   }, [later]);
+  // A bulk change/delete that worked goes to the green message at the bottom: the bulk bar
+  // closes when the selection clears, so its own text could never be seen
+  const showBulkDone = useCallback((msg: string) => {
+    setBulkDone(msg);
+    later(() => setBulkDone(''), 3000);
+  }, [later]);
 
   const clearBulkState = useCallback(() => {
     setSelectedIds(new Set());
@@ -603,7 +611,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         );
       }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
-      showBulkSuccess(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
+      showBulkDone(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
       clearBulkState();
     } catch (err) {
       console.error('Bulk update failed:', err);
@@ -612,7 +620,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkSuccess, clearBulkState, later]);
+  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkDone, clearBulkState, later]);
 
   const confirmAndDeleteTasks = useCallback(async (taskIds: string[]) => {
     setBulkLoading(true);
@@ -624,7 +632,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
       queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
-      showBulkSuccess(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`);
+      showBulkDone(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`);
       clearBulkState();
     } catch (err) {
       console.error('Delete failed:', err);
@@ -633,7 +641,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } finally {
       setBulkLoading(false);
     }
-  }, [onBulkDelete, scheduleId, queryClient, showBulkSuccess, clearBulkState, later]);
+  }, [onBulkDelete, scheduleId, queryClient, showBulkDone, clearBulkState, later]);
 
   const handleDeleteTasks = useCallback((taskIds: string[]) => {
     if (taskIds.length === 0) return;
@@ -1691,6 +1699,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           onCancel={() => setPendingDeleteIds(null)}
         />
       )}
+
+      <BulkDoneToast message={bulkDone} />
     </div>
   );
 }

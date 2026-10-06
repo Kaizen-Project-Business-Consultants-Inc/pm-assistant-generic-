@@ -45,6 +45,14 @@ export interface ScheduleMutationsArgs {
   setEditingTask: Dispatch<SetStateAction<GanttTask | null>>;
 }
 
+/** Plain-English Undo text for a bulk change, e.g. "Status changed on 3 tasks" */
+export function bulkUpdateDescription(field: string, value: string, count: number): string {
+  const tasks = `${count} task${count === 1 ? '' : 's'}`;
+  if (field === 'parentTaskId') return value ? `Indented ${tasks}` : `Outdented ${tasks}`;
+  const label: Record<string, string> = { status: 'Status', priority: 'Priority', assignedTo: 'Assignee' };
+  return `${label[field] ?? field} changed on ${tasks}`;
+}
+
 export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask }: ScheduleMutationsArgs) {
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
@@ -429,7 +437,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     });
     const apiValue = (field === 'parentTaskId' && !value) ? null : value;
     const action = {
-      description: `Bulk update ${field} on ${taskIds.length} tasks`,
+      description: bulkUpdateDescription(field, value, taskIds.length),
       undo: async () => {
         await apiService.bulkUpdateTasks(oldValues.map(o => ({ id: o.id, scheduleId: schedule.id, [field]: o.oldValue })));
         queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
@@ -524,7 +532,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     refresh();
 
     pushAction({
-      description: `Delete ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
+      description: `Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
       undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
       redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId; refresh(); },
     });

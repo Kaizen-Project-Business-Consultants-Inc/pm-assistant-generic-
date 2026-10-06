@@ -78,10 +78,11 @@ describe.each([
     <GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s1" onBulkUpdate={onBulkUpdate} onTaskUpdate={() => {}} />],
   ['Table', (onBulkUpdate: (ids: string[], f: string, v: string) => Promise<void>) => <Table onBulkUpdate={onBulkUpdate} />],
 ])('%s bulk message', (_name, view) => {
-  // On success the selection is cleared, which also hides the bar the message sits in (as
-  // before), so only the failure text can be seen; both start the 3 s timer.
+  // On success the bar closes (the selection is cleared) and a green "✓ Updated 2 tasks" message
+  // shows at the bottom instead (BulkDoneToast, 2026-10-06); a failure stays in the bar. Both
+  // clear after 3 s and the timer is cleared on unmount.
   it.each([
-    ['success', async () => {}, null],
+    ['success', async () => {}, /Updated 2 tasks/],
     ['failure', async () => { throw new Error('x'); }, /Some updates failed/],
   ])('%s: its 3 s message timer is cleared on unmount', async (_k, impl, text) => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -116,5 +117,23 @@ describe('Table assignee picker: the "saved" tick waits for the save', () => {
     await act(async () => { await new Promise(r => setTimeout(r, 400)); });
     if (ok) expect(tick(cell)).not.toBeNull();
     else expect(tick(cell)).toBeNull();
+  });
+});
+
+describe.each([
+  ['Gantt', (onBulkUpdate: (ids: string[], f: string, v: string) => Promise<void>) =>
+    <GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s1" onBulkUpdate={onBulkUpdate} onTaskUpdate={() => {}} />],
+  ['Table', (onBulkUpdate: (ids: string[], f: string, v: string) => Promise<void>) => <Table onBulkUpdate={onBulkUpdate} />],
+])('%s: green "done" message after a bulk change', (_name, view) => {
+  it('shows "Updated 2 tasks" as a status message on success, and nothing green on failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const ok = render(wrap(view(vi.fn(async () => {}))));
+    await bulkSetStatus(ok.container);
+    await waitFor(() => expect(ok.getByRole('status').textContent).toMatch(/Updated 2 tasks/));
+    ok.unmount();
+    const bad = render(wrap(view(vi.fn(async () => { throw new Error('x'); }))));
+    await bulkSetStatus(bad.container);
+    await waitFor(() => expect(bad.container.textContent).toMatch(/Some updates failed/));
+    expect(bad.container.textContent).not.toMatch(/Updated 2 tasks/);
   });
 });
