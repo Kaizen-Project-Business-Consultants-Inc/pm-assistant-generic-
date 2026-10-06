@@ -224,7 +224,12 @@ describe('WeeklyTimesheetService', () => {
       query.mockResolvedValueOnce([{ id: 'ts1', user_id: 'u-peter', approver_user_id: 'u-michael', status: 'approved' }]);
       await expect(weeklyTimesheetService.flag('ts1', 't-mig', 'late', 'u-mary')).rejects.toThrow(/waiting for approval/);
 
-      query.mockResolvedValueOnce([{ id: 'ts1', user_id: 'u-peter', approver_user_id: 'u-michael', status: 'submitted' }]).mockResolvedValueOnce([]);
+      // a task that isn't on the sheet can't be flagged (2026-10-05)
+      query.mockResolvedValueOnce([{ id: 'ts1', user_id: 'u-peter', approver_user_id: 'u-michael', status: 'submitted', week_start: '2026-09-28' }]).mockResolvedValueOnce([{ n: 0 }]);
+      hasRole.mockResolvedValueOnce(true);
+      await expect(weeklyTimesheetService.flag('ts1', 't-mig', 'not mine', 'u-mary')).rejects.toThrow(/isn't on this timesheet/);
+
+      query.mockResolvedValueOnce([{ id: 'ts1', user_id: 'u-peter', approver_user_id: 'u-michael', status: 'submitted', week_start: '2026-09-28' }]).mockResolvedValueOnce([{ n: 3 }]).mockResolvedValueOnce([]);
       hasRole.mockResolvedValueOnce(true);
       await weeklyTimesheetService.flag('ts1', 't-mig', '2h belong to Data cleanup', 'u-mary');
       expect(query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO timesheet_flags'), [expect.any(String), 'ts1', 'p-mary', 't-mig', 'u-mary', '2h belong to Data cleanup']);

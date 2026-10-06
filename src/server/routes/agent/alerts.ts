@@ -6,6 +6,7 @@ import { proactiveAlertService } from '../../services/proactiveAlertService';
 import { AIActionExecutor } from '../../services/aiActionExecutor';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { requireFeature } from '../../middleware/requireTier';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
 
@@ -78,7 +79,8 @@ export async function alertRoutes(fastify: FastifyInstance) {
   // POST /execute-action — Execute a suggested action from an alert
   // project check: AIActionExecutor.checkProjectWrite → checkProjectRoleFor (Manager/Owner)
   fastify.post('/execute-action', {
-    preHandler: [requireScope('write')],
+    // runs an AI tool: the paid AI feature, like the chat that suggests these (2026-10-05 audit)
+    preHandler: [requireScope('write'), requireFeature('ai_assistant')],
     schema: {
       description: 'Execute a suggested action from a proactive alert',
       tags: ['alerts'],

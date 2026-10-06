@@ -389,6 +389,21 @@ export async function bulkRoutes(fastify: FastifyInstance) {
               continue;
             }
 
+            // A link or a parent must be a task in the same plan (2026-10-05 audit: these went
+            // straight into the row, so they could point into another plan or project)
+            const refs = [u.dependency, u.parentTaskId].filter((r): r is string => !!r);
+            if (refs.some(r => r === u.id)) {
+              failed.push({ id: u.id, error: 'A task cannot be linked to or nested under itself' });
+              continue;
+            }
+            if (refs.length) {
+              const found = await run(`SELECT id FROM tasks WHERE schedule_id = ? AND id IN (${refs.map(() => '?').join(',')})`, [u.scheduleId, ...refs]) as Array<{ id: string }>;
+              if (new Set(found.map(r => r.id)).size < new Set(refs).size) {
+                failed.push({ id: u.id, error: 'The predecessor or parent task must be in the same schedule' });
+                continue;
+              }
+            }
+
             const sets: string[] = [];
             const params: any[] = [];
 

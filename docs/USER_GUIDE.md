@@ -2643,7 +2643,7 @@ Guests can only see the project(s) they were invited to. They cannot:
 
 #### Revoking Access
 
-Click **Revoke** next to any guest in the Guests table to immediately remove their access. Guests can also have an expiry date — access is automatically revoked when the date passes.
+Click **Revoke** next to any guest in the Guests table to immediately remove their access. Guests can also have an expiry date — access is automatically revoked when the date passes. From that date the guest can't sign in (they're told their guest access has expired), anyone already signed in is signed out, and any Claude connection or API key they made stops working too.
 
 Destructive actions throughout the application (deleting integrations, change requests, intake forms, report templates, goals, lessons, API keys, and webhooks) use a consistent styled confirmation modal instead of the browser's native dialog, providing a cleaner experience that respects the application's design and dark mode.
 

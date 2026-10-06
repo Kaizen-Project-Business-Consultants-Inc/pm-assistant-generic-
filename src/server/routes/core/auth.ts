@@ -6,6 +6,7 @@ import { supportSessionService, SUPPORT_COOKIE } from '../../services/SupportSes
 import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { authMiddleware } from '../../middleware/auth';
+import { guestExpired, GUEST_EXPIRED_MESSAGE } from '../../middleware/guestGuard';
 import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { stripeService } from '../../services/StripeService';
@@ -131,6 +132,10 @@ export async function authRoutes(fastify: FastifyInstance) {
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
         return reply.status(401).send({ error: 'Invalid credentials', message: 'Username or password is incorrect' });
+      }
+
+      if (guestExpired(user)) {
+        return reply.status(403).send({ error: 'Guest access expired', message: GUEST_EXPIRED_MESSAGE });
       }
 
       if (!user.emailVerified) {
@@ -850,6 +855,11 @@ export async function authRoutes(fastify: FastifyInstance) {
       const user = await userService.findById(decoded.userId);
       if (!user) {
         return reply.status(401).send({ error: 'User not found', message: 'User associated with token not found' });
+      }
+      if (guestExpired(user)) {
+        reply.clearCookie('access_token', { path: '/' });
+        reply.clearCookie('refresh_token', { path: '/' });
+        return reply.status(401).send({ error: 'Guest access expired', message: GUEST_EXPIRED_MESSAGE });
       }
 
       // Check token version — reject if password was changed or sessions were invalidated

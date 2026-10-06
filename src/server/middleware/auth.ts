@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import type { JwtPayload } from '../types/fastify';
 import { apiKeyService } from '../services/ApiKeyService';
+import { guestGuard } from './guestGuard';
 import { databaseService } from '../database/connection';
 import { redisService } from '../services/RedisService';
 import { subscriptionGuard } from './requireSubscription';
@@ -46,8 +47,8 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         });
       }
 
-      const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null }>(
-        'SELECT organization_id FROM users WHERE id = ? LIMIT 1',
+      const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null; is_guest: number; guest_expires_at: string | null }>(
+        'SELECT organization_id, is_guest, guest_expires_at FROM users WHERE id = ? LIMIT 1',
         [keyInfo.userId],
       );
       request.user = {
@@ -57,9 +58,16 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         // unknown (no row) counts as having a company: never mistaken for the platform admin
         hasCompany: keyOwner.length > 0 ? keyOwner[0].organization_id != null : true,
       };
+      if (keyOwner[0]?.is_guest) {
+        request.user.isGuest = true;
+        request.user.guestExpiresAt = keyOwner[0].guest_expires_at;
+      }
       request.apiKeyId = keyInfo.keyId;
       request.apiKeyScopes = keyInfo.scopes;
       request.apiKeyRateLimit = keyInfo.rateLimit;
+      // A guest's limits (and expiry) apply through a key too
+      await guestGuard(request, reply);
+      if (reply.sent) return;
       // An expired trial cannot write through the API either.
       return subscriptionGuard(request, reply);
     } catch (error) {
@@ -124,6 +132,12 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         request.user!.guestExpiresAt = rows[0].guest_expires_at;
       }
     }
+
+    // Guests: blocked areas + expiry. This used to be a global onRequest hook, which runs before
+    // this middleware has set the user — so it never saw a guest and expired guests kept full
+    // access (2026-10-05 audit).
+    await guestGuard(request, reply);
+    if (reply.sent) return;
 
     // The trial has to actually end. This sits here, rather than on each of the
     // 282 write routes, because this is the one place the user becomes known —

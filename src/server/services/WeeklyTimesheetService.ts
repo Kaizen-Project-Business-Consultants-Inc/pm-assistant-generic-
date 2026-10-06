@@ -395,6 +395,13 @@ export class WeeklyTimesheetService {
     if (!(await projectMemberService.hasRole(schedule.projectId, pmUserId, 'manager'))) {
       throw new TimesheetError("Only this project's PM can flag hours on it.", 403);
     }
+    // Only a line that's on this timesheet: hours on this task in that week (any PM could flag
+    // any waiting timesheet with their own task — 2026-10-05 audit)
+    const [onSheet] = await databaseService.query<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM time_entries
+        WHERE user_id = ? AND task_id = ? AND date >= ? AND date < DATE_ADD(?, INTERVAL 7 DAY)`,
+      [row.user_id, taskId, row.week_start, row.week_start]);
+    if (!Number(onSheet?.n)) throw new TimesheetError("That task isn't on this timesheet.", 400);
     await databaseService.query(
       `INSERT INTO timesheet_flags (id, timesheet_id, project_id, task_id, flagged_by, note) VALUES (?, ?, ?, ?, ?, ?)`,
       [uuidv4(), sheetId, schedule.projectId, taskId, pmUserId, note]);

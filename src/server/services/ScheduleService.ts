@@ -553,6 +553,20 @@ export class ScheduleService {
     }
   }
 
+  /**
+   * A parent (summary) or epic must be a task in the SAME plan. Nothing checked this, so a parent
+   * or epic id could point into another plan — even another project (2026-10-05 audit).
+   */
+  async validateSameScheduleRef(taskId: string | null, refId: string, scheduleId: string, what: 'parent task' | 'epic'): Promise<void> {
+    if (taskId && refId === taskId) {
+      throw new DependencyValidationError(`A task cannot be its own ${what}`);
+    }
+    const ref = await this.findTaskById(refId);
+    if (!ref || ref.scheduleId !== scheduleId) {
+      throw new DependencyValidationError(`The ${what} must be a task in the same schedule`);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // Summary task rollup (recompute-on-write)
   // -------------------------------------------------------------------------
@@ -658,6 +672,8 @@ export class ScheduleService {
     for (const dep of deps) {
       await this.validateDependency(null, dep.dependencyId, data.scheduleId);
     }
+    if (data.parentTaskId) await this.validateSameScheduleRef(null, data.parentTaskId, data.scheduleId, 'parent task');
+    if (data.epicId) await this.validateSameScheduleRef(null, data.epicId, data.scheduleId, 'epic');
 
     const firstDep = deps[0];
     const legacyDepId = firstDep?.dependencyId || null;
@@ -874,10 +890,9 @@ export class ScheduleService {
       await this.validateDependency(id, data.dependency, oldTask.scheduleId);
     }
 
-    // Prevent epic self-reference
-    if (data.epicId && data.epicId === id) {
-      throw new DependencyValidationError('A task cannot be its own epic');
-    }
+    // Parent and epic: not itself, and in the same plan
+    if (data.epicId) await this.validateSameScheduleRef(id, data.epicId, oldTask.scheduleId, 'epic');
+    if (data.parentTaskId) await this.validateSameScheduleRef(id, data.parentTaskId, oldTask.scheduleId, 'parent task');
 
     // Auto-set is_summary when task_type changes to epic
     if (data.taskType === 'epic') {

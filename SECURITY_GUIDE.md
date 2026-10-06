@@ -428,6 +428,14 @@ Found in the 2026-10-03 agent review; fixed before any agent was switched on.
 - **Knowledge search (rag-context-v1) is per project.** Agents receive `context.projectId` from the registry; the search returns meeting notes only from that project (none without one). `RagService.buildContextString` now requires the readable-projects set.
 - Tests: `DagWorkflowService.test.ts` (another project's events skipped; company-wide still runs), `dagWorkflowScope.test.ts`, `AutonomyService.test.ts`, `ragAgentCapability.test.ts`.
 
+## 14b. Security lows from the 2026-10-04 audit (Oct 2026)
+
+- **Expired guests really lose access.** `guestGuard` was a global `onRequest` hook, which runs before route authentication — it never saw a user, so guest limits and the expiry date did nothing. It now runs inside `authMiddleware` on both the cookie and the API-key/Claude path (the key path now loads `is_guest`/`guest_expires_at`). An expired guest gets 401 (the app signs them out); sign-in and session refresh refuse them with "Your guest access has expired…". Sign-out still works.
+- **Live updates stay inside the company.** A WebSocket connection remembers its company (`orgId`/`dbName` from the request that opened it). `presence:join` is checked inside that company for every role (`WebSocketService.canJoin`): PMO/executive → the project exists in their company; everyone else → a project they can see (`findByIdForUser`); no company → refused. (Admin/PMO/executive used to skip the check, and the membership check ran outside any company.) `broadcast` without a project now sends nothing — it used to go to every connected client in every company.
+- **Links, parents and epics stay in one plan.** `ScheduleService.validateSameScheduleRef` refuses a parent or epic that isn't a task in the same schedule (create and edit; AI task actions go through the same service). `PUT /bulk/tasks` checks a predecessor or parent id is in the row's schedule before writing it.
+- **Smaller holes.** No time can be logged on the sample project (`sample_read_only`); `POST /alerts/execute-action` needs a write key and the AI plan; flagging a line on a weekly timesheet requires that task to be on that sheet.
+- Tests: `__tests__/security/auditLows.test.ts`, `WebSocketService.test.ts`, `bulkUpdateRollup.test.ts`, `WeeklyTimesheetService.test.ts`.
+
 ## 15. Stakeholder Portal Access
 
 The stakeholder portal (`PortalService.ts`, `src/server/routes/portal.ts`) provides limited external access:

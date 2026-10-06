@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
 /**
+ * Called from authMiddleware once the user is known (not as a global hook — those run before
+ * authentication and never saw a guest).
  * Middleware that restricts guest users to only their allowed routes.
  * Guests CANNOT: create projects, access org settings, invite users, access billing.
  * Guests CAN: view assigned projects, comment, update assigned tasks.
@@ -15,6 +17,12 @@ const GUEST_BLOCKED_PREFIXES = [
   '/api/v1/webhooks',
   '/api/v1/pricing',
 ];
+
+export const GUEST_EXPIRED_MESSAGE = 'Your guest access has expired. Please contact the project administrator.';
+
+export function guestExpired(user: { isGuest?: boolean; guestExpiresAt?: Date | string | null }): boolean {
+  return !!user.isGuest && !!user.guestExpiresAt && new Date(user.guestExpiresAt) < new Date();
+}
 
 const GUEST_BLOCKED_METHODS_ON_PROJECTS: Set<string> = new Set(['POST']);
 
@@ -42,11 +50,9 @@ export async function guestGuard(request: FastifyRequest, reply: FastifyReply): 
     });
   }
 
-  // Check guest expiry
-  if (user.guestExpiresAt && new Date(user.guestExpiresAt) < new Date()) {
-    return reply.status(403).send({
-      error: 'Expired',
-      message: 'Your guest access has expired. Please contact the project administrator.',
-    });
+  // Check guest expiry (signing out still works). 401, so the app signs them out and the
+  // sign-in page shows why, rather than a screen of failed requests.
+  if (guestExpired(user) && !url.startsWith('/api/v1/auth/logout')) {
+    return reply.status(401).send({ error: 'Expired', message: GUEST_EXPIRED_MESSAGE });
   }
 }

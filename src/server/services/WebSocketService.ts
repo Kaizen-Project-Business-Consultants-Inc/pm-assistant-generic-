@@ -1,6 +1,9 @@
 import { WebSocket } from 'ws';
 import logger from '../utils/logger';
-import { projectMemberService } from './ProjectMemberService';
+import { projectRepository } from '../database/ProjectRepository';
+import { databaseService } from '../database/connection';
+import { getRequestContext, runWithTenantContext } from '../middleware/requestContext';
+import { config } from '../config';
 
 export interface WSMessage {
   type: 'task_updated' | 'task_created' | 'task_deleted' | 'schedule_updated' | 'notification' | 'presence_update' | 'status_report_ready' | 'status_report_failed' | 'ai_report_ready' | 'ai_report_failed' | 'strategic_risk_scan_ready' | 'strategic_risk_scan_failed' | 'raid_review_updated';
@@ -13,6 +16,9 @@ interface ClientInfo {
   role: string;
   projectId: string | null;
   editingField: string | null;
+  /** The company this connection belongs to (from the request that opened it) */
+  orgId: string | null;
+  dbName: string | null;
 }
 
 const MAX_CONNECTIONS = 2000;
@@ -79,6 +85,9 @@ export class WebSocketService {
         role: userInfo.role,
         projectId: null,
         editingField: null,
+        // the company: projects are only ever joined inside it (2026-10-05 audit)
+        orgId: getRequestContext()?.organizationId ?? null,
+        dbName: getRequestContext()?.tenantDbName ?? null,
       });
     }
 
@@ -88,19 +97,14 @@ export class WebSocketService {
         if (msg.type === 'presence:join' && typeof msg.projectId === 'string') {
           const info = WebSocketService.clientInfo.get(ws);
           if (info) {
-            // Authorization: check project membership (global roles bypass)
-            const globalRoles = ['admin', 'executive', 'pmo'];
-            if (!globalRoles.includes(info.role)) {
-              projectMemberService.hasAccess(msg.projectId, info.userId).then((allowed) => {
-                if (!allowed) {
-                  try { ws.send(JSON.stringify({ type: 'presence:error', message: 'Not authorized for this project' })); } catch {}
-                  return;
-                }
-                WebSocketService.applyJoin(ws, info, msg.projectId);
-              }).catch(() => {});
-              return;
-            }
-            WebSocketService.applyJoin(ws, info, msg.projectId);
+            const projectId = msg.projectId as string;
+            WebSocketService.canJoin(info, projectId).then((allowed) => {
+              if (!allowed) {
+                try { ws.send(JSON.stringify({ type: 'presence:error', message: 'Not authorized for this project' })); } catch {}
+                return;
+              }
+              WebSocketService.applyJoin(ws, info, projectId);
+            }).catch(() => {});
           }
         } else if (msg.type === 'presence:leave') {
           const info = WebSocketService.clientInfo.get(ws);
@@ -146,6 +150,25 @@ export class WebSocketService {
         WebSocketService.broadcastPresence(projectId);
       }
     });
+  }
+
+  /**
+   * May this connection watch this project? Checked INSIDE the connection's own company: PMO and
+   * executives see every project of their company; everyone else a project they created, are a
+   * member of, or the sample. (Global roles used to skip the check entirely, and the membership
+   * check ran outside any company — 2026-10-05 audit.) No company → never.
+   */
+  static async canJoin(info: ClientInfo, projectId: string): Promise<boolean> {
+    const check = async () => {
+      if (['pmo', 'executive'].includes(info.role)) {
+        const rows = await databaseService.query<{ id: string }>('SELECT id FROM projects WHERE id = ? LIMIT 1', [projectId]);
+        return rows.length > 0;
+      }
+      return !!(await projectRepository.findByIdForUser(projectId, info.userId));
+    };
+    if (!config.MULTI_TENANT_ENABLED) return check();
+    if (!info.dbName || !info.orgId) return false;
+    return runWithTenantContext(info.dbName, info.orgId, check);
   }
 
   private static applyJoin(ws: WebSocket, info: ClientInfo, projectId: string) {
@@ -195,11 +218,9 @@ export class WebSocketService {
         }
       }
     } else {
-      for (const client of WebSocketService.clients) {
-        if (client.readyState === WebSocket.OPEN) {
-          try { client.send(data); } catch (err) { logger.warn('WebSocket broadcast send failed', { error: (err as Error).message }); }
-        }
-      }
+      // No project = no audience. This used to send to EVERY connected client in every company
+      // (e.g. a task update whose plan lookup came back empty — 2026-10-05 audit).
+      logger.warn('WebSocket broadcast without a project — not sent', { type: message.type });
     }
   }
 

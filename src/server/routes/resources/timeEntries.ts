@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { projectService } from '../../services/ProjectService';
 import { timeEntryService } from '../../services/TimeEntryService';
 import { timeAnomalyService } from '../../services/TimeAnomalyService';
 import { timeEntryRepository } from '../../database/TimeEntryRepository';
@@ -66,6 +67,11 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const task = await scheduleService.findTaskById(body.taskId);
       if (!schedule || schedule.projectId !== body.projectId || !task || task.scheduleId !== body.scheduleId) {
         return reply.status(400).send({ error: 'mismatch', message: "That task isn't in this project's schedule." });
+      }
+      // The sample project is read-only — approved hours would change its tasks (2026-10-05 audit)
+      const project = await projectService.findById(body.projectId);
+      if (project?.isDemo) {
+        return reply.status(400).send({ error: 'sample_read_only', message: "The sample project is read-only — time can't be logged on it." });
       }
       // Hours can't be added to a week that's been sent for approval or approved
       await weeklyTimesheetService.assertWeekOpen(user.userId, body.date);

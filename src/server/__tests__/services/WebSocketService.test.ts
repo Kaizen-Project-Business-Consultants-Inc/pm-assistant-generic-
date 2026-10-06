@@ -3,9 +3,24 @@ import { EventEmitter } from 'events';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-const { mockHasAccess } = vi.hoisted(() => ({
+const { mockHasAccess, mockQuery, ctx, tenant } = vi.hoisted(() => ({
+  // a project the user may see (projectRepository.findByIdForUser)
   mockHasAccess: vi.fn(),
+  // a project that exists in the company (PMO / executive)
+  mockQuery: vi.fn(),
+  ctx: { value: { organizationId: 'org1', tenantDbName: 'pmassist_t_one' } as any },
+  tenant: { multi: true },
 }));
+
+vi.mock('../../database/ProjectRepository', () => ({
+  projectRepository: { findByIdForUser: async (projectId: string, userId: string) => ((await mockHasAccess(projectId, userId)) ? { id: projectId } : null) },
+}));
+vi.mock('../../database/connection', () => ({ databaseService: { query: mockQuery } }));
+vi.mock('../../middleware/requestContext', () => ({
+  getRequestContext: () => ctx.value,
+  runWithTenantContext: (_db: string, _org: string, fn: () => any) => fn(),
+}));
+vi.mock('../../config', () => ({ config: { get MULTI_TENANT_ENABLED() { return tenant.multi; } } }));
 
 vi.mock('../../utils/logger', () => ({
   default: {
@@ -16,11 +31,6 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
-vi.mock('../../services/ProjectMemberService', () => ({
-  projectMemberService: {
-    hasAccess: mockHasAccess,
-  },
-}));
 
 // We need to mock ws module to provide the OPEN constant
 vi.mock('ws', () => ({
@@ -69,6 +79,9 @@ describe('WebSocketService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetService();
+    ctx.value = { organizationId: 'org1', tenantDbName: 'pmassist_t_one' };
+    tenant.multi = true;
+    mockQuery.mockResolvedValue([{ id: 'p1' }, { id: 'p2' }]);
   });
 
   // ────────────────────────────────────────────────────────────────────────
@@ -170,36 +183,45 @@ describe('WebSocketService', () => {
   // ────────────────────────────────────────────────────────────────────────
 
   describe('message handling', () => {
-    it('handles presence:join for global roles without membership check', () => {
-      const ws = createMockWs();
-      WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'admin' });
-
-      ws.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'p1' }));
-
-      const info = (WebSocketService as any).clientInfo.get(ws);
-      expect(info.projectId).toBe('p1');
+    it('PMO and executives join a project of their own company (no membership needed)', async () => {
+      for (const role of ['pmo', 'executive']) {
+        const ws = createMockWs();
+        WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role });
+        ws.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'p1' }));
+        await vi.waitFor(() => expect((WebSocketService as any).clientInfo.get(ws).projectId).toBe('p1'));
+      }
       expect(mockHasAccess).not.toHaveBeenCalled();
+      expect(mockQuery).toHaveBeenCalledWith('SELECT id FROM projects WHERE id = ? LIMIT 1', ['p1']);
     });
 
-    it('handles presence:join for executive role without membership check', () => {
-      const ws = createMockWs();
-      WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'executive' });
-
-      ws.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'p1' }));
-
-      const info = (WebSocketService as any).clientInfo.get(ws);
-      expect(info.projectId).toBe('p1');
-      expect(mockHasAccess).not.toHaveBeenCalled();
-    });
-
-    it('handles presence:join for pmo role without membership check', () => {
+    it('PMO cannot join a project that is not in their company', async () => {
+      mockQuery.mockResolvedValue([]);
       const ws = createMockWs();
       WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'pmo' });
+      ws.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'elsewhere' }));
+      await vi.waitFor(() => expect(ws.send).toHaveBeenCalled());
+      expect(JSON.parse(ws.send.mock.calls[0][0]).type).toBe('presence:error');
+      expect((WebSocketService as any).clientInfo.get(ws).projectId).toBeNull();
+    });
 
+    it('the admin is checked like anyone else (no skipping)', async () => {
+      mockHasAccess.mockResolvedValue(false);
+      const ws = createMockWs();
+      WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'admin' });
       ws.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'p1' }));
+      await vi.waitFor(() => expect(ws.send).toHaveBeenCalled());
+      expect((WebSocketService as any).clientInfo.get(ws).projectId).toBeNull();
+      expect(mockHasAccess).toHaveBeenCalledWith('p1', 'u1');
+    });
 
-      const info = (WebSocketService as any).clientInfo.get(ws);
-      expect(info.projectId).toBe('p1');
+    it('a connection with no company never joins', async () => {
+      ctx.value = undefined;
+      mockHasAccess.mockResolvedValue(true);
+      const ws = createMockWs();
+      WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'project_manager' });
+      ws.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'p1' }));
+      await vi.waitFor(() => expect(ws.send).toHaveBeenCalled());
+      expect((WebSocketService as any).clientInfo.get(ws).projectId).toBeNull();
       expect(mockHasAccess).not.toHaveBeenCalled();
     });
 
@@ -334,15 +356,15 @@ describe('WebSocketService', () => {
       expect(info.projectId).toBeNull();
     });
 
-    it('handles Buffer messages', () => {
+    it('handles Buffer messages', async () => {
+      mockHasAccess.mockResolvedValue(true);
       const ws = createMockWs();
       WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'admin' });
 
       const buf = Buffer.from(JSON.stringify({ type: 'presence:join', projectId: 'p1' }));
       ws.emit('message', buf);
 
-      const info = (WebSocketService as any).clientInfo.get(ws);
-      expect(info.projectId).toBe('p1');
+      await vi.waitFor(() => expect((WebSocketService as any).clientInfo.get(ws).projectId).toBe('p1'));
     });
 
     it('does not apply join when ws has no client info', () => {
@@ -360,7 +382,8 @@ describe('WebSocketService', () => {
   // ────────────────────────────────────────────────────────────────────────
 
   describe('applyJoin', () => {
-    it('broadcasts to old project when switching projects', () => {
+    it('broadcasts to old project when switching projects', async () => {
+      mockHasAccess.mockResolvedValue(true);
       const ws1 = createMockWs();
       WebSocketService.addClient(ws1, { userId: 'u1', username: 'alice', role: 'admin' });
       const info1 = (WebSocketService as any).clientInfo.get(ws1);
@@ -376,7 +399,7 @@ describe('WebSocketService', () => {
       ws1.emit('message', JSON.stringify({ type: 'presence:join', projectId: 'p2' }));
 
       // ws2 should get broadcast about p1 (user left)
-      expect(ws2.send).toHaveBeenCalled();
+      await vi.waitFor(() => expect(ws2.send).toHaveBeenCalled());
       const sent = JSON.parse(ws2.send.mock.calls[0][0]);
       expect(sent.type).toBe('presence_update');
       expect(sent.payload.projectId).toBe('p1');
@@ -470,7 +493,7 @@ describe('WebSocketService', () => {
   describe('broadcast', () => {
     const testMessage: WSMessage = { type: 'task_updated', payload: { id: 't1' } };
 
-    it('sends to all OPEN clients when no projectId given', () => {
+    it('sends to NOBODY when no projectId is given (it used to reach every company)', () => {
       const ws1 = createMockWs();
       const ws2 = createMockWs();
       WebSocketService.addClient(ws1);
@@ -478,20 +501,9 @@ describe('WebSocketService', () => {
 
       WebSocketService.broadcast(testMessage);
 
-      expect(ws1.send).toHaveBeenCalledWith(JSON.stringify(testMessage));
-      expect(ws2.send).toHaveBeenCalledWith(JSON.stringify(testMessage));
-    });
-
-    it('skips non-OPEN clients in global broadcast', () => {
-      const wsOpen = createMockWs(WebSocket.OPEN);
-      const wsClosed = createMockWs(3);
-      WebSocketService.addClient(wsOpen);
-      WebSocketService.addClient(wsClosed);
-
-      WebSocketService.broadcast(testMessage);
-
-      expect(wsOpen.send).toHaveBeenCalled();
-      expect(wsClosed.send).not.toHaveBeenCalled();
+      expect(ws1.send).not.toHaveBeenCalled();
+      expect(ws2.send).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith('WebSocket broadcast without a project — not sent', { type: 'task_updated' });
     });
 
     it('sends only to clients in specific project when projectId given', () => {
@@ -516,15 +528,6 @@ describe('WebSocketService', () => {
       (WebSocketService as any).clientInfo.get(ws).projectId = 'p1';
 
       WebSocketService.broadcast(testMessage, 'p1');
-      expect(logger.warn).toHaveBeenCalledWith('WebSocket broadcast send failed', { error: 'broken pipe' });
-    });
-
-    it('catches send errors in global broadcast', () => {
-      const ws = createMockWs();
-      ws.send.mockImplementation(() => { throw new Error('broken pipe'); });
-      WebSocketService.addClient(ws);
-
-      WebSocketService.broadcast(testMessage);
       expect(logger.warn).toHaveBeenCalledWith('WebSocket broadcast send failed', { error: 'broken pipe' });
     });
   });

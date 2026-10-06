@@ -120,7 +120,6 @@ import { storageConnectorRoutes, storageConnectorCallbackRoutes } from './routes
 import { googleCalendarRoutes } from './routes/integrations/calendar';
 
 // Middleware
-import { guestGuard } from './middleware/guestGuard';
 
 // Admin
 import { adminRoutes } from './routes/admin/admin';
@@ -138,9 +137,6 @@ import { knowledgeBaseRoutes } from './routes/admin/knowledgeBase';
 import { getDegraded } from './utils/degradedState';
 
 export async function registerRoutes(fastify: FastifyInstance) {
-  // Guest guard — restrict guest users to allowed routes
-  fastify.addHook('onRequest', guestGuard);
-
   // Health check — unauthenticated, for uptime monitors
   // Health reports 'degraded' when the server started despite a real problem — today
   // that means a migration failed, so the schema may not match this build. Still 200:

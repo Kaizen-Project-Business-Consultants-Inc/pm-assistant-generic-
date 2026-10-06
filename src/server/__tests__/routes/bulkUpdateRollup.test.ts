@@ -54,6 +54,8 @@ describe('PUT /bulk/tasks — summaries above the edited tasks roll up', () => {
         const ids = params.slice(0, -1);
         return [...new Set(ids.map(id => parentOf[id]).filter(Boolean))].map(p => ({ parent_task_id: p }));
       }
+      // same-plan check for a predecessor/parent: every task here is in plan s1
+      if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND id IN')) return params.slice(1).map((id: string) => ({ id }));
       if (sql.startsWith('UPDATE tasks') && sql.includes('parent_task_id = ?')) {
         const id = params[params.length - 2];
         parentOf[id] = params[sql.split('?').length - 4];
