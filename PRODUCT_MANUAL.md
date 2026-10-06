@@ -436,7 +436,7 @@ Uses the existing `getEVMForecast()` API.
 
 ### Resource Pool
 
-**Line manager (Oct 2026, T070).** `resources.line_manager_user_id` (+ `line_manager_default`): every person has one — an active user of the same company, anyone including a PM; not themselves unless they're the company owner; never a generic role. `ResourceService` defaults to the company owner (`organizations.owner_user_id`) with `line_manager_default = 1` when none is given (plan import, invites, signup); saving one confirms it; it can't be removed. Existing people are backfilled after each boot's company migrations (`backfillLineManagers` in `tenantMigrationRunner.ts`). It will route weekly timesheets for approval.
+**Line manager (Oct 2026, T070).** `resources.line_manager_user_id` (+ `line_manager_default`): every person has one — an active user of the same company, anyone including a PM; not themselves unless they're the company owner; never a generic role. `ResourceService` defaults to the company owner (`organizations.owner_user_id`) with `line_manager_default = 1` when none is given (plan import, invites, signup); saving one confirms it; it can't be removed. Existing people are backfilled after each boot's company migrations (`backfillLineManagers` in `tenantMigrationRunner.ts`). It routes weekly timesheets for approval (see Timesheet Approval Workflow). Only the company owner (who works as PMO) or a PMO may choose or change it (`services/peopleRights.ts`).
 
 **People and generic roles (Oct 2026, tenant migration T069).** A resource is a person (`is_generic = 0`) or a generic role (`is_generic = 1`, e.g. "Generic Developer"). `ResourceService.createResource/updateResource` enforce the rule for every caller (REST, CSV import, plan import, MCP): a person must have an email (`400` with "Add an email. If this is a stand-in…, use a generic role instead."); a generic role never has an email or a linked login, and a resource can't change between the two after it's created. A guard test (`placeholderEmail.test.ts`) keeps resources being written anywhere else. T069 seeds six default generic roles per company and gives people with a blank email a placeholder `firstname.lastname@example.com` (duplicates get part of the id). `example.com` is reserved; `EmailService` drops any `@example.com` recipient, whichever feature sends (`utils/placeholderEmail.ts`, mirrored on the client). Plan imports create unknown names with a placeholder email.
 
@@ -535,15 +535,15 @@ The calendar displays a color-coded month grid (red=vacation, blue=holiday, gray
 
 ### Resource Management Page (`/resources`)
 
-A dedicated page accessible from the sidebar under the **Analyze** section. Features:
+A dedicated page: sidebar → **Manage** → **Resources** (PMs, PMO, executives). Features:
 
-- **Project selector** dropdown to choose which project to view.
+- **Project selector** dropdown (Workload Heatmap, Resource Histogram and Capacity Forecast tabs) to choose which project to view.
 - **Summary cards**: Total Resources, Over-allocated count, Average Utilization, Estimated Cost (shown when resources have cost rates).
-- **Four tabs**:
-  - **Team** — Full table of all resources with create, edit, and delete capabilities. Managers can add new resources, update roles/capacity/cost rates, and remove resources directly from this tab. Delete requires confirmation via modal dialog. CSV import includes keyboard-accessible drop zone with file size validation and read-error handling.
+- **Eight tabs**: Team, Team Planner (people who can change things only), Workload Heatmap, Resource Histogram, Capacity Forecast, Trends, Calendar Templates, Requests. The first and the forecasting ones:
+  - **Team** — Full table of all resources with create, edit, and delete capabilities. Buttons: **Add person** and **Add generic role**. Managers can add new people, update roles/capacity/cost rates, and remove resources directly from this tab. Delete requires confirmation via modal dialog. CSV import includes keyboard-accessible drop zone with file size validation and read-error handling.
   - **Workload Heatmap** — Table showing all resources with weekly utilization percentages as colored cells (green < 80%, blue 80–100%, amber 100–120%, red > 120%). Displays resource name, role, average utilization, cost per resource, and per-week cells with cost tooltips.
   - **Resource Histogram** — SVG bar chart per resource showing daily demand hours with an 8-hour capacity line. Red bars for over-allocated days. Includes an over-allocation summary with count and details.
-  - **Capacity Forecast** — 8-week bottleneck predictions table (resource, week, demand, capacity, severity) and AI-generated recommendations.
+  - **Capacity Forecast** — 8-week bottleneck predictions table (resource, week, demand, capacity, severity). No AI (Oct 2026): the forecast GET never calls it; AI rebalancing ideas are the project Team tab's PM-only **Suggest how to rebalance** button.
 
 Uses existing APIs: `getResourceWorkload()`, `getResourceHistogram()`, `getResourceForecast()`.
 
@@ -1402,7 +1402,7 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
 
 **Key features:**
 - **Persistent conversations** — chat history is stored in the database (`chat_conversations` + `chat_messages` tables) and survives server restarts. Users can browse, switch between, and resume past conversations from the history panel.
-- **Agent memory integration** — Mjuzi injects recent agent scan findings (via `InterAgentQueryService`), prior conversation context, and its own project-specific memories into the system prompt, enabling more informed and contextual responses.
+- **Agent memory integration** — Mjuzi injects recent agent scan findings (via `InterAgentQueryService`; none today, as the nightly scan is switched off), prior conversation context, and its own project-specific memories into the system prompt, enabling more informed and contextual responses.
 - **Action memory** — when Mjuzi executes tools (create task, update project, etc.), it stores a memory of the action via `AgentMemoryService` for future reference.
 - **Self-learning** — Mjuzi learns from conversations in two ways:
   - **User preferences**: when a user states an ongoing preference (e.g. “keep responses brief”, “always show budget numbers”), Mjuzi stores it via `remember_user_preference` and applies it to all future responses for that user.
@@ -1438,11 +1438,11 @@ The `aiReportService` generates narrative project reports using AI, summarizing 
 
 ### Proactive Alerts
 
-The `proactiveAlertService` continuously monitors project metrics and generates alerts when thresholds are breached (schedule slip, budget overrun, resource over-allocation).
+The `proactiveAlertService` works out alerts from current project metrics when they are asked for (`GET /api/v1/alerts`, e.g. by the dashboard) — schedule slip, budget overrun, resource over-allocation. It is not a background monitor.
 
 ### Agent Proposals UI
 
-The `/agent` page (`AgentProposalsPage`) lets managers and admins review, approve/reject, execute, rollback, and rate agentic proposals. The page uses **"Load More" pagination** so only an initial batch of proposals is rendered at startup; clicking "Load More" appends the next batch, keeping the page responsive for teams with a large proposal history.
+The `/agent` page (`AgentProposalsPage`, sidebar **AI Proposals**) lets the proposal's project Manager/Owner review, approve/reject, execute, rollback, and rate agentic proposals (Oct 2026 — Execute/Rollback used to need the platform admin role). The page uses **"Load More" pagination** so only an initial batch of proposals is rendered at startup; clicking "Load More" appends the next batch, keeping the page responsive for teams with a large proposal history.
 
 ---
 
@@ -1622,7 +1622,7 @@ The `NotificationService` delivers notifications to users with:
 
 ### RAID notifications (Sep 2026, PMI-aligned)
 
-`RiskService.notifyOnUpdate` → `meaningfulChanges(existing, data)` over status, severity, dueDate, ownerId/ownerResourceId, mitigationPlan, responsePlan, probability, impact, title, description, triggerCondition. Recipients: project owner/manager members + the item's `ownerId`, minus the changer; the new owner gets "assigned to you" instead. Severity of the notification: escalation to high/critical → high/critical; cancelled/reversed → high; other status change → medium; other edits → low. One merged notification per person. Resource-only owners (`ownerResourceId`) are emailed via `emailResourceOwner` on creation-with-owner, reassignment and escalation when `resources.email` is set. Team digest: `DailyBriefingService` `raidChanges` (from `raid_activity_log`, last 24 h, severity → high/critical or status → closed/resolved/mitigated/cancelled/reversed/completed, latest per item, member-scoped, non-archived) shown in the project's "Risks, issues & actions" section of the Morning Briefing. Sponsor escalation not built (no sponsor field on projects).
+`RiskService.notifyOnUpdate` → `meaningfulChanges(existing, data)` over status, severity, dueDate, ownerId/ownerResourceId, mitigationPlan, responsePlan, probability, impact, title, description, triggerCondition. Recipients: project owner/manager members + the item's `ownerId`, minus the changer; the new owner gets "assigned to you" instead. Severity of the notification: escalation to high/critical → high/critical; cancelled/reversed → high; other status change → medium; other edits → low. One merged notification per person. Resource-only owners (`ownerResourceId`) are emailed via `emailResourceOwner` on creation-with-owner, reassignment and escalation when `resources.email` is set. Team digest: `DailyBriefingService` `raidChanges` (from `raid_activity_log`, last 24 h, severity → high/critical or status → closed/resolved/mitigated/cancelled/reversed/completed, latest per item, member-scoped, non-archived) shown in the project's "Risks, issues & actions" section of the Morning Briefing. Sponsor escalation: see the next section (built October 2026).
 
 ### Project sponsor and RAID escalation (Oct 2026)
 
@@ -3294,7 +3294,7 @@ New users on Trial, Consultant Basic, and Consultant Pro tiers see a **3-step on
 | **Step 2 — Template Picker** | Template selection step where the user picks a methodology-matched template or skips. Templates are sorted by relevance to the chosen methodology — all templates remain visible (up to 6) rather than filtered, so the user always sees options. Hybrid methodology matches all templates. |
 | **Step 3 — Done** | Completion screen with navigation links to Dashboard, Projects, and Mjuzi AI Chat. |
 
-**Optional sample project (October 2026):** below the templates, the company owner or an admin sees **Explore a sample project first**. Ticked, the read-only "Sample Web App Development" is loaded (`POST /api/v1/sample-project/load`) when they continue — with a template or with *Just the sample for now*. New companies no longer get the sample automatically; it is loaded and removed in **Settings → Sample project** (`SampleProjectTab.tsx`, `GET /api/v1/sample-project` → `{loaded, canManage}`, `POST …/remove`). Removal deletes everything that points at the sample's project, schedules, tasks or example people in one transaction (`SampleProjectService`). Existing companies keep their sample until removed. While loaded it never counts in company-wide totals.
+**Optional sample project (October 2026):** below the templates, the company owner (who works as PMO) or a PMO sees **Explore a sample project first**. Ticked, the read-only "Sample Web App Development" is loaded (`POST /api/v1/sample-project/load`) when they continue — with a template or with *Just the sample for now*. New companies no longer get the sample automatically; it is loaded and removed in **Settings → Sample project** (`SampleProjectTab.tsx`, `GET /api/v1/sample-project` → `{loaded, canManage}`, `POST …/remove`). Removal deletes everything that points at the sample's project, schedules, tasks or example people in one transaction (`SampleProjectService`). Existing companies keep their sample until removed. While loaded it never counts in company-wide totals.
 
 All three steps are fully reachable. A previous redirect bug that sent users away from the wizard after Step 1 (before Steps 2 and 3 could be shown) has been fixed.
 
@@ -3325,15 +3325,17 @@ Component: `src/client/src/components/onboarding/OnboardingPage.tsx`
 
 ### Project Detail Tabs
 
-The project detail page shows **6 primary tabs** plus a single **More** overflow menu. The visible primary tabs depend on the project methodology:
+The project detail page shows a few **primary tabs** plus a single **More** menu at the end of the tab bar (`utils/methodology.ts` → `getPrimaryTabs` / `getOverflowTabs`). When the open tab lives in More, the More button shows its name.
 
-| Methodology | Primary tabs (left → right) |
-|-------------|----------------------------|
-| **Waterfall** | Overview, Schedule, Team, Risks & Issues, Financials, Changes |
-| **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team |
-| **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team |
+| Methodology | Primary tabs (left → right) | Extra items in **More** |
+|-------------|----------------------------|-------------------------|
+| **Waterfall** | Overview, Schedule, Team, Risks & Issues, Financials | Changes, Sprints, Backlog, What-If |
+| **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team | Financials, Changes, What-If |
+| **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team | Financials, Changes, What-If |
 
-**More overflow (all methodologies):** Time, Files, Performance, AI Insights, Resources, Agent Activity, plus any methodology-specific tabs not shown as primary.
+**More (all methodologies), in order:** Time, Files, Insights, Resources, Agent Activity, Automations, Doc Intelligence — then the methodology's extra items above. **Insights** has two sub-tabs: **Performance** (EVM and cost forecast; its AI analysis is requested only when this view opens) and **AI Predictions** (task slip, scope creep, risk assessment). The **Weekly review** tab has no entry in the bar: it opens from the Weekly PM review card on Overview (project PM only).
+
+**Agent Activity tab.** Lists each run of the three rule-based checks for this project (`GET /api/v1/agent-log`): time, check, result (Alert Created / Skipped / Error) and summary. People who can edit the project see **Run AI Analysis** (`POST /api/v1/agent/trigger` with the projectId) — it runs the same three checks (delays, budget CPI/VAC, Monte Carlo) straight away and **makes no AI call**, despite the label. The nightly run of these checks is switched off (`AGENT_ENABLED` unset on staging and production). The filter list still offers "Meeting", a retired agent that no longer writes entries.
 
 The RAID log tab is labelled **Risks & Issues** in the tab bar. Its badge shows the **critical-item count only** (not total open items).
 
@@ -3878,7 +3880,7 @@ npm run dev
 npm run build
 ```
 
-The build produces a `dist/` directory with compiled server and optimized client assets. In production, static files are served by the web server (e.g., LiteSpeed, Nginx) and API requests are proxied to the Fastify process.
+The build produces a `dist/` directory with compiled server and optimized client assets. In production, static files are served by Nginx and API requests are proxied to the Fastify process.
 
 ---
 

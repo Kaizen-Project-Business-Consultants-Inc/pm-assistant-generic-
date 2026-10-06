@@ -1,7 +1,7 @@
 # World-Class Features Roadmap
 
 ## Vision
-An agentic AI project management platform that combines the scheduling power of Primavera P6, the usability of Monday.com/Smartsheet, and autonomous AI agents that no competitor offers. 14 agents continuously detect, reason, and act — with human-in-the-loop governance and full audit trails.
+An agentic AI project management platform that combines the scheduling power of Primavera P6, the usability of Monday.com/Smartsheet, and AI assistance that runs only when a person asks. Rule-based reviews (Schedule Review, RAID Review, the Weekly PM review) find problems without AI; the PM approves every change, with full audit trails. (The 14 autonomous agents of earlier versions were retired in October 2026, and the remaining nightly checks are switched off.)
 
 ## Benchmarked Against
 - Oracle Primavera P6 (enterprise scheduling, EVM, critical path)
@@ -126,7 +126,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Resource utilization percentage
 - **Cost rollup**: Workload endpoint computes per-resource and per-project costs from `costRateHourly × allocated hours`. Workload heatmap displays Cost column per resource; Estimated Cost summary card shown when cost data is available; weekly cell tooltips include cost
 - Paginated list endpoints (`?limit=&offset=`, max 200, default 50) on resources, projects, schedule tasks, sprints, and templates — shared `paginationSchema` with `PaginatedResponse<T>` format (data, total, page, pageSize, totalPages)
-- Dedicated Resource Management page (`/resources`) with project selector, summary cards (including Estimated Cost), and four tabs: Team (full resource table with create/edit/delete CRUD), Workload Heatmap (color-coded weekly utilization grid with cost column), Resource Histogram (SVG bar charts with 8h capacity line), Capacity Forecast (8-week bottleneck predictions + AI recommendations)
+- Dedicated Resource Management page (`/resources`) with project selector, summary cards (including Estimated Cost), and eight tabs: Team (people list — **Add person**, **Add generic role**, edit, delete), Team Planner, Workload Heatmap (color-coded weekly utilization grid with cost column), Resource Histogram (SVG bar charts with 8h capacity line), Capacity Forecast (8-week bottleneck predictions; no AI — AI rebalancing ideas are on request from a project's Team tab), Trends, Calendar Templates, Requests
 - **People and generic roles** (Oct 2026): every person has an email (placeholder `name@example.com` until the real one is known — never mailed); generic roles ("Generic Developer", six built in, PM can add more) stand in for unstaffed work, are never over-booked, and show as **unfilled demand** (people needed per week) on the project Team tab; **Replace…** hands a generic role's tasks to a real person in one undoable step, warning first about over-booking; Schedule Review R37 flags work starting within two weeks still on a generic role; inviting is a separate **Invite** button, never a side effect of saving
 - **Team Planner (Oct 2026)** — people × weeks board across all of each person's projects; drag a task to another person or week, with a check before saving (both people's hours before → after, new dates, linked tasks that follow, project finish shift, planned cost at the new rate); one undoable History change; keyboard path via Enter. Benchmark: MS Project Team Planner, Float schedule, Smartsheet Resource Management.
 - **Benchmark:** MS Project, Wrike, Asana (generic resources / placeholders: MS Project generic resources, Smartsheet Resource Management placeholders, Float unassigned roles)
@@ -380,8 +380,9 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Budget Tab**: donut chart (SVG category breakdown), semi-circle health gauge, sortable expense table, search + category filter, cumulative spend line, CSV export, mobile card layout
 
 ### 3.8 Agent Activity Log
-- Per-project decision log for all 4 agentic agents (Auto-Reschedule, Budget, Monte Carlo, Meeting)
-- Every agent run records its decision: alert created, skipped (with reason), or error
+- Per-project log of the three rule-based checks (Auto-Reschedule delay detection, Budget, Monte Carlo) — no AI. The Meeting agent was retired in October 2026
+- The nightly run is **switched off** (`AGENT_ENABLED` unset); **Run AI Analysis** on the tab runs the three checks for the project on demand — despite its name it makes no AI call
+- Every run records its decision: alert created, skipped (with reason), or error
 - Structured details include thresholds, metrics, and context for each decision
 - Filterable by agent, paginated API and UI
 - "Agent Activity" tab on project detail page
