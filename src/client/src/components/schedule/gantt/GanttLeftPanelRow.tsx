@@ -1,8 +1,6 @@
-import React, { useMemo, useRef, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useRef, useEffect } from 'react';
 import { ResourceQuickAssign } from '../ResourceQuickAssign';
 import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
-import { apiService } from '../../../services/api';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 import { isSummaryRollupCell } from '../summaryRollup';
 import { cellEditLabel } from '../cellEditLabel';
@@ -20,6 +18,7 @@ import {
   priorityOptions,
   healthColor,
 } from './types';
+import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -199,20 +198,8 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   // Fixed row number (position in the full plan), not the position in the current view
   const rowNumber = rowNumMap.get(task.id) ?? rowIdx + 1;
 
-  // Resource lookup for assignedTo display
-  const { data: resourceData } = useQuery({
-    queryKey: ['resources'],
-    queryFn: () => apiService.getResources(),
-    staleTime: 60_000,
-  });
-  const resourceNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of (resourceData?.resources || []) as { id: string; name: string; userId?: string | null }[]) {
-      if (r.userId) map.set(r.userId, r.name);
-      map.set(r.id, r.name);
-    }
-    return map;
-  }, [resourceData]);
+  // Resource / person id → name (shared cache)
+  const resourceNameMap = useResourceNameMap();
 
   // Auto-focus input when entering edit mode
   useEffect(() => {

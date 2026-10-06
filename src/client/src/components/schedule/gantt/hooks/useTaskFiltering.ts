@@ -4,23 +4,78 @@ import {
   type FlatRow,
   type GanttFilters,
   buildFlatRows,
+  buildRowNumberMap,
 } from '../types';
+import {
+  ganttSortFieldFor,
+  buildSuccessorIds,
+  firstPredecessorRowNum,
+  firstSuccessorRowNum,
+  resourceSortName,
+  assignedSortName,
+  notesSortText,
+  compareSortValues,
+} from '../../sortValues';
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
+
+const EMPTY_NAMES = new Map<string, string>();
+
+export interface GanttSortContext {
+  rowNumOf: Map<string, number>;
+  successorIds: Map<string, string[]>;
+  resourceNameOf: Map<string, string>;
+  workCalendar?: WorkCalendar | null;
+}
+
+const PRIORITY_ORDER: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
+const STATUS_ORDER: Record<string, number> = { pending: 0, in_progress: 1, in_review: 2, testing: 3, completed: 4, blocked: 5, cancelled: 6 };
+
+/**
+ * The value a Gantt row sorts by for one sort field (null = blank, sorts last). Every field in
+ * GANTT_SORT_FIELD must have a case here — a guard test checks none falls through to ''.
+ */
+export function ganttSortValue(task: GanttTask, sortField: string, ctx: GanttSortContext): string | number | null {
+  switch (sortField) {
+    case 'name': return (task.name || '').toLowerCase();
+    case 'dependency': return firstPredecessorRowNum(task, ctx.rowNumOf);
+    case 'successor': return firstSuccessorRowNum(task.id, ctx.successorIds, ctx.rowNumOf);
+    case 'resource': return resourceSortName(task, ctx.resourceNameOf);
+    case 'notes': return notesSortText(task);
+    case 'startDate': return task.startDate || '';
+    case 'endDate': return task.endDate || '';
+    case 'duration': return workingDaysBetween(task.startDate, task.endDate, ctx.workCalendar) ?? 0;
+    case 'estimatedDays': return task.estimatedDays ?? 0;
+    case 'estimatedDurationHours': return task.estimatedDurationHours ?? 0;
+    case 'progressPercentage': return task.progressPercentage ?? 0;
+    case 'priority': return PRIORITY_ORDER[task.priority || 'medium'] ?? 1;
+    case 'status': return STATUS_ORDER[task.status] ?? 0;
+    case 'assignedTo': return assignedSortName(task, ctx.resourceNameOf);
+    default: return '';
+  }
+}
 
 /**
  * The Gantt's visible task list: quick search, the filter panel, column-header sort, and
  * the 3-step pipeline (search → multi-field filters → sort within sibling groups) over the
  * flattened, collapse-aware rows. A parent stays visible when any descendant matches.
  * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4).
+ * Sort fields come from the one shared map in schedule/sortValues.ts (2026-10-06: Pred, Succ,
+ * Resource, Notes and Work sort; Assigned sorts by the name shown).
  */
 export function useTaskFiltering({
   tasks,
+  allTasks,
   collapsedIds,
   workCalendar,
+  resourceNameOf,
 }: {
   tasks: GanttTask[];
+  /** The whole plan, for the fixed row numbers Pred / Succ sort by (defaults to tasks) */
+  allTasks?: GanttTask[];
   collapsedIds: Set<string>;
   workCalendar?: WorkCalendar | null;
+  /** Resource / person id → name, for the Assigned and Resource sorts */
+  resourceNameOf?: Map<string, string>;
 }) {
   // -----------------------------------------------------------------------
   // Quick search state
@@ -57,13 +112,8 @@ export function useTaskFiltering({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>(null);
 
   const handleHeaderSort = useCallback((colKey: string) => {
-    // Map column key to task field
-    const colKeyToSortField: Record<string, string> = {
-      name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-      dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
-      priority: 'priority', assigned: 'assignedTo', status: 'status',
-    };
-    const field = colKeyToSortField[colKey];
+    // Column key → task field (the shared map)
+    const field = ganttSortFieldFor(colKey);
     if (!field) return;
     if (sortField === field) {
       setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
@@ -140,28 +190,24 @@ export function useTaskFiltering({
     return searchedRows.filter(r => matchingIds.has(r.task.id));
   }, [searchedRows, filters, activeFilterCount, taskOrDescendantMatches]);
 
+  // Lookups for the Pred / Succ sorts (fixed row numbers, successors as the Succ column lists them)
+  const needsRowNums = sortField === 'dependency' || sortField === 'successor';
+  const rowNumOf = useMemo(
+    () => (needsRowNums ? buildRowNumberMap(allTasks ?? tasks) : new Map<string, number>()),
+    [needsRowNums, allTasks, tasks],
+  );
+  const successorIds = useMemo(
+    () => (sortField === 'successor' ? buildSuccessorIds(tasks) : new Map<string, string[]>()),
+    [sortField, tasks],
+  );
+  const names = resourceNameOf ?? EMPTY_NAMES;
+
   // Step 3: Sort
   const rows = useMemo(() => {
     if (!sortField || !sortDirection) return filteredRows;
     // Sort within sibling groups to preserve hierarchy
-    const priorityOrder: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
-    const statusOrder: Record<string, number> = { pending: 0, in_progress: 1, in_review: 2, testing: 3, completed: 4, blocked: 5, cancelled: 6 };
-
-    const getSortValue = (task: GanttTask): string | number => {
-      switch (sortField) {
-        case 'name': return (task.name || '').toLowerCase();
-        case 'startDate': return task.startDate || '';
-        case 'endDate': return task.endDate || '';
-        case 'duration': return workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0;
-        case 'estimatedDays': return task.estimatedDays ?? 0;
-        case 'estimatedDurationHours': return task.estimatedDurationHours ?? 0;
-        case 'progressPercentage': return task.progressPercentage ?? 0;
-        case 'priority': return priorityOrder[task.priority || 'medium'] ?? 1;
-        case 'status': return statusOrder[task.status] ?? 0;
-        case 'assignedTo': return (task.assignedTo || '').toLowerCase();
-        default: return '';
-      }
-    };
+    const ctx: GanttSortContext = { rowNumOf, successorIds, resourceNameOf: names, workCalendar };
+    const getSortValue = (task: GanttTask) => ganttSortValue(task, sortField, ctx);
 
     // Group rows by parentTaskId, sort within each group, reassemble
     const result: FlatRow[] = [];
@@ -185,13 +231,8 @@ export function useTaskFiltering({
       }
       // Sort the group
       const dir = sortDirection === 'asc' ? 1 : -1;
-      group.sort((a, b) => {
-        const va = getSortValue(a.row.task);
-        const vb = getSortValue(b.row.task);
-        if (va < vb) return -1 * dir;
-        if (va > vb) return 1 * dir;
-        return 0;
-      });
+      // Blanks (no predecessor / successor / resource / notes) go last either way
+      group.sort((a, b) => compareSortValues(getSortValue(a.row.task), getSortValue(b.row.task), dir));
       // Flatten back — parent row followed by its children (children keep their internal order)
       for (const g of group) {
         result.push(g.row);
@@ -199,7 +240,7 @@ export function useTaskFiltering({
       }
     }
     return result;
-  }, [filteredRows, sortField, sortDirection, workCalendar]);
+  }, [filteredRows, sortField, sortDirection, workCalendar, rowNumOf, successorIds, names]);
 
   return {
     searchQuery,

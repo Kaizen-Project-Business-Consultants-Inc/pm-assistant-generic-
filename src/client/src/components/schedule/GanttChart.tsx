@@ -44,6 +44,8 @@ import { GanttGridPanel } from './gantt/GanttGridPanel';
 import { GanttTimelinePanel } from './gantt/GanttTimelinePanel';
 import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
 import { isSummaryRollupCell } from './summaryRollup';
+import { savedViewSortField } from './sortValues';
+import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -416,6 +418,9 @@ export function GanttChart({
   const lastClickedIdRef = useRef<string | null>(null);
   const someSelected = selectedIds.size > 0;
 
+  // Resource / person id → name, for sorting by Assigned and Resource
+  const resourceNameMap = useResourceNameMap();
+
   // Quick search, filter panel, column-header sort → the visible rows (search → filters → sort)
   const {
     searchQuery,
@@ -434,7 +439,7 @@ export function GanttChart({
     handleHeaderSort,
     baseRows,
     rows,
-  } = useTaskFiltering({ tasks, collapsedIds, workCalendar });
+  } = useTaskFiltering({ tasks, allTasks, collapsedIds, workCalendar, resourceNameOf: resourceNameMap });
 
   const allSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.task.id));
 
@@ -897,14 +902,8 @@ export function GanttChart({
       setGanttVisibleCols(new Set(view.columns as unknown as string[]));
     }
     if (view.sortField) {
-      const colKeyToSortField: Record<string, string> = {
-        name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-        dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
-        priority: 'priority', assigned: 'assignedTo', status: 'status',
-      };
-      // View stores column keys, map to sort field
-      const mapped = colKeyToSortField[view.sortField as string] || view.sortField;
-      setSortField(mapped as string);
+      // View stores column keys: map to the sort field (the shared map, sortValues.ts)
+      setSortField(savedViewSortField(view.sortField as string));
     }
     if (view.sortDir) {
       setSortDirection(view.sortDir);

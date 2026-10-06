@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { BulkDoneToast } from './shared/BulkDoneToast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { buildRowNumberMap } from './gantt/types';
@@ -34,25 +34,14 @@ import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { isSummaryRollupCell } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
 import { listenForEscapeCancel } from './shared/escapeCancel';
+import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
-  // Resource lookup for assignedTo display
-  const { data: resourceData } = useQuery({
-    queryKey: ['resources'],
-    queryFn: () => apiService.getResources(),
-    staleTime: 60_000,
-  });
-  const resourceNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of (resourceData?.resources || []) as { id: string; name: string; userId?: string | null }[]) {
-      if (r.userId) map.set(r.userId, r.name);
-      map.set(r.id, r.name);
-    }
-    return map;
-  }, [resourceData]);
+  // Resource / person id → name (shared cache)
+  const resourceNameMap = useResourceNameMap();
 
 
   // Focus a task from a link: open its collapsed phases and groups, then scroll its row
@@ -307,7 +296,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     toggleSort,
     visibleSorted, summaryTaskIds, toggleSummaryCollapse,
     groupedSorted, toggleGroupCollapse,
-  } = useTableGrouping({ tasks, cpmMap, baselineMap, workCalendar });
+  } = useTableGrouping({ tasks, cpmMap, baselineMap, workCalendar, rowNumMap, resourceNameOf: resourceNameMap });
 
   // Build hierarchical ordering
   const levelMap = useMemo(() => {

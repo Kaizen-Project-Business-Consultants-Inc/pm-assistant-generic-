@@ -30,7 +30,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'duration', label: 'Duration', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'startDate', label: 'Start Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'endDate', label: 'End Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },
-  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: true, editable: true, sortable: false },
+  { key: 'dependency', label: 'Predecessor', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'assignedTo', label: 'Assigned To', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'status', label: 'Status', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'priority', label: 'Priority', group: 'standard', defaultVisible: false, editable: true, sortable: true },
@@ -64,9 +64,9 @@ export const COLUMN_DEFS: ColumnDef[] = [
 
   // Other
   { key: 'notes', label: 'Notes', group: 'standard', defaultVisible: false, editable: true, sortable: true },
-  { key: 'successor', label: 'Successor', group: 'standard', defaultVisible: false, editable: false, sortable: false },
+  { key: 'successor', label: 'Successor', group: 'standard', defaultVisible: false, editable: false, sortable: true },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
-  { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: false },
+  { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: true },
 ];
 
 export const DEFAULT_VISIBLE_KEYS = new Set<ColumnKey>(

@@ -239,9 +239,9 @@ describe('useTaskFiltering — filter panel and header sort state', () => {
     expect([result.current.sortField, result.current.sortDirection]).toEqual(['progressPercentage', 'asc']);
   });
 
-  it('header click on a column with no sort (succ, notes, resource) changes nothing', () => {
+  it('header click on a column with no sort (#, the row-actions column) changes nothing', () => {
     const { result } = renderHook(() => useTaskFiltering({ tasks: TASKS, collapsedIds: new Set() }));
-    for (const k of ['succ', 'notes', 'resource', 'rowNum']) act(() => result.current.handleHeaderSort(k));
+    for (const k of ['rowNum', 'editIcon', 'nope']) act(() => result.current.handleHeaderSort(k));
     expect([result.current.sortField, result.current.sortDirection]).toEqual([null, null]);
   });
 
@@ -249,6 +249,7 @@ describe('useTaskFiltering — filter panel and header sort state', () => {
     const map: Record<string, string> = {
       name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate', dur: 'duration', est: 'estimatedDays',
       work: 'estimatedDurationHours', pct: 'progressPercentage', priority: 'priority', assigned: 'assignedTo', status: 'status',
+      succ: 'successor', resource: 'resource', notes: 'notes',
     };
     const { result } = renderHook(() => useTaskFiltering({ tasks: TASKS, collapsedIds: new Set() }));
     for (const [k, field] of Object.entries(map)) {

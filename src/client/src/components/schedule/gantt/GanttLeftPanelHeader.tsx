@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { type GanttColDef, HEADER_H } from './types';
+import { ganttSortFieldFor } from '../sortValues';
 
 interface ColDragHook {
   dragColKey: string | null;
@@ -52,13 +53,6 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
   moveColumn,
   columnState,
 }: GanttLeftPanelHeaderProps) {
-  const colKeyToSortField: Record<string, string> = {
-    name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-    dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
-    priority: 'priority', assigned: 'assignedTo', status: 'status',
-  };
-  const sortableKeys = ['name', 'pred', 'start', 'end', 'dur', 'est', 'pct', 'priority', 'assigned', 'status'];
-
   return (
     <div
       role="row"
@@ -71,9 +65,10 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
         // Skip hidden columns
         if (!isColVisible(col)) return null;
         const w = getColWidth(col);
-        const isSortable = sortableKeys.includes(col.key);
-        const sortFieldForCol = colKeyToSortField[col.key];
-        const isActiveSortCol = sortField === sortFieldForCol;
+        // Which headers sort, and by what: the one shared map (sortValues.ts)
+        const sortFieldForCol = ganttSortFieldFor(col.key);
+        const isSortable = sortFieldForCol != null;
+        const isActiveSortCol = isSortable && sortField === sortFieldForCol;
         const canReorder = !col.alwaysVisible && !col.fixed;
         const visibleCols = orderedColumns.filter(c => !c.alwaysVisible && !c.fixed && isColVisible(c));
         const reorderIdx = visibleCols.findIndex(c => c.key === col.key);

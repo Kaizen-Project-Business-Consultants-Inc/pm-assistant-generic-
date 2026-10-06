@@ -212,11 +212,13 @@ function makePlan(seed: number, n: number): Args {
   return { tasks, cpmMap, baselineMap, workCalendar: null };
 }
 
+// Notes and Successor are left out on purpose: they changed on 2026-10-06 (blanks last; Successor
+// sorts by its first row number) — scheduleSortColumns.test.ts covers them and the other new sorts.
 const SORT_KEYS: ColumnKey[] = [
-  'name', 'status', 'priority', 'startDate', 'endDate', 'progressPercentage', 'assignedTo', 'notes', 'duration',
+  'name', 'status', 'priority', 'startDate', 'endDate', 'progressPercentage', 'assignedTo', 'duration',
   'earlyStart', 'earlyFinish', 'lateStart', 'lateFinish', 'totalFloat', 'freeFloat', 'critical',
   'baselineStart', 'baselineEnd', 'startVariance', 'endVariance', 'actualStartDate', 'actualEndDate',
-  'baselineDuration', 'baselineCost', 'wbs', 'rowNum', 'successor',
+  'baselineDuration', 'baselineCost', 'wbs', 'rowNum',
 ];
 const GROUPS: GroupByField[] = ['', 'status', 'priority', 'assignedTo'];
 

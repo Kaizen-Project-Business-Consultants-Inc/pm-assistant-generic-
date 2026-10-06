@@ -4,23 +4,44 @@ import { compareOutlineOrder } from '../../gantt/types';
 import type { ColumnKey } from '../../tableColumns';
 import type { SortDir, GroupByField, CpmTaskData, BaselineTaskVariance } from '../types';
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
+import {
+  buildSuccessorIds,
+  firstPredecessorRowNum,
+  firstSuccessorRowNum,
+  resourceSortName,
+  assignedSortName,
+  notesSortText,
+  compareSortValues,
+} from '../../sortValues';
+
+const EMPTY_ROW_NUMS = new Map<string, number>();
+const EMPTY_NAMES = new Map<string, string>();
 
 /**
  * The Table view's sort and grouping: column-header sort (asc -> desc -> off), sort values
  * for every column, the outline-ordered (or sorted-within-siblings) flattened row list that
  * respects collapsed summaries, and the group-by buckets with their collapse state.
  * Moved out of TableView.tsx unchanged (2026-10-05, code-health item 4 phase 3).
+ * 2026-10-06: Predecessor, Successor, Resource, the cost columns and the constraint columns
+ * sort; Notes, Predecessor, Successor and Resource put blanks last; Assigned sorts by the name
+ * shown. The per-column values are shared with the Gantt (schedule/sortValues.ts).
  */
 export function useTableGrouping({
   tasks,
   cpmMap,
   baselineMap,
   workCalendar,
+  rowNumMap = EMPTY_ROW_NUMS,
+  resourceNameOf = EMPTY_NAMES,
 }: {
   tasks: GanttTask[];
   cpmMap: Map<string, CpmTaskData>;
   baselineMap: Map<string, BaselineTaskVariance>;
   workCalendar?: WorkCalendar | null;
+  /** Fixed row numbers (whole plan), for the Predecessor / Successor sorts */
+  rowNumMap?: Map<string, number>;
+  /** Resource / person id → name, for the Assigned and Resource sorts */
+  resourceNameOf?: Map<string, string>;
 }) {
   const [sortField, setSortField] = useState<ColumnKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>('asc');
@@ -42,7 +63,12 @@ export function useTableGrouping({
     }
   }, [sortField, sortDir]);
 
-  // Get a sortable value for any column
+  const successorIds = useMemo(
+    () => (sortField === 'successor' ? buildSuccessorIds(tasks) : new Map<string, string[]>()),
+    [sortField, tasks],
+  );
+
+  // Get a sortable value for any column (null = blank, sorts last either way)
   const getSortValue = useCallback((task: GanttTask, field: ColumnKey): any => {
     switch (field) {
       case 'name': return task.name.toLowerCase();
@@ -54,8 +80,21 @@ export function useTableGrouping({
       case 'startDate': return task.startDate || '';
       case 'endDate': return task.endDate || '';
       case 'progressPercentage': return task.progressPercentage ?? 0;
-      case 'assignedTo': return (task.assignedTo || '').toLowerCase();
-      case 'notes': return (task.description || '').toLowerCase();
+      case 'assignedTo': return assignedSortName(task, resourceNameOf);
+      case 'notes': return notesSortText(task);
+      case 'dependency': return firstPredecessorRowNum(task, rowNumMap);
+      case 'successor': return firstSuccessorRowNum(task.id, successorIds, rowNumMap);
+      case 'resource': return resourceSortName(task, resourceNameOf);
+      case 'budgetAllocated': return (task as any).budgetAllocated ?? null;
+      case 'actualCost': return (task as any).actualCost ?? null;
+      case 'budgetVariance': {
+        const budget = (task as any).budgetAllocated;
+        const actual = (task as any).actualCost;
+        if (budget == null && actual == null) return null;
+        return Number(budget ?? 0) - Number(actual ?? 0);
+      }
+      case 'constraintType': return (task as any).constraintType || 'ASAP';
+      case 'constraintDate': return (task as any).constraintDate || null;
       case 'duration': {
         const span = workingDaysBetween(task.startDate, task.endDate, workCalendar);
         if (span) return span;
@@ -78,7 +117,7 @@ export function useTableGrouping({
       case 'baselineCost': return (task as any).baselineCost ?? Infinity;
       default: return '';
     }
-  }, [cpmMap, baselineMap, workCalendar]);
+  }, [cpmMap, baselineMap, workCalendar, rowNumMap, successorIds, resourceNameOf]);
 
   const sorted = useMemo(() => {
     const taskIds = new Set(tasks.map(t => t.id));
@@ -93,13 +132,8 @@ export function useTableGrouping({
       if (!sortField) {
         return [...list].sort(compareOutlineOrder);
       }
-      return [...list].sort((a, b) => {
-        const va = getSortValue(a, sortField);
-        const vb = getSortValue(b, sortField);
-        if (va < vb) return sortDir === 'asc' ? -1 : 1;
-        if (va > vb) return sortDir === 'asc' ? 1 : -1;
-        return 0;
-      });
+      const dir = sortDir === 'asc' ? 1 : -1;
+      return [...list].sort((a, b) => compareSortValues(getSortValue(a, sortField), getSortValue(b, sortField), dir));
     };
 
     const summaryIds = new Set<string>();

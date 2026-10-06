@@ -1,6 +1,4 @@
-import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../../../services/api';
+import React from 'react';
 import {
   type GanttTask,
   HEADER_H,
@@ -11,6 +9,7 @@ import {
 } from './types';
 import { getInitials, getAvatarHex } from '../../ui/Avatar';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
+import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -90,20 +89,8 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   riskLevel,
   workCalendar,
 }: GanttTimelineBarProps) {
-  // Resource name lookup (shared cache with GanttLeftPanelRow)
-  const { data: resourceData } = useQuery({
-    queryKey: ['resources'],
-    queryFn: () => apiService.getResources(),
-    staleTime: 60_000,
-  });
-  const resourceNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const r of (resourceData?.resources || []) as { id: string; name: string; userId?: string | null }[]) {
-      if (r.userId) map.set(r.userId, r.name);
-      map.set(r.id, r.name);
-    }
-    return map;
-  }, [resourceData]);
+  // Resource / person id → name (shared cache)
+  const resourceNameMap = useResourceNameMap();
 
   const assigneeName = task.assignedTo ? (resourceNameMap.get(task.assignedTo) || task.assignedTo) : '';
 
