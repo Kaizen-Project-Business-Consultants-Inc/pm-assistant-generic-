@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
 import { ResourcePickList, ResourceOptionGroups } from '../resources/ResourcePickList';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
@@ -136,6 +136,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
         <div className="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
           <div className="p-1.5">
             <input
+              aria-label="Search resources"
               ref={searchRef}
               type="text"
               className="w-full text-xs px-2 py-1.5 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-primary-400"
@@ -204,6 +205,7 @@ export function TaskFormModal({
   initialEndDate,
   workCalendar,
 }: TaskFormModalProps) {
+  const uid = useId();
   const { dialogRef, handleKeyDown: handleModalKeyDown } = useModal(true, onClose);
   const isEdit = !!task;
   const isSummary = !!task?.isSummary;
@@ -391,10 +393,11 @@ export function TaskFormModal({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
           {/* Task Name */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <label htmlFor={`${uid}-task-name`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Task Name <span className="text-red-500">*</span>
             </label>
             <input
+              id={`${uid}-task-name`}
               type="text"
               name="name"
               value={form.name}
@@ -408,10 +411,11 @@ export function TaskFormModal({
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Description
             </label>
             <textarea
+              id={`${uid}-description`}
               name="description"
               value={form.description}
               onChange={handleChange}
@@ -453,8 +457,9 @@ export function TaskFormModal({
           {/* Status + Priority row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
+              <label htmlFor={`${uid}-status`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
               <select
+                id={`${uid}-status`}
                 name="status"
                 value={form.status}
                 onChange={handleChange}
@@ -471,8 +476,9 @@ export function TaskFormModal({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Priority</label>
+              <label htmlFor={`${uid}-priority`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Priority</label>
               <select
+                id={`${uid}-priority`}
                 name="priority"
                 value={form.priority}
                 onChange={handleChange}
@@ -492,8 +498,9 @@ export function TaskFormModal({
             if (epics.length === 0) return null;
             return (
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Epic</label>
+                <label htmlFor={`${uid}-epic`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Epic</label>
                 <select
+                  id={`${uid}-epic`}
                   name="epicId"
                   value={form.epicId}
                   onChange={handleChange}
@@ -510,7 +517,7 @@ export function TaskFormModal({
 
           {/* Acceptance Criteria */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <label htmlFor={`${uid}-acceptance-criteria`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Acceptance Criteria
               {form.acceptanceCriteria && (() => {
                 const lines = form.acceptanceCriteria.split('\n').filter(l => l.trim().startsWith('- ['));
@@ -519,6 +526,7 @@ export function TaskFormModal({
               })()}
             </label>
             <textarea
+              id={`${uid}-acceptance-criteria`}
               name="acceptanceCriteria"
               value={form.acceptanceCriteria}
               onChange={handleChange}
@@ -531,8 +539,9 @@ export function TaskFormModal({
           {/* Dates row */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
+              <label htmlFor={`${uid}-start-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
               <input
+                id={`${uid}-start-date`}
                 type="date"
                 name="startDate"
                 value={form.startDate}
@@ -542,8 +551,9 @@ export function TaskFormModal({
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">End Date</label>
+              <label htmlFor={`${uid}-end-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">End Date</label>
               <input
+                id={`${uid}-end-date`}
                 type="date"
                 name="endDate"
                 value={form.endDate}
@@ -585,10 +595,11 @@ export function TaskFormModal({
             </div>
             ) : (
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <label htmlFor={`${uid}-progress`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Progress: {form.progressPercentage}%
               </label>
               <input
+                id={`${uid}-progress`}
                 type="range"
                 min="0"
                 max="100"
@@ -606,11 +617,12 @@ export function TaskFormModal({
             </div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <label htmlFor={`${uid}-est-duration`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Est. Duration (days)
               </label>
               <div className="flex gap-1.5">
                 <input
+                  id={`${uid}-est-duration`}
                   type="number"
                   name="estimatedDays"
                   value={form.estimatedDays}
@@ -698,6 +710,7 @@ export function TaskFormModal({
                 />
                 <span className="text-xs text-gray-500">%</span>
                 <input
+                  aria-label={`Role on task for assignment ${idx + 1}`}
                   type="text"
                   value={a.roleOnTask}
                   onChange={(e) => {
@@ -758,8 +771,9 @@ export function TaskFormModal({
 
           {/* Parent Task */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Parent Task</label>
+            <label htmlFor={`${uid}-parent-task`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Parent Task</label>
             <select
+              id={`${uid}-parent-task`}
               name="parentTaskId"
               value={form.parentTaskId}
               onChange={handleChange}
@@ -784,6 +798,7 @@ export function TaskFormModal({
             {form.predecessors.map((pred, idx) => (
               <div key={idx} className="flex items-center gap-2 mb-2">
                 <select
+                  aria-label={`Predecessor ${idx + 1}`}
                   value={pred.dependencyId}
                   onChange={(e) => {
                     const updated = [...form.predecessors];
@@ -798,6 +813,7 @@ export function TaskFormModal({
                   ))}
                 </select>
                 <select
+                  aria-label={`Link type for predecessor ${idx + 1}`}
                   value={pred.dependencyType}
                   onChange={(e) => {
                     const updated = [...form.predecessors];
@@ -812,6 +828,7 @@ export function TaskFormModal({
                   <option value="SF">SF</option>
                 </select>
                 <input
+                  aria-label={`Lag days for predecessor ${idx + 1}`}
                   type="number"
                   value={pred.lagDays}
                   onChange={(e) => {
@@ -865,8 +882,9 @@ export function TaskFormModal({
           {/* Effort-Driven Scheduling */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Work Hours</label>
+              <label htmlFor={`${uid}-work-hours`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Work Hours</label>
               <input
+                id={`${uid}-work-hours`}
                 type="number"
                 name="workHours"
                 value={form.workHours}
@@ -896,8 +914,9 @@ export function TaskFormModal({
           {/* Constraint */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Constraint Type</label>
+              <label htmlFor={`${uid}-constraint-type`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Constraint Type</label>
               <select
+                id={`${uid}-constraint-type`}
                 name="constraintType"
                 value={form.constraintType}
                 onChange={handleChange}
@@ -915,8 +934,9 @@ export function TaskFormModal({
             </div>
             {form.constraintType !== 'ASAP' && form.constraintType !== 'ALAP' && (
               <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Constraint Date</label>
+                <label htmlFor={`${uid}-constraint-date`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Constraint Date</label>
                 <input
+                  id={`${uid}-constraint-date`}
                   type="date"
                   name="constraintDate"
                   value={form.constraintDate}
@@ -1059,6 +1079,7 @@ function RecurrenceSection({
   setForm: React.Dispatch<React.SetStateAction<TaskFormData>>;
   isRecurringInstance: boolean;
 }) {
+  const uid = useId();
   const freq = parseFrequency(form.recurrenceRule);
   const selectedDays = parseDays(form.recurrenceRule);
 
@@ -1089,9 +1110,10 @@ function RecurrenceSection({
 
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Recurrence</label>
+      <label htmlFor={`${uid}-recurrence`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Recurrence</label>
       <div className="flex items-center gap-3">
         <select
+          id={`${uid}-recurrence`}
           value={freq}
           onChange={e => setFreq(e.target.value)}
           className="input"

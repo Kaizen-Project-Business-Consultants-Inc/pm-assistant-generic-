@@ -31,6 +31,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <select
+        aria-label="Filter by status"
         value={filterStatus}
         onChange={(e) => onFilterStatusChange(e.target.value)}
         className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
@@ -41,6 +42,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
         ))}
       </select>
       <select
+        aria-label="Filter by priority"
         value={filterPriority}
         onChange={(e) => onFilterPriorityChange(e.target.value)}
         className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
@@ -51,6 +53,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
         ))}
       </select>
       <select
+        aria-label="Filter by assignee"
         value={filterAssignee}
         onChange={(e) => onFilterAssigneeChange(e.target.value)}
         className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"

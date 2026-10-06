@@ -5,7 +5,7 @@
  * useScheduleMutations. Moved out of ScheduleTab.tsx unchanged, keeping its name ScheduleGantt
  * (the product manual refers to it by that name) — code health item 4, phase 4 batch B (2026-10-05).
  */
-import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense, useId } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -49,6 +49,7 @@ import { isCalendarOverdue, toCalendarDate } from '../../../utils/dateUtils';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -1014,8 +1015,9 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           <div className="fixed inset-0 bg-black/50" onClick={() => setShowScenarioPrompt(false)} />
           <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4 w-full">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Create Scenario</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Enter a name for the scenario.</p>
+            <p id={`${uid}-enter-a-name-label`} className="text-sm text-gray-600 dark:text-gray-400 mb-3">Enter a name for the scenario.</p>
             <input
+              aria-labelledby={`${uid}-enter-a-name-label`}
               type="text"
               value={scenarioName}
               onChange={(e) => setScenarioName(e.target.value)}

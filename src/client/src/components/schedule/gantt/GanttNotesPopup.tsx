@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import type { GanttTask } from './types';
 
 interface GanttNotesPopupProps {
@@ -14,6 +14,7 @@ export const GanttNotesPopup = React.memo(function GanttNotesPopup({
   onTaskUpdate,
   setNotesPopup,
 }: GanttNotesPopupProps) {
+  const notesId = useId();
   const saveAndClose = () => {
     const task = tasks.find(t => t.id === notesPopup.taskId);
     if (task && notesPopup.value !== (task.description || '') && onTaskUpdate) {
@@ -32,15 +33,17 @@ export const GanttNotesPopup = React.memo(function GanttNotesPopup({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
+        <label htmlFor={notesId} className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</label>
         <button
           onClick={saveAndClose}
+          aria-label="Save notes and close"
           className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-200"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>
       <textarea
+        id={notesId}
         ref={el => { if (el) el.focus(); }}
         className="w-full text-xs p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
         value={notesPopup.value}

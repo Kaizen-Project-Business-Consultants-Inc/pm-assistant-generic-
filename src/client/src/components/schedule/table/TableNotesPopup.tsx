@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { X } from 'lucide-react';
 
 interface TableNotesPopupProps {
@@ -20,6 +20,7 @@ export const TableNotesPopup = React.memo(function TableNotesPopup({
   onSave,
   onCancel,
 }: TableNotesPopupProps) {
+  const notesId = useId();
   return (
     <div
       className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-3 w-80"
@@ -30,15 +31,17 @@ export const TableNotesPopup = React.memo(function TableNotesPopup({
       onClick={(e) => e.stopPropagation()}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</span>
+        <label htmlFor={notesId} className="text-xs font-semibold text-gray-600 dark:text-gray-300">Notes</label>
         <button
           onClick={onSave}
+          aria-label="Save notes and close"
           className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-200"
         >
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
       <textarea
+        id={notesId}
         ref={el => { if (el) el.focus(); }}
         className="w-full text-xs p-2 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-400 resize-y"
         value={value}

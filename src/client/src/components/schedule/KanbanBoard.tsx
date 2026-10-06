@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useId } from 'react';
 import { Avatar } from '../ui/Avatar';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 
@@ -90,6 +90,7 @@ function saveWipLimits(scheduleId: string, limits: Record<string, number>) {
 type SwimlaneSetting = '' | 'assignee' | 'priority';
 
 export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQuickAdd, scheduleId, activeTaskId, taskRiskMap }: KanbanBoardProps) {
+  const uid = useId();
   const [quickAddColumn, setQuickAddColumn] = useState<string | null>(null);
   const [quickAddValue, setQuickAddValue] = useState('');
   const quickAddRef = React.useRef<HTMLInputElement>(null);
@@ -220,8 +221,9 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
           <span className="text-xs text-gray-500">{tasks.length} tasks</span>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Swimlane</span>
+          <span id={`${uid}-swimlane`} className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Swimlane</span>
           <select
+            aria-labelledby={`${uid}-swimlane`}
             value={swimlane}
             onChange={(e) => setSwimlane(e.target.value as SwimlaneSetting)}
             className="text-xs border border-gray-200 dark:border-gray-600 rounded px-1.5 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
@@ -429,6 +431,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                       <input
                         ref={quickAddRef}
                         type="text"
+                        aria-label={`New task name for ${col.label}`}
                         value={quickAddValue}
                         onChange={(e) => setQuickAddValue(e.target.value)}
                         onKeyDown={(e) => {

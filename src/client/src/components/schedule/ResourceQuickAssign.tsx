@@ -121,6 +121,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
         <div className="absolute top-full left-0 mt-1 z-50 w-52 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
           <div className="p-1.5">
             <input
+              aria-label="Search resources"
               ref={inputRef}
               type="text"
               className="w-full text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-primary-400"

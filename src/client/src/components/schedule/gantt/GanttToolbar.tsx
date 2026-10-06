@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useId } from 'react';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { SavedViewsDropdown } from '../SavedViewsDropdown';
 import type { SavedView } from '../SavedViewsDropdown';
@@ -128,6 +128,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   onOpenCalendar,
   calendarActive,
 }: GanttToolbarProps) {
+  const colPickerId = useId();
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
 
@@ -335,9 +336,11 @@ export const GanttToolbar = React.memo(function GanttToolbar({
                     type="checkbox"
                     checked={ganttVisibleCols.has(col.key)}
                     onChange={() => toggleColVisibility(col.key)}
+                    aria-labelledby={`${colPickerId}-${col.key}`}
                     className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
                   />
                   <span
+                    id={`${colPickerId}-${col.key}`}
                     className="flex-1 cursor-pointer"
                     onClick={() => toggleColVisibility(col.key)}
                     role="button"

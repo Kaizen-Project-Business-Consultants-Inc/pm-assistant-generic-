@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useId } from 'react';
 import { X, Upload, FileText, Sparkles, Trash2, Pencil } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
@@ -118,6 +118,7 @@ function parseCSV(text: string): ParsedCSV {
 // ---------------------------------------------------------------------------
 
 export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenReview }: ImportModalProps) {
+  const a11yId = useId();
   const [csvText, setCsvText] = useState('');
   const [parsed, setParsed] = useState<ParsedCSV | null>(null);
   const [columnMap, setColumnMap] = useState<Record<number, string>>({});
@@ -453,6 +454,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                         <tr className="bg-gray-50 dark:bg-gray-700">
                           <th className="px-2 py-2 text-center w-8">
                             <input
+                              aria-label="Include all tasks"
                               type="checkbox"
                               checked={extractedTasks.every(t => t._included)}
                               onChange={(e) => setExtractedTasks(prev => prev!.map(t => ({ ...t, _included: e.target.checked })))}
@@ -478,6 +480,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                             >
                               <td className="px-2 py-1.5 text-center">
                                 <input
+                                  aria-label={`Include ${task.name}`}
                                   type="checkbox"
                                   checked={task._included}
                                   onChange={() => setExtractedTasks(prev => prev!.map((t, i) => i === idx ? { ...t, _included: !t._included } : t))}
@@ -488,6 +491,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                               <td className="px-2 py-1.5 text-gray-800 dark:text-gray-200">
                                 {isEditing ? (
                                   <input
+                                    aria-label={`Name for ${task.name}`}
                                     type="text"
                                     value={task.name}
                                     onChange={(e) => setExtractedTasks(prev => prev!.map((t, i) => i === idx ? { ...t, name: e.target.value } : t))}
@@ -505,6 +509,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                               <td className="px-2 py-1.5 text-center text-gray-600 dark:text-gray-400">
                                 {isEditing ? (
                                   <input
+                                    aria-label={`Duration for ${task.name}`}
                                     type="number"
                                     value={task.duration ?? ''}
                                     onChange={(e) => setExtractedTasks(prev => prev!.map((t, i) => i === idx ? { ...t, duration: e.target.value ? Number(e.target.value) : null } : t))}
@@ -580,14 +585,15 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                     <p className="text-xs text-gray-500 dark:text-gray-400">.csv, .xlsx, .xml, .pdf, .docx, .txt supported (max 5MB)</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">PDF, Word, and text files are analyzed by AI to extract tasks automatically</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">Using Microsoft Project? Save as XML first (File → Save As → XML), then import the .xml file here.</p>
-                    <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,.pdf,.docx,.doc,.txt,text/csv,text/xml,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                    <input aria-label="Choose a file to import" ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.xml,.pdf,.docx,.doc,.txt,text/csv,text/xml,application/xml,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/plain" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                  <div id={`${a11yId}-or-paste-csv-label`} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex-1 border-t dark:border-gray-700" />or paste CSV below<span className="flex-1 border-t dark:border-gray-700" />
                   </div>
 
                   <textarea
+                    aria-labelledby={`${a11yId}-or-paste-csv-label`}
                     rows={5}
                     placeholder="name,status,priority,startDate,endDate&#10;Task A,not_started,high,2026-07-01,2026-07-15"
                     className="w-full rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100 p-3 font-mono focus:ring-2 focus:ring-blue-500 focus:outline-none resize-y"
@@ -607,8 +613,9 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
               {/* Sheet selector for multi-sheet Excel files */}
               {sheetNames.length > 1 && (
                 <div>
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Sheet</h3>
+                  <h3 id={`${a11yId}-select-sheet-label`} className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Sheet</h3>
                   <select
+                    aria-labelledby={`${a11yId}-select-sheet-label`}
                     value={selectedSheet}
                     onChange={(e) => handleSheetSelect(e.target.value)}
                     className="text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3 py-2 w-full"

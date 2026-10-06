@@ -144,6 +144,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose, floa
       {/* Search */}
       <div className="p-1.5 space-y-1">
         <input
+          aria-label="Search resources"
           ref={inputRef}
           type="text"
           className="w-full text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-primary-400"
@@ -158,6 +159,7 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose, floa
         />
         {allSkills.length > 0 && (
           <select
+            aria-label="Filter by skill"
             value={skillFilter}
             onChange={e => { e.stopPropagation(); setSkillFilter(e.target.value); }}
             className="w-full text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-primary-400"

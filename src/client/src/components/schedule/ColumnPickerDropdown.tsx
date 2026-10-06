@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { Settings2, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { ColumnDef, ColumnKey, ColumnGroup } from './tableColumns';
 
@@ -24,6 +24,7 @@ interface ColumnPickerDropdownProps {
 }
 
 export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleGroup, onMoveColumn, columnOrder, onResetOrder, onResetVisibility }: ColumnPickerDropdownProps) {
+  const pickerId = useId();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -85,9 +86,10 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
                       if (el) el.indeterminate = someVisible && !allVisible;
                     }}
                     onChange={() => onToggleGroup(group, !allVisible)}
+                    aria-labelledby={`${pickerId}-group-${group}`}
                     className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer"
                   />
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
+                  <span id={`${pickerId}-group-${group}`} className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
                 </div>
                 {cols.map(col => {
                   const isFixed = col.key === 'name' || col.key === 'rowNum';
@@ -105,9 +107,11 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
                         checked={visibleKeys.has(col.key)}
                         onChange={() => onToggle(col.key)}
                         disabled={isFixed}
+                        aria-labelledby={`${pickerId}-${col.key}`}
                         className="rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 h-3.5 w-3.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                       <span
+                        id={`${pickerId}-${col.key}`}
                         className="text-xs text-gray-700 dark:text-gray-300 flex-1 cursor-pointer"
                         onClick={() => !isFixed && onToggle(col.key)}
                         role="button"

@@ -57,6 +57,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
+            aria-label="Search tasks"
             placeholder="Search tasks..."
             className="w-40 lg:w-48 pl-7 pr-7 py-1.5 text-xs border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-400 focus:border-primary-400"
           />

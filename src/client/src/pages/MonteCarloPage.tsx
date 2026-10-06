@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -149,6 +149,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 // ---------------------------------------------------------------------------
 
 export function MonteCarloPage() {
+  const uid = useId();
   const [searchParams] = useSearchParams();
   // --- Config state ---
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
@@ -266,11 +267,12 @@ export function MonteCarloPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Project selector */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
+            <label htmlFor={`${uid}-project`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
               Project
             </label>
             <div className="relative">
               <select
+                id={`${uid}-project`}
                 className="w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 pr-8 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors"
                 value={selectedProjectId}
                 onChange={handleProjectChange}
@@ -289,11 +291,12 @@ export function MonteCarloPage() {
 
           {/* Schedule selector */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
+            <label htmlFor={`${uid}-schedule`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
               Schedule
             </label>
             <div className="relative">
               <select
+                id={`${uid}-schedule`}
                 className="w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 pr-8 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors disabled:bg-gray-50 dark:bg-gray-900 disabled:text-gray-400 dark:text-gray-400"
                 value={selectedScheduleId}
                 onChange={handleScheduleChange}
@@ -318,10 +321,11 @@ export function MonteCarloPage() {
 
           {/* Iterations */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
+            <label htmlFor={`${uid}-iterations`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
               Iterations
             </label>
             <input
+              id={`${uid}-iterations`}
               type="number"
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors"
               value={iterations}
@@ -336,11 +340,12 @@ export function MonteCarloPage() {
 
           {/* Uncertainty model */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
+            <label htmlFor={`${uid}-uncertainty-model`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
               Uncertainty Model
             </label>
             <div className="relative">
               <select
+                id={`${uid}-uncertainty-model`}
                 className="w-full appearance-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 pr-8 text-sm text-gray-900 dark:text-white focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none transition-colors"
                 value={uncertaintyModel}
                 onChange={(e) => setUncertaintyModel(e.target.value)}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag, Lock } from 'lucide-react';
@@ -86,6 +86,7 @@ function dateTextClass(direction: 'later' | 'earlier' | 'same'): string {
 // ---------------------------------------------------------------------------
 
 export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanelProps) {
+  const uid = useId();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [showRejectFeedback, setShowRejectFeedback] = useState(false);
   const [rejectFeedback, setRejectFeedback] = useState('');
@@ -418,6 +419,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                             <td className={`px-3 py-2 whitespace-nowrap ${isModifying ? '' : dateTextClass(startDir)}`}>
                               {isModifying ? (
                                 <input
+                                  aria-label={`New start date for ${change.taskName}`}
                                   type="date"
                                   value={modDates?.proposedStart ?? change.proposedStart}
                                   onChange={(e) => handleModifyDateChange(change.taskId, 'proposedStart', e.target.value)}
@@ -430,6 +432,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
                             <td className={`px-3 py-2 whitespace-nowrap ${isModifying ? '' : dateTextClass(endDir)}`}>
                               {isModifying ? (
                                 <input
+                                  aria-label={`New end date for ${change.taskName}`}
                                   type="date"
                                   value={modDates?.proposedEnd ?? change.proposedEnd}
                                   onChange={(e) => handleModifyDateChange(change.taskId, 'proposedEnd', e.target.value)}
@@ -495,8 +498,9 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
               {/* Reject Feedback */}
               {showRejectFeedback && (
                 <section>
-                  <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Rejection Feedback</h3>
+                  <h3 id={`${uid}-rejection-feedback-label`} className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Rejection Feedback</h3>
                   <textarea
+                    aria-labelledby={`${uid}-rejection-feedback-label`}
                     value={rejectFeedback}
                     onChange={(e) => setRejectFeedback(e.target.value)}
                     rows={3}

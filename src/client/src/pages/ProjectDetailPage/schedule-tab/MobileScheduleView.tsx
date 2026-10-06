@@ -36,6 +36,7 @@ export function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, d
       {/* Schedule selector + Mobile view switcher */}
       {schedules.length > 1 && (
         <select
+          aria-label="Schedule"
           value={selectedIdx}
           onChange={(e) => onSelectSchedule(Number(e.target.value))}
           className="text-xs border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 mb-2"

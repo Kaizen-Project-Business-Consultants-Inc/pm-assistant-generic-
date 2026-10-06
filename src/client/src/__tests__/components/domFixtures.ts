@@ -14,8 +14,24 @@ import { expect } from 'vitest';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
+/**
+ * React useId() values (":r0:", ":r1a:", …) come from a counter that runs across every render in
+ * the file, so running one test on its own (-t) would shift them. They are renumbered in order of
+ * first appearance (":id1:", ":id2:", …) before saving or comparing — the same element still gets
+ * the same number, and a label still points at its own field. Added 2026-10-06 with the
+ * accessible-name batch, which links labels to fields with useId().
+ */
+export function normaliseReactIds(html: string): string {
+  const seen = new Map<string, string>();
+  return html.replace(/:r[0-9a-z]+:/g, id => {
+    if (!seen.has(id)) seen.set(id, `:id${seen.size + 1}:`);
+    return seen.get(id)!;
+  });
+}
+
 /** Compare `html` with fixture `<dir>/<name>.html`, or (write) save it as that fixture. */
-export function expectSameDom(dir: string, name: string, html: string, write: boolean) {
+export function expectSameDom(dir: string, name: string, rawHtml: string, write: boolean) {
+  const html = normaliseReactIds(rawHtml);
   const file = join(dir, `${name}.html`);
   if (write) {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });

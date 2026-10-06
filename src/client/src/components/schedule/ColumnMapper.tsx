@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useId } from 'react';
 import { Sparkles } from 'lucide-react';
 import { fuzzyMatchColumn } from '../../utils/fuzzyMatch';
 import { apiService } from '../../services/api';
@@ -175,6 +175,7 @@ function fuzzyMap(
 // ---------------------------------------------------------------------------
 
 export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels, sampleRows, fillUnmapped }: ColumnMapperProps) {
+  const mapperId = useId();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSource, setAiSource] = useState<Set<number>>(new Set()); // indices that came from AI
 
@@ -259,7 +260,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {headers.map((h, i) => (
           <div key={i} className="flex flex-col gap-1">
-            <span className="text-xs text-gray-500 dark:text-gray-400 truncate" title={h}>
+            <span id={`${mapperId}-col-${i}`} className="text-xs text-gray-500 dark:text-gray-400 truncate" title={h}>
               {h}
               {aiSource.has(i) && (
                 <span className="ml-1 inline-flex items-center gap-0.5 text-purple-500" title="AI suggested">
@@ -268,6 +269,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
               )}
             </span>
             <select
+              aria-labelledby={`${mapperId}-col-${i}`}
               value={mappings[i] ?? ''}
               onChange={(e) => handleChange(i, e.target.value)}
               className={`text-sm rounded border dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-2 py-1 ${

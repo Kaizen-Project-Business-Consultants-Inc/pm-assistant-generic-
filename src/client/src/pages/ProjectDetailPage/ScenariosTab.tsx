@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useId } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Calendar,
@@ -24,6 +24,7 @@ function SectionError({ message }: { message: string }) {
 }
 
 export function ScenariosTab({ projectId }: { projectId: string }) {
+  const uid = useId();
   const { canEdit, loaded: roleLoaded } = useProjectRole(projectId);
   const [scenario, setScenario] = useState('');
   const [budgetChangePct, setBudgetChangePct] = useState<number>(0);
@@ -76,10 +77,11 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">
+            <label htmlFor={`${uid}-scenario-description`} className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">
               Scenario Description
             </label>
             <input
+              id={`${uid}-scenario-description`}
               type="text"
               value={scenario}
               onChange={(e) => setScenario(e.target.value)}
@@ -223,10 +225,11 @@ function SliderInput({
   step: number;
   unit: string;
 }) {
+  const sliderId = useId();
   return (
     <div>
       <div className="mb-1 flex items-center justify-between">
-        <label className="text-xs font-medium text-gray-700 dark:text-gray-200">{label}</label>
+        <label htmlFor={sliderId} className="text-xs font-medium text-gray-700 dark:text-gray-200">{label}</label>
         <span className="text-xs font-bold text-gray-900 dark:text-white">
           {value > 0 ? '+' : ''}
           {value}
@@ -234,6 +237,7 @@ function SliderInput({
         </span>
       </div>
       <input
+        id={sliderId}
         type="range"
         min={min}
         max={max}

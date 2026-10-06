@@ -187,6 +187,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
           <form onSubmit={handleSubmitComment} className="flex gap-2 mb-3 relative">
             <div className="flex-1 relative">
               <input
+                aria-label="Write a comment"
                 ref={inputRef}
                 type="text"
                 value={newComment}

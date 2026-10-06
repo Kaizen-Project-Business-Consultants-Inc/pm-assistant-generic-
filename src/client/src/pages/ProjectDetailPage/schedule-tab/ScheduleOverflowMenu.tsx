@@ -1,6 +1,6 @@
 /** The Schedule tab's ⋯ menu (baselines, scenarios, import, re-plan, levelling, export, shortcuts,
  * delete). Moved out of ScheduleTab.tsx unchanged (code health item 4, Phase 1, 2026-10-04). */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useId } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Upload, BarChart3, Save, Bot, Download, Trash2, MoreVertical } from 'lucide-react';
 import { apiService } from '../../../services/api';
@@ -34,6 +34,7 @@ export interface ScheduleOverflowMenuProps {
 }
 
 export function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
+  const uid = useId();
   const [open, setOpen] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -76,6 +77,7 @@ export function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
           {props.baselines.length > 0 && (
             <div className="px-3 py-1.5">
               <select
+                aria-label="Baseline to show"
                 value={props.selectedBaselineId}
                 onChange={(e) => { props.setSelectedBaselineId(e.target.value); props.setShowComparison(false); }}
                 className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
@@ -115,6 +117,7 @@ export function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
               {props.scenarios.length > 0 && (
                 <div className="px-3 py-1.5">
                   <select
+                    aria-label="Scenario to compare"
                     value={props.selectedScenarioId}
                     onChange={(e) => { props.setSelectedScenarioId(e.target.value); props.setShowScenarioCompare(false); }}
                     className="w-full text-xs border border-gray-200 dark:border-gray-700 rounded-md px-2 py-1 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800"
@@ -176,8 +179,9 @@ export function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             Level Resources
           </button>
           <div className="px-3 py-1.5 flex items-center gap-2">
-            <span className="text-xs font-semibold text-gray-500 uppercase">% Mode:</span>
+            <span id={`${uid}-mode`} className="text-xs font-semibold text-gray-500 uppercase">% Mode:</span>
             <select
+              aria-labelledby={`${uid}-mode`}
               value={props.schedule.progressMode || 'duration'}
               onChange={async (e) => {
                 const mode = e.target.value as 'duration' | 'work';

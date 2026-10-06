@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Brain,
@@ -799,6 +799,7 @@ function computePreviewFromBaseline(baseline: BaselineData, values: SliderValues
 const INITIAL_SLIDER: SliderValues = { budgetChangePct: 0, daysExtension: 0, workerChange: 0, scopeChangePct: 0 };
 
 const WhatIfScenario: React.FC = () => {
+  const uid = useId();
   const queryClient = useQueryClient();
   const [projectId, setProjectId] = useState('');
   const [scenario, setScenario] = useState('');
@@ -901,8 +902,9 @@ const WhatIfScenario: React.FC = () => {
 
       {/* Project Selector */}
       <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Project</label>
+        <label htmlFor={`${uid}-project`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Project</label>
         <select
+          id={`${uid}-project`}
           value={projectId}
           onChange={(e) => { setProjectId(e.target.value); mutation.reset(); setShowHistory(false); setPinnedResults([]); setSliderValues(INITIAL_SLIDER); }}
           className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
@@ -935,8 +937,9 @@ const WhatIfScenario: React.FC = () => {
 
       {/* Scenario Description */}
       <div className="mb-4">
-        <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Scenario</label>
+        <label htmlFor={`${uid}-scenario`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Scenario</label>
         <textarea
+          id={`${uid}-scenario`}
           value={scenario}
           onChange={(e) => setScenario(e.target.value)}
           rows={2}
@@ -1208,7 +1211,7 @@ const WhatIfScenario: React.FC = () => {
                     <th key={idx} className="text-left py-2 px-3 text-gray-700 dark:text-gray-200 font-medium">
                       <div className="flex items-center gap-1">
                         <span className="truncate max-w-[120px]">{p.label}</span>
-                        <button type="button" onClick={() => setPinnedResults((prev) => prev.filter((_, i) => i !== idx))} className="text-gray-500 hover:text-red-500 flex-shrink-0">
+                        <button type="button" onClick={() => setPinnedResults((prev) => prev.filter((_, i) => i !== idx))} aria-label={`Unpin ${p.label}`} className="text-gray-500 hover:text-red-500 flex-shrink-0">
                           <X className="w-3 h-3" />
                         </button>
                       </div>
@@ -1324,6 +1327,7 @@ const WhatIfScenario: React.FC = () => {
                           }]);
                         }}
                         disabled={pinnedResults.length >= 3}
+                        aria-label={`Pin ${s.scenarioText} for comparison`}
                         className="p-1 text-gray-500 hover:text-violet-600 disabled:opacity-40 transition-colors"
                       >
                         <span title="Pin for comparison"><Pin className="w-3.5 h-3.5" /></span>
@@ -1331,6 +1335,7 @@ const WhatIfScenario: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => deleteMutation.mutate(s.id)}
+                        aria-label={`Delete scenario ${s.scenarioText}`}
                         className="p-1 text-gray-500 hover:text-red-500 transition-colors"
                       >
                         <span title="Delete scenario"><Trash2 className="w-3.5 h-3.5" /></span>
