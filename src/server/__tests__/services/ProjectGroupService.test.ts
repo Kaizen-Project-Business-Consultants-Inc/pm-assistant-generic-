@@ -25,6 +25,12 @@ vi.mock('../../database/ProjectGroupRepository', () => ({
   },
 }));
 
+// a project's client is cached with the project: changing it clears that project's cache (2026-10-07)
+const mockInvalidate = vi.fn(async () => {});
+const mockQuery = vi.fn(async () => [{ id: 'p1' }, { id: 'p2' }]);
+vi.mock('../../services/ProjectService', () => ({ projectService: { invalidateCache: (...a: any[]) => mockInvalidate(...a) } }));
+vi.mock('../../database/connection', () => ({ databaseService: { query: (...a: any[]) => mockQuery(...a) } }));
+
 import { projectGroupService } from '../../services/ProjectGroupService';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -198,6 +204,9 @@ describe('ProjectGroupService', () => {
 
       expect(mockFindById).toHaveBeenCalledWith('g1');
       expect(mockDelete).toHaveBeenCalledWith('g1');
+      // its projects lost their client: their cached copies are dropped
+      expect(mockInvalidate).toHaveBeenCalledWith('p1');
+      expect(mockInvalidate).toHaveBeenCalledWith('p2');
     });
 
     it('throws when group does not exist', async () => {
