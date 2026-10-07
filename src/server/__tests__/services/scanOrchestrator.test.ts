@@ -149,3 +149,19 @@ describe('nightly scan — big companies over several nights (2026-10-07)', () =
     expect(h.mc).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('nightly scan — Monte Carlo waits once the time limit has passed', () => {
+  it('a project already under way skips Monte Carlo past the deadline (and it stays due)', async () => {
+    scanRows.rows = [];
+    scanRows.writes = [];
+    h.detectDelays.mockResolvedValue([]);
+    h.findAll.mockResolvedValue([{ ...project, id: 'late' }]);
+    let deadline = Date.now() + 60_000;
+    h.findByProjectId.mockImplementation(async () => { deadline = Date.now() - 1; opts.deadline = deadline; return []; });
+    const opts: { deadline?: number } = { deadline };
+    await runScanImpl(log, undefined, opts);
+    expect(h.mc).not.toHaveBeenCalled();
+    const w = scanRows.writes.find(x => x.sql.includes('agent_scan_state'));
+    expect(w.sql).toContain('last_monte_carlo_at) VALUES (?, NOW(), NULL)');
+  });
+});

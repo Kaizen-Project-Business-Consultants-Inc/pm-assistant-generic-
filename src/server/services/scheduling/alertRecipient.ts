@@ -21,7 +21,9 @@ export async function alertRecipient(project: { projectManagerId?: string | null
     if (pick) return pick;
   }
   if (!orgId) return null;
-  const owner = await databaseService.queryControlPlane<{ owner_user_id: string | null }>(
-    'SELECT owner_user_id FROM organizations WHERE id = ? LIMIT 1', [orgId]);
-  return owner[0]?.owner_user_id ?? null;
+  // the owner — only if that login exists too (an old company's owner can be gone as well)
+  const owner = await databaseService.queryControlPlane<{ id: string }>(
+    `SELECT u.id FROM organizations o JOIN users u ON u.id = o.owner_user_id AND u.is_active = 1
+      WHERE o.id = ? LIMIT 1`, [orgId]);
+  return owner[0]?.id ?? null;
 }

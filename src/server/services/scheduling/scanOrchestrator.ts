@@ -231,7 +231,10 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
     }
 
     // --- 3. Schedule risk (Monte Carlo) ---
-    if (runMonteCarlo) try {
+    // Monte Carlo is the slow step: past the time limit it waits for the next run (staging
+    // 2026-10-07: projects already under way ran the job to 6 minutes)
+    const monteCarloNow = runMonteCarlo && !(opts.deadline && Date.now() > opts.deadline);
+    if (monteCarloNow) try {
       const mcAlerts = await runMonteCarloConfidenceAgent(project, schedules, activityLog);
       pStats.mcAlertsCreated += mcAlerts;
       if (mcAlerts > 0) {
@@ -243,7 +246,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
       await activityLog.log({ projectId: project.id, agentName: 'monte_carlo', result: 'error', summary: `Error: ${error instanceof Error ? error.message : String(error)}` }).catch(err => deadLetterService.capture('agent.activity_log', {}, err));
     }
 
-    await recordScanned(project.id, runMonteCarlo);
+    await recordScanned(project.id, monteCarloNow);
 
     // Store aggregate scan results for inter-agent collaboration
     const pFlags = projectAgentFlags.get(project.id);

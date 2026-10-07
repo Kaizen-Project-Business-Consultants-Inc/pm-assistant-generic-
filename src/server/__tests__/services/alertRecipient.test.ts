@@ -10,7 +10,7 @@ vi.mock('../../database/connection', () => ({
   databaseService: {
     queryControlPlane: async (sql: string, params: any[]) => {
       if (sql.includes('FROM users')) return params.filter((p: string) => db.users.has(p)).map((id: string) => ({ id }));
-      if (sql.includes('FROM organizations')) return [{ owner_user_id: db.owner }];
+      if (sql.includes('FROM organizations')) return db.owner && db.users.has(db.owner) ? [{ id: db.owner }] : [];
       return [];
     },
   },
@@ -34,7 +34,12 @@ describe('who gets a nightly alert', () => {
   });
 
   it('the company owner when neither login exists', async () => {
+    db.users = new Set(['owner1']);
     expect(await alertRecipient({ projectManagerId: 'gone', createdBy: 'gone2' })).toBe('owner1');
+  });
+
+  it("nobody when the owner's login is gone too (an old company)", async () => {
+    expect(await alertRecipient({ projectManagerId: 'gone', createdBy: 'owner1' })).toBeNull();
   });
 
   it('nobody when there is no owner either', async () => {

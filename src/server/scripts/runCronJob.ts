@@ -68,8 +68,9 @@ async function run() {
         await import('../services/agents/ActionExecutor');
         const { AgentActivityLogService } = await import('../services/AgentActivityLogService');
         const activityLog = new AgentActivityLogService();
-        // the job has 5 minutes (TimeoutStartSec) for every company: start nothing new after 4
-        const deadline = Date.now() + 4 * 60_000;
+        // the job has 5 minutes (TimeoutStartSec) for every company: start no new project and no
+        // Monte Carlo after 3 (a project already under way finishes its quick checks)
+        const deadline = Date.now() + 3 * 60_000;
         await forEachTenant(async () => {
           const stats = await runScanImpl(activityLog, undefined, { deadline });
           console.log(`[cron-runner] Agent scan completed`, stats);
