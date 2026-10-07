@@ -895,6 +895,16 @@ Alternatively, in the browser DevTools → Network tab, block requests to `js.st
 
 ### 9f. E2E Tests (Playwright)
 
+**Staging test runs — two steps (October 2026):**
+
+| When | Run | Time |
+|------|-----|------|
+| After **every** staging deploy | `npx playwright test --config playwright.staging-quick.config.ts` — everything except the heavy schedule files | ~2–3 min |
+| Before **every** prod release (no exceptions), and on staging whenever a change touches the schedule screens (Gantt, Table, Kanban or their hooks) | `npx playwright test --config playwright.staging-full.config.ts` — all of it, incl. `schedule-behaviour` (32 tests, 300-task plan) and `gantt-columns` | ~10 min |
+
+Both run one test at a time (`workers: 1`) so the machine doesn't run out of memory. A new spec goes in the full config's list; the quick config takes that list minus the heavy files, so it picks new specs up automatically.
+
+
 Playwright end-to-end tests cover critical user flows in the browser. Tests live in the `e2e/` directory and run against a local dev server.
 
 **Prerequisites:**
