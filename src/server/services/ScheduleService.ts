@@ -9,7 +9,8 @@ import { deadLetterService } from './DeadLetterService';
 import { notificationService } from './NotificationService';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { taskAssignmentService } from './TaskAssignmentService';
-import { resourceService } from './ResourceService';
+import { resourceRepository } from '../database/ResourceRepository';
+import { approvedProgressProvider } from './approvedProgress';
 import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
@@ -957,8 +958,10 @@ export class ScheduleService {
       else if (oldTask.status === 'completed' && data.status) {
         // Reopened: back to what the approved hours say — in the SAME save, so a workflow like
         // "auto-complete at 100%" never sees the old 100% and marks it done again
-        const { approvedTimeService } = await import('./ApprovedTimeService');
-        const pct = await approvedTimeService.progressFor(id).catch(() => null);
+        // (ApprovedTimeService's answer, handed in at startup — approvedProgress.ts, step 1F)
+        const progressFor = approvedProgressProvider();
+        if (!progressFor) logger.warn('[ScheduleService] approved-hours progress not connected at startup (domainListeners.ts)', { taskId: id });
+        const pct = progressFor ? await progressFor(id).catch(() => null) : null;
         if (pct != null) data.progressPercentage = pct; else delete data.progressPercentage;
       } else delete data.progressPercentage;
     }
@@ -1602,7 +1605,8 @@ export class ScheduleService {
    */
   private async autoAddAssigneeToTeam(resourceId: string, projectId: string): Promise<void> {
     try {
-      const resource = await resourceService.findResourceById(resourceId);
+      // A plain read, straight from the repository (ResourceService imports this file — step 1F)
+      const resource = await resourceRepository.findById(resourceId);
       if (!resource?.userId) return;
       const already = await projectMemberRepository.hasAccess(projectId, resource.userId);
       if (already) return;

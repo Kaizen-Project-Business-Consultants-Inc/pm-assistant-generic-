@@ -27,7 +27,11 @@ const CEILING = {
   // Step 1E (task / project / proposal changes reach workflows by notice): 7 / 5 — two small knots
   // left: ScheduleService ↔ ResourceService ↔ ApprovedTimeService, and the agents'
   // ActionExecutor ↔ ActionProposalService.
-  server: { tangledLinks: 7, filesInTangles: 5 },
+  // Step 1F (ScheduleService stops importing ResourceService and ApprovedTimeService: a plain
+  // repository read, and the reopened-task % handed in at startup via approvedProgress.ts), with the
+  // agents' ActionExecutor registering itself on ActionProposalService (registerAutoExecutor): 0 / 0.
+  // The untangle (code health item 1) is complete: the server has no import circles. Keep it at 0.
+  server: { tangledLinks: 0, filesInTangles: 0 },
   client: { tangledLinks: 5, filesInTangles: 5 },
 };
 

@@ -23,6 +23,8 @@ vi.mock('../../services/TeamPlannerService', () => ({ teamPlannerService: { undo
 const wf = vi.hoisted(() => ({ task: vi.fn(async () => {}), project: vi.fn(async () => {}), proposal: vi.fn(async () => {}), schedule: { marker: 'scheduleService' } }));
 vi.mock('../../services/DagWorkflowService', () => ({ dagWorkflowService: { evaluateTaskChange: wf.task, evaluateProjectChange: wf.project, evaluateProposalEvent: wf.proposal } }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: wf.schedule }));
+const approved = vi.hoisted(() => ({ progressFor: vi.fn(async (_taskId: string) => 37 as number | null) }));
+vi.mock('../../services/ApprovedTimeService', () => ({ approvedTimeService: { progressFor: approved.progressFor } }));
 
 import {
   onDomainEvent, publishDomainEvent, planChanged, personRatesChanged, rateCardChanged, raidChanged,
@@ -30,6 +32,7 @@ import {
 } from '../../services/domainEvents';
 import { registerDomainListeners, _resetDomainListenersForTests } from '../../services/domainListeners';
 import { asyncLocalStorage, getRequestContext } from '../../middleware/requestContext';
+import { approvedProgressProvider, _resetApprovedProgressForTests } from '../../services/approvedProgress';
 
 /**
  * "Something changed" notices (code health step 1B, 2026-10-03). Posting a notice must give
@@ -122,6 +125,18 @@ describe('startup wiring: every notice reaches its reaction', () => {
     expect(undo.replace).toHaveBeenCalledWith('s1', { a: 1 });
     expect(await undo.registered.get('planner_move')!('s1', { b: 2 }, { ref: null, userId: null })).toBe(4);
     expect(undo.planner).toHaveBeenCalledWith('s1', { b: 2 });
+  });
+
+  it("ScheduleService gets the approved-hours % for a reopened task: ApprovedTimeService.progressFor, same id, same answer (step 1F)", async () => {
+    _resetApprovedProgressForTests();
+    _resetDomainListenersForTests();
+    registerDomainListeners();
+    const provider = approvedProgressProvider();
+    expect(provider).toBeTypeOf('function');
+    expect(await provider!('t1')).toBe(37);
+    expect(approved.progressFor).toHaveBeenCalledWith('t1');
+    approved.progressFor.mockResolvedValueOnce(null);
+    expect(await provider!('t2')).toBeNull();
   });
 
   it('registering twice does not double the reactions', () => {

@@ -8,11 +8,14 @@ import { resourceReplaceService } from './ResourceReplaceService';
 import { teamPlannerService } from './TeamPlannerService';
 import { dagWorkflowService } from './DagWorkflowService';
 import { scheduleService } from './ScheduleService';
+import { approvedTimeService } from './ApprovedTimeService';
+import { registerApprovedProgress } from './approvedProgress';
 import logger from '../utils/logger';
 
 /**
- * Connects each "something changed" notice (domainEvents.ts) to what reacts to it, and hands
- * Schedule History the undo for changes other features make (ChangeHistoryService). Called once
+ * Connects each "something changed" notice (domainEvents.ts) to what reacts to it, hands
+ * Schedule History the undo for changes other features make (ChangeHistoryService), and hands
+ * ScheduleService the approved-hours % for a reopened task (approvedProgress.ts). Called once
  * by EVERY process that changes data: the app (index.ts) and the scheduled-jobs runner
  * (scripts/runCronJob.ts). A process that forgets this still works, but its changes quietly
  * stop re-running Schedule Review — the guard in __tests__/services/domainEvents.test.ts checks both.
@@ -54,6 +57,9 @@ export function registerDomainListeners(): void {
   registerUndoHandler('review_fix', async (scheduleId, _p, c) => { await scheduleFixProposerService.undo(scheduleId, c.ref ?? '', c.userId); return 0; });
   registerUndoHandler('reassign', (scheduleId, p) => resourceReplaceService.undo(scheduleId, p));
   registerUndoHandler('planner_move', (scheduleId, p) => teamPlannerService.undo(scheduleId, p));
+
+  // A reopened task's % from its approved hours: ScheduleService asks, ApprovedTimeService answers (step 1F)
+  registerApprovedProgress(taskId => approvedTimeService.progressFor(taskId));
 }
 
 /** Test hook */
