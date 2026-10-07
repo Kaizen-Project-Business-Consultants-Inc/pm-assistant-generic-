@@ -159,19 +159,23 @@ describe('inline edit — same payload and clamp as the Gantt grid', () => {
   });
 });
 
-describe('summary rows — the Gantt\'s rule', () => {
-  it('a summary\'s rolled-up Duration does not open; Est Days and Work follow the Gantt (not roll-up cells there either)', () => {
+describe('summary rows — the shared roll-up rule (both views)', () => {
+  it('a summary\'s Est Days is read-only like its Duration (the server works it out from the dates); its Work stays editable', () => {
     // The same shared rule decides both views
     expect(isSummaryRollupCell({ isSummary: true }, 'duration')).toBe(true);
-    expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDays')).toBe(false);
+    expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDays')).toBe(true);
     expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDurationHours')).toBe(false);
 
-    const { cell } = setup('p');
-    fireEvent.click(cell('Phase', 'Duration'));
-    expect(cell('Phase', 'Duration').querySelector('input')).toBeNull();
-    expect(cell('Phase', 'Duration').className).toContain('cursor-default');
-    fireEvent.click(cell('Phase', 'Est Days'));
-    expect(cell('Phase', 'Est Days').querySelector('input')?.getAttribute('aria-label')).toBe('Estimate (days) for Phase');
+    const { cell, onTaskUpdate } = setup('p');
+    for (const label of ['Duration', 'Est Days']) {
+      fireEvent.click(cell('Phase', label));
+      expect(cell('Phase', label).querySelector('input'), label).toBeNull();
+      expect(cell('Phase', label).className).toContain('cursor-default');
+    }
+    expect(cell('Phase', 'Est Days').textContent).toBe('15d'); // still shown
+    fireEvent.click(cell('Phase', 'Work'));
+    expect(cell('Phase', 'Work').querySelector('input')?.getAttribute('aria-label')).toBe('Work (hours) for Phase');
+    expect(onTaskUpdate).not.toHaveBeenCalled();
   });
 });
 
@@ -195,8 +199,11 @@ describe('paste — the same clamp as the Gantt', () => {
     }
   });
 
-  it('pasting into a summary\'s Est Days works as in the Gantt (not a roll-up cell)', () => {
-    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDays', '9', TASKS[0])).toEqual([['p', { estimatedDays: 9 }]]);
+  it('pasting into a summary\'s Est Days is refused in both views; its Work takes the paste', () => {
+    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDays', '9', TASKS[0])).toEqual([]);
+    expect(run(GANTT_KEYBOARD_RULES, 'estimatedDays', '9', TASKS[0])).toEqual([]);
+    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([['p', { estimatedDurationHours: 9 }]]);
+    expect(run(GANTT_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([['p', { estimatedDurationHours: 9 }]]);
   });
 });
 

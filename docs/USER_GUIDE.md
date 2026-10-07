@@ -395,7 +395,7 @@ Tasks can be organized hierarchically:
 - Create **parent tasks** (phases or work packages) as top-level items.
 - Add **subtasks** under parent tasks to break down work.
 - Expand or collapse task groups using the chevron icon.
-- **Summary tasks**: Parent tasks with children become summary tasks. Their dates, progress, status, and budget are automatically computed from children. Rollup fields (Start, Finish, Duration, % complete, Status, budget) are read-only in the Gantt grid, the table and the task form (shown as greyed/disabled) -- clicking one does not open it for typing, and pasting into one does nothing. The Gantt chart renders summary tasks with diamond markers at each end of the bar.
+- **Summary tasks**: Parent tasks with children become summary tasks. Their dates, progress, status, and budget are automatically computed from children. Rollup fields (Start, Finish, Duration, Est Days, % complete, Status, budget) are read-only in the Gantt grid, the table and the task form (shown as greyed/disabled) -- clicking one does not open it for typing, and pasting into one does nothing. The Gantt chart renders summary tasks with diamond markers at each end of the bar.
 
 ### Task Budget
 
@@ -634,7 +634,7 @@ Each predecessor in the list shows a **health dot**: green (completed), yellow (
 
 **Inline predecessor editing**: Click the Predecessor cell and type one or more comma-separated entries (e.g. `3`, `5SS`, `7FS+2d`, `3FS+2d,5SS,7`). Press Enter to save. Invalid inputs (bad row number, self-reference, more than 20 predecessors) show a red error. Clear the field to remove all dependencies.
 
-**Est Days and Work columns**: Enable via the Columns picker (they are the Gantt's **Est** and **Work**, and switching them on in either view shows them in both). **Est Days** is the estimated number of days (e.g. `5d`) and **Work** the effort in hours (e.g. `40h`); a dash means none. Click the cell on a selected row and type a number -- a negative number is saved as 0, exactly as in the Gantt. Copy and paste work as in the other cells. On a summary task they can be typed in, as in the Gantt; note that a summary's Est Days is recalculated from its tasks' dates the next time one of them changes. Changing Work does not unlock a % complete that comes from approved hours.
+**Est Days and Work columns**: Enable via the Columns picker (they are the Gantt's **Est** and **Work**, and switching them on in either view shows them in both). **Est Days** is the estimated number of days (e.g. `5d`) and **Work** the effort in hours (e.g. `40h`); a dash means none. Click the cell on a selected row and type a number -- a negative number is saved as 0, exactly as in the Gantt. Copy and paste work as in the other cells. On a summary task, **Est Days** is read-only in both the Gantt and the Table (it is worked out from the summary's dates, so a typed value would be overwritten); its **Work** can still be typed in. Changing Work does not unlock a % complete that comes from approved hours.
 
 **What Work changes** (Work typed in the Gantt or the Table is saved since October 2026 -- before that it only looked saved):
 - Work does **not** change money. A task's budget is priced from its bookings (people's hours × rate), not from Work.
