@@ -188,6 +188,10 @@ Or use the deploy script: `bash deploy.sh <staging|prod>` (preferred).
 
 **The deploy script only ships saved work (Sep 2026).** It builds from the working files, so it refuses to start if anything that ships (`src/`, `mcp-server/src`, `package*.json`, `deploy/`) has uncommitted changes, and checks again just before uploading that nothing changed while it was building. Staging only: `--allow-dirty` deploys unsaved changes anyway. Why: a prod deploy running in the background once picked up a half-written migration that was being created at the same moment.
 
+## Server packages
+
+- **Fonts (`fonts-dejavu-core`, `fontconfig`)** — the server draws the status report's Schedule Timeline as a picture for email and Word (`sharp`, `utils/reportTimelineImage.ts`). Without a font installed the picture's text comes out as empty boxes. `deploy.sh` installs them if missing (step 5, "Checking server fonts"). Installed on staging 2026-10-07; production gets them with its next full deploy.
+
 ## Database
 
 - **Engine:** MariaDB 10.11

@@ -355,6 +355,12 @@ if [ "$CLIENT_ONLY" = false ]; then
   do_scp package-lock.json "$SSH_HOST":/tmp/pkg-lock.json
   do_ssh "sudo cp /tmp/pkg.json /opt/pm-app/package.json && sudo cp /tmp/pkg-lock.json /opt/pm-app/package-lock.json && sudo chown ubuntu:ubuntu /opt/pm-app/package.json /opt/pm-app/package-lock.json && set -o pipefail; cd /opt/pm-app && npm install --omit=dev --no-audit --no-fund 2>&1 | tail -1 && rm -f /tmp/pkg.json /tmp/pkg-lock.json"
   echo "  ✓ OK"
+
+  # Fonts for pictures the server draws (the status report's timeline in email and Word):
+  # without them the image has no readable text (found on staging 2026-10-07). Installed once.
+  echo "  Checking server fonts..."
+  do_ssh "dpkg -s fonts-dejavu-core >/dev/null 2>&1 || sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -q fonts-dejavu-core fontconfig >/dev/null"
+  echo "  ✓ OK"
 else
   echo "[5/7] Server upload skipped (--client-only)"
 fi
