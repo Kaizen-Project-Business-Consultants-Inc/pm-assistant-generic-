@@ -2,6 +2,7 @@
   "nav": {
     "dashboard": "Panel de control",
     "projects": "Proyectos",
+    "clients": "Clientes",
     "workflows": "Flujos de trabajo",
     "intake": "Solicitudes",
     "changeRequests": "Solicitudes de cambio",

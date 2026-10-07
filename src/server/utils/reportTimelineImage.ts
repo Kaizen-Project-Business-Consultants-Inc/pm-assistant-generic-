@@ -23,21 +23,26 @@ export async function svgToPng(svg: string, width = 1000): Promise<Buffer | null
 }
 
 /**
- * For email: replace the inline SVG between the markers with <img src="cid:…"> and return the
- * PNG to attach inline. If the picture can't be made, the block becomes a one-line note.
+ * For email: replace each inline SVG between the markers with <img src="cid:…"> and return the
+ * PNGs to attach inline (a client report has one timeline per project). If a picture can't be
+ * made, that block becomes a one-line note.
  */
 export async function timelineForEmail(html: string): Promise<{ html: string; attachments: Array<{ filename: string; content: string; contentId: string; contentType: string }> }> {
-  const a = html.indexOf(TIMELINE_START);
-  const b = html.indexOf(TIMELINE_END);
-  if (a === -1 || b === -1 || b < a) return { html, attachments: [] };
-  const block = html.slice(a + TIMELINE_START.length, b);
-  const svg = block.match(/<svg[\s\S]*<\/svg>/)?.[0];
-  const png = svg ? await svgToPng(svg) : null;
-  const replacement = png
-    ? `<img src="cid:${TIMELINE_CID}" alt="Project timeline" width="760" style="display:block; width:100%; max-width:760px; height:auto; border:1px solid #e5e7eb;" />`
-    : '<p style="color:#6b7280; font-size:12px; margin:0;">The schedule timeline is shown in the report in Kovarti.</p>';
-  return {
-    html: html.slice(0, a) + replacement + html.slice(b + TIMELINE_END.length),
-    attachments: png ? [{ filename: 'timeline.png', content: png.toString('base64'), contentId: TIMELINE_CID, contentType: 'image/png' }] : [],
-  };
+  const attachments: Array<{ filename: string; content: string; contentId: string; contentType: string }> = [];
+  let out = '';
+  let rest = html;
+  for (let n = 0; n < 50; n++) {
+    const a = rest.indexOf(TIMELINE_START);
+    const b = a === -1 ? -1 : rest.indexOf(TIMELINE_END, a);
+    if (a === -1 || b === -1) break;
+    const svg = rest.slice(a + TIMELINE_START.length, b).match(/<svg[\s\S]*<\/svg>/)?.[0];
+    const png = svg ? await svgToPng(svg) : null;
+    const cid = n === 0 ? TIMELINE_CID : `${TIMELINE_CID}-${n + 1}`;
+    out += rest.slice(0, a) + (png
+      ? `<img src="cid:${cid}" alt="Project timeline" width="760" style="display:block; width:100%; max-width:760px; height:auto; border:1px solid #e5e7eb;" />`
+      : '<p style="color:#6b7280; font-size:12px; margin:0;">The schedule timeline is shown in the report in Kovarti.</p>');
+    if (png) attachments.push({ filename: `timeline${n ? `-${n + 1}` : ''}.png`, content: png.toString('base64'), contentId: cid, contentType: 'image/png' });
+    rest = rest.slice(b + TIMELINE_END.length);
+  }
+  return { html: out + rest, attachments };
 }

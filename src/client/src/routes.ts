@@ -26,6 +26,7 @@ export const ROUTES = {
   onboarding: '/onboarding',
   dashboard: '/dashboard',
   projects: '/projects',
+  clients: '/clients',
   reports: '/reports',
   scenarios: '/scenarios',
   portfolio: '/portfolio',
@@ -71,6 +72,8 @@ export const ROUTE_PATTERNS = {
   projectTab: '/project/:id/:tab/*',
   portal: '/portal/:token',
   kpi: '/kpi/:type',
+  clientRaid: '/clients/:id/raid',
+  clientReport: '/clients/:id/report',
 } as const;
 
 /** Builders for parameterised routes */
@@ -79,5 +82,7 @@ export const routeTo = {
     `/project/${id}${tab ? `?tab=${tab}` : ''}`,
   portal: (token: string) => `/portal/${token}`,
   kpi: (type: string) => `/kpi/${type}`,
+  clientRaid: (id: string) => `/clients/${id}/raid`,
+  clientReport: (id: string) => `/clients/${id}/report`,
   admin: (section: string) => `/admin/${section}`,
 };

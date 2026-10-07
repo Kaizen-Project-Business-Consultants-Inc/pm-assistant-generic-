@@ -28,9 +28,12 @@ interface TemplateCustomizeFormProps {
     methodology?: string;
     location?: string;
     selectedTaskRefIds?: string[];
+    clientId?: string;
   }) => void;
   isSubmitting: boolean;
   extraContent?: React.ReactNode;
+  /** The company's clients; the Client picker shows only when there is at least one */
+  clients?: Array<{ id: string; name: string }>;
 }
 
 export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
@@ -44,6 +47,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   onSubmit,
   isSubmitting,
   extraContent,
+  clients = [],
 }) => {
   const uid = useId();
   const today = new Date().toISOString().split('T')[0];
@@ -53,6 +57,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   const [priority, setPriority] = useState('medium');
   const [methodology, setMethodology] = useState(defaultMethodology || 'waterfall');
   const [location, setLocation] = useState('');
+  const [clientId, setClientId] = useState('');
   const [selectedRefIds, setSelectedRefIds] = useState<Set<string>>(() => new Set(tasks.map(t => t.refId)));
   const [taskSectionExpanded, setTaskSectionExpanded] = useState(false);
   const [cascadeWarning, setCascadeWarning] = useState<string | null>(null);
@@ -184,6 +189,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
       methodology,
       location: location || undefined,
       selectedTaskRefIds: allSelected ? undefined : [...selectedRefIds],
+      clientId: clientId || undefined,
     });
   };
 
@@ -221,6 +227,21 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
             placeholder="My Project"
           />
         </div>
+
+        {clients.length > 0 && (
+          <div>
+            <label htmlFor={`${uid}-client`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Client</label>
+            <select
+              id={`${uid}-client`}
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            >
+              <option value="">No client</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+        )}
 
         <div>
           <label htmlFor={`${uid}-start-date`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">

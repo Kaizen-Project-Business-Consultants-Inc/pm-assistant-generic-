@@ -4361,37 +4361,17 @@ The migration also expands the RAID `source` enum to include `'standup'`.
 
 ---
 
-## 55. Project Grouping (Folders/Spaces)
+## 55. Clients (was Project Grouping)
 
-Projects can be organized into flat groups (no nesting) for visual organization and filtering on the Projects page.
+Since October 2026 project groups are shown as **Clients** — who a project is for (a consultant's customers). Clients never sign in; they receive reports. Storage is unchanged (`project_groups`, `projects.group_id`; API `/api/v1/project-groups`, projects carry `clientId`).
 
-### Groups
-
-- **Create, edit, delete, and reorder** groups via the "Manage Groups" modal accessible from the Projects page header
-- Each group has a **name** and a **color** (displayed as a colored dot next to the group header)
-- Groups are flat — there is no nesting or hierarchy
-- Reorder groups to control display order on the Projects page
-
-### Project Assignment
-
-- Projects can be assigned to a group via the project form or inline on the Projects page
-- A project belongs to zero or one group
-- Unassigned projects appear outside of any group header
-
-### Projects Page Integration
-
-- When groups exist, the Projects page renders **collapsible group headers** with color dots
-- Projects are listed under their assigned group; ungrouped projects appear in a default section
-- A **Group filter dropdown** in the header allows filtering the project list to a single group
-- Collapsing/expanding group sections is per-session
-
-### Database
-
-Migration `T022` adds:
-- `project_groups` table — id, name, color, display_order, organization-scoped
-- `group_id` column on the `projects` table (nullable FK to `project_groups`)
-
----
+- **Who manages the client list:** the company owner, PMO and project managers (create, rename, recolour, reorder, delete — "Manage clients"). Others get 403 and don't see the button.
+- **Putting a project under a client:** the **Client** select when creating a project (blank, from file, from template — the server sets it in the same step; an unknown client is a 400) and in **Edit project**; only the project's Manager/Owner (assign/unassign routes check it).
+- **Projects page:** grouped by client with collapsible headers; **Client** filter (All clients / No client / each client); the client's name under each project; each client header links to **Risks & issues** and **Client report**.
+- **Clients page** (`/clients`): each client with its number of live projects and the two links.
+- **Client risks & issues** (`GET /project-groups/:id/raid?show=open|all|high`, page `/clients/:id/raid`): open RAID items across the client's projects **that the viewer can open** (archived projects and the sample left out), worst first; tiles for open risks, open issues, high/critical, overdue actions. Read-only — items open in their project.
+- **Client report** (`GET /project-groups/:id/report`, page `/clients/:id/report`): summary, projects at a glance (status from late tasks and budget, next milestone, spent of budget), a Timeline strip per project, items for the client's attention (high/critical risks & issues, overdue actions), open change requests. Rules only, no AI. PDF (in the browser), Word (`/report/docx`) and email (`POST /report/email`, owner/PMO/PM only; timelines go in as pictures).
+- Not built (user, 2026-10-07): "my people vs the client's people" on Resources.
 
 ## 56. Resource Request/Approval Workflow
 

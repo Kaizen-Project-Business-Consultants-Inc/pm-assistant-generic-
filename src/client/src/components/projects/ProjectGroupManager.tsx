@@ -54,16 +54,16 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage Groups</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage clients</h2>
           <button aria-label="Close" onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Group list */}
+        {/* Client list */}
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
           {groups.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No groups yet. Create one below.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No clients yet. Add one below.</p>
           )}
           {groups.map(g => (
             <div key={g.id} className="flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
@@ -111,7 +111,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                   </span>
                   <button
                     onClick={() => deleteMut.mutate(g.id)}
-                    aria-label={`Delete group ${g.name}`}
+                    aria-label={`Delete client ${g.name}`}
                     className="p-1 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -122,14 +122,14 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
           ))}
         </div>
 
-        {/* Create new group */}
+        {/* Add a new client */}
         <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <input
-              aria-label="New group name"
+              aria-label="New client name"
               value={newName}
               onChange={e => setNewName(e.target.value)}
-              placeholder="New group name"
+              placeholder="New client name"
               className="flex-1 text-sm border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) createMut.mutate(); }}
             />

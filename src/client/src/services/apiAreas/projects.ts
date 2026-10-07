@@ -39,6 +39,8 @@ export class ProjectsApi extends ApiBase {
     startDate?: string;
     endDate?: string;
     location?: string;
+    /** The client (project group) the project is for */
+    clientId?: string;
   }) {
     const response = await this.api.post('/projects', projectData);
     return response.data;
@@ -519,6 +521,28 @@ export class ProjectsApi extends ApiBase {
 
   async unassignProjectFromGroup(projectId: string) {
     const response = await this.api.put('/project-groups/unassign', { projectId });
+    return response.data;
+  }
+
+  // Clients (= project groups): read-only views across a client's projects
+
+  async getClientRaid(id: string, show: 'open' | 'all' | 'high' = 'open') {
+    const response = await this.api.get(`/project-groups/${id}/raid?show=${encodeURIComponent(show)}`);
+    return response.data;
+  }
+
+  async getClientReport(id: string) {
+    const response = await this.api.get(`/project-groups/${id}/report`);
+    return response.data;
+  }
+
+  async downloadClientReportDocx(id: string): Promise<Blob> {
+    const response = await this.api.get(`/project-groups/${id}/report/docx`, { responseType: 'blob' });
+    return response.data;
+  }
+
+  async emailClientReport(id: string, recipients: string[]) {
+    const response = await this.api.post(`/project-groups/${id}/report/email`, { recipients });
     return response.data;
   }
 

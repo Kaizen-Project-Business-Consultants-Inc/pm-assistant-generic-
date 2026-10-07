@@ -55,7 +55,7 @@ const NAVY_BORDER = {
   right: { style: BorderStyle.SINGLE, size: 1, color: NAVY },
 } as const;
 
-function headerCell(text: string, widthPct?: number): TableCell {
+export function headerCell(text: string, widthPct?: number): TableCell {
   return new TableCell({
     children: [new Paragraph({
       children: [new TextRun({ text, bold: true, color: WHITE, size: 22, font: 'Calibri' })],
@@ -67,7 +67,7 @@ function headerCell(text: string, widthPct?: number): TableCell {
   });
 }
 
-function dataCell(text: string, opts?: { bold?: boolean; bg?: string; center?: boolean; widthPct?: number; italic?: boolean; color?: string }): TableCell {
+export function dataCell(text: string, opts?: { bold?: boolean; bg?: string; center?: boolean; widthPct?: number; italic?: boolean; color?: string }): TableCell {
   const { bold, bg, center, widthPct, italic, color } = opts || {};
   return new TableCell({
     children: [new Paragraph({
@@ -94,7 +94,7 @@ function ragCell(status: string, widthPct?: number): TableCell {
   return dataCell(letter, { bold: true, bg, center: true, widthPct });
 }
 
-function sectionHeading(num: number, title: string): Paragraph {
+export function sectionHeading(num: number, title: string): Paragraph {
   return new Paragraph({
     children: [new TextRun({
       text: `${num}. ${title}`,

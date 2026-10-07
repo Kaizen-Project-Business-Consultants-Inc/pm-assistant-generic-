@@ -16,6 +16,7 @@ import {
   Briefcase,
   Users,
   Building,
+  Building2,
   Cpu,
   ScrollText,
   ArrowLeftRight,
@@ -78,6 +79,7 @@ const pmNavSections: NavSection[] = [
     items: [
       { labelKey: 'nav.dashboard', icon: Gauge, path: '/dashboard' },
       { labelKey: 'nav.projects', icon: Briefcase, path: '/projects' },
+      { labelKey: 'nav.clients', icon: Building2, path: '/clients', roles: NON_VIEWER_ROLES },
       { labelKey: 'nav.portfolio', icon: Layers, path: '/portfolio', roles: ['admin', 'executive', 'pmo'] },
     ],
   },

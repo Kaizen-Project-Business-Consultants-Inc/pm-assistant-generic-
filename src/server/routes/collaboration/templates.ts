@@ -12,6 +12,7 @@ import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
+import { projectGroupRepository } from '../../database/ProjectGroupRepository';
 
 const createTemplateSchema = z.object({
   name: z.string({ message: 'Enter a name for the template.' }).trim().min(1, 'Enter a name for the template.'),
@@ -160,13 +161,18 @@ export async function templateRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const data = createFromTemplateSchema.parse(request.body ?? {});
+      const { clientId, ...data } = createFromTemplateSchema.parse(request.body ?? {});
       const userId = request.user!.userId;
+      // the client must exist before anything is made (2026-10-07)
+      if (clientId && !(await projectGroupRepository.findById(clientId))) {
+        return reply.status(400).send({ error: 'Unknown client', message: 'That client no longer exists — pick another or none.', field: 'clientId' });
+      }
       const result = await templateService.applyTemplate({
         ...data,
         userId,
         selectedTaskRefIds: data.selectedTaskRefIds,
       });
+      if (clientId && result?.project?.id) await projectGroupRepository.assignProject(result.project.id, clientId);
       return reply.status(201).send(result);
     } catch (error: any) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);

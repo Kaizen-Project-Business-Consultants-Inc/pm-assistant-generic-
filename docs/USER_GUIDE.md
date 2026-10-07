@@ -235,6 +235,16 @@ When a project is finished or stopped, **archive** it: in the **Projects** list,
 
 **Deleting** is only possible on single-user plans (trial and consultant), and only for the project's Owner: **Edit project → Delete Project**, then type the project's name to confirm. This removes the project and all its schedules, tasks and data for good. On team plans (SME and Enterprise) projects can't be deleted — archive them instead. The sample project can't be deleted.
 
+### Clients (October 2026)
+
+A **client** is who a project is for — a customer, or an internal department you deliver to. Clients never sign in to Kovarti; they get reports. (Clients used to be called *project groups*.)
+
+- **Who manages clients:** the company owner, PMOs and project managers. Open **Clients** in the sidebar (or the **Clients** button on the Projects page) and press **Manage clients** to add, rename, recolour or remove one. Removing a client doesn't touch its projects — they just show under *No client*.
+- **Giving a project its client:** when you create a project (blank, from a file or from a template), pick it in the **Client** box on the project details step. To change it later, open the project and use **Edit** → **Client** (only people who can edit the project see this). The Client box shows once your company has at least one client.
+- **Projects page:** projects are grouped under their client (with a *No client* section for the rest), and the **Filter by client** box shows just one client's projects. Each client heading has links to its **Risks & issues** and its **Client report**. The client's name also shows next to the project code on each card.
+- **Risks & issues for a client** (*Clients → Risks & issues*): every risk, issue, action and decision across the client's projects in one list, with totals for open risks, open issues, high / critical items and overdue actions. Use **Show** to switch between open risks & issues, all RAID items, or high & critical only. The list is **read-only** — each project keeps its own register; click an item's title to open that project's RAID tab and change it there. Only projects you can open are included.
+- **Client report** (*Clients → Client report*): one report across all the client's projects — status, late tasks, next milestones, budget and a timeline for each project, plus what needs attention and what changed. Save it as **PDF** or **Word**. The company owner, PMOs and project managers can also press **Email to client**, type one or more email addresses (separated by commas) and **Send**.
+
 ### Project Detail View
 
 #### Methodology-Aware Layout
@@ -3693,26 +3703,7 @@ On Sprint Board cards, a progress fraction (e.g., "3/5") shows how many Definiti
 
 ## 34. Project Grouping (Folders/Spaces)
 
-Organize your projects into groups for easier navigation and filtering on the Projects page.
-
-### Creating and Managing Groups
-
-1. On the **Projects** page, click **Manage Groups** in the header area.
-2. In the modal, click **Add Group** to create a new group. Give it a **name** and choose a **color**.
-3. Use the drag handles to **reorder** groups -- the display order on the Projects page matches the order in the modal.
-4. Click the edit icon to rename or change the color of an existing group. Click the delete icon to remove a group (projects in that group become ungrouped).
-
-### Assigning Projects to Groups
-
-- When creating or editing a project, select a **Group** from the dropdown to assign it.
-- Projects can belong to zero or one group. Leave the group empty to keep a project ungrouped.
-
-### Using Groups on the Projects Page
-
-- When groups exist, the Projects page displays **collapsible group headers** with colored dots matching each group's color.
-- Projects are listed under their assigned group. Ungrouped projects appear in a separate section.
-- Use the **Group filter** dropdown in the header to show only projects from a specific group.
-- Click a group header to **collapse or expand** its project list.
+Project groups are now called **Clients** (October 2026). Everything groups did — a name and colour, collapsible sections and a filter on the Projects page — works the same, under the new name, and each client now also has a cross-project **Risks & issues** view and a **Client report**. See [Clients (October 2026)](#clients-october-2026) in section 2.
 
 ---
 

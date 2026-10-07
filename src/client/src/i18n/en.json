@@ -2,6 +2,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "projects": "Projects",
+    "clients": "Clients",
     "workflows": "Workflows",
     "intake": "Intake",
     "changeRequests": "Change Requests",

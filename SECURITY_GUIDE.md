@@ -349,6 +349,14 @@ All API endpoints use **Zod v4** schemas for runtime request validation:
 
 Validation is applied across the main server routes and all MCP tool handlers (`mcp-server/src/tools/`).
 
+### Bad input is a 400, never a 500 (guards)
+
+A malformed request must get a plain-English 4xx, not "Internal server error" (a 500 also hides real faults in the logs). Three tests keep it that way (extended 2026-10-07 after a sweep fixed 35 more routes):
+
+- `src/server/__tests__/middleware/validationErrorGuard.test.ts` — scans every route file: a handler that `.parse()`s the request may not turn a `ZodError` into a 500. It now catches `reply.code(500)` as well as `status(500)`, and also scans routes declared with a generic (`fastify.post<{ Body: … }>('/x', …)`). Fix: `if (error instanceof z.ZodError) return sendValidationError(reply, error);` in the catch, or use `safeParse`.
+- `src/server/__tests__/routes/emptyBodyErrors.test.ts` — drives real routes with Fastify `inject`: empty or partial bodies (resource-request reject/fulfil, link reorder, sprint tasks/points, custom fields, status-report render/Word export) and upload routes sent JSON or nothing (attachments, document upload, import-document) must answer 4xx with a `message`. Upload routes check `request.isMultipart()` before `request.file()`; adding a task twice to a sprint is a 409.
+- `src/server/__tests__/routes/listLimitParams.test.ts` — list routes read `limit`/`offset` through `clampPagination` (`schemas/paginationSchema.ts`), so `?limit=abc&offset=-5` falls back to the defaults instead of reaching SQL as `LIMIT NaN`. The test fails if one of those routes goes back to `parseInt(limit)`.
+
 ### Optimistic Locking
 
 The project update endpoint (`PUT /projects/:id`) supports an optional `expectedUpdatedAt` field. When provided, the server compares it against the current `updatedAt` timestamp in the database. If they differ (another user saved in the meantime), the server returns **409 Conflict** with `{ error: 'Conflict', message: 'Modified by someone else', serverUpdatedAt }`. The client displays a "Someone else saved — Refresh" message instead of silently overwriting.
@@ -443,6 +451,10 @@ User decision on the audit: the owner may do everything a PMO can inside their c
 **Global roles only reach projects that exist in their company.** PMO/executive (and so the owner) skipped the project check, so another company's project id passed and the route answered with an empty result (no data crossed — each company has its own database — but "OK" instead of "not found"). `checkProjectRoleFor` and `checkEntityProjectAccess` now look the project up in the caller's company first and answer 404 if it isn't there. Found by the staging suite (`weekly-review.spec.ts` "another company is refused") right after the owner change.
 
 **Caches are per company.** The real reason that check still passed: the project cache (`CachedRepository`, 5 minutes) keyed entries by project id only, so a project cached while company A used it was returned to company B asking for the same id. Keys now carry the company (`utils/companyCacheKey.ts`), as do the EVM AI cache and the "already notified" markers of the deadline and schedule-review jobs (every company's sample project shares the same ids). Exploiting the old key needed another company's project UUID (not guessable); the sample's shared id was the realistic case. Test: `__tests__/database/cachedRepositoryTenant.test.ts`.
+
+## 14d. Clients (project groups) — who may do what (Oct 2026)
+
+Before October 2026 any member with write scope could create, rename or delete project groups and move ANY project in the company into one. Now (`routes/core/projectGroups.ts`): managing the client list (create, update, delete, reorder) and emailing a client report need the role `pmo` or `project_manager` (the company owner works as PMO); assigning/unassigning a project needs that project's Manager/Owner (`checkProjectRoleFor(…, 'manager')`). The client RAID view and client report (`ClientService`) include only projects the viewer can open (`readableProjectIds`), never archived ones or the sample, and change nothing. Project create/update and template apply check the client exists before writing (400 otherwise). Tests: `__tests__/services/ClientService.test.ts`, `emptyBodyErrors.test.ts`.
 
 ## 15. Stakeholder Portal Access
 

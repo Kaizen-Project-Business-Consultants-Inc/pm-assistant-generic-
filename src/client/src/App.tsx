@@ -70,6 +70,9 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then(m 
 const EVMDashboardPage = lazy(() => import('./pages/EVMDashboardPage').then(m => ({ default: m.EVMDashboardPage })));
 const KPIDrillInPage = lazy(() => import('./pages/KPIDrillInPage').then(m => ({ default: m.KPIDrillInPage })));
 const ProjectsPM = lazy(() => import('./pages/ProjectsPM').then(m => ({ default: m.ProjectsPM })));
+const ClientsPage = lazy(() => import('./pages/clients/ClientsPage').then(m => ({ default: m.ClientsPage })));
+const ClientRaidPage = lazy(() => import('./pages/clients/ClientRaidPage').then(m => ({ default: m.ClientRaidPage })));
+const ClientReportPage = lazy(() => import('./pages/clients/ClientReportPage').then(m => ({ default: m.ClientReportPage })));
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
@@ -187,6 +190,9 @@ function App() {
         <Route path={ROUTES.dashboard} element={<PrivateRoute><DashboardPM /></PrivateRoute>} />
         <Route path={ROUTES.projects} element={<PrivateRoute><ProjectsPM /></PrivateRoute>} />
         <Route path={ROUTE_PATTERNS.project} element={<PrivateRoute><ProjectDetailPage /></PrivateRoute>} />
+        <Route path={ROUTES.clients} element={<PrivateRoute><ClientsPage /></PrivateRoute>} />
+        <Route path={ROUTE_PATTERNS.clientRaid} element={<PrivateRoute><ClientRaidPage /></PrivateRoute>} />
+        <Route path={ROUTE_PATTERNS.clientReport} element={<PrivateRoute><ClientReportPage /></PrivateRoute>} />
         <Route path={ROUTE_PATTERNS.projectTab} element={<ProjectTabRedirect />} />
         <Route path={ROUTES.reports} element={<PrivateRoute><ReportsPage /></PrivateRoute>} />
         <Route path={ROUTES.scenarios} element={<PrivateRoute><ScenarioModelingPage /></PrivateRoute>} />

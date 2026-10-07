@@ -89,6 +89,8 @@ export const createFromTemplateSchema = z.object({
   methodology: z.enum(['waterfall', 'agile', 'hybrid']).default('waterfall'),
   location: z.string().optional(),
   selectedTaskRefIds: z.array(z.string()).min(1).optional(),
+  /** The client the new project is for (2026-10-07) */
+  clientId: z.string().min(1).optional(),
 });
 
 export type CreateFromTemplate = z.infer<typeof createFromTemplateSchema>;

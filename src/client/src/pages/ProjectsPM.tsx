@@ -12,6 +12,8 @@ import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
 import type { ProjectSummaryPM } from '../types/pm';
 import { formatCalendarDate } from '../utils/dateUtils';
 import { useCanChangeData } from '../hooks/useCanChangeData';
+import { useCanManageClients } from '../hooks/useCanManageClients';
+import { routeTo } from '../routes';
 
 const VIEW_MODE_KEY = 'pm-projects-view-mode';
 
@@ -30,6 +32,7 @@ function normalizeStatus(status: string): string {
 
 export function ProjectsPM() {
   const canChange = useCanChangeData();
+  const canManageClients = useCanManageClients();
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -96,8 +99,7 @@ export function ProjectsPM() {
     staleTime: 120_000,
   });
   const groups = groupsData?.groups || [];
-
-  // assignProject/unassignProject available via apiService for future inline assignment UI
+  const clientNameById = new Map(groups.map(g => [g.id, g.name]));
 
   // Merge health scores into projects
   const rawProjects: any[] = allProjectsData?.data || allProjectsData?.projects || [];
@@ -112,7 +114,7 @@ export function ProjectsPM() {
   const projects: ProjectSummaryPM[] = rawProjects.map((p: any) => ({
     id: p.id,
     name: p.name || 'Unnamed Project',
-    client: p.clientName || p.client || '',
+    client: clientNameById.get(p.clientId || p.groupId) || '',
     code: p.projectCode || '',
     status: p.status || '',
     priority: p.priority || '',
@@ -124,7 +126,7 @@ export function ProjectsPM() {
     budgetSpent: p.budgetSpent ?? p.spent ?? 0,
     endDate: p.endDate || p.plannedEndDate || '',
     archivedAt: p.archivedAt ?? undefined,
-    groupId: p.group_id || p.groupId || null,
+    groupId: p.group_id || p.groupId || p.clientId || null,
     isDemo: p.isDemo || p.is_demo || false,
     daysLeft: p.daysLeft ?? (() => {
       if (!p.endDate && !p.plannedEndDate) return undefined;
@@ -233,7 +235,7 @@ export function ProjectsPM() {
     }
     const ungrouped = sorted.filter(p => !assigned.has(p.id));
     if (ungrouped.length > 0) {
-      sections.push({ id: '__ungrouped', name: 'Ungrouped', color: '#9ca3af', projects: ungrouped });
+      sections.push({ id: '__ungrouped', name: 'No client', color: '#9ca3af', projects: ungrouped });
     }
     return sections;
   }, [sorted, groups, groupFilter]);
@@ -277,30 +279,32 @@ export function ProjectsPM() {
               <List className="w-4 h-4" />
             </button>
           </div>
-          {/* Group filter */}
+          {/* Client filter */}
           {groups.length > 0 && (
             <select
               value={groupFilter}
               onChange={e => setGroupFilter(e.target.value)}
-              aria-label="Filter by group"
+              aria-label="Filter by client"
               className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
-              <option value="all">All Groups</option>
-              <option value="ungrouped">Ungrouped</option>
+              <option value="all">All clients</option>
+              <option value="ungrouped">No client</option>
               {groups.map(g => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
             </select>
           )}
-          <button
-            type="button"
-            onClick={() => setGroupManagerOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-            title="Manage project groups"
-          >
-            <Folder className="w-4 h-4" />
-            Groups
-          </button>
+          {canManageClients && (
+            <button
+              type="button"
+              onClick={() => setGroupManagerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+              title="Manage clients"
+            >
+              <Folder className="w-4 h-4" />
+              Clients
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setShowArchived(v => !v)}
@@ -359,15 +363,29 @@ export function ProjectsPM() {
         <div className="space-y-6">
           {groupedSections.map(section => (
             <div key={section.id}>
-              <button
-                onClick={() => toggleGroup(section.id)}
-                className="flex items-center gap-2 mb-3 group cursor-pointer"
-              >
-                <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${collapsedGroups.has(section.id) ? '' : 'rotate-90'}`} />
-                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: section.color }} />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{section.name}</span>
-                <span className="text-xs text-gray-500">({section.projects.length})</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-3">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(section.id)}
+                  aria-expanded={!collapsedGroups.has(section.id)}
+                  className="flex items-center gap-2 group cursor-pointer"
+                >
+                  <ChevronRight className={`w-4 h-4 text-gray-500 transition-transform ${collapsedGroups.has(section.id) ? '' : 'rotate-90'}`} />
+                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: section.color }} />
+                  <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">{section.name}</span>
+                  <span className="text-xs text-gray-500">({section.projects.length})</span>
+                </button>
+                {section.id !== '__ungrouped' && (
+                  <>
+                    <Link to={routeTo.clientRaid(section.id)} className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                      Risks &amp; issues
+                    </Link>
+                    <Link to={routeTo.clientReport(section.id)} className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                      Client report
+                    </Link>
+                  </>
+                )}
+              </div>
               {!collapsedGroups.has(section.id) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {section.projects.map(project => (

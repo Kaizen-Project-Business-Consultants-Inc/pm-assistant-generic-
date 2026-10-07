@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 645,
+  "count": 649,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -148,8 +148,10 @@
     "dismissEscalationPrompt",
     "dismissPmWeeklyReviewItem",
     "downloadAttachment",
+    "downloadClientReportDocx",
     "editRaidUpdate",
     "elevateLesson",
+    "emailClientReport",
     "emailStandupSummary",
     "emailStatusReport",
     "enableAutomation",
@@ -236,6 +238,8 @@
     "getCapacityRecommendation",
     "getChangeRequestDetail",
     "getChangeRequests",
+    "getClientRaid",
+    "getClientReport",
     "getCompanyHolidays",
     "getComplianceExport",
     "getComplianceStatus",

@@ -38,6 +38,7 @@ import {
   CalendarRange,
   Sun,
   Users,
+  Building2,
 } from 'lucide-react';
 
 interface Section {
@@ -101,6 +102,20 @@ const sections: Section[] = [
       'Tick several tasks and use Group to put them under a new heading (summary task)',
       'Progress chart: Burndown for Agile and Hybrid projects, S-curve (planned vs earned vs actual cost) for Waterfall',
       'Private by default: you only see projects you are a member of',
+    ],
+  },
+  {
+    id: 'clients',
+    title: 'Clients',
+    icon: Building2,
+    description:
+      'A client is who a project is for. Clients never sign in — they get reports.',
+    items: [
+      'Pick the client when you create a project, or later in the project’s Edit (Client)',
+      'The Projects page groups projects by client and can filter by client',
+      'Risks & issues for a client: every open risk and issue across its projects in one read-only list — open an item to change it in its project. Only projects you can open are included',
+      'Client report: one report across the client’s projects — save it as PDF or Word, or email it to the client',
+      'Clients are added and renamed by the company owner, PMOs and project managers (Clients page → Manage clients); they can also email the client report',
     ],
   },
   {

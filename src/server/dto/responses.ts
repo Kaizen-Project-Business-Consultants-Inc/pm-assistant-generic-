@@ -28,6 +28,8 @@ export interface ProjectDTO {
   name: string;
   /** PRJ-001…: given automatically when the project is made, never changes */
   projectCode?: string;
+  /** The client (project group) the project is for, if any */
+  clientId?: string | null;
   description?: string;
   category?: string;
   projectType: string;
@@ -60,6 +62,7 @@ export function toProjectDTO(row: Record<string, any>): ProjectDTO {
     id: row.id,
     name: row.name,
     projectCode: row.projectCode ?? row.project_code ?? undefined,
+    clientId: row.groupId ?? row.group_id ?? null,
     description: row.description ?? undefined,
     category: row.category ?? undefined,
     projectType: row.projectType ?? row.project_type,

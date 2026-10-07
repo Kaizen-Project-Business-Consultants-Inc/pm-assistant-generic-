@@ -697,9 +697,10 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 
 - **Benchmark:** Primavera Risk Analysis, Safran Risk; algorithmic-first approach with optional AI enhancement is unique to PM Assistant
 
-### 5.10 Project Grouping (Folders/Spaces)
+### 5.10 Clients (was Project Grouping)
+- **October 2026: groups are Clients** — who a project is for. Client picker on create and Edit project; Projects page grouped and filtered by client; Clients page; a client's risks & issues together (read-only, only projects you can open); one **client report** across its projects (PDF / Word / email, timelines as pictures). Managing clients: owner, PMO, PMs; assigning: the project's manager.
 - Flat project groups with name, color, and display order (no nesting)
-- Create, edit, delete, and reorder groups via "Manage Groups" modal
+- Create, edit, delete, and reorder via "Manage clients"
 - Projects assignable to a group; unassigned projects shown separately
 - Projects page renders collapsible group headers with color dots when groups exist
 - Group filter dropdown in header for single-group filtering
@@ -1029,7 +1030,7 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 | Scrum Ceremonies — Definition of Ready/Done (project-level DoR/DoD template editor for managers; ordered criteria with add/remove/reorder; suggested defaults; per-task checklist initialization; checkbox UI; DoR badge in Backlog green/amber; DoD progress fraction on Sprint Board cards; bulk readiness API; migration T021_scrum_ceremonies.sql with 5 tables) | Done | Enhancement |
 | CR Email Notifications (email to requester on approve/reject/return with CR title, action, step name, reviewer comment, CTA link; fire-and-forget; respects user email preference) | Done | Enhancement |
 | CR Dashboard Widget (status summary with pending/approved/rejected counts and colored badges; top 5 pending CRs with project name and days waiting; drill-down link; opt-in via Customize) | Done | Enhancement |
-| Project Grouping / Folders (flat groups with name, color, display order; collapsible group headers on Projects page; group filter dropdown; Manage Groups modal CRUD; migration T022 project_groups table + group_id on projects) | Done | P5 |
+| Clients (was Project Grouping: flat groups with name, color, display order; Projects page grouped + client filter; Clients page; client RAID roll-up; client report PDF/Word/email; migration T022 project_groups + group_id) | Done (Clients Oct 2026) | P5 |
 | Resource Request/Approval Workflow (role/group/hours/dates/skills/priority/justification; draft→pending→approved/rejected→fulfilled/cancelled lifecycle; approve/reject with comments; fulfill with resource; email+in-app notifications; Requests tab + Pending Approvals panel on /resources; migration T023 resource_requests table) | Done | P5 |
 | Meeting Agenda & Minutes (full meeting CRUD with 7 types: standup/sprint_review/sprint_retro/planning/steering/kickoff/ad_hoc; scheduled→in_progress→completed/cancelled lifecycle; agenda items, attendees, notes, location, duration; link AI transcript analyses; import AI-extracted action items; 3-tab Meetings page: Meetings/Transcript Analysis/Action Items; migration T024 meetings table + meeting_id on meeting_analyses) | Done | Enhancement |
 | Meeting Action Item Tracker — *retired Oct 2026: meeting actions are RAID actions (source `meeting`); the old list is read-only history* (first-class action items linked to meetings; open→in_progress→completed/cancelled status flow; low/medium/high/critical priority; assignee tracking with user ID linkage; due date with overdue highlighting; manual + ai_extracted source tracking; inline checkbox complete/reopen; expand-to-edit inline; filter by status/assignee/overdue; assignment + completion notifications; summary endpoint with status counts; migration T024 meeting_action_items table) | Done | Enhancement |

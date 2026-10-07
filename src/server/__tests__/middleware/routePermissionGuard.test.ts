@@ -142,7 +142,8 @@ const NON_PROJECT: Record<string, string[]> = {
     "PUT /unassign",
     "PUT /:id",
     "DELETE /:id",
-    "PUT /:id/assign"
+    "PUT /:id/assign",
+    "POST /:id/report/email"
   ],
   "core/projects.ts": [
     "POST /",

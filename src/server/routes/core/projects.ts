@@ -23,6 +23,7 @@ import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
+import { projectGroupRepository } from '../../database/ProjectGroupRepository';
 
 
 export const createProjectSchema = z.object({
@@ -40,7 +41,11 @@ export const createProjectSchema = z.object({
   locationLon: z.number().min(-180).max(180).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  /** The client (project group) this project is for; null = none (2026-10-07) */
+  clientId: z.string().min(1).nullable().optional(),
 });
+
+const CLIENT_GONE = { error: 'Unknown client', message: 'That client no longer exists — pick another or none.', field: 'clientId' };
 
 /**
  * Turn a unique-constraint violation into a message a person can act on.
@@ -225,12 +230,20 @@ export async function projectRoutes(fastify: FastifyInstance) {
         }
       }
 
-      const project = await projectService.create({
-        ...data,
-        startDate: data.startDate || undefined,
-        endDate: data.endDate || undefined,
+      // the client must exist before anything is made
+      const { clientId, ...createData } = data;
+      if (clientId && !(await projectGroupRepository.findById(clientId))) return reply.status(400).send(CLIENT_GONE);
+
+      let project = await projectService.create({
+        ...createData,
+        startDate: createData.startDate || undefined,
+        endDate: createData.endDate || undefined,
         userId,
       });
+      if (clientId) {
+        await projectGroupRepository.assignProject(project.id, clientId);
+        project = { ...project, groupId: clientId };
+      }
       webhookService.dispatch('project.created', { project }, userId);
       automationEventBus.emit({ type: 'project.created', entityType: 'project', entityId: project.id, projectId: project.id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ project: toProjectDTO(project) });
@@ -262,7 +275,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
 
       // Optimistic locking: if expectedUpdatedAt is provided, verify it matches
-      const { expectedUpdatedAt, ...updateData } = data;
+      const { expectedUpdatedAt, clientId, ...updateData } = data;
+      if (clientId && !(await projectGroupRepository.findById(clientId))) return reply.status(400).send(CLIENT_GONE);
       if (expectedUpdatedAt) {
         const current = await projectService.findById(id);
         if (current) {
@@ -288,6 +302,12 @@ export async function projectRoutes(fastify: FastifyInstance) {
       }, userId);
       if (!project) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });
+      }
+      // the client: the project's Manager/Owner sets or clears it (this route requires manager)
+      if (clientId !== undefined) {
+        if (clientId) await projectGroupRepository.assignProject(id, clientId);
+        else await projectGroupRepository.unassignProject(id);
+        project.groupId = clientId ?? undefined;
       }
       webhookService.dispatch('project.updated', { project }, userId);
       automationEventBus.emit({ type: 'project.updated', entityType: 'project', entityId: id, projectId: id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});

@@ -222,8 +222,17 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     enabled: !!selectedTemplateId,
   });
 
+  // The company's clients, for the Client picker on the project details step
+  const { data: clientsData } = useQuery<{ groups: Array<{ id: string; name: string }> }>({
+    queryKey: ['project-groups'],
+    queryFn: () => apiService.getProjectGroups(),
+    enabled: isOpen,
+    staleTime: 120_000,
+  });
+  const clients = clientsData?.groups ?? [];
+
   const applyMutation = useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       templateId: string;
       projectName: string;
       startDate: string;
@@ -231,9 +240,14 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       priority?: string;
       location?: string;
       selectedTaskRefIds?: string[];
-    }) => apiService.applyTemplate(data),
+      clientId?: string;
+    }) => {
+      // the server puts the project under its client in the same step (an unknown client is a 400)
+      return apiService.applyTemplate(data);
+    },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
       onClose();
       resetState();
       navigate(`/project/${result.project.id}`, { state: { showReadiness: true } });
@@ -307,6 +321,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     methodology?: string;
     location?: string;
     selectedTaskRefIds?: string[];
+    clientId?: string;
   }) => {
     setErrorMessage(null);
     if (!selectedTemplateId) return;
@@ -321,6 +336,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     priority: string;
     methodology?: string;
     location?: string;
+    clientId?: string;
   }) => {
     setErrorMessage(null);
     setScratchSubmitting(true);
@@ -333,6 +349,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
         budgetAllocated: data.budget,
         startDate: data.startDate,
         location: data.location,
+        clientId: data.clientId,
       });
       const projectId = result.project?.id || result.id;
 
@@ -362,6 +379,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       }
 
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
       onClose();
       resetState();
       if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });
@@ -380,6 +398,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     priority: string;
     methodology?: string;
     location?: string;
+    clientId?: string;
   }) => {
     setErrorMessage(null);
     setScratchSubmitting(true);
@@ -392,9 +411,11 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
         budgetAllocated: data.budget,
         startDate: data.startDate,
         location: data.location,
+        clientId: data.clientId,
       });
       const projectId = result.project?.id || result.id;
       queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
       onClose();
       resetState();
       if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });
@@ -703,6 +724,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               onBack={() => setStep('file-map')}
               onSubmit={handleFileProjectSubmit}
               isSubmitting={scratchSubmitting}
+              clients={clients}
               extraContent={
                 <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
@@ -851,6 +873,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               onBack={() => setStep('template')}
               onSubmit={handleCustomize}
               isSubmitting={applyMutation.isPending}
+              clients={clients}
             />
           )}
 
@@ -865,6 +888,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               onBack={() => setStep('start')}
               onSubmit={handleBlankProjectSubmit}
               isSubmitting={scratchSubmitting}
+              clients={clients}
             />
           )}
         </div>

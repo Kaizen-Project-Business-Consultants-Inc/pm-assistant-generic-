@@ -21,6 +21,8 @@ interface ProjectData {
   statusDate?: string | null;
   status_date?: string | null;
   location?: string;
+  /** The client (project group) this project is for; null clears it */
+  clientId?: string | null;
 }
 
 interface EditProjectModalProps {
@@ -57,6 +59,11 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
     (project.statusDate || project.status_date || '').slice(0, 10)
   );
   const [location, setLocation] = useState(project.location || '');
+  // Client (Oct 2026): who the project is for — one of the company's clients (project groups)
+  const origClientId: string = project.clientId || project.groupId || '';
+  const [clientId, setClientId] = useState(origClientId);
+  const clientsQ = useQuery<{ groups: Array<{ id: string; name: string }> }>({ queryKey: ['project-groups'], queryFn: () => apiService.getProjectGroups(), staleTime: 120_000 });
+  const clients = clientsQ.data?.groups ?? [];
   // Sponsor (Oct 2026): saved through its own endpoint; "user:<id>" | "person:<id>" | ""
   const projectId: string | undefined = project.id;
   const sponsorQ = useQuery({ queryKey: ['project-sponsor', projectId], queryFn: () => apiService.getProjectSponsor(projectId!), enabled: !!projectId });
@@ -110,6 +117,8 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
     if (statusDate !== origStatus) data.statusDate = statusDate || null;
 
     if (location !== (project.location || '')) data.location = location;
+
+    if (clientId !== origClientId) data.clientId = clientId || null;
 
     if (Object.keys(data).length === 0) {
       onClose();
@@ -250,6 +259,16 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
               Who signs off budget and scope. They hear only what you choose to escalate from the RAID log, and never change anything. A sponsor with a login can read this project.
             </p>
             {sponsorError && <p role="alert" className="mt-1 text-sm text-red-700 dark:text-red-300">{sponsorError}</p>}
+          </div>
+        )}
+
+        {(clients.length > 0 || origClientId) && (
+          <div>
+            <label htmlFor={`${uid}-client`} className={labelClass}>Client</label>
+            <select id={`${uid}-client`} value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputClass}>
+              <option value="">No client</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
         )}
 

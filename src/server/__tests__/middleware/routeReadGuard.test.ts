@@ -61,7 +61,7 @@ const READ_OK: Record<string, string[]> = {
   'collaboration/templates.ts': ['/', '/:id', '/marketplace'],
   'collaboration/intakeForms.ts': ['/forms', '/forms/:id', '/submissions', '/submissions/:id'], // requests for new projects
   'goals.ts': ['/', '/:id'],
-  'core/projectGroups.ts': ['/'],
+  'core/projectGroups.ts': ['/', '/:id/raid', '/:id/report', '/:id/report/docx'], // client views: only the viewer's readable projects are included (ClientService)
   'reporting/reportBuilder.ts': ['/templates', '/templates/:id'], // report layouts; data is filtered when generated
   // The resource pool: hours and capacity only (other projects' names/costs are hidden in the handlers)
   'resources/resources.ts': ['/', '/skills', '/by-skill', '/:id/delete-impact', '/:id/utilization-history', '/capacity-by-role', '/planner'], // planner: only projects the viewer manages, others hours-only unless readable (TeamPlannerService)
