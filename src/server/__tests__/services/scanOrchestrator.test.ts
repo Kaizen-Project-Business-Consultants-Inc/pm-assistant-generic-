@@ -30,6 +30,14 @@ vi.mock('../../services/scheduling/registryAgentRunners', () => ({
   runBudgetBurnRateAgent: (...a: any[]) => h.budget(...a),
   runMonteCarloConfidenceAgent: (...a: any[]) => h.mc(...a),
 }));
+vi.mock('../../services/scheduling/alertRecipient', () => ({ alertRecipient: async (p: any) => p.projectManagerId || p.createdBy }));
+// agent_scan_state (T083): empty unless a test sets rows
+const scanRows = vi.hoisted(() => ({ rows: [] as any[], writes: [] as any[] }));
+vi.mock('../../database/connection', () => ({ databaseService: { query: async (sql: string, params: any[]) => {
+  if (sql.startsWith('SELECT project_id, last_scanned_at')) return scanRows.rows;
+  scanRows.writes.push({ sql, params });
+  return [];
+} } }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 // which company the scan runs for (the nightly job scans three companies at once)
 const tenant = vi.hoisted(() => ({ db: 'pmassist_t_a' }));
@@ -72,7 +80,7 @@ describe('nightly scan — three checks, no AI', () => {
     expect(h.mc).toHaveBeenCalledTimes(1);
     expect((h.budget.mock.calls[0] as any[])[0].id).toBe('p1');
     expect(stats).toMatchObject({ budgetAlertsCreated: 1, mcAlertsCreated: 1 });
-    expect(Object.keys(stats).sort()).toEqual(['budgetAlertsCreated', 'delaysDetected', 'mcAlertsCreated', 'notificationsSent', 'projectsScanned', 'schedulesScanned']);
+    expect(Object.keys(stats).sort()).toEqual(['budgetAlertsCreated', 'delaysDetected', 'mcAlertsCreated', 'notificationsSent', 'projectsDeferred', 'projectsScanned', 'schedulesScanned']);
   });
 });
 
@@ -93,5 +101,51 @@ describe('nightly scan — one scan per company at a time', () => {
     expect(again.projectsScanned).toBe(0);
     release();
     expect((await first).projectsScanned).toBe(1);
+  });
+});
+
+describe('nightly scan — big companies over several nights (2026-10-07)', () => {
+  const old = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+  beforeEach(() => {
+    scanRows.rows = [];
+    scanRows.writes = [];
+    h.detectDelays.mockResolvedValue([]);
+  });
+
+  it('projects scanned longest ago go first, and nothing new starts after the time limit', async () => {
+    h.findAll.mockResolvedValue(['a', 'b', 'c'].map(id => ({ ...project, id })));
+    scanRows.rows = [
+      { project_id: 'a', last_scanned_at: old(1), last_monte_carlo_at: old(1) },
+      { project_id: 'b', last_scanned_at: old(3), last_monte_carlo_at: old(3) },
+      // c never scanned → first
+    ];
+    const order: string[] = [];
+    h.findByProjectId.mockImplementation(async (id: string) => { order.push(id); return []; });
+    await runScanImpl(log);
+    expect(order).toEqual(['c', 'b', 'a']);
+
+    // past the deadline: nothing is scanned, everything waits for next time
+    order.length = 0;
+    const stats = await runScanImpl(log, undefined, { deadline: Date.now() - 1 });
+    expect(order).toEqual([]);
+    expect(stats).toMatchObject({ projectsScanned: 0, projectsDeferred: 3 });
+  });
+
+  it('Monte Carlo (the slow check) runs once a week per project; a PM-started run always does it', async () => {
+    h.findAll.mockResolvedValue([{ ...project, id: 'fresh' }, { ...project, id: 'stale' }]);
+    scanRows.rows = [
+      { project_id: 'fresh', last_scanned_at: old(1), last_monte_carlo_at: old(2) },
+      { project_id: 'stale', last_scanned_at: old(1), last_monte_carlo_at: old(8) },
+    ];
+    await runScanImpl(log);
+    expect(h.mc.mock.calls.map(c => (c as any[])[0].id)).toEqual(['stale']);
+    // the scan records what it did
+    expect(scanRows.writes.filter(w => w.sql.includes('agent_scan_state')).map(w => w.params[0]).sort()).toEqual(['fresh', 'stale']);
+
+    vi.clearAllMocks();
+    const { projectService } = await import('../../services/ProjectService');
+    (projectService.findById as any).mockResolvedValue({ ...project, id: 'fresh' });
+    await runScanImpl(log, 'fresh');
+    expect(h.mc).toHaveBeenCalledTimes(1);
   });
 });

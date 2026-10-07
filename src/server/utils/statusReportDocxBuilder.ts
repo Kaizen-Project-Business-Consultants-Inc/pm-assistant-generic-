@@ -7,9 +7,11 @@ import {
   Document, Packer, Paragraph, Table, TableRow, TableCell,
   TextRun, WidthType, AlignmentType, BorderStyle,
   ShadingType, HeadingLevel, TableLayoutType,
-  convertInchesToTwip,
+  convertInchesToTwip, ImageRun,
 } from 'docx';
 import type { StructuredStatusReport } from './statusReportRenderer';
+import { timelineSvg } from './timelineStrip';
+import { svgToPng } from './reportTimelineImage';
 
 // ---------------------------------------------------------------------------
 // DBJ Template colours (hex without #)
@@ -305,6 +307,27 @@ export async function buildStatusReportDocx(report: StructuredStatusReport): Pro
     })],
     spacing: { before: 60, after: 0 },
   }));
+
+  // --- Schedule timeline (the Gantt's Timeline strip, as a picture; unnumbered, after milestones) ---
+  if (report.timeline) {
+    const { svg, width, height } = timelineSvg(report.timeline, report.timelineToday);
+    const png = svg ? await svgToPng(svg, width) : null;
+    if (png) {
+      const w = 620; // fits the page width
+      children.push(new Paragraph({
+        children: [new TextRun({ text: 'SCHEDULE TIMELINE', bold: true, color: NAVY, size: 28, font: 'Calibri' })],
+        spacing: { before: 360, after: 120 },
+        keepNext: true,
+      }));
+      children.push(new Paragraph({
+        children: [new ImageRun({
+          type: 'png', data: png,
+          transformation: { width: w, height: Math.round(w * height / width) },
+          altText: { title: 'Schedule timeline', description: 'Project phases and milestones over time', name: 'timeline' },
+        })],
+      }));
+    }
+  }
 
   // --- 5. Achievements This Period ---
   if (achievements.length > 0) {

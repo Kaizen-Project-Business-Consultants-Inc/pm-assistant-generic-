@@ -3,6 +3,7 @@ import { config } from '../config';
 import logger, { maskPii } from '../utils/logger';
 import { redisService } from './RedisService';
 import { isPlaceholderEmail } from '../utils/placeholderEmail';
+import { timelineForEmail } from '../utils/reportTimelineImage';
 
 /**
  * The mail provider refused the message — almost always a recipient it will not
@@ -445,14 +446,17 @@ export class EmailService {
 
     const date = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
-    // htmlContent is pre-rendered styled HTML from statusReportRenderer
-    const bodyHtml = `${htmlContent}${this.portalButton(opts?.portalUrl)}`;
+    // htmlContent is pre-rendered styled HTML from statusReportRenderer. Email programs don't show
+    // inline SVG, so the Timeline strip goes in as an embedded picture (utils/reportTimelineImage.ts)
+    const { html: reportHtml, attachments } = await timelineForEmail(htmlContent);
+    const bodyHtml = `${reportHtml}${this.portalButton(opts?.portalUrl)}`;
 
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
       to: recipients,
       subject: `Status Report: ${projectName} — ${date}`,
       html: this.wrapClientHtml(`Status Report: ${projectName}`, bodyHtml, opts?.senderName),
+      ...(attachments.length ? { attachments } : {}),
     });
   }
 

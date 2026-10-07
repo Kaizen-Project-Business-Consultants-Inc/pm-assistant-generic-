@@ -12,6 +12,8 @@ import { deadLetterService } from '../DeadLetterService';
 import logger from '../../utils/logger';
 import { getTenantContext } from '../../middleware/requestContext';
 import { runBudgetBurnRateAgent, runMonteCarloConfidenceAgent } from './registryAgentRunners';
+import { alertRecipient } from './alertRecipient';
+import { databaseService } from '../../database/connection';
 
 /**
  * The nightly scan (2026-10-04, slimmed after the agent review): three checks, no AI, nothing
@@ -46,6 +48,33 @@ async function parallelLimit<T>(tasks: (() => Promise<T>)[], concurrency: number
 }
 
 const PROJECT_CONCURRENCY = 3;
+/** Monte Carlo is the slow check (tens of seconds a plan): the nightly scan runs it once a week per project */
+export const MONTE_CARLO_EVERY_DAYS = 7;
+
+export interface ScanOptions {
+  /** Epoch ms: start no new project after this (the nightly job has 5 minutes for every company) */
+  deadline?: number;
+}
+
+/** When each project was last scanned / last had Monte Carlo (T083); empty if the table is missing */
+async function scanState(): Promise<Map<string, { scanned: number; monteCarlo: number }>> {
+  try {
+    const rows = await databaseService.query<{ project_id: string; last_scanned_at: string | null; last_monte_carlo_at: string | null }>(
+      'SELECT project_id, last_scanned_at, last_monte_carlo_at FROM agent_scan_state');
+    return new Map(rows.map(r => [r.project_id, {
+      scanned: r.last_scanned_at ? new Date(r.last_scanned_at).getTime() : 0,
+      monteCarlo: r.last_monte_carlo_at ? new Date(r.last_monte_carlo_at).getTime() : 0,
+    }]));
+  } catch { return new Map(); }
+}
+
+async function recordScanned(projectId: string, monteCarloRan: boolean): Promise<void> {
+  await databaseService.query(
+    `INSERT INTO agent_scan_state (project_id, last_scanned_at, last_monte_carlo_at) VALUES (?, NOW(), ${monteCarloRan ? 'NOW()' : 'NULL'})
+     ON DUPLICATE KEY UPDATE last_scanned_at = NOW()${monteCarloRan ? ', last_monte_carlo_at = NOW()' : ''}`,
+    [projectId],
+  ).catch(() => { /* bookkeeping only */ });
+}
 
 export interface ScanStats {
   projectsScanned: number;
@@ -54,10 +83,12 @@ export interface ScanStats {
   notificationsSent: number;
   budgetAlertsCreated: number;
   mcAlertsCreated: number;
+  /** Not reached before the time limit — they go first next time */
+  projectsDeferred: number;
 }
 
 function emptyStats(): ScanStats {
-  return { projectsScanned: 0, schedulesScanned: 0, delaysDetected: 0, notificationsSent: 0, budgetAlertsCreated: 0, mcAlertsCreated: 0 };
+  return { projectsScanned: 0, schedulesScanned: 0, delaysDetected: 0, notificationsSent: 0, budgetAlertsCreated: 0, mcAlertsCreated: 0, projectsDeferred: 0 };
 }
 
 async function storeScanResult(agentId: string, projectId: string, result: Record<string, unknown>): Promise<void> {
@@ -76,7 +107,7 @@ async function storeScanResult(agentId: string, projectId: string, result: Recor
 const scansInProgress = new Set<string>();
 const scanKey = () => getTenantContext()?.dbName ?? 'single-tenant';
 
-export async function runScanImpl(activityLog: AgentActivityLogService, projectId?: string): Promise<ScanStats> {
+export async function runScanImpl(activityLog: AgentActivityLogService, projectId?: string, opts: ScanOptions = {}): Promise<ScanStats> {
   const key = scanKey();
   if (scansInProgress.has(key)) {
     logger.warn('[Agent] Scan skipped — previous scan still in progress');
@@ -111,10 +142,24 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
 
   logger.info(`[Agent] Found ${projects.length} active/planning projects`);
 
+  // The nightly run goes through the projects scanned longest ago first, and stops starting new
+  // ones at its time limit — a big company is covered over several nights instead of the job
+  // being killed half-way every night (2026-10-07: a 547-project staging company timed out).
+  // A one-project run (the PM's "Run AI Analysis") always does every check.
+  const state = projectId ? new Map<string, { scanned: number; monteCarlo: number }>() : await scanState();
+  if (!projectId) projects.sort((a, b) => (state.get(a.id)?.scanned ?? 0) - (state.get(b.id)?.scanned ?? 0));
+  const monteCarloDue = (id: string) => !!projectId
+    || Date.now() - (state.get(id)?.monteCarlo ?? 0) >= MONTE_CARLO_EVERY_DAYS * 86_400_000;
+
   // Process projects in parallel (bounded concurrency)
   const projectTasks = projects.map((project) => async () => {
     const pStats = emptyStats();
+    if (opts.deadline && Date.now() > opts.deadline) {
+      pStats.projectsDeferred = 1;
+      return pStats;
+    }
     pStats.projectsScanned = 1;
+    const runMonteCarlo = monteCarloDue(project.id);
 
     projectAgentFlags.set(project.id, {
       name: project.name,
@@ -143,8 +188,10 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
         if (pFlags) { pFlags.flags.scheduleDelay = true; pFlags.details.scheduleDelay = `${significant.length} delay(s) in "${schedule.name}"`; }
         const worst = significant[0]; // most severe first
         const late = `${worst.delayDays} working day${worst.delayDays === 1 ? '' : 's'}`;
-        await notificationService.create({
-          userId: project.projectManagerId || project.createdBy,
+        // the PM if their login still exists, else the company owner
+        const recipient = await alertRecipient(project);
+        if (recipient) await notificationService.create({
+          userId: recipient,
           type: 'reschedule_proposal',
           severity: significant.some(d => d.severity === 'critical') ? 'critical' : significant.some(d => d.severity === 'high') ? 'high' : 'medium',
           title: `${significant.length} task${significant.length === 1 ? '' : 's'} slipping in "${schedule.name}"`,
@@ -154,7 +201,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
           linkType: 'schedule',
           linkId: schedule.id, // one unread alert per plan, not one a night
         });
-        pStats.notificationsSent++;
+        if (recipient) pStats.notificationsSent++;
         await activityLog.log({
           projectId: project.id, agentName: 'auto_reschedule', result: 'alert_created',
           summary: `${significant.length} significant delay(s) in "${schedule.name}"`,
@@ -184,7 +231,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
     }
 
     // --- 3. Schedule risk (Monte Carlo) ---
-    try {
+    if (runMonteCarlo) try {
       const mcAlerts = await runMonteCarloConfidenceAgent(project, schedules, activityLog);
       pStats.mcAlertsCreated += mcAlerts;
       if (mcAlerts > 0) {
@@ -195,6 +242,8 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
       logger.error(`[Agent:MonteCarlo] Error for project ${project.id} (${project.name}):`, error);
       await activityLog.log({ projectId: project.id, agentName: 'monte_carlo', result: 'error', summary: `Error: ${error instanceof Error ? error.message : String(error)}` }).catch(err => deadLetterService.capture('agent.activity_log', {}, err));
     }
+
+    await recordScanned(project.id, runMonteCarlo);
 
     // Store aggregate scan results for inter-agent collaboration
     const pFlags = projectAgentFlags.get(project.id);

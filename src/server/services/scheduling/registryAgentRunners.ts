@@ -7,6 +7,7 @@ import logger from '../../utils/logger';
 import { evmForecastService } from '../EVMForecastService';
 import { scheduleService } from '../ScheduleService';
 import { utcDay, workingDaysAfter } from '../../utils/workingDays';
+import { alertRecipient } from './alertRecipient';
 
 // ---------------------------------------------------------------------------
 // Agent 2 — Budget Burn-Rate
@@ -57,7 +58,9 @@ export async function runBudgetBurnRateAgent(
     return 0;
   }
 
-  const notifyUserId = project.projectManagerId || project.createdBy;
+  // the PM if their login still exists, else the company owner (services/scheduling/alertRecipient.ts)
+  const notifyUserId = await alertRecipient(project);
+  if (!notifyUserId) return 0;
   const severity = CPI < 0.8 || (overrunProbability !== undefined && overrunProbability > 75)
     ? 'critical'
     : CPI < cpiThreshold
@@ -133,7 +136,8 @@ export async function runMonteCarloConfidenceAgent(
         .filter((t: any) => t.criticalityPercent > 80)
         .map((t: any) => t.taskName);
 
-      const notifyUserId = project.projectManagerId || project.createdBy;
+      const notifyUserId = await alertRecipient(project);
+      if (!notifyUserId) continue;
 
       await notificationService.create({
         userId: notifyUserId,

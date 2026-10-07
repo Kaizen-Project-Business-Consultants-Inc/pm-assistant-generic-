@@ -12,6 +12,7 @@ vi.mock('../../services/EVMForecastService', () => ({ evmForecastService: { gene
 vi.mock('../../services/AgentRegistryService', () => ({ agentRegistry: { invoke: (...a: any[]) => h.invoke(...a) } }));
 vi.mock('../../services/NotificationService', () => ({ notificationService: { create: (...a: any[]) => h.notify(...a) } }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: { workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 } }));
+vi.mock('../../services/scheduling/alertRecipient', () => ({ alertRecipient: async (p: any) => p.projectManagerId || p.createdBy }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { runBudgetBurnRateAgent, runMonteCarloConfidenceAgent } from '../../services/scheduling/registryAgentRunners';

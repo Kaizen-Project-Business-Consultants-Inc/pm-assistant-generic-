@@ -525,6 +525,10 @@ With `AGENT_ENABLED=true` the nightly job runs three checks for every active pro
 | Budget | Cost performance (CPI, VAC) from EVM, using the real spend (labour + expenses) |
 | Schedule risk (`monte-carlo-v1`) | The P80 finish later than the plan's end, in working days |
 
+**Big companies and the 5-minute limit (October 2026).** Every scheduled job has 5 minutes (`TimeoutStartSec=300`) for all companies. The scan therefore takes each company's projects **scanned longest ago first** (`agent_scan_state`, tenant migration `T083`) and starts no new project after 4 minutes; the rest go first the next night (`projectsDeferred` in the scan's stats). **Monte Carlo** — tens of seconds per plan — runs **once a week per project** at most (`MONTE_CARLO_EVERY_DAYS`); a PM's **Run AI Analysis** on the Agent Activity tab always does all three checks for that project. Found on staging: a 547-project test company made the full scan run past 10 minutes.
+
+**Who gets the alert.** The project's PM, or its creator — if that login still exists in the company; otherwise the **company owner** (`services/scheduling/alertRecipient.ts`). A PM whose account was removed used to make the alert fail.
+
 Twelve earlier agents (schedule recovery, scope creep, budget intelligence, resource optimization, cross-project intelligence, risk escalation, stakeholder communication, project hygiene, dependency risk, lessons learned, predictive alerting, meeting follow-up) were removed on 2026-10-04 — they duplicated Schedule Review, the Team Planner, EVM, status reports, Lessons and the Morning Briefing, and their AI output was unreliable. Planned replacement: PM playbooks (`docs/playbooks/`). The AI Proposals inbox stays for them.
 
 ### Autonomous Execution (Tier 3)

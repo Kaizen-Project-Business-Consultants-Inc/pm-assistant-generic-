@@ -1,3 +1,6 @@
+import { timelineSvg, type ReportTimeline } from './timelineStrip';
+import { TIMELINE_START, TIMELINE_END } from './reportTimelineImage';
+
 /**
  * Renders a structured status report to styled HTML for UI and email.
  * Matches DBJ_LMS_Status_Report.docx template exactly.
@@ -51,6 +54,10 @@ export interface StructuredStatusReport {
   projectName: string;
   reportDate: string;
   aiPowered: boolean;
+  /** The schedule's Timeline strip (phases, milestones) as of the report — absent on older reports */
+  timeline?: ReportTimeline | null;
+  /** 'YYYY-MM-DD' the today line marks (the report's date) */
+  timelineToday?: string | null;
 }
 
 function escapeHtml(str: string): string {
@@ -309,6 +316,15 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
       </table>`;
   }
 
+  // --- Schedule timeline (the Gantt's Timeline strip; unnumbered, after the milestones) ---
+  // The SVG sits between markers: email swaps it for a picture (utils/reportTimelineImage.ts)
+  const timeline = report.timeline ? timelineSvg(report.timeline, report.timelineToday).svg : '';
+  const timelineHtml = timeline
+    ? `
+    <p style="${SECTION_TITLE}">SCHEDULE TIMELINE</p>
+    <div style="border: 1px solid #e5e7eb; border-radius: 4px; padding: 6px 8px; background: #ffffff;">${TIMELINE_START}${timeline}${TIMELINE_END}</div>`
+    : '';
+
   // --- Footer ---
   const footerHtml = `
     <p style="color: #9ca3af; font-size: 10px; text-align: center; margin-top: 20px;">
@@ -322,6 +338,7 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
       ${summaryHtml}
       ${ragHtml}
       ${milestoneHtml}
+      ${timelineHtml}
       ${achievementsHtml}
       ${plannedHtml}
       ${mgmtHtml}

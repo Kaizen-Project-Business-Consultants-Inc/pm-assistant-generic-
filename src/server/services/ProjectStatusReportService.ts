@@ -18,6 +18,7 @@ import logger from '../utils/logger';
 import { isOverdue } from '../utils/calendarDate';
 import { statusDateFor } from './StatusDateService';
 import { clientReportContext } from '../utils/clientReportContext';
+import { reportTimeline } from '../utils/timelineStrip';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -297,6 +298,13 @@ export class ProjectStatusReportService {
       projectName,
       reportDate,
       aiPowered,
+      // the plan at a glance: phases and milestones over time, today marked (2026-10-07)
+      timeline: srContext?.allTasks?.length ? reportTimeline(srContext.allTasks.map(t => ({
+        id: t.id, name: t.name, startDate: t.startDate ? String(t.startDate).slice(0, 10) : undefined,
+        endDate: t.endDate ? String(t.endDate).slice(0, 10) : undefined, parentTaskId: t.parentTaskId ?? null,
+        isMilestone: !!t.isMilestone, taskType: t.taskType,
+      })), projectName) : null,
+      timelineToday: new Date().toISOString().slice(0, 10),
     };
 
     const html = renderStatusReportHtml(report);
@@ -385,6 +393,8 @@ export class ProjectStatusReportService {
             managementAttention: report.managementAttention,
             changeControl: report.changeControl,
             aiPowered: report.aiPowered,
+            timeline: report.timeline ?? null,
+            timelineToday: report.timelineToday ?? null,
           }),
           timestamp: generatedAt,
         },
@@ -463,6 +473,21 @@ export class ProjectStatusReportService {
       projectName: 'Sample Project Report',
       reportDate,
       aiPowered: false,
+      timeline: {
+        start: '2026-06-01', end: '2026-11-27', lanes: 1,
+        phases: [
+          { name: 'Discovery', start: '2026-06-01', end: '2026-07-10', lane: 0 },
+          { name: 'Design', start: '2026-07-13', end: '2026-08-14', lane: 0 },
+          { name: 'Build', start: '2026-08-17', end: '2026-10-23', lane: 0 },
+          { name: 'Test & launch', start: '2026-10-26', end: '2026-11-27', lane: 0 },
+        ],
+        milestones: [
+          { names: ['Requirements Sign-off'], date: '2026-07-15' },
+          { names: ['Design Review'], date: '2026-08-14' },
+          { names: ['UAT Start'], date: '2026-10-26' },
+        ],
+      },
+      timelineToday: new Date().toISOString().slice(0, 10),
     };
 
     const html = renderStatusReportHtml(report);

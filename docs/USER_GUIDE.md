@@ -1898,6 +1898,7 @@ Navigate to the **Reports** page, select a project, and click the **Status Repor
      - **Overall Status** — Automatically shows the worst RAG across all other dimensions
      - Schedule, Budget, Resources, Risks, Scope / Change Control, **Governance & Stakeholders**, Quality
   4. **Milestone Status** — Table of project milestones (tasks marked as milestones) with baseline date, forecast/actual date, and RAG status
+     - **Schedule Timeline** (October 2026) — right after the milestones, the same **Timeline strip** you see above the Gantt: the project's phases as coloured bars, milestones as diamonds, today as a red line. It's drawn when the report is generated, so it shows the plan as it was that day. It appears on screen, in the PDF and HTML downloads, in Word and in emailed reports (as a picture). Reports made before October 2026 don't have it.
   5. **Achievements This Period** — Tasks completed in the last 14 days, automatically gathered from your project data
   6. **Planned Activities Next Period** — Tasks due in the next 14 days, sourced from your project schedule
   7. **For Management Attention** — Critical and high-severity RAID items needing leadership action, each with an impact-if-delayed consequence statement

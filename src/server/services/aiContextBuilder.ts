@@ -306,6 +306,7 @@ export class AIContextBuilder {
       raidItems: raidResult,
       criticalHighItems,
       changeRequests,
+      allTasks: fullTasks,
     };
   }
 }
@@ -319,4 +320,6 @@ export interface StatusReportContext {
   raidItems: ProjectRisk[];
   criticalHighItems: ProjectRisk[];
   changeRequests: ChangeRequest[];
+  /** Every task of the project's plans (the status report draws its Timeline strip from them) */
+  allTasks: Task[];
 }

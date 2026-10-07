@@ -52,6 +52,13 @@ interface ReportData {
   projectName: string;
   reportDate: string;
   aiPowered: boolean;
+  /** The schedule's Timeline strip (server utils/timelineStrip.ts) — kept as-is through edits */
+  timeline?: {
+    start: string; end: string; lanes: number;
+    phases: { name: string; start: string; end: string; lane: number }[];
+    milestones: { names: string[]; date: string }[];
+  } | null;
+  timelineToday?: string | null;
 }
 
 const RAG_OPTIONS: Array<'green' | 'amber' | 'red'> = ['green', 'amber', 'red'];

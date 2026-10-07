@@ -665,6 +665,10 @@ Each step in a change request records: who acted (with resolved user name), what
 - Role enforcement on approval steps: each step's `approverRole` is validated against the acting user's role (admins bypass)
 - Global roles (admin, PMO) have full access; executives have read-only access
 
+### Status Report — Schedule Timeline (October 2026)
+
+Generated status reports include the schedule's **Timeline strip** (the same one above the Gantt: top-level phases as bars, milestones as diamonds, today as a red line) as an unnumbered **Schedule Timeline** section after the milestone table. The layout is computed when the report is generated (`utils/timelineStrip.ts`, same code as the Gantt's strip) and stored with the report. On screen and in the PDF/HTML downloads it is an inline SVG; emailed reports carry it as an embedded PNG, Word exports as a picture. Reports generated before October 2026 have no timeline.
+
 ### Status Report Integration
 
 Change requests appear in the **Change Control** section of status reports. The query filters to active/recent CRs: excludes `withdrawn` status and limits to the last 90 days to prevent report bloat.
