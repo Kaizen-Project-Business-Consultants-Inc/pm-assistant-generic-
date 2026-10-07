@@ -106,12 +106,12 @@ export function notesSortText(task: GanttTask): string | SortBlank {
   return text ? text.toLowerCase() : null;
 }
 
-/** Table Est Days: the estimated days (blank when none — sorts last; 0 is a value) */
+/** Est Days (Gantt Est, Table Est Days): the estimated days (blank when none — sorts last; 0 is a value) */
 export function estimatedDaysSortValue(task: GanttTask): number | SortBlank {
   return task.estimatedDays ?? null;
 }
 
-/** Table Work: the effort hours (blank when none — sorts last; 0 is a value) */
+/** Work (Gantt and Table): the effort hours (blank when none — sorts last; 0 is a value) */
 export function workHoursSortValue(task: GanttTask): number | SortBlank {
   return task.estimatedDurationHours ?? null;
 }

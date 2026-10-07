@@ -163,7 +163,9 @@ const FILTER_CASES: GanttFilters[] = [
   { ...NO_FILTERS, priorities: new Set(['high', 'urgent']), assignee: 'a', progressMin: 5 },
 ];
 const SEARCHES = ['', '   ', 'design', 'API', '  icons ', 'zzz'];
-const SORT_FIELDS = [null, 'name', 'startDate', 'endDate', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage', 'priority', 'status', 'assignedTo', 'dependency'];
+// Est and Work are left out on purpose: since 2026-10-06 a blank Est / Work sorts last (the reference
+// counted it as 0, so it sorted first ascending) - scheduleSortColumns.test.tsx covers them
+const SORT_FIELDS = [null, 'name', 'startDate', 'endDate', 'duration', 'progressPercentage', 'priority', 'status', 'assignedTo', 'dependency'];
 const COLLAPSED = [new Set<string>(), new Set(['b']), new Set(['p1', 'p2'])];
 
 const ids = (rows: FlatRow[]) => rows.map(r => r.task.id);

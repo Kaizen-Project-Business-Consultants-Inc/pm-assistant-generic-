@@ -145,6 +145,28 @@ describe('Gantt: Pred, Succ, Resource, Notes and Assigned sort', () => {
     expect(sortedBy(col, 'desc')).toEqual(desc);
   });
 
+  // 2026-10-06: blank Est / Work used to count as 0 and sort FIRST ascending in the Gantt; now
+  // blanks go last both ways, as in the Table (and as every other column already did)
+  it.each([
+    ['est', ['z', 'x', 'w', 'y'], ['w', 'x', 'z', 'y']],
+    ['work', ['x', 'w', 'z', 'y'], ['z', 'w', 'x', 'y']],
+  ])('%s: ascending, descending, blanks last (0 is a value)', (col, asc, desc) => {
+    const plan: GanttTask[] = [
+      { id: 'x', name: 'X', status: 'pending', sortOrder: 1, estimatedDays: 3, estimatedDurationHours: 0 },
+      { id: 'y', name: 'Y', status: 'pending', sortOrder: 2 },
+      { id: 'z', name: 'Z', status: 'pending', sortOrder: 3, estimatedDays: 0, estimatedDurationHours: 16 },
+      { id: 'w', name: 'W', status: 'pending', sortOrder: 4, estimatedDays: 10, estimatedDurationHours: 4.5 },
+    ];
+    const order = (dir: 'asc' | 'desc') => {
+      const { result } = renderHook(() => useTaskFiltering({ tasks: plan, collapsedIds: new Set() }));
+      act(() => result.current.handleHeaderSort(col));
+      if (dir === 'desc') act(() => result.current.handleHeaderSort(col));
+      return result.current.rows.map(r => r.task.id);
+    };
+    expect(order('asc')).toEqual(asc);
+    expect(order('desc')).toEqual(desc);
+  });
+
   it('assigned: by the name shown (Abe before adam), not the stored id', () => {
     const ids = sortedBy('assigned', 'asc');
     expect(ids.indexOf('a')).toBeLessThan(ids.indexOf('b'));
