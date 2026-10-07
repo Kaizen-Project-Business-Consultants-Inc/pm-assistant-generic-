@@ -17,7 +17,20 @@ import { checkTurnstileSecret } from './utils/turnstile';
 
 const fastify = Fastify({
   logger: {
-    level: config.NODE_ENV === 'production' ? 'info' : 'debug'
+    level: config.NODE_ENV === 'production' ? 'info' : 'debug',
+    hooks: {
+      // A browser that leaves a page while a (compressed) answer is still being sent makes the
+      // stream close early: "Premature close". The answer was fine (200) — the reader left. It
+      // was logged as an error, burying real ones (2026-10-06: 30 lines per staging test run).
+      logMethod(args, method, level) {
+        const first = args[0] as { err?: { code?: string; message?: string } } | undefined;
+        const err = first?.err;
+        if (level >= 50 && err && (err.code === 'ERR_STREAM_PREMATURE_CLOSE' || err.message === 'Premature close')) {
+          return this.info.apply(this, args as Parameters<typeof this.info>);
+        }
+        return method.apply(this, args);
+      },
+    },
   },
   trustProxy: true
 });

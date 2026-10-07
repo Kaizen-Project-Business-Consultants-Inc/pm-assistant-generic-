@@ -205,6 +205,17 @@ export class ActionProposalService {
     return proposal;
   }
 
+  /**
+   * Who carries out an auto-approved proposal. ActionExecutor registers itself here when it
+   * loads, so this service never imports it — the two used to import each other (code health
+   * item 1, 2026-10-07). Without an executor (it was never loaded) nothing is auto-executed.
+   */
+  private autoExecutor: ((proposalId: string) => Promise<unknown>) | null = null;
+
+  registerAutoExecutor(execute: (proposalId: string) => Promise<unknown>): void {
+    this.autoExecutor = execute;
+  }
+
   private async tryAutoExecute(proposal: Proposal): Promise<void> {
     const canAuto = await autonomyService.canAutoExecute(
       proposal.agentId,
@@ -214,16 +225,17 @@ export class ActionProposalService {
     );
 
     if (!canAuto) return;
-
-    // Lazy import to avoid circular dependency
-    const { actionExecutor } = await import('./ActionExecutor');
+    if (!this.autoExecutor) {
+      logger.warn(`[Autonomy] Proposal ${proposal.id} could auto-execute, but no executor is loaded — left for review`);
+      return;
+    }
 
     // Auto-approve
     await actionProposalRepository.autoApprove(proposal.id);
 
     // Execute
     try {
-      await actionExecutor.execute(proposal.id);
+      await this.autoExecutor(proposal.id);
       logger.info(`[Autonomy] Auto-executed proposal ${proposal.id} (agent: ${proposal.agentId}, confidence: ${proposal.confidenceScore}%)`);
     } catch (err) {
       logger.error(`[Autonomy] Auto-execution failed for proposal ${proposal.id}:`, err);

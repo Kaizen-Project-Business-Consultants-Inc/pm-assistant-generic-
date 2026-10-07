@@ -338,3 +338,5 @@ export class ActionExecutor {
 }
 
 export const actionExecutor = new ActionExecutor();
+// Auto-approved proposals are carried out here (the proposal service no longer imports this file)
+actionProposalService.registerAutoExecutor((proposalId) => actionExecutor.execute(proposalId));

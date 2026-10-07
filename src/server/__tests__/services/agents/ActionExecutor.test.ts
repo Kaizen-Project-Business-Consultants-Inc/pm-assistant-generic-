@@ -4,6 +4,7 @@ import { ActionExecutor } from '../../../services/agents/ActionExecutor';
 // Mock all dependencies
 vi.mock('../../../services/agents/ActionProposalService', () => ({
   actionProposalService: {
+    registerAutoExecutor: vi.fn(),
     getById: vi.fn(),
     getActions: vi.fn(),
     updateStatus: vi.fn(),

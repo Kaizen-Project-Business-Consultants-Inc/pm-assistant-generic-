@@ -64,6 +64,8 @@ async function run() {
           break;
         }
         const { runScanImpl } = await import('../services/scheduling/scanOrchestrator');
+        // loading the executor registers it with the proposal service (auto-approved proposals)
+        await import('../services/agents/ActionExecutor');
         const { AgentActivityLogService } = await import('../services/AgentActivityLogService');
         const activityLog = new AgentActivityLogService();
         await forEachTenant(async () => {
