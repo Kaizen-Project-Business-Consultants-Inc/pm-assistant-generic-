@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Grid3X3 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { toLocalDate } from '../../utils/dateUtils';
+import { getUtilColor, getSummaryTextColor } from './utilizationHeatColors';
 
 interface HeatmapCell {
   userId: string;
@@ -16,14 +17,6 @@ interface HeatmapData {
   dates: string[];
   cells: HeatmapCell[];
   summary: { userId: string; userName: string; avgHours: number; avgUtilization: number }[];
-}
-
-function getUtilColor(util: number): string {
-  if (util <= 0) return 'bg-gray-100 dark:bg-gray-700';
-  if (util < 25) return 'bg-red-200 dark:bg-red-900/40';
-  if (util < 75) return 'bg-amber-200 dark:bg-amber-900/40';
-  if (util <= 100) return 'bg-green-300 dark:bg-green-800/60';
-  return 'bg-red-400 dark:bg-red-700/60';
 }
 
 export function UtilizationHeatmap({ projectId }: { projectId: string }) {
@@ -86,7 +79,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
           <div key={s.userId} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
             <p className="text-xs text-gray-500 truncate">{s.userName}</p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">{s.avgHours}h/day</p>
-            <p className={`text-xs font-medium ${s.avgUtilization >= 75 && s.avgUtilization <= 100 ? 'text-green-600' : s.avgUtilization > 100 ? 'text-red-600' : 'text-amber-600'}`}>
+            <p className={`text-xs font-medium ${getSummaryTextColor(s.avgUtilization)}`}>
               {s.avgUtilization}% utilization
             </p>
           </div>
@@ -103,7 +96,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
               const d = new Date(date);
               const isWeekend = d.getDay() === 0 || d.getDay() === 6;
               return (
-                <div key={date} className={`text-center text-xs text-gray-500 p-1 ${isWeekend ? 'opacity-50' : ''}`}>
+                <div key={date} className={`text-center text-xs p-1 ${isWeekend ? 'text-gray-400' : 'text-gray-500'}`}>
                   {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </div>
               );
@@ -119,14 +112,15 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
                   const cell = cellMap.get(`${user.userId}:${date}`);
                   const util = cell?.utilization || 0;
                   const hours = cell?.hours || 0;
+                  const level = getUtilColor(util);
                   return (
                     <div
                       key={`${user.userId}-${date}`}
-                      className={`${getUtilColor(util)} rounded-sm aspect-square flex items-center justify-center cursor-default relative group`}
+                      className={`${level.bg} ${level.border ?? ''} rounded-sm aspect-square flex items-center justify-center cursor-default relative group`}
                       title={`${user.userName}: ${hours.toFixed(1)}h (${util}%)`}
                     >
                       {hours > 0 && (
-                        <span className="text-[11px] font-medium text-gray-700 dark:text-gray-200">{hours.toFixed(0)}</span>
+                        <span className={`text-[11px] font-medium ${level.text}`}>{hours.toFixed(0)}</span>
                       )}
                       {/* Tooltip */}
                       <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-10 pointer-events-none">

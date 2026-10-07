@@ -1,5 +1,6 @@
 import { Avatar } from '../ui/Avatar';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { getHeatColor, getAvgTextColor } from './workloadHeatColors';
 // WorkloadHeatmap component
 
 interface WeeklyUtilization {
@@ -44,14 +45,6 @@ interface Resource {
 interface WorkloadHeatmapProps {
   workload: ResourceWorkload[];
   resources: Resource[];
-}
-
-function getHeatColor(utilization: number): { bg: string; text: string } {
-  if (utilization === 0) return { bg: 'bg-gray-50 dark:bg-gray-800', text: 'text-gray-300 dark:text-gray-600' };
-  if (utilization < 50) return { bg: 'bg-green-50 dark:bg-green-900/30', text: 'text-green-600 dark:text-green-400' };
-  if (utilization < 80) return { bg: 'bg-green-100 dark:bg-green-900/40', text: 'text-green-700 dark:text-green-300' };
-  if (utilization <= 100) return { bg: 'bg-yellow-100 dark:bg-yellow-900/40', text: 'text-yellow-700 dark:text-yellow-300' };
-  return { bg: 'bg-red-100 dark:bg-red-900/40', text: 'text-red-700 dark:text-red-300' };
 }
 
 function formatWeek(dateStr: string): string {
@@ -113,7 +106,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                       </div>
                     </td>
                     <td className="px-2 py-2 text-center">
-                      <span className={`font-bold ${rw.averageUtilization > 100 ? 'text-red-600' : rw.averageUtilization > 80 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      <span className={`font-bold ${getAvgTextColor(rw.averageUtilization)}`}>
                         {rw.averageUtilization}%
                       </span>
                     </td>
@@ -123,18 +116,18 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                         : '—'}
                     </td>
                     {rw.weeks.slice(0, 12).map((w, i) => {
-                      const { bg, text } = getHeatColor(w.utilization);
+                      const { bg, text, border } = getHeatColor(w.utilization);
                       const actual = w.actual ?? 0;
                       return (
                         <td key={i} className="px-1 py-1 text-center">
                           <div
-                            className={`rounded px-1 py-1 ${bg} ${text} font-medium`}
+                            className={`rounded px-1 py-1 ${bg} ${text} ${border ?? ''} font-medium`}
                             title={`${rw.resourceName} — Week of ${formatWeek(w.weekStart)}\nAllocated: ${w.allocated}h${w.otherProjects ? ` (this project ${w.thisProject ?? 0}h, other projects ${w.otherProjects}h)` : ''}\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${w.utilization}%${w.cost && w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
                           >
                             {w.utilization > 0 ? (
                               <div className="leading-tight">
                                 <div className="text-[11px]">{actual > 0 ? `${actual}` : '-'}/{w.allocated}h</div>
-                                <div className="text-[10px] opacity-70">{w.utilization}%</div>
+                                <div className="text-[10px] font-normal">{w.utilization}%</div>
                               </div>
                             ) : '-'}
                           </div>

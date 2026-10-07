@@ -1434,7 +1434,7 @@ The **Trends** sub-tab shows weekly time logging patterns over the last 12 weeks
 The **Heatmap** sub-tab visualizes team utilization across time:
 
 - **CSS grid** with rows = team members, columns = dates.
-- **Color coding:** red (<25%), amber (25-74%), green (75-100%), dark red (>100%).
+- **Color coding:** red (<25%), amber (25-74%), green (75-100%), dark red (>100%); days with no time are grey with a thin outline.
 - **Tooltips** show exact hours and utilization percentage on hover.
 - **Date range picker** lets you adjust the window (default: last 4 weeks).
 - **Per-user summary cards** show average daily hours and utilization %.
@@ -2912,10 +2912,13 @@ A table showing all resources with weekly utilization percentages rendered as co
 
 | Color | Utilization Range |
 |-------|-------------------|
-| Green | Below 80% |
-| Blue  | 80%–100% |
-| Amber | 100%–120% |
-| Red   | Above 120% |
+| Grey, outlined | 0% (no work booked) |
+| Light green | Below 50% |
+| Green | 50%–80% |
+| Yellow | 80%–100% |
+| Red   | Above 100% |
+
+All cell text meets the WCAG AA contrast level (4.5:1) in light and dark mode (October 2026). Empty cells — here and in the Time Tracking Utilization Heatmap — have a thin grey outline so they don't disappear into the page.
 
 Each row displays the resource name, role, average utilization, total cost (for resources with hourly rates), and per-week cells. Hover over a weekly cell to see the allocated hours, capacity, utilization percentage, and cost for that week.
 
