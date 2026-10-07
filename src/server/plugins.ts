@@ -152,6 +152,10 @@ export async function registerPlugins(fastify: FastifyInstance) {
     if (body.resetDate !== undefined) normalized.resetDate = body.resetDate;
     if (body.used !== undefined) normalized.used = body.used;
     if (body.budget !== undefined) normalized.budget = body.budget;
+    // which field was wrong, and the project a duplicate name belongs to (the create screen's
+    // "Open it" link) — they were stripped here, so the link never showed (2026-10-07)
+    if (body.field !== undefined) normalized.field = body.field;
+    if (body.existingProjectId !== undefined) normalized.existingProjectId = body.existingProjectId;
 
     return JSON.stringify(normalized);
   });

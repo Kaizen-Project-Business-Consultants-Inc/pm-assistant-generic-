@@ -44,7 +44,8 @@ test('clients: grouping, risks together, one report; project codes; duplicate na
     await expect(pm.getByText(p.projectCode, { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
     // a second live project with the same name: a plain 409 with an Open-it id
-    const dup = await pm.request.post('/api/v1/projects', { data: { name: `QA – client project ${stamp}` } });
+    const dup = await pm.request.post('/api/v1/projects', { data: { name: p.name } });
+    if (dup.status() === 201) await archiveProject(pm, (await dup.json()).project.id); // don't leave a stray copy
     expect(dup.status()).toBe(409);
     expect((await dup.json()).message).toMatch(/already exists/);
     expect((await dup.json()).existingProjectId).toBe(project.projectId);
