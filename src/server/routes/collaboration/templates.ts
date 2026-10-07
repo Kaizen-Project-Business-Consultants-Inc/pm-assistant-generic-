@@ -13,6 +13,7 @@ import { sendValidationError } from '../../utils/validationError';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 import { projectGroupRepository } from '../../database/ProjectGroupRepository';
+import { projectGroupService } from '../../services/ProjectGroupService';
 
 const createTemplateSchema = z.object({
   name: z.string({ message: 'Enter a name for the template.' }).trim().min(1, 'Enter a name for the template.'),
@@ -172,7 +173,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
         userId,
         selectedTaskRefIds: data.selectedTaskRefIds,
       });
-      if (clientId && result?.project?.id) await projectGroupRepository.assignProject(result.project.id, clientId);
+      if (clientId && result?.project?.id) await projectGroupService.assignProject(result.project.id, clientId);
       return reply.status(201).send(result);
     } catch (error: any) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);

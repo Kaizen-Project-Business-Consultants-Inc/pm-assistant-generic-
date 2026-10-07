@@ -24,6 +24,7 @@ import logger from '../../utils/logger';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 import { projectGroupRepository } from '../../database/ProjectGroupRepository';
+import { projectGroupService } from '../../services/ProjectGroupService';
 
 
 export const createProjectSchema = z.object({
@@ -241,7 +242,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
         userId,
       });
       if (clientId) {
-        await projectGroupRepository.assignProject(project.id, clientId);
+        await projectGroupService.assignProject(project.id, clientId);
         project = { ...project, groupId: clientId };
       }
       webhookService.dispatch('project.created', { project }, userId);
@@ -305,8 +306,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       }
       // the client: the project's Manager/Owner sets or clears it (this route requires manager)
       if (clientId !== undefined) {
-        if (clientId) await projectGroupRepository.assignProject(id, clientId);
-        else await projectGroupRepository.unassignProject(id);
+        if (clientId) await projectGroupService.assignProject(id, clientId);
+        else await projectGroupService.unassignProject(id);
         project.groupId = clientId ?? undefined;
       }
       webhookService.dispatch('project.updated', { project }, userId);
