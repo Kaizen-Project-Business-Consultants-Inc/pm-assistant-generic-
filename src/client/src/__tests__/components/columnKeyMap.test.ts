@@ -60,6 +60,14 @@ describe('Gantt ↔ Table column key map', () => {
     expect(GANTT_TO_TABLE_KEY.notes).toBe('notes');
     expect(TABLE_TO_GANTT_KEY.notes).toBe('notes');
   });
+
+  it('Est / Work pair with the Table\'s Est Days / Work both ways; only the row-actions column is Gantt-only (2026-10-06)', () => {
+    expect(GANTT_TO_TABLE_KEY.est).toBe('estimatedDays');
+    expect(TABLE_TO_GANTT_KEY.estimatedDays).toBe('est');
+    expect(GANTT_TO_TABLE_KEY.work).toBe('estimatedDurationHours');
+    expect(TABLE_TO_GANTT_KEY.estimatedDurationHours).toBe('work');
+    expect([...GANTT_ONLY_KEYS]).toEqual(['editIcon']);
+  });
 });
 
 describe('mergeGanttOrderIntoTableOrder', () => {

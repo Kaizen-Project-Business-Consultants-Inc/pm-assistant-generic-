@@ -39,7 +39,8 @@ export const GANTT_EDIT_RULES: InlineEditRules<string> = {
   toApiField: (field) => field,
 };
 
-/** Table view: budget / actual cost accept "$1,200" (blank = none); Notes is saved as the description. */
+/** Table view: budget / actual cost accept "$1,200" (blank = none); Notes is saved as the description;
+ *  Est Days and Work are numbers >= 0, exactly as the Gantt grid saves them. */
 export const TABLE_EDIT_RULES: InlineEditRules<string> = {
   saveNeedsOnTaskUpdate: false,
   cancelBlankName: false,
@@ -48,7 +49,9 @@ export const TABLE_EDIT_RULES: InlineEditRules<string> = {
     ? Math.max(0, Math.min(100, Number(value)))
     : (field === 'budgetAllocated' || field === 'actualCost')
       ? (value === '' ? null : Math.max(0, Number(value.replace(/[,$]/g, ''))))
-      : value,
+      : (field === 'estimatedDays' || field === 'estimatedDurationHours')
+        ? Math.max(0, Number(value))
+        : value,
   toApiField: (field) => field === 'notes' ? 'description' : field,
 };
 

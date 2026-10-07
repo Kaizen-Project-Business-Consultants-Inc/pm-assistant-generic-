@@ -137,12 +137,21 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     expect(keysOf(r2.current.orderedColumns).slice(0, 4)).toEqual(['rowNum', 'name', 'resource', 'notes']);
   });
 
-  it('Est and Work (no Table column) stay hidden under the shared state, whatever the Gantt\'s own state says', () => {
+  it('Est and Work follow the Table\'s Est Days / Work visibility and order, whatever the Gantt\'s own state says (2026-10-06)', () => {
     localStorage.setItem('gantt-visible-cols:s1', JSON.stringify(['est', 'work']));
     const cs = external(['status'], []);
     const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs }));
     expect(result.current.isColVisible(col('est'))).toBe(false);
     expect(result.current.isColVisible(col('work'))).toBe(false);
+
+    // Switched on in the shared picker (the Table's Est Days / Work), in the Table's saved order
+    const cs2 = external(['estimatedDurationHours', 'estimatedDays', 'status'], ['rowNum', 'estimatedDurationHours', 'status', 'estimatedDays']);
+    const { result: r2 } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs2 }));
+    expect(r2.current.isColVisible(col('est'))).toBe(true);
+    expect(r2.current.isColVisible(col('work'))).toBe(true);
+    expect(keysOf(r2.current.orderedColumns).slice(0, 5)).toEqual(['rowNum', 'name', 'work', 'status', 'est']);
+    expect(r2.current.ganttKeyToTableKey.est).toBe('estimatedDays');
+    expect(r2.current.ganttKeyToTableKey.work).toBe('estimatedDurationHours');
   });
 
   it('dragging columns into a new order in the Gantt writes Table keys and keeps Table-only columns in place', () => {
@@ -167,7 +176,10 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     // Only the shared columns' slots changed; earlyStart and wbs stayed put; no Gantt keys leak in
     expect(next.slice(0, 7)).toEqual(['rowNum', 'name', 'earlyStart', 'resource', 'status', 'wbs', 'notes']);
     expect(next).not.toContain('est');
-    expect(next).not.toContain('estimatedDays');
+    expect(next).not.toContain('work');
+    // Est Days / Work are Table columns now: present once each, under their Table keys
+    expect(next.filter(k => k === 'estimatedDays')).toHaveLength(1);
+    expect(next.filter(k => k === 'estimatedDurationHours')).toHaveLength(1);
     expect(new Set(next).size).toBe(next.length);
   });
 

@@ -100,8 +100,8 @@ export function useGanttColumns({
     if (_columnState) {
       const tableKey = GANTT_TO_TABLE_KEY[col.key];
       if (tableKey) return _columnState.visibleKeys.has(tableKey);
-      // Gantt-only columns (Est, Work) have no Table column, so the shared picker can't
-      // switch them on: hidden, as before
+      // A Gantt column with no Table column (only the always-visible row-actions column today,
+      // handled above) can't be switched on by the shared picker: hidden
       return false;
     }
     return ganttVisibleCols.has(col.key);

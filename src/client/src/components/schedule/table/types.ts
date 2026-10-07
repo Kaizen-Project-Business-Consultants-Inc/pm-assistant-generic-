@@ -9,7 +9,7 @@ import { SUMMARY_ROLLUP_FIELD_NAMES } from '../summaryRollup';
 
 export type SortDir = 'asc' | 'desc';
 export type GroupByField = '' | 'status' | 'priority' | 'assignedTo';
-export type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate' | 'notes' | 'actualStartDate' | 'actualEndDate';
+export type EditableField = 'name' | 'status' | 'priority' | 'startDate' | 'endDate' | 'progressPercentage' | 'assignedTo' | 'dependency' | 'duration' | 'budgetAllocated' | 'actualCost' | 'constraintType' | 'constraintDate' | 'notes' | 'actualStartDate' | 'actualEndDate' | 'estimatedDays' | 'estimatedDurationHours';
 
 export interface CpmTaskData {
   taskId: string;

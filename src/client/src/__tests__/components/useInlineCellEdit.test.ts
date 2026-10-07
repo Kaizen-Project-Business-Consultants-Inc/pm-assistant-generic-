@@ -508,8 +508,13 @@ describe('useInlineCellEdit with the Gantt rules behaves exactly like the old Ga
   }
 });
 
+// The old TableView had no Est Days / Work columns; since 2026-10-06 the Table has them and saves
+// them as the Gantt does (numbers >= 0) — checked against the Gantt below, not the old Table code
+const TABLE_CHANGED_ON_PURPOSE = new Set(['estimate below zero', 'work hours']);
+
 describe('useInlineCellEdit with the Table rules behaves exactly like the old TableView code', () => {
   for (const [name, steps] of SCENARIOS) {
+    if (TABLE_CHANGED_ON_PURPOSE.has(name)) continue;
     it(name, () => { bothMatch(useNewTable, useOldTable, BASE, steps); });
     it(`${name} (read-only)`, () => { bothMatch(useNewTable, useOldTable, { ...BASE, onTaskUpdate: undefined }, steps); });
   }
@@ -536,12 +541,19 @@ describe('the differences the two views keep (spelled out)', () => {
     expect(lastCall(useNewTable, [['save', 'a', 'notes', 'n2']]).calls).toEqual([['a', { description: 'n2' }]]);
     expect(lastCall(useNewGantt, [['save', 'a', 'notes', 'n2']]).calls).toEqual([['a', { notes: 'n2' }]]);
   });
-  it('money: Table strips $ and commas and blanks to none; estimates: Gantt makes numbers >= 0', () => {
+  it('money: Table strips $ and commas and blanks to none; estimates: both make numbers >= 0 (Table since 2026-10-06)', () => {
     expect(lastCall(useNewTable, [['save', 'a', 'budgetAllocated', '$1,200']]).calls).toEqual([['a', { budgetAllocated: 1200 }]]);
     expect(lastCall(useNewTable, [['save', 'a', 'budgetAllocated', '']]).calls).toEqual([['a', { budgetAllocated: null }]]);
     expect(lastCall(useNewGantt, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: 0 }]]);
-    expect(lastCall(useNewTable, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: '-3' }]]);
+    expect(lastCall(useNewTable, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: 0 }]]);
+    expect(lastCall(useNewTable, [['save', 'a', 'estimatedDurationHours', '12.5']]).calls).toEqual([['a', { estimatedDurationHours: 12.5 }]]);
   });
+  for (const name of TABLE_CHANGED_ON_PURPOSE) {
+    it(`${name}: the Table now does exactly what the Gantt does`, () => {
+      const steps = SCENARIOS.find(([n]) => n === name)![1];
+      expect(lastCall(useNewTable, steps).calls).toEqual(lastCall(useNewGantt, steps).calls);
+    });
+  }
   it('a predecessor error: Gantt clears it on Escape / a new edit, Table keeps it', () => {
     const steps: Step[] = [['start', 'b', 'dependency'], ['set', 'zz'], ['key', 'Enter', 'b', 'dependency'], ['key', 'Escape', 'b', 'dependency']];
     const g = lastCall(useNewGantt, steps).log as Array<{ depError: unknown }>;

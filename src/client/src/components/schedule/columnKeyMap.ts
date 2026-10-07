@@ -18,6 +18,8 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
   ['start', 'startDate'],
   ['end', 'endDate'],
   ['dur', 'duration'],
+  ['est', 'estimatedDays'],
+  ['work', 'estimatedDurationHours'],
   ['pct', 'progressPercentage'],
   ['priority', 'priority'],
   ['assigned', 'assignedTo'],
@@ -27,11 +29,11 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
 ];
 
 /**
- * Gantt columns with no Table column. Est (estimated days) and Work (effort hours) have no
- * Table column yet, so the shared column picker can't switch them on; editIcon is the Gantt's
- * fixed row-actions column.
+ * Gantt columns with no Table column: only editIcon, the Gantt's fixed row-actions column.
+ * (Est and Work were Gantt-only until 2026-10-06, so the shared column picker couldn't switch
+ * them on in the project schedule; the Table now has Est Days and Work.)
  */
-export const GANTT_ONLY_KEYS: ReadonlySet<string> = new Set(['est', 'work', 'editIcon']);
+export const GANTT_ONLY_KEYS: ReadonlySet<string> = new Set(['editIcon']);
 
 /** Table columns with no Gantt column (CPM, baseline, cost, actual dates, constraints, WBS) */
 export const TABLE_ONLY_KEYS: ReadonlySet<ColumnKey> = new Set<ColumnKey>([
