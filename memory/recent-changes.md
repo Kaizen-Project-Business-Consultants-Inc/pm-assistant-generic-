@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-07 — Project identity finished (part 6 of the 2026-09-19 plan)
+utils/duplicateProject.ts: DuplicateProjectNameError thrown by ProjectService on create AND rename (DB idx_projects_live_name) with the live project's id; duplicateProjectNameReply → 409 {message, field:'name', existingProjectId only if the caller may open it} used by projects POST/PUT, templates /apply (was 500 with SQL text), intake convert, ai-chat create-project; AI action executor shows the message. ProjectRepository.create retries a PRJ-n code clash (concurrent creates) up to 5x. Code shown: project header badge, Projects list/cards (and searchable), status report title; DTO carries projectCode. TemplatePicker shows the server message + "Open it" (was "Failed to create project" for everything). Not done: code in Slack/RAID IDs. Test projectIdentity.test.ts.
+
 ## 2026-10-07 — Task update: sending budget/actual cost gets a notice
 PUT /schedules/:id/tasks/:taskId still ignores budgetAllocated / actualCost (calculated: planned hours × rate, approved hours × rate + other costs; ScheduleService deletes them), but the reply now carries `notice` saying they were not changed. Not a 400: programs that send the whole task back keep working. The MCP update-task tool doesn't offer these fields. Test in taskWorkHoursSaved.test.ts.
 ## 2026-10-07 — Table: Budget and Actual Cost are read-only (calculated) (branch cost-readonly, not merged/deployed)

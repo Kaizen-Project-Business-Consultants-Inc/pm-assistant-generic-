@@ -1,11 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { requireProjectAccess, projectsOfSchedules, checkProjectRole } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, projectsOfSchedules, checkProjectRole, checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { AIChatService } from '../../services/aiChatService';
 import { AICircuitBreakerError } from '../../services/claudeService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 
 const chatMessageSchema = z.object({
   message: z.string().min(1).max(10000),
@@ -293,6 +294,8 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
           aiPowered: result.aiPowered,
         };
       } catch (error) {
+        const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
+        if (nameTaken) return nameTaken;
         fastify.log.error({ err: error instanceof Error ? error : new Error(String(error)) }, 'Project creation failed');
         return reply.code(500).send({
           error: 'Failed to create project from description',

@@ -52,6 +52,8 @@ export interface StructuredStatusReport {
   managementAttention: AttentionItem[];
   changeControl: ChangeControlRow[];
   projectName: string;
+  /** PRJ-001… shown with the name (absent on older reports) */
+  projectCode?: string | null;
   reportDate: string;
   aiPowered: boolean;
   /** The schedule's Timeline strip (phases, milestones) as of the report — absent on older reports */
@@ -133,7 +135,7 @@ export function renderStatusReportHtml(report: StructuredStatusReport): string {
       <tr>
         <td style="background: ${NAVY}; padding: 18px 20px; border-radius: 6px 6px 0 0;">
           <p style="color: ${WHITE}; margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;">PROJECT STATUS REPORT</p>
-          <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0; font-size: 11px;">${escapeHtml(projectName)}</p>
+          <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0; font-size: 11px;">${escapeHtml(projectName)}${report.projectCode ? ` · ${escapeHtml(String(report.projectCode))}` : ''}</p>
         </td>
       </tr>
     </table>`;

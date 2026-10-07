@@ -298,6 +298,7 @@ export class ProjectStatusReportService {
       projectName,
       reportDate,
       aiPowered,
+      projectCode: srContext?.projectContext.project.projectCode ?? null,
       // the plan at a glance: phases and milestones over time, today marked (2026-10-07)
       timeline: srContext?.allTasks?.length ? reportTimeline(srContext.allTasks.map(t => ({
         id: t.id, name: t.name, startDate: t.startDate ? String(t.startDate).slice(0, 10) : undefined,
@@ -393,6 +394,7 @@ export class ProjectStatusReportService {
             managementAttention: report.managementAttention,
             changeControl: report.changeControl,
             aiPowered: report.aiPowered,
+            projectCode: report.projectCode ?? null,
             timeline: report.timeline ?? null,
             timelineToday: report.timelineToday ?? null,
           }),

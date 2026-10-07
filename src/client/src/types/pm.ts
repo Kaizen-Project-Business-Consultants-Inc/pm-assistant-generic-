@@ -18,6 +18,8 @@ export interface PriorityItemPM {
 }
 
 export interface ProjectSummaryPM {
+  /** PRJ-001…, given automatically when the project is made */
+  code?: string;
   id: string;
   name: string;
   client?: string;

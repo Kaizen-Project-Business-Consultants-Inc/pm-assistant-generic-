@@ -5,12 +5,13 @@ import { createFromTemplateSchema, saveAsTemplateSchema } from '../../schemas/te
 import { templateMarketplaceRepository } from '../../database/TemplateMarketplaceRepository';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { checkProjectRole } from '../../middleware/requireProjectAccess';
+import { checkProjectRole, checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
+import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 
 const createTemplateSchema = z.object({
   name: z.string({ message: 'Enter a name for the template.' }).trim().min(1, 'Enter a name for the template.'),
@@ -169,6 +170,9 @@ export async function templateRoutes(fastify: FastifyInstance) {
       return reply.status(201).send(result);
     } catch (error: any) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      // a live project already has that name: say so (it was a 500 with the database's text)
+      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
+      if (nameTaken) return nameTaken;
       logger.error('Apply template error', { error: error.message, stack: error.stack });
       if (error.message === 'Template not found') {
         return reply.status(404).send({ error: 'Template not found' });

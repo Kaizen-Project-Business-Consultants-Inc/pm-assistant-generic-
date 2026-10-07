@@ -381,6 +381,11 @@ export function ProjectDetailPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words">{project.name}</h1>
+              {(project as { projectCode?: string }).projectCode && (
+                <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300" title="Project code — given automatically, never changes">
+                  {(project as { projectCode?: string }).projectCode}
+                </span>
+              )}
               {canEditStatus && !isDemo ? (
                 <select
                   value={project.status}

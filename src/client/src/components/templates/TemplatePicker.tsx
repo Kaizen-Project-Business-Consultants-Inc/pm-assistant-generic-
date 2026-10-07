@@ -99,6 +99,16 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  /** A live project already has the name typed: its id, for an "Open it" link (2026-10-07) */
+  const [existing, setExisting] = useState<{ id: string; message: string } | null>(null);
+  /** Show what the server said (e.g. "A project called X already exists…") instead of a generic failure */
+  const showCreateError = (err: unknown, fallback: string) => {
+    const data = (err as { response?: { status?: number; data?: { message?: string; existingProjectId?: string } } })?.response;
+    const message = (data?.status === 409 || data?.status === 400) ? (data.data?.message || fallback) : fallback;
+    setErrorMessage(message);
+    const id = data?.status === 409 ? data.data?.existingProjectId : undefined;
+    setExisting(id ? { id, message } : null);
+  };
   const [scratchSubmitting, setScratchSubmitting] = useState(false);
 
   // "From File" flow state
@@ -228,8 +238,8 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       resetState();
       navigate(`/project/${result.project.id}`, { state: { showReadiness: true } });
     },
-    onError: () => {
-      setErrorMessage('Failed to create project from template. Please try again.');
+    onError: (err) => {
+      showCreateError(err, 'Failed to create project from template. Please try again.');
     },
   });
 
@@ -355,8 +365,8 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       onClose();
       resetState();
       if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });
-    } catch {
-      setErrorMessage('Failed to create project. Please try again.');
+    } catch (err) {
+      showCreateError(err, 'Failed to create project. Please try again.');
     } finally {
       setScratchSubmitting(false);
     }
@@ -388,8 +398,8 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       onClose();
       resetState();
       if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });
-    } catch {
-      setErrorMessage('Failed to create project. Please try again.');
+    } catch (err) {
+      showCreateError(err, 'Failed to create project. Please try again.');
     } finally {
       setScratchSubmitting(false);
     }
@@ -486,6 +496,15 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
             <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
               <span className="text-xs text-red-700 dark:text-red-400">{errorMessage}</span>
+              {existing && existing.message === errorMessage && (
+                <button
+                  type="button"
+                  onClick={() => { const id = existing.id; onClose(); resetState(); navigate(`/project/${id}`); }}
+                  className="ml-auto text-xs font-semibold text-red-700 dark:text-red-300 underline hover:no-underline flex-shrink-0"
+                >
+                  Open it
+                </button>
+              )}
             </div>
           )}
 

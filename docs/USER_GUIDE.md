@@ -206,6 +206,8 @@ The bell icon in the top bar shows unread notifications. Click it to view alerts
 
 Click **Create New Project** from the Dashboard or Projects page. You'll see three options:
 
+> **Project code and name (October 2026):** every project gets a code automatically — **PRJ-001**, **PRJ-002**, … — that never changes. It shows next to the project's name (project header, Projects page, status reports) and you can search the Projects page by it. Two live projects can't share a name: if you pick a name another live project already uses, Kovarti says so ("A project called … already exists") and, if you can see that project, offers **Open it**. Archived projects free their name for reuse.
+
 **Blank Project** -- Start with an empty project. Fill in the project name, start date, methodology, and optional budget/location, then click Create.
 
 **From File** -- Import tasks from an existing Excel (.xlsx/.xls) or CSV file:

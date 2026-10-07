@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
 import type { Project, CreateProjectData } from '../services/ProjectService';
+import { isDuplicateCodeDbError } from '../utils/duplicateProject';
 
 function toDateStr(val: any): string | undefined {
   if (!val) return undefined;
@@ -151,8 +152,25 @@ export class ProjectRepository extends BaseRepository<Project> {
   }
 
   async create(data: CreateProjectData): Promise<Project> {
+    // The code is the next PRJ-n; two projects created at the same moment can pick the same one,
+    // so a code clash just takes the next number (2026-10-07: it surfaced as "code already in use")
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await this.insertProject(data, await this.generateProjectCode());
+      } catch (err) {
+        if (!isDuplicateCodeDbError(err) || attempt >= 5) throw err;
+      }
+    }
+  }
+
+  /** The live (not archived) project with this name, if any */
+  async findLiveIdByName(name: string): Promise<string | null> {
+    const rows = await this.queryRaw('SELECT id FROM projects WHERE live_name = ? LIMIT 1', [name]);
+    return rows[0]?.id ?? null;
+  }
+
+  private async insertProject(data: CreateProjectData, projectCode: string): Promise<Project> {
     const id = uuidv4();
-    const projectCode = await this.generateProjectCode();
     await this.queryRaw(
       `INSERT INTO projects (id, name, project_code, description, category, project_type, methodology, status, priority,
         budget_allocated, budget_spent, currency, location, location_lat, location_lon,

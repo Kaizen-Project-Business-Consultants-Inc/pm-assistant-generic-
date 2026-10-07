@@ -76,6 +76,7 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
     id,
     name,
     client,
+    code,
     status,
     priority,
     methodology,
@@ -132,8 +133,8 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
               {name}
             </Link>
           </div>
-          {client && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate pl-5">{client}</p>
+          {(code || client) && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate pl-5">{[code, client].filter(Boolean).join(' · ')}</p>
           )}
         </div>
         <span

@@ -11,6 +11,7 @@ import logger from '../utils/logger';
 import { projectChanged } from './domainEvents';
 import { deadLetterService } from './DeadLetterService';
 import type { ProjectType } from '../constants/projectTypes';
+import { DuplicateProjectNameError, isDuplicateNameDbError } from '../utils/duplicateProject';
 
 const cachedProject = new CachedRepository<Project>(projectRepository, {
   prefix: 'cache:project',
@@ -119,7 +120,16 @@ export class ProjectService {
       throw new Error(`Blocked by policy: ${policyResult.matchedPolicies.map(p => p.policyName).join(', ')}`);
     }
 
-    const project = await projectRepository.create(data);
+    let project: Project;
+    try {
+      project = await projectRepository.create(data);
+    } catch (err) {
+      // a live project already has that name: one plain message for every way of creating one
+      if (isDuplicateNameDbError(err)) {
+        throw new DuplicateProjectNameError(data.name, await projectRepository.findLiveIdByName(data.name).catch(() => null));
+      }
+      throw err;
+    }
 
     auditLedgerService.append({
       actorId: data.userId,
@@ -187,7 +197,15 @@ export class ProjectService {
       (data as any).otherCosts = other;
       data.budgetSpent = Math.round((other + labour + expenses) * 100) / 100;
     }
-    const updated = await projectRepository.update(id, data as Record<string, any>);
+    let updated: Project | null;
+    try {
+      updated = await projectRepository.update(id, data as Record<string, any>);
+    } catch (err) {
+      if (isDuplicateNameDbError(err) && data.name) {
+        throw new DuplicateProjectNameError(data.name, await projectRepository.findLiveIdByName(data.name).catch(() => null));
+      }
+      throw err;
+    }
     if (!updated) return existing; // no fields to update
 
     cachedProject.invalidate(id).catch(() => {});

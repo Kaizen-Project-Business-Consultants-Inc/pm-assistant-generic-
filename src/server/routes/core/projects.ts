@@ -5,7 +5,7 @@ import { projectService } from '../../services/ProjectService';
 import { authMiddleware } from '../../middleware/auth';
 import { getActorSource } from '../../middleware/requestContext';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess, editableProjectIds } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, editableProjectIds, checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
@@ -22,6 +22,7 @@ import { projectRepository } from '../../database/ProjectRepository';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
+import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 
 
 export const createProjectSchema = z.object({
@@ -234,6 +235,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'project.created', entityType: 'project', entityId: project.id, projectId: project.id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ project: toProjectDTO(project) });
     } catch (error) {
+      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
+      if (nameTaken) return nameTaken;
       const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
       if (dup) return dup;
       if (error instanceof z.ZodError) {
@@ -292,6 +295,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       teamsEventDispatcher.dispatchToTeams('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
+      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
+      if (nameTaken) return nameTaken;
       const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
       if (dup) return dup;
       // A rejected field is the caller's mistake, not a server fault. Saying

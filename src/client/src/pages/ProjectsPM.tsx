@@ -113,6 +113,7 @@ export function ProjectsPM() {
     id: p.id,
     name: p.name || 'Unnamed Project',
     client: p.clientName || p.client || '',
+    code: p.projectCode || '',
     status: p.status || '',
     priority: p.priority || '',
     projectType: p.projectType || p.type || '',
@@ -156,7 +157,7 @@ export function ProjectsPM() {
     projects.filter((p) => {
       if (debouncedSearch.trim()) {
         const q = debouncedSearch.toLowerCase();
-        if (!p.name.toLowerCase().includes(q) && !(p.client || '').toLowerCase().includes(q)) {
+        if (!p.name.toLowerCase().includes(q) && !(p.client || '').toLowerCase().includes(q) && !(p.code || '').toLowerCase().includes(q)) {
           return false;
         }
       }
@@ -424,7 +425,7 @@ export function ProjectsPM() {
                         {p.name}
                         {(p as any).isDemo && <span className="ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 uppercase">Sample</span>}
                       </Link>
-                      {p.client && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{p.client}</p>}
+                      {(p.code || p.client) && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{[p.code, p.client].filter(Boolean).join(' · ')}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{statusDisplay}</td>
                     <td className="px-4 py-3">

@@ -16,6 +16,8 @@ export interface ProjectContext {
   project: {
     id: string;
     name: string;
+    /** PRJ-001… (given automatically) */
+    projectCode?: string;
     description?: string;
     status: string;
     priority: string;
@@ -121,6 +123,7 @@ export class AIContextBuilder {
       project: {
         id: project.id,
         name: project.name,
+        projectCode: project.projectCode,
         description: project.description,
         status: project.status,
         priority: project.priority,

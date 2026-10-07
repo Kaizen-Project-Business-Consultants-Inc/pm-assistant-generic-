@@ -5,6 +5,8 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
+import { duplicateProjectNameReply } from '../../utils/duplicateProject';
+import { checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 
 const intakeFieldSchema = z.object({
   id: z.string({ message: 'Each form field needs an id.' }).min(1, 'Each form field needs an id.'),
@@ -169,6 +171,8 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
       const message = error instanceof Error ? error.message : '';
       if (message === 'Submission not found') return reply.status(404).send({ error: 'Not found', message: 'That intake submission no longer exists.' });
       if (message === 'Form not found') return reply.status(404).send({ error: 'Not found', message: 'The intake form for this submission no longer exists.' });
+      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
+      if (nameTaken) return nameTaken;
       logger.error('Convert to project error', { error });
       return reply.status(500).send({ error: 'Failed to convert to project' });
     }

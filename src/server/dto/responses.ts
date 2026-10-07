@@ -26,6 +26,8 @@ export interface ErrorResponse {
 export interface ProjectDTO {
   id: string;
   name: string;
+  /** PRJ-001…: given automatically when the project is made, never changes */
+  projectCode?: string;
   description?: string;
   category?: string;
   projectType: string;
@@ -57,6 +59,7 @@ export function toProjectDTO(row: Record<string, any>): ProjectDTO {
   return {
     id: row.id,
     name: row.name,
+    projectCode: row.projectCode ?? row.project_code ?? undefined,
     description: row.description ?? undefined,
     category: row.category ?? undefined,
     projectType: row.projectType ?? row.project_type,
