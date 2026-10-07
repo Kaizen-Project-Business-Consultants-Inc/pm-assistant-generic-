@@ -54,6 +54,10 @@ export const createTaskSchema = z.object({
   // tasks are meant to have estimatedDays: 0 (bulk-create already allowed this;
   // this single-task route just never matched it).
   estimatedDays: z.number().min(0).optional(),
+  // Work (effort hours). Missing until 2026-10-06, so Zod stripped it: a Work edit in the Gantt
+  // grid or the Table showed "saved" but was never stored. ScheduleService writes it to
+  // estimated_duration_hours (create and update). An update may also clear it (null, below).
+  estimatedDurationHours: z.number().min(0).optional(),
   startDate: z.string().date().optional(),
   endDate: z.string().date().optional(),
   actualStartDate: z.string().date().optional().nullable(),
@@ -101,6 +105,8 @@ export const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: tr
   taskType: z.enum(['task', 'story', 'bug', 'epic']).optional(),
   // null = move the task to the top level (outdent out of its summary); the old summary rolls up
   parentTaskId: z.string().nullable().optional(),
+  // null clears Work (no effort hours)
+  estimatedDurationHours: z.number().min(0).nullable().optional(),
 });
 
 export async function scheduleRoutes(fastify: FastifyInstance) {

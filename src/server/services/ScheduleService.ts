@@ -1065,8 +1065,9 @@ export class ScheduleService {
 
     const updated = (await this.findTaskById(id))!;
 
-    // Recompute parent rollup if rollup-relevant fields changed
-    const rollupFields = ['startDate', 'endDate', 'progressPercentage', 'status', 'estimatedDays', 'budgetAllocated', 'actualCost', 'parentTaskId'];
+    // Recompute parent rollup if rollup-relevant fields changed. Work (estimatedDurationHours)
+    // weights the summary's % when the schedule's progressMode is 'work' (recomputeParentRollup).
+    const rollupFields = ['startDate', 'endDate', 'progressPercentage', 'status', 'estimatedDays', 'estimatedDurationHours', 'budgetAllocated', 'actualCost', 'parentTaskId'];
     const rollupChanged = rollupFields.some(f => f in data);
     if (rollupChanged) {
       // If parentTaskId changed, recompute both old and new parents

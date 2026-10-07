@@ -258,6 +258,19 @@ describe('R12 / R13 / R28 — durations', () => {
     expect(rule(evaluateRules(input([off], { isWorking: holiday })).findings, 'R12')[0].taskIds).toEqual([off.id]);
   });
 
+  // Work typed in the Gantt grid / Table is saved since 2026-10-06 and is what R12 reads here
+  it('R12 reads Work: hours that equal the working days look like days; real hours do not', () => {
+    seq = 0;
+    // Mon 14 .. Fri 18 Sep 2026: 5 working days
+    const daysInHours = task({ name: 'Hours hold days', startDate: '2026-09-14', endDate: '2026-09-18', estimatedDurationHours: 5 });
+    const realHours = task({ name: 'Real hours', startDate: '2026-09-14', endDate: '2026-09-18', estimatedDurationHours: 40 });
+    const noWork = task({ name: 'No work', startDate: '2026-09-14', endDate: '2026-09-18' });
+    const f = rule(evaluateRules(input([daysInHours, realHours, noWork])).findings, 'R12');
+    expect(f).toHaveLength(1);
+    expect(f[0].taskIds).toEqual([daysInHours.id]);
+    expect(f[0].message).toContain('hours probably hold days');
+  });
+
   it('workingDaySpan honours a calendar', () => {
     const holiday = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-09-16';
     expect(workingDaySpan('2026-09-14', '2026-09-18', holiday)).toBe(4);

@@ -238,5 +238,31 @@ describe('ScheduleService', () => {
       mockQuery.mockReset();
       mockQuery.mockResolvedValue([]);
     });
+
+    // Work (effort hours) weights the summary's % only when the schedule's progressMode is 'work'
+    // (2026-10-06: Work typed in the Gantt grid / Table is now saved, so this matters)
+    it('work mode: a child\'s Work changes the summary %; duration mode: it does not', async () => {
+      const rollupPct = async (mode: 'work' | 'duration', doneHours: number) => {
+        mockQuery.mockReset();
+        mockQuery.mockImplementation(async (sql: string) => {
+          if (sql.includes('parent_task_id = ?')) return [
+            { ...sampleTaskRow, id: 'done', parent_task_id: 'phase', progress_percentage: 100, estimated_days: 1, estimated_duration_hours: doneHours },
+            { ...sampleTaskRow, id: 'todo', parent_task_id: 'phase', progress_percentage: 0, estimated_days: 1, estimated_duration_hours: 8 },
+          ];
+          if (sql.includes('FROM schedules')) return [{ ...sampleScheduleRow, progress_mode: mode }];
+          if (sql.includes('FROM tasks')) return [{ ...sampleTaskRow, id: 'phase' }];
+          return [];
+        });
+        await service.recomputeParentRollup('phase');
+        const upd = mockQuery.mock.calls.find(([sql]) => String(sql).includes('is_summary = 1'))!;
+        return (upd[1] as unknown[])[2]; // start, end, progress, …
+      };
+      expect(await rollupPct('work', 8)).toBe(50);
+      expect(await rollupPct('work', 24)).toBe(75);
+      expect(await rollupPct('duration', 8)).toBe(50);
+      expect(await rollupPct('duration', 24)).toBe(50);
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue([]);
+    });
   });
 });
