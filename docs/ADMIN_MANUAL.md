@@ -515,7 +515,7 @@ Proposal creation is rate-limited to prevent alert fatigue:
 
 ### Nightly checks (October 2026)
 
-**Switched off today:** `AGENT_ENABLED` is not set on staging or production, so these checks do not run and nothing appears on a project's Agent Activity tab from them. Switch on staging first.
+**On staging since 2026-10-07; off on production.** `AGENT_ENABLED=true` was set on staging after a full manual run finished inside the time limit (206 s for 17 companies, one with 547 projects; no AI calls, no task changes). Production stays off until the user says so — switching it on also starts the 15-minute overdue scan (`date_passed` workflow triggers).
 
 With `AGENT_ENABLED=true` the nightly job runs three checks for every active project — no AI, nothing changed, the project's PM gets one alert per plan or project until they've read it:
 
