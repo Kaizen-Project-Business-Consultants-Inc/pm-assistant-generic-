@@ -4,7 +4,7 @@ import type { WorkCalendar } from '../../../../utils/workingDays';
 import { planDurationEdit } from '../../durationEdit';
 import { useUnmountSafeTimeouts } from './useUnmountSafeTimeouts';
 import { planPredecessorEdit } from '../../predecessorEdit';
-import { isSummaryRollupCell } from '../../summaryRollup';
+import { isLockedCell } from '../../summaryRollup';
 
 /**
  * The parts of grid keyboard handling that the Gantt grid (gantt/hooks/useGridKeyboard.ts) and
@@ -44,7 +44,7 @@ export const GANTT_KEYBOARD_RULES: GridKeyboardRules<string> = {
 };
 
 /** Table view: pasted % clamped 0-100, Est Days and Work numbers >= 0 (as the Gantt grid), everything
- *  else (budget too) as copied; Notes is pasted as the description; Escape is handled by the Table
+ *  else as copied (Budget / Actual Cost refuse a paste: calculated); Notes is pasted as the description; Escape is handled by the Table
  *  (it closes the context menu first). */
 export const TABLE_KEYBOARD_RULES: GridKeyboardRules<string> = {
   toPasteApiField: (field) => field === 'notes' ? 'description' : field,
@@ -130,8 +130,9 @@ export function pasteIntoFocusedCell<F extends string>({
   rules: GridKeyboardRules<F>;
 }) {
   const pasteTarget = tasks.find(t => t.id === focusedCell.taskId);
-  // A summary's dates, % and status come from its tasks: refuse quietly, as typing does
-  if (isSummaryRollupCell(pasteTarget, focusedCell.field)) return;
+  // A summary's dates, % and status come from its tasks, and Budget / Actual Cost are calculated:
+  // refuse quietly, as typing does
+  if (isLockedCell(pasteTarget, focusedCell.field)) return;
   // Predecessors: the same parse and the same update as typing them
   if (focusedCell.field === 'dependency') {
     const plan = planPredecessorEdit(copiedValue.value, focusedCell.taskId, rowNumToTaskId);

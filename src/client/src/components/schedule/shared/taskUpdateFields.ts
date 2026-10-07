@@ -21,8 +21,7 @@ export const GRID_TASK_UPDATE_FIELDS: Readonly<Record<string, unknown>> = {
   priority: 'high',
   assignedTo: 'r1',
   status: 'in_progress',
-  budgetAllocated: 100,
-  actualCost: 50,
+  // Not budgetAllocated / actualCost: calculated from hours × rate, read-only in both grids (2026-10-07)
   constraintType: 'SNET',
   constraintDate: '2026-03-02',
   actualStartDate: '2026-03-02',

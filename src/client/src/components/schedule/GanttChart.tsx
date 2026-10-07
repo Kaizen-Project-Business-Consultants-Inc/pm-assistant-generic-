@@ -43,7 +43,7 @@ import type { PanelMode } from './gantt/GanttToolbar';
 import { GanttGridPanel } from './gantt/GanttGridPanel';
 import { GanttTimelinePanel } from './gantt/GanttTimelinePanel';
 import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
-import { isSummaryRollupCell } from './summaryRollup';
+import { isLockedCell } from './summaryRollup';
 import { savedViewSortField } from './sortValues';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 
@@ -700,7 +700,7 @@ export function GanttChart({
         if (f < 0) { r -= 1; f = FIELD_ORDER.length - 1; }
         else if (f >= FIELD_ORDER.length) { r += 1; f = 0; }
         if (r < 0 || r >= rows.length) return;
-        if (!isSummaryRollupCell(rows[r].task, FIELD_ORDER[f])) {
+        if (!isLockedCell(rows[r].task, FIELD_ORDER[f])) {
           startEditing(rows[r].task.id, FIELD_ORDER[f], rows[r].task);
           return;
         }

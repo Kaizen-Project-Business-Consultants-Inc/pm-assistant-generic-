@@ -489,8 +489,13 @@ function bothMatch(useNew: (p: Props) => Api, useOld: (p: Props) => Api, props: 
 
 const BASE: Props = { tasks: TASKS, onTaskUpdate: () => {}, getTaskFieldValue: fieldValue, rowNumToTaskId: ROW_NUM_TO_ID, workCalendar: null, drag: null, rows: ROWS };
 
+// Budget / Actual Cost became calculated, read-only cells in both views (2026-10-07): the old code
+// opened and sent them; now nothing opens and nothing is sent — checked below, not against the old code
+const CALCULATED_CHANGED_ON_PURPOSE = new Set(['budget typed as $1,200', 'budget cleared', 'actual cost negative']);
+
 describe('useInlineCellEdit with the Gantt rules behaves exactly like the old GanttChart code', () => {
   for (const [name, steps] of SCENARIOS) {
+    if (CALCULATED_CHANGED_ON_PURPOSE.has(name)) continue;
     it(name, () => { bothMatch(useNewGantt, useOldGantt, BASE, steps); });
     it(`${name} (read-only)`, () => { bothMatch(useNewGantt, useOldGantt, { ...BASE, onTaskUpdate: undefined }, steps); });
     it(`${name} (while a bar is dragged)`, () => { bothMatch(useNewGantt, useOldGantt, { ...BASE, drag: { taskId: 'a' } }, steps); });
@@ -514,7 +519,7 @@ const TABLE_CHANGED_ON_PURPOSE = new Set(['estimate below zero', 'work hours']);
 
 describe('useInlineCellEdit with the Table rules behaves exactly like the old TableView code', () => {
   for (const [name, steps] of SCENARIOS) {
-    if (TABLE_CHANGED_ON_PURPOSE.has(name)) continue;
+    if (TABLE_CHANGED_ON_PURPOSE.has(name) || CALCULATED_CHANGED_ON_PURPOSE.has(name)) continue;
     it(name, () => { bothMatch(useNewTable, useOldTable, BASE, steps); });
     it(`${name} (read-only)`, () => { bothMatch(useNewTable, useOldTable, { ...BASE, onTaskUpdate: undefined }, steps); });
   }
@@ -541,12 +546,27 @@ describe('the differences the two views keep (spelled out)', () => {
     expect(lastCall(useNewTable, [['save', 'a', 'notes', 'n2']]).calls).toEqual([['a', { description: 'n2' }]]);
     expect(lastCall(useNewGantt, [['save', 'a', 'notes', 'n2']]).calls).toEqual([['a', { notes: 'n2' }]]);
   });
-  it('money: Table strips $ and commas and blanks to none; estimates: both make numbers >= 0 (Table since 2026-10-06)', () => {
-    expect(lastCall(useNewTable, [['save', 'a', 'budgetAllocated', '$1,200']]).calls).toEqual([['a', { budgetAllocated: 1200 }]]);
-    expect(lastCall(useNewTable, [['save', 'a', 'budgetAllocated', '']]).calls).toEqual([['a', { budgetAllocated: null }]]);
+  it('estimates: both make numbers >= 0 (Table since 2026-10-06)', () => {
     expect(lastCall(useNewGantt, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: 0 }]]);
     expect(lastCall(useNewTable, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: 0 }]]);
     expect(lastCall(useNewTable, [['save', 'a', 'estimatedDurationHours', '12.5']]).calls).toEqual([['a', { estimatedDurationHours: 12.5 }]]);
+  });
+  for (const name of CALCULATED_CHANGED_ON_PURPOSE) {
+    it(`${name}: Budget / Actual Cost don't open and send nothing in either view (calculated)`, () => {
+      const steps = SCENARIOS.find(([n]) => n === name)![1];
+      for (const useIt of [useNewGantt, useNewTable]) {
+        const r = lastCall(useIt, steps);
+        expect(r.calls).toEqual([]);
+        expect(r.announced).toEqual([]);
+        expect((r.log as Array<{ editingCell?: unknown }>).every(l => l.editingCell == null)).toBe(true);
+      }
+    });
+  }
+  it('Budget / Actual Cost: a save reaching the hook directly is dropped too', () => {
+    for (const useIt of [useNewGantt, useNewTable]) {
+      expect(lastCall(useIt, [['save', 'a', 'budgetAllocated', '$1,200'], ['tick', 2000]]).calls).toEqual([]);
+      expect(lastCall(useIt, [['save', 'a', 'actualCost', '40'], ['tick', 2000]]).calls).toEqual([]);
+    }
   });
   for (const name of TABLE_CHANGED_ON_PURPOSE) {
     it(`${name}: the Table now does exactly what the Gantt does`, () => {

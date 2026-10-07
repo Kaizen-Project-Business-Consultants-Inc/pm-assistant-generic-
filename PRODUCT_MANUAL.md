@@ -227,13 +227,13 @@ Constraints are stored as `constraint_type` (VARCHAR 4) and `constraint_date` (D
 
 ### Task-Level Budget
 
-Each task tracks `budget_allocated` (planned budget) and `actual_cost` (spent to date), both DECIMAL(12,2). The Table view's **Cost** column group shows:
+Each task tracks `budget_allocated` (planned budget) and `actual_cost` (spent to date), both DECIMAL(12,2). Since 2026-10-02 (T073) both are worked out by the app, never typed: budget = the task's bookings (hours a week ÷ 5 × the task's working days on the plan's calendar) × each person's standard rate on the booking's start day (`TaskBudgetService`, re-run ~20 s after a plan change and when rates change); actual cost = approved timesheet hours × the rate on the day worked, overtime rate for overtime (`ApprovedTimeService`). `ScheduleService.updateTask` drops a typed `budgetAllocated` / `actualCost` from any caller. The Table view's **Cost** column group shows:
 
-- **Budget** — formatted as currency, inline editable
-- **Actual Cost** — formatted as currency, inline editable
+- **Budget** — formatted as currency, **read-only** (calculated)
+- **Actual Cost** — formatted as currency, **read-only** (calculated)
 - **Cost Variance** — computed (budget - actual), color-coded green/red
 
-Budget fields are also available in the Task Form modal. For summary tasks, budget rolls up automatically from children.
+**Read-only in the grids (2026-10-07):** the two cells looked editable but a typed value was ignored by the server and a paste was sent as text and refused (400). They now use the shared lock the summary roll-up cells use — `isLockedCell` in `components/schedule/summaryRollup.ts` = the summary roll-up list plus `CALCULATED_CELL_HINTS` (calculated on every task) — so they don't open for typing (click, Enter/F2), are drawn greyed (`cursor-default opacity-70`), refuse a paste (`pasteIntoFocusedCell`) and are skipped by Tab; `useInlineCellEdit.saveEdit` also drops them. Each cell has a tooltip and an `aria-describedby` hint: *Calculated: booked hours × rate* / *Calculated: approved timesheet hours × rate*. They are no longer in `shared/taskUpdateFields.ts` (the fields the grids send), with a guard test; the bulk bars never sent them. The Gantt grid has no cost columns. The Task Form modal shows both read-only. For summary tasks, budget and actual cost roll up from children.
 
 ### What "overdue" means (dashboard tile, drill-in, briefing)
 

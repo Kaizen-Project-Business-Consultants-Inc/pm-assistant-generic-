@@ -62,8 +62,8 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'baselineCost', label: 'Baseline Cost', group: 'cost', defaultVisible: false, editable: false, sortable: true },
 
   // Cost
-  { key: 'budgetAllocated', label: 'Budget', group: 'cost', defaultVisible: false, editable: true, sortable: true },
-  { key: 'actualCost', label: 'Actual Cost', group: 'cost', defaultVisible: false, editable: true, sortable: true },
+  { key: 'budgetAllocated', label: 'Budget', group: 'cost', defaultVisible: false, editable: false, sortable: true },
+  { key: 'actualCost', label: 'Actual Cost', group: 'cost', defaultVisible: false, editable: false, sortable: true },
   { key: 'budgetVariance', label: 'Cost Variance', group: 'cost', defaultVisible: false, editable: false, sortable: true },
 
   // Other

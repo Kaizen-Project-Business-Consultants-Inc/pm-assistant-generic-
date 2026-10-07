@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, useId } from 'react';
 import { BulkDoneToast } from './shared/BulkDoneToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
@@ -31,7 +31,7 @@ import {
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
-import { isSummaryRollupCell } from './summaryRollup';
+import { isLockedCell, CALCULATED_CELL_HINTS } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
 import { listenForEscapeCancel } from './shared/escapeCancel';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
@@ -83,6 +83,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const [bulkDone, setBulkDone] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[] | null>(null);
+  // Ids of the hidden "Calculated: … hours × rate" texts the Budget / Actual Cost cells point to
+  const calcHintId = useId();
   const [notesPopup, setNotesPopup] = useState<{ taskId: string; value: string; x: number; y: number } | null>(null);
   // Focused cell, copied cell value, copied rows, pasted-cell flash (shared with the Gantt grid)
   const {
@@ -551,7 +553,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     savedCell?.taskId === taskId && savedCell.field === field;
 
   const editableCellClass = (taskId: string, field: string, task?: GanttTask) => {
-    if (isSummaryRollupCell(task, field)) {
+    if (isLockedCell(task, field)) {
       return 'relative cursor-default opacity-70';
     }
     const base = 'relative cursor-pointer transition-all duration-150';
@@ -1264,28 +1266,17 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
       case 'budgetAllocated':
       case 'actualCost': {
-        const budgetField = col.key as EditableField;
+        // Worked out by the app (hours × rate), never typed: shown read-only with where it comes from
         const val = (task as any)[col.key];
         const formatted = val != null ? `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '\u2014';
         return (
           <td key={col.key}
-            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, budgetField, task)}`}
-            onClick={() => handleCellClick(task.id, budgetField, task)}
+            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, col.key, task)}`}
+            title={CALCULATED_CELL_HINTS[col.key]}
+            aria-describedby={`${calcHintId}-${col.key}`}
+            onClick={() => handleCellClick(task.id, col.key as EditableField, task)}
           >
-            {isEditing(task.id, budgetField) ? (
-              <input
-                aria-label={cellEditLabel(budgetField, task.name)}
-                ref={el => { inputRef.current = el; }}
-                type="number"
-                min="0"
-                step="0.01"
-                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus-visible:ring-2 focus-visible:ring-primary-500 text-right font-mono text-gray-700 dark:text-gray-300"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                onKeyDown={e => handleKeyDown(e, task.id, budgetField)}
-                onBlur={() => saveEdit(task.id, budgetField, editValue)}
-              />
-            ) : formatted}
+            {formatted}
           </td>
         );
       }
@@ -1439,7 +1430,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         onScroll={useVirtualization ? (e) => setScrollTop((e.target as HTMLDivElement).scrollTop) : undefined}
       >
         <table className="text-sm" role="grid" style={{ minWidth: '100%' }}>
-          <caption className="sr-only">Project schedule tasks</caption>
+          <caption className="sr-only">
+            Project schedule tasks
+            {/* Read out as the description of each Budget / Actual Cost cell */}
+            {Object.entries(CALCULATED_CELL_HINTS).filter(([field]) => visibleColumns.some(c => c.key === field)).map(([field, hint]) => (
+              <span key={field} id={`${calcHintId}-${field}`} hidden>{hint}</span>
+            ))}
+          </caption>
           <thead>
             <TableHeaderRow
               visibleColumns={visibleColumns}

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { isSummaryRollupCell, SUMMARY_ROLLUP_FIELD_NAMES } from '../../components/schedule/summaryRollup';
+import { isSummaryRollupCell, SUMMARY_ROLLUP_FIELD_NAMES, isLockedCell, isCalculatedCell, CALCULATED_CELL_HINTS } from '../../components/schedule/summaryRollup';
 import { SUMMARY_ROLLUP_FIELDS } from '../../components/schedule/table/types';
 
 describe('isSummaryRollupCell — cells a summary task cannot be given by hand', () => {
@@ -29,6 +29,28 @@ describe('isSummaryRollupCell — cells a summary task cannot be given by hand',
   });
 });
 
+// 2026-10-07: Budget and Actual Cost are worked out by the app on every task (hours × rate), so the
+// shared lock (isLockedCell, used by both views) covers them on ordinary tasks too
+describe('isLockedCell — summary roll-ups plus the calculated money cells', () => {
+  it('Budget and Actual Cost are locked on every task, with a plain-English hint', () => {
+    for (const task of [{ isSummary: false }, { isSummary: true }, {}, undefined]) {
+      expect(isLockedCell(task, 'budgetAllocated')).toBe(true);
+      expect(isLockedCell(task, 'actualCost')).toBe(true);
+    }
+    expect(CALCULATED_CELL_HINTS).toEqual({
+      budgetAllocated: 'Calculated: booked hours × rate',
+      actualCost: 'Calculated: approved timesheet hours × rate',
+    });
+  });
+  it('is the summary rule for everything else (other cells of an ordinary task stay editable)', () => {
+    for (const f of ['name', 'startDate', 'endDate', 'duration', 'progressPercentage', 'status', 'estimatedDays', 'estimatedDurationHours', 'notes', 'priority', 'assignedTo', 'dependency']) {
+      expect(isCalculatedCell(f), f).toBe(false);
+      expect(isLockedCell({ isSummary: false }, f), f).toBe(false);
+      expect(isLockedCell({ isSummary: true }, f), f).toBe(isSummaryRollupCell({ isSummary: true }, f));
+    }
+  });
+});
+
 // Oct 2026: the Table view refused typing a summary's Start/Finish/% but the Gantt grid let
 // you, and neither checked on paste. Both views must ask the same rule when a cell opens for
 // typing, when it is drawn, and when something is pasted into it.
@@ -50,7 +72,7 @@ describe('Gantt and Table refuse the same cells on summary rows', () => {
   for (const file of ['GanttChart.tsx', 'TableView.tsx']) {
     const src = `${read(file)}\n${read(KEYBOARD[file])}\n${read(SHARED_EDIT)}`;
     it(`${file}: a summary's rolled-up cell does not open for typing`, () => {
-      expect(fnBody(src, 'const startEditing = useCallback(')).toContain('isSummaryRollupCell(task, field)');
+      expect(fnBody(src, 'const startEditing = useCallback(')).toContain('isLockedCell(task, field)');
     });
     it(`${file}: Ctrl+V into a summary's rolled-up cell is refused`, () => {
       // the view sends a paste into a cell of the matching column to the shared paste step ...
@@ -62,7 +84,7 @@ describe('Gantt and Table refuse the same cells on summary rows', () => {
       // ... which refuses a summary's rolled-up cell before any update
       const shared = read(SHARED_PASTE);
       const body = shared.slice(shared.indexOf('export function pasteIntoFocusedCell'));
-      const guard = body.indexOf('isSummaryRollupCell(pasteTarget, focusedCell.field)');
+      const guard = body.indexOf('isLockedCell(pasteTarget, focusedCell.field)');
       expect(guard).toBeGreaterThan(-1);
       expect(guard).toBeLessThan(body.indexOf('onTaskUpdate?.('));
     });
@@ -70,7 +92,7 @@ describe('Gantt and Table refuse the same cells on summary rows', () => {
 
   it('the Gantt grid draws those cells as not editable, like the Table view', () => {
     const row = read('gantt/GanttLeftPanelRow.tsx');
-    expect(row).toContain("if (isSummaryRollupCell(task, field)) return 'relative cursor-default opacity-70';");
+    expect(row).toContain("if (isLockedCell(task, field)) return 'relative cursor-default opacity-70';");
     expect(row).toMatch(/editableCellClass\([^)]*field, task\)/);
   });
 });

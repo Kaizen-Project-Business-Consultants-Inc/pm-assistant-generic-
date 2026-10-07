@@ -5,7 +5,7 @@ import { progressFromHours } from '../../../../utils/progressFromHours';
 import { announce } from '../../../../utils/announce';
 import { planDurationEdit } from '../../durationEdit';
 import { planPredecessorEdit } from '../../predecessorEdit';
-import { isSummaryRollupCell } from '../../summaryRollup';
+import { isLockedCell, isCalculatedCell } from '../../summaryRollup';
 import { useUnmountSafeTimeouts } from './useUnmountSafeTimeouts';
 
 /**
@@ -39,19 +39,17 @@ export const GANTT_EDIT_RULES: InlineEditRules<string> = {
   toApiField: (field) => field,
 };
 
-/** Table view: budget / actual cost accept "$1,200" (blank = none); Notes is saved as the description;
- *  Est Days and Work are numbers >= 0, exactly as the Gantt grid saves them. */
+/** Table view: Notes is saved as the description; Est Days and Work are numbers >= 0, exactly as
+ *  the Gantt grid saves them. Budget / Actual Cost are calculated and never typed (isLockedCell). */
 export const TABLE_EDIT_RULES: InlineEditRules<string> = {
   saveNeedsOnTaskUpdate: false,
   cancelBlankName: false,
   clearDepErrorOnStartAndCancel: false,
   toSaveValue: (field, value) => field === 'progressPercentage'
     ? Math.max(0, Math.min(100, Number(value)))
-    : (field === 'budgetAllocated' || field === 'actualCost')
-      ? (value === '' ? null : Math.max(0, Number(value.replace(/[,$]/g, ''))))
-      : (field === 'estimatedDays' || field === 'estimatedDurationHours')
-        ? Math.max(0, Number(value))
-        : value,
+    : (field === 'estimatedDays' || field === 'estimatedDurationHours')
+      ? Math.max(0, Number(value))
+      : value,
   toApiField: (field) => field === 'notes' ? 'description' : field,
 };
 
@@ -108,8 +106,8 @@ export function useInlineCellEdit<F extends string>({
     // % complete from approved hours can't be typed (mark the task done instead)
     if (field === 'progressPercentage' && progressFromHours(task as any)) return;
     if (!onTaskUpdate || blockEditingWhile) return; // read-only mode (Gantt: or a bar is being dragged)
-    // A summary's dates, % complete and status come from its tasks
-    if (isSummaryRollupCell(task, field)) return;
+    // A summary's dates, % complete and status come from its tasks; Budget / Actual Cost are calculated
+    if (isLockedCell(task, field)) return;
     setEditingCell({ taskId, field });
     setEditValue(getTaskFieldValue(task, field));
     if (rules.clearDepErrorOnStartAndCancel) setDepError(null);
@@ -151,6 +149,9 @@ export function useInlineCellEdit<F extends string>({
     if (rules.saveNeedsOnTaskUpdate && !onTaskUpdate) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
+
+    // Budget / Actual Cost are worked out by the app: never sent, whatever called this
+    if (isCalculatedCell(field)) { cancelEditing(); return; }
 
     const originalValue = getTaskFieldValue(task, field);
     if (value === originalValue) { cancelEditing(); return; }

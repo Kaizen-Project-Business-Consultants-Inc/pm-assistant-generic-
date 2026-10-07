@@ -13,14 +13,10 @@ import { GANTT_EDIT_RULES, TABLE_EDIT_RULES, type InlineEditRules } from '../../
 import { GANTT_KEYBOARD_RULES, TABLE_KEYBOARD_RULES, type GridKeyboardRules } from '../../components/schedule/shared/hooks/useGridKeyboardPaste';
 import { FIELD_ORDER } from '../../components/schedule/gantt/types';
 import { COLUMN_DEFS } from '../../components/schedule/tableColumns';
+import { CALCULATED_CELL_HINTS, isLockedCell } from '../../components/schedule/summaryRollup';
 
 // Duration and Predecessors go through the shared planners, which send these instead
 const PLANNED: Record<string, string> = { duration: 'endDate', dependency: 'dependencies' };
-
-// KNOWN (2026-10-06, reported, not changed here): the Table pastes Budget / Actual Cost as the
-// copied text, which the server's number schema refuses — and the server ignores typed money
-// anyway (a task's budget and cost are worked out from hours × rate). Decision pending.
-const PASTE_TYPE_KNOWN = new Set(['budgetAllocated', 'actualCost']);
 
 const GANTT_FIELDS: string[] = [...FIELD_ORDER];
 const TABLE_FIELDS: string[] = COLUMN_DEFS.filter(c => c.editable).map(c => c.key);
@@ -42,7 +38,7 @@ describe('the grids\' task-update field list covers what they send', () => {
         const sample = GRID_TASK_UPDATE_FIELDS[api];
         const typed = String(sample);
         expect(typeof edit.toSaveValue(f, typed), `${view} ${f} (typed)`).toBe(typeof sample);
-        if (!PASTE_TYPE_KNOWN.has(f)) expect(typeof paste.toPasteValue(f, typed), `${view} ${f} (pasted)`).toBe(typeof sample);
+        expect(typeof paste.toPasteValue(f, typed), `${view} ${f} (pasted)`).toBe(typeof sample);
       }
     });
   }
@@ -60,5 +56,15 @@ describe('the grids\' task-update field list covers what they send', () => {
     const sent = [...src.matchAll(/(?:applyBulkUpdate|onApplyBulkUpdate)\('([A-Za-z]+)'/g)].map(m => m[1]);
     expect(sent.length).toBeGreaterThan(0);
     for (const f of sent) expect(Object.keys(GRID_BULK_UPDATE_FIELDS)).toContain(f);
+  });
+
+  it('Budget and Actual Cost are calculated (hours × rate): no grid edits or sends them', () => {
+    for (const f of Object.keys(CALCULATED_CELL_HINTS)) {
+      expect(Object.keys(GRID_TASK_UPDATE_FIELDS), f).not.toContain(f);
+      expect(Object.keys(GRID_BULK_UPDATE_FIELDS), f).not.toContain(f);
+      expect(GANTT_FIELDS, f).not.toContain(f);
+      expect(TABLE_FIELDS, f).not.toContain(f);
+      expect(isLockedCell({ isSummary: false }, f), f).toBe(true);
+    }
   });
 });

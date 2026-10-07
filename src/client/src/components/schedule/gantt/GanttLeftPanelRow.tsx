@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { ResourceQuickAssign } from '../ResourceQuickAssign';
 import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
-import { isSummaryRollupCell } from '../summaryRollup';
+import { isLockedCell } from '../summaryRollup';
 import { cellEditLabel } from '../cellEditLabel';
 import {
   type GanttTask,
@@ -122,7 +122,7 @@ function editableCellClass(
 ): string {
   if (!hasOnTaskUpdate) return '';
   // Same look as the Table view: a summary's rolled-up cells are not editable
-  if (isSummaryRollupCell(task, field)) return 'relative cursor-default opacity-70';
+  if (isLockedCell(task, field)) return 'relative cursor-default opacity-70';
   const base = 'relative cursor-pointer transition-all duration-150';
   if (isEditingField(editingField, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
   if (isPasteFlashField(pasteFlashField, field)) return `${base} ring-2 ring-green-400 ring-inset rounded bg-green-50 dark:bg-green-900/20`;

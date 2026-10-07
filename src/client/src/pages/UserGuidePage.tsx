@@ -362,7 +362,7 @@ const sections: Section[] = [
       'Click "Submit week" — it goes to your line manager, who approves or sends it back with a reason',
       'Line managers: Timesheets → To approve. PMs: the project Time tab shows hours waiting, and "Flag this line"',
       "Months lock on the 5th of the next month: September's hours can't change from 5 October",
-      'A task\'s cost is work effort × rate: planned cost = planned hours × rate, actual cost = approved hours × rate — never typed',
+      'A task\'s cost is work effort × rate: planned cost = booked hours × rate, actual cost = approved hours × rate — never typed; in the Table, Budget and Actual Cost are read-only (hover one to see where it comes from)',
       'Licences, vendors and materials go in Financials → Expenses',
       'Total Spent = labour + other costs + expenses — the same figure on the dashboard, portfolio and EVM; EVM counts each cost on the day it happened',
       'Approving updates each task: actual cost, % complete (stops at 99% until done), actual start',

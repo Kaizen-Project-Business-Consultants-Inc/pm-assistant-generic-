@@ -401,13 +401,13 @@ Tasks can be organized hierarchically:
 
 Each task shows its cost. Both figures are **worked out by the app, not typed in**:
 
-- **Planned cost** (the task's budget) -- the task's planned hours × each assigned person's rate, kept up to date when dates, people or rates change.
-- **Actual cost** -- approved hours × rate. Non-labour costs (licences, vendors) go in the project's **Financials → Expenses**.
+- **Planned cost** (the task's budget) -- the hours booked on the task (each person's hours a week spread over the task's working days) × that person's rate, kept up to date when dates, bookings or rates change.
+- **Actual cost** -- approved timesheet hours × the person's rate on the day worked. Non-labour costs (licences, vendors) go in the project's **Financials → Expenses**.
 - **Cost Variance** -- Planned cost minus Actual cost. Shown colour-coded: green (under budget), red (over budget).
 
 The task form shows both figures read-only (see *What approval does to the plan and the budget* under Time Tracking).
 
-Enable cost columns via the **Columns** picker > **Cost** group.
+Enable cost columns via the **Columns** picker > **Cost** group. In the Table, **Budget** and **Actual Cost** are read-only (greyed): clicking one doesn't open it for typing and pasting into one does nothing. Hover over a figure to see where it comes from -- *Calculated: booked hours × rate* or *Calculated: approved timesheet hours × rate* (screen readers announce the same text). To change a budget, change the task's bookings or the person's rate; to change an actual cost, change the approved hours.
 
 ### Task Constraints
 

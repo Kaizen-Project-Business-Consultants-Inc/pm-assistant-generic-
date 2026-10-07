@@ -16,7 +16,7 @@ import { useGridKeyboardBefore } from './keyboardReference/ganttGridKeyboard.bef
 import { useTableKeyboard } from '../../components/schedule/table/hooks/useTableKeyboard';
 import { useTableKeyboardBefore, type TableKeyboardRefProps } from './keyboardReference/tableKeyboard.before';
 import {
-  useGridCellState, GANTT_KEYBOARD_RULES, TABLE_KEYBOARD_RULES, rowsToCopy,
+  useGridCellState, GANTT_KEYBOARD_RULES, TABLE_KEYBOARD_RULES, rowsToCopy, pasteIntoFocusedCell,
 } from '../../components/schedule/shared/hooks/useGridKeyboardPaste';
 import { buildFlatRows, GANTT_COLUMNS, type GanttTask, type EditableField as GanttField, type GanttColDef } from '../../components/schedule/gantt/types';
 import type { EditableField as TableField } from '../../components/schedule/table/types';
@@ -247,7 +247,9 @@ function useTableKeyboardAfter(p: TableKeyboardRefProps) {
   return { focusedCell, setFocusedCell, pasteFlash, copiedValue, copiedTasks };
 }
 
-const TABLE_FIELDS: TableField[] = ['name', 'status', 'priority', 'startDate', 'endDate', 'progressPercentage', 'assignedTo', 'duration', 'dependency', 'notes', 'budgetAllocated', 'actualCost'];
+// Budget / Actual Cost left out since 2026-10-07: they became calculated, read-only cells (the old code
+// pasted into them); that change is checked on its own below, not against the old code
+const TABLE_FIELDS: TableField[] = ['name', 'status', 'priority', 'startDate', 'endDate', 'progressPercentage', 'assignedTo', 'duration', 'dependency', 'notes'];
 interface TableScenario { name: string; noBulk?: boolean; noDuplicate?: boolean; readOnly?: boolean; sorted?: boolean; fields?: TableField[] }
 
 function mountTable(useHook: (p: TableKeyboardRefProps) => ReturnType<typeof useTableKeyboardAfter>, sc: TableScenario) {
@@ -302,7 +304,7 @@ const TABLE_SCENARIOS: TableScenario[] = [
   { name: 'everything wired' },
   { name: 'no bulk update (one update per task), no duplicate', noBulk: true, noDuplicate: true },
   { name: 'read-only (no onTaskUpdate)', readOnly: true, noBulk: true },
-  { name: 'rows sorted by name, fewer fields', sorted: true, fields: ['notes', 'progressPercentage', 'budgetAllocated', 'dependency', 'duration'] },
+  { name: 'rows sorted by name, fewer fields', sorted: true, fields: ['notes', 'progressPercentage', 'dependency', 'duration'] },
 ];
 
 describe('Table keyboard: same results as before the share', () => {
@@ -333,11 +335,26 @@ describe('GANTT_KEYBOARD_RULES / TABLE_KEYBOARD_RULES', () => {
       expect(rules.toPasteValue('progressPercentage', '40')).toBe(40);
     }
   });
-  it('Gantt pastes estimates as numbers >= 0; the Table pastes budget as the copied text', () => {
+  it('Gantt pastes estimates as numbers >= 0; other text as copied', () => {
     expect(GANTT_KEYBOARD_RULES.toPasteValue('estimatedDays', '-2')).toBe(0);
     expect(GANTT_KEYBOARD_RULES.toPasteValue('estimatedDurationHours', '7.5')).toBe(7.5);
-    expect(TABLE_KEYBOARD_RULES.toPasteValue('budgetAllocated', '$1,200')).toBe('$1,200');
     expect(GANTT_KEYBOARD_RULES.toPasteValue('name', 'X')).toBe('X');
+  });
+  it('Budget / Actual Cost refuse a paste in both views, on any task (calculated: hours × rate)', () => {
+    for (const rules of [GANTT_KEYBOARD_RULES, TABLE_KEYBOARD_RULES]) {
+      for (const field of ['budgetAllocated', 'actualCost']) {
+        for (const taskId of ['a', 'c', 'p']) {
+          const onTaskUpdate = vi.fn();
+          const flashPaste = vi.fn();
+          pasteIntoFocusedCell({
+            tasks: TASKS, focusedCell: { taskId, field }, copiedValue: { field, value: '$1,200' },
+            rowNumToTaskId: new Map(), onTaskUpdate, flashPaste, rules,
+          });
+          expect(onTaskUpdate, `${field} on ${taskId}`).not.toHaveBeenCalled();
+          expect(flashPaste).not.toHaveBeenCalled();
+        }
+      }
+    }
   });
   it('the Table pastes Notes as the description; the Gantt sends the field as is', () => {
     expect(TABLE_KEYBOARD_RULES.toPasteApiField('notes')).toBe('description');
