@@ -14,23 +14,13 @@ import { metricsService } from './services/MetricsService';
 import { emailService } from './services/EmailService';
 import { serviceContainer } from './container';
 import { checkTurnstileSecret } from './utils/turnstile';
+import { quietPrematureClose } from './utils/logHooks';
 
 const fastify = Fastify({
   logger: {
     level: config.NODE_ENV === 'production' ? 'info' : 'debug',
-    hooks: {
-      // A browser that leaves a page while a (compressed) answer is still being sent makes the
-      // stream close early: "Premature close". The answer was fine (200) — the reader left. It
-      // was logged as an error, burying real ones (2026-10-06: 30 lines per staging test run).
-      logMethod(args, method, level) {
-        const first = args[0] as { err?: { code?: string; message?: string } } | undefined;
-        const err = first?.err;
-        if (level >= 50 && err && (err.code === 'ERR_STREAM_PREMATURE_CLOSE' || err.message === 'Premature close')) {
-          return this.info.apply(this, args as Parameters<typeof this.info>);
-        }
-        return method.apply(this, args);
-      },
-    },
+    // "Premature close" (a browser left mid-answer) is info, not error — utils/logHooks.ts
+    hooks: { logMethod: quietPrematureClose },
   },
   trustProxy: true
 });
