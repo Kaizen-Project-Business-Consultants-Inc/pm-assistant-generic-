@@ -99,4 +99,16 @@ describe('PUT /schedules/:id/tasks/:taskId — Work (estimatedDurationHours)', (
     const budget = readFileSync(join(__dirname, '../../services/TaskBudgetService.ts'), 'utf8');
     expect(budget).not.toMatch(/estimatedDurationHours|estimated_duration_hours/);
   });
+
+  it('budget and actual cost sent by a program are not saved, and the reply says why (2026-10-07)', async () => {
+    const res = await app.inject({ method: 'PUT', url: '/api/v1/schedules/s1/tasks/build', payload: { name: 'Build v2', budgetAllocated: 999, actualCost: 5 } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().notice).toMatch(/budgetAllocated and actualCost are calculated .* were not changed/);
+    for (const u of updates()) {
+      expect(String(u[1])).not.toMatch(/budget_allocated|actual_cost/);
+    }
+    // no notice when they weren't sent
+    const plain = await app.inject({ method: 'PUT', url: '/api/v1/schedules/s1/tasks/build', payload: { name: 'Build v3' } });
+    expect(plain.json().notice).toBeUndefined();
+  });
 });

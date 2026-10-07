@@ -364,7 +364,13 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         teamsEventDispatcher.dispatchToTeams('task.updated', { task }, schedule.projectId);
       }
 
-      return { task, cascadedChanges, rescheduled };
+      // Budget and actual cost are worked out (planned / approved hours × rate), never typed: a
+      // caller that sends them gets the task saved without them — and is told so (2026-10-07)
+      const ignored = ['budgetAllocated', 'actualCost'].filter(k => (request.body as Record<string, unknown> | undefined)?.[k] !== undefined);
+      const notice = ignored.length
+        ? `${ignored.join(' and ')} ${ignored.length > 1 ? 'are' : 'is'} calculated (budget = planned hours × rate, actual cost = approved hours × rate + other costs) and ${ignored.length > 1 ? 'were' : 'was'} not changed.`
+        : undefined;
+      return { task, cascadedChanges, rescheduled, ...(notice ? { notice } : {}) };
     } catch (error) {
       // Bad input is the caller's mistake: the app's error handler answers 400 with the field
       if (error instanceof z.ZodError) throw error;
