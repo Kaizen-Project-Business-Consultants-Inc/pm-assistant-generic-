@@ -69,7 +69,8 @@ export async function automationRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write'), requireProjectAccess('manager')],
   }, async (request) => {
     const { projectId } = request.params as { projectId: string };
-    const { description } = request.body as { description: string };
+    // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+    const { description } = (request.body ?? {}) as { description?: string };
     if (!description || typeof description !== 'string' || description.trim().length === 0) {
       throw Object.assign(new Error('Description is required'), { statusCode: 400 });
     }

@@ -43,6 +43,10 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       const { projectId } = request.params as { projectId: string };
 
+      // A JSON (or empty) body makes request.file() throw "the request is not multipart" — a 500 (2026-10-07)
+      if (!request.isMultipart()) {
+        return reply.status(400).send({ error: 'No file uploaded', message: 'Send the file as a form upload (multipart/form-data).' });
+      }
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 
@@ -122,7 +126,8 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   // PATCH /:projectId/documents/:documentId — update description, folder, pin status
   fastify.patch('/:projectId/documents/:documentId', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { documentId } = request.params as { projectId: string; documentId: string };
-    const body = request.body as { description?: string | null; folder?: string | null; isPinned?: boolean };
+    // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+    const body = (request.body ?? {}) as { description?: string | null; folder?: string | null; isPinned?: boolean };
 
     const document = await projectDocumentRepository.findById(documentId);
     if (!document) return reply.status(404).send({ error: 'Document not found' });

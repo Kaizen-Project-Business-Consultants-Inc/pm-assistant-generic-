@@ -14,6 +14,7 @@ import { buildStatusReportDocx } from '../../utils/statusReportDocxBuilder';
 import { WebSocketService } from '../../services/WebSocketService';
 import { getTenantContext, runWithTenantContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 import crypto from 'crypto';
 import { clientReportContext } from '../../utils/clientReportContext';
 
@@ -31,6 +32,43 @@ const scheduleSchema = z.object({
   timeOfDay: z.string().optional(),
   recipients: z.array(z.string().email()).min(1),
 });
+
+// The edited report sent back for /render and /export/docx (2026-10-07). A partial body used to
+// crash the renderer (a missing list or text) and answer 500. Lists default to empty and text in
+// table rows to blank, so a half-filled row still renders; the header text is required. Extra
+// fields (timeline, timelineToday, projectCode, …) are kept as they are.
+const rowText = z.string().nullish().transform(v => v ?? '');
+const reportText = (label: string) => z.string({ message: `The report is missing its ${label}.` });
+const structuredReportSchema = z.object({
+  projectName: z.string({ message: 'The report is missing its project name.' }).min(1, 'The report is missing its project name.'),
+  reportNumber: reportText('report number'),
+  reportingPeriod: reportText('reporting period'),
+  preparedBy: reportText('"prepared by" name'),
+  executiveSummary: reportText('executive summary'),
+  reportDate: reportText('date'),
+  areas: z.array(z.object({ name: rowText, status: z.string({ message: 'Each status area needs a status (green, amber or red).' }), comments: rowText }).passthrough()).default([]),
+  milestones: z.array(z.object({
+    ref: rowText, name: rowText, schedWeek: rowText, dueDate: rowText, status: rowText, comments: rowText,
+  }).passthrough()).default([]),
+  achievements: z.array(z.string()).default([]),
+  plannedActivities: z.array(z.string()).default([]),
+  managementAttention: z.array(z.object({
+    ref: rowText, matter: rowText, raised: rowText, owner: rowText, dateNeeded: rowText, impactIfDelayed: rowText,
+  }).passthrough()).default([]),
+  changeControl: z.array(z.object({
+    ref: rowText, description: rowText, status: rowText, scheduleImpact: rowText, costImpact: rowText,
+  }).passthrough()).default([]),
+}).passthrough();
+
+/** Parse the edited report, or reply 400 saying what is wrong. */
+function parseStructuredReport(body: unknown, reply: FastifyReply): StructuredStatusReport | null {
+  const parsed = structuredReportSchema.safeParse(body ?? {});
+  if (!parsed.success) {
+    sendValidationError(reply, parsed.error);
+    return null;
+  }
+  return parsed.data as unknown as StructuredStatusReport;
+}
 
 export async function statusReportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -94,10 +132,8 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write'), requirePaidTier],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const data = request.body as StructuredStatusReport;
-      if (!data || !data.projectName) {
-        return reply.status(400).send({ error: 'Invalid report data' });
-      }
+      const data = parseStructuredReport(request.body, reply);
+      if (!data) return reply;
       const html = renderStatusReportHtml(data);
       return { html };
     } catch (error: any) {
@@ -111,10 +147,8 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write'), requirePaidTier],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const data = request.body as StructuredStatusReport;
-      if (!data || !data.projectName) {
-        return reply.status(400).send({ error: 'Invalid report data' });
-      }
+      const data = parseStructuredReport(request.body, reply);
+      if (!data) return reply;
 
       const docxBuf = await buildStatusReportDocx(data);
       const buf = Buffer.from(docxBuf);

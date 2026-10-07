@@ -12,14 +12,15 @@ export async function ragRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('read')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { query, documentType, topK } = request.body as {
-        query: string;
+      // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+      const { query, documentType, topK } = (request.body ?? {}) as {
+        query?: string;
         documentType?: 'lesson' | 'meeting' | 'knowledge_base';
         topK?: number;
       };
 
-      if (!query) {
-        return reply.status(400).send({ error: 'query is required' });
+      if (!query || typeof query !== 'string') {
+        return reply.status(400).send({ error: 'query is required', message: 'Enter something to search for (query).' });
       }
 
       if (!ragService.isAvailable()) {

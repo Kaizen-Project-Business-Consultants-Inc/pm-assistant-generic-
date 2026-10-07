@@ -46,20 +46,20 @@ export async function skillRoutes(fastify: FastifyInstance) {
     schema: { description: 'Create a new skill', tags: ['skills'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const body = request.body as {
+      // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+      const body = (request.body ?? {}) as {
         skillName: string;
         category?: string;
         summary: string;
         detailedProcedure?: string;
         applicableRoles?: string[];
       };
-      const user = (request as any).user;
-
       if (!body.skillName || !body.summary) {
         return reply.status(400).send({ error: 'skillName and summary are required' });
       }
 
-      const skill = await skillRegistryService.createSkill(body, user.id);
+      // The request user has userId; user.id is never set, so the creator was saved as empty (2026-10-07)
+      const skill = await skillRegistryService.createSkill(body, request.user!.userId);
       return reply.status(201).send({ skill });
     } catch (err) {
       fastify.log.error({ err }, 'Failed to create skill');
@@ -74,7 +74,8 @@ export async function skillRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const body = request.body as {
+      // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+      const body = (request.body ?? {}) as {
         skillName?: string;
         category?: string;
         summary?: string;

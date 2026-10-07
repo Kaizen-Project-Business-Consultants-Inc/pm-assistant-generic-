@@ -115,20 +115,26 @@ export async function resourceRequestRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/reject — reject (manager+)
-  fastify.post('/:id/reject', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/reject', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
     const { comment } = (request.body as { comment?: string }) || {};
-    if (!comment) throw new Error('Comment is required when rejecting');
+    // A missing reason is the caller's mistake: 400 with the message, not a 500 (2026-10-07)
+    if (typeof comment !== 'string' || !comment.trim()) {
+      return reply.status(400).send({ error: 'Validation error', message: 'Say why the request is being rejected (comment).' });
+    }
     return resourceRequestService.rejectRequest(id, user.userId, comment);
   });
 
   // POST /:id/fulfill — fulfill with resource
-  fastify.post('/:id/fulfill', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest) => {
+  fastify.post('/:id/fulfill', { preHandler: [requireScope('write'), resourceManagerOnly] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { id } = request.params as { id: string };
-    const { resourceId } = (request.body as { resourceId: string }) || {};
-    if (!resourceId) throw new Error('resourceId is required');
+    const { resourceId } = (request.body as { resourceId?: string }) || {};
+    // Same: say which resource is missing instead of crashing (2026-10-07)
+    if (typeof resourceId !== 'string' || !resourceId) {
+      return reply.status(400).send({ error: 'Validation error', message: 'Choose the resource that fulfils the request (resourceId).' });
+    }
     return resourceRequestService.fulfillRequest(id, resourceId, user.userId);
   });
 

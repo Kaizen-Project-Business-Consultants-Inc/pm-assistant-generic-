@@ -227,9 +227,13 @@ export async function meetingRoutes(fastify: FastifyInstance) {
   fastify.post('/:id/send-minutes', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const body = request.body as { analysisId?: string; recipientEmails?: string[] };
+      const body = (request.body ?? {}) as { analysisId?: string; recipientEmails?: string[] };
 
       if (!body.analysisId) return reply.status(400).send({ error: 'analysisId is required' });
+      // Must be a list of email addresses — a single string or an object used to crash as a 500 (2026-10-07)
+      if (body.recipientEmails != null && (!Array.isArray(body.recipientEmails) || !body.recipientEmails.every(e => typeof e === 'string'))) {
+        return reply.status(400).send({ error: 'Validation error', message: 'recipientEmails must be a list of email addresses.' });
+      }
       if (!body.recipientEmails || body.recipientEmails.length === 0) {
         return reply.status(400).send({ error: 'At least one recipient email is required' });
       }

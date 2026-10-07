@@ -13,10 +13,12 @@ import { pricingConfigRepository } from '../../database/PricingConfigRepository'
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { config, getTierBudget } from '../../config';
 import logger from '../../utils/logger';
+import { sendValidationError } from '../../utils/validationError';
 import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
 import { neverConfirmedSql } from '../../constants/neverConfirmed';
+import { clampPagination } from '../../schemas/paginationSchema';
 const statusSchema = z.object({
   active: z.boolean(),
 });
@@ -33,6 +35,38 @@ function requireAdmin(request: FastifyRequest, reply: FastifyReply) {
   }
   return true;
 }
+
+// Pricing edits (2026-10-07): a missing body, text where a number goes, or text longer than its
+// column used to reach the database and answer 500. Lengths match the pricing_config columns.
+// Unknown keys are dropped (the repository ignores them anyway).
+const num = (label: string) => z.number({ message: `${label} must be a number.` }).finite(`${label} must be a number.`);
+const text = (label: string, max: number) => z.string({ message: `${label} must be text.` }).max(max, `${label} can be at most ${max} characters.`);
+const flag = (label: string) => z.boolean({ message: `${label} must be true or false.` });
+const pricingTierUpdateSchema = z.object({
+  displayName: text('Display name', 50).min(1, 'Enter a display name.'),
+  monthlyPriceCents: num('Monthly price'),
+  annualPriceCents: num('Annual price'),
+  aiTokensMonthly: num('AI tokens per month'),
+  aiTokensLabel: text('AI tokens label', 50),
+  aiTokensDescription: text('AI tokens description', 200).nullable(),
+  storageMb: num('Storage (MB)'),
+  storageLabel: text('Storage label', 20),
+  viewerLimit: num('Viewer limit'),
+  viewerLimitLabel: text('Viewer limit label', 20),
+  maxProjects: num('Max projects'),
+  isPerSeat: flag('Per seat'),
+  minSeats: num('Minimum seats'),
+  durationDays: num('Duration (days)'),
+  highlight: flag('Highlight'),
+  stripeMonthlyPriceId: text('Stripe monthly price id', 255).nullable(),
+  stripeAnnualPriceId: text('Stripe annual price id', 255).nullable(),
+  featuresJson: z.array(z.string(), { message: 'The feature list must be a list of text.' }),
+  sortOrder: num('Sort order'),
+  isActive: flag('Active'),
+}).partial();
+const tierFeaturesUpdateSchema = z.record(z.string(), z.boolean({ message: 'Each feature must be switched on or off (true or false).' }), {
+  message: 'Send the features to switch on or off, e.g. { "ai_assistant": true }.',
+});
 
 export async function adminRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -271,7 +305,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.patch('/users/:id/budget', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return;
     const { id } = request.params as { id: string };
-    const body = request.body as { budget?: number | null };
+    const body = (request.body ?? {}) as { budget?: number | null };
 
     if (body.budget !== null && body.budget !== undefined) {
       if (typeof body.budget !== 'number' || body.budget < 0 || !Number.isFinite(body.budget)) {
@@ -323,8 +357,8 @@ export async function adminRoutes(fastify: FastifyInstance) {
         action?: string; entityType?: string; since?: string;
       };
       const result = await auditLedgerService.getEntries({
-        limit: Math.min(Number(q.limit) || 100, 500),
-        offset: Math.max(Number(q.offset) || 0, 0),
+        // A negative limit reached SQL as `LIMIT -5` (a 500); now it falls back to 100 (2026-10-07)
+        ...clampPagination(q, { defaultLimit: 100, maxLimit: 500 }),
         action: q.action || undefined,
         entityType: q.entityType || undefined,
         since: q.since || undefined,
@@ -531,7 +565,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.put('/pricing/:tier', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return;
     const { tier } = request.params as { tier: string };
-    const body = request.body as Record<string, any>;
+    const parsed = pricingTierUpdateSchema.safeParse(request.body ?? {});
+    if (!parsed.success) return sendValidationError(reply, parsed.error);
+    const body = parsed.data;
 
     try {
       const existing = await pricingConfigRepository.findByTier(tier);
@@ -554,7 +590,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
   fastify.put('/pricing/:tier/features', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return;
     const { tier } = request.params as { tier: string };
-    const body = request.body as Record<string, boolean>;
+    const parsed = tierFeaturesUpdateSchema.safeParse(request.body ?? {});
+    if (!parsed.success) return sendValidationError(reply, parsed.error);
+    const body = parsed.data;
 
     try {
       await pricingConfigRepository.setFeaturesBulk(tier, body);

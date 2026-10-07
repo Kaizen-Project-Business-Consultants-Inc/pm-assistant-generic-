@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { versionedMemoryService } from '../../services/context/VersionedMemoryService';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 /** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
 const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -32,7 +33,8 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
         memoryType: memoryType as any,
         permissionScope: permissionScope as any,
         entityId,
-        limit: limit ? parseInt(limit, 10) : undefined,
+        // A limit that isn't a number falls back to 100 instead of SQL `LIMIT NaN` (2026-10-07)
+        limit: clampPagination({ limit }, { defaultLimit: 100, maxLimit: 500 }).limit,
       });
 
       return { memories };
@@ -67,7 +69,8 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const body = request.body as { value?: unknown; permissionScope?: string; versionHash: string };
+      // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+      const body = (request.body ?? {}) as { value?: unknown; permissionScope?: string; versionHash?: string };
       const user = (request as any).user;
 
       if (!body.versionHash) {
@@ -78,7 +81,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
         id,
         { value: body.value, permissionScope: body.permissionScope as any },
         body.versionHash,
-        user.id,
+        user.userId, // was user.id, which is never set (2026-10-07)
       );
 
       if (result.conflict) {
@@ -107,7 +110,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const user = (request as any).user;
 
-      const deleted = await versionedMemoryService.deleteMemory(id, user.id);
+      const deleted = await versionedMemoryService.deleteMemory(id, user.userId);
       if (!deleted) {
         return reply.status(404).send({ error: 'Memory not found' });
       }
@@ -127,7 +130,7 @@ export async function versionedMemoryRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const user = (request as any).user;
 
-      const memory = await versionedMemoryService.rollbackMemory(id, user.id);
+      const memory = await versionedMemoryService.rollbackMemory(id, user.userId);
       return { memory };
     } catch (err) {
       if (err instanceof Error && (err.message.includes('not found') || err.message.includes('No previous'))) {

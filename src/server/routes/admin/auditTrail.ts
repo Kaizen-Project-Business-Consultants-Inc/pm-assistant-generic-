@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 export async function auditTrailRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -48,6 +49,8 @@ export async function auditTrailRoutes(fastify: FastifyInstance) {
         until?: string;
       };
 
+      // text or negative values fall back to the defaults instead of reaching SQL (2026-10-07)
+      const page = clampPagination({ limit, offset }, { defaultLimit: 50, maxLimit: 500 });
       const result = await auditLedgerService.getEntries({
         projectId,
         action,
@@ -55,15 +58,15 @@ export async function auditTrailRoutes(fastify: FastifyInstance) {
         actorId,
         since,
         until,
-        limit: Number(limit),
-        offset: Number(offset),
+        limit: page.limit,
+        offset: page.offset,
       });
 
       return {
         entries: result.entries,
         total: result.total,
-        limit: Number(limit),
-        offset: Number(offset),
+        limit: page.limit,
+        offset: page.offset,
       };
     } catch (error) {
       logger.error('Get audit trail error', { error });

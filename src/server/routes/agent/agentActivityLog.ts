@@ -4,6 +4,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 const logService = new AgentActivityLogService();
 
@@ -17,16 +18,14 @@ export async function agentActivityLogRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const { limit = '50', offset = '0', agent } = request.query as {
-        limit?: string;
-        offset?: string;
-        agent?: string;
-      };
+      const { agent } = request.query as { agent?: string };
+      // limit/offset that aren't numbers fall back to defaults instead of SQL `LIMIT NaN` (2026-10-07)
+      const { limit, offset } = clampPagination(request.query, { defaultLimit: 50 });
 
       const result = await logService.getByProject(
         projectId,
-        parseInt(limit, 10),
-        parseInt(offset, 10),
+        limit,
+        offset,
         agent || undefined,
       );
 

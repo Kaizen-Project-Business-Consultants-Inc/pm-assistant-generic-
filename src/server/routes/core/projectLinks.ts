@@ -46,10 +46,13 @@ export async function projectLinkRoutes(fastify: FastifyInstance) {
   // PUT /:projectId/links/reorder
   fastify.put('/:projectId/links/reorder', {
     preHandler: [requireScope('write'), requireProjectAccess('manager')],
-  }, async (request: FastifyRequest) => {
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId } = request.params as { projectId: string };
-    const { orderedIds } = request.body as { orderedIds: string[] };
-    if (!Array.isArray(orderedIds)) throw new Error('orderedIds must be an array');
+    const { orderedIds } = (request.body ?? {}) as { orderedIds?: unknown };
+    // A missing or wrong-shaped list is the caller's mistake: 400, not a 500 (2026-10-07)
+    if (!Array.isArray(orderedIds) || !orderedIds.every(id => typeof id === 'string')) {
+      return reply.status(400).send({ error: 'Validation error', message: 'Send the new order of the links (orderedIds, a list of link ids).' });
+    }
     await projectLinkRepository.reorder(projectId, orderedIds);
     return { ok: true };
   });

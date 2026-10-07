@@ -8,6 +8,7 @@ import { requireScope } from '../../middleware/requireScope';
 import { config } from '../../config';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -19,9 +20,8 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const { limit = '50', offset = '0' } = request.query as { limit?: string; offset?: string };
-      const parsedLimit = parseInt(limit, 10);
-      const parsedOffset = parseInt(offset, 10);
+      // limit/offset that aren't numbers fall back to defaults instead of SQL `LIMIT NaN` (2026-10-07)
+      const { limit: parsedLimit, offset: parsedOffset } = clampPagination(request.query, { defaultLimit: 50 });
       const [notifications, total] = await Promise.all([
         notificationService.getByUserId(user.userId, parsedLimit, parsedOffset),
         notificationService.countByUserId(user.userId),

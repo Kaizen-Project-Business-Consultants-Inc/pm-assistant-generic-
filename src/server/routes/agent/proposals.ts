@@ -6,6 +6,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { actionProposalService } from '../../services/agents/ActionProposalService';
 import { actionExecutor } from '../../services/agents/ActionExecutor';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 const approveSchema = z.object({
   comment: z.string().max(2000).optional(),
@@ -45,8 +46,8 @@ export async function proposalRoutes(fastify: FastifyInstance) {
         projectIds: await readableProjectIds(request.user!),
         status: query.status as import('../../services/agents/ActionProposalService').ProposalStatus | undefined,
         agentId: query.agentId,
-        limit: query.limit ? Number(query.limit) : undefined,
-        offset: query.offset ? Number(query.offset) : undefined,
+        // limit/offset that aren't numbers fall back to defaults instead of SQL `LIMIT NaN` (2026-10-07)
+        ...clampPagination(query, { defaultLimit: 20 }),
       });
       return result;
     } catch (error) {

@@ -12,6 +12,7 @@ import { userService } from '../../services/UserService';
 import { claudeService } from '../../services/claudeService';
 import { workflowGenerateRequestSchema, workflowGenerationOutputSchema, WORKFLOW_GENERATION_SYSTEM_PROMPT } from '../../schemas/workflowGenerationSchemas';
 import logger from '../../utils/logger';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 // ── Zod schemas ────────────────────────────────────────────────────────────
 
@@ -332,7 +333,8 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       const { workflowId, entityType, entityId, status, limit } = request.query as Record<string, string>;
       const executions = await dagWorkflowService.listExecutions({
         workflowId, entityType, entityId, status,
-        limit: limit ? parseInt(limit, 10) : undefined,
+        // A limit that isn't a number falls back to 50 instead of SQL `LIMIT NaN` (2026-10-07)
+        limit: clampPagination({ limit }, { defaultLimit: 50 }).limit,
       });
       return { executions };
     } catch (error) {

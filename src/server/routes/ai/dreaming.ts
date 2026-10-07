@@ -1,8 +1,10 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { dreamingService, DREAMING_SWITCHED_OFF, DREAMING_OFF_MESSAGE } from '../../services/context/DreamingService';
+import { dreamingService, DREAMING_SWITCHED_OFF, DREAMING_OFF_MESSAGE } from '../../services/context/DreamingService';
+
 import { platformAdminOnly } from '../../utils/platformAdmin';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 /** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
 const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -25,7 +27,8 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { limit } = request.query as { limit?: string };
-      const runs = await dreamingService.listRuns(limit ? parseInt(limit, 10) : undefined);
+      // A limit that isn't a number falls back to the default instead of SQL `LIMIT NaN` (2026-10-07)
+      const runs = await dreamingService.listRuns(clampPagination({ limit }, { defaultLimit: 20 }).limit);
       return { runs };
     } catch (err) {
       fastify.log.error({ err }, 'Failed to list dreaming runs');
@@ -40,7 +43,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { status, limit } = request.query as { status?: string; limit?: string };
-      const proposals = await dreamingService.listProposals(status, limit ? parseInt(limit, 10) : undefined);
+      const proposals = await dreamingService.listProposals(status, clampPagination({ limit }, { defaultLimit: 50 }).limit);
       return { proposals };
     } catch (err) {
       fastify.log.error({ err }, 'Failed to list dreaming proposals');
@@ -57,7 +60,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const user = (request as any).user;
 
-      const proposal = await dreamingService.approveProposal(id, user.id);
+      const proposal = await dreamingService.approveProposal(id, user.userId);
       return { proposal };
     } catch (err) {
       if (err instanceof Error && err.message.includes('not found')) {
@@ -77,7 +80,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const user = (request as any).user;
 
-      const proposal = await dreamingService.rejectProposal(id, user.id);
+      const proposal = await dreamingService.rejectProposal(id, user.userId);
       return { proposal };
     } catch (err) {
       if (err instanceof Error && err.message.includes('not found')) {
@@ -95,7 +98,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = (request as any).user;
-      const run = await dreamingService.triggerRun(user.id);
+      const run = await dreamingService.triggerRun(user.userId);
       return reply.status(202).send({ run });
     } catch (err) {
       fastify.log.error({ err }, 'Failed to trigger dreaming run');

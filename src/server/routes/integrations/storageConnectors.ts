@@ -118,10 +118,11 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   // PUT /:projectId/storage-connectors/:id/folders — set sync folders
   fastify.put('/:projectId/storage-connectors/:id/folders', { preHandler: [requireScope('write'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
-    const { folderIds } = request.body as { folderIds: string[] };
+    const { folderIds } = (request.body ?? {}) as { folderIds?: string[] };
 
-    if (!Array.isArray(folderIds)) {
-      return reply.status(400).send({ error: 'folderIds must be an array' });
+    // No body at all used to crash as a 500 (2026-10-07)
+    if (!Array.isArray(folderIds) || !folderIds.every(f => typeof f === 'string')) {
+      return reply.status(400).send({ error: 'folderIds must be an array', message: 'Send the folders to sync (folderIds, a list of folder ids).' });
     }
 
     await storageConnectorService.updateSyncFolders(id, folderIds);
@@ -144,11 +145,21 @@ export async function storageConnectorRoutes(fastify: FastifyInstance) {
   // PUT /:projectId/storage-connectors/:id — update settings
   fastify.put('/:projectId/storage-connectors/:id', { preHandler: [requireScope('write'), requireProjectAccess('manager'), connectorInProject] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { projectId: string; id: string };
-    const body = request.body as {
+    const body = (request.body ?? {}) as {
       displayName?: string;
       status?: 'active' | 'paused';
       syncIntervalMinutes?: number;
     };
+    // Wrong types used to reach the database (NaN interval, unknown status) as a 500 (2026-10-07)
+    if (body.syncIntervalMinutes != null && (typeof body.syncIntervalMinutes !== 'number' || !Number.isFinite(body.syncIntervalMinutes))) {
+      return reply.status(400).send({ error: 'Validation error', message: 'syncIntervalMinutes must be a number of minutes (15 to 1440).' });
+    }
+    if (body.status != null && body.status !== 'active' && body.status !== 'paused') {
+      return reply.status(400).send({ error: 'Validation error', message: 'status must be "active" or "paused".' });
+    }
+    if (body.displayName != null && typeof body.displayName !== 'string') {
+      return reply.status(400).send({ error: 'Validation error', message: 'displayName must be text.' });
+    }
 
     const connector = await storageConnectorRepository.findById(id);
     if (!connector) return reply.status(404).send({ error: 'Connector not found' });

@@ -3,6 +3,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { deadLetterService } from '../../services/DeadLetterService';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
+import { clampPagination } from '../../schemas/paginationSchema';
 export async function deadLetterRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -21,8 +22,8 @@ export async function deadLetterRoutes(fastify: FastifyInstance) {
     if (!isPlatformAdmin(user)) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });
     }
-    const query = request.query as { limit?: string };
-    const limit = Math.min(parseInt(query.limit || '50', 10), 200);
+    // A limit that isn't a number falls back to 50 instead of SQL `LIMIT NaN` (2026-10-07)
+    const { limit } = clampPagination(request.query, { defaultLimit: 50, maxLimit: 200 });
     const entries = await deadLetterService.listFailed(limit);
     return { entries, total: entries.length };
   });

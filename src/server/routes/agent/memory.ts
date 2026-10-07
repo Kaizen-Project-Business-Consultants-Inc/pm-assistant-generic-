@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { agentMemoryService, type MemoryType } from '../../services/AgentMemoryService';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 const VALID_MEMORY_TYPES: MemoryType[] = ['session', 'project', 'role', 'reflection'];
 
@@ -56,7 +57,8 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
     schema: { description: 'Store an agent memory', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const body = request.body as {
+      // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+      const body = (request.body ?? {}) as {
         agentId?: string;
         memoryType?: string;
         entityId?: string | null;
@@ -143,7 +145,8 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
       const reflections = await agentMemoryService.getReflections(
         agentId,
         entityId ?? undefined,
-        limit ? parseInt(limit, 10) : 10,
+        // A limit that isn't a number falls back to 10 instead of SQL `LIMIT NaN` (2026-10-07)
+        clampPagination({ limit }, { defaultLimit: 10 }).limit,
       );
 
       return { reflections };

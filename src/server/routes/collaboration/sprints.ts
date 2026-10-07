@@ -171,10 +171,20 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   fastify.post('/:id/tasks', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const { taskId, storyPoints } = request.body as { taskId: string; storyPoints?: number };
-      const result = await sprintService.addTask(id, taskId, storyPoints);
+      const { taskId, storyPoints } = (request.body ?? {}) as { taskId?: unknown; storyPoints?: unknown };
+      // Bad input is the caller's mistake: 400 with a plain message, not a 500 (2026-10-07)
+      if (typeof taskId !== 'string' || !taskId) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Choose the task to add to the sprint (taskId).' });
+      }
+      if (storyPoints != null && (typeof storyPoints !== 'number' || !Number.isFinite(storyPoints) || storyPoints < 0)) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Story points must be a number (0 or more).' });
+      }
+      const result = await sprintService.addTask(id, taskId, (storyPoints ?? undefined) as number | undefined);
       return reply.status(201).send({ result });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.code === 'ER_DUP_ENTRY') {
+        return reply.status(409).send({ error: 'Conflict', message: 'That task is already in this sprint.' });
+      }
       logger.error('Add task to sprint error', { error });
       return reply.status(500).send({ error: 'Failed to add task to sprint' });
     }
@@ -184,8 +194,12 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   fastify.patch('/:id/tasks/:taskId/points', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id, taskId } = request.params as { id: string; taskId: string };
-      const { storyPoints } = request.body as { storyPoints: number };
-      await sprintService.updateTaskStoryPoints(id, taskId, storyPoints);
+      const { storyPoints } = (request.body ?? {}) as { storyPoints?: unknown };
+      // Points must be a number (or null to clear) — text used to reach the database and fail as a 500 (2026-10-07)
+      if (storyPoints !== null && (typeof storyPoints !== 'number' || !Number.isFinite(storyPoints) || storyPoints < 0)) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Story points must be a number (0 or more).' });
+      }
+      await sprintService.updateTaskStoryPoints(id, taskId, storyPoints as number);
       return { message: 'Story points updated' };
     } catch (error) {
       logger.error('Update story points error', { error });
@@ -583,8 +597,8 @@ Keep it concise and actionable. Use markdown formatting.`;
     try {
       const { itemId } = request.params as { id: string; itemId: string };
       const user = request.user!;
-      const { scheduleId } = request.body as { scheduleId: string };
-      if (!scheduleId) return reply.status(400).send({ error: 'scheduleId is required' });
+      const { scheduleId } = (request.body ?? {}) as { scheduleId?: string };
+      if (!scheduleId) return reply.status(400).send({ error: 'scheduleId is required', message: 'Choose the schedule the new task goes in (scheduleId).' });
 
       const result = await retrospectiveService.convertToTask(itemId, scheduleId, user.userId);
       return { taskId: result.taskId };
@@ -654,8 +668,8 @@ Keep it concise and actionable. Use markdown formatting.`;
       const { taskId, type } = request.params as { taskId: string; type: string };
       if (type !== 'dor' && type !== 'dod') return reply.status(400).send({ error: 'Type must be dor or dod' });
 
-      const { projectId } = request.body as { projectId: string };
-      if (!projectId) return reply.status(400).send({ error: 'projectId is required' });
+      const { projectId } = (request.body ?? {}) as { projectId?: string };
+      if (!projectId) return reply.status(400).send({ error: 'projectId is required', message: 'Say which project the checklist is for (projectId).' });
 
       const checklist = await scrumDefinitionService.initializeChecklist(taskId, projectId, type);
       return reply.status(201).send({ checklist });

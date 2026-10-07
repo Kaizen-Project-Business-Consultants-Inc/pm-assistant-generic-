@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
+import { clampPagination } from '../../schemas/paginationSchema';
 export async function logsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -25,7 +26,8 @@ export async function logsRoutes(fastify: FastifyInstance) {
     const level = query.level; // filter by log level
     const search = query.search; // free-text search in message
     const date = query.date || new Date().toISOString().substring(0, 10); // YYYY-MM-DD
-    const limit = Math.min(parseInt(query.limit || '200', 10), 1000);
+    // text or a negative number falls back to the default instead of breaking (2026-10-07)
+    const { limit } = clampPagination(query, { defaultLimit: 200, maxLimit: 1000 });
 
     const logFile = path.resolve(`logs/app-${date}.log`);
 

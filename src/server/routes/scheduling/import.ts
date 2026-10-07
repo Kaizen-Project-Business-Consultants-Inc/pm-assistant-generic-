@@ -893,6 +893,10 @@ Return a JSON object mapping unmapped headers to target fields.`;
         return reply.status(400).send({ error: 'AI features are not enabled on this server.' });
       }
 
+      // A JSON (or empty) body makes request.file() throw "the request is not multipart" — a 500 (2026-10-07)
+      if (!request.isMultipart()) {
+        return reply.status(400).send({ error: 'No file uploaded', message: 'Send the file as a form upload (multipart/form-data).' });
+      }
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 

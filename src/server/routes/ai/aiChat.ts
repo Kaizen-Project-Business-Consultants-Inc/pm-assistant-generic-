@@ -7,6 +7,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
+import { sendValidationError } from '../../utils/validationError';
 
 const chatMessageSchema = z.object({
   message: z.string().min(1).max(10000),
@@ -102,6 +103,8 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
 
         return result;
       } catch (error) {
+        // Bad input is a 400 with a plain message, not "Failed to …" 500 (2026-10-07)
+        if (error instanceof z.ZodError) return sendValidationError(reply, error);
         if (error instanceof AICircuitBreakerError) {
           return reply.code(503).send({
             error: 'AI service temporarily unavailable',
@@ -179,6 +182,8 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
 
         reply.raw.end();
       } catch (error) {
+        // Bad input is a 400 with a plain message, not "Failed to …" 500 (2026-10-07)
+        if (error instanceof z.ZodError) return sendValidationError(reply, error);
         if (error instanceof AICircuitBreakerError && !reply.raw.headersSent) {
           return reply.code(503).send({
             error: 'AI service temporarily unavailable',
@@ -294,6 +299,8 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
           aiPowered: result.aiPowered,
         };
       } catch (error) {
+        // Bad input is a 400 with a plain message, not "Failed to …" 500 (2026-10-07)
+        if (error instanceof z.ZodError) return sendValidationError(reply, error);
         const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
         if (nameTaken) return nameTaken;
         fastify.log.error({ err: error instanceof Error ? error : new Error(String(error)) }, 'Project creation failed');
@@ -389,6 +396,8 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
           aiPowered: true,
         };
       } catch (error) {
+        // Bad input is a 400 with a plain message, not "Failed to …" 500 (2026-10-07)
+        if (error instanceof z.ZodError) return sendValidationError(reply, error);
         fastify.log.error({ err: error instanceof Error ? error : new Error(String(error)) }, 'Task extraction failed');
         return reply.code(500).send({
           error: 'Failed to extract tasks from notes',

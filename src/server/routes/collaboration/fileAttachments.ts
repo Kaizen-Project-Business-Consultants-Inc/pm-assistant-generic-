@@ -81,6 +81,10 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
 
       // Project check (checkProjectRole): the PM, or the owner of this RAID item
       if (!(await attachmentGate(request, reply, entityType, entityId, true))) return;
+      // A JSON (or empty) body makes request.file() throw "the request is not multipart" — a 500 (2026-10-07)
+      if (!request.isMultipart()) {
+        return reply.status(400).send({ error: 'No file uploaded', message: 'Send the file as a form upload (multipart/form-data).' });
+      }
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 
@@ -153,6 +157,10 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
       if (!existing) return reply.status(404).send({ error: 'Attachment not found' });
       // Project check (checkProjectRole) on the item the file belongs to
       if (!(await attachmentGate(request, reply, existing.entityType, existing.entityId, true))) return;
+      // A JSON (or empty) body makes request.file() throw "the request is not multipart" — a 500 (2026-10-07)
+      if (!request.isMultipart()) {
+        return reply.status(400).send({ error: 'No file uploaded', message: 'Send the file as a form upload (multipart/form-data).' });
+      }
       const file = await request.file();
       if (!file) return reply.status(400).send({ error: 'No file uploaded' });
 

@@ -707,8 +707,9 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         }
       }
 
-      const { text } = (request.body as { text: string });
-      if (!text || !text.trim()) {
+      const { text } = (request.body ?? {}) as { text?: unknown };
+      // Non-text (a number, a list) used to crash on .trim() as a 500 (2026-10-07)
+      if (typeof text !== 'string' || !text.trim()) {
         return reply.status(400).send({ error: 'Comment text is required' });
       }
       const comment = await scheduleService.addComment(taskId, text.trim(), user.userId, user.username || 'Project Manager');
@@ -808,8 +809,13 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
-      const { horizonDays } = (request.body as { horizonDays?: number }) || {};
-      const count = await recurrenceService.expandTemplate(taskId, horizonDays || 90);
+      const { horizonDays } = (request.body as { horizonDays?: unknown }) || {};
+      // Text or a negative/fractional number used to reach the service and fail as a 500 (2026-10-07).
+      // Missing (or 0) still means the default 90 days.
+      if (horizonDays != null && horizonDays !== 0 && !(typeof horizonDays === 'number' && Number.isInteger(horizonDays) && horizonDays > 0)) {
+        return reply.status(400).send({ error: 'Validation error', message: 'horizonDays must be a whole number of days (1 or more).' });
+      }
+      const count = await recurrenceService.expandTemplate(taskId, (horizonDays as number | undefined) || 90);
       return { expanded: count };
     } catch (error) {
       logger.error('Expand recurrence error', { error });

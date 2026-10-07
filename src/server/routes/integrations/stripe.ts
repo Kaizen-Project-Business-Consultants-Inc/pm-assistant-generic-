@@ -207,8 +207,12 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
-      const { quantity } = (request.body as { quantity?: number }) || {};
-      const qty = Math.max(1, Math.min(quantity || 1, 20)); // 1-20 packs
+      const { quantity } = (request.body as { quantity?: unknown }) || {};
+      // Text or a fraction became NaN / 2.5 packs and Stripe refused it as a 500 (2026-10-07)
+      if (quantity != null && !(typeof quantity === 'number' && Number.isInteger(quantity) && quantity > 0)) {
+        return reply.status(400).send({ error: 'Validation error', message: 'quantity must be a whole number of packs (1 or more).' });
+      }
+      const qty = Math.max(1, Math.min((quantity as number | undefined) || 1, 20)); // 1-20 packs
 
       const user = await userService.findById(userId);
       if (!user) {

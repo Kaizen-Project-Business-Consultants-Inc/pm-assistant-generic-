@@ -17,7 +17,8 @@ describe('scheduled-job runner always records its run', () => {
   });
 
   it('no process.exit inside the job run (only the missing-argument check before it)', () => {
-    const body = src.slice(src.indexOf('async function run()'));
+    // the run itself — the exit after clean-up (run().finally(...)) is outside it (2026-10-07)
+    const body = src.slice(src.indexOf('async function run()'), src.indexOf('run().finally('));
     expect(body).not.toMatch(/process\.exit\(/);
   });
 });

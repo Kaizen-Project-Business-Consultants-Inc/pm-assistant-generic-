@@ -9,6 +9,7 @@ import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
 import { isPlatformAdmin, platformAdminOnly } from '../../utils/platformAdmin';
+import { clampPagination } from '../../schemas/paginationSchema';
 const MAX_SCREENSHOT_BYTES = 5 * 1024 * 1024; // 5MB
 
 const submitFeedbackSchema = z.object({
@@ -162,7 +163,9 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
   // GET / — List all feedback (admin only)
   fastify.get('/', { preHandler: [requireScope('admin'), platformAdminOnly] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { status, limit = '50', offset = '0' } = request.query as { status?: string; limit?: string; offset?: string };
+      const { status } = request.query as { status?: string };
+      // limit/offset that aren't numbers fall back to defaults instead of SQL `LIMIT NaN` (2026-10-07)
+      const { limit, offset } = clampPagination(request.query, { defaultLimit: 50 });
 
       let sql = `SELECT f.id, f.user_id, f.overall_rating, f.schedule_rating, f.raid_rating, f.ai_rating, f.reporting_rating,
                         f.category, f.comment, f.status, f.admin_notes, f.admin_reply, f.admin_reply_at,
@@ -179,7 +182,7 @@ export async function feedbackRoutes(fastify: FastifyInstance) {
       }
 
       sql += ' ORDER BY f.created_at DESC LIMIT ? OFFSET ?';
-      params.push(parseInt(limit), parseInt(offset));
+      params.push(limit, offset);
 
       const rows = await databaseService.queryControlPlane(sql, params);
 

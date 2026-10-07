@@ -14,6 +14,7 @@ import { automationEventBus } from '../../services/automation/AutomationEventBus
 import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 const flagSchema = z.object({
   taskId: z.string({ message: 'Say which task line you are flagging.' }).min(1, 'Say which task line you are flagging.'),
@@ -126,6 +127,10 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const user = request.user!;
       const { weekStart } = request.query as { weekStart: string };
       if (!weekStart) return reply.status(400).send({ error: 'weekStart is required' });
+      // Not a date → "Invalid time value" crash, a 500 (2026-10-07)
+      if (typeof weekStart !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(weekStart) || Number.isNaN(Date.parse(weekStart))) {
+        return reply.status(400).send({ error: 'Validation error', message: 'weekStart must be a date (YYYY-MM-DD).' });
+      }
 
       const timesheet = await timeEntryService.getWeeklyTimesheet(user.userId, weekStart);
       return timesheet;
@@ -250,7 +255,8 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const { weeks } = request.query as { weeks?: string };
-      const trends = await timeAnomalyService.getTrendAnalysis(projectId, weeks ? parseInt(weeks, 10) : 12);
+      // Weeks that aren't a number fall back to 12 instead of a NaN date range (2026-10-07)
+      const trends = await timeAnomalyService.getTrendAnalysis(projectId, clampPagination({ limit: weeks }, { defaultLimit: 12, maxLimit: 520 }).limit);
       return { trends };
     } catch (error) {
       logger.error('Get trend analysis error', { error });
@@ -294,7 +300,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
   // POST /anomaly-explain — AI anomaly explanation
   fastify.post('/anomaly-explain', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { anomaly, projectId } = request.body as { anomaly: any; projectId: string };
+      const { anomaly, projectId } = (request.body ?? {}) as { anomaly?: any; projectId?: string };
       if (!anomaly || !projectId) return reply.status(400).send({ error: 'anomaly and projectId are required' });
 
       const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);

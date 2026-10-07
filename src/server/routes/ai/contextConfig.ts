@@ -100,7 +100,8 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'scope must be org, project, or user' });
       }
 
-      const body = request.body as { configKey: string; configValue: unknown; versionHash?: string };
+      // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
+      const body = (request.body ?? {}) as { configKey?: string; configValue?: unknown; versionHash?: string };
       if (!body.configKey || body.configValue === undefined) {
         return reply.status(400).send({ error: 'configKey and configValue are required' });
       }
@@ -142,7 +143,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scope, scopeId } = request.params as { scope: string; scopeId: string };
-      const { configKey } = request.body as { configKey: string };
+      const { configKey } = (request.body ?? {}) as { configKey?: string }; // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
       const userId = request.user!.userId; // was read as user.id, which is never set, so personal settings never applied
 
       if (!configKey) {

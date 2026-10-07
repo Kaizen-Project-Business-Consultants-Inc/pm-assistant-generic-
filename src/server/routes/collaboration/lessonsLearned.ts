@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { lessonsLearnedService } from '../../services/LessonsLearnedService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 const mitigationsSchema = z.object({
   riskDescription: z.string().min(1),
@@ -85,11 +86,11 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('read')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { limit = '20', offset = '0', projectId, isElevated, status, category, severity } = request.query as {
-        limit?: string; offset?: string; projectId?: string; isElevated?: string; status?: string; category?: string; severity?: string;
+      const { projectId, isElevated, status, category, severity } = request.query as {
+        projectId?: string; isElevated?: string; status?: string; category?: string; severity?: string;
       };
-      const parsedLimit = parseInt(limit, 10);
-      const parsedOffset = parseInt(offset, 10);
+      // limit/offset that aren't numbers fall back to defaults instead of SQL `LIMIT NaN` (2026-10-07)
+      const { limit: parsedLimit, offset: parsedOffset } = clampPagination(request.query, { defaultLimit: 20 });
       const filters = {
         projectId: projectId || undefined,
         isElevated: isElevated === 'true' ? true : isElevated === 'false' ? false : undefined,

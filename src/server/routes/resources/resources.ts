@@ -24,6 +24,7 @@ import logger from '../../utils/logger';
 import { utcDay, mondayOf } from '../../utils/workingDays';
 import { hoursInWeek, calendarsFor } from '../../services/weeklyLoad';
 import { isExamplePerson } from '../../utils/sampleData';
+import { clampPagination } from '../../schemas/paginationSchema';
 
 const skillSchema = z.union([
   z.string(),
@@ -199,8 +200,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
     const { limit, offset, group } = request.query as { limit?: string; offset?: string; group?: string };
     const result = await resourceService.findAllResourcesPaginated(
-      Math.min(Number(limit) || 50, 200),
-      Number(offset) || 0,
+      // text or negative values fall back to the defaults (a negative offset reached SQL — 2026-10-07)
+      clampPagination({ limit, offset }).limit,
+      clampPagination({ limit, offset }).offset,
       group || undefined,
     );
     return result;
