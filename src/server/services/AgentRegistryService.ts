@@ -119,17 +119,22 @@ export class AgentRegistry {
     // 3. Execute with timeout
     const timeoutMs = cap.timeoutMs ?? MS_PER_MINUTE;
     let output: any;
+    // the timer is cleared when the work finishes — it used to keep a finished nightly job's
+    // process alive for up to its full length (2026-10-07: ~100 s after the scan ended)
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       output = await Promise.race([
         cap.handler(inputResult.data, { projectId: context.projectId ?? null }),
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error(`Agent timeout after ${timeoutMs}ms`)), timeoutMs),
-        ),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`Agent timeout after ${timeoutMs}ms`)), timeoutMs);
+        }),
       ]);
     } catch (err: any) {
       const error = err.message || 'Agent execution failed';
       await this.audit(cap, context, false, error, Date.now() - start);
       return { success: false, error, durationMs: Date.now() - start, capabilityId };
+    } finally {
+      if (timer) clearTimeout(timer);
     }
 
     // 4. Validate output

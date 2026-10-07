@@ -271,4 +271,6 @@ async function run() {
   }
 }
 
-run();
+// A job is done once it has cleaned up: exit now rather than wait for a stray timer somewhere —
+// systemd's 5-minute limit counts until the process ends (2026-10-07: a finished scan sat ~100 s)
+run().finally(() => process.exit(process.exitCode ?? 0));

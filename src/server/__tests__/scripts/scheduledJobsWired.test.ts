@@ -33,3 +33,11 @@ describe('every scheduled job actually runs on the servers', () => {
     expect(readFileSync(join(repo, 'src', 'server', 'services', 'automation', 'computeNextRun.ts'), 'utf-8')).toMatch(/Math\.max\(5, Math\.min\(1440, config\.intervalMinutes\)\)/);
   });
 });
+
+describe('a finished job ends at once (systemd counts until the process exits)', () => {
+  it('the runner exits after clean-up, and agent time-limit timers are cleared', () => {
+    const svc = readFileSync(join(repo, 'src', 'server', 'services', 'AgentRegistryService.ts'), 'utf-8');
+    expect(runner).toMatch(/run\(\)\.finally\(\(\) => process\.exit\(process\.exitCode \?\? 0\)\);/);
+    expect(svc).toMatch(/finally \{\s*if \(timer\) clearTimeout\(timer\);/);
+  });
+});
