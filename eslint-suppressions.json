@@ -2574,11 +2574,8 @@
     }
   },
   "src/server/services/ClientService.ts": {
-    "no-await-in-loop": {
-      "count": 5
-    },
     "no-restricted-syntax": {
-      "count": 6
+      "count": 4
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -3318,9 +3315,6 @@
     }
   },
   "src/server/services/proactiveAlertService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }

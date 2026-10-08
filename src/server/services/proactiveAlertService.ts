@@ -45,10 +45,12 @@ export class ProactiveAlertService {
     const allScheduleIds: string[] = [];
     const schedulesByProject = new Map<string, { id: string }[]>();
 
-    for (const project of projects) {
-      const schedules = await scheduleService.findByProjectId(project.id);
-      schedulesByProject.set(project.id, schedules);
-      for (const s of schedules) allScheduleIds.push(s.id);
+    // one query for every project's schedules (it was one per project, despite the comment — 2026-10-08)
+    for (const s of await scheduleService.findByProjectIds(projects.map(p => p.id))) {
+      const list = schedulesByProject.get(s.projectId) ?? [];
+      list.push(s);
+      schedulesByProject.set(s.projectId, list);
+      allScheduleIds.push(s.id);
     }
 
     // Single batch query for all tasks across all schedules

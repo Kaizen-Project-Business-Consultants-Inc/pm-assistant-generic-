@@ -53,12 +53,16 @@ vi.mock('../../database/connection', () => ({
   },
 }));
 vi.mock('../../database/ProjectGroupRepository', () => ({ projectGroupRepository: { findById: async () => ({ id: 'c1', name: 'Big Client', color: '#0f766e' }) } }));
-vi.mock('../../database/RiskRepository', () => ({ riskRepository: { findByProject: async (pid: string) => fx.risks[pid] ?? [] } }));
-vi.mock('../../database/ApprovalWorkflowRepository', () => ({ approvalWorkflowRepository: { findChangeRequests: async (pid: string) => fx.crs[pid] ?? [] } }));
+vi.mock('../../database/RiskRepository', () => ({ riskRepository: {
+  findByProjects: async (pids: string[]) => pids.flatMap(pid => (fx.risks[pid] ?? []).map((r: any) => ({ projectId: pid, ...r }))),
+} }));
+vi.mock('../../database/ApprovalWorkflowRepository', () => ({ approvalWorkflowRepository: {
+  findChangeRequestsForProjects: async (pids: string[]) => pids.flatMap(pid => (fx.crs[pid] ?? []).map((c: any) => ({ projectId: pid, ...c }))),
+} }));
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
-    findByProjectId: async (pid: string) => [{ id: `s${pid.slice(1)}` }],
-    findTasksByScheduleIds: async (ids: string[]) => fx.tasksBySchedule[ids[0]] ?? [],
+    findByProjectIds: async (pids: string[]) => pids.map(pid => ({ id: `s${pid.slice(1)}`, projectId: pid })),
+    findTasksByScheduleIds: async (ids: string[]) => ids.flatMap(id => (fx.tasksBySchedule[id] ?? []).map((t: any) => ({ scheduleId: id, ...t }))),
   },
 }));
 vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: async () => 'all' }));

@@ -5,7 +5,7 @@ vi.mock('../../services/ProjectService', () => ({ projectService: project }));
 const tasks = vi.hoisted(() => ({ list: [] as any[] }));
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
-    findByProjectId: vi.fn(async () => [{ id: 's1' }]),
+    findByProjectIds: vi.fn(async (ids: string[]) => ids.map((pid, i) => ({ id: i ? `s${i + 1}` : 's1', projectId: pid }))),
     findTasksByScheduleIds: vi.fn(async () => tasks.list),
   },
 }));

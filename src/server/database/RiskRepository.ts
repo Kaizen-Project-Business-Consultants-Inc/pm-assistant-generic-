@@ -288,6 +288,16 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     return rows.length > 0;
   }
 
+  /** Every RAID item of these projects in ONE query, in findByProject's default order (risk score, then newest) */
+  async findByProjects(projectIds: string[]): Promise<ProjectRisk[]> {
+    if (projectIds.length === 0) return [];
+    const rows = await this.queryRaw(
+      `SELECT * FROM project_risks WHERE project_id IN (${projectIds.map(() => '?').join(',')}) ORDER BY risk_score desc, created_at DESC`,
+      projectIds,
+    );
+    return this.mapRows(rows);
+  }
+
   async findByProject(projectId: string, filters: RiskFilters = {}): Promise<ProjectRisk[]> {
     const conditions: string[] = ['project_id = ?'];
     const params: any[] = [projectId];

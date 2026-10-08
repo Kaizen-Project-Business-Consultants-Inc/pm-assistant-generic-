@@ -180,6 +180,20 @@ export class ApprovalWorkflowRepository extends BaseRepository<ApprovalWorkflow>
     return changeRequestRowToDTO(rows[0]);
   }
 
+  /** Change requests of these projects in ONE query, newest first (as findChangeRequests' default) */
+  async findChangeRequestsForProjects(projectIds: string[]): Promise<ChangeRequest[]> {
+    if (projectIds.length === 0) return [];
+    const rows = await this.queryRaw(
+      `SELECT cr.*, u.full_name AS requested_by_name
+         FROM change_requests cr
+         LEFT JOIN pmassist.users u ON u.id = cr.requested_by
+        WHERE cr.project_id IN (${projectIds.map(() => '?').join(',')})
+        ORDER BY cr.created_at DESC`,
+      projectIds,
+    );
+    return rows.map(changeRequestRowToDTO);
+  }
+
   async findChangeRequests(projectId: string, filters?: { status?: string; priority?: string; sortBy?: string; sortDir?: string }): Promise<ChangeRequest[]> {
     let sql = `SELECT cr.*, u.full_name AS requested_by_name
                FROM change_requests cr

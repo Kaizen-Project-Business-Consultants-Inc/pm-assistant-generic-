@@ -69,6 +69,17 @@ function toRaidItem(r: ProjectRisk, p: ClientProject): ClientRaidItem {
 
 const isOpen = (r: ProjectRisk) => !r.resolvedAt && !CLOSED_RAID.has(String(r.status).toLowerCase());
 
+/** Items grouped by a key, keeping their order */
+function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
+  const out = new Map<K, T[]>();
+  for (const it of items) {
+    const k = key(it);
+    const list = out.get(k);
+    if (list) list.push(it); else out.set(k, [it]);
+  }
+  return out;
+}
+
 export const clientService = {
   /**
    * One client's RAID items across its projects. show: 'open' (open risks & issues, default),
@@ -79,8 +90,10 @@ export const clientService = {
     const projects = await clientProjects(clientId, viewer);
     const items: ClientRaidItem[] = [];
     let openRisks = 0, openIssues = 0, highCritical = 0, overdueActions = 0;
+    // one query for all the client's projects, not one per project (2026-10-08)
+    const raidOf = groupBy((await riskRepository.findByProjects(projects.map(p => p.id)).catch(() => [] as ProjectRisk[])).filter(isOpen), r => r.projectId);
     for (const p of projects) {
-      const rows = (await riskRepository.findByProject(p.id).catch(() => [] as ProjectRisk[])).filter(isOpen);
+      const rows = raidOf.get(p.id) ?? [];
       for (const r of rows) {
         const it = toRaidItem(r, p);
         if (r.type === 'risk') openRisks++;
@@ -112,9 +125,25 @@ export const clientService = {
     const attention: ClientReport['attention'] = [];
     const changes: ClientReport['changes'] = [];
 
-    for (const p of projects) {
-      const schedules = await scheduleService.findByProjectId(p.id).catch(() => [] as any[]);
+    // everything for all the client's projects in four queries, not four per project (2026-10-08)
+    const ids = projects.map(p => p.id);
+    const loadTasks = async () => {
+      const schedules = await scheduleService.findByProjectIds(ids).catch(() => [] as any[]);
       const tasks = schedules.length ? await scheduleService.findTasksByScheduleIds(schedules.map((s: any) => s.id)).catch(() => [] as any[]) : [];
+      return { projectOfSchedule: new Map(schedules.map((s: any) => [s.id, s.projectId])), tasks };
+    };
+    // the three reads don't depend on each other
+    const [{ projectOfSchedule, tasks: allTasks }, allRaid, allCrs] = await Promise.all([
+      loadTasks(),
+      riskRepository.findByProjects(ids).catch(() => [] as ProjectRisk[]),
+      approvalWorkflowRepository.findChangeRequestsForProjects(ids).catch(() => [] as any[]),
+    ]);
+    const tasksOf = groupBy(allTasks, (t: any) => projectOfSchedule.get(t.scheduleId));
+    const raidOf = groupBy(allRaid.filter(isOpen), r => r.projectId);
+    const crsOf = groupBy(allCrs, (cr: any) => cr.projectId);
+
+    for (const p of projects) {
+      const tasks = tasksOf.get(p.id) ?? [];
       const live = tasks.filter((t: any) => !['completed', 'cancelled'].includes(t.status) && !t.isSummary);
       const late = live.filter((t: any) => ymd(t.endDate) && ymd(t.endDate)! < now).length;
       const nextMs = tasks
@@ -133,13 +162,13 @@ export const clientService = {
         })), p.name),
       });
 
-      const raid = (await riskRepository.findByProject(p.id).catch(() => [] as ProjectRisk[])).filter(isOpen);
+      const raid = raidOf.get(p.id) ?? [];
       for (const r of raid) {
         const it = toRaidItem(r, p);
         const highRiskOrIssue = (r.type === 'risk' || r.type === 'issue') && HIGH.has(String(r.severity).toLowerCase());
         if (highRiskOrIssue || (r.type === 'action' && it.overdue)) attention.push(it);
       }
-      const crs = await approvalWorkflowRepository.findChangeRequests(p.id, { status: undefined }).catch(() => [] as any[]);
+      const crs = crsOf.get(p.id) ?? [];
       for (const cr of crs) {
         if (CLOSED_CR.has(String(cr.status).toLowerCase())) continue;
         changes.push({ projectName: p.name, projectCode: p.code, title: cr.title, status: cr.status, impact: cr.impactSummary ?? null });

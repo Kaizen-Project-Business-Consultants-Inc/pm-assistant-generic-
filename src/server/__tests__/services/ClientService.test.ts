@@ -18,12 +18,14 @@ vi.mock('../../database/connection', () => ({ databaseService: { query: async ()
 vi.mock('../../database/ProjectGroupRepository', () => ({
   projectGroupRepository: { findById: async (id: string) => (id === 'c1' ? { id: 'c1', name: 'DBJ', color: '#0f766e' } : null) },
 }));
-vi.mock('../../database/RiskRepository', () => ({ riskRepository: { findByProject: async (pid: string) => h.risks[pid] ?? [] } }));
-vi.mock('../../database/ApprovalWorkflowRepository', () => ({ approvalWorkflowRepository: { findChangeRequests: async (pid: string) => h.crs[pid] ?? [] } }));
+// one query for all the client's projects (2026-10-08) — counted, so going back to one per project fails
+const calls = vi.hoisted(() => ({ risks: 0, crs: 0, schedules: 0, tasks: 0 }));
+vi.mock('../../database/RiskRepository', () => ({ riskRepository: { findByProjects: async (pids: string[]) => { calls.risks++; return pids.flatMap(pid => (h.risks[pid] ?? []).map((r: any) => ({ projectId: pid, ...r }))); } } }));
+vi.mock('../../database/ApprovalWorkflowRepository', () => ({ approvalWorkflowRepository: { findChangeRequestsForProjects: async (pids: string[]) => { calls.crs++; return pids.flatMap(pid => (h.crs[pid] ?? []).map((c: any) => ({ projectId: pid, ...c }))); } } }));
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
-    findByProjectId: async (pid: string) => [{ id: `s-${pid}` }],
-    findTasksByScheduleIds: async (ids: string[]) => h.tasks[ids[0].slice(2)] ?? [],
+    findByProjectIds: async (pids: string[]) => { calls.schedules++; return pids.map(pid => ({ id: `s-${pid}`, projectId: pid })); },
+    findTasksByScheduleIds: async (ids: string[]) => { calls.tasks++; return ids.flatMap(id => (h.tasks[id.slice(2)] ?? []).map((t: any) => ({ scheduleId: id, ...t }))); },
   },
 }));
 vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: async () => h.readable }));
@@ -103,5 +105,14 @@ describe('who may do what with clients', () => {
     expect(src).toMatch(/const CLIENT_MANAGERS = \['pmo', 'project_manager'\]/);
     expect(src.match(/if \(!canManageClients\(/g)?.length).toBeGreaterThanOrEqual(5); // create, reorder, update, delete, email
     expect(src.match(/checkProjectRoleFor\(request\.user!, projectId, 'manager'\)/g)?.length).toBe(2); // assign, unassign
+  });
+});
+
+describe('one database question per kind, however many projects the client has (2026-10-08)', () => {
+  it('the report asks for schedules, tasks, RAID and change requests once each', async () => {
+    Object.assign(calls, { risks: 0, crs: 0, schedules: 0, tasks: 0 });
+    const { clientService } = await import('../../services/ClientService');
+    await clientService.report('c1', { userId: 'u1', role: 'pmo' } as any);
+    expect(calls).toEqual({ risks: 1, crs: 1, schedules: 1, tasks: 1 });
   });
 });
