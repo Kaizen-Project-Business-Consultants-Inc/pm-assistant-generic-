@@ -87,3 +87,53 @@ describe('GET /workflows/executions', () => {
     expect(dag.listExecutions).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * GET /workflows/executions/:id (2026-10-08): the same rule as the list. A run the caller may not
+ * see answers 404 — exactly as a run that doesn't exist, so its existence isn't given away.
+ */
+describe('GET /workflows/executions/:id', () => {
+  let app: any;
+  beforeAll(async () => { app = Fastify(); await app.register(workflowRoutes, { prefix: '/api/v1/workflows' }); }, 60_000);
+  beforeEach(() => {
+    dag.listDefinitions.mockReset().mockResolvedValue([
+      { id: 'wf-org', projectId: null },
+      { id: 'wf-mine', projectId: 'p-mine' },
+      { id: 'wf-other', projectId: 'p-other' },
+    ]);
+    dag.listExecutions.mockReset();
+    dag.getExecution.mockReset().mockResolvedValue({ id: 'run-1', nodeExecutions: [] });
+    readable.readableProjectIds.mockReset().mockResolvedValue(new Set(['p-mine']));
+  });
+
+  const get = (role: string, id = 'run-1') =>
+    app.inject({ method: 'GET', url: `/api/v1/workflows/executions/${id}`, headers: { 'x-test-role': role } });
+  const mine = { projectWorkflowIds: ['wf-mine'], orgWorkflowIds: ['wf-org'], projectIds: ['p-mine'] };
+
+  it('a team member opens a run they may see', async () => {
+    dag.listExecutions.mockResolvedValue([{ id: 'run-1' }]);
+    const res = await get('team_member');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().execution.id).toBe('run-1');
+    expect(dag.listExecutions).toHaveBeenCalledWith({ id: 'run-1', visibleTo: mine, limit: 1 });
+  });
+
+  it("a person without access to the run's project gets 404, the same as for a missing run", async () => {
+    dag.listExecutions.mockResolvedValue([]); // e.g. a company-wide workflow's run on p-other
+    const hidden = await get('team_member');
+    expect(hidden.statusCode).toBe(404);
+    expect(dag.getExecution).not.toHaveBeenCalled();
+    dag.getExecution.mockResolvedValue(null);
+    readable.readableProjectIds.mockResolvedValue('all');
+    const missing = await get('pmo', 'no-such-run');
+    expect(missing.statusCode).toBe(404);
+    expect(hidden.json()).toEqual(missing.json());
+  });
+
+  it('admin / PMO / executive open any run without the extra lookup', async () => {
+    readable.readableProjectIds.mockResolvedValue('all');
+    const res = await get('executive');
+    expect(res.statusCode).toBe(200);
+    expect(dag.listExecutions).not.toHaveBeenCalled();
+  });
+});

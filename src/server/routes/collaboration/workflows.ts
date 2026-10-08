@@ -127,10 +127,13 @@ async function executionVisibility(user: { userId: string; role: string }): Prom
     projectIds: [...readable],
   };
 }
+/** One run: only if the caller may see it (the list's rule). Otherwise 404, so whether it exists
+ *  stays unknown (2026-10-08: a company-wide workflow's run on any project was open to all). */
 const executionReader = async (request: FastifyRequest, reply: FastifyReply) => {
-  const rows = await databaseService.query<{ workflow_id: string }>('SELECT workflow_id FROM workflow_executions WHERE id = ?', [(request.params as { id: string }).id]);
-  if (!rows.length) return reply.status(404).send({ error: 'Execution not found' });
-  await requireMemberIfProject(request, reply, (await workflowProject(rows[0].workflow_id)).projectId);
+  const visibleTo = await executionVisibility(request.user!);
+  if (!visibleTo) return; // reads every project; the handler answers 404 for a missing run
+  const [seen] = await dagWorkflowService.listExecutions({ id: (request.params as { id: string }).id, visibleTo, limit: 1 });
+  if (!seen) return reply.status(404).send({ error: 'Execution not found' });
 };
 /** Execution lists: one workflow the caller can read. With no workflow named, the handler lists
  *  the runs the caller can see (the Workflows page asks without filters) — see the handler. */

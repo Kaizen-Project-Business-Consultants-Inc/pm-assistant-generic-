@@ -174,6 +174,7 @@ class DagWorkflowService {
   }
 
   async listExecutions(filters?: {
+    id?: string;
     workflowId?: string;
     visibleTo?: ExecutionVisibility;
     entityType?: string;

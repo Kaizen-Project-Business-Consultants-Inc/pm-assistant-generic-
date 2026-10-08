@@ -162,10 +162,11 @@ class WorkflowRepository {
   }
 
   async findExecutions(filters?: {
-    workflowId?: string; visibleTo?: ExecutionVisibility; entityType?: string; entityId?: string; status?: string; limit?: number;
+    id?: string; workflowId?: string; visibleTo?: ExecutionVisibility; entityType?: string; entityId?: string; status?: string; limit?: number;
   }): Promise<WorkflowExecution[]> {
     let sql = 'SELECT * FROM workflow_executions WHERE 1=1';
     const params: any[] = [];
+    if (filters?.id) { sql += ' AND id = ?'; params.push(filters.id); }
     if (filters?.workflowId) { sql += ' AND workflow_id = ?'; params.push(filters.workflowId); }
     // Only runs the caller may see: all runs of their projects' workflows; runs of company-wide
     // workflows only on tasks in projects they can read (a run's context names the task)

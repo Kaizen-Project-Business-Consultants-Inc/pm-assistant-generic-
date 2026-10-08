@@ -28,6 +28,13 @@ describe('workflowRepository.findExecutions({ visibleTo })', () => {
     expect(params).toEqual(['o', 'o', 'p1', 50]);
   });
 
+  it('one run by id, still limited to what the caller may see', async () => {
+    await workflowRepository.findExecutions({ id: 'run-1', visibleTo: { projectWorkflowIds: ['a'], orgWorkflowIds: [], projectIds: ['p1'] }, limit: 1 });
+    const [sql, params] = db.query.mock.calls[0];
+    expect(sql).toContain('WHERE 1=1 AND id = ? AND (workflow_id IN (?))');
+    expect(params).toEqual(['run-1', 'a', 1]);
+  });
+
   it('nothing visible (no projects, no project workflows) → no runs and no query', async () => {
     expect(await workflowRepository.findExecutions({ visibleTo: { projectWorkflowIds: [], orgWorkflowIds: ['o'], projectIds: [] } })).toEqual([]);
     expect(db.query).not.toHaveBeenCalled();
