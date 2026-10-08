@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-08 — Billing follow-ups: Pricing page owner-only, real top-up balance, owner flag on signup (branch billing-client, 3 commits, not deployed when written)
+- **Pricing page** (`components/pricing/PricingCards.tsx`): a signed-in member who isn't the company owner no longer sees Subscribe / Switch Plan / Get Started, the Current Plan (billing portal) button, Start Free Trial, or Buy Token Pack — they see the plans, "Current Plan" as text, and "Your company's owner manages the plan, payment and AI top-ups." (one shared constant `OWNER_MANAGES_BILLING` in `hooks/useCanManageBilling.ts`, also used by Account). Signed-out visitors and owners unchanged. Landing pages (same component, link mode) follow the same rule for signed-in non-owners.
+- **`canManageBilling` now mirrors the server's `billingOwnerOnly`**: owner, or no company at all (platform admin, or a signup whose company was never made — they pay for themselves). Was owner-or-platform-admin, which left a no-company user with no way to pay.
+- **Refusals shown**: Pricing (portal, top-up) and Account (Manage Billing, Buy More Tokens) swallowed errors; they now show the server's plain message (role=alert), e.g. the new 403.
+- **Account top-up balance**: read `remainingTokens`; GET /stripe/topup-balance sends `remainingTopUpTokens` → always showed 0. Fixed; `getTopUpBalance` typed (`TopUpBalance`). Server test pins the field.
+- **Register reply** (paid-plan signup, the only reply with a user): now has `organization {id,name,slug,isOwner}`, `role` via permissionRole (owner → pmo) and `accountRole`, like login and /auth/me; a failed company lookup can't fail the signup.
+- Sweep: trial banner, "Part of a paid plan" window, Account already gated (a1e77d2f); Onboarding/Register reach only a brand-new owner. Tests: pricingBillingOwner, accountBillingOwner (+real top-up shape, refused portal), topUpBalanceShape, registerOwnerFlag.
+- **Open:** /stripe/topup-balance history sends `SELECT *` rows incl. stripe_session_id to the browser (pre-existing, small); the org-for-reply block is now in 3 places in auth.ts (login, register, /me) — a helper would tidy it.
+
 ## 2026-10-08 — Pages a role can't open are hidden (user: "hide them") (branch fix3-hide, not deployed when written)
 - **One map**: `src/client/src/constants/roleRoutes.ts` — PM_NAV_SECTIONS (moved out of Sidebar.tsx, same items/order/labels/icons; sidebar screenshots before/after byte-identical), GUEST_HIDDEN_PATHS, `canOpenPath(user, path)`. Menu entries with `roles` are only for those roles (deep links and ?query too); non-menu pages (project, help, account, kpi, admin = own guard) stay open; personal pages always open; client RAID/report open to all (linked from Projects).
 - **Router**: `components/layout/RoleRouteGuard.tsx` wraps `<Routes>` in App.tsx → `<Navigate to=/dashboard replace>`. No per-page checks.
