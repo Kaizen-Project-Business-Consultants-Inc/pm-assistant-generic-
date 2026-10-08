@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, matchPath, useLocation } from 'react-router-dom';
 import { Search, ChevronRight, LogOut, User, Moon, Sun, Menu, HelpCircle, MessageCircleHeart } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
@@ -11,13 +11,15 @@ import { ConnectionStatus } from './ConnectionStatus';
 import { getInitials } from '../ui/Avatar';
 import CommandPalette from './CommandPalette';
 import { FeedbackModal } from '../feedback/FeedbackModal';
+import { ROUTES, ROUTE_PATTERNS } from '../../routes';
 
 interface Breadcrumb {
   label: string;
-  path: string;
+  /** Where the crumb links to; absent = plain text (that path has no page of its own) */
+  to?: string;
 }
 
-const ACRONYMS = new Set(['evm', 'kpi', 'ai']);
+const ACRONYMS = new Set(['evm', 'kpi', 'ai', 'raid']);
 
 const segmentLabels: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -49,6 +51,7 @@ const segmentLabels: Record<string, string> = {
   users: 'Users',
   tenants: 'Tenants',
   project: 'Projects',
+  clients: 'Clients',
   pricing: 'Pricing',
   feedback: 'Feedback',
   operations: 'Operations',
@@ -69,9 +72,18 @@ const segmentPathOverrides: Record<string, string> = {
   project: '/projects',
 };
 
-function buildBreadcrumbs(pathname: string): Breadcrumb[] {
+/** Every page the app has (App.tsx declares its <Route>s from these) */
+const APP_ROUTES: string[] = [...Object.values(ROUTES), ...Object.values(ROUTE_PATTERNS)];
+const hasPage = (path: string) => APP_ROUTES.some(pattern => matchPath({ path: pattern, end: true }, path));
+
+/**
+ * Crumbs for a path: one per segment. A segment links only when its path is a real page —
+ * /kpi and /clients/<id> have none, so they show as plain text instead of leading to "Page not found".
+ * The id after /project/ or /clients/ shows the project or client name once known.
+ */
+export function buildBreadcrumbs(pathname: string, names: { project?: string; client?: string } = {}): Breadcrumb[] {
   const segments = pathname.split('/').filter(Boolean);
-  const crumbs: Breadcrumb[] = [{ label: 'Home', path: '/dashboard' }];
+  const crumbs: Breadcrumb[] = [{ label: 'Home', to: ROUTES.dashboard }];
 
   // Skip adding "Dashboard" segment since Home already points to /dashboard
   if (segments.length === 1 && segments[0] === 'dashboard') {
@@ -79,20 +91,20 @@ function buildBreadcrumbs(pathname: string): Breadcrumb[] {
   }
 
   let currentPath = '';
-  for (const segment of segments) {
+  segments.forEach((segment, i) => {
     currentPath += `/${segment}`;
-    // Keep UUIDs as-is (dashes intact) so they can be detected and replaced with names
-    const isUuid = UUID_RE.test(segment);
-    const label =
-      segmentLabels[segment] ||
-      (isUuid
-        ? segment
-        : ACRONYMS.has(segment.toLowerCase())
-          ? segment.toUpperCase()
-          : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '));
+    const parent = segments[i - 1];
+    let label: string;
+    if (parent === 'project' && i === 1) label = names.project || 'Project';
+    else if (parent === 'clients' && i === 1) label = names.client || 'Client';
+    else if (UUID_RE.test(segment)) label = 'Item';
+    else label = segmentLabels[segment]
+      || (ACRONYMS.has(segment.toLowerCase())
+        ? segment.toUpperCase()
+        : segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '));
     const path = segmentPathOverrides[segment] || currentPath;
-    crumbs.push({ label, path });
-  }
+    crumbs.push(hasPage(path) ? { label, to: path } : { label });
+  });
 
   return crumbs;
 }
@@ -126,16 +138,20 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
   });
   const projectName = projectData?.project?.name || projectData?.name;
 
-  const breadcrumbs = useMemo(() => {
-    const crumbs = buildBreadcrumbs(location.pathname);
-    // Replace or hide UUID breadcrumb with project name
-    for (const crumb of crumbs) {
-      if (UUID_RE.test(crumb.label)) {
-        crumb.label = projectName || 'Project';
-      }
-    }
-    return crumbs;
-  }, [location.pathname, projectName]);
+  // Client pages (/clients/:id/...): the client's name, from the shared clients list
+  const clientId = segments[0] === 'clients' && segments[1] ? segments[1] : null;
+  const { data: clientsData } = useQuery<{ groups: Array<{ id: string; name: string }> }>({
+    queryKey: ['project-groups'],
+    queryFn: () => apiService.getProjectGroups(),
+    enabled: !!clientId,
+    staleTime: 120_000,
+  });
+  const clientName = clientId ? clientsData?.groups?.find(g => g.id === clientId)?.name : undefined;
+
+  const breadcrumbs = useMemo(
+    () => buildBreadcrumbs(location.pathname, { project: projectName, client: clientName }),
+    [location.pathname, projectName, clientName],
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -198,7 +214,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
             const isLast = index === breadcrumbs.length - 1;
 
             return (
-              <li key={crumb.path} className="flex items-center min-w-0">
+              <li key={index} className="flex items-center min-w-0">
                 {index > 0 && (
                   <ChevronRight className="w-4 h-4 text-gray-500 mx-1 flex-shrink-0" />
                 )}
@@ -206,9 +222,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
                   <span className="font-medium text-gray-900 dark:text-gray-100 truncate" aria-current="page">
                     {crumb.label}
                   </span>
+                ) : !crumb.to ? (
+                  <span className="text-gray-500 dark:text-gray-400 truncate">{crumb.label}</span>
                 ) : (
                   <Link
-                    to={crumb.path}
+                    to={crumb.to}
                     className="text-gray-500 dark:text-gray-400 hover:text-primary-600 transition-colors duration-150 truncate"
                   >
                     {crumb.label}

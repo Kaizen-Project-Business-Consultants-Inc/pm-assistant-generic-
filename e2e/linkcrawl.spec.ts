@@ -20,8 +20,6 @@ type Who = 'pm' | 'team';
 interface Allowed { key: string; who: Who[]; reason: string; onlyIf?: string }
 
 const ALLOW_LIST: Allowed[] = [
-  { key: 'not-found: /kpi', who: ['pm', 'team'], reason: 'KNOWN — efficiency report: KPI page breadcrumb links to /kpi, which has no page (TopBar buildBreadcrumbs)' },
-  { key: 'not-found: /clients/:id', who: ['pm', 'team'], onlyIf: '/clients/:id/raid', reason: 'KNOWN — efficiency report: client RAID/report breadcrumb links to /clients/<id>, which has no page (TopBar buildBreadcrumbs); checked only when the user can see a client' },
   { key: 'http: PUT /api/v1/users/me/view-preferences 403', who: ['team'], reason: 'KNOWN — efficiency report: a team member may not save view preferences, but every page tries' },
   { key: 'http: GET /api/v1/workflows/executions 400', who: ['team'], reason: 'KNOWN — efficiency report: Workflows page asks for executions a team member cannot list' },
 ];
