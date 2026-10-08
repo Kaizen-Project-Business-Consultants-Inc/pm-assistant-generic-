@@ -17,6 +17,7 @@
     "lint:fix": "eslint src/**/*.ts --fix",
     "type-check": "tsc --noEmit",
     "deadcode": "node scripts/deadCodeCheck.mjs",
+    "bundle-budget": "node scripts/bundleBudget.mjs",
     "db:migrate": "tsx src/server/database/migrate.ts",
     "db:seed": "tsx src/server/database/seed.ts",
     "db:backup": "bash scripts/backup-db.sh",

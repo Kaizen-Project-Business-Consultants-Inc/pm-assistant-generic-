@@ -1469,6 +1469,18 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 - The baseline only **shrinks**: after removing dead code, `node scripts/deadCodeCheck.mjs --update`. Adding to it needs the user's OK.
 - Tests count as users (a helper used only by a guard test is not dead). Server routes nothing calls are not covered — see the 2026-10-07 efficiency report.
 
+## App download size limit (Oct 2026)
+
+`npm run bundle-budget` (`scripts/bundleBudget.mjs`, after `npm run build:client`) checks `src/client/dist`. `deploy.sh` runs it after every build that includes the client.
+
+| Measure | 2026-10-07 | Limit |
+|---|---|---|
+| First load — what `index.html` loads at once, gzip-compressed | 195 KB | 260 KB |
+| Largest piece loaded later (one lazy chunk, uncompressed; html2pdf) | 953 KB | 1,100 KB |
+| All JavaScript together, uncompressed | 4.94 MB | 5.6 MB |
+
+If it fails: load the new code only where it's needed (`lazy()` / `await import()`, as the PDF and Excel readers do). Raising a limit needs the user's OK.
+
 ## Production smoke tests (Oct 2026)
 
 `SMOKE_CREDENTIALS=path/to/prod-smoke-account.json npx playwright test -c playwright.prod.config.ts` — 10 read-only page checks on kovarti.com. The login comes from the same credentials file as `scripts/prod-smoke.cjs` (kept outside the repository); the checks reuse the session the setup step saves. Staging tests use the QA logins (qa.pm / qa.team / qa.outsider @pm.kpbc.ca, see `e2e/staging-helpers.ts`).

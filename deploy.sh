@@ -232,6 +232,12 @@ else
 fi
 echo "  ✓ OK"
 
+# --- Step 3b: App download size limit (whenever the client was built; 2026-10-07) ---
+if [ "$SERVER_ONLY" != true ]; then
+  echo "[3b/7] App download size limit..."
+  node scripts/bundleBudget.mjs
+fi
+
 # --- Step 4: Copy non-tsc files into dist (SQL migrations, tenant migrations) ---
 echo "[4/7] Copying migration SQL files to dist..."
 # mkdir -p is essential: tsc creates no migrations directory (there are no .ts files in
