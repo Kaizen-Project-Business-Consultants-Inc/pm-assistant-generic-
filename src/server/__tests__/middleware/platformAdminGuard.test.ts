@@ -47,6 +47,19 @@ describe('platform screens use the platform-admin check, never the bare role', (
     for (const h of adminScoped) expect(h).toMatch(/platformAdminOnly/);
   });
 
+  it('AI and agent routes: no new bare admin-role checks (2026-10-08: memory and AI settings used one)', () => {
+    // known before the widening — company-scoped reads where "admin" means see-all (to tidy, not a leak)
+    const ALLOWED: Record<string, number> = { 'ai/intelligence.ts': 1, 'ai/nlQuery.ts': 1 };
+    const found: Record<string, number> = {};
+    for (const dir of ['ai', 'agent']) {
+      for (const f of readdirSync(join(server, 'routes', dir)).filter(n => n.endsWith('.ts'))) {
+        const n = (code(join(server, 'routes', dir, f)).match(/role\s*[!=]==?\s*'admin'/g) ?? []).length;
+        if (n) found[`${dir}/${f}`] = n;
+      }
+    }
+    expect(found).toEqual(ALLOWED);
+  });
+
   it('the support-visit switch checks the platform admin', () => {
     const src = code(join(server, 'middleware', 'tenantResolver.ts'));
     expect(src).toMatch(/if \(isPlatformAdmin\(request\.user\)\)/);

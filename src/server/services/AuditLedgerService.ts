@@ -35,6 +35,8 @@ function sha256(data: string): string {
 }
 
 const GENESIS_HASH = '0'.repeat(64);
+/** Rows read per step when verifying the whole chain */
+const VERIFY_BATCH = 1000;
 
 export class AuditLedgerService {
   async append(input: AppendInput): Promise<AuditEntry> {
@@ -77,20 +79,28 @@ export class AuditLedgerService {
   async verifyChain(projectId?: string, since?: string): Promise<{
     valid: boolean; checkedCount: number; brokenAtId?: number; brokenAtUuid?: string;
   }> {
-    const conditions: string[] = [];
-    const params: any[] = [];
-    if (projectId) { conditions.push('project_id = ?'); params.push(projectId); }
-    if (since) { conditions.push('created_at >= ?'); params.push(since); }
+    // A project's (or a period's) entries are interleaved with the rest of the chain, so they can't
+    // be checked link by link on their own — this only ever counted them. Count in the database
+    // instead of loading every row into memory (2026-10-08 efficiency check: 108 MB on staging).
+    if (projectId || since) {
+      const conditions: string[] = [];
+      const params: any[] = [];
+      if (projectId) { conditions.push('project_id = ?'); params.push(projectId); }
+      if (since) { conditions.push('created_at >= ?'); params.push(since); }
+      const checkedCount = await auditLedgerRepository.count(' WHERE ' + conditions.join(' AND '), params);
+      return { valid: true, checkedCount };
+    }
 
-    const rows = await auditLedgerRepository.findAll('ASC', conditions, params);
-
+    // The whole chain: walk it in id order, a batch at a time, so memory stays flat as it grows
     let prevHash = GENESIS_HASH;
     let checkedCount = 0;
-
-    for (const row of rows) {
-      checkedCount++;
-
-      if (!projectId && !since) {
+    let afterId = 0;
+    for (;;) {
+      // eslint-disable-next-line no-await-in-loop -- each batch continues the hash chain of the one before
+      const rows = await auditLedgerRepository.findBatchAfter(afterId, VERIFY_BATCH);
+      for (const row of rows) {
+        checkedCount++;
+        afterId = Number(row.id);
         if (row.prev_hash !== prevHash) {
           return { valid: false, checkedCount, brokenAtId: Number(row.id), brokenAtUuid: row.entry_uuid };
         }
@@ -108,9 +118,9 @@ export class AuditLedgerService {
         if (row.entry_hash !== expectedHash) {
           return { valid: false, checkedCount, brokenAtId: Number(row.id), brokenAtUuid: row.entry_uuid };
         }
+        prevHash = row.entry_hash;
       }
-
-      prevHash = row.entry_hash;
+      if (rows.length < VERIFY_BATCH) break;
     }
 
     return { valid: true, checkedCount };

@@ -2,9 +2,13 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { auditLedgerService } from '../../services/AuditLedgerService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, checkProjectRoleFor } from '../../middleware/requireProjectAccess';
+import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 import { clampPagination } from '../../schemas/paginationSchema';
+
+/** Who may verify the whole company's audit chain (the company owner works as PMO) */
+const VERIFY_ALL_ROLES = ['pmo'];
 
 export async function auditTrailRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -16,6 +20,20 @@ export async function auditTrailRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, since } = request.query as { projectId?: string; since?: string };
+      // Who may ask (2026-10-08): one project's count — anyone who can open that project; the
+      // whole company's chain (reads every entry) — PMO / owner only, and rate-limited
+      if (projectId) {
+        const access = await checkProjectRoleFor(request.user!, projectId, 'viewer');
+        if (!access.ok) return reply.status(access.status).send(access.body);
+      } else if (!VERIFY_ALL_ROLES.includes(request.user!.role)) {
+        return reply.status(403).send({ error: 'Forbidden', message: "Only the company's PMO or owner can check the whole audit history." });
+      } else {
+        // one project's check is a single indexed count; only the whole-chain walk is limited
+        const rl = rateLimiter.check(`audit:verify:${request.user!.userId}`, 10, 10 * 60_000);
+        if (!rl.allowed) {
+          return reply.status(429).send({ error: 'Too many requests', message: 'The audit check was run many times just now — try again in a few minutes.' });
+        }
+      }
       const result = await auditLedgerService.verifyChain(projectId, since);
       return result;
     } catch (error) {
@@ -92,6 +110,11 @@ export async function auditTrailRoutes(fastify: FastifyInstance) {
         to?: string;
         actions?: string;
       };
+
+      const rl = rateLimiter.check(`audit:export:${request.user!.userId}`, 10, 10 * 60_000);
+      if (!rl.allowed) {
+        return reply.status(429).send({ error: 'Too many requests', message: 'Several exports were made just now — try again in a few minutes.' });
+      }
 
       // Get chain verification status
       const chainStatus = await auditLedgerService.verifyChain(projectId);

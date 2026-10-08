@@ -18,6 +18,9 @@ const TENANT_EXEMPT_PREFIXES = [
   '/health',
   '/documentation',
   '/mcp',
+  // Mjuzi memory: one shared table for every company, Kovarti platform admin only (2026-10-08)
+  '/api/v1/memory',
+  '/api/v1/agent/memory',
 ];
 
 /**

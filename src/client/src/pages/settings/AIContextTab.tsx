@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '../../stores/authStore';
+import { useAuthStore, isPlatformAdmin } from '../../stores/authStore';
 import { apiService } from '../../services/api';
 import { MemoryBrowser } from '../../components/ai/MemoryBrowser';
 import { ContextPreview } from '../../components/ai/ContextPreview';
@@ -10,6 +10,7 @@ type SubTab = 'preferences' | 'memory' | 'preview';
 
 const SUB_TABS: { id: SubTab; label: string; icon: React.ReactNode }[] = [
   { id: 'preferences', label: 'AI Preferences', icon: <Brain className="w-4 h-4" /> },
+  // Memory is one table for every company: Kovarti admin only (2026-10-08), hidden for everyone else
   { id: 'memory', label: 'Memory Browser', icon: <BookOpen className="w-4 h-4" /> },
   { id: 'preview', label: 'Context Preview', icon: <Eye className="w-4 h-4" /> },
 ];
@@ -110,7 +111,7 @@ export const AIContextTab: React.FC = () => {
     <div className="space-y-6">
       {/* Sub-tab navigation */}
       <div className="flex space-x-1 border-b border-gray-200 dark:border-gray-700">
-        {SUB_TABS.map(tab => (
+        {SUB_TABS.filter(tab => tab.id !== 'memory' || isPlatformAdmin(user)).map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
@@ -267,7 +268,7 @@ export const AIContextTab: React.FC = () => {
       )}
 
       {/* Memory Browser */}
-      {activeSubTab === 'memory' && <MemoryBrowser />}
+      {activeSubTab === 'memory' && isPlatformAdmin(user) && <MemoryBrowser />}
 
       {/* Dreaming */}
 

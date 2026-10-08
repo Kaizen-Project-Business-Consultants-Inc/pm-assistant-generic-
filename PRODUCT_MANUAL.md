@@ -1423,7 +1423,7 @@ All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the
 - **Tenant-scoped conversations** — Chat conversations are stored in the tenant database (not the shared control plane), ensuring proper multi-tenant data isolation.
 - **Context engineering** — four pillars of AI context customization:
   - **Hierarchical config**: org, project, and user-level AI instructions (custom system prompts, response style, forbidden topics, domain glossary, project methodology, AI temperature). User overrides project overrides org, unless locked by an admin.
-  - **Versioned memory**: all AI memories have version numbers and hash-based optimistic locking. Edit, rollback, and audit trail via Memory Browser in Settings > AI Context.
+  - **Versioned memory**: all AI memories have version numbers and hash-based optimistic locking. Edit, rollback, and audit trail via Memory Browser in Settings > AI Context — Kovarti admin only since 2026-10-08 (memory is one table for every company).
   - **Dreaming** — *switched off 2026-09-30.* It analysed users' AI conversations across the platform (nightly) to propose memory changes. The platform doesn't read customers' conversations: `DreamingService.triggerRun` refuses, `/api/v1/dreaming/*` answers 410, the nightly schedule and the admin tab are gone. Any future version must work per company, with consent, inside the company's own database.
   - **Skill catalog**: progressive disclosure of agent capabilities. Front-matter summaries are always in context; detailed procedures loaded on-demand.
 - **PM Methodology Expertise** — Mjuzi's system prompt includes explicit knowledge of major PM methodologies. PMs can ask "how do I..." methodology questions and receive practical, experience-level guidance:

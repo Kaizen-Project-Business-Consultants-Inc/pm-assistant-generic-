@@ -41,7 +41,6 @@ const KEEP_FOREVER: Record<string, string> = {
 
 // --- allowances on 2026-10-08 (only go down) -------------------------------------------------
 const UNBOUNDED_ALLOWED: Record<string, number> = {
-  'database/AuditLedgerRepository.ts': 1, // verifyChain reads the whole ledger — efficiency report item 1
 };
 const UNINDEXED_ALLOWED: Record<string, number> = {
   'routes/admin/admin.ts': 3, // agent_memory by memory_type, audit_ledger by created_at
@@ -56,7 +55,6 @@ const NO_CLEANUP_ALLOWED: string[] = [
   'automation_executions', 'chat_messages', 'integration_sync_log',
 ];
 const HEAVY_ROUTE_ALLOWED: Record<string, number> = {
-  'routes/admin/auditTrail.ts': 2, // /verify (any reader — report item 1) and compliance export
   'routes/admin/knowledgeBase.ts': 1,
   'routes/admin/logs.ts': 1,
   'routes/admin/waitlist.ts': 1,

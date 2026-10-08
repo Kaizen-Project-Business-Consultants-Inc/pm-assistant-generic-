@@ -452,6 +452,16 @@ User decision on the audit: the owner may do everything a PMO can inside their c
 
 **Caches are per company.** The real reason that check still passed: the project cache (`CachedRepository`, 5 minutes) keyed entries by project id only, so a project cached while company A used it was returned to company B asking for the same id. Keys now carry the company (`utils/companyCacheKey.ts`), as do the EVM AI cache and the "already notified" markers of the deadline and schedule-review jobs (every company's sample project shares the same ids). Exploiting the old key needed another company's project UUID (not guessable); the sample's shared id was the realistic case. Test: `__tests__/database/cachedRepositoryTenant.test.ts`.
 
+## 14c-2. Shared AI tables and the audit check (Oct 2026)
+
+Found by the 2026-10-08 efficiency check and fixed the same day:
+
+- **Mjuzi memory** (`agent_memory`, `/api/v1/memory`, `/api/v1/agent/memory`) is one table for every company with no company column. The routes allowed admin **or PMO**; since the company owner works as PMO, any owner could list, change or delete other companies' memories. Now the Kovarti platform admin only (`platformAdminOnly`: role admin and no company — these two paths are exempt from the company check so that account can reach them); the Memory Browser tab is hidden for everyone else. A guard now also refuses new bare `role === 'admin'` checks in `routes/ai` and `routes/agent`. Moving memory into each company's own database is a separate, planned change.
+- **AI settings** (`ai_context_configs`, `/api/v1/context/config/:scope/:scopeId`, history) are shared too, keyed by scope id. A PMO/owner could read or change another company's organisation settings, or read any user's, by passing its id. Now the id must be the caller's own company (`request.tenantOrg`, or the account's company on a single-company install), a user of it, or a project they can open (other ids answer 404).
+- **Audit verify** (`GET /api/v1/audit/verify`): any signed-in user could check the whole chain, which loaded every entry into memory. Now one project's count needs access to that project; the whole chain needs PMO/owner, is read 1,000 entries at a time, and it and the compliance export are rate-limited (10 per 10 minutes).
+
+Tests: `routes/crossCompanyAiSettings.test.ts`, `routes/auditVerifyAccess.test.ts`.
+
 ## 14d. Clients (project groups) — who may do what (Oct 2026)
 
 Before October 2026 any member with write scope could create, rename or delete project groups and move ANY project in the company into one. Now (`routes/core/projectGroups.ts`): managing the client list (create, update, delete, reorder) and emailing a client report need the role `pmo` or `project_manager` (the company owner works as PMO); assigning/unassigning a project needs that project's Manager/Owner (`checkProjectRoleFor(…, 'manager')`). The client RAID view and client report (`ClientService`) include only projects the viewer can open (`readableProjectIds`), never archived ones or the sample, and change nothing. Project create/update and template apply check the client exists before writing (400 otherwise). Tests: `__tests__/services/ClientService.test.ts`, `emptyBodyErrors.test.ts`.

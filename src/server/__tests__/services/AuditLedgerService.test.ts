@@ -101,6 +101,30 @@ describe('AuditLedgerService', () => {
       expect(result.valid).toBe(false);
       expect(result.brokenAtId).toBe(1);
     });
+
+    it('walks a long chain a batch at a time and carries the link across batches (2026-10-08)', async () => {
+      const { createHash } = await import('crypto');
+      const sha = (s: string) => createHash('sha256').update(s, 'utf8').digest('hex');
+      const rows: any[] = [];
+      let prev = '0'.repeat(64);
+      for (let id = 1; id <= 1001; id++) {
+        const row: any = { id, entry_uuid: `e${id}`, prev_hash: prev, actor_id: 'u1', actor_type: 'user', action: 'update', entity_type: 'task', entity_id: `t${id}`, project_id: 'p1', payload: '{}', source: 'web' };
+        row.entry_hash = sha(prev + JSON.stringify({ entryUuid: row.entry_uuid, actorId: 'u1', actorType: 'user', action: 'update', entityType: 'task', entityId: row.entity_id, projectId: 'p1', payload: {}, source: 'web' }));
+        prev = row.entry_hash;
+        rows.push(row);
+      }
+      mockQuery.mockImplementation(async (_sql: string, params: any[]) => rows.filter(r => r.id > params[0]).slice(0, params[1]));
+      expect(await service.verifyChain()).toEqual({ valid: true, checkedCount: 1001 });
+      expect(mockQuery).toHaveBeenCalledTimes(2); // 1,000 then 1 — never the whole table at once
+
+      // break the first row of the SECOND batch: found, so the link really crossed the batch edge
+      rows[1000] = { ...rows[1000], prev_hash: 'x'.repeat(64) };
+      const broken = await service.verifyChain();
+      expect(broken.valid).toBe(false);
+      expect(broken.brokenAtId).toBe(1001);
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue([]);
+    });
   });
 
   describe('getEntries', () => {

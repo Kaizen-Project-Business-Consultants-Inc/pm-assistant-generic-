@@ -4,7 +4,8 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { z } from 'zod';
 import { contextConfigService, type ConfigScope, CONFIG_KEY_SCHEMAS } from '../../services/context/ContextConfigService';
-import { platformAdminOnly } from '../../utils/platformAdmin';
+import { platformAdminOnly, isPlatformAdmin } from '../../utils/platformAdmin';
+import { databaseService } from '../../database/connection';
 
 const scopeSchema = z.enum(['org', 'project', 'user']);
 
@@ -17,6 +18,7 @@ async function contextScopeGate(request: FastifyRequest, reply: FastifyReply) {
     if (!d.ok) return reply.status(d.status).send(d.body);
   } else if (scope === 'org') {
     if (!['admin', 'pmo'].includes(user.role)) return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can change organisation-wide AI settings.' });
+    if (!(await isOwnCompany(request, scopeId))) return reply.status(404).send(NOT_FOUND);
   } else if (scope === 'user') {
     if (scopeId !== user.userId) return reply.status(403).send({ error: 'Forbidden', message: 'You can only change your own AI settings.' });
   }
@@ -25,12 +27,43 @@ async function contextScopeGate(request: FastifyRequest, reply: FastifyReply) {
 /** Reading AI settings: a project's by its members; the organisation's by anyone in it; a user's by that user */
 async function contextScopeReadGate(request: FastifyRequest, reply: FastifyReply) {
   const { scope, scopeId } = request.params as { scope: string; scopeId: string };
+  const d = await canReadScope(request, scope, scopeId);
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
+
+/**
+ * Settings live in one shared table for every company, keyed by scope id — so a role check alone
+ * let a PMO/owner (the owner works as PMO) read or change ANOTHER company's organisation settings,
+ * or any user's, by passing its id (found 2026-10-08). Now the id must be the caller's own company,
+ * or a user of it; the Kovarti admin keeps platform-wide access.
+ */
+const NOT_FOUND = { error: 'Not found', message: 'The requested resource was not found' };
+/** The caller's company: the one this request runs in (multi-company), else their account's (single-company installs) */
+async function callerCompanyId(request: FastifyRequest): Promise<string | null> {
+  if (request.tenantOrg?.id) return request.tenantOrg.id;
+  const rows = await databaseService.queryControlPlane<{ organization_id: string | null }>('SELECT organization_id FROM users WHERE id = ? LIMIT 1', [request.user!.userId]);
+  return rows[0]?.organization_id ?? null;
+}
+async function isOwnCompany(request: FastifyRequest, orgId: string): Promise<boolean> {
+  if (isPlatformAdmin(request.user)) return true;
+  const mine = await callerCompanyId(request);
+  return !!mine && mine === orgId;
+}
+type ReadDecision = { ok: true } | { ok: false; status: number; body: Record<string, string> };
+async function canReadScope(request: FastifyRequest, scope: string, scopeId: string): Promise<ReadDecision> {
+  const user = request.user!;
   if (scope === 'project') {
     const d = await checkProjectRole(request, scopeId, 'viewer');
-    if (!d.ok) return reply.status(d.status).send(d.body);
-  } else if (scope === 'user' && scopeId !== request.user!.userId && !['admin', 'pmo'].includes(request.user!.role)) {
-    return reply.status(403).send({ error: 'Forbidden', message: 'You can only see your own AI settings.' });
+    return d.ok ? { ok: true } : { ok: false, status: d.status, body: d.body };
   }
+  if (scope === 'org') return (await isOwnCompany(request, scopeId)) ? { ok: true } : { ok: false, status: 404, body: NOT_FOUND };
+  if (scope === 'user') {
+    if (scopeId === user.userId || isPlatformAdmin(user)) return { ok: true };
+    if (user.role !== 'pmo') return { ok: false, status: 403, body: { error: 'Forbidden', message: 'You can only see your own AI settings.' } };
+    const rows = await databaseService.queryControlPlane<{ organization_id: string | null }>('SELECT organization_id FROM users WHERE id = ? LIMIT 1', [scopeId]);
+    return rows[0]?.organization_id && (await isOwnCompany(request, rows[0].organization_id)) ? { ok: true } : { ok: false, status: 404, body: NOT_FOUND };
+  }
+  return { ok: false, status: 400, body: { error: 'Bad request', message: 'Unknown settings scope.' } };
 }
 /** `?projectId=` on the merged-settings and preview reads */
 async function queryProjectMember(request: FastifyRequest, reply: FastifyReply) {
@@ -41,6 +74,12 @@ async function queryProjectMember(request: FastifyRequest, reply: FastifyReply) 
 }
 const historyAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
   if (!['admin', 'pmo'].includes(request.user!.role)) return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see settings history.' });
+  // …and only for a setting that belongs to their own company (or project / user in it)
+  const { configId } = request.params as { configId: string };
+  const rows = await databaseService.queryControlPlane<{ scope: string; scope_id: string }>('SELECT scope, scope_id FROM ai_context_configs WHERE id = ? LIMIT 1', [configId]);
+  if (!rows[0]) return reply.status(404).send(NOT_FOUND);
+  const d = await canReadScope(request, rows[0].scope, rows[0].scope_id);
+  if (!d.ok) return reply.status(d.status === 403 ? 404 : d.status).send(d.status === 403 ? NOT_FOUND : d.body);
 };
 
 export async function contextConfigRoutes(fastify: FastifyInstance) {

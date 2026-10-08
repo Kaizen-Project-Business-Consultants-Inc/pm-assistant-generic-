@@ -65,12 +65,12 @@ class AuditLedgerRepository {
     return rows.length > 0 ? rowToEntry(rows[0]) : null;
   }
 
-  async findAll(orderBy = 'ASC', conditions: string[] = [], params: any[] = []): Promise<any[]> {
-    const safeOrder = orderBy.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
-    let sql = 'SELECT * FROM audit_ledger';
-    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
-    sql += ` ORDER BY id ${safeOrder}`;
-    return databaseService.query(sql, params);
+  /** The next `limit` entries after `afterId`, oldest first — for walking the chain a batch at a time */
+  async findBatchAfter(afterId: number, limit: number): Promise<any[]> {
+    return databaseService.query(
+      'SELECT * FROM audit_ledger WHERE id > ? ORDER BY id ASC LIMIT ?',
+      [afterId, limit],
+    );
   }
 
   async count(whereClause: string, params: any[]): Promise<number> {

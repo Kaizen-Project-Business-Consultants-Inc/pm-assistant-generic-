@@ -1,24 +1,22 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { platformAdminOnly } from '../../utils/platformAdmin';
 import { agentMemoryService, type MemoryType } from '../../services/AgentMemoryService';
 import { clampPagination } from '../../schemas/paginationSchema';
 
 const VALID_MEMORY_TYPES: MemoryType[] = ['session', 'project', 'role', 'reflection'];
 
-/** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
-const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
-  if (!['admin', 'pmo'].includes(request.user!.role)) {
-    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see this.' });
-  }
-};
+// Mjuzi's memory sits in ONE shared table for every company (no company column): Kovarti platform
+// admin only. It allowed admin OR PMO, and since the owner works as PMO any owner could list, change
+// or delete other companies' memories (fixed 2026-10-08). Reachable with no company: tenantResolver.
 
 export async function agentMemoryRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /api/v1/agent/memory — recall memories
   fastify.get('/', {
-    preHandler: [requireScope('read'), adminOrPmo],
+    preHandler: [requireScope('read'), platformAdminOnly],
     schema: { description: 'Recall agent memories', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -53,7 +51,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/agent/memory — store a memory
   fastify.post('/', {
-    preHandler: [requireScope('write'), adminOrPmo],
+    preHandler: [requireScope('write'), platformAdminOnly],
     schema: { description: 'Store an agent memory', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -93,7 +91,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
   // DELETE /api/v1/agent/memory — forget memories
   fastify.delete('/', {
-    preHandler: [requireScope('write'), adminOrPmo],
+    preHandler: [requireScope('write'), platformAdminOnly],
     schema: { description: 'Forget agent memories', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -128,7 +126,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/agent/memory/reflections — get reflections for an agent
   fastify.get('/reflections', {
-    preHandler: [requireScope('read'), adminOrPmo],
+    preHandler: [requireScope('read'), platformAdminOnly],
     schema: { description: 'Get agent reflections', tags: ['agent-memory'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
