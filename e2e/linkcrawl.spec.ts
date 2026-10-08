@@ -20,7 +20,6 @@ type Who = 'pm' | 'team';
 interface Allowed { key: string; who: Who[]; reason: string; onlyIf?: string }
 
 const ALLOW_LIST: Allowed[] = [
-  { key: 'http: PUT /api/v1/users/me/view-preferences 403', who: ['team'], reason: 'KNOWN — efficiency report: a team member may not save view preferences, but every page tries' },
   { key: 'http: GET /api/v1/workflows/executions 400', who: ['team'], reason: 'KNOWN — efficiency report: Workflows page asks for executions a team member cannot list' },
 ];
 

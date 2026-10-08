@@ -48,6 +48,15 @@ const userPrefsSchema = z.object({
   locale: z.string().max(10).optional(),
 });
 
+/**
+ * Your own settings (notifications, time zone and language, accessibility, dashboard, screen
+ * layout): every signed-in person saves their OWN, whatever their role — a team member, viewer or
+ * executive can't change project data but still chooses their digest or reduced motion (2026-10-08:
+ * these needed 'write' and gave such roles a 403). The row is always the caller's: no id in the
+ * path, and the body's fields are validated, so an id in it is ignored. Same as PUT /me/profile.
+ */
+const ownSettings = [requireScope('read')];
+
 export async function userRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -146,7 +155,7 @@ export async function userRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/me/notification-preferences', {
-    preHandler: [requireScope('write')],
+    preHandler: ownSettings,
     schema: { description: 'Update notification preferences', tags: ['users'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -187,7 +196,7 @@ export async function userRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/me/preferences', {
-    preHandler: [requireScope('write')],
+    preHandler: ownSettings,
     schema: { description: 'Update user preferences (timezone, locale)', tags: ['users'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -231,7 +240,7 @@ export async function userRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/me/accessibility', {
-    preHandler: [requireScope('write')],
+    preHandler: ownSettings,
     schema: { description: 'Update accessibility preferences', tags: ['users'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -269,7 +278,7 @@ export async function userRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/me/dashboard-preferences', {
-    preHandler: [requireScope('write')],
+    preHandler: ownSettings,
     schema: { description: 'Update dashboard widget preferences', tags: ['users'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -316,7 +325,7 @@ export async function userRoutes(fastify: FastifyInstance) {
   });
 
   fastify.put('/me/view-preferences', {
-    preHandler: [requireScope('write')],
+    preHandler: ownSettings,
     schema: { description: 'Update view preferences', tags: ['users'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

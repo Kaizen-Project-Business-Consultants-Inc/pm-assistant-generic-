@@ -110,6 +110,10 @@ fastify.post('/projects', { preHandler: [authMiddleware, requireScope('write')] 
 
 `POST /stripe/create-checkout-session`, `POST /stripe/create-topup-session`, and `POST /stripe/billing-portal` are gated with `requireScope('read')` rather than `requireScope('write')`. This is intentional: all authenticated users, including those whose API keys carry only the `read` scope (e.g., the default `team_member` role), need to be able to manage their own billing, subscription, and token top-up purchases without requiring elevated write access. These routes do not modify project data, so the lower scope is appropriate.
 
+### Your Own Settings — Intentional Read Scope (October 2026)
+
+`PUT /users/me/profile`, `/me/view-preferences`, `/me/notification-preferences`, `/me/preferences` (time zone, language), `/me/accessibility` and `/me/dashboard-preferences` need only `requireScope('read')`: every signed-in person — team member, viewer and executive included — saves their **own** settings. Each handler writes only `request.user.userId`'s row; there is no user id in the path, and the request body is validated field by field, so an id in it is ignored. Until 2026-10-08 five of them needed `write`, so read-only roles got a 403 (on every page load for screen settings). Guard: `__tests__/routes/ownSettingsSave.test.ts`.
+
 ---
 
 ## 4b. Project-Level Access Control
