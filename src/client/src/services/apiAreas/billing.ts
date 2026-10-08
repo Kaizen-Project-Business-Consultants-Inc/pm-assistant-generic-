@@ -4,6 +4,13 @@ import { ApiBase } from './http';
  * Stripe checkout, subscription, seats, top-ups and AI budget.
  * Mixed into the one `apiService` (see ../api.ts); `this.api` is the shared axios instance.
  */
+export interface TopUpBalance {
+  /** Purchased AI tokens left (not expired), summed over the signed-in user's packs */
+  remainingTopUpTokens: number;
+  topUpConfig: { tokensPerPack: number; pricePerPack: number };
+  history: Array<{ id: string; tokensPurchased: number; tokensRemaining: number; amountCents: number; purchasedAt: string; expiresAt: string | null }>;
+}
+
 export class BillingApi extends ApiBase {
   // -------------------------------------------------------------------------
   // Stripe / Subscription endpoints
@@ -34,7 +41,8 @@ export class BillingApi extends ApiBase {
     return response.data;
   }
 
-  async getTopUpBalance() {
+  /** GET /stripe/topup-balance (routes/integrations/stripe.ts; keys camelCased by the server) — the fields the app uses */
+  async getTopUpBalance(): Promise<TopUpBalance> {
     const response = await this.api.get('/stripe/topup-balance');
     return response.data;
   }

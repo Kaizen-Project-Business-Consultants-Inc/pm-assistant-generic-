@@ -9,9 +9,19 @@ import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
+/**
+ * Exactly what GET /stripe/topup-balance sends (routes/integrations/stripe.ts, keys camelCased by
+ * the server): the balance is `remainingTopUpTokens`. The page read `remainingTokens`, which the
+ * server never sends, so every owner saw 0 bonus tokens.
+ */
+const TOPUP_REPLY = vi.hoisted((): TopUpBalance => ({
+  remainingTopUpTokens: 1_500_000,
+  topUpConfig: { tokensPerPack: 500_000, pricePerPack: 1000 },
+  history: [{ id: 't1', tokensPurchased: 500_000, tokensRemaining: 500_000, amountCents: 1000, purchasedAt: '2026-10-01T00:00:00.000Z', expiresAt: null }],
+}));
 const api = vi.hoisted(() => ({
   getSubscriptionStatus: vi.fn(),
-  getTopUpBalance: vi.fn().mockResolvedValue({ remainingTokens: 0 }),
+  getTopUpBalance: vi.fn().mockResolvedValue(TOPUP_REPLY),
   getAiBudget: vi.fn().mockResolvedValue({ totalTokens: 10, budget: 100, percentUsed: 10, remaining: 90, requestCount: 1 }),
   getSeatInfo: vi.fn().mockResolvedValue({ billingModel: 'per_seat', usedSeats: 2, paidSeats: 3, availableSeats: 1, seatPriceCents: 1900 }),
   createPortalSession: vi.fn(),
@@ -21,6 +31,7 @@ vi.mock('../../services/api', () => ({ apiService: api }));
 import { AccountBillingPage } from '../../pages/AccountBillingPage';
 import { useAuthStore, type User } from '../../stores/authStore';
 import { canManageBilling } from '../../hooks/useCanManageBilling';
+import type { TopUpBalance } from '../../services/apiAreas/billing';
 
 afterEach(() => { cleanup(); api.getSubscriptionStatus.mockReset(); api.getSeatInfo.mockClear(); api.getTopUpBalance.mockClear(); useAuthStore.setState({ user: null, isAuthenticated: false }); });
 
@@ -64,6 +75,13 @@ describe('Account page billing buttons', () => {
     await renderPage('trial', 'trialing');
     expect(screen.queryByText(/View Plans/)).toBeNull();
     expect(screen.getByText(/owner manages the plan/)).toBeTruthy();
+  });
+
+  it('shows the bonus tokens the server reports (remainingTopUpTokens), not 0', async () => {
+    signIn('pmo', true);
+    await renderPage('consultant_pro');
+    expect(await screen.findByText('1.5M')).toBeTruthy();
+    expect(screen.getByText('Bonus tokens remaining')).toBeTruthy();
   });
 
   it("a refused Manage Billing shows the server's message instead of doing nothing", async () => {

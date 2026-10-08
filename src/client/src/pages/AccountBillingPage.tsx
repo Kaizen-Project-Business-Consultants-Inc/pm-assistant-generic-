@@ -369,7 +369,7 @@ export const AccountBillingPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {topUpData ? formatTokens(topUpData.remainingTokens ?? 0) : '...'}
+                  {topUpData ? formatTokens(topUpData.remainingTopUpTokens ?? 0) : '...'}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Bonus tokens remaining</p>
               </div>
