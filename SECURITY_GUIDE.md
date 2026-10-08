@@ -391,7 +391,7 @@ Rate limiting operates at two levels:
 
 The audit ledger (`AuditLedgerService.ts`) provides an immutable, append-only record of all significant actions:
 
-- **SHA-256 hash chain** -- Each entry stores `prevHash` and its own `entryHash`, creating a tamper-evident chain.
+- **SHA-256 hash chain** -- Each entry stores `prevHash` and its own `entryHash`, creating a tamper-evident chain. Since 2026-10-08 entries join the chain one at a time per company (`AuditLedgerRepository.appendLinked`: an in-process queue per company plus a MariaDB named lock `audit_chain:<db>` shared with the scheduled jobs, held from reading the last hash to the insert). Before that, two changes saved at the same moment both linked to the same entry and the chain forked (about 68,000 of 154,000 entries on staging), so a whole-chain check failed at the first fork. Old forks are left as they are: the ledger is append-only and rewriting it would defeat its purpose.
 - **Database triggers** prevent `UPDATE` and `DELETE` on the audit table.
 - **Actor tracking** -- Every entry records `actorId`, `actorType` (`user`, `api_key`, `system`), and `source` (`web`, `mcp`, `api`, `system`).
 - **Queryable** -- Entries can be filtered by project, entity, actor, action, and date range.

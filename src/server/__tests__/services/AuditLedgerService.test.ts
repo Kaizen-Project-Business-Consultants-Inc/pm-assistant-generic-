@@ -1,7 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// A pretend database: one ledger, and a named lock that really makes the second writer wait
+const fakeDb = vi.hoisted(() => ({ ledger: [] as any[], lockHeld: false, waiters: [] as Array<() => void>, failInsert: false, lockFails: false, releaseFails: false }));
 vi.mock('../../database/connection', () => ({
-  databaseService: { query: vi.fn().mockResolvedValue([]) },
+  databaseService: {
+    query: vi.fn().mockResolvedValue([]),
+    getConnection: vi.fn(async () => ({ release: vi.fn(), destroy: vi.fn() })),
+    queryOn: vi.fn(async (_c: unknown, sql: string, params: any[] = []) => {
+      if (sql.includes('GET_LOCK')) {
+        if (fakeDb.lockFails) return [{ got: 0, db: 'pmassist_t_test' }];
+        if (fakeDb.lockHeld) await new Promise<void>(res => { fakeDb.waiters.push(res); });
+        fakeDb.lockHeld = true;
+        return [{ got: 1, db: 'pmassist_t_test' }];
+      }
+      if (sql.includes('RELEASE_LOCK')) { if (fakeDb.releaseFails) throw new Error('connection lost'); fakeDb.lockHeld = false; fakeDb.waiters.shift()?.(); return []; }
+      if (sql.startsWith('SELECT entry_hash')) { await new Promise<void>(r => { setTimeout(r, 5); }); const l = fakeDb.ledger.at(-1); return l ? [{ entry_hash: l.entry_hash }] : []; }
+      if (sql.includes('INSERT INTO audit_ledger')) {
+        if (fakeDb.failInsert) throw new Error('DB down');
+        fakeDb.ledger.push({ entry_uuid: params[0], prev_hash: params[1], entry_hash: params[2] });
+        return [];
+      }
+      return [];
+    }),
+  },
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'test-audit-uuid' }));
@@ -28,52 +49,62 @@ describe('AuditLedgerService', () => {
   beforeEach(() => {
     service = new AuditLedgerService();
     vi.clearAllMocks();
+    Object.assign(fakeDb, { ledger: [], lockHeld: false, waiters: [], failInsert: false, lockFails: false, releaseFails: false });
   });
 
   describe('append', () => {
-    it('computes hash chain from genesis when ledger is empty', async () => {
-      mockQuery
-        .mockResolvedValueOnce([]) // no previous entries
-        .mockResolvedValueOnce([]) // INSERT
-        .mockResolvedValueOnce([{  // SELECT back
-          id: 1, entry_uuid: 'test-audit-uuid', prev_hash: '0'.repeat(64),
-          entry_hash: 'somehash', actor_id: 'u1', actor_type: 'user',
-          action: 'task.create', entity_type: 'task', entity_id: 't1',
-          project_id: 'p1', payload: '{"name":"Test Task"}', source: 'web',
-          ip_address: null, session_id: null, created_at: '2026-01-01',
-        }]);
+    const readBack = (row: any) => mockQuery.mockResolvedValueOnce([{
+      id: 1, entry_uuid: 'test-audit-uuid', prev_hash: row.prev_hash, entry_hash: row.entry_hash, actor_id: 'u1', actor_type: 'user',
+      action: 'task.create', entity_type: 'task', entity_id: 't1', project_id: 'p1', payload: '{"name":"Test Task"}', source: 'web',
+      ip_address: null, session_id: null, created_at: '2026-01-01',
+    }]);
 
+    it('the first entry links to the genesis hash', async () => {
+      readBack({ prev_hash: '0'.repeat(64), entry_hash: 'h' });
       const entry = await service.append(sampleInput);
+      expect(fakeDb.ledger[0].prev_hash).toBe('0'.repeat(64));
       expect(entry.entryUuid).toBe('test-audit-uuid');
-      expect(entry.prevHash).toBe('0'.repeat(64));
       expect(entry.actorId).toBe('u1');
     });
 
-    it('chains hash from previous entry', async () => {
+    it('chains from the previous entry', async () => {
       const prevHash = 'abc123'.repeat(10) + 'abcd';
-      mockQuery
-        .mockResolvedValueOnce([{ entry_hash: prevHash }]) // previous entry
-        .mockResolvedValueOnce([]) // INSERT
-        .mockResolvedValueOnce([{
-          id: 2, entry_uuid: 'test-audit-uuid', prev_hash: prevHash,
-          entry_hash: 'newhash', actor_id: 'u1', actor_type: 'user',
-          action: 'task.create', entity_type: 'task', entity_id: 't1',
-          project_id: 'p1', payload: '{"name":"Test Task"}', source: 'web',
-          ip_address: null, session_id: null, created_at: '2026-01-01',
-        }]);
-
+      fakeDb.ledger.push({ entry_uuid: 'e0', prev_hash: '0'.repeat(64), entry_hash: prevHash });
+      readBack({ prev_hash: prevHash, entry_hash: 'h' });
       const entry = await service.append(sampleInput);
+      expect(fakeDb.ledger[1].prev_hash).toBe(prevHash);
       expect(entry.prevHash).toBe(prevHash);
     });
 
-    it('gracefully degrades when INSERT fails', async () => {
-      mockQuery
-        .mockResolvedValueOnce([]) // no previous
-        .mockRejectedValueOnce(new Error('DB down')); // INSERT fails
+    it('two changes saved at the same moment still form ONE chain (2026-10-08: it forked)', async () => {
+      await Promise.all([1, 2, 3, 4, 5].map(() => service.append(sampleInput)));
+      expect(fakeDb.ledger).toHaveLength(5);
+      for (let i = 1; i < 5; i++) expect(fakeDb.ledger[i].prev_hash).toBe(fakeDb.ledger[i - 1].entry_hash);
+      expect(fakeDb.lockHeld).toBe(false); // released every time
+    });
 
+    it('gracefully degrades when the INSERT fails, and still releases the lock', async () => {
+      fakeDb.failInsert = true;
       const entry = await service.append(sampleInput);
       expect(entry.entryUuid).toBe('test-audit-uuid');
       expect(entry.action).toBe('task.create');
+      expect(fakeDb.lockHeld).toBe(false);
+    });
+
+    it('a connection whose lock could not be released is closed, never reused', async () => {
+      const { databaseService } = await import('../../database/connection');
+      fakeDb.releaseFails = true;
+      await service.append(sampleInput);
+      const conn = await (databaseService.getConnection as any).mock.results.at(-1).value;
+      expect(conn.destroy).toHaveBeenCalled();
+      expect(conn.release).not.toHaveBeenCalled();
+    });
+
+    it('does not write an unlinked entry when the chain stays busy', async () => {
+      fakeDb.lockFails = true;
+      const entry = await service.append(sampleInput);
+      expect(entry.action).toBe('task.create');
+      expect(fakeDb.ledger).toHaveLength(0);
     });
   });
 

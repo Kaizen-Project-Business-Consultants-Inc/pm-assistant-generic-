@@ -385,7 +385,8 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 - Every create, update, delete, and auth event is recorded with timestamp, user, and action.
 
 ### Hash-Chain Integrity
-- Each audit entry includes a SHA-256 hash linking it to the previous entry.
+- Each audit entry includes a SHA-256 hash linking it to the previous entry. Entries are added one at a time per company (since 2026-10-08).
+- **History written before 8 October 2026 may show "broken" at an early entry.** That is not tampering: two changes saved at the same moment used to link to the same earlier entry. To check only the history since the fix, verify with `?since=2026-10-09`.
 - Run the integrity check via **Settings > Audit Trail > Verify Integrity** (`GET /api/v1/audit/verify`). Since 2026-10-08 the whole-company check is for the company's PMO/owner only, reads the history 1,000 entries at a time and may be run 10 times per 10 minutes; a single project's count needs access to that project.
 
 ### Search and Filter

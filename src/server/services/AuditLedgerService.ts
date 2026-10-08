@@ -41,30 +41,30 @@ const VERIFY_BATCH = 1000;
 export class AuditLedgerService {
   async append(input: AppendInput): Promise<AuditEntry> {
     const entryUuid = uuidv4();
-
-    let prevHash = GENESIS_HASH;
-    try {
-      const lastHash = await auditLedgerRepository.getLastHash();
-      if (lastHash) prevHash = lastHash;
-    } catch { /* Table may not exist yet */ }
-
     const envelope = JSON.stringify({
       entryUuid,
       actorId: input.actorId, actorType: input.actorType, action: input.action,
       entityType: input.entityType, entityId: input.entityId,
       projectId: input.projectId ?? null, payload: input.payload, source: input.source,
     });
-    const entryHash = sha256(prevHash + envelope);
+    // the link is made under the company's chain lock (see appendLinked): read last, write next
+    let prevHash = GENESIS_HASH;
+    let entryHash = sha256(prevHash + envelope);
 
     try {
-      await auditLedgerRepository.insert(
-        entryUuid, prevHash, entryHash, input.actorId, input.actorType,
-        input.action, input.entityType, input.entityId, input.projectId ?? null,
-        JSON.stringify(input.payload), input.source,
-        input.ipAddress ?? null, input.sessionId ?? null,
-      );
+      await auditLedgerRepository.appendLinked((lastHash) => {
+        prevHash = lastHash ?? GENESIS_HASH;
+        entryHash = sha256(prevHash + envelope);
+        return {
+          entryUuid, prevHash, entryHash, actorId: input.actorId, actorType: input.actorType,
+          action: input.action, entityType: input.entityType, entityId: input.entityId,
+          projectId: input.projectId ?? null, payload: JSON.stringify(input.payload), source: input.source,
+          ipAddress: input.ipAddress ?? null, sessionId: input.sessionId ?? null,
+        };
+      });
     } catch (err) {
-      logger.warn('[AuditLedger] Could not append entry:', (err as Error).message);
+      // an entry that couldn't be written is a gap in the audit trail: say so loudly
+      logger.error('[AuditLedger] Could not append entry — it is missing from the audit trail:', { action: input.action, entityId: input.entityId, error: (err as Error).message });
       return {
         entryUuid, prevHash, entryHash, ...input,
         payload: input.payload, projectId: input.projectId ?? null,
