@@ -246,7 +246,8 @@ export class ProjectRepository extends BaseRepository<Project> {
 
   async findByName(name: string): Promise<Project | null> {
     const rows = await this.queryRaw(
-      'SELECT * FROM projects WHERE LOWER(name) = LOWER(?) LIMIT 1',
+      // the column's collation is case-insensitive already; LOWER() stopped the index being used
+      'SELECT * FROM projects WHERE name = ? LIMIT 1',
       [name],
     );
     return rows.length > 0 ? rowToProject(rows[0]) : null;

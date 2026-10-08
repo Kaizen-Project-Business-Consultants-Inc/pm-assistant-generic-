@@ -386,7 +386,7 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 
 ### Hash-Chain Integrity
 - Each audit entry includes a SHA-256 hash linking it to the previous entry.
-- Run the integrity check via **Settings > Audit Trail > Verify Integrity** or the CLI: `npm run audit:verify`.
+- Run the integrity check via **Settings > Audit Trail > Verify Integrity** (`GET /api/v1/audit/verify`). Since 2026-10-08 the whole-company check is for the company's PMO/owner only, reads the history 1,000 entries at a time and may be run 10 times per 10 minutes; a single project's count needs access to that project.
 
 ### Search and Filter
 - Filter by date range, user, action type, or resource.
@@ -400,7 +400,16 @@ The following custom indexes exist beyond the default primary/foreign key indexe
 
 | Index | Table | Column(s) | Purpose |
 |-------|-------|-----------|---------|
-| `idx_tasks_end_date` | `tasks` | `end_date` | Speeds up the overdue task scan (`pm-cron@overdue-scan`, every 15 minutes — only does work when `AGENT_ENABLED=true`, which is off on both servers) |
+| `idx_tasks_end_date` | `tasks` | `end_date` | Speeds up the overdue task scan (`pm-cron@overdue-scan`, every 15 minutes) |
+| `idx_wfe_started`, `idx_wfe_workflow_started` | `workflow_executions` | `started_at`; `workflow_id, started_at` | Workflow run history list (took 7 s on staging without it) — T084 |
+| `idx_audit_created`, `idx_audit_project_entity` | `audit_ledger` (company + shared) | `created_at`; `project_id, entity_type, created_at` | Audit lists and summary by date / by type — T084, 130 |
+| `idx_tasks_created_at`, `idx_tasks_status_updated`, `idx_tasks_milestone_end` | `tasks` | as named | Dashboard issues trend, resolved trend, milestones — T084 |
+| `idx_projects_name` | `projects` | `name` | Project by name (Slack) — T084 |
+| `idx_time_date` | `time_entries` | `date` | Timesheet compliance and coaching jobs — T084 |
+| `idx_raid_activity_created` | `raid_activity_log` | `created_at` | Morning briefing — T084 |
+| `idx_memory_type_created` | `agent_memory` (shared) | `memory_type, created_at` | Admin agent statistics — 130 |
+
+The efficiency guard (`src/server/__tests__/utils/efficiencyGuard.test.ts`) fails a build that filters a growing table on a column with no index.
 
 ---
 

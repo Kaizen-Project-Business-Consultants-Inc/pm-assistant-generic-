@@ -42,14 +42,7 @@ const KEEP_FOREVER: Record<string, string> = {
 // --- allowances on 2026-10-08 (only go down) -------------------------------------------------
 const UNBOUNDED_ALLOWED: Record<string, number> = {
 };
-const UNINDEXED_ALLOWED: Record<string, number> = {
-  'routes/admin/admin.ts': 3, // agent_memory by memory_type, audit_ledger by created_at
-  'routes/admin/operations.ts': 1,
-  'routes/reporting/dashboardData.ts': 1, // tasks by created_at (issues trend)
-  'services/DailyBriefingService.ts': 1, // raid_activity_log by created_at
-  'services/scheduling/timesheetComplianceJob.ts': 1, // time_entries by date
-  'services/scheduling/utilizationCoachingJob.ts': 1,
-};
+const UNINDEXED_ALLOWED: Record<string, number> = {}; // all 8 fixed by T084 + 130 (2026-10-08)
 const NO_CLEANUP_ALLOWED: string[] = [
   'workflow_executions', 'workflow_node_executions', 'agent_activity_log', 'ai_usage_log',
   'automation_executions', 'chat_messages', 'integration_sync_log',
