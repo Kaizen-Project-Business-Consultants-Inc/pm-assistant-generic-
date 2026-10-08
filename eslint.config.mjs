@@ -58,6 +58,17 @@ export default tseslint.config(
       'security/detect-pseudoRandomBytes': 'error',
       // --- efficiency ---
       'no-await-in-loop': 'error',                           // one database call per item → ask once for all
+      'no-restricted-syntax': ['error',
+        {
+          // 2,000 tasks × search 2,000 people = 4 million steps; a Map built once = 4,000
+          selector: ":matches(ForStatement, ForOfStatement, ForInStatement, WhileStatement, DoWhileStatement, CallExpression[callee.property.name=/^(map|forEach|flatMap|reduce|filter|some|every|find|findIndex)$/] > :function) CallExpression[callee.property.name=/^(find|findIndex|findLast|findLastIndex|filter)$/]",
+          message: 'Searching a list inside a loop (slow on big lists). Build a Map/Set once before the loop. If both lists are always small, disable with a reason: // eslint-disable-next-line no-restricted-syntax -- small: <why>',
+        },
+        {
+          selector: ":matches(ForStatement, ForOfStatement, ForInStatement, WhileStatement, DoWhileStatement, CallExpression[callee.property.name=/^(map|forEach|flatMap|reduce)$/] > :function) :matches(CallExpression[callee.property.name='sort'], NewExpression[callee.name='RegExp'])",
+          message: 'Sorting or building a RegExp inside a loop — do it once before the loop.',
+        },
+      ],
       // --- complexity / duplication ---
       'sonarjs/cognitive-complexity': ['error', 25],
       'sonarjs/no-identical-functions': 'error',
@@ -84,6 +95,8 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
     rules: {
       'no-await-in-loop': 'off',
+      'no-restricted-syntax': 'off',
+      'security/detect-unsafe-regex': 'off', // tests read our own code, never user input
       'sonarjs/cognitive-complexity': 'off',
       'sonarjs/no-identical-functions': 'off',
       'max-depth': 'off',

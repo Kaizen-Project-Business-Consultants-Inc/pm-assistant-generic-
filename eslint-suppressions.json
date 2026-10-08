@@ -49,26 +49,6 @@
       "count": 3
     }
   },
-  "src/client/src/__tests__/utils/adminFieldNames.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
-  "src/client/src/__tests__/utils/i18nKeys.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 2
-    }
-  },
-  "src/client/src/__tests__/utils/snakeCaseReadsGuard.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
-  "src/client/src/__tests__/utils/typeScaleGuard.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
   "src/client/src/components/CookieConsentBanner.tsx": {
     "prefer-rest-params": {
       "count": 1
@@ -161,6 +141,9 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
@@ -198,6 +181,9 @@
       "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -275,6 +261,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/components/dashboard/widgets/TeamWorkloadWidget.tsx": {
@@ -342,6 +331,11 @@
       "count": 4
     }
   },
+  "src/client/src/components/intake/IntakeFormDesigner.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/client/src/components/intake/IntakeReviewPanel.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 1
@@ -352,6 +346,9 @@
       "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     },
     "react-hooks/exhaustive-deps": {
@@ -411,6 +408,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/client/src/components/layout/KeyboardShortcuts.tsx": {
@@ -426,6 +426,9 @@
   },
   "src/client/src/components/layout/Sidebar.tsx": {
     "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -635,11 +638,17 @@
     },
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/client/src/components/raids/review/RaidFixPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
+    },
+    "no-restricted-syntax": {
+      "count": 1
     },
     "react-hooks/exhaustive-deps": {
       "count": 1
@@ -664,6 +673,9 @@
   "src/client/src/components/reports/ReportDesigner.tsx": {
     "@typescript-eslint/no-unused-expressions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 4
     }
   },
   "src/client/src/components/reports/ReportScheduleModal.tsx": {
@@ -745,11 +757,19 @@
     },
     "jsx-a11y/label-has-associated-control": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/components/resources/TeamPlanner.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
+    }
+  },
+  "src/client/src/components/resources/UnfilledDemand.tsx": {
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/components/resources/UtilizationTrendChart.tsx": {
@@ -820,6 +840,16 @@
       "count": 2
     }
   },
+  "src/client/src/components/schedule/ColumnMapper.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    }
+  },
+  "src/client/src/components/schedule/ColumnPickerDropdown.tsx": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/client/src/components/schedule/GanttChart.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
@@ -843,6 +873,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/client/src/components/schedule/KanbanBoard.tsx": {
@@ -850,6 +883,9 @@
       "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    },
+    "no-restricted-syntax": {
       "count": 2
     }
   },
@@ -876,6 +912,9 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 2
+    },
     "react-hooks/exhaustive-deps": {
       "count": 3
     },
@@ -894,6 +933,9 @@
     },
     "jsx-a11y/no-autofocus": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 5
     },
     "sonarjs/no-all-duplicated-branches": {
       "count": 1
@@ -932,6 +974,9 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
     },
+    "no-restricted-syntax": {
+      "count": 2
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -945,6 +990,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 13
+    },
+    "no-restricted-syntax": {
+      "count": 4
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -965,6 +1013,9 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 6
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -975,6 +1026,9 @@
     }
   },
   "src/client/src/components/schedule/gantt/hooks/useBarDrag.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "react-hooks/exhaustive-deps": {
       "count": 3
     },
@@ -1007,6 +1061,9 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 2
     },
+    "no-restricted-syntax": {
+      "count": 2
+    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -1014,7 +1071,15 @@
       "count": 1
     }
   },
+  "src/client/src/components/schedule/gantt/hooks/useTaskFiltering.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/client/src/components/schedule/gantt/timelineStrip.ts": {
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "no-unmodified-loop-condition": {
       "count": 2
     }
@@ -1029,6 +1094,9 @@
       "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     },
     "react-hooks/exhaustive-deps": {
@@ -1071,6 +1139,9 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 2
     },
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -1102,6 +1173,9 @@
     },
     "jsx-a11y/no-redundant-roles": {
       "count": 3
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/components/sprints/SprintBoard.tsx": {
@@ -1116,6 +1190,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/client/src/components/sprints/SprintList.tsx": {
@@ -1180,6 +1257,9 @@
     }
   },
   "src/client/src/components/timetracking/ProjectTimesheetGrid.tsx": {
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
@@ -1193,12 +1273,18 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
   "src/client/src/components/timetracking/TimesheetGrid.tsx": {
     "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -1384,6 +1470,9 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/pages/OnboardingPage.tsx": {
@@ -1394,6 +1483,9 @@
       "count": 3
     },
     "no-await-in-loop": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -1460,6 +1552,9 @@
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -1572,11 +1667,17 @@
     },
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/client/src/pages/ProjectsPM.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "react-hooks/exhaustive-deps": {
       "count": 2
@@ -1626,6 +1727,9 @@
   "src/client/src/pages/ScenarioModelingPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/pages/TimesheetPage.tsx": {
@@ -1752,6 +1856,9 @@
   "src/client/src/pages/settings/TeamTab.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 5
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/client/src/pages/settings/WebhooksTab.tsx": {
@@ -1765,6 +1872,11 @@
   "src/client/src/services/api.ts": {
     "@typescript-eslint/no-unsafe-declaration-merging": {
       "count": 2
+    }
+  },
+  "src/client/src/services/apiAreas/reports.ts": {
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/client/src/services/apiAreas/schedules.ts": {
@@ -1793,11 +1905,22 @@
     }
   },
   "src/client/src/utils/briefingByProject.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
+  "src/client/src/utils/plannerLayout.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/client/src/utils/resourceConflicts.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -1805,26 +1928,6 @@
   "src/server/__tests__/database/RiskRepository.test.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    }
-  },
-  "src/server/__tests__/database/meetingActionItemsReadOnly.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
-  "src/server/__tests__/database/planFeatures.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 3
-    }
-  },
-  "src/server/__tests__/database/retiredSharedTables.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
-  "src/server/__tests__/database/tenantColumnsGuard.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 2
     }
   },
   "src/server/__tests__/mcp/instrumentation.test.ts": {
@@ -1840,16 +1943,6 @@
       "count": 1
     }
   },
-  "src/server/__tests__/middleware/validationErrorGuard.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
-  "src/server/__tests__/routes/listLimitParams.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
   "src/server/__tests__/routes/mcpAnalytics.test.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -1857,11 +1950,6 @@
   },
   "src/server/__tests__/routes/peopleRights.test.ts": {
     "no-control-regex": {
-      "count": 1
-    }
-  },
-  "src/server/__tests__/scripts/runCronJobRecord.test.ts": {
-    "security/detect-unsafe-regex": {
       "count": 1
     }
   },
@@ -2051,11 +2139,6 @@
       "count": 2
     }
   },
-  "src/server/__tests__/services/sampleNoWeekends.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
   "src/server/__tests__/services/scanOrchestrator.test.ts": {
     "no-promise-executor-return": {
       "count": 1
@@ -2071,24 +2154,9 @@
       "count": 1
     }
   },
-  "src/server/__tests__/utils/assigneeLogins.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 2
-    }
-  },
   "src/server/__tests__/utils/mapWithLimit.test.ts": {
     "no-promise-executor-return": {
       "count": 2
-    }
-  },
-  "src/server/__tests__/utils/placeholderEmail.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
-    }
-  },
-  "src/server/__tests__/utils/rulesParity.test.ts": {
-    "security/detect-unsafe-regex": {
-      "count": 1
     }
   },
   "src/server/database/BaseRepository.ts": {
@@ -2149,6 +2217,11 @@
       "count": 1
     }
   },
+  "src/server/database/TaskChecklistRepository.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/server/database/TaskRepository.ts": {
     "no-await-in-loop": {
       "count": 2
@@ -2173,6 +2246,9 @@
     "no-await-in-loop": {
       "count": 13
     },
+    "no-restricted-syntax": {
+      "count": 7
+    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
@@ -2185,6 +2261,9 @@
   "src/server/database/tenantMigrationRunner.ts": {
     "no-await-in-loop": {
       "count": 9
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2315,6 +2394,11 @@
       "count": 1
     }
   },
+  "src/server/routes/collaboration/templates.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/server/routes/core/auth.ts": {
     "no-await-in-loop": {
       "count": 1
@@ -2327,6 +2411,9 @@
     "no-await-in-loop": {
       "count": 10
     },
+    "no-restricted-syntax": {
+      "count": 8
+    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
@@ -2337,6 +2424,9 @@
     },
     "no-await-in-loop": {
       "count": 4
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2388,6 +2478,9 @@
   "src/server/routes/reporting/portfolio.ts": {
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
     }
   },
   "src/server/routes/reporting/reportSchedules.ts": {
@@ -2416,6 +2509,9 @@
     },
     "no-await-in-loop": {
       "count": 4
+    },
+    "no-restricted-syntax": {
+      "count": 4
     }
   },
   "src/server/routes/scheduling/autoReschedule.ts": {
@@ -2434,6 +2530,9 @@
     },
     "no-await-in-loop": {
       "count": 6
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "prefer-const": {
       "count": 1
@@ -2492,6 +2591,9 @@
     }
   },
   "src/server/services/AnalyticsSummaryService.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "prefer-const": {
       "count": 1
     },
@@ -2507,6 +2609,9 @@
   "src/server/services/ApprovedTimeService.ts": {
     "no-await-in-loop": {
       "count": 3
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/server/services/AutoRescheduleService.ts": {
@@ -2515,6 +2620,9 @@
     },
     "no-await-in-loop": {
       "count": 3
+    },
+    "no-restricted-syntax": {
+      "count": 5
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
@@ -2528,11 +2636,17 @@
   "src/server/services/BurndownService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3
+    },
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/server/services/ChangeHistoryService.ts": {
     "no-await-in-loop": {
       "count": 12
+    },
+    "no-restricted-syntax": {
+      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2541,6 +2655,9 @@
   "src/server/services/ClientService.ts": {
     "no-await-in-loop": {
       "count": 5
+    },
+    "no-restricted-syntax": {
+      "count": 6
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2598,9 +2715,17 @@
       "count": 1
     }
   },
+  "src/server/services/FlowMetricsService.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/server/services/InstantReportService.ts": {
     "no-await-in-loop": {
       "count": 3
+    },
+    "no-restricted-syntax": {
+      "count": 6
     },
     "no-unmodified-loop-condition": {
       "count": 2
@@ -2655,6 +2780,9 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2669,6 +2797,11 @@
       "count": 1
     }
   },
+  "src/server/services/PricingConfigService.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/server/services/ProjectService.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
@@ -2679,6 +2812,9 @@
   },
   "src/server/services/ProjectStatusReportService.ts": {
     "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     },
     "sonarjs/cognitive-complexity": {
@@ -2731,6 +2867,9 @@
     "no-await-in-loop": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2742,6 +2881,9 @@
     "no-await-in-loop": {
       "count": 2
     },
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2752,6 +2894,9 @@
     },
     "no-await-in-loop": {
       "count": 4
+    },
+    "no-restricted-syntax": {
+      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -2768,6 +2913,9 @@
     },
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 8
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -2804,6 +2952,9 @@
     "no-await-in-loop": {
       "count": 5
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "security/detect-unsafe-regex": {
       "count": 1
     },
@@ -2814,6 +2965,9 @@
   "src/server/services/ScheduleFixProposerService.ts": {
     "no-await-in-loop": {
       "count": 28
+    },
+    "no-restricted-syntax": {
+      "count": 12
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2826,6 +2980,9 @@
     "no-await-in-loop": {
       "count": 5
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2836,6 +2993,9 @@
     },
     "no-await-in-loop": {
       "count": 13
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
@@ -2862,6 +3022,11 @@
       "count": 7
     },
     "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/StrategicRiskAnalysisService.ts": {
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -2903,6 +3068,9 @@
     "no-await-in-loop": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 2
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2910,6 +3078,9 @@
   "src/server/services/TeamsMeetingImportService.ts": {
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
     }
   },
   "src/server/services/TemplateService.ts": {
@@ -2919,6 +3090,9 @@
     "no-await-in-loop": {
       "count": 3
     },
+    "no-restricted-syntax": {
+      "count": 4
+    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
@@ -2926,6 +3100,9 @@
   "src/server/services/TimeAnomalyService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2939,11 +3116,17 @@
   "src/server/services/WeeklyReviewService.ts": {
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 3
     }
   },
   "src/server/services/WeeklyTimesheetService.ts": {
     "no-await-in-loop": {
       "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 5
     }
   },
   "src/server/services/WorkingCalendarService.ts": {
@@ -2980,6 +3163,11 @@
   "src/server/services/aiChatService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
+    }
+  },
+  "src/server/services/aiContextBuilder.ts": {
+    "no-restricted-syntax": {
+      "count": 2
     }
   },
   "src/server/services/aiLearningService.ts": {
@@ -3043,6 +3231,9 @@
     "no-await-in-loop": {
       "count": 2
     },
+    "no-restricted-syntax": {
+      "count": 2
+    },
     "prefer-const": {
       "count": 2
     }
@@ -3086,6 +3277,9 @@
     "no-promise-executor-return": {
       "count": 1
     },
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "sonarjs/cognitive-complexity": {
       "count": 3
     }
@@ -3093,6 +3287,9 @@
   "src/server/services/dagWorkflow/index.ts": {
     "no-await-in-loop": {
       "count": 10
+    },
+    "no-restricted-syntax": {
+      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -3175,9 +3372,17 @@
       "count": 1
     }
   },
+  "src/server/services/lessonsLearned/patternDetector.ts": {
+    "no-restricted-syntax": {
+      "count": 2
+    }
+  },
   "src/server/services/lessonsLearned/seeder.ts": {
     "no-await-in-loop": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -3186,6 +3391,9 @@
   "src/server/services/predictiveIntelligence.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -3214,12 +3422,23 @@
       "count": 1
     }
   },
+  "src/server/services/scheduleReview/domainProfiles.ts": {
+    "no-restricted-syntax": {
+      "count": 1
+    }
+  },
   "src/server/services/scheduleReview/fixProposer.ts": {
+    "no-restricted-syntax": {
+      "count": 7
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/services/scheduleReview/rules.ts": {
+    "no-restricted-syntax": {
+      "count": 8
+    },
     "security/detect-unsafe-regex": {
       "count": 1
     },
@@ -3256,11 +3475,17 @@
   "src/server/services/scheduling/pmWeeklyReviewJob.ts": {
     "no-await-in-loop": {
       "count": 2
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/server/services/scheduling/registryAgentRunners.ts": {
     "no-await-in-loop": {
       "count": 7
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/server/services/scheduling/scanOrchestrator.ts": {
@@ -3270,6 +3495,9 @@
     "no-await-in-loop": {
       "count": 7
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -3277,6 +3505,9 @@
   "src/server/services/scheduling/scheduleReviewJob.ts": {
     "no-await-in-loop": {
       "count": 5
+    },
+    "no-restricted-syntax": {
+      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -3290,6 +3521,9 @@
   "src/server/services/scheduling/timesheetComplianceJob.ts": {
     "no-await-in-loop": {
       "count": 5
+    },
+    "no-restricted-syntax": {
+      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -3330,6 +3564,9 @@
     "no-await-in-loop": {
       "count": 2
     },
+    "no-restricted-syntax": {
+      "count": 1
+    },
     "prefer-const": {
       "count": 2
     },
@@ -3344,6 +3581,9 @@
   },
   "src/server/utils/assigneeLogins.ts": {
     "no-await-in-loop": {
+      "count": 1
+    },
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -3367,6 +3607,11 @@
   },
   "src/server/utils/importPredecessors.ts": {
     "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/utils/instantReportRenderer.ts": {
+    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -3401,6 +3646,9 @@
   "src/server/utils/scheduleReviewDocxBuilder.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
+    },
+    "no-restricted-syntax": {
+      "count": 1
     }
   },
   "src/server/utils/serverErrorWatch.ts": {
@@ -3414,8 +3662,16 @@
     }
   },
   "src/server/utils/timelineStrip.ts": {
+    "no-restricted-syntax": {
+      "count": 4
+    },
     "no-unmodified-loop-condition": {
       "count": 2
+    }
+  },
+  "src/server/utils/transcriptParser.ts": {
+    "no-restricted-syntax": {
+      "count": 1
     }
   }
 }

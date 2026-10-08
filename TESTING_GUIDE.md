@@ -1479,7 +1479,20 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 - **complexity:** cognitive complexity over 25 per function, nesting deeper than 5, identical functions;
 - **React (client):** rules of hooks, missing effect dependencies (stale data / endless reloads), keyboard and screen-reader basics (`jsx-a11y`).
 
-Problems that existed on 2026-10-08 — 1,752 in 487 files (470 unawaited promises, 413 awaits in loops, 127 over-complex functions, 96 effect dependencies, ~330 a11y, 35 risky regexes…) — are listed in `eslint-suppressions.json`. **Anything new fails.** The list only shrinks: after fixing some, `npm run lint -- --prune-suppressions`. Never add to it (`--suppress-rule`/`--suppress-all`) without the user's OK; an `eslint-disable` comment needs a reason next to it. `deploy.sh` runs it on every prod release (even with `--skip-tests`) and on staging when tests run.
+Problems that existed on 2026-10-08 — 1,752 in 487 files, plus 242 list-searches-in-loops added the same day; 1,974 in 489 files after test-file regexes were exempted (470 unawaited promises, 413 awaits in loops, 127 over-complex functions, 96 effect dependencies, ~330 a11y, 35 risky regexes…) — are listed in `eslint-suppressions.json`. **Anything new fails.** The list only shrinks: after fixing some, `npm run lint -- --prune-suppressions`. Never add to it (`--suppress-rule`/`--suppress-all`) without the user's OK; an `eslint-disable` comment needs a reason next to it. `deploy.sh` runs it on every prod release (even with `--skip-tests`) and on staging when tests run.
+
+## Efficiency guard (Oct 2026)
+
+`src/server/__tests__/utils/efficiencyGuard.test.ts` (part of `npx vitest run`, no database needed) reads the server code and the migrations. Tables that grow every day (audit, workflow runs, agent logs, notifications, chat, usage logs, time entries, tasks…) are listed in `GROWING`. Four rules:
+
+1. A SELECT on a growing table has a WHERE, a LIMIT or is a COUNT — never "read it all".
+2. Its WHERE uses a column that starts an index on that table (indexes are read from every `CREATE TABLE` / `CREATE INDEX` / `ALTER TABLE … ADD INDEX` in the migrations; filters through a joined table are skipped).
+3. Every growing table has a clean-up (`DELETE … WHERE … < NOW() - INTERVAL …`) or is in `KEEP_FOREVER` with the reason.
+4. Heavy routes (export, verify, download, docx/pdf, import, bulk, rebuild, reindex, simulate, scan…) check a role or the project **and** are rate-limited.
+
+What existed on 2026-10-08 is listed at the top as allowances (1 unbounded read, 8 unindexed filters, 9 tables never cleaned, 28 heavy routes). They only go down — fix, then lower the number in the same change; raising one needs the user's OK. `PRINT_EFFICIENCY=1 npx vitest run src/server/__tests__/utils/efficiencyGuard.test.ts` lists every finding. It is a code reader, not the database: it can miss a query built in pieces, so the slow-query log on staging (0.5 s) stays on as the real-world net.
+
+The code checker adds the in-memory side: **`no-restricted-syntax`** flags searching a list (`find`/`filter`/`findIndex`) inside a loop or inside a `map`/`forEach`/… callback (2,000 tasks × 2,000 people = 4 million steps; a `Map` built once = 4,000), and sorting or building a `RegExp` inside a loop. Existing cases are in `eslint-suppressions.json`. If both lists are always small, disable the line with a reason (`-- small: …`).
 
 ## Copy-paste check (Oct 2026)
 
