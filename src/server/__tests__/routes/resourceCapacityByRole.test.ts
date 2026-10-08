@@ -12,7 +12,7 @@ vi.mock('../../middleware/auth', () => ({ authMiddleware: vi.fn(async (req: any)
 vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/requireTier', () => ({ requireFeature: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/requireProjectAccess', () => ({ requireProjectAccess: () => vi.fn(async () => {}), projectsOfSchedules: vi.fn() }));
-vi.mock('../../middleware/rateLimiter', () => ({ rateLimiter: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/rateLimiter', () => ({ rateLimiter: () => vi.fn(async () => {}), heavyActionLimit: () => vi.fn(async () => {}) }));
 vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: vi.fn(async () => 'all') }));
 vi.mock('../../services/ProjectService', () => ({ projectService: {} }));
 vi.mock('../../services/UserService', () => ({ userService: {} }));

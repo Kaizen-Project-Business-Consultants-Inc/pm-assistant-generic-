@@ -17,6 +17,7 @@ import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDisp
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const createSprintSchema = z.object({
   projectId: z.string().uuid(),
@@ -700,7 +701,7 @@ Keep it concise and actionable. Use markdown formatting.`;
   });
 
   // GET /checklists/bulk/:type — bulk readiness query
-  fastify.get('/checklists/bulk/:type', { preHandler: [requireScope('read'), bulkTasksMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/checklists/bulk/:type', { preHandler: [requireScope('read'), bulkTasksMember, heavyActionLimit('checklist-readiness', 120)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { type } = request.params as { type: string };
       if (type !== 'dor' && type !== 'dod') return reply.status(400).send({ error: 'Type must be dor or dod' });

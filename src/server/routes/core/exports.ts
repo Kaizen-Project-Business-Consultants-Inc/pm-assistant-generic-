@@ -8,6 +8,7 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 export async function exportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -16,7 +17,7 @@ export async function exportRoutes(fastify: FastifyInstance) {
   // Trial users get sample export data with an upgrade prompt.
   // The whole project goes out in the file: the caller must be on the project (':id' here isn't
   // under /api/v1/projects, so it has to be resolved explicitly)
-  fastify.get('/projects/:id/export', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.params as { id: string }).id })] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/projects/:id/export', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.params as { id: string }).id }), heavyActionLimit('project-export', 300)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { format } = request.query as { format?: string };

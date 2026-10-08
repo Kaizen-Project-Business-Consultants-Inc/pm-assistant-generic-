@@ -9,6 +9,7 @@ import { projectService } from '../../services/ProjectService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { buildScheduleReviewDocx } from '../../utils/scheduleReviewDocxBuilder';
 import logger from '../../utils/logger';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(8),
@@ -60,7 +61,7 @@ export async function scheduleReviewRoutes(fastify: FastifyInstance) {
   // sent to a sponsor arguing about a plan. The recipient never logs in, so the
   // document has to carry its own context — see scheduleReviewDocxBuilder.
   fastify.get('/:scheduleId/review/export/docx', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer'), heavyActionLimit('schedule-review-docx', 30)],
     schema: { description: 'Schedule Review as a Word document', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

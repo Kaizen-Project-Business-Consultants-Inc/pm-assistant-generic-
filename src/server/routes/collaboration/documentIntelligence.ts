@@ -13,6 +13,7 @@ import { documentIntelligenceService } from '../../services/DocumentIntelligence
 import { storageConnectorService } from '../../services/StorageConnectorService';
 import { config } from '../../config';
 import logger from '../../utils/logger';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const ALLOWED_MIME_TYPES = [
   'application/pdf',
@@ -183,7 +184,7 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:projectId/documents/:documentId/download — stream file back to client
-  fastify.get('/:projectId/documents/:documentId/download', { preHandler: [requireScope('read'), requireProjectAccess('viewer')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:projectId/documents/:documentId/download', { preHandler: [requireScope('read'), requireProjectAccess('viewer'), heavyActionLimit('document-download', 60)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 
     const document = await projectDocumentRepository.findById(documentId);

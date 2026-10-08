@@ -4,6 +4,7 @@ import { knowledgeBaseService } from '../../services/KnowledgeBaseService';
 import { knowledgeBaseRepository } from '../../database/KnowledgeBaseRepository';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
   const user = request.user!;
   if (!isPlatformAdmin(user)) {
@@ -17,7 +18,7 @@ export async function knowledgeBaseRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /reindex — Rebuild knowledge base embeddings from doc files
-  fastify.post('/reindex', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/reindex', { preHandler: [heavyActionLimit('kb-reindex', 5)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return;
 
     const result = await knowledgeBaseService.reindex();

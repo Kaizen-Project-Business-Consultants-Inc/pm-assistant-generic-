@@ -6,6 +6,7 @@ import * as readline from 'readline';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
 import { clampPagination } from '../../schemas/paginationSchema';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 export async function logsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -84,7 +85,7 @@ export async function logsRoutes(fastify: FastifyInstance) {
   });
 
   // GET /api/v1/admin/logs/download/:filename — download a log file
-  fastify.get('/download/:filename', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/download/:filename', { preHandler: [heavyActionLimit('log-download', 30)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user;
     if (!isPlatformAdmin(user)) {
       return reply.status(403).send({ error: 'Forbidden', message: 'Admin access required' });

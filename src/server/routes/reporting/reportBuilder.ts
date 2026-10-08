@@ -8,6 +8,7 @@ import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const reportSectionSchema = z.object({
   title: z.string().optional(),
@@ -149,7 +150,7 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
   });
 
   // POST /templates/:id/export — export report
-  fastify.post('/templates/:id/export', { preHandler: [requireScope('write'), requireFeature('reports')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/templates/:id/export', { preHandler: [requireScope('write'), requireFeature('reports'), heavyActionLimit('report-export', 30)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { format } = exportReportSchema.parse(request.body ?? {});

@@ -12,6 +12,7 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { GOVERNANCE_PACKS } from '../../services/automation/governancePacks';
 import { parsePagination } from '../../schemas/paginationSchema';
 import type { AutomationEvent } from '../../services/automation/types';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 export async function automationRoutes(fastify: FastifyInstance) {
   fastify.addHook('onRequest', authMiddleware);
@@ -225,7 +226,7 @@ export async function automationRoutes(fastify: FastifyInstance) {
 
   // POST /projects/:projectId/automations/marketplace/:marketplaceId/import
   fastify.post('/:projectId/automations/marketplace/:marketplaceId/import', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('automation-import', 20)],
   }, async (request, reply) => {
     const { projectId, marketplaceId } = request.params as { projectId: string; marketplaceId: string };
     const user = request.user!;

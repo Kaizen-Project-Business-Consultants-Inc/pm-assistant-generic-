@@ -17,6 +17,7 @@ import { projectService } from '../../services/ProjectService';
 import { projectMemberService } from '../../services/ProjectMemberService';
 import { raidChanged } from '../../services/domainEvents';
 import { RAID_RESPONSE_STRATEGIES } from '../../database/RiskRepository';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const RAID_TYPES = ['risk', 'issue', 'action', 'decision', 'assumption', 'dependency'] as const;
 const ALL_STATUSES = ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'resolved',
@@ -421,7 +422,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/projects/:projectId/risks/ai-scan — Scan only, return candidates
   fastify.post('/:projectId/risks/ai-scan', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('raid-ai-scan', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
@@ -563,7 +564,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   };
 
   fastify.post('/:projectId/risks/import', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('raid-import', 20)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };

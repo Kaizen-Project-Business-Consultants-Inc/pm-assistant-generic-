@@ -11,6 +11,7 @@ import { userService } from '../../services/UserService';
 import { getTenantContext, runWithTenantContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
 import crypto from 'crypto';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const scanSchema = z.object({
   projectId: z.string().min(1),
@@ -22,7 +23,7 @@ export async function strategicRiskScanRoutes(fastify: FastifyInstance) {
   // Run a strategic risk scan (background mode via WebSocket)
   fastify.post('/scan', {
     // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
-    preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null })],
+    preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => (req.body as { projectId?: string } | undefined)?.projectId ?? null }), heavyActionLimit('strategic-risk-scan', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;

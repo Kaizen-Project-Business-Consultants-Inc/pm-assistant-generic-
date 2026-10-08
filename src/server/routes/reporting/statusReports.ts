@@ -17,6 +17,7 @@ import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 import crypto from 'crypto';
 import { clientReportContext } from '../../utils/clientReportContext';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const generateSchema = z.object({
   projectId: z.string().min(1),
@@ -144,7 +145,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // Export report as Word (.docx)
   fastify.post('/export/docx', {
-    preHandler: [requireScope('write'), requirePaidTier],
+    preHandler: [requireScope('write'), requirePaidTier, heavyActionLimit('status-report-docx', 30)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = parseStructuredReport(request.body, reply);

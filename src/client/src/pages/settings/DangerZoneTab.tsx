@@ -13,17 +13,24 @@ export const DangerZoneTab: React.FC = () => {
 
   const handleExport = async () => {
     setExporting(true);
+    setExportError('');
     try {
       const projectList = await apiService.getProjects();
-      const projectExports = await Promise.all(
-        projectList.map(async (project: { id: number }) => {
-          try {
-            return await apiService.request('get', `/exports/projects/${project.id}/export?format=json`);
-          } catch {
-            return { projectId: project.id, error: 'Failed to export' };
-          }
-        })
-      );
+      // One project at a time (the server limits exports per person, 2026-10-08). A project that
+      // can't be exported stops the whole export with a message — never a file with silent gaps.
+      const projectExports: unknown[] = [];
+      for (const project of projectList as Array<{ id: number }>) {
+        try {
+          // eslint-disable-next-line no-await-in-loop -- one at a time keeps the server load and the export limit in step
+          projectExports.push(await apiService.request('get', `/exports/projects/${project.id}/export?format=json`));
+        } catch (err) {
+          const status = (err as { response?: { status?: number } })?.response?.status;
+          setExportError(status === 429
+            ? 'Many exports were made just now. Please wait 10 minutes and export again.'
+            : `Project ${projectExports.length + 1} of ${projectList.length} could not be exported, so nothing was downloaded. Please try again.`);
+          return;
+        }
+      }
       const data = {
         exportedAt: new Date().toISOString(),
         projects: projectExports,

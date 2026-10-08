@@ -14,6 +14,7 @@ import { PROJECT_TYPES } from '../../constants/projectTypes';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 import { projectGroupRepository } from '../../database/ProjectGroupRepository';
 import { projectGroupService } from '../../services/ProjectGroupService';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const createTemplateSchema = z.object({
   name: z.string({ message: 'Enter a name for the template.' }).trim().min(1, 'Enter a name for the template.'),
@@ -282,7 +283,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
 
   // POST /marketplace/:id/import — Import a marketplace template into user's org
   fastify.post('/marketplace/:id/import', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), heavyActionLimit('template-import', 20)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };

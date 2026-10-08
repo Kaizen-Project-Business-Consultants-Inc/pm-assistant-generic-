@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { authMiddleware } from '../../middleware/auth';
 import { databaseService } from '../../database/connection';
-import { rateLimiter } from '../../middleware/rateLimiter';
+import { rateLimiter, heavyActionLimit } from '../../middleware/rateLimiter';
 import { emailService } from '../../services/EmailService';
 import { config } from '../../config';
 
@@ -83,7 +83,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     return reply.send({ count: rows.length, entries: rows });
   });
 
-  fastify.get('/admin/export', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/admin/export', { preHandler: [authMiddleware, heavyActionLimit('waitlist-export', 5)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return;
     const rows = await databaseService.query<any>(
       'SELECT email, created_at FROM waitlist ORDER BY created_at ASC'

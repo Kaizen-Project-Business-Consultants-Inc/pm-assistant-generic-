@@ -48,26 +48,14 @@ const NO_CLEANUP_ALLOWED: string[] = [
   'automation_executions', 'chat_messages', 'integration_sync_log',
 ];
 const HEAVY_ROUTE_ALLOWED: Record<string, number> = {
-  'routes/admin/knowledgeBase.ts': 1,
-  'routes/admin/logs.ts': 1,
-  'routes/admin/waitlist.ts': 1,
-  'routes/automation/automations.ts': 1,
-  'routes/collaboration/documentIntelligence.ts': 1,
-  'routes/collaboration/fileAttachments.ts': 1,
-  'routes/collaboration/risks.ts': 2,
-  'routes/collaboration/sprints.ts': 1,
-  'routes/collaboration/templates.ts': 1,
-  'routes/core/exports.ts': 1,
-  'routes/core/projectGroups.ts': 1,
-  'routes/reporting/reportBuilder.ts': 1,
-  'routes/reporting/statusReports.ts': 1,
-  'routes/reporting/strategicRiskScan.ts': 1,
-  'routes/resources/resources.ts': 2,
-  'routes/scheduling/import.ts': 3,
-  'routes/scheduling/monteCarlo.ts': 1,
-  'routes/scheduling/scheduleReview.ts': 1,
-  'routes/scheduling/schedules.ts': 2,
-};
+  // rate-limited since 2026-10-08; the permission check is inside the handler, where this reader can't see it
+  'routes/admin/logs.ts': 1, // platform admin, checked in the handler
+  'routes/collaboration/fileAttachments.ts': 1, // readById → attachmentGate
+  'routes/collaboration/templates.ts': 1, // marketplace import: creates a template in the caller's own company
+  'routes/core/projectGroups.ts': 1, // client report Word: ClientService keeps to readable projects
+  'routes/reporting/statusReports.ts': 1, // turns the posted report into Word; reads no project data
+  'routes/resources/resources.ts': 2, // bulk delete / import: checkDelete / checkCreate per row
+}
 
 // ------------------------------------------------------------------------------------------------
 const SERVER = join(__dirname, '..', '..');
@@ -209,7 +197,7 @@ describe('efficiency guard', () => {
   it('heavy routes check a role or the project, and are rate-limited', () => {
     const HEAVY = /\/(?:[^'`]*[-/])?(export|verify|download|docx|pdf|import|bulk|rebuild|reindex|recalculate|simulate|scan|backfill|regenerate)\b/i;
     const GATE = /requireRole\(|requireAdmin|requireSuperAdmin|requireScope\('admin'\)|checkProjectRole|requireProjectAccess|checkEntityProjectAccess|readableProjectIds|adminOrPmo|orgAdminOnly|historyAdmin|Member\b|PM\b|Reader\b|Gate\b/;
-    const LIMIT = /rateLimiter\.|rateLimit\s*:/;
+    const LIMIT = /rateLimiter\.|rateLimit\s*:|heavyActionLimit\(/;
     const hits: string[] = [];
     for (const f of walk(join(SERVER, 'routes'), '.ts')) {
       const s = readFileSync(f, 'utf-8');

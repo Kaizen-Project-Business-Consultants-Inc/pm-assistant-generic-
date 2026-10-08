@@ -35,7 +35,8 @@ export const queryClient = new QueryClient({
       refetchOnReconnect: true,
       retry: (failureCount, error: unknown) => {
         const axiosError = error as { response?: { status?: number } };
-        if (axiosError?.response?.status === 401) {
+        // 401: signed out; 429: the server asked us to slow down — retrying only uses up the allowance
+        if (axiosError?.response?.status === 401 || axiosError?.response?.status === 429) {
           return false;
         }
         return failureCount < 2;

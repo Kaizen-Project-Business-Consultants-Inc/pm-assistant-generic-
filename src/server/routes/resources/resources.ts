@@ -17,7 +17,7 @@ import { inviteService } from '../../services/InviteService';
 import { taskAssignmentService } from '../../services/TaskAssignmentService';
 import { resourceReplaceService } from '../../services/ResourceReplaceService';
 import { teamPlannerService } from '../../services/TeamPlannerService';
-import { rateLimiter } from '../../middleware/rateLimiter';
+import { rateLimiter, heavyActionLimit } from '../../middleware/rateLimiter';
 import { checkCreate, checkUpdate, checkDelete, removeLogin, PeopleRightsError } from '../../services/peopleRights';
 import { getRequestContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
@@ -438,7 +438,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /resources/bulk-delete
-  fastify.post('/bulk-delete', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/bulk-delete', { preHandler: [requireScope('write'), requireFeature('resources'), heavyActionLimit('people-bulk-delete', 20)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = z.object({ ids: z.array(z.string().min(1)).min(1).max(100) }).safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: 'Provide an array of resource IDs (max 100)' });
     const people = await resourceService.findResourcesByIds(body.data.ids);
@@ -607,7 +607,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // POST /resources/import — Bulk CSV import (#2)
-  fastify.post('/import', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/import', { preHandler: [requireScope('write'), requireFeature('resources'), heavyActionLimit('people-import', 20)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const body = z.object({ csv: z.string().min(1).max(5 * 1024 * 1024) }).parse(request.body);
       const records: any[] = csvParse(body.csv, { columns: true, skip_empty_lines: true, trim: true, bom: true });

@@ -7,13 +7,14 @@ import { requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
 import { ZodError } from 'zod';
 import { validationMessage } from '../../utils/validationError';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 export async function monteCarloRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /:scheduleId/simulate — Run Monte Carlo simulation for a schedule
   // Trial users get sample results with an upgrade prompt.
-  fastify.post('/:scheduleId/simulate', { preHandler: [requireScope('write'), requireProjectAccess('viewer')] }, async (
+  fastify.post('/:scheduleId/simulate', { preHandler: [requireScope('write'), requireProjectAccess('viewer'), heavyActionLimit('monte-carlo', 10)] }, async (
     request: FastifyRequest,
     reply: FastifyReply,
   ) => {

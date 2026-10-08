@@ -23,6 +23,7 @@ import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
 import { changeHistoryService } from '../../services/ChangeHistoryService';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const createScheduleSchema = z.object({
   projectId: z.string(),
@@ -477,7 +478,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:scheduleId/dependencies/bulk', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('dependency-bulk-link', 60)],
     schema: { description: 'Add several dependencies at once (all-or-nothing)', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -520,7 +521,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/:scheduleId/dependencies/bulk-remove', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('dependency-bulk-remove', 60)],
     schema: { description: 'Remove specific dependencies (undo of a bulk link)', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

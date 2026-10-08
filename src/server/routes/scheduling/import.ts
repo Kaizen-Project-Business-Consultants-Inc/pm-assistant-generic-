@@ -32,6 +32,7 @@ import {
 } from '../../utils/importHeuristics';
 import { nameSaysMilestone } from '../../services/scheduleReview/rules';
 import { type IsWorking, finishFor, utcDay, ymdOf } from '../../utils/workingDays';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 /** Truthy string test for boolean-ish import columns (yes/y/true/1/x). */
 function isTruthyFlag(v: string | undefined | null): boolean {
@@ -246,7 +247,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
 }
 
   // POST /:scheduleId/import — bulk import tasks from CSV
-  fastify.post('/:scheduleId/import', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:scheduleId/import', { preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('schedule-import-csv', 20)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const rawBody = importCsvSchema.parse(request.body);
@@ -741,7 +742,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
     fileName: z.string().max(255).optional(),
   });
 
-  fastify.post('/:scheduleId/import-structured', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:scheduleId/import-structured', { preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('schedule-import-structured', 20)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
       const body = importStructuredSchema.parse(request.body);
@@ -882,7 +883,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
 
   // POST /:scheduleId/import-document — extract tasks from an unstructured document via AI
   fastify.post('/:scheduleId/import-document', {
-    preHandler: [requireScope('write'), requireFeature('ai_assistant'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireFeature('ai_assistant'), requireProjectAccess('manager'), heavyActionLimit('schedule-import-document', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };

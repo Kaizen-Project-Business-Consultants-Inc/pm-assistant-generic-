@@ -11,6 +11,7 @@ import { config } from '../../config';
 import { scheduleService } from '../../services/ScheduleService';
 import { riskService } from '../../services/RiskService';
 import logger from '../../utils/logger';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 /** Which project an attachment's item belongs to ('goal' is organisation-level: null) */
 async function entityProject(entityType: string, entityId: string): Promise<string | null> {
@@ -119,7 +120,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/download — stream file
-  fastify.get('/:id/download', { preHandler: [requireScope('read'), readById] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/download', { preHandler: [requireScope('read'), readById, heavyActionLimit('attachment-download', 60)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const attachment = await fileAttachmentService.getById(id);

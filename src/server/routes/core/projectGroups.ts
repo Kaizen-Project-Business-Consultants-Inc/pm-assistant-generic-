@@ -9,6 +9,7 @@ import { clientService, ClientNotFoundError } from '../../services/ClientService
 import { renderClientReportHtml } from '../../utils/clientReportRenderer';
 import { buildClientReportDocx } from '../../utils/clientReportDocx';
 import { emailService, EmailRejectedError } from '../../services/EmailService';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 /**
  * Project groups are shown as CLIENTS (2026-10-07): a consultant's customers. Clients never sign
@@ -178,7 +179,7 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:id/report/docx — the same report as Word
-  fastify.get('/:id/report/docx', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/report/docx', { preHandler: [requireScope('read'), heavyActionLimit('client-report-docx', 30)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const report = await clientService.report(id, request.user!);
