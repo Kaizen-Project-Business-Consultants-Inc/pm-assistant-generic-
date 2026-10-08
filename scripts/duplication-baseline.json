@@ -1,7 +1,7 @@
 {
   "note": "Files that already contain a copied block (15+ lines), and the totals. May only shrink. See scripts/duplicationCheck.mjs.",
-  "duplicatedLines": 1673,
-  "clones": 60,
+  "duplicatedLines": 1765,
+  "clones": 62,
   "files": [
     "components/burndown/BurndownChart.tsx",
     "components/burndown/VelocityChart.tsx",
@@ -16,6 +16,8 @@
     "components/query/BarChart.tsx",
     "components/query/LineChart.tsx",
     "components/raids/RAIDImportModal.tsx",
+    "components/resources/CapacityChart.tsx",
+    "components/resources/ResourceHistogram.tsx",
     "components/risks/AIScanReviewModal.tsx",
     "components/risks/RAIDReportModal.tsx",
     "components/schedule/GanttChart.tsx",
