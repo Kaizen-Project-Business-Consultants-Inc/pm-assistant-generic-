@@ -18,7 +18,7 @@ import type { WorkCalendar } from '../../utils/workingDays';
  *   - useTaskFiltering (components/schedule/gantt/hooks/useTaskFiltering.ts:68): typing in the
  *     Gantt search box, then sorting by name (a parent stays when a child matches)
  *   - useTableGrouping (components/schedule/table/hooks/useTableGrouping.ts:31): Table sort by
- *     Duration (working days, counted on the calendar inside the sort) and group by person
+ *     Duration (working days on the calendar, worked out once per task per sort) and group by person
  *   - packLanes (utils/plannerLayout.ts:34): Team Planner lanes for one busy person
  *   - findResourceConflicts (utils/resourceConflicts.ts:31): the Gantt's "Conflicts"
  *
@@ -34,12 +34,16 @@ import type { WorkCalendar } from '../../utils/workingDays';
  *   | flat rows + row numbers                | 2,000  | 1.6 ms   | 50 ms  | 1.80–2.34 (< 3.0)   |
  *   | timeline strip layout                  | 2,000  | 6.0 ms   | 50 ms  | 1.49–2.17 (< 3.0)   |
  *   | Gantt search + sort by name            | 2,000  | 0.8 ms   | 50 ms  | 1.50–1.85 (< 3.0)   |
- *   | Table sort by Duration + group         | 1,000  | 241 ms   | 730 ms | 1.63–2.40 (< 3.0)   |
+ *   | Table sort by Duration + group         | 1,000  | 52 ms    | 160 ms | 1.42–2.13 (< 3.0)   |
  *   | Team Planner lanes (1 person, all work)| 2,000  | 3.2 ms   | 50 ms  | 1.35–2.39 (< 3.0)   |
  *   | Gantt conflicts                        | 2,000  | 189 ms   | 570 ms | 2.08–2.36 (< 3.0)   |
+ *
+ * Table sort re-measured after the 2026-10-08 speed fix (six runs): each task's Duration is now
+ * counted once per sort (sortValues.ts `sortByValue`), not twice per comparison. Before: 241 ms
+ * (limit 730 ms).
  */
 
-const LIMIT_MS = { flat: 50, strip: 50, search: 50, tableSort: 730, lanes: 50, conflicts: 570 };
+const LIMIT_MS = { flat: 50, strip: 50, search: 50, tableSort: 160, lanes: 50, conflicts: 570 };
 
 const plans = new Map<number, { plan: PerfPlan; tasks: GanttTask[] }>();
 function planOf(n: number) {
@@ -119,9 +123,6 @@ const CASES: Array<[string, (n: number) => () => unknown, number, number]> = [
   ['flat rows + row numbers', flatRows, 2000, LIMIT_MS.flat],
   ['timeline strip', strip, 2000, LIMIT_MS.strip],
   ['gantt search + sort', ganttSearchSort, 2000, LIMIT_MS.search],
-  // Slow but linear (not O(n²)) — see efficiency report: the Duration sort counts each task's
-  // working days inside the sort comparison (day by day, twice per comparison), so one click
-  // re-walks the calendar ~n·log n times. Hence N = 1,000 here; the budget is at current behaviour.
   ['table sort duration + group', tableSortGroup, 1000, LIMIT_MS.tableSort],
   ['planner lanes', plannerLanes, 2000, LIMIT_MS.lanes],
   ['gantt conflicts', conflicts, 2000, LIMIT_MS.conflicts],

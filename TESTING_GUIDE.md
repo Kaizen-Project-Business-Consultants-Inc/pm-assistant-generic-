@@ -1514,7 +1514,7 @@ The code checker adds the in-memory side: **`no-restricted-syntax`** flags searc
 
 Covered: Schedule Review, date cascade, critical path, Monte Carlo (plan size and iterations), status report, client report, re-flow (save, dry run, calendar change), Team Planner board, workload heatmap (one project, everyone); in the browser: Gantt rows and numbering, timeline strip, Gantt search and sort, Table sort by Duration and group, planner lanes, resource conflicts. About 45 s in total when run one file at a time.
 
-Slow but in proportion (limits set at today's speed, marked in the file headers): the workload heatmap (`ResourceService` visits every person × week × booking; 1.5 s at 4,000 tasks) and Table sort by Duration (`useTableGrouping` counts working days for every comparison; 2.4 s at 4,000 tasks). Both have a known fix: work out each value once.
+Made faster on 2026-10-08 (limits lowered to 3× the new times): the workload heatmap now visits each booking only for the weeks it covers (`weeklyLoad.ts` `bookedHoursByWeek`) — one project's heatmap at 4,000 tasks 1,543 ms → 373 ms (limit 1,120 ms), everyone's at 2,000 tasks 733 ms → 210 ms (limit 630 ms); Table sort by Duration works out each task's value once per sort (`sortValues.ts` `sortByValue`) — 1,000 tasks 241 ms → 52 ms (limit 160 ms). Same numbers and order as before: `workloadEquivalence.test.ts` and `sortByValue.test.ts` check them against the old code.
 
 ## App download size limit (Oct 2026)
 

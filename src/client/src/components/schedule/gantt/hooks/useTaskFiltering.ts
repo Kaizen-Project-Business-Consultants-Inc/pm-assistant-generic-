@@ -16,7 +16,7 @@ import {
   notesSortText,
   estimatedDaysSortValue,
   workHoursSortValue,
-  compareSortValues,
+  sortByValue,
 } from '../../sortValues';
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
 
@@ -235,9 +235,11 @@ export function useTaskFiltering({
       // Sort the group
       const dir = sortDirection === 'asc' ? 1 : -1;
       // Blanks (no predecessor / successor / resource / notes) go last either way
-      group.sort((a, b) => compareSortValues(getSortValue(a.row.task), getSortValue(b.row.task), dir));
+      // each row's sort value worked out once (Duration counts working days), then a stable sort
+      // on the stored values — same order as comparing inside the sort, without the repeat work
+      const sortedGroup = sortByValue(group, (g) => getSortValue(g.row.task), dir);
       // Flatten back — parent row followed by its children (children keep their internal order)
-      for (const g of group) {
+      for (const g of sortedGroup) {
         result.push(g.row);
         result.push(...g.children);
       }

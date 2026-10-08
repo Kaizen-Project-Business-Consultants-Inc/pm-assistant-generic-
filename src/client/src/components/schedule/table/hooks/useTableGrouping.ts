@@ -13,7 +13,7 @@ import {
   notesSortText,
   estimatedDaysSortValue,
   workHoursSortValue,
-  compareSortValues,
+  sortByValue,
 } from '../../sortValues';
 
 const EMPTY_ROW_NUMS = new Map<string, number>();
@@ -137,7 +137,8 @@ export function useTableGrouping({
         return [...list].sort(compareOutlineOrder);
       }
       const dir = sortDir === 'asc' ? 1 : -1;
-      return [...list].sort((a, b) => compareSortValues(getSortValue(a, sortField), getSortValue(b, sortField), dir));
+      // each task's value is worked out once per sort, not twice per comparison (2026-10-08)
+      return sortByValue(list, (t) => getSortValue(t, sortField), dir);
     };
 
     const summaryIds = new Set<string>();

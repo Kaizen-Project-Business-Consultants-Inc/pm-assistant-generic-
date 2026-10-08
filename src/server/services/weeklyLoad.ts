@@ -20,6 +20,45 @@ export function hoursInWeek(
   return days === 0 ? 0 : Math.round(((a.hoursPerWeek / 5) * days) * 100) / 100;
 }
 
+const DAY_MS = 86_400_000;
+const WEEK_MS = 7 * DAY_MS;
+
+/**
+ * Each person's booked hours in each of `weekKeys` (consecutive Mondays, 'YYYY-MM-DD'), summed
+ * but NOT rounded: resourceId → one total per week, in `weekKeys` order (2026-10-08, speed).
+ * Each booking is visited only for the weeks it overlaps (Monday of its start .. Monday of its
+ * end), so the work is booking-weeks, not people × weeks × bookings. Per week the hours are added
+ * in booking order, exactly as the old per-week loop did, so the sums are bit-for-bit the same.
+ */
+export function bookedHoursByWeek(
+  bookings: ReadonlyArray<{ resourceId: string; scheduleId: string; startDate: string; endDate: string; hoursPerWeek: number }>,
+  weekKeys: readonly string[],
+  calOf: (scheduleId: string) => IsWorking,
+): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  const n = weekKeys.length;
+  if (n === 0) return out;
+  const first = Date.parse(`${weekKeys[0]}T00:00:00Z`);
+  // index of the week holding this day (NaN for an unreadable date)
+  const indexOf = (ymd: string) => {
+    const t = Date.parse(`${ymd.slice(0, 10)}T00:00:00Z`);
+    const monday = t - ((new Date(t).getUTCDay() + 6) % 7) * DAY_MS;
+    return Math.round((monday - first) / WEEK_MS);
+  };
+  for (const a of bookings) {
+    let sums = out.get(a.resourceId);
+    if (!sums) { sums = new Array<number>(n).fill(0); out.set(a.resourceId, sums); }
+    const end = a.endDate < a.startDate ? a.startDate : a.endDate;
+    let lo = indexOf(a.startDate);
+    let hi = indexOf(end);
+    // an unreadable date: look at every week, as before
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) { lo = 0; hi = n - 1; }
+    const cal = calOf(a.scheduleId);
+    for (let i = Math.max(0, lo); i <= Math.min(n - 1, hi); i++) sums[i] += hoursInWeek(a, weekKeys[i], cal);
+  }
+  return out;
+}
+
 /** How many plan calendars are read at once (the database pool is small — 2026-10-04 audit) */
 export const CALENDAR_LOOKUPS_AT_ONCE = 3;
 

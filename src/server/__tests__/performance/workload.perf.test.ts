@@ -18,20 +18,20 @@ import { makePlan, measure, MAX_GROWTH_PER_DOUBLING, report, isWorking, type Per
  *
  *   | case                                    | N (tasks) | measured | limit    | growth per doubling |
  *   |-----------------------------------------|-----------|----------|----------|---------------------|
- *   | one project's heatmap (computeWorkload) | 4,000     | 1,543 ms | 4,630 ms | 1.71–2.42 (< 3.0)   |
- *   | everyone's heatmap (global)             | 2,000     | 733 ms   | 2,210 ms | 1.66–2.10 (< 3.0)   |
+ *   | one project's heatmap (computeWorkload) | 4,000     | 373 ms   | 1,120 ms | 1.88–2.72 (< 3.0)   |
+ *   | everyone's heatmap (global)             | 2,000     | 210 ms   | 630 ms   | 1.80–2.15 (< 3.0)   |
  *
- * Slow but linear (not O(n²)) — see efficiency report: every person × every week of the programme
- * × every one of that person's bookings is visited, so the time is weeks × bookings (~100 weeks
- * here), most of those visits for weeks the booking doesn't touch.
+ * Re-measured after the 2026-10-08 speed fix (six runs, same method): each booking now visits only
+ * the weeks it covers (weeklyLoad.ts `bookedHoursByWeek`) instead of every person × every week ×
+ * all their bookings. Before: 1,543 ms / 733 ms (limits 4,630 / 2,210 ms).
  */
 
 // one project's heatmap needs the bigger plan: below ~1,000 tasks project p0 doesn't yet involve
 // everyone or span the whole programme, so a 4× step there grows the data more than 4×
 const N_PROJECT = 4000;
 const N_GLOBAL = 2000;
-const LIMIT_PROJECT_MS = 4630;
-const LIMIT_GLOBAL_MS = 2210;
+const LIMIT_PROJECT_MS = 1120;
+const LIMIT_GLOBAL_MS = 630;
 
 let plan: PerfPlan;
 let resourceById = new Map<string, any>();

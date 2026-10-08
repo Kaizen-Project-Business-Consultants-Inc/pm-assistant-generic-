@@ -128,3 +128,14 @@ export function compareSortValues(a: unknown, b: unknown, dir: 1 | -1): number {
   if ((a as number | string) > (b as number | string)) return 1 * dir;
   return 0;
 }
+
+/**
+ * `list` sorted by `valueOf` (stable, blanks last — see compareSortValues), working out each
+ * item's value ONCE instead of twice per comparison (2026-10-08 speed: the Duration sort counted
+ * working days inside the comparator). Same order as sorting with the comparator directly.
+ */
+export function sortByValue<T>(list: readonly T[], valueOf: (item: T) => unknown, dir: 1 | -1): T[] {
+  const keyed = list.map((item) => ({ item, value: valueOf(item) }));
+  keyed.sort((a, b) => compareSortValues(a.value, b.value, dir));
+  return keyed.map((k) => k.item);
+}

@@ -8,7 +8,7 @@ import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { rateCardService, ratesOn } from './RateCardService';
 import { databaseService } from '../database/connection';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
-import { hoursInWeek, calendarsFor } from './weeklyLoad';
+import { hoursInWeek, calendarsFor, bookedHoursByWeek } from './weeklyLoad';
 import { type IsWorking, weekdaysOnly, mondayOf } from '../utils/workingDays';
 
 export interface SkillWithProficiency {
@@ -489,6 +489,14 @@ export class ResourceService {
       projectId,
     );
 
+    // Everyone's booked hours per week, each booking visited only for the weeks it covers (it was
+    // every person × every week × all their bookings — 2026-10-08 speed test)
+    const weekKeys = weeks.map(w => w.toISOString().slice(0, 10));
+    // only the people this heatmap shows (people, or generic roles) — no work for skipped ones
+    const shown = (a: { resourceId: string }) => { const r = resourceMap.get(a.resourceId); return !!r && !!r.isGeneric === generic; };
+    const hereByWeek = bookedHoursByWeek(projectAssignments.filter(shown), weekKeys, calOf);
+    const elsewhereByWeek = bookedHoursByWeek(elsewhere.filter(shown), weekKeys, calOther);
+
     const workloads: ResourceWorkload[] = [];
 
     for (const resId of involvedResourceIds) {
@@ -497,8 +505,8 @@ export class ResourceService {
       // Generic roles are unfilled demand, not people: they're never over- or under-booked
       if (!!resource.isGeneric !== generic) continue;
 
-      const resAssignments = projectAssignments.filter((a) => a.resourceId === resId);
-      const resElsewhere = elsewhere.filter((a) => a.resourceId === resId);
+      const resHere = hereByWeek.get(resId);
+      const resElsewhere = elsewhereByWeek.get(resId);
       const baseCapacity = resource.capacityHoursPerWeek;
       const rate = ratesOn(resource, todayKey, rateCard).standard;
       let totalUtilization = 0;
@@ -520,20 +528,14 @@ export class ResourceService {
       const resCapacityMap = capacityMap.get(resId);
 
       const weeklyData: WeeklyUtilization[] = [];
-      for (const weekStart of weeks) {
-        const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
+      for (let i = 0; i < weeks.length; i++) {
         // Only the working days each booking covers this week count (one day of a 40 h/week
         // task is 8 h, not 40)
-        const wk = weekStart.toISOString().slice(0, 10);
-        let thisProject = 0;
-        for (const a of resAssignments) thisProject += hoursInWeek(a, wk, calOf(a.scheduleId));
-        let otherProjects = 0;
-        for (const a of resElsewhere) otherProjects += hoursInWeek(a, wk, calOther(a.scheduleId));
-        thisProject = Math.round(thisProject * 10) / 10;
-        otherProjects = Math.round(otherProjects * 10) / 10;
+        const thisProject = Math.round((resHere?.[i] ?? 0) * 10) / 10;
+        const otherProjects = Math.round((resElsewhere?.[i] ?? 0) * 10) / 10;
         const allocated = Math.round((thisProject + otherProjects) * 10) / 10;
 
-        const weekKey = weekStart.toISOString().slice(0, 10);
+        const weekKey = weekKeys[i];
         const actual = actualByWeek?.get(weekKey) ?? 0;
 
         const capacity = resCapacityMap?.get(weekKey) ?? baseCapacity;
@@ -656,6 +658,13 @@ export class ResourceService {
       new Date(weeks[weeks.length - 1].getTime() + WEEK_MS).toISOString().slice(0, 10),
     );
 
+    // Everyone's booked hours per week, each booking visited only for the weeks it covers (it was
+    // every person × every week × all their bookings — 2026-10-08 speed test)
+    const weekKeys = weeks.map(w => w.toISOString().slice(0, 10));
+    // only the people this heatmap shows (people, or generic roles) — no work for skipped ones
+    const shown = (a: { resourceId: string }) => { const r = resourceMap.get(a.resourceId); return !!r && !!r.isGeneric === generic; };
+    const bookedByWeek = bookedHoursByWeek(allAssignments.filter(shown), weekKeys, calOf);
+
     const workloads: ResourceWorkload[] = [];
 
     for (const resId of involvedResourceIds) {
@@ -664,7 +673,7 @@ export class ResourceService {
       // Generic roles are unfilled demand, not people: they're never over- or under-booked
       if (!!resource.isGeneric !== generic) continue;
 
-      const resAssignments = allAssignments.filter((a) => a.resourceId === resId);
+      const resBooked = bookedByWeek.get(resId);
       const baseCapacity = resource.capacityHoursPerWeek;
       const rate = ratesOn(resource, todayKey, rateCard).standard;
       let totalUtilization = 0;
@@ -679,17 +688,12 @@ export class ResourceService {
       const resCapacityMap = capacityMap.get(resId);
 
       const weeklyData: WeeklyUtilization[] = [];
-      for (const weekStart of weeks) {
-        const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
-        let allocated = 0;
-
+      for (let i = 0; i < weeks.length; i++) {
         // Only the working days each booking covers this week count (one day of a 40 h/week
         // task is 8 h, not 40)
-        const wk = weekStart.toISOString().slice(0, 10);
-        for (const a of resAssignments) allocated += hoursInWeek(a, wk, calOf(a.scheduleId));
-        allocated = Math.round(allocated * 10) / 10;
+        const allocated = Math.round((resBooked?.[i] ?? 0) * 10) / 10;
 
-        const weekKey = weekStart.toISOString().slice(0, 10);
+        const weekKey = weekKeys[i];
         const actual = actualByWeek?.get(weekKey) ?? 0;
         const capacity = resCapacityMap?.get(weekKey) ?? baseCapacity;
         const utilization = capacity > 0 ? Math.round((allocated / capacity) * 100) : 0;

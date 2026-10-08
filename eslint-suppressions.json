@@ -1007,11 +1007,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/schedule/gantt/hooks/useTaskFiltering.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/client/src/components/schedule/gantt/timelineStrip.ts": {
     "no-restricted-syntax": {
       "count": 3
@@ -2835,16 +2830,16 @@
   },
   "src/server/services/ResourceService.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 3
+      "count": 1
     },
     "no-await-in-loop": {
       "count": 1
     },
     "no-restricted-syntax": {
-      "count": 8
+      "count": 5
     },
     "sonarjs/cognitive-complexity": {
-      "count": 2
+      "count": 1
     }
   },
   "src/server/services/RetrospectiveService.ts": {
