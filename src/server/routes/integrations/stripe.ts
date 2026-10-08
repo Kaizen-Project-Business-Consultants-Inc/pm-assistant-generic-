@@ -263,7 +263,11 @@ export async function stripeRoutes(fastify: FastifyInstance) {
           tokensPerPack: config.AI_TOPUP_TOKENS,
           pricePerPack: config.AI_TOPUP_PRICE_CENTS,
         },
-        history,
+        // only what a purchase list needs — not internal ids or the payment session (2026-10-08)
+        history: history.map(h => ({
+          tokensPurchased: h.tokens_purchased, tokensRemaining: h.tokens_remaining,
+          amountCents: h.amount_cents, purchasedAt: h.purchased_at, expiresAt: h.expires_at,
+        })),
       };
     } catch (error) {
       logger.error('Get top-up balance error', { error });

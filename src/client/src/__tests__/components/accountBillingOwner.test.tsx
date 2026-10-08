@@ -17,7 +17,7 @@ import { MemoryRouter } from 'react-router-dom';
 const TOPUP_REPLY = vi.hoisted((): TopUpBalance => ({
   remainingTopUpTokens: 1_500_000,
   topUpConfig: { tokensPerPack: 500_000, pricePerPack: 1000 },
-  history: [{ id: 't1', tokensPurchased: 500_000, tokensRemaining: 500_000, amountCents: 1000, purchasedAt: '2026-10-01T00:00:00.000Z', expiresAt: null }],
+  history: [{ tokensPurchased: 500_000, tokensRemaining: 500_000, amountCents: 1000, purchasedAt: '2026-10-01T00:00:00.000Z', expiresAt: null }],
 }));
 const api = vi.hoisted(() => ({
   getSubscriptionStatus: vi.fn(),

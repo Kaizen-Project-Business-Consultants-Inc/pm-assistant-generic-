@@ -8,7 +8,7 @@ export interface TopUpBalance {
   /** Purchased AI tokens left (not expired), summed over the signed-in user's packs */
   remainingTopUpTokens: number;
   topUpConfig: { tokensPerPack: number; pricePerPack: number };
-  history: Array<{ id: string; tokensPurchased: number; tokensRemaining: number; amountCents: number; purchasedAt: string; expiresAt: string | null }>;
+  history: Array<{ tokensPurchased: number; tokensRemaining: number; amountCents: number; purchasedAt: string; expiresAt: string | null }>;
 }
 
 export class BillingApi extends ApiBase {
