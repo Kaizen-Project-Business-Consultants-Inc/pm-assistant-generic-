@@ -10,6 +10,21 @@ import {
 } from './types';
 import { matchesTrigger, buildAdjacencyList, advanceExecution, executeWorkflowEngine } from './engine';
 import { databaseService } from '../../database/connection';
+import { getRequestContext, runAsWorkflow } from '../../middleware/requestContext';
+
+/** How many workflows may start one another in a row (a workflow's change → another workflow …) */
+const MAX_WORKFLOW_DEPTH = 3;
+
+/**
+ * A change made by a workflow may start other workflows, but only so deep: a workflow whose
+ * action re-triggered itself ran 66,000 times in 82 minutes on staging (found 2026-10-08).
+ */
+function stoppedByDepth(kind: 'task' | 'project' | 'proposal', id: string): boolean {
+  const depth = getRequestContext()?.workflowDepth ?? 0;
+  if (depth < MAX_WORKFLOW_DEPTH) return false;
+  logger.warn('[DagWorkflow] stopped a chain of workflows started by workflows', { kind, id, depth });
+  return true;
+}
 
 /**
  * A workflow made for one project only runs on that project's events (2026-10-03: every enabled
@@ -177,6 +192,7 @@ class DagWorkflowService {
     _scheduleService: ScheduleService,
   ): Promise<void> {
     if (!(await this.ensureTablesExist())) return;
+    if (stoppedByDepth('task', task.id)) return;
 
     try {
       const defs = await workflowRepository.findEnabledDefinitions();
@@ -190,7 +206,7 @@ class DagWorkflowService {
         const triggerNodes = fullDef.nodes.filter(n => n.nodeType === 'trigger');
         for (const triggerNode of triggerNodes) {
           if (matchesTrigger(triggerNode.config, task, oldTask)) {
-            await this.executeWorkflow(fullDef, triggerNode, task);
+            await runAsWorkflow(() => this.executeWorkflow(fullDef, triggerNode, task));
           }
         }
       }
@@ -204,6 +220,7 @@ class DagWorkflowService {
     changeType: string,
     data: Record<string, any>,
   ): Promise<void> {
+    if (stoppedByDepth('project', projectId)) return;
     if (!(await this.ensureTablesExist())) return;
 
     try {
@@ -230,7 +247,7 @@ class DagWorkflowService {
           }
 
           if (matched) {
-            await this.executeWorkflow(fullDef, triggerNode, null);
+            await runAsWorkflow(() => this.executeWorkflow(fullDef, triggerNode, null));
           }
         }
       }
@@ -243,6 +260,7 @@ class DagWorkflowService {
     eventType: 'proposal_created' | 'proposal_executed',
     data: { proposalId: string; projectId: string; agentId: string; confidenceScore: number; riskLevel: string; title: string },
   ): Promise<void> {
+    if (stoppedByDepth('proposal', data.proposalId)) return;
     if (!(await this.ensureTablesExist())) return;
 
     try {
@@ -265,7 +283,7 @@ class DagWorkflowService {
           if (config.riskLevel && data.riskLevel !== config.riskLevel) matched = false;
 
           if (matched) {
-            await this.executeWorkflow(fullDef, triggerNode, null, {
+            await runAsWorkflow(() => this.executeWorkflow(fullDef, triggerNode, null, {
               entityType: 'proposal',
               entityId: data.proposalId,
               proposalId: data.proposalId,
@@ -274,7 +292,7 @@ class DagWorkflowService {
               confidenceScore: data.confidenceScore,
               riskLevel: data.riskLevel,
               title: data.title,
-            });
+            }));
           }
         }
       }

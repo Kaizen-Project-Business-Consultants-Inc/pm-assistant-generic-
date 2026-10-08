@@ -5,7 +5,6 @@ import { scheduleService, DependencyValidationError, GroupValidationError } from
 import { flowMetricsService } from '../../services/FlowMetricsService';
 import { criticalPathService } from '../../services/CriticalPathService';
 import { baselineService } from '../../services/BaselineService';
-import { dagWorkflowService } from '../../services/DagWorkflowService';
 import { WebSocketService } from '../../services/WebSocketService';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
@@ -336,8 +335,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Workflow automation: evaluate rules
-      await dagWorkflowService.evaluateTaskChange(task, oldTask, scheduleService);
+      // Workflow automation runs from the task.changed notice updateTask emits
+      // (domainListeners) — calling it here as well ran every workflow twice per save (2026-10-08)
 
       // WebSocket broadcast (scoped to project)
       const { scheduleId } = request.params as { scheduleId: string };

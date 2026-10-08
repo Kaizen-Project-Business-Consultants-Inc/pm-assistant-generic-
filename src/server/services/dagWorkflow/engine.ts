@@ -19,10 +19,15 @@ export function matchesTrigger(config: Record<string, any>, task: Task, oldTask:
       return true;
     }
     case 'progress_threshold': {
+      // Fires when progress CROSSES the threshold, not on every change while it sits there:
+      // "Auto-complete on 100%" re-matched its own status change forever (2026-10-08)
       const progress = task.progressPercentage ?? 0;
       const threshold = config.progressThreshold ?? 0;
-      if (config.progressDirection === 'below') return progress <= threshold;
-      return progress >= threshold;
+      const below = config.progressDirection === 'below';
+      const meets = (p: number) => (below ? p <= threshold : p >= threshold);
+      if (!meets(progress)) return false;
+      if (!oldTask) return true; // a new task that already meets it
+      return !meets(oldTask.progressPercentage ?? 0);
     }
     case 'date_passed': {
       if (!task.endDate) return false;
@@ -30,7 +35,11 @@ export function matchesTrigger(config: Record<string, any>, task: Task, oldTask:
       // is midnight UTC, so the old test fired from 8pm the previous evening in Toronto —
       // this trigger runs automations, so it was acting a day early for every North
       // American customer. A task due today has not passed until tomorrow.
-      return isOverdue(task.endDate);
+      if (!isOverdue(task.endDate)) return false;
+      // The overdue scan passes the task as both old and new ("the date has passed"); an
+      // ordinary edit fires only when it moved the end date — not on every edit of a late task
+      if (!oldTask || oldTask === task) return true;
+      return oldTask.endDate !== task.endDate;
     }
     case 'task_created':
       if (oldTask !== null) return false;
@@ -112,7 +121,13 @@ export async function executeAction(
   switch (actionType) {
     case 'update_field': {
       if (task && config.field && config.value) {
-        scheduleService.updateTask(task.id, { [config.field]: config.value } as any);
+        // already set: writing it again would record a change that isn't one, and start the
+        // task's workflows again
+        if (String((task as any)[config.field]) === String(config.value)) { // "100" from the settings equals 100
+          return { action: 'update_field', field: config.field, value: config.value, skipped: true, reason: 'already set' };
+        }
+        scheduleService.updateTask(task.id, { [config.field]: config.value } as any)
+          .catch(err => logger.error('[DagWorkflow] update_field failed', { taskId: task.id, field: config.field, error: err }));
         return { action: 'update_field', field: config.field, value: config.value };
       }
       return { action: 'update_field', skipped: true };

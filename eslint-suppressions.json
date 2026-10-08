@@ -3262,9 +3262,6 @@
     }
   },
   "src/server/services/dagWorkflow/engine.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
     "eqeqeq": {
       "count": 2
     },

@@ -1092,6 +1092,9 @@ Workflows can be triggered:
 - **Automatically on project events** -- Budget or status changes on projects fire budget_threshold and project_status_change triggers.
 - **Automatically by overdue scanner** -- A 15-minute cron scans for newly-overdue tasks and fires date_passed triggers.
 
+- **Progress threshold** fires once, when a task's progress *reaches* the threshold — not again on later edits while it stays there. **Date passed** fires from the overdue scanner, or when an edit moves a late task's end date — not on every edit of a late task (October 2026).
+- A workflow's own change to a task can start other workflows, but at most three in a row, and a workflow never re-sets a value the task already has. This stops a workflow from triggering itself over and over.
+
 All automatic triggers are non-blocking and will not slow down the originating operation.
 
 ### Execution History

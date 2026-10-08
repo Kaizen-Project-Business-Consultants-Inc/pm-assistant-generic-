@@ -9,12 +9,24 @@ export interface RequestContext {
   organizationId?: string;
   /** 'mcp' for any Bearer/API-key-authenticated request, 'web' otherwise. */
   actorSource?: 'web' | 'mcp';
+  /** How many workflows deep this work is (a workflow's action that changes a task → 1, …) */
+  workflowDepth?: number;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
 
 export function getRequestContext(): RequestContext | undefined {
   return asyncLocalStorage.getStore();
+}
+
+/**
+ * Run a workflow's actions one level deeper, so task changes they make can be recognised (and a
+ * workflow that keeps re-triggering itself is stopped — 2026-10-08: 66,000 runs in 82 minutes).
+ */
+export function runAsWorkflow<T>(fn: () => Promise<T>): Promise<T> {
+  const current = asyncLocalStorage.getStore();
+  const next: RequestContext = { ...(current ?? { requestId: 'workflow', startTime: Date.now() }), workflowDepth: (current?.workflowDepth ?? 0) + 1 };
+  return asyncLocalStorage.run(next, fn);
 }
 
 export function getRequestId(): string | undefined {
