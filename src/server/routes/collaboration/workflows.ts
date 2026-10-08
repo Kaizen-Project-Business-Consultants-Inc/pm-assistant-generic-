@@ -13,6 +13,7 @@ import { claudeService } from '../../services/claudeService';
 import { workflowGenerateRequestSchema, workflowGenerationOutputSchema, WORKFLOW_GENERATION_SYSTEM_PROMPT } from '../../schemas/workflowGenerationSchemas';
 import logger from '../../utils/logger';
 import { clampPagination } from '../../schemas/paginationSchema';
+import type { ExecutionVisibility } from '../../database/WorkflowRepository';
 
 // ── Zod schemas ────────────────────────────────────────────────────────────
 
@@ -110,18 +111,32 @@ const workflowReader = async (request: FastifyRequest, reply: FastifyReply) => {
   if (!wf.found) return reply.status(404).send({ error: 'Workflow not found' });
   await requireMemberIfProject(request, reply, wf.projectId);
 };
+/**
+ * Which workflow runs a person may see (2026-10-08). Admin/PMO/executive (who read every project):
+ * all — undefined. Anyone else: runs of their projects' workflows, and runs of company-wide
+ * workflows only on tasks in their projects — a company-wide workflow runs on every project and
+ * the run records the task's name, so "company-wide" alone is not enough.
+ */
+async function executionVisibility(user: { userId: string; role: string }): Promise<ExecutionVisibility | undefined> {
+  const readable = await readableProjectIds(user);
+  if (readable === 'all') return undefined;
+  const defs = await dagWorkflowService.listDefinitions();
+  return {
+    projectWorkflowIds: defs.filter(d => d.projectId && readable.has(d.projectId)).map(d => d.id),
+    orgWorkflowIds: defs.filter(d => !d.projectId).map(d => d.id),
+    projectIds: [...readable],
+  };
+}
 const executionReader = async (request: FastifyRequest, reply: FastifyReply) => {
   const rows = await databaseService.query<{ workflow_id: string }>('SELECT workflow_id FROM workflow_executions WHERE id = ?', [(request.params as { id: string }).id]);
   if (!rows.length) return reply.status(404).send({ error: 'Execution not found' });
   await requireMemberIfProject(request, reply, (await workflowProject(rows[0].workflow_id)).projectId);
 };
-/** Execution lists: for one workflow the caller can read (the whole log is for admin/PMO) */
+/** Execution lists: one workflow the caller can read. With no workflow named, the handler lists
+ *  the runs the caller can see (the Workflows page asks without filters) — see the handler. */
 const executionListReader = async (request: FastifyRequest, reply: FastifyReply) => {
   const { workflowId } = request.query as { workflowId?: string };
-  if (!workflowId) {
-    if (['admin', 'pmo'].includes(request.user!.role)) return;
-    return reply.status(400).send({ error: 'workflowId required', message: 'Choose a workflow to see its runs.' });
-  }
+  if (!workflowId) return;
   const wf = await workflowProject(workflowId);
   if (!wf.found) return reply.status(404).send({ error: 'Workflow not found' });
   await requireMemberIfProject(request, reply, wf.projectId);
@@ -331,8 +346,14 @@ export async function workflowRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { workflowId, entityType, entityId, status, limit } = request.query as Record<string, string>;
+      // No filters is the default page (2026-10-08: it was a 400 for everyone but admin/PMO, so the
+      // Workflows page failed for project managers and team members). Anyone who can't read every
+      // project sees only runs on their projects: their projects' workflows, and company-wide
+      // workflows' runs on tasks in their projects (a company-wide workflow runs on every project,
+      // and the run names the task). Also applies when a workflow or entity is named.
+      const visibleTo = await executionVisibility(request.user!);
       const executions = await dagWorkflowService.listExecutions({
-        workflowId, entityType, entityId, status,
+        workflowId, visibleTo, entityType, entityId, status,
         // A limit that isn't a number falls back to 50 instead of SQL `LIMIT NaN` (2026-10-07)
         limit: clampPagination({ limit }, { defaultLimit: 50 }).limit,
       });

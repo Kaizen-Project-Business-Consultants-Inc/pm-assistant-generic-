@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { workflowRepository } from '../../database/WorkflowRepository';
+import { workflowRepository, type ExecutionVisibility } from '../../database/WorkflowRepository';
 import { Task, ScheduleService, scheduleService } from '../ScheduleService';
 import { auditLedgerService } from '../AuditLedgerService';
 import { deadLetterService } from '../DeadLetterService';
@@ -175,6 +175,7 @@ class DagWorkflowService {
 
   async listExecutions(filters?: {
     workflowId?: string;
+    visibleTo?: ExecutionVisibility;
     entityType?: string;
     entityId?: string;
     status?: string;

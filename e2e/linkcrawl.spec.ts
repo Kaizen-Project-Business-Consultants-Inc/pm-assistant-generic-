@@ -20,7 +20,6 @@ type Who = 'pm' | 'team';
 interface Allowed { key: string; who: Who[]; reason: string; onlyIf?: string }
 
 const ALLOW_LIST: Allowed[] = [
-  { key: 'http: GET /api/v1/workflows/executions 400', who: ['team'], reason: 'KNOWN — efficiency report: Workflows page asks for executions a team member cannot list' },
 ];
 
 /** Screens not opened from the route list: sign-in/sign-up flows, one-time tokens, and the

@@ -1107,7 +1107,7 @@ All automatic triggers are non-blocking and will not slow down the originating o
 
 ### Execution History
 
-Each workflow run creates an execution record:
+Each workflow run creates an execution record. The **Executions** tab on the Workflows page lists the 50 newest runs on your projects — runs of your projects' workflows, and runs of company-wide workflows on tasks in your projects (an admin, PMO or executive sees every run). For each run you can:
 
 - View the status of each node in the run (pending, running, completed, failed, waiting_approval).
 - See timestamps for when each node started and completed.

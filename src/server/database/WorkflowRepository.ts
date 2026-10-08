@@ -7,6 +7,16 @@ import { rowToDef, rowToNode, rowToEdge, rowToExecution, rowToNodeExec, parseJso
 
 export type { WorkflowDefinition, WorkflowNode, WorkflowEdge, WorkflowExecution, WorkflowNodeExecution };
 
+/** What a caller who can't read every project may see of the run log (see findExecutions) */
+export interface ExecutionVisibility {
+  /** workflows of projects the caller can read */
+  projectWorkflowIds: string[];
+  /** company-wide workflows (no project) */
+  orgWorkflowIds: string[];
+  /** projects the caller can read */
+  projectIds: string[];
+}
+
 class WorkflowRepository {
   // ── Table check ───────────────────────────────────────────────────────
 
@@ -152,11 +162,26 @@ class WorkflowRepository {
   }
 
   async findExecutions(filters?: {
-    workflowId?: string; entityType?: string; entityId?: string; status?: string; limit?: number;
+    workflowId?: string; visibleTo?: ExecutionVisibility; entityType?: string; entityId?: string; status?: string; limit?: number;
   }): Promise<WorkflowExecution[]> {
     let sql = 'SELECT * FROM workflow_executions WHERE 1=1';
     const params: any[] = [];
     if (filters?.workflowId) { sql += ' AND workflow_id = ?'; params.push(filters.workflowId); }
+    // Only runs the caller may see: all runs of their projects' workflows; runs of company-wide
+    // workflows only on tasks in projects they can read (a run's context names the task)
+    const v = filters?.visibleTo;
+    if (v) {
+      const ph = (n: number) => Array(n).fill('?').join(',');
+      const parts: string[] = [];
+      if (v.projectWorkflowIds.length) { parts.push(`workflow_id IN (${ph(v.projectWorkflowIds.length)})`); params.push(...v.projectWorkflowIds); }
+      if (v.orgWorkflowIds.length && v.projectIds.length) {
+        parts.push(`(workflow_id IN (${ph(v.orgWorkflowIds.length)}) AND entity_type = 'task' AND entity_id IN `
+          + `(SELECT t.id FROM tasks t JOIN schedules s ON s.id = t.schedule_id WHERE s.project_id IN (${ph(v.projectIds.length)})))`);
+        params.push(...v.orgWorkflowIds, ...v.projectIds);
+      }
+      if (parts.length === 0) return [];
+      sql += ` AND (${parts.join(' OR ')})`;
+    }
     if (filters?.entityType) { sql += ' AND entity_type = ?'; params.push(filters.entityType); }
     if (filters?.entityId) { sql += ' AND entity_id = ?'; params.push(filters.entityId); }
     if (filters?.status) { sql += ' AND status = ?'; params.push(filters.status); }
