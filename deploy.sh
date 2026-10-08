@@ -195,6 +195,14 @@ echo "[1/7] Type checking..."
 npx tsc --noEmit
 echo "  ✓ OK"
 
+# --- Step 1b: Dead-code check (prod always, even with --skip-tests; staging when tests run) ---
+# Fails on any NEW unused file/export/package vs scripts/deadcode-baseline.json (2026-10-07).
+if [ "$ENV" = "prod" ] || [ "$SKIP_TESTS" != true ]; then
+  echo "[1b/7] Dead-code check..."
+  node scripts/deadCodeCheck.mjs
+  echo "  ✓ OK"
+fi
+
 # --- Step 2: Tests ---
 if [ "$SKIP_TESTS" = true ]; then
   echo "[2/7] Tests skipped (--skip-tests)"

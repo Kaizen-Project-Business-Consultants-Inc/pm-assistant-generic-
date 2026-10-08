@@ -1461,6 +1461,14 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 
 `src/client/src/__tests__/utils/a11yNamesGuard.test.ts` runs the scanner `scripts/a11yScan.ts` (TypeScript parser) over every client `.tsx` and fails if any `<input>`, `<select>`, `<textarea>` or icon-only `<button>` has no accessible name (label `htmlFor` + `id`, wrapping `<label>`, `aria-labelledby`, or `aria-label` when there is no visible text) — a ratchet: unlisted files must have none, listed allowances only go down (529 → 1 on 2026-10-06). List them with `npx tsx scripts/a11y-scan.ts`.
 
+## Dead-code check (Oct 2026)
+
+`npm run deadcode` (`scripts/deadCodeCheck.mjs`, ~70 s) runs knip on the server (`knip.json`), the client (`src/client/knip.json`) and the MCP server (`mcp-server/knip.json`) and lists unused files, unused exports/types, and unused or unlisted packages. It compares them with the known list `scripts/deadcode-baseline.json` (580 items on 2026-10-07, incl. 21 whole files) and **fails on anything new**. `deploy.sh` runs it on every prod release (even with `--skip-tests`) and on staging when tests run.
+
+- If it fails on your change: remove the unused code. If you replaced a screen or feature, the old one goes in the same change (the plan names it under "Removes:").
+- The baseline only **shrinks**: after removing dead code, `node scripts/deadCodeCheck.mjs --update`. Adding to it needs the user's OK.
+- Tests count as users (a helper used only by a guard test is not dead). Server routes nothing calls are not covered — see the 2026-10-07 efficiency report.
+
 ## Production smoke tests (Oct 2026)
 
 `SMOKE_CREDENTIALS=path/to/prod-smoke-account.json npx playwright test -c playwright.prod.config.ts` — 10 read-only page checks on kovarti.com. The login comes from the same credentials file as `scripts/prod-smoke.cjs` (kept outside the repository); the checks reuse the session the setup step saves. Staging tests use the QA logins (qa.pm / qa.team / qa.outsider @pm.kpbc.ca, see `e2e/staging-helpers.ts`).

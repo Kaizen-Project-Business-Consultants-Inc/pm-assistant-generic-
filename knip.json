@@ -1,0 +1,7 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/server/index.ts", "src/server/scripts/*.ts", "scripts/**/*.{ts,mjs,cjs}", "e2e/**/*.ts", "playwright*.config.ts", "vitest.config.ts", "src/server/__tests__/**/*.ts"],
+  "project": ["src/server/**/*.ts", "scripts/**/*.{ts,cjs,mjs}"],
+  "ignore": ["src/client/**", "mcp-server/**"],
+  "ignoreWorkspaces": ["src/client", "mcp-server"]
+}

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": ["src/main.tsx", "src/sw.ts", "vite.config.ts", "vitest.config.ts", "src/**/*.test.{ts,tsx}", "src/__tests__/**/*.{ts,tsx}", "postcss*.{js,cjs}", "tailwind.config.js"],
+  "project": ["src/**/*.{ts,tsx}"]
+}
