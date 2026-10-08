@@ -1506,7 +1506,7 @@ The code checker adds the in-memory side: **`no-restricted-syntax`** flags searc
 
 ## Copy-paste check (Oct 2026)
 
-`npm run duplication` (`scripts/duplicationCheck.mjs`, ~20 s; settings `.jscpd.json`): jscpd finds blocks of 15+ lines that appear in two places (tests excluded). 2026-10-08: 66 copies, 1,954 lines (0.89% of the code) in 64 files, listed in `scripts/duplication-baseline.json`. A copied block in a file that has never had one fails, and so do more copies than the baseline or the copied lines growing by more than 60: make it one shared function or component. (It compares by file, not by pair, because jscpd can pair the same block with a different file from one machine to another.) Shrink the list with `--update` after removing copies. Runs in `deploy.sh` with the code checker.
+`npm run duplication` (`scripts/duplicationCheck.mjs`, ~20 s; settings `.jscpd.json`): jscpd finds blocks of 15+ lines that appear in two places (tests excluded). 2026-10-08: 69 copies, 2,070 lines in 67 files (measured on a clean checkout — files with Windows line endings in a working folder hide some copies from jscpd, so a working folder may show fewer; releases build from a clean checkout), listed in `scripts/duplication-baseline.json`. A copied block in a file that has never had one fails, and so do more copies than the baseline or the copied lines growing by more than 60: make it one shared function or component. (It compares by file, not by pair, because jscpd can pair the same block with a different file from one machine to another.) Shrink the list with `--update` after removing copies. Runs in `deploy.sh` with the code checker.
 
 ## App download size limit (Oct 2026)
 
