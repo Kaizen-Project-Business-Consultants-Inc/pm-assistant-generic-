@@ -2274,6 +2274,8 @@ Every subscription lifecycle change is persisted to the `subscription_events` ta
 
 ### Account Billing Page
 
+Only the company owner can change the plan, buy AI top-ups, open the Stripe billing portal or re-check the subscription (server: `billingOwnerOnly` in `routes/integrations/stripe.ts`, 2026-10-08; client: `useCanManageBilling` hides the buttons). A member could start a company-plan checkout before, and paying it rewrote the company's plan.
+
 The `AccountBillingPage` (`/account/billing`) shows:
 
 - **Plan name**: dynamically resolved from the user's actual subscription tier — never hardcoded. Trial tier shows "Trial Plan", paid tiers show "Consultant Basic Plan", "Consultant Pro Plan", "SME Plan", or "Enterprise Plan" accordingly.

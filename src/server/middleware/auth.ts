@@ -61,6 +61,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         accountRole: keyInfo.userRole,
         // unknown (no row) counts as having a company: never mistaken for the platform admin
         hasCompany: keyOwner.length > 0 ? keyOwner[0].organization_id != null : true,
+        isOwner: !!Number(keyOwner[0]?.is_owner),
       };
       if (keyOwner[0]?.is_guest) {
         request.user.isGuest = true;
@@ -127,6 +128,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
     }
     // unknown (no row) counts as having a company: never mistaken for the platform admin
     request.user.hasCompany = rows.length > 0 ? rows[0].organization_id != null : true;
+    request.user.isOwner = rows.length > 0 && !!Number(rows[0].is_owner) && !request.supportSession;
 
     if (rows.length > 0) {
       if (!isPasswordChangeAllowed && rows[0].must_change_password) {

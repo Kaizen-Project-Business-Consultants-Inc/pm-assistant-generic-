@@ -10,6 +10,18 @@ import { tokenTopUpRepository } from '../../database/TokenTopUpRepository';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
+/**
+ * Buying a plan or credits, opening the billing portal, re-checking the subscription: the company
+ * owner only (2026-10-08). A member could start a company-plan checkout, and once paid it rewrote
+ * the whole company's plan, billing account and seat count. Someone with no company buys for
+ * themselves; the Kovarti admin has no billing.
+ */
+async function billingOwnerOnly(request: FastifyRequest, reply: FastifyReply) {
+  const u = request.user;
+  if (u && (u.isOwner || u.hasCompany === false)) return;
+  return reply.status(403).send({ error: 'Forbidden', message: "Only the company's owner can change the plan or buy credits. Ask them to do it from Account." });
+}
+
 const checkoutSchema = z.object({
   plan: z.enum(['monthly', 'annual']).optional(),
   tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
@@ -116,7 +128,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
 
   // Authenticated routes
   fastify.post('/create-checkout-session', {
-    preHandler: [authMiddleware, requireScope('read')],
+    preHandler: [authMiddleware, requireScope('read'), billingOwnerOnly],
     schema: { description: 'Create Stripe checkout session', tags: ['stripe'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -202,7 +214,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
 
   // Token top-up purchase
   fastify.post('/create-topup-session', {
-    preHandler: [authMiddleware, requireScope('read')],
+    preHandler: [authMiddleware, requireScope('read'), billingOwnerOnly],
     schema: { description: 'Create Stripe checkout for token top-up', tags: ['stripe'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -260,7 +272,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/create-portal-session', {
-    preHandler: [authMiddleware, requireScope('read')],
+    preHandler: [authMiddleware, requireScope('read'), billingOwnerOnly],
     schema: { description: 'Create Stripe billing portal session', tags: ['stripe'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -301,7 +313,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   // lost — and a customer who has paid but whose confirmation went missing would
   // otherwise be locked out of what they just bought.
   fastify.post('/reconcile', {
-    preHandler: [authMiddleware, requireScope('read')],
+    preHandler: [authMiddleware, requireScope('read'), billingOwnerOnly],
     schema: { description: 'Re-check this account\'s subscription directly with Stripe', tags: ['stripe'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

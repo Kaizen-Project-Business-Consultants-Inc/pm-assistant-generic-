@@ -23,6 +23,8 @@ declare module 'fastify' {
       guestExpiresAt?: string | null;
       /** Belongs to a company (set by authMiddleware). The platform admin has none — see utils/platformAdmin.ts */
       hasCompany?: boolean;
+      /** The company's owner (organizations.owner_user_id) — billing is theirs alone */
+      isOwner?: boolean;
       /** The person's own role. `role` is what they may do: 'pmo' for the company owner (utils/companyOwner.ts) */
       accountRole?: string;
     };
