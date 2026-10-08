@@ -60,6 +60,7 @@ Run all checks before committing. Zero regressions.
 3. **Run all tests:** `npx vitest run` — all tests pass (new and existing).
 4. **Full build:** `npm run build` — build succeeds with no new errors.
 5. **Code quality gates (Oct 2026, nothing new allowed — lists only shrink):** `npm run lint` (bugs, security, slow patterns, complexity, React/a11y), `npm run duplication` (copy-paste), `npm run deadcode` (unused code), `npm run bundle-budget` after a client build. `deploy.sh` runs them on every prod release. See TESTING_GUIDE.md.
+6. **Review before every commit:** run the Code Reviewer agent on `git diff --staged` against `CODING_STANDARDS.md` (algorithm, queries/indexes, who can call it, what it replaces, simplicity, tests/docs); fix every must-fix; end the commit message with a `Review:` line — the `.githooks/commit-msg` hook rejects commits without one (`git config core.hooksPath .githooks` per clone; a worktree made from an older commit has no hook until it pulls).
 
 ## Phase 6: Documentation
 
