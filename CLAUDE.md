@@ -59,6 +59,7 @@ Run all checks before committing. Zero regressions.
 2. **Unit tests:** Write tests for new logic — happy path, edge cases, and error handling.
 3. **Run all tests:** `npx vitest run` — all tests pass (new and existing).
 4. **Full build:** `npm run build` — build succeeds with no new errors.
+5. **Code quality gates (Oct 2026, nothing new allowed — lists only shrink):** `npm run lint` (bugs, security, slow patterns, complexity, React/a11y), `npm run duplication` (copy-paste), `npm run deadcode` (unused code), `npm run bundle-budget` after a client build. `deploy.sh` runs them on every prod release. See TESTING_GUIDE.md.
 
 ## Phase 6: Documentation
 

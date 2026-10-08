@@ -1,0 +1,12 @@
+{
+  "threshold": 0,
+  "minLines": 15,
+  "minTokens": 120,
+  "format": ["typescript", "tsx"],
+  "path": ["src/server", "src/client/src", "mcp-server/src"],
+  "ignore": ["**/node_modules/**", "**/dist/**", "**/__tests__/**", "**/*.test.ts", "**/*.test.tsx", "**/*.d.ts"],
+  "reporters": ["json"],
+  "output": ".jscpd-report",
+  "silent": true,
+  "gitignore": true
+}

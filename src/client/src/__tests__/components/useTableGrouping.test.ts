@@ -4,7 +4,6 @@
  * (pasted verbatim from TableView.tsx before the move) across many plans, every sortable column,
  * both directions, every group-by, collapsed summaries and the toggle callbacks; results must match.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useState, useMemo, useCallback } from 'react';

@@ -200,6 +200,10 @@ echo "  ✓ OK"
 if [ "$ENV" = "prod" ] || [ "$SKIP_TESTS" != true ]; then
   echo "[1b/7] Dead-code check..."
   node scripts/deadCodeCheck.mjs
+  echo "[1c/7] Code checker (ESLint: bugs, security, slow patterns, complexity — nothing new)..."
+  node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js
+  echo "[1d/7] Copy-paste check..."
+  node scripts/duplicationCheck.mjs
   echo "  ✓ OK"
 fi
 

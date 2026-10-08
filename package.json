@@ -13,8 +13,9 @@
     "start": "node dist/server/index.js",
     "test": "vitest",
     "test:unit": "vitest run",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix",
+    "lint": "node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js --cache --cache-location node_modules/.cache/eslint/",
+    "lint:fix": "node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js --fix",
+    "duplication": "node scripts/duplicationCheck.mjs",
     "type-check": "tsc --noEmit",
     "deadcode": "node scripts/deadCodeCheck.mjs",
     "bundle-budget": "node scripts/bundleBudget.mjs",
@@ -72,6 +73,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@playwright/test": "^1.63.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -82,11 +84,19 @@
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "concurrently": "^9.2.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-security": "^4.2.0",
+    "eslint-plugin-sonarjs": "^4.2.2",
+    "globals": "^17.13.0",
     "happy-dom": "^20.10.6",
+    "jscpd": "^5.4.0",
     "knip": "^5.88.1",
     "nodemon": "^3.1.10",
     "tsx": "^4.20.5",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.1",
     "vitest": "^3.2.7"
   }
 }

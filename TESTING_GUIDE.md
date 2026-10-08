@@ -1469,6 +1469,22 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 - The baseline only **shrinks**: after removing dead code, `node scripts/deadCodeCheck.mjs --update`. Adding to it needs the user's OK.
 - Tests count as users (a helper used only by a guard test is not dead). Server routes nothing calls are not covered — see the 2026-10-07 efficiency report.
 
+## Code checker — ESLint (Oct 2026)
+
+`npm run lint` (`eslint.config.mjs`; ~7 min the first time on this machine because it loads the TypeScript projects, faster after with its cache) checks the server, the client and the MCP server for **real problems, not style**:
+
+- **bugs:** promises nobody waits for (`no-floating-promises` — a save "succeeds" before it happened), promises passed where a plain function is expected, `==`, loops that can't end or run once, values returned from a Promise executor, `.map`/`.filter` callbacks that return nothing, identical `if` conditions or branches;
+- **security:** `eval` / `new Function`, regular expressions that can freeze the server on crafted input, `require` of a computed path;
+- **slow patterns:** `await` inside a loop (one database call per item — ask once for all);
+- **complexity:** cognitive complexity over 25 per function, nesting deeper than 5, identical functions;
+- **React (client):** rules of hooks, missing effect dependencies (stale data / endless reloads), keyboard and screen-reader basics (`jsx-a11y`).
+
+Problems that existed on 2026-10-08 — 1,752 in 487 files (470 unawaited promises, 413 awaits in loops, 127 over-complex functions, 96 effect dependencies, ~330 a11y, 35 risky regexes…) — are listed in `eslint-suppressions.json`. **Anything new fails.** The list only shrinks: after fixing some, `npm run lint -- --prune-suppressions`. Never add to it (`--suppress-rule`/`--suppress-all`) without the user's OK; an `eslint-disable` comment needs a reason next to it. `deploy.sh` runs it on every prod release (even with `--skip-tests`) and on staging when tests run.
+
+## Copy-paste check (Oct 2026)
+
+`npm run duplication` (`scripts/duplicationCheck.mjs`, ~20 s; settings `.jscpd.json`): jscpd finds blocks of 15+ lines that appear in two places (tests excluded). 2026-10-08: 66 copies, 1,954 lines (0.89% of the code) — listed per pair of files in `scripts/duplication-baseline.json`. A new copy, or more copies between the same two files, fails: make it one shared function or component. Shrink the list with `--update` after removing copies. Runs in `deploy.sh` with the code checker.
+
 ## App download size limit (Oct 2026)
 
 `npm run bundle-budget` (`scripts/bundleBudget.mjs`, after `npm run build:client`) checks `src/client/dist`. `deploy.sh` runs it after every build that includes the client.

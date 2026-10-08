@@ -4,7 +4,6 @@
  * read-out must wait for it, and must not appear at all when the save failed. An onTaskUpdate
  * that returns nothing keeps the old plain 300 ms timer (pinned by useInlineCellEdit.test.ts).
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 

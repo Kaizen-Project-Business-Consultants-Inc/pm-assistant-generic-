@@ -9,7 +9,6 @@
  * task updates and the same read-outs. The Gantt's Tab handling stays in GanttChart.tsx and is
  * driven here through the same wrapper code (copied from GanttChart.tsx).
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useState, useRef, useEffect, useCallback } from 'react';

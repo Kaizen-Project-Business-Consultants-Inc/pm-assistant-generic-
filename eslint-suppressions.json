@@ -1,0 +1,3421 @@
+{
+  "mcp-server/src/permissions.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "mcp-server/src/resources/index.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/components/a11yLabels.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/components/bulkMessageTimers.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/components/ganttChartDom.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 2
+    }
+  },
+  "src/client/src/__tests__/components/scheduleTabDom.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 2
+    }
+  },
+  "src/client/src/__tests__/components/sprintBoardSaveFailure.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/components/useProjectStatusChange.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/components/useScheduleMutations.test.tsx": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/hooks/useModal.test.tsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 3
+    }
+  },
+  "src/client/src/__tests__/utils/adminFieldNames.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/utils/i18nKeys.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 2
+    }
+  },
+  "src/client/src/__tests__/utils/snakeCaseReadsGuard.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/client/src/__tests__/utils/typeScaleGuard.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/CookieConsentBanner.tsx": {
+    "prefer-rest-params": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/admin/SupportVisitDialog.tsx": {
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/ai/AIChatPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 6
+    }
+  },
+  "src/client/src/components/ai/ContextPreview.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/ai/DreamingPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/ai/MemoryBrowser.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/ai/TaskPrioritizationPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/approvals/ChangeRequestDetail.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 6
+    }
+  },
+  "src/client/src/components/approvals/ChangeRequestForm.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/approvals/WorkflowEditor.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/attachments/AttachmentPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 3
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 3
+    }
+  },
+  "src/client/src/components/attachments/AttachmentVersionHistory.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/auth/TurnstileWidget.tsx": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/automations/AutomationDetail.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/automations/AutomationForm.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/automations/AutomationList.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 6
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/backlog/BacklogView.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/customfields/CustomFieldEditorModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/customfields/CustomFieldsSection.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/dashboard/AISummaryBanner.tsx": {
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/ProjectTable.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/dashboard/widgets/BudgetWatchWidget.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/GoalsWidget.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/MilestonesWidget.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/MorningBriefingWidget.tsx": {
+    "jsx-a11y/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/PortfolioKPIBar.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/QuickActionsWidget.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/RecentActivityWidget.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/SprintSnapshotWidget.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/dashboard/widgets/TeamWorkloadWidget.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/documents/FolderPicker.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/documents/OneDriveConnectModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/documents/OneDriveFolderPicker.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/documents/StorageConnectModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/evm/PerformancePanel.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/feedback/FeedbackModal.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 4
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 3
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 4
+    }
+  },
+  "src/client/src/components/intake/IntakeReviewPanel.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/integrations/IntegrationConfigModal.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/integrations/SyncLogPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/landing/TourVideo.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/media-has-caption": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/layout/AppLayout.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/layout/BottomNav.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/layout/CommandPalette.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/layout/KeyboardShortcuts.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/layout/Sidebar.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/meeting/ChairsCard.tsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/meeting/MeetingCoachReview.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/meeting/MeetingDetailPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/meeting/MeetingForm.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/meeting/MeetingToRaidModal.tsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/meeting/SyncExternalMeetingModal.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/meeting/TeamsMeetingsTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    }
+  },
+  "src/client/src/components/network/NetworkDiagramView.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/notifications/NotificationBell.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/onboarding/WelcomeModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/pm/ActivityFeedPM.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/pm/ProjectCardPM.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "sonarjs/no-identical-functions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/portal/PortalLinkManager.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/pricing/PricingCards.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/project/BudgetTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 8
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/project/EditProjectModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/project/ProjectBriefCard.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/project/ProjectLinksCard.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/project/ResourcesTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 9
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/project/TimeTrackingTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/projects/ProjectGroupManager.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/query/PieChart.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/raids/RAIDImportModal.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/raids/review/RaidFixPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/reports/ComplianceReport.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/reports/InstantReportModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/reports/ReportDesigner.tsx": {
+    "@typescript-eslint/no-unused-expressions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/reports/ReportScheduleModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 7
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/AvailabilityCalendar.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/resources/CalendarTemplateManager.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/PeopleWithoutLogin.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/PlannerMoveDialog.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/RateSourceField.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/ReplaceResourceDialog.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 6
+    }
+  },
+  "src/client/src/components/resources/ResourceImportModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/resources/ResourceLevelingPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/ResourceProfileModal.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/resources/ResourceRequestApprovalPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    }
+  },
+  "src/client/src/components/resources/ResourceRequestForm.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/resources/TeamPlanner.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    }
+  },
+  "src/client/src/components/resources/UtilizationTrendChart.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/risks/AIScanReviewModal.tsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/risks/RAIDDetailPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    }
+  },
+  "src/client/src/components/risks/RAIDReportModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/risks/RiskFormModal.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 3
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/scenarios/ScenarioImpactGauges.tsx": {
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/AutoReschedulePanel.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/BulkGroupControls.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/BulkLinkControls.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/CalendarView.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/GanttChart.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/client/src/components/schedule/ImportModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/KanbanBoard.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/ResourcePickerDropdown.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/ScheduleHistoryPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/TableView.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    }
+  },
+  "src/client/src/components/schedule/TaskActivityPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/TaskFormModal.tsx": {
+    "jsx-a11y/label-has-associated-control": {
+      "count": 2
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/bulkLink.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/calendar/WorkingCalendarPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttContextMenu.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttGridPanel.tsx": {
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttLeftPanelHeader.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/interactive-supports-focus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttLeftPanelRow.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 14
+    },
+    "jsx-a11y/interactive-supports-focus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 13
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttNotesPopup.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttTimelineBar.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 3
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 6
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/GanttTimelinePanel.tsx": {
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/hooks/useBarDrag.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    },
+    "sonarjs/no-identical-functions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/hooks/useDependencyDraw.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/hooks/useGanttColumns.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/hooks/useGanttLayout.ts": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/gantt/hooks/useGridKeyboard.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/gantt/timelineStrip.ts": {
+    "no-unmodified-loop-condition": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/predecessorEdit.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/review/ScheduleFixProposalPanel.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/review/ScheduleReviewPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    }
+  },
+  "src/client/src/components/schedule/table/TableContextMenu.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/table/TableHeaderRow.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/schedule/table/TableNotesPopup.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/schedule/table/hooks/useTableKeyboard.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/settings/ViewerInvitePanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/sprints/EpicBoard.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/sprints/EpicList.tsx": {
+    "prefer-const": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/sprints/RetrospectiveBoard.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-redundant-roles": {
+      "count": 3
+    }
+  },
+  "src/client/src/components/sprints/SprintBoard.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/sprints/SprintList.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/sprints/SprintPlanningPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/client/src/components/sprints/StandupLogPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "jsx-a11y/no-redundant-roles": {
+      "count": 2
+    }
+  },
+  "src/client/src/components/sprints/TaskChecklistPanel.tsx": {
+    "jsx-a11y/no-redundant-roles": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/tasks/TaskCardMobile.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/templates/SaveAsTemplateModal.tsx": {
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/templates/TemplatePicker.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 11
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/timetracking/ProjectPendingTime.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/timetracking/ProjectTimesheetGrid.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/timetracking/TimeLogForm.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/timetracking/TimesheetApprovalPanel.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/timetracking/TimesheetGrid.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/components/weeklyReview/useWeeklyReview.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/hooks/useCheckoutReturn.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/hooks/useProjectStatusChange.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/hooks/useSEO.ts": {
+    "prefer-const": {
+      "count": 3
+    }
+  },
+  "src/client/src/hooks/useWebSocket.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 11
+    }
+  },
+  "src/client/src/main.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/AccountBillingPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/AgentProposalsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 7
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/AnalyticsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 4
+    }
+  },
+  "src/client/src/pages/ChangePasswordPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ChangeRequestsPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/DashboardPM.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/EVMDashboardPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/GoalsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 3
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 3
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/IntakeFormsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    }
+  },
+  "src/client/src/pages/IntegrationsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/KPIDrillInPage.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/LandingPage.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/LessonsLearnedPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 10
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 3
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 3
+    }
+  },
+  "src/client/src/pages/LoginPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/MeetingMinutesPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 12
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/MonteCarloPage.tsx": {
+    "no-unreachable-loop": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/NotificationsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/OnboardingPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 3
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/PortalViewPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/PortfolioPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/PrelaunchLandingPage.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 8
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/AgentActivityTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/DocumentsTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 11
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/OverviewTab.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-noninteractive-element-interactions": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/RAIDTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 11
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 11
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/ScheduleTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/SprintsTab.tsx": {
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/StatusReportModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 4
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/StrategicRiskScanModal.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/TeamTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/schedule-tab/MobileScheduleView.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/schedule-tab/QuickFilterPills.tsx": {
+    "jsx-a11y/interactive-supports-focus": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/schedule-tab/ScheduleOverflowMenu.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/schedule-tab/ScheduleWorkspace.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 20
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 7
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectDetailPage/schedule-tab/useScheduleMutations.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 22
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 8
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ProjectsPM.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/RegisterPage.tsx": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ReportBuilderPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ReportsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/ResourceManagementPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 7
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 7
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 6
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/ScenarioModelingPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/TimesheetPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/VerifyEmailPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/VerifyEmailPendingPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/WaitlistAdminPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/WorkflowPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/admin/AdminFeedbackPage.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/admin/AdminPricingPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/pages/admin/AdminTenantsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/admin/AdminUsersPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 2
+    },
+    "jsx-a11y/no-autofocus": {
+      "count": 2
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 2
+    },
+    "no-extra-boolean-cast": {
+      "count": 2
+    },
+    "react-hooks/exhaustive-deps": {
+      "count": 3
+    }
+  },
+  "src/client/src/pages/clients/ClientsPage.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/settings/AIContextTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/settings/AccessibilityTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    }
+  },
+  "src/client/src/pages/settings/ApiKeysTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/settings/HolidaysTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    }
+  },
+  "src/client/src/pages/settings/NotificationsTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/client/src/pages/settings/RateCardTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    }
+  },
+  "src/client/src/pages/settings/SampleProjectTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    }
+  },
+  "src/client/src/pages/settings/TeamTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    }
+  },
+  "src/client/src/pages/settings/WebhooksTab.tsx": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "jsx-a11y/label-has-associated-control": {
+      "count": 1
+    }
+  },
+  "src/client/src/services/api.ts": {
+    "@typescript-eslint/no-unsafe-declaration-merging": {
+      "count": 2
+    }
+  },
+  "src/client/src/services/apiAreas/schedules.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/client/src/stores/aiChatStore.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 5
+    }
+  },
+  "src/client/src/stores/localeStore.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/sw.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/client/src/utils/appUpdate.ts": {
+    "no-promise-executor-return": {
+      "count": 3
+    }
+  },
+  "src/client/src/utils/briefingByProject.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/client/src/utils/resourceConflicts.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/database/RiskRepository.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/database/meetingActionItemsReadOnly.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/database/planFeatures.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 3
+    }
+  },
+  "src/server/__tests__/database/retiredSharedTables.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/database/tenantColumnsGuard.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/mcp/instrumentation.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/middleware/requestContext.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/middleware/validationErrorGuard.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/routes/listLimitParams.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/routes/mcpAnalytics.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/routes/peopleRights.test.ts": {
+    "no-control-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/scripts/runCronJobRecord.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/AIBudgetService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 3
+    }
+  },
+  "src/server/__tests__/services/AgentRegistryService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/AlertService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/ApprovalWorkflowService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/BurndownService.test.ts": {
+    "@typescript-eslint/ban-ts-comment": {
+      "count": 10
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/CalendarService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/DagWorkflowService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/DailyBriefingService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/DeadLetterService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/DigestService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/DocumentIntelligenceService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 3
+    }
+  },
+  "src/server/__tests__/services/EmailService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/EventDrivenWorkflows.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/LessonsLearnedService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/NetworkDiagramService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/NotificationService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 10
+    }
+  },
+  "src/server/__tests__/services/RAIDReportService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/ResourceRequestService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 3
+    }
+  },
+  "src/server/__tests__/services/ResourceService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 6
+    }
+  },
+  "src/server/__tests__/services/SCurveService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/ScheduleRecomputeService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/SeatService.test.ts": {
+    "@typescript-eslint/no-unsafe-function-type": {
+      "count": 6
+    }
+  },
+  "src/server/__tests__/services/StandupEntryService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/StandupSummaryService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "src/server/__tests__/services/StorageConnectorService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/StrategicRiskAnalysisService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/TaskPrioritizationService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/TeamsEventDispatcher.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/TimeEntryService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/WebSocketService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/WebhookService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/WeeklyTimesheetService.test.ts": {
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/agents/ActionProposalService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/aiLearningService.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/aiReportService.test.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/domainEvents.test.ts": {
+    "@typescript-eslint/no-unsafe-function-type": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/services/sampleNoWeekends.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/scanOrchestrator.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/services/scheduleReview/autoRerun.test.ts": {
+    "no-promise-executor-return": {
+      "count": 4
+    }
+  },
+  "src/server/__tests__/services/weeklyLoad.test.ts": {
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/utils/assigneeLogins.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/utils/mapWithLimit.test.ts": {
+    "no-promise-executor-return": {
+      "count": 2
+    }
+  },
+  "src/server/__tests__/utils/placeholderEmail.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/__tests__/utils/rulesParity.test.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/database/BaseRepository.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/database/CachedRepository.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/database/MeetingSpeakerLinkRepository.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/database/PricingConfigRepository.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/database/ProjectGroupRepository.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/database/ProjectLinkRepository.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/database/ProjectRepository.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/database/RetrospectiveRepository.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/database/RiskRepository.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "no-useless-escape": {
+      "count": 2
+    }
+  },
+  "src/server/database/SprintRepository.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/database/StandupEntryRepository.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/database/TaskRepository.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/database/TokenTopUpRepository.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/database/bookingDates.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/database/migrateCli.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/server/database/migrationRunner.ts": {
+    "no-await-in-loop": {
+      "count": 13
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/database/sharedDbWatch.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/database/tenantMigrationRunner.ts": {
+    "no-await-in-loop": {
+      "count": 9
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/database/tenantProvisioner.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/index.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-misused-promises": {
+      "count": 2
+    }
+  },
+  "src/server/middleware/auth.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/middleware/guestGuard.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/middleware/requireProjectAccess.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/middleware/tenantResolver.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/routes/admin/operations.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/server/routes/admin/waitlist.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/routes/agent/proposals.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/ai/aiChat.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/server/routes/ai/contextConfig.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/ai/nlQuery.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/ai/predictions.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/routes/automation/automations.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/collaboration/approvalWorkflows.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    }
+  },
+  "src/server/routes/collaboration/meetingIntelligence.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/routes/collaboration/meetings.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/routes/collaboration/risks.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 4
+    },
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "security/detect-unsafe-regex": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/routes/collaboration/sprints.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 7
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/routes/core/auth.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/routes/core/bulk.ts": {
+    "no-await-in-loop": {
+      "count": 10
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/routes/core/exports.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/routes/core/org.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/routes/core/projectGroups.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/core/projects.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/core/search.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/routes/integrations/slack.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/routes/integrations/stripe.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/routes/reporting/analyticsSummary.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/reporting/instantReports.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/routes/reporting/portfolio.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/routes/reporting/reportSchedules.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/routes/reporting/strategicRiskScan.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/resources/availability.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/routes/resources/expenses.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/routes/resources/resources.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 4
+    }
+  },
+  "src/server/routes/scheduling/autoReschedule.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    }
+  },
+  "src/server/routes/scheduling/calendars.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/routes/scheduling/import.ts": {
+    "max-depth": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 6
+    },
+    "prefer-const": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/routes/scheduling/schedules.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 7
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/scripts/backfillEmbeddings.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/scripts/backfillOwnerResources.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/scripts/moveTasksOffDaysOff.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/scripts/runCronJob.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/server/services/AgentRegistryService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/AiTaskEstimationService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/AlertService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/AnalyticsSummaryService.ts": {
+    "prefer-const": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ApiKeyService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/ApprovedTimeService.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/services/AutoRescheduleService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    }
+  },
+  "src/server/services/BaselineService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/BurndownService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    }
+  },
+  "src/server/services/ChangeHistoryService.ts": {
+    "no-await-in-loop": {
+      "count": 12
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ClientService.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/CriticalPathService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/CustomFieldService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/DailyBriefingService.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/DeadLetterService.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    }
+  },
+  "src/server/services/DigestService.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    }
+  },
+  "src/server/services/DocumentIntelligenceService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/EVMForecastService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/EmailService.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 3
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/InstantReportService.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    },
+    "no-unmodified-loop-condition": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/KnowledgeBaseService.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/MeetingIntelligenceService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-await-in-loop": {
+      "count": 7
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/MeetingService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/MonteCarloService.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/NLQueryService.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/NarrativeService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/services/NetworkDiagramService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/NotificationService.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/server/services/PolicyEngineService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/ProjectService.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/ProjectStatusReportService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/RAIDReportService.ts": {
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/server/services/RaidReviewService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 8
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/RecurrenceService.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/services/RedisService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "no-promise-executor-return": {
+      "count": 1
+    }
+  },
+  "src/server/services/ReportBuilderService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ReportScheduleService.ts": {
+    "no-await-in-loop": {
+      "count": 11
+    }
+  },
+  "src/server/services/ResourceAvailabilityService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ResourceLevelingService.ts": {
+    "max-depth": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ResourceOptimizerService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-await-in-loop": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/ResourceReplaceService.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/services/ResourceService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 3
+    },
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/RetrospectiveService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/services/RiskService.ts": {
+    "no-await-in-loop": {
+      "count": 6
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/SCurveService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/SampleProjectService.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    },
+    "security/detect-unsafe-regex": {
+      "count": 1
+    },
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 1
+    }
+  },
+  "src/server/services/ScheduleFixProposerService.ts": {
+    "no-await-in-loop": {
+      "count": 28
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ScheduleRecomputeService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 5
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/ScheduleService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 13
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    },
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 1
+    }
+  },
+  "src/server/services/ScrumDefinitionService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/SeatService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/StorageConnectorService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 7
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/StripeService.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/SupportSessionService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/TaskAssignmentService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/TaskBudgetService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/TaskPrioritizationService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/TeamPlannerService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/TeamsMeetingImportService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/TemplateService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/TimeAnomalyService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/WebPushService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/WeeklyReviewService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/WeeklyTimesheetService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/WorkingCalendarService.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    }
+  },
+  "src/server/services/agents/ActionExecutor.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    }
+  },
+  "src/server/services/agents/ActionProposalService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/agents/InterAgentQueryService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/aiActionExecutor.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 4
+    },
+    "no-await-in-loop": {
+      "count": 3
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/aiChatService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/aiLearningService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/aiProjectCreator.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/anomalyDetectionService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/automation/AutomationEventBus.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/automation/AutomationService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/automation/actionExecutors.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 10
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/automation/automationAiService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/automation/conditionEvaluator.ts": {
+    "eqeqeq": {
+      "count": 2
+    }
+  },
+  "src/server/services/automation/scheduledAutomationRunner.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/claudeService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "prefer-const": {
+      "count": 2
+    }
+  },
+  "src/server/services/context/ContextConfigService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/context/DreamingService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "sonarjs/no-all-duplicated-branches": {
+      "count": 1
+    }
+  },
+  "src/server/services/context/SkillRegistryService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/context/VersionedMemoryService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 2
+    }
+  },
+  "src/server/services/dagWorkflow/engine.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    },
+    "eqeqeq": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 6
+    },
+    "no-case-declarations": {
+      "count": 2
+    },
+    "no-promise-executor-return": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 3
+    }
+  },
+  "src/server/services/dagWorkflow/index.ts": {
+    "no-await-in-loop": {
+      "count": 10
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/dataProviders/weatherProviders.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 4
+    },
+    "sonarjs/no-identical-functions": {
+      "count": 2
+    }
+  },
+  "src/server/services/integrations/CalendarSyncService.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "no-await-in-loop": {
+      "count": 13
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/DropboxAdapter.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    }
+  },
+  "src/server/services/integrations/GitHubAdapter.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/GoogleDriveAdapter.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    },
+    "prefer-const": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/JiraAdapter.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/OneDriveAdapter.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    }
+  },
+  "src/server/services/integrations/SlackAdapter.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/SlackEventDispatcher.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/TeamsAdapter.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/integrations/TrelloAdapter.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/lessonsLearned/extractor.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/lessonsLearned/index.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/lessonsLearned/seeder.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/predictiveIntelligence.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/proactiveAlertService.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/raidReview/fixProposer.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/raidReview/rules.ts": {
+    "no-useless-escape": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduleReview/autoRerun.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduleReview/fixProposer.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduleReview/rules.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/cronManager.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 18
+    },
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/deadlineNotificationJob.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/scheduling/healthSnapshotJob.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/scheduling/pendingPaymentJob.ts": {
+    "no-await-in-loop": {
+      "count": 6
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/pmWeeklyReviewJob.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    }
+  },
+  "src/server/services/scheduling/registryAgentRunners.ts": {
+    "no-await-in-loop": {
+      "count": 7
+    }
+  },
+  "src/server/services/scheduling/scanOrchestrator.ts": {
+    "@typescript-eslint/no-floating-promises": {
+      "count": 2
+    },
+    "no-await-in-loop": {
+      "count": 7
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/scheduleReviewJob.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/storageSyncJob.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/timesheetComplianceJob.ts": {
+    "no-await-in-loop": {
+      "count": 5
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/trialReminderJob.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    }
+  },
+  "src/server/services/scheduling/utilizationCoachingJob.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    },
+    "no-unmodified-loop-condition": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/services/scheduling/weeklyReviewPackJob.ts": {
+    "no-await-in-loop": {
+      "count": 4
+    }
+  },
+  "src/server/services/weeklyLoad.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/services/weeklyReview/picker.ts": {
+    "sonarjs/cognitive-complexity": {
+      "count": 2
+    }
+  },
+  "src/server/services/whatIfScenarioService.ts": {
+    "no-await-in-loop": {
+      "count": 2
+    },
+    "prefer-const": {
+      "count": 2
+    },
+    "sonarjs/cognitive-complexity": {
+      "count": 1
+    }
+  },
+  "src/server/utils/acrossCompanies.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/assigneeLogins.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/assigneeResources.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/clientReportDocx.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/importHeuristics.ts": {
+    "no-unmodified-loop-condition": {
+      "count": 2
+    },
+    "security/detect-unsafe-regex": {
+      "count": 2
+    }
+  },
+  "src/server/utils/importPredecessors.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 1
+    }
+  },
+  "src/server/utils/mapWithLimit.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/promptSanitizer.ts": {
+    "security/detect-unsafe-regex": {
+      "count": 3
+    }
+  },
+  "src/server/utils/raidImport.ts": {
+    "no-useless-escape": {
+      "count": 6
+    },
+    "security/detect-unsafe-regex": {
+      "count": 2
+    }
+  },
+  "src/server/utils/registrationWatch.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/reportTimelineImage.ts": {
+    "no-await-in-loop": {
+      "count": 1
+    }
+  },
+  "src/server/utils/scheduleReviewDocxBuilder.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/utils/serverErrorWatch.ts": {
+    "no-await-in-loop": {
+      "count": 3
+    }
+  },
+  "src/server/utils/statusReportDocxBuilder.ts": {
+    "@typescript-eslint/no-unused-vars": {
+      "count": 1
+    }
+  },
+  "src/server/utils/timelineStrip.ts": {
+    "no-unmodified-loop-condition": {
+      "count": 2
+    }
+  }
+}
