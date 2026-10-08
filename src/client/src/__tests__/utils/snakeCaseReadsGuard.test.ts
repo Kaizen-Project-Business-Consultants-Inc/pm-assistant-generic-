@@ -42,7 +42,6 @@ const BASELINE: Record<string, number> = {
   'components/intake/IntakeReviewPanel.tsx': 2, // snake-first, camelCase fallback
   'stores/aiChatStore.ts': 1, // camelCase-first fallback
   'pages/settings/WebhooksTab.tsx': 1, // event name text 'agent.scan_completed'
-  'pages/WaitlistAdminPage.tsx': 1, // camelCase-first fallback
   'pages/UserGuidePage.tsx': 1, // event name text
   'pages/ScenarioModelingPage.tsx': 1, // camelCase-first fallback
   'pages/IntakeFormsPage.tsx': 1, // snake-first, camelCase fallback

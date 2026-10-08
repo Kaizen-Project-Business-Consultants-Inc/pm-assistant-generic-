@@ -14,9 +14,9 @@ overdue scans, no report deliveries, no data retention.
 
 It stayed invisible because the app logs "Cron jobs managed externally via systemd
 timers" on startup and never checks whether anything is actually scheduled, and because
-the old in-process code is still present and complete in `cronManager.ts` — anyone
-reading it would reasonably conclude the jobs run. (`startCronTasks` is called from
-nowhere.)
+the old in-process code was still present and complete in `cronManager.ts` — anyone
+reading it would reasonably conclude the jobs run. (`startCronTasks` was called from
+nowhere; it was removed on 2026-10-08.)
 
 **Adding a job needs three things:**
 1. the job module under `src/server/services/scheduling/`

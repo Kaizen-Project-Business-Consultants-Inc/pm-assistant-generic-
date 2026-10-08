@@ -206,8 +206,9 @@ Key variables in `.env` (never commit secrets):
 ### Scheduled jobs — where they are defined
 
 Scheduled work does **not** run inside the app. It runs as systemd timers on each
-server, invoked as `node dist/server/scripts/runCronJob.js <job-name>`. The in-process
-scheduler in `cronManager.ts` is dead code — `startCronTasks` is called from nowhere.
+server, invoked as `node dist/server/scripts/runCronJob.js <job-name>`. The old in-process
+scheduler (`startCronTasks` in `cronManager.ts`) was never called and was removed on
+2026-10-08; `cronManager.ts` now only holds the `forEachTenant` helper and the overdue scan.
 
 The unit files live in **`deploy/systemd/`** in the repository and are installed and
 enabled by every `deploy.sh` run, which then fails the deploy if any expected job is not
@@ -763,6 +764,24 @@ involved (the database runs on the application servers themselves).
 - A backup that stops running raises an alert, so silence is not mistaken for health.
 - Full detail, including how to set up the off-machine destination on a new server:
   see **Backups** in `DEPLOYMENT_GUIDE.md`.
+
+### Automatic clean-up of history tables
+The nightly `pm-cron@data-retention` job (03:30 UTC) deletes old rows, in batches of 5,000, in each company's database and the shared one. Days kept (environment variable → default):
+
+| What | Variable | Default |
+|---|---|---|
+| Webhook deliveries | `RETENTION_WEBHOOK_DAYS` | 30 |
+| Failed-job queue (resolved/failed) | `RETENTION_DEAD_LETTER_DAYS` | 30 |
+| Read notifications | `RETENTION_NOTIFICATION_DAYS` | 90 |
+| API key usage log | `RETENTION_API_LOG_DAYS` | 90 |
+| MCP tool calls | `RETENTION_MCP_INVOCATION_DAYS` | 90 |
+| Finished workflow runs (and their steps) | `RETENTION_WORKFLOW_RUN_DAYS` | 90 (since 2026-10-08) |
+| Agent activity log | `RETENTION_AGENT_LOG_DAYS` | 180 (since 2026-10-08) |
+| Automation runs (Insights show the same 90 days) | `RETENTION_AUTOMATION_RUN_DAYS` | 90 (since 2026-10-08) |
+| Integration sync log | `RETENTION_SYNC_LOG_DAYS` | 30 (since 2026-10-08) |
+| AI usage log | `RETENTION_AI_USAGE_DAYS` | 400 (since 2026-10-08) |
+
+Kept on purpose: the audit history, timesheets, tasks, RAID and task history, project health history, AI memory change log, and people's Mjuzi conversations.
 
 ### Restoring
 ```bash

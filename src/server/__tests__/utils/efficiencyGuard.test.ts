@@ -37,16 +37,14 @@ const KEEP_FOREVER: Record<string, string> = {
   task_activities: 'history of a task, part of the project record',
   project_health_history: 'one row per project per day — trend charts read it',
   memory_change_log: 'record of what the AI memory changed, for undo and audit',
+  chat_messages: "people's own conversations with Mjuzi — deleting them is the user's decision, not a clean-up job",
 };
 
 // --- allowances on 2026-10-08 (only go down) -------------------------------------------------
 const UNBOUNDED_ALLOWED: Record<string, number> = {
 };
 const UNINDEXED_ALLOWED: Record<string, number> = {}; // all 8 fixed by T084 + 130 (2026-10-08)
-const NO_CLEANUP_ALLOWED: string[] = [
-  'workflow_executions', 'workflow_node_executions', 'agent_activity_log', 'ai_usage_log',
-  'automation_executions', 'chat_messages', 'integration_sync_log',
-];
+const NO_CLEANUP_ALLOWED: string[] = []; // all cleaned by DataRetentionService since 2026-10-08 (user OK'd the periods)
 const HEAVY_ROUTE_ALLOWED: Record<string, number> = {
   // rate-limited since 2026-10-08; the permission check is inside the handler, where this reader can't see it
   'routes/admin/logs.ts': 1, // platform admin, checked in the handler
@@ -186,6 +184,8 @@ describe('efficiency guard', () => {
     // the nightly data-retention job names its tables at run time: deleteOlderThan…('table', days)
     const retention = readFileSync(join(SERVER, 'services', 'DataRetentionService.ts'), 'utf-8');
     for (const m of retention.matchAll(/deleteOlderThan\w*\(\s*'(\w+)'/g)) cleaned.add(m[1].toLowerCase());
+    // a run's steps are deleted with the run (FOREIGN KEY … ON DELETE CASCADE)
+    if (cleaned.has('workflow_executions')) cleaned.add('workflow_node_executions');
     const missing = GROWING.filter(t => !cleaned.has(t) && !KEEP_FOREVER[t]);
     if (process.env.PRINT_EFFICIENCY) console.log('NO CLEANUP', missing);
     const unexpected = missing.filter(t => !NO_CLEANUP_ALLOWED.includes(t));

@@ -38,11 +38,37 @@ describe('DataRetentionService', () => {
   beforeEach(() => {
     service = new DataRetentionService();
     vi.clearAllMocks();
+    // anything a test doesn't set up deletes nothing (steps added 2026-10-08 run after the old ones)
+    mockQuery.mockResolvedValue({ affectedRows: 0 });
+    mockQueryControlPlane.mockResolvedValue({ affectedRows: 0 });
     process.env = { ...originalEnv };
   });
 
   afterEach(() => {
     process.env = originalEnv;
+  });
+
+  describe('history tables that grew without end (2026-10-08)', () => {
+    it('finished workflow runs after 90 days by start date, agent log 180, automations 90, sync log 30, AI usage 400', async () => {
+      await service.purgeStaleData();
+      const sql = mockQuery.mock.calls.map(c => [String(c[0]).replace(/\s+/g, ' '), c[1][0]]);
+      expect(sql).toContainEqual(["DELETE FROM workflow_executions WHERE started_at < NOW() - INTERVAL ? DAY AND status IN ('completed', 'failed', 'cancelled') LIMIT 5000", 90]);
+      expect(sql).toContainEqual([expect.stringMatching(/DELETE FROM agent_activity_log WHERE created_at/), 180]);
+      expect(sql).toContainEqual([expect.stringMatching(/DELETE FROM automation_executions WHERE created_at/), 90]);
+      expect(sql).toContainEqual([expect.stringMatching(/DELETE FROM integration_sync_log WHERE started_at/), 30]);
+      expect(mockQueryControlPlane.mock.calls.some(c => /DELETE FROM ai_usage_log/.test(c[0]) && c[1][0] === 400)).toBe(true);
+    });
+
+    it('a big first clean-up goes in batches of 5,000 until a short batch', async () => {
+      mockQuery.mockImplementation(async (q: string) => {
+        if (!q.includes('workflow_executions')) return { affectedRows: 0 };
+        const n = mockQuery.mock.calls.filter(c => String(c[0]).includes('workflow_executions')).length;
+        return { affectedRows: n <= 2 ? 5000 : 1234 };
+      });
+      const results = await service.purgeStaleData();
+      expect(results.workflowRuns).toBe(11234);
+      expect(mockQuery.mock.calls.filter(c => String(c[0]).includes('workflow_executions'))).toHaveLength(3);
+    });
   });
 
   describe('purgeStaleData — full pipeline', () => {
@@ -72,12 +98,17 @@ describe('DataRetentionService', () => {
         apiKeyUsageLog: 7,
         mcpToolInvocations: 4,
         reportContentPurged: 1,
+        workflowRuns: 0,
+        agentActivityLog: 0,
+        automationRuns: 0,
+        integrationSyncLog: 0,
+        aiUsageLog: 0,
       });
 
       // Verify tenant queries
-      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(mockQuery).toHaveBeenCalledTimes(6); // webhook, dead letters, workflow runs, agent log, automation runs, sync log
       // Verify control plane queries
-      expect(mockQueryControlPlane).toHaveBeenCalledTimes(4);
+      expect(mockQueryControlPlane).toHaveBeenCalledTimes(5); // + AI usage log
       // Verify agent memory cleanup
       expect(mockCleanExpired).toHaveBeenCalledTimes(1);
       // Verify completion logged
@@ -427,6 +458,11 @@ describe('DataRetentionService', () => {
         apiKeyUsageLog: 0,
         mcpToolInvocations: 0,
         reportContentPurged: 0,
+        workflowRuns: 0,
+        agentActivityLog: 0,
+        automationRuns: 0,
+        integrationSyncLog: 0,
+        aiUsageLog: 0,
       });
 
       // All 7 errors logged
@@ -530,7 +566,7 @@ describe('DataRetentionService', () => {
       await service.purgeStaleData();
 
       // First two calls go to tenant DB
-      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(mockQuery).toHaveBeenCalledTimes(6); // + workflow runs, agent log, automation runs, sync log (2026-10-08)
       expect(mockQuery.mock.calls[0][0]).toContain('webhook_deliveries');
       expect(mockQuery.mock.calls[1][0]).toContain('dead_letter_queue');
     });
@@ -543,7 +579,7 @@ describe('DataRetentionService', () => {
       await service.purgeStaleData();
 
       // Four calls go to control plane
-      expect(mockQueryControlPlane).toHaveBeenCalledTimes(4);
+      expect(mockQueryControlPlane).toHaveBeenCalledTimes(5); // + AI usage log (2026-10-08)
       expect(mockQueryControlPlane.mock.calls[0][0]).toContain('notifications');
       expect(mockQueryControlPlane.mock.calls[1][0]).toContain('api_key_usage_log');
       expect(mockQueryControlPlane.mock.calls[2][0]).toContain('mcp_tool_invocations');

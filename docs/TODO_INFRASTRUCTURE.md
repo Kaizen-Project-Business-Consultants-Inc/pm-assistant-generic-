@@ -49,6 +49,8 @@ Items from the architecture audit. Most were previously blocked by TMD shared ho
 
 Rollback files use convention `NNN_name.down.sql` alongside `NNN_name.sql`. Forward runner excludes `.down.sql` files.
 
+**Removed 2026-10-08:** the CLI was never wired into any script or deploy and was deleted as dead code; rollbacks follow CLAUDE.md Phase 11 (write a reverse migration and run it over SSH).
+
 ---
 
 ## ~~Item 14b: Portal Rate Limiting~~ — DONE (July 2026)

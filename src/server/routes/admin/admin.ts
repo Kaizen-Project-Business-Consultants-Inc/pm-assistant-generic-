@@ -337,6 +337,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
           (SELECT COUNT(*) FROM users WHERE is_active = 1 AND NOT ${neverConfirmedSql()}) AS active_users,
           (SELECT COUNT(*) FROM users WHERE ${neverConfirmedSql()}) AS never_confirmed_users,
           (SELECT COUNT(*) FROM projects) AS total_projects,
+          -- AI usage rows are kept 400 days (DataRetentionService), so these are "last 400 days" totals
           (SELECT COUNT(*) FROM ai_usage_log) AS total_ai_calls,
           (SELECT COALESCE(SUM(cost_estimate), 0) FROM ai_usage_log) AS total_ai_cost,
           (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM ai_usage_log) AS total_tokens`

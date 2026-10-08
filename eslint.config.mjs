@@ -17,7 +17,7 @@ export default tseslint.config(
     ignores: [
       '**/node_modules/**', '**/dist/**', 'dist/**', 'src/client/dist/**', 'mcp-server/dist/**',
       'coverage/**', 'src/client/dist-deploy/**', 'e2e/**', 'playwright-report/**', 'test-results/**', '**/*.d.ts',
-      'scripts/**', '*.config.{js,ts,mjs,cjs}', 'src/client/*.config.{js,ts,mjs,cjs}', 'mcp-server/server.ts',
+      'scripts/**', '*.config.{js,ts,mjs,cjs}', 'src/client/*.config.{js,ts,mjs,cjs}',
     ],
   },
   {

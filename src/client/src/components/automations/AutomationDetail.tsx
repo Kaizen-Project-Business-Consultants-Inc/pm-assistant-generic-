@@ -280,7 +280,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit, canE
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-4">
           <div className="flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-primary-600" />
-            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Insights</h4>
+            <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Insights <span className="normal-case font-normal text-gray-500 dark:text-gray-400">(last 90 days)</span></h4>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="text-center">

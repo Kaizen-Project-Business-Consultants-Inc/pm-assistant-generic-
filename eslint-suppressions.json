@@ -69,11 +69,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/ai/DreamingPanel.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/client/src/components/ai/MemoryBrowser.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
@@ -231,30 +226,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/dashboard/widgets/PortfolioKPIBar.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "src/client/src/components/dashboard/widgets/QuickActionsWidget.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
-  "src/client/src/components/dashboard/widgets/RecentActivityWidget.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 3
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "src/client/src/components/dashboard/widgets/SprintSnapshotWidget.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -275,25 +246,6 @@
     }
   },
   "src/client/src/components/documents/FolderPicker.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "src/client/src/components/documents/OneDriveConnectModal.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 3
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "src/client/src/components/documents/OneDriveFolderPicker.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
@@ -442,22 +394,6 @@
       "count": 2
     },
     "@typescript-eslint/no-unused-expressions": {
-      "count": 1
-    }
-  },
-  "src/client/src/components/meeting/MeetingDetailPanel.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 5
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    }
-  },
-  "src/client/src/components/meeting/MeetingForm.tsx": {
-    "jsx-a11y/label-has-associated-control": {
       "count": 1
     }
   },
@@ -1750,11 +1686,6 @@
       "count": 1
     }
   },
-  "src/client/src/pages/WaitlistAdminPage.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/client/src/pages/WorkflowPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
@@ -2237,20 +2168,15 @@
       "count": 1
     }
   },
-  "src/server/database/migrateCli.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
   "src/server/database/migrationRunner.ts": {
     "no-await-in-loop": {
-      "count": 13
-    },
-    "no-restricted-syntax": {
       "count": 7
     },
+    "no-restricted-syntax": {
+      "count": 3
+    },
     "sonarjs/cognitive-complexity": {
-      "count": 2
+      "count": 1
     }
   },
   "src/server/database/sharedDbWatch.ts": {
@@ -3444,9 +3370,6 @@
     }
   },
   "src/server/services/scheduling/cronManager.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 18
-    },
     "no-await-in-loop": {
       "count": 1
     }

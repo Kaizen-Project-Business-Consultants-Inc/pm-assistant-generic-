@@ -11,9 +11,8 @@ import { databaseService } from '../database/connection';
  * `utils/calendarDate.ts`. "Due 19 September" is the 19th for everyone.
  *
  * The jobs that use this run **hourly** and skip anyone whose local hour is not the
- * target. Adding a job like that means changing the timer in `deploy/systemd/` too;
- * changing only `cronManager.ts` does nothing, because the servers run the jobs from
- * systemd timers.
+ * target. Adding a job like that means a `case` in `scripts/runCronJob.ts` and a timer
+ * in `deploy/systemd/` — the servers run the jobs only from systemd timers.
  */
 
 /** The recipient's local hour (0-23) right now. Falls back to UTC on an unknown zone. */

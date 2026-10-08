@@ -543,7 +543,7 @@ Task and project lifecycle events automatically trigger DAG workflows:
 
 Model Context Protocol server for Claude Desktop and Claude Web integration:
 
-**11 tools** defined in `mcp-server/server.ts`:
+**11 tools** were defined in the original prototype `mcp-server/server.ts` (removed 2026-10-08); the live server is `mcp-server/src/index.ts`, which has many more:
 | Tool | Description |
 |------|-------------|
 | `list-projects` | List all projects |

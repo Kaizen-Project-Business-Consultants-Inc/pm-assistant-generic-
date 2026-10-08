@@ -46,6 +46,12 @@ function rowToDTO(row: ExecutionRow): AutomationExecution {
   };
 }
 
+/**
+ * Automation insights cover the last 90 days — the same period the nightly clean-up keeps
+ * (DataRetentionService, 2026-10-08), so the figures never silently shrink as old runs go.
+ */
+export const ANALYTICS_WINDOW_DAYS = 90;
+
 export class AutomationExecutionRepository extends BaseRepository<AutomationExecution> {
   constructor() {
     super('automation_executions', rowToDTO);
@@ -100,13 +106,15 @@ export class AutomationExecutionRepository extends BaseRepository<AutomationExec
                 SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS success_count,
                 SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failure_count,
                 AVG(duration_ms) AS avg_duration
-         FROM automation_executions WHERE automation_id = ? AND is_dry_run = 0`,
+         FROM automation_executions WHERE automation_id = ? AND is_dry_run = 0
+           AND created_at >= NOW() - INTERVAL ${ANALYTICS_WINDOW_DAYS} DAY`,
         [automationId],
       ),
       this.queryRaw(
         `SELECT error_message, COUNT(*) AS cnt
          FROM automation_executions
          WHERE automation_id = ? AND is_dry_run = 0 AND error_message IS NOT NULL
+           AND created_at >= NOW() - INTERVAL ${ANALYTICS_WINDOW_DAYS} DAY
          GROUP BY error_message ORDER BY cnt DESC LIMIT 10`,
         [automationId],
       ),
