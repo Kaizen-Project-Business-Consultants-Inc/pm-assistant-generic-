@@ -169,8 +169,9 @@ export class UserService {
     return userRepository.getViewPrefs(userId);
   }
 
-  async updateViewPrefs(userId: string, prefs: Record<string, unknown>): Promise<void> {
-    await userRepository.updateViewPrefs(userId, prefs);
+  /** Merge a change into the saved view preferences (nested, in one database step) */
+  async mergeViewPrefs(userId: string, change: Record<string, unknown>): Promise<Record<string, unknown> | null> {
+    return userRepository.mergeViewPrefs(userId, change);
   }
 }
 

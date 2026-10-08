@@ -24,13 +24,9 @@ interface PerScheduleColumnState {
 }
 
 function doSyncToServer(scheduleId: string, state: PerScheduleColumnState) {
-  apiService.getViewPreferences()
-    .then((res: any) => {
-      const existing = res?.preferences || {};
-      const columnStates = existing.columnStates || {};
-      columnStates[scheduleId] = state;
-      return apiService.updateViewPreferences({ ...existing, columnStates });
-    })
+  // only this plan's columns: the server merges them into the rest (it used to read everything,
+  // edit and write it all back, so a save from another tab in between was lost — 2026-10-08)
+  apiService.updateViewPreferences({ columnStates: { [scheduleId]: state } })
     .catch(() => {/* silent */});
 }
 

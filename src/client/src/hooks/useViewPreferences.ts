@@ -83,7 +83,8 @@ function flushWrite() {
   checkOwner();
   const { isAuthenticated, user } = useAuthStore.getState();
   if (!isAuthenticated || !user || serverCopy === null) return;
-  // One save at a time: the server merges into the stored row, and two at once could lose one
+  // One save at a time keeps the diffs small and ordered (the server merges each in one step
+  // since 2026-10-08, so two at once no longer lose a change)
   if (inFlight > 0) { armWrite(); return; }
   const known = serverCopy;
   const diff = Object.fromEntries(Object.entries(pending).filter(([k, v]) => !same(known[k], v)));

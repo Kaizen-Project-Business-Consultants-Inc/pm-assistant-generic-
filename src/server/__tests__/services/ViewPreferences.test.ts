@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../database/UserRepository', () => {
   const mockRepo = {
     getViewPrefs: vi.fn(),
-    updateViewPrefs: vi.fn(),
+    mergeViewPrefs: vi.fn(),
   };
   return { userRepository: mockRepo };
 });
@@ -35,17 +35,27 @@ describe('ViewPreferences', () => {
     });
   });
 
-  describe('updateViewPrefs', () => {
+  describe('mergeViewPrefs (only the change, merged in the database)', () => {
     it('delegates to repository', async () => {
       const prefs = { theme: 'light', aiPanelOpen: false };
-      await service.updateViewPrefs('user-1', prefs);
-      expect(userRepository.updateViewPrefs).toHaveBeenCalledWith('user-1', prefs);
+      await service.mergeViewPrefs('user-1', prefs);
+      expect(userRepository.mergeViewPrefs).toHaveBeenCalledWith('user-1', prefs);
     });
 
     it('handles partial updates', async () => {
       const partial = { sidebarCollapsed: true };
-      await service.updateViewPrefs('user-1', partial);
-      expect(userRepository.updateViewPrefs).toHaveBeenCalledWith('user-1', partial);
+      await service.mergeViewPrefs('user-1', partial);
+      expect(userRepository.mergeViewPrefs).toHaveBeenCalledWith('user-1', partial);
     });
+  });
+});
+
+describe('the merge happens in ONE database statement (2026-10-08: two tabs lost a change)', () => {
+  it('UserRepository.mergeViewPrefs uses JSON_MERGE_PATCH, no read-then-write', async () => {
+    const { readFileSync } = await import('fs');
+    const { join } = await import('path');
+    const src = readFileSync(join(__dirname, '..', '..', 'database', 'UserRepository.ts'), 'utf-8');
+    expect(src).toMatch(/UPDATE users SET view_preferences = JSON_MERGE_PATCH\(COALESCE\(view_preferences, '\{\}'\), \?\)/);
+    expect(src).not.toMatch(/async updateViewPrefs/);
   });
 });

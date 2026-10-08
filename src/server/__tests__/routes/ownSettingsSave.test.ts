@@ -10,7 +10,7 @@ vi.mock('../../middleware/auth', () => ({
   authMiddleware: vi.fn(async (req: any) => { req.user = { userId: req.headers['x-test-user'] ?? 'u-team', role: req.headers['x-test-role'] }; }),
 }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-const users = vi.hoisted(() => ({ getViewPrefs: vi.fn(), updateViewPrefs: vi.fn(), update: vi.fn(), updateAccessibilityPrefs: vi.fn(), updateDashboardPrefs: vi.fn() }));
+const users = vi.hoisted(() => ({ getViewPrefs: vi.fn(), mergeViewPrefs: vi.fn(), update: vi.fn(), updateAccessibilityPrefs: vi.fn(), updateDashboardPrefs: vi.fn() }));
 vi.mock('../../services/UserService', () => ({ userService: users }));
 vi.mock('../../services/OrganizationService', () => ({ organizationService: {} }));
 vi.mock('../../database/OrganizationRepository', () => ({ organizationRepository: {} }));
@@ -22,7 +22,7 @@ describe('PUT /users/me/view-preferences', () => {
   beforeAll(async () => { app = Fastify(); await app.register(userRoutes, { prefix: '/api/v1/users' }); }, 60_000);
   beforeEach(() => {
     users.getViewPrefs.mockReset().mockResolvedValue({ theme: 'light' });
-    users.updateViewPrefs.mockReset().mockResolvedValue(undefined);
+    users.mergeViewPrefs.mockReset().mockImplementation(async (_u: string, c: any) => ({ theme: 'light', ...c }));
     users.update.mockReset().mockResolvedValue({});
     users.updateAccessibilityPrefs.mockReset().mockResolvedValue(undefined);
     users.updateDashboardPrefs.mockReset().mockResolvedValue(undefined);
@@ -40,14 +40,14 @@ describe('PUT /users/me/view-preferences', () => {
   it("only ever writes the signed-in user's row — the body cannot name another user", async () => {
     const res = await put('team_member', { sidebarCollapsed: true, userId: 'someone-else', id: 'someone-else' }, 'u-me');
     expect(res.statusCode).toBe(200);
-    expect(users.getViewPrefs).toHaveBeenCalledWith('u-me');
-    expect(users.updateViewPrefs).toHaveBeenCalledWith('u-me', { theme: 'light', sidebarCollapsed: true });
+    // only the change goes down; the database merges it (two tabs no longer lose a change)
+    expect(users.mergeViewPrefs).toHaveBeenCalledWith('u-me', { sidebarCollapsed: true });
   });
 
   it('still validates what is saved', async () => {
     const res = await put('team_member', { theme: 'purple' });
     expect(res.statusCode).toBe(400);
-    expect(users.updateViewPrefs).not.toHaveBeenCalled();
+    expect(users.mergeViewPrefs).not.toHaveBeenCalled();
   });
 
   it('there is no route that takes another user id', async () => {

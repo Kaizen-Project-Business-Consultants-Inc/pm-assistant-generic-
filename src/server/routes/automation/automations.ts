@@ -8,7 +8,7 @@ import { FIELD_CATALOG } from '../../services/automation/fieldCatalog';
 import { createAutomationSchema, updateAutomationSchema, testAutomationSchema } from '../../schemas/automationSchemas';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { GOVERNANCE_PACKS } from '../../services/automation/governancePacks';
 import { parsePagination } from '../../schemas/paginationSchema';
 import type { AutomationEvent } from '../../services/automation/types';
@@ -23,6 +23,10 @@ export async function automationRoutes(fastify: FastifyInstance) {
     if (!p?.projectId || !p.id || reply.sent) return;
     const url = request.routeOptions?.url ?? '';
     if (!/\/automations\/:id(\/|$)/.test(url)) return;
+    // the project first: someone who can't open it gets the same answer whatever the id, so
+    // "not allowed" vs "not found" never tells them which automations it has (2026-10-08)
+    const access = await checkProjectRole(request, p.projectId, 'viewer');
+    if (!access.ok) return reply.status(access.status).send(access.body);
     const rule: any = await automationService.findById(p.id);
     if (!rule || rule.projectId !== p.projectId) return reply.status(404).send({ error: 'Not found', message: 'Automation not found in this project' });
   });

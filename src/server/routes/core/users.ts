@@ -331,11 +331,9 @@ export async function userRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.userId;
       const parsed = viewPrefsSchema.parse(request.body);
-      // Merge with existing prefs so partial updates work
-      const existing = await userService.getViewPrefs(userId) || {};
-      const merged = { ...existing, ...parsed };
-      await userService.updateViewPrefs(userId, merged);
-      return { preferences: merged };
+      // only what changed, merged in the database (two tabs saving at once no longer lose a change)
+      const merged = await userService.mergeViewPrefs(userId, parsed);
+      return { preferences: merged ?? {} };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Update view preferences error', { error });

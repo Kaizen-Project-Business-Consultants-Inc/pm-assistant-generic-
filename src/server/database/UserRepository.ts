@@ -236,11 +236,18 @@ export class UserRepository extends BaseRepository<User> {
     return typeof raw === 'string' ? JSON.parse(raw) : raw;
   }
 
-  async updateViewPrefs(userId: string, prefs: Record<string, unknown>): Promise<void> {
+  /**
+   * Merge a change into the saved view preferences IN THE DATABASE, in one statement, nested
+   * (JSON_MERGE_PATCH: objects merge key by key, arrays and values replace). It used to read,
+   * merge one level deep in Node and write everything back — two tabs saving at the same moment
+   * lost one change, and saving one plan's columns could wipe another's (found 2026-10-08).
+   */
+  async mergeViewPrefs(userId: string, change: Record<string, unknown>): Promise<Record<string, unknown> | null> {
     await this.queryRaw(
-      'UPDATE users SET view_preferences = ?, updated_at = NOW() WHERE id = ?',
-      [JSON.stringify(prefs), userId],
+      "UPDATE users SET view_preferences = JSON_MERGE_PATCH(COALESCE(view_preferences, '{}'), ?), updated_at = NOW() WHERE id = ?",
+      [JSON.stringify(change), userId],
     );
+    return this.getViewPrefs(userId);
   }
 }
 

@@ -146,6 +146,12 @@ const executionListReader = async (request: FastifyRequest, reply: FastifyReply)
 };
 
 const executionPM = async (request: FastifyRequest, reply: FastifyReply) => {
+  // a run the caller can't see answers 404 like a missing one, so "not allowed" never reveals
+  // that it exists (2026-10-08); only someone who can see it may get "not allowed" below
+  // executionReader RETURNS the reply it sends (thenable): awaiting it waits for the response, so
+  // reply.sent below is reliable — keep that return if you change it
+  await executionReader(request, reply);
+  if (reply.sent) return;
   const rows = await databaseService.query<{ workflow_id: string }>('SELECT workflow_id FROM workflow_executions WHERE id = ?', [(request.params as { id: string }).id]);
   if (!rows.length) return reply.status(404).send({ error: 'Execution not found' });
   const wf = await workflowProject(rows[0].workflow_id);

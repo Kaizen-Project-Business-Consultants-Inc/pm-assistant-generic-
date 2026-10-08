@@ -468,6 +468,8 @@ Tests: `routes/crossCompanyAiSettings.test.ts`, `routes/auditVerifyAccess.test.t
 
 **Workflow loop stopped** (2026-10-08): the seed workflow "Auto-complete on 100%" re-triggered itself (66,000 runs in 82 minutes on staging; prod had it switched on in every company). Now: progress/date triggers fire on the change only; `update_field` skips a value already set; workflows started by workflows stop at depth 3 (`runAsWorkflow` / `workflowDepth` in the request context); the task route no longer runs workflows a second time. Tests: `services/workflowLoop.test.ts`.
 
+**Same answer whether an id exists or not** (2026-10-08): the automation routes check the project before checking that the automation belongs to it, and resuming a workflow run checks that the caller can see the run (404) before the PM rule (403) — so an outsider can no longer tell which automations or runs exist. Tests: `routes/idProbing.test.ts`.
+
 **Heavy actions are rate-limited per person** (2026-10-08): imports, exports, downloads, Word reports, Monte Carlo, AI risk scan, bulk links, knowledge-base rebuild, waitlist and log downloads use `heavyActionLimit(action, limit)` (`middleware/rateLimiter.ts`; in-memory per server, per user, else per IP; 429 with `Retry-After`). Limits per 10 minutes: 5 admin actions, 10 simulate/scan/AI import, 20 imports and bulk changes, 30 Word/exports, 60 bulk link/unlink (Undo uses them) and file downloads, 120 sprint readiness, 300 single-project export (Export my data fetches every project one at a time and stops with a message rather than a file with gaps). The app does not retry a 429. The efficiency guard fails a new heavy route without a gate and a limit.
 
 ## 14d. Clients (project groups) — who may do what (Oct 2026)
