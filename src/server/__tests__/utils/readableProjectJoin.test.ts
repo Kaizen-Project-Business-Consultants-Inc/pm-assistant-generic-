@@ -7,7 +7,7 @@ import { describe, it, expect, vi } from 'vitest';
  * was listed on the dashboard but missing from the briefing ("no active projects yet").
  */
 const list = vi.hoisted(() => vi.fn());
-vi.mock('../../services/ProjectService', () => ({ projectService: { findByUserId: list } }));
+vi.mock('../../database/ProjectRepository', () => ({ projectRepository: { findReadableIds: async (u: string) => ((await list(u)) as Array<{ id: string }>).map(p => p.id) } }));
 vi.mock('../../services/UserService', () => ({ userService: {} }));
 
 import { readableProjectJoin } from '../../utils/readableProjects';
@@ -37,5 +37,28 @@ describe('readableProjectJoin', () => {
     list.mockResolvedValueOnce([{ id: 'own' }]);
     const { join } = await readableProjectJoin({ userId: 'u1', role: 'project_manager' }, false, 'proj');
     expect(join).toContain('rp.rp_id = proj.id');
+  });
+});
+
+describe('readableProjectIds is worked out once per request (2026-10-08)', () => {
+  it('two checks in one request ask the database once; a new project or membership clears it', async () => {
+    const { runAsWorkflow, forgetReadableProjects } = await import('../../middleware/requestContext');
+    const { readableProjectIds } = await import('../../utils/readableProjects');
+    list.mockReset().mockResolvedValue([{ id: 'p1' }]);
+    await runAsWorkflow(async () => { // any request context will do
+      await readableProjectIds({ userId: 'u1', role: 'project_manager' });
+      await readableProjectIds({ userId: 'u1', role: 'project_manager' });
+      expect(list).toHaveBeenCalledTimes(1);
+      forgetReadableProjects();
+      await readableProjectIds({ userId: 'u1', role: 'project_manager' });
+      expect(list).toHaveBeenCalledTimes(2);
+    });
+  });
+  it('outside a request nothing is remembered', async () => {
+    const { readableProjectIds } = await import('../../utils/readableProjects');
+    list.mockReset().mockResolvedValue([{ id: 'p1' }]);
+    await readableProjectIds({ userId: 'u1', role: 'project_manager' });
+    await readableProjectIds({ userId: 'u1', role: 'project_manager' });
+    expect(list).toHaveBeenCalledTimes(2);
   });
 });

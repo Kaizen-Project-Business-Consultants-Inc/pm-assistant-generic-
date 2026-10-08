@@ -15,7 +15,7 @@ const record = vi.fn().mockResolvedValue('change-1');
 vi.mock('../../services/ChangeHistoryService', () => ({ changeHistoryService: { record: (...a: any[]) => record(...a) } }));
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: vi.fn().mockResolvedValue({}) } }));
 vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-1' }), getActorSource: () => 'web' }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ userId: 'u-1' }), getActorSource: () => 'web' }));
 vi.mock('../../services/ResourceService', () => ({ ResourceValidationError: class ResourceValidationError extends Error {} }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 

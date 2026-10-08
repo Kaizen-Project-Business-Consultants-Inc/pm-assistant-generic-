@@ -75,7 +75,7 @@ vi.mock('../../utils/mimeValidator', () => ({
   validateMimeType: vi.fn(() => ({ valid: true })),
 }));
 
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getTenantContext: vi.fn(() => ({ dbName: 'pmassist_t_test', orgId: 'org-1' })),
   runWithTenantContext: vi.fn((_db: string, _org: string, fn: () => any) => fn()),
 }));

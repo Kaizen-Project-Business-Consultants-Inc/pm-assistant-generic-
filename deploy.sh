@@ -204,6 +204,8 @@ if [ "$ENV" = "prod" ] || [ "$SKIP_TESTS" != true ]; then
   node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js
   echo "[1d/7] Copy-paste check..."
   node scripts/duplicationCheck.mjs
+  echo "[1e/7] Speed tests (on their own, one file at a time)..."
+  node scripts/perfTests.mjs
   echo "  ✓ OK"
 fi
 

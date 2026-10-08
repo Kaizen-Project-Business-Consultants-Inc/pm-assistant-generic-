@@ -43,6 +43,9 @@ export default defineConfig({
           globals: true,
           environment: 'node',
           include: ['src/server/__tests__/**/*.test.ts'],
+          // speed tests time themselves: they run on their own, one file at a time (npm run test:perf),
+          // never alongside other test files, which made their timings — and a release — fail at random
+          exclude: process.env.PERF_TESTS ? ['**/node_modules/**'] : ['**/__tests__/performance/**', '**/node_modules/**'],
           setupFiles: ['src/server/__tests__/setup.ts'],
           testTimeout: 30000,
           // Projects don't inherit the top-level hookTimeout (a route test's setup timed out at the
@@ -57,6 +60,7 @@ export default defineConfig({
           globals: true,
           environment: 'happy-dom',
           include: ['src/client/**/*.test.{ts,tsx}'],
+          exclude: process.env.PERF_TESTS ? ['**/node_modules/**'] : ['**/__tests__/performance/**', '**/node_modules/**'],
           setupFiles: ['src/client/src/__tests__/setup.ts'],
           testTimeout: 30000,
           hookTimeout: 60000,

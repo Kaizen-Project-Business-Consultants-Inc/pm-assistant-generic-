@@ -1,4 +1,5 @@
-import { projectService } from '../services/ProjectService';
+import { projectRepository } from '../database/ProjectRepository';
+import { getRequestContext } from '../middleware/requestContext';
 import { userService } from '../services/UserService';
 import { GLOBAL_READ_ROLES } from '../constants/roles';
 
@@ -9,7 +10,19 @@ import { GLOBAL_READ_ROLES } from '../constants/roles';
  */
 export async function readableProjectIds(user: { userId: string; role: string }): Promise<Set<string> | 'all'> {
   if (GLOBAL_READ_ROLES.includes(user.role)) return 'all';
-  return new Set((await projectService.findByUserId(user.userId)).map((p) => p.id));
+  // Worked out once per request (several checks in one request used to repeat it), from ids only
+  // with indexed lookups (it used to load every readable project in full) — 2026-10-08
+  const ctx = getRequestContext();
+  const cached = ctx?.readableProjects?.get(user.userId);
+  if (cached) return new Set(await cached);
+  const ids = projectRepository.findReadableIds(user.userId);
+  if (ctx) (ctx.readableProjects ??= new Map()).set(user.userId, ids);
+  try {
+    return new Set(await ids);
+  } catch (err) {
+    ctx?.readableProjects?.delete(user.userId); // never remember a failure
+    throw err;
+  }
 }
 
 /**

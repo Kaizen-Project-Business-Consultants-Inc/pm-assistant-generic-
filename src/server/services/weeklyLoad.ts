@@ -1,4 +1,5 @@
 import { type IsWorking, weekdaysOnly, workingDaysInWeek } from '../utils/workingDays';
+import { daysBetween, startOfWeek } from '../utils/calendarDate';
 
 /**
  * How many hours a booking puts on a person in one week (2026-10-01).
@@ -20,9 +21,6 @@ export function hoursInWeek(
   return days === 0 ? 0 : Math.round(((a.hoursPerWeek / 5) * days) * 100) / 100;
 }
 
-const DAY_MS = 86_400_000;
-const WEEK_MS = 7 * DAY_MS;
-
 /**
  * Each person's booked hours in each of `weekKeys` (consecutive Mondays, 'YYYY-MM-DD'), summed
  * but NOT rounded: resourceId → one total per week, in `weekKeys` order (2026-10-08, speed).
@@ -38,12 +36,10 @@ export function bookedHoursByWeek(
   const out = new Map<string, number[]>();
   const n = weekKeys.length;
   if (n === 0) return out;
-  const first = Date.parse(`${weekKeys[0]}T00:00:00Z`);
-  // index of the week holding this day (NaN for an unreadable date)
+  // index of the week holding this day (NaN for an unreadable date) — calendar days throughout
   const indexOf = (ymd: string) => {
-    const t = Date.parse(`${ymd.slice(0, 10)}T00:00:00Z`);
-    const monday = t - ((new Date(t).getUTCDay() + 6) % 7) * DAY_MS;
-    return Math.round((monday - first) / WEEK_MS);
+    const days = daysBetween(weekKeys[0], startOfWeek(String(ymd).slice(0, 10)));
+    return days === null ? NaN : Math.round(days / 7);
   };
   for (const a of bookings) {
     let sums = out.get(a.resourceId);

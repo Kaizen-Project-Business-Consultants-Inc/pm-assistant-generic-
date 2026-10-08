@@ -44,7 +44,7 @@ vi.mock('../../utils/promptSanitizer', () => ({
   sanitizeForPrompt: vi.fn((input: string) => input),
 }));
 
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getRequestContext: vi.fn(() => null),
 }));
 

@@ -39,7 +39,7 @@ vi.mock('../../services/ScheduleService', () => ({
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: async () => ({}) } }));
 vi.mock('../../services/DeadLetterService', () => ({ deadLetterService: { capture: () => undefined } }));
 vi.mock('../../services/CalendarService', () => ({ calendarService: { workingDayChecker: async () => isWorkingYmd } }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-1' }), getActorSource: () => 'web' }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ userId: 'u-1' }), getActorSource: () => 'web' }));
 
 import { scheduleRecomputeService } from '../../services/ScheduleRecomputeService';
 

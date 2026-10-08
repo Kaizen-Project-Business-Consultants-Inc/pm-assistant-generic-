@@ -1,6 +1,7 @@
 import { BaseRepository } from './BaseRepository';
 import { databaseService } from './connection';
 import { v4 as uuidv4 } from 'uuid';
+import { forgetReadableProjects } from '../middleware/requestContext';
 
 export interface ProjectMemberRow {
   id: string;
@@ -77,6 +78,7 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
       'INSERT INTO project_members (id, project_id, user_id, user_name, email, role) VALUES (?, ?, ?, ?, ?, ?)',
       [id, projectId, data.userId, data.userName, data.email, data.role],
     );
+    forgetReadableProjects();
     return {
       id,
       projectId,
@@ -108,6 +110,7 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
       'DELETE FROM project_members WHERE id = ?',
       [memberId],
     );
+    forgetReadableProjects();
     return result.affectedRows > 0;
   }
 

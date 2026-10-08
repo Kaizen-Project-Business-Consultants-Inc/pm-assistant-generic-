@@ -41,7 +41,7 @@ vi.mock('../../database/connection', () => ({ databaseService: { query: async (s
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 // which company the scan runs for (the nightly job scans three companies at once)
 const tenant = vi.hoisted(() => ({ db: 'pmassist_t_a' }));
-vi.mock('../../middleware/requestContext', () => ({ getTenantContext: () => ({ dbName: tenant.db, orgId: 'o' }) }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getTenantContext: () => ({ dbName: tenant.db, orgId: 'o' }) }));
 
 import { runScanImpl } from '../../services/scheduling/scanOrchestrator';
 

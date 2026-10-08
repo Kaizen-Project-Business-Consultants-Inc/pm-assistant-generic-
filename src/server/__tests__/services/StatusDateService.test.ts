@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../database/connection', () => ({
   databaseService: { query: vi.fn(), queryControlPlane: vi.fn() },
 }));
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getRequestContext: vi.fn(() => ({ organizationId: 'org-1' })),
 }));
 

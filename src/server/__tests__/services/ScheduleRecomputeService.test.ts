@@ -28,7 +28,7 @@ vi.mock('../../services/CalendarService', () => ({
     }),
   },
 }));
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getRequestContext: () => ({ userId: 'u-1' }),
   getActorSource: () => 'web',
 }));

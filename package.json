@@ -13,6 +13,7 @@
     "start": "node dist/server/index.js",
     "test": "vitest",
     "test:unit": "vitest run",
+    "test:perf": "node scripts/perfTests.mjs",
     "lint": "node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js --cache --cache-location node_modules/.cache/eslint/",
     "lint:fix": "node --max-old-space-size=6144 node_modules/eslint/bin/eslint.js --fix",
     "duplication": "node scripts/duplicationCheck.mjs",

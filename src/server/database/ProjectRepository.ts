@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { BaseRepository } from './BaseRepository';
 import type { Project, CreateProjectData } from '../services/ProjectService';
 import { isDuplicateCodeDbError } from '../utils/duplicateProject';
+import { forgetReadableProjects } from '../middleware/requestContext';
 
 function toDateStr(val: any): string | undefined {
   if (!val) return undefined;
@@ -109,11 +110,26 @@ export class ProjectRepository extends BaseRepository<Project> {
     return this.queryPaginated(where, [], 'created_at DESC', limit, offset);
   }
 
+  /**
+   * The projects a person can read: ones they created, are a member of, or the sample — as three
+   * lookups that each use an index (the old `created_by = ? OR member OR is_demo` could use none,
+   * so every call read the whole projects table; 2026-10-08). Two placeholders: the user id twice.
+   * Callers join it FIRST (STRAIGHT_JOIN): the short list, then one key lookup per project.
+   */
+  private static readonly READABLE = `SELECT id FROM projects WHERE created_by = ?
+       UNION SELECT project_id FROM project_members WHERE user_id = ?
+       UNION SELECT id FROM projects WHERE is_demo = 1`;
+
+  /** Only the ids — for permission checks across projects (readableProjectIds) */
+  async findReadableIds(userId: string): Promise<string[]> {
+    const rows: Array<{ id: string }> = await this.queryRaw(ProjectRepository.READABLE, [userId, userId]);
+    return rows.map(r => r.id);
+  }
+
   async findByUserId(userId: string): Promise<Project[]> {
     const rows = await this.queryRaw(
-      `SELECT DISTINCT p.* FROM projects p
-       LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1
+      `SELECT STRAIGHT_JOIN p.* FROM (${ProjectRepository.READABLE}) r
+       JOIN projects p ON p.id = r.id
        ORDER BY p.is_demo ASC, p.created_at DESC`,
       [userId, userId],
     );
@@ -123,9 +139,9 @@ export class ProjectRepository extends BaseRepository<Project> {
   /** Live projects this person has (trial limit) — the sample project never counts */
   async countByUser(userId: string): Promise<number> {
     const rows = await this.queryRaw(
-      `SELECT COUNT(DISTINCT p.id) as count FROM projects p
-       LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL) AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`,
+      `SELECT STRAIGHT_JOIN COUNT(*) as count FROM (${ProjectRepository.READABLE}) r
+       JOIN projects p ON p.id = r.id
+       WHERE p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`,
       [userId, userId],
     );
     return Number(rows[0]?.count ?? 0);
@@ -134,16 +150,16 @@ export class ProjectRepository extends BaseRepository<Project> {
   async findByUserIdPaginated(userId: string, limit: number, offset: number, includeArchived = false): Promise<{ rows: Project[]; total: number }> {
     const archiveFilter = includeArchived ? '' : ' AND p.archived_at IS NULL';
     const countRows = await this.queryRaw(
-      `SELECT COUNT(DISTINCT p.id) as count FROM projects p
-       LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1)${archiveFilter}`,
+      `SELECT STRAIGHT_JOIN COUNT(*) as count FROM (${ProjectRepository.READABLE}) r
+       JOIN projects p ON p.id = r.id
+       WHERE 1 = 1${archiveFilter}`,
       [userId, userId],
     );
     const total = Number(countRows[0]?.count ?? 0);
     const rows = await this.queryRaw(
-      `SELECT DISTINCT p.* FROM projects p
-       LEFT JOIN project_members pm ON pm.project_id = p.id AND pm.user_id = ?
-       WHERE (p.created_by = ? OR pm.user_id IS NOT NULL OR p.is_demo = 1)${archiveFilter}
+      `SELECT STRAIGHT_JOIN p.* FROM (${ProjectRepository.READABLE}) r
+       JOIN projects p ON p.id = r.id
+       WHERE 1 = 1${archiveFilter}
        ORDER BY p.is_demo ASC, p.created_at DESC
        LIMIT ? OFFSET ?`,
       [userId, userId, limit, offset],
@@ -202,6 +218,7 @@ export class ProjectRepository extends BaseRepository<Project> {
         data.userId,
       ],
     );
+    forgetReadableProjects(); // saved: its creator can read it from now on
     return (await this.findById(id))!;
   }
 

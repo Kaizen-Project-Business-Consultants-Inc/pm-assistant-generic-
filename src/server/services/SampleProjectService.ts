@@ -1,3 +1,4 @@
+import { forgetReadableProjects } from '../middleware/requestContext';
 import fs from 'fs';
 import path from 'path';
 import type mysql from 'mysql2/promise';
@@ -155,6 +156,7 @@ class SampleProjectService {
         for (const stmt of seedStatements(fs.readFileSync(file, 'utf-8'))) await databaseService.queryOn(conn, stmt, []);
       }
       await conn.commit();
+      forgetReadableProjects(); // the sample is readable by everyone in the company now
       logger.info('[sample-project] loaded', { dbName });
     } catch (err) {
       await conn.rollback();

@@ -16,7 +16,7 @@ vi.mock('../../database/ProjectRepository', () => ({
   projectRepository: { findByIdForUser: async (projectId: string, userId: string) => ((await mockHasAccess(projectId, userId)) ? { id: projectId } : null) },
 }));
 vi.mock('../../database/connection', () => ({ databaseService: { query: mockQuery } }));
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getRequestContext: () => ctx.value,
   runWithTenantContext: (_db: string, _org: string, fn: () => any) => fn(),
 }));

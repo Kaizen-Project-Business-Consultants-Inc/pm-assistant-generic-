@@ -6,14 +6,14 @@ const mockQuery = vi.fn().mockResolvedValue([]);
 const mockQueryControlPlane = vi.fn().mockResolvedValue([]);
 
 // A signed-in member of an organisation (tests below that need "no organisation" override it)
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getTenantContext: vi.fn().mockReturnValue({ dbName: 'pmassist_t_test', orgId: 'org-1' }),
 }));
 // The projects this person can read (created, member of, or the sample project): one, p-1
 // (the real readableProjectJoin runs; only the project list under it is stubbed)
 const readableMock = vi.fn().mockResolvedValue(new Set(['p-1']));
-vi.mock('../../services/ProjectService', () => ({
-  projectService: { findByUserId: async () => [...(await readableMock())].map((id: string) => ({ id })) },
+vi.mock('../../database/ProjectRepository', () => ({
+  projectRepository: { findReadableIds: async () => [...(await readableMock())] },
 }));
 vi.mock('../../database/connection', () => ({
   databaseService: {

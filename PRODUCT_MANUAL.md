@@ -177,6 +177,8 @@ Bulk create, update, and status-change endpoints allow operating on multiple tas
 
 Full-text search across 9 entity types: projects, tasks, RAID items (risks/issues/actions/decisions), goals, lessons learned, resources, change requests, sprints, and task comments. All queries execute in parallel and return a unified result set; any entity type that fails is silently omitted so a partial outage does not block the entire search.
 
+**Word search (October 2026).** Search matches whole words and word beginnings, using word (FULLTEXT) indexes instead of reading every row (tenant migration T085). Each word typed must appear in the item (in any of its searched fields), as a whole word or the start of one: "sched rev" finds "Schedule review"; "edule" does not. Best matches come first. Punctuation and search operators are ignored (`+ - < > ( ) ~ * " @`). Words the index does not hold — one- or two-letter words and common words such as "the", "for", "with" — are left out of a multi-word search; when nothing else is left (e.g. "QA" alone) the search falls back to the old match-anywhere search. Fields searched: projects, tasks and goals — name and description; RAID items, change requests and lessons — title and description; sprints — name and goal; resources — name, role and email; comments — text.
+
 **Enriched results** include contextual fields beyond just name/description/status:
 - **Tasks**: priority, assigned_to, progress_percentage, start_date, end_date
 - **RAID items**: severity, record_id, category, type (risk/issue/action/decision/assumption/dependency)

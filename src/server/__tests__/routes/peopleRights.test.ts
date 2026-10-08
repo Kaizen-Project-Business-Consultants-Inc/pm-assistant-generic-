@@ -10,7 +10,7 @@ import { join } from 'path';
  */
 const db = vi.hoisted(() => ({ queryControlPlane: vi.fn() }));
 vi.mock('../../database/connection', () => ({ databaseService: db }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ organizationId: 'o1' }) }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ organizationId: 'o1' }) }));
 vi.mock('../../services/OrganizationService', () => ({ organizationService: { invalidateUserCache: vi.fn() } }));
 
 import { checkCreate, checkUpdate, checkDelete, removeLogin, canManageLogins, MSG } from '../../services/peopleRights';

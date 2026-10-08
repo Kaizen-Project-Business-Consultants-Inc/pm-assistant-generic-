@@ -11,6 +11,8 @@ export interface RequestContext {
   actorSource?: 'web' | 'mcp';
   /** How many workflows deep this work is (a workflow's action that changes a task → 1, …) */
   workflowDepth?: number;
+  /** Projects each user may read, worked out once per request (utils/readableProjects) */
+  readableProjects?: Map<string, Promise<string[]>>;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();
@@ -27,6 +29,11 @@ export function runAsWorkflow<T>(fn: () => Promise<T>): Promise<T> {
   const current = asyncLocalStorage.getStore();
   const next: RequestContext = { ...(current ?? { requestId: 'workflow', startTime: Date.now() }), workflowDepth: (current?.workflowDepth ?? 0) + 1 };
   return asyncLocalStorage.run(next, fn);
+}
+
+/** A project or membership was added or removed: the projects people can read must be worked out again */
+export function forgetReadableProjects(): void {
+  asyncLocalStorage.getStore()?.readableProjects?.clear();
 }
 
 export function getRequestId(): string | undefined {

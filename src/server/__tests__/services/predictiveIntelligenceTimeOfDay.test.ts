@@ -17,7 +17,7 @@ vi.mock('../../services/claudeService', () => ({
 vi.mock('../../services/aiUsageLogger', () => ({ logAIUsage: vi.fn() }));
 vi.mock('../../services/dataProviders', () => ({ dataProviderManager: {} }));
 vi.mock('../../services/RedisService', () => ({ redisService: {} }));
-vi.mock('../../middleware/requestContext', () => ({ getTenantContext: () => null }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getTenantContext: () => null }));
 vi.mock('../../utils/portfolioChanges', () => ({ portfolioVersion: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 vi.mock('../../services/ProjectService', () => ({ projectService: { findById: vi.fn(async () => ({ budgetSpent: 0 })) } }));

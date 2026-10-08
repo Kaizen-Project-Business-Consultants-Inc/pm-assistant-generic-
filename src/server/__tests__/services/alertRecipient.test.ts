@@ -15,7 +15,7 @@ vi.mock('../../database/connection', () => ({
     },
   },
 }));
-vi.mock('../../middleware/requestContext', () => ({ getTenantContext: () => ({ dbName: 'pmassist_t_a', orgId: 'org1' }) }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getTenantContext: () => ({ dbName: 'pmassist_t_a', orgId: 'org1' }) }));
 
 import { alertRecipient } from '../../services/scheduling/alertRecipient';
 

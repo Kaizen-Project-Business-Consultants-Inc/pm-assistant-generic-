@@ -32,7 +32,7 @@ vi.mock('../../services/domainEvents', () => ({ planChanged: (...a: any[]) => pl
 vi.mock('../../services/ResourceService', () => ({ ResourceValidationError: class ResourceValidationError extends Error {} }));
 const readableProjectIds = vi.fn();
 vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: (...a: any[]) => readableProjectIds(...a) }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-pm' }), getActorSource: () => 'web' }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ userId: 'u-pm' }), getActorSource: () => 'web' }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 import { teamPlannerService } from '../../services/TeamPlannerService';

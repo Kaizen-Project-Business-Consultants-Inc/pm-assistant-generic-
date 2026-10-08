@@ -410,6 +410,14 @@ The following custom indexes exist beyond the default primary/foreign key indexe
 | `idx_time_date` | `time_entries` | `date` | Timesheet compliance and coaching jobs — T084 |
 | `idx_raid_activity_created` | `raid_activity_log` | `created_at` | Morning briefing — T084 |
 | `idx_memory_type_created` | `agent_memory` (shared) | `memory_type, created_at` | Admin agent statistics — 130 |
+| `idx_projects_demo` | `projects` | `is_demo` | "Projects I can read" as three indexed lookups (created by me / member / sample) instead of one query that read every project — T086 |
+| `ft_projects_search`, `ft_tasks_search`, `ft_goals_search` | `projects`, `tasks`, `goals` | FULLTEXT `name, description` | Global search (word match, `MATCH … AGAINST` in boolean mode) — T085 |
+| `ft_lessons_learned_search`, `ft_change_requests_search`, `ft_project_risks_search` | `lessons_learned`, `change_requests`, `project_risks` | FULLTEXT `title, description` | Global search — T085 |
+| `ft_sprints_search` | `sprints` | FULLTEXT `name, goal` | Global search — T085 |
+| `ft_resources_search` | `resources` | FULLTEXT `name, role, email` | Global search — T085 |
+| `ft_task_comments_search` | `task_comments` | FULLTEXT `text` | Global search — T085 |
+
+The search word indexes rely on the MariaDB defaults on both servers: `innodb_ft_min_token_size = 3` (shorter words are not indexed) and the built-in InnoDB stopword list (on). `routes/core/search.ts` assumes the same values (`FT_MIN_WORD`, `FT_STOPWORDS`); if either server setting is ever changed, change those constants too and rebuild the word indexes (drop and re-add them).
 
 The efficiency guard (`src/server/__tests__/utils/efficiencyGuard.test.ts`) fails a build that filters a growing table on a column with no index.
 

@@ -12,7 +12,7 @@ vi.mock('../../database/connection', () => ({
   },
 }));
 const ctx = { userId: 'u-1', actorSource: 'web' as 'web' | 'mcp' };
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getRequestContext: () => ctx,
   getActorSource: () => ctx.actorSource,
 }));

@@ -9,7 +9,7 @@ vi.mock('../../database/connection', () => ({
   },
 }));
 
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   getRequestContext: vi.fn().mockReturnValue({ organizationId: 'org1' }),
   getActorSource: vi.fn().mockReturnValue('web'),
 }));

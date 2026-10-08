@@ -6,7 +6,7 @@ vi.mock('../../services/OrganizationService', () => ({
   organizationService: { findByUserId: vi.fn(), invalidateUserCache: vi.fn() },
 }));
 const ctx: Record<string, string> = {};
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ctx }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ctx }));
 vi.mock('../../database/tenantProvisioner', () => ({ repairTenantDatabase: vi.fn().mockResolvedValue(false) }));
 const support = vi.hoisted(() => ({ findActive: vi.fn() }));
 vi.mock('../../services/SupportSessionService', () => ({ supportSessionService: support, SUPPORT_COOKIE: 'support_session' }));

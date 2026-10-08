@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../config', () => ({ config: { MULTI_TENANT_ENABLED: true } }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn() } }));
 const ctx = vi.hoisted(() => ({ current: '' }));
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   runWithTenantContext: async (db: string, _org: string, fn: () => unknown) => { ctx.current = db; try { return await fn(); } finally { ctx.current = ''; } },
 }));
 const query = vi.hoisted(() => vi.fn());

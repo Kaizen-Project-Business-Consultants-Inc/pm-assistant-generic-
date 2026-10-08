@@ -5,7 +5,7 @@ vi.mock('../../database/connection', () => ({ databaseService: db }));
 const orgs = vi.hoisted(() => ({ findById: vi.fn() }));
 vi.mock('../../database/OrganizationRepository', () => ({ organizationRepository: orgs }));
 const tenantCalls = vi.hoisted(() => [] as string[]);
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   runWithTenantContext: async (dbName: string, _org: string, fn: () => unknown) => { tenantCalls.push(dbName); return fn(); },
 }));
 const audit = vi.hoisted(() => ({ append: vi.fn() }));

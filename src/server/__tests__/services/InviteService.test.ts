@@ -60,7 +60,7 @@ vi.mock('../../services/ResourceService', () => ({
   },
 }));
 
-vi.mock('../../middleware/requestContext', () => ({
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()),
   runWithTenantContext: vi.fn((_db: string, _orgId: string, fn: () => any) => fn()),
 }));
 

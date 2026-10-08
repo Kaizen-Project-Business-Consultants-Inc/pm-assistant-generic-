@@ -224,5 +224,8 @@ describe('efficiency guard', () => {
     expect(idx.get('tasks')?.has('schedule_id')).toBe(true);
     expect(idx.get('notifications')?.has('user_id')).toBe(true);
     expect(idx.get('audit_ledger')?.has('project_id')).toBe(true);
+    // a FULLTEXT (word) index can't serve =, IN or LIKE — T085's search indexes must not count
+    expect(idx.get('task_comments')?.has('text')).toBeFalsy();
+    expect(idx.get('tasks')?.has('name')).toBeFalsy();
   });
 });

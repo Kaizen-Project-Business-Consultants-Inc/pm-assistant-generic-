@@ -60,7 +60,7 @@ vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { appe
 vi.mock('../../services/RateCardService', () => ({ rateCardService: { listSafe: async () => [] }, ratesOn: (r: any) => ({ standard: r.costRateHourly, overtime: null }) }));
 vi.mock('../../services/domainEvents', () => ({ planChanged: () => undefined }));
 vi.mock('../../services/ResourceService', () => ({ ResourceValidationError: class ResourceValidationError extends Error {} }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-pm' }), getActorSource: () => 'web' }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ userId: 'u-pm' }), getActorSource: () => 'web' }));
 vi.mock('../../utils/logger', () => ({ default: { warn: () => undefined, error: () => undefined, info: () => undefined } }));
 
 import { teamPlannerService } from '../../services/TeamPlannerService';

@@ -18,7 +18,7 @@ vi.mock('../../services/RedisService', () => ({
     del: async (k: string) => { redis.store.delete(k); },
   },
 }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => (ctx.db ? { tenantDbName: ctx.db } : undefined) }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => (ctx.db ? { tenantDbName: ctx.db } : undefined) }));
 vi.mock('../../utils/logger', () => ({ default: { warn: vi.fn(), error: vi.fn(), info: vi.fn() } }));
 
 import { CachedRepository } from '../../database/CachedRepository';

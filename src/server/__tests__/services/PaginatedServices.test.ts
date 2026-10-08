@@ -101,8 +101,9 @@ describe('Paginated Service Methods', () => {
 
       // Both queries should have been called
       expect(mockQuery).toHaveBeenCalledTimes(2);
+      // the readable projects as three indexed lookups joined first (2026-10-08), not one OR query
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('COUNT(DISTINCT'),
+        expect.stringMatching(/STRAIGHT_JOIN COUNT\(\*\)[\s\S]*created_by = \?[\s\S]*UNION SELECT project_id FROM project_members WHERE user_id = \?[\s\S]*is_demo = 1/),
         expect.arrayContaining(['u1']),
       );
     });

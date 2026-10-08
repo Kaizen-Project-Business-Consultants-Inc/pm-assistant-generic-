@@ -29,7 +29,7 @@ vi.mock('../../services/ApprovedTimeService', () => ({ approvedTimeService: { ap
 // "Today" is pinned so the month lock doesn't change the tests as time passes
 vi.mock('../../services/StatusDateService', () => ({ organizationTimezone: async () => 'UTC' }));
 vi.mock('../../utils/calendarDate', () => ({ today: () => '2026-10-02' }));
-vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ({ organizationId: 'org1' }) }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ organizationId: 'org1' }) }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { weeklyTimesheetService, TimesheetError, isMonthLocked, lockDateFor, lockMessage } from '../../services/WeeklyTimesheetService';
