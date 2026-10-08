@@ -482,6 +482,14 @@ export async function authRoutes(fastify: FastifyInstance) {
           logger.error('Failed to send verification email', { userId: user.id, email, error: emailErr });
         });
 
+        // Same owner flag and role as login and /auth/me, so the stored user never says
+        // "not the owner" before /auth/me runs. Never fatal: the account and checkout exist already.
+        let organization: { id: string; name: string; slug: string; isOwner?: boolean } | null = null;
+        if (config.MULTI_TENANT_ENABLED) {
+          const org = await organizationService.findByUserId(user.id).catch(() => null);
+          if (org) organization = { id: org.id, name: org.name, slug: org.slug, isOwner: org.ownerUserId === user.id };
+        }
+
         return reply.status(201).send({
           checkoutUrl,
           user: {
@@ -489,12 +497,14 @@ export async function authRoutes(fastify: FastifyInstance) {
             username: user.username,
             email: user.email,
             fullName: user.fullName,
-            role: user.role,
+            role: permissionRole(user.role, { isOwner: !!organization?.isOwner, isGuest: !!user.isGuest }),
+            accountRole: user.role,
             emailVerified: false,
             // Awaiting payment — not a trial, and not a free-tier customer.
             subscriptionTier: 'trial',
             pendingTier: tier,
             subscriptionStatus: 'incomplete',
+            organization,
           },
         });
       }

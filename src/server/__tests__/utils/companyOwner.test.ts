@@ -30,7 +30,7 @@ describe('the company owner works as PMO', () => {
     expect(auth.match(/\(o\.owner_user_id = u\.id\) AS is_owner/g)?.length).toBe(2);
     expect(auth).toMatch(/!request\.supportSession/); // never during the admin's Support view
     const routes = src('routes', 'core', 'auth.ts');
-    expect(routes.match(/accountRole: user\.role/g)?.length).toBe(2);
+    expect(routes.match(/accountRole: user\.role/g)?.length).toBe(3); // login, paid-plan register, /auth/me
   });
 
   it("the app shows the person's own role, and PMO (so the owner) sees the managers' menu items", () => {
