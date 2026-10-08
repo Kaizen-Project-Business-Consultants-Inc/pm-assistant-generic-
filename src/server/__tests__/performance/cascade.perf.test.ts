@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, afterAll } from 'vitest';
 import { makePlan, measure, MAX_GROWTH_PER_DOUBLING, report, isWorking, clonePlanTasks, type PerfTask } from './perfData';
+
+// no real database or settings: a clean checkout (as the release runs) has no .env (2026-10-08)
+vi.mock('../../database/connection', () => ({ databaseService: { query: async () => [], queryControlPlane: async () => [], queryOn: async () => [] } }));
 import { scheduleService } from '../../services/ScheduleService';
 import { taskRepository } from '../../database/TaskRepository';
 
