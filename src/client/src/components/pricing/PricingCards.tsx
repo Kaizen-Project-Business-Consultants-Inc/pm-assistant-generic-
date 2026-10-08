@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Zap, Shield, Star } from 'lucide-react';
+import { Check, X, Zap, Shield, Star, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { isPaidTier, SUPPORT_EMAIL } from '../../constants/branding';
+import { useCanManageBilling, OWNER_MANAGES_BILLING } from '../../hooks/useCanManageBilling';
+
+/**
+ * Only the company owner (or the platform admin) pays; the server refuses anyone else. Signed-out
+ * visitors still see every button — they are choosing a plan for a company of their own.
+ */
+function useOwnerPaysOnly(): boolean {
+  const { isAuthenticated } = useAuthStore();
+  const canManageBilling = useCanManageBilling();
+  return isAuthenticated && !canManageBilling;
+}
 
 export interface PlanDef {
   tier: string;
@@ -203,6 +214,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [smeSeats, setSmeSeats] = useState(3);
+  const ownerPaysOnly = useOwnerPaysOnly();
   const dk = forceDark; // shorthand
 
   const { data: pricingData } = useQuery({
@@ -254,11 +266,12 @@ const PLANS: PlanDef[] = pricingData?.tiers
   };
 
   const handleManageBilling = async () => {
+    setError(null);
     try {
       const { url } = await apiService.createPortalSession();
       window.location.href = url;
-    } catch {
-      // ignore
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Could not open billing. Please try again.'));
     }
   };
 
@@ -294,12 +307,18 @@ const PLANS: PlanDef[] = pricingData?.tiers
       </div>
 
       {error && (
-        <div className={`max-w-xl mx-auto mb-6 flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${dk ? 'bg-red-900/20 border border-red-800 text-red-300' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'}`}>
+        <div role="alert" className={`max-w-xl mx-auto mb-6 flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${dk ? 'bg-red-900/20 border border-red-800 text-red-300' : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'}`}>
           <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           {error}
         </div>
+      )}
+
+      {ownerPaysOnly && (
+        <p className={`max-w-xl mx-auto mb-6 text-center text-sm font-medium ${dk ? 'text-gray-200' : 'text-gray-700 dark:text-gray-200'}`}>
+          {OWNER_MANAGES_BILLING}
+        </p>
       )}
 
       {/* Plan cards */}
@@ -423,7 +442,14 @@ const PLANS: PlanDef[] = pricingData?.tiers
               </div>
 
               <div className="mb-6">
-                {isCurrent ? (
+                {ownerPaysOnly ? (
+                  // Hide, don't disable: the plan's owner buys and switches plans; a member just sees which one is theirs
+                  isCurrent && (
+                    <p className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg text-center ${dk ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'}`}>
+                      Current Plan
+                    </p>
+                  )
+                ) : isCurrent ? (
                   <button
                     onClick={plan.tier !== 'trial' ? handleManageBilling : undefined}
                     className={`w-full py-2.5 px-4 text-sm font-semibold rounded-lg transition-colors ${dk ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
@@ -527,7 +553,9 @@ interface PricingSectionProps {
 
 export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark }) => {
   const { isAuthenticated } = useAuthStore();
+  const ownerPaysOnly = useOwnerPaysOnly();
   const [topUpLoading, setTopUpLoading] = useState(false);
+  const [topUpError, setTopUpError] = useState<string | null>(null);
 
   const handleBuyTokens = async () => {
     if (!isAuthenticated) {
@@ -535,10 +563,12 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
       return;
     }
     setTopUpLoading(true);
+    setTopUpError(null);
     try {
       const { url } = await apiService.createTopUpSession(1);
       window.location.href = url;
-    } catch {
+    } catch (err: unknown) {
+      setTopUpError(getApiErrorMessage(err, 'Could not start the top-up. Please try again.'));
       setTopUpLoading(false);
     }
   };
@@ -557,6 +587,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
           <p className="text-sm text-gray-300 mb-4">
             Top up anytime. <strong className="text-white">500K tokens for $10</strong> — added instantly to your balance.
           </p>
+          {ownerPaysOnly ? (
+            <p className="text-sm font-medium text-gray-200">{OWNER_MANAGES_BILLING}</p>
+          ) : (
           <button
             onClick={handleBuyTokens}
             disabled={topUpLoading}
@@ -574,6 +607,12 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
               </>
             )}
           </button>
+          )}
+          {topUpError && (
+            <div role="alert" className="mt-4 flex items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm bg-red-900/20 border border-red-800 text-red-300">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" /> {topUpError}
+            </div>
+          )}
         </div>
       </div>}
 

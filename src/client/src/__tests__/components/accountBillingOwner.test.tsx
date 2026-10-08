@@ -5,7 +5,7 @@
  * AI usage and are told who manages billing ("hide, don't disable").
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, cleanup, screen } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   getTopUpBalance: vi.fn().mockResolvedValue({ remainingTokens: 0 }),
   getAiBudget: vi.fn().mockResolvedValue({ totalTokens: 10, budget: 100, percentUsed: 10, remaining: 90, requestCount: 1 }),
   getSeatInfo: vi.fn().mockResolvedValue({ billingModel: 'per_seat', usedSeats: 2, paidSeats: 3, availableSeats: 1, seatPriceCents: 1900 }),
+  createPortalSession: vi.fn(),
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
 
@@ -65,9 +66,21 @@ describe('Account page billing buttons', () => {
     expect(screen.getByText(/owner manages the plan/)).toBeTruthy();
   });
 
+  it("a refused Manage Billing shows the server's message instead of doing nothing", async () => {
+    signIn('pmo', true);
+    api.createPortalSession.mockRejectedValue(Object.assign(new Error('403'), { response: { status: 403, data: { message: 'Only the company owner can open billing.' } } }));
+    await renderPage('consultant_pro');
+    fireEvent.click(screen.getByText('Manage Billing'));
+    expect((await screen.findByRole('alert')).textContent).toContain('Only the company owner can open billing.');
+  });
+
   it('the platform admin (no company) may; nobody signed in may not', () => {
     expect(canManageBilling({ role: 'admin', organization: null } as User)).toBe(true);
     expect(canManageBilling({ role: 'admin', organization: { id: 'o', name: 'c', slug: 'c', isOwner: false } } as User)).toBe(false);
     expect(canManageBilling(null)).toBe(false);
+    // No company at all (signup whose company was never made): pays for themselves, like the server allows
+    expect(canManageBilling({ role: 'project_manager', organization: null } as User)).toBe(true);
+    // Company not known yet (an old saved user without the field): stays hidden until /auth/me says
+    expect(canManageBilling({ role: 'project_manager' } as User)).toBe(false);
   });
 });

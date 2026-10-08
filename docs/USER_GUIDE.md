@@ -195,7 +195,7 @@ The company owner works as PMO, so sees the PMO items. **Help** is in the menu u
 
 **Pages your role can't open (October 2026).** The "Who" column is also what you can open by typing an address. If your role can't use a page — for a team member, viewer or any other role that isn't Admin, Executive, Project Manager or PMO: Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM Dashboard, Simulation, Scenario Modeling, Report Builder and AI Proposals — typing its address (or a deeper one such as `/workflows/…`) takes you to the Dashboard, and Back returns you to where you were. Links to those pages are hidden for you too: in the command palette (Ctrl+K), dashboard widgets, notifications, breadcrumbs and the Workload Heatmap links. Everything you reach from inside your projects still works — the project pages, a client's **Risks & issues** and **Client report** from the Projects page, Help, Settings, Timesheets, Goals and Account. Guests (invited outside collaborators) also don't get Resources, Workflows, Intake, Integrations or Change Requests.
 
-**Account page.** Everyone sees the company's plan and AI usage. **Manage Billing**, **Buy More Tokens**, the seat buttons and **View Plans & Subscribe** are shown only to the company owner, because billing is the owner's; others see "Your company's owner manages the plan, payment and AI top-ups." The trial banner and the "Part of a paid plan" window work the same way.
+**Account page.** Everyone sees the company's plan and AI usage. **Manage Billing**, **Buy More Tokens**, the seat buttons and **View Plans & Subscribe** are shown only to the company owner, because billing is the owner's; others see "Your company's owner manages the plan, payment and AI top-ups." The trial banner, the "Part of a paid plan" window and the public **Pricing** page work the same way.
 
 The sidebar can be collapsed using the toggle at the bottom. On mobile devices, it slides in as an overlay.
 
@@ -2562,6 +2562,8 @@ All prices are displayed in **USD (US Dollars)**:
 - **Free Trial:** $0 for 14 days (no credit card required)
 - **Consultant Basic:** $19 USD/mo or $190 USD/yr
 - **Consultant Pro:** $29 USD/mo or $290 USD/yr (20% off annual during launch)
+
+Signed in but not the company's owner? The **Pricing** page still shows every plan and which one your company is on, but not the Subscribe / Switch Plan, billing or **Buy Token Pack** buttons; it says "Your company's owner manages the plan, payment and AI top-ups." instead. If billing or a top-up is ever refused, the page now says why instead of doing nothing.
 
 ### Settings (Admin/Manager)
 

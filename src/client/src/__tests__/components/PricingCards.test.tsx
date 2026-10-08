@@ -9,9 +9,13 @@ const api = vi.hoisted(() => ({
   createCheckoutSession: vi.fn(),
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
-vi.mock('../../stores/authStore', () => ({
-  useAuthStore: () => ({ isAuthenticated: false, user: null }),
-}));
+vi.mock('../../stores/authStore', async (importOriginal) => {
+  const signedOut = { isAuthenticated: false, user: null };
+  return {
+    ...(await importOriginal<typeof import('../../stores/authStore')>()),
+    useAuthStore: (select?: (s: typeof signedOut) => unknown) => (select ? select(signedOut) : signedOut),
+  };
+});
 
 import { PricingCards } from '../../components/pricing/PricingCards';
 

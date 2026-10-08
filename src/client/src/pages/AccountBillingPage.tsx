@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { formatCalendarDate } from '../utils/dateUtils';
-import { useCanManageBilling } from '../hooks/useCanManageBilling';
+import { useCanManageBilling, OWNER_MANAGES_BILLING } from '../hooks/useCanManageBilling';
 
 interface SubscriptionStatus {
   tier: string;
@@ -98,9 +98,6 @@ function formatTokens(n: number) {
   return String(n);
 }
 
-/** Said where the billing buttons are hidden for everyone but the owner */
-const OWNER_MANAGES_BILLING = "Your company's owner manages the plan, payment and AI top-ups.";
-
 export const AccountBillingPage: React.FC = () => {
   const queryClient = useQueryClient();
   // Billing is the company owner's (or the platform admin's); others see the plan and usage only
@@ -109,6 +106,8 @@ export const AccountBillingPage: React.FC = () => {
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [seatLoading, setSeatLoading] = useState(false);
   const [seatError, setSeatError] = useState<string | null>(null);
+  // Opening billing or a top-up can be refused (e.g. 403 for a non-owner) — say why instead of doing nothing
+  const [billingError, setBillingError] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery<SubscriptionStatus>({
     queryKey: ['subscription-status'],
@@ -135,20 +134,24 @@ export const AccountBillingPage: React.FC = () => {
 
   const handleManageBilling = async () => {
     setPortalLoading(true);
+    setBillingError(null);
     try {
       const result = await apiService.createPortalSession();
       window.location.href = result.url;
-    } catch {
+    } catch (err: unknown) {
+      setBillingError(getApiErrorMessage(err, 'Could not open billing. Please try again.'));
       setPortalLoading(false);
     }
   };
 
   const handleBuyTopUp = async () => {
     setTopUpLoading(true);
+    setBillingError(null);
     try {
       const result = await apiService.createTopUpSession(1);
       window.location.href = result.url;
-    } catch {
+    } catch (err: unknown) {
+      setBillingError(getApiErrorMessage(err, 'Could not start the top-up. Please try again.'));
       setTopUpLoading(false);
     }
   };
@@ -207,6 +210,12 @@ export const AccountBillingPage: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account & Billing</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{canManageBilling ? 'Manage your subscription and billing details' : "Your company's plan and AI usage"}</p>
       </div>
+
+      {billingError && (
+        <div role="alert" className="mb-4 flex items-center gap-2 rounded-lg px-4 py-3 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" /> {billingError}
+        </div>
+      )}
 
       {isPaid ? (
         <>
