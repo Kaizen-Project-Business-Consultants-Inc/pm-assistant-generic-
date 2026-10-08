@@ -970,6 +970,16 @@ git add -f e2e/schedule-behaviour.spec.ts-snapshots/*.png
 
 Look at the new images before committing — a baseline taken from a broken screen pins the breakage.
 
+### 9h. Link checks: page robot (staging) and guide links (unit test)
+
+**Page robot** — `e2e/linkcrawl.spec.ts`, in the full staging list (the quick config picks it up too). The QA PM and the QA team member walk the app side by side: every screen in `src/client/src/routes.ts` (ids filled in with a project/client the user can see), every project tab, then every in-app link found, one page per kind (about 80 pages each, ~2 min). It only opens pages — nothing is clicked or saved. It fails on a link to "Page not found", a page crash, any request to our own server answering 4xx/5xx, and an outside link answering 400 or more. Known problems sit on `ALLOW_LIST` with a reason; a new one must be fixed or added as "FOUND by linkcrawl <date>", and an entry that stops happening fails the run until it is removed. Each run prints what it opened, the outside links and the writes the app sent by itself (`[linkcrawl …]` lines).
+
+```bash
+npx playwright test --config playwright.staging-full.config.ts linkcrawl --workers=1
+```
+
+**Guide links** — `src/client/src/__tests__/utils/guideAnchors.test.tsx` (part of `npx vitest run`). Every `#link` in the text of `docs/USER_GUIDE.md` must be a chapter id, because the in-app reader (`/help/guide`) opens chapters only and sends any other id to chapter 1; the guide's own contents list (seen on GitHub only) must point at real `## ` headings and list every numbered chapter; the quick guide's (`/help`) contents links must match its section ids. Same rule: known breakages are allowed with a reason, and the list can only shrink.
+
 ---
 
 ## Verification Checklist
