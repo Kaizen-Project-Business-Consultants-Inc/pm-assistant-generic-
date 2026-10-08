@@ -22,6 +22,7 @@ const svc = vi.hoisted(() => ({
   createTask: vi.fn(),
   addDependency: vi.fn(),
   workingDayTest: vi.fn(),
+  recomputeParentRollup: vi.fn(async () => {}),
 }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: svc }));
 const resources = vi.hoisted(() => ({ findAllResources: vi.fn(), createResource: vi.fn() }));
@@ -67,6 +68,14 @@ describe('imports are recorded in Schedule History', () => {
       undo: { createdIds: ['t1', 't2', 't3'], resourceIds: ['r-new'], baselineId: 'bl-1', links: 1, fileName: 'plan.xlsx' },
     });
     expect(review.run.mock.invocationCallOrder[0]).toBeLessThan(record.mock.invocationCallOrder[0]);
+    // the phase is recalculated ONCE after its rows exist, not once per row; the calendar is read once (2026-10-08)
+    expect(svc.recomputeParentRollup).toHaveBeenCalledTimes(1);
+    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1');
+    expect(svc.workingDayTest).toHaveBeenCalledTimes(1);
+    const rows = svc.createTask.mock.calls.map(c => c[0]).filter((d: any) => d.parentTaskId);
+    expect(rows.every((d: any) => d.deferParentRollup === true)).toBe(true);
+    expect(svc.recomputeParentRollup.mock.invocationCallOrder[0]).toBeGreaterThan(Math.max(...svc.createTask.mock.invocationCallOrder));
+    expect(svc.recomputeParentRollup.mock.invocationCallOrder[0]).toBeLessThan(svc.addDependency.mock.invocationCallOrder[0]);
   });
 
   it('MS Project / AI extraction: every task it created', async () => {
@@ -77,6 +86,12 @@ describe('imports are recorded in Schedule History', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().changeId).toBe('chg-9');
     expect(record.mock.calls[0][0]).toMatchObject({ kind: 'import', summary: 'Imported 2 tasks from plan.xml', taskIds: ['t1', 't2'], undo: { createdIds: ['t1', 't2'], links: 0 } });
+
+    // the outline parent is recalculated once, after its rows; the calendar read once (2026-10-08)
+    expect(svc.recomputeParentRollup).toHaveBeenCalledTimes(1);
+    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1');
+    expect(svc.workingDayTest).toHaveBeenCalledTimes(1);
+    expect(svc.createTask.mock.calls[1][0]).toMatchObject({ parentTaskId: 't1', deferParentRollup: true });
   });
 
   it('nothing imported: nothing recorded', async () => {

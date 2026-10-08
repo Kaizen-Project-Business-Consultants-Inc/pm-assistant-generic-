@@ -53,16 +53,21 @@ export async function runTenantMigrations(dbName: string): Promise<number> {
         .map(s => s.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').trim())
         .filter(s => s.length > 0);
 
+      // eslint-disable-next-line no-await-in-loop -- migration files must apply in order, each in its own transaction
       await conn.beginTransaction();
       try {
         for (const stmt of statements) {
+          // eslint-disable-next-line no-await-in-loop -- statements within a migration must run in order
           await conn.query(stmt);
         }
+        // eslint-disable-next-line no-await-in-loop -- records this migration inside its own transaction before the next file
         await conn.query('INSERT IGNORE INTO _migrations (name) VALUES (?)', [file]);
+        // eslint-disable-next-line no-await-in-loop -- commit this migration before starting the next one
         await conn.commit();
         logger.info(`[tenant-migration] Applied ${file} on ${dbName} (${statements.length} statements)`);
         ranCount++;
       } catch (error) {
+        // eslint-disable-next-line no-await-in-loop -- roll back this migration before deciding whether to continue
         await conn.rollback();
 
         if (ALREADY_APPLIED_ERROR_CODES.has((error as { code?: string })?.code ?? '')) {
@@ -75,6 +80,7 @@ export async function runTenantMigrations(dbName: string): Promise<number> {
             `[tenant-migration] ALREADY PRESENT ${file} on ${dbName} — ${(error as Error).message}. Recording and continuing.`,
           );
           try {
+            // eslint-disable-next-line no-await-in-loop -- records an already-present migration before moving to the next file
             await conn.query('INSERT IGNORE INTO _migrations (name) VALUES (?)', [file]);
             alreadyPresent.push(file);
             continue;
@@ -129,8 +135,11 @@ export async function runAllTenantMigrations(): Promise<void> {
 
   for (const org of orgs) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- one company at a time: each migrates its own tenant database
       await runTenantMigrations(org.dbName);
+      // eslint-disable-next-line no-await-in-loop -- one company at a time: runs after that tenant's migrations
       await backfillLineManagers(org.dbName, org.ownerUserId);
+      // eslint-disable-next-line no-await-in-loop -- one company at a time: runs after that tenant's migrations
       await moveWaitingTimesheets(org.dbName);
     } catch (error) {
       logger.error(`[tenant-migration] Failed for tenant ${org.slug}`, { error, dbName: org.dbName });

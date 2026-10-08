@@ -188,6 +188,7 @@ class RiskService {
         : `A new ${risk.type} was logged${where}: "${risk.title}" (${risk.recordId || 'new'}, ${risk.severity}).`;
 
       for (const pm of pmMembers) {
+        // eslint-disable-next-line no-await-in-loop -- recipients are the project's few PMs/owners plus the item owner
         await notificationService.create({
           userId: pm.userId,
           type: 'raid_item',
@@ -276,6 +277,7 @@ class RiskService {
     if (reassignedTo) recipients.delete(reassignedTo); // already told "assigned to you"
 
     for (const uid of recipients) {
+      // eslint-disable-next-line no-await-in-loop -- recipients are the project's few PMs/owners plus the item owner
       await notificationService.create({
         userId: uid,
         type: 'raid_item',
@@ -334,6 +336,7 @@ class RiskService {
     }
 
     for (const uid of recipients) {
+      // eslint-disable-next-line no-await-in-loop -- recipients are the project's few PMs/owners plus the item owner
       await notificationService.create({
         userId: uid,
         type: 'raid_item',
@@ -590,6 +593,7 @@ class RiskService {
           skipped++;
         }
       } else {
+        // eslint-disable-next-line no-await-in-loop -- each new RAID item takes the next record number (R-001, A-002...), so creates must not overlap
         await riskRepository.create({
           projectId,
           type: 'risk',
@@ -638,6 +642,7 @@ class RiskService {
     for (const risk of risks) {
       if (existingTitles.has(risk.title.toLowerCase().trim())) continue;
 
+      // eslint-disable-next-line no-await-in-loop -- each new RAID item takes the next record number (R-001, A-002...), so creates must not overlap
       await riskRepository.create({
         projectId,
         type: 'risk',

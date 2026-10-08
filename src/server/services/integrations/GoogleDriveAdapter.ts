@@ -168,12 +168,14 @@ class GoogleDriveAdapter implements StorageAdapter {
       const fields = encodeURIComponent('changes(file(id,name,size,mimeType,parents,modifiedTime,trashed,md5Checksum,version),removed,fileId),nextPageToken,newStartPageToken');
       const url = `${API_BASE}/changes?pageToken=${currentPageToken}&fields=${fields}&pageSize=200`;
 
+      // eslint-disable-next-line no-await-in-loop -- Google Drive API paging: each page needs the previous page's token
       const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.timeout(30000),
       });
 
       if (!resp.ok) throw new Error(`Changes query failed: ${resp.status}`);
+      // eslint-disable-next-line no-await-in-loop -- Google Drive API paging: each page needs the previous page's token
       const data: any = await resp.json();
 
       for (const change of (data.changes || [])) {
@@ -206,12 +208,14 @@ class GoogleDriveAdapter implements StorageAdapter {
     let allItems: StorageItem[] = [];
 
     while (url) {
+      // eslint-disable-next-line no-await-in-loop -- Google Drive API paging: each page needs the previous page's token
       const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.timeout(30000),
       });
 
       if (!resp.ok) throw new Error(`List folder files failed: ${resp.status}`);
+      // eslint-disable-next-line no-await-in-loop -- Google Drive API paging: each page needs the previous page's token
       const data: any = await resp.json();
       allItems = allItems.concat((data.files || []).map(toStorageItem));
       url = data.nextPageToken

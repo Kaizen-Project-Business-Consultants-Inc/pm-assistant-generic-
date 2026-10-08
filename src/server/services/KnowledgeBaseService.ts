@@ -144,6 +144,7 @@ export class KnowledgeBaseService {
     for (const src of DOC_SOURCES) {
       try {
         const filePath = join(projectRoot, src.file);
+        // eslint-disable-next-line no-await-in-loop -- fixed list of a few help documents read from disk during an admin reindex
         const content = await readFile(filePath, 'utf-8');
         const chunks = this.parseMarkdownToChunks(content, src.file, src.name);
         allChunks.push(...chunks);
@@ -181,6 +182,7 @@ export class KnowledgeBaseService {
       );
 
       // Upsert embedding
+      // eslint-disable-next-line no-await-in-loop -- embedding API is rate-limited; chunks are embedded one by one
       await embeddingService.upsertEmbedding('knowledge_base', chunk.id, chunk.content);
       updated++;
     }

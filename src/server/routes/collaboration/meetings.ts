@@ -200,6 +200,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const createdItems = [];
     for (const ai of parsed.actionItems ?? []) {
       const description = ai.description.trim();
+      // eslint-disable-next-line no-await-in-loop -- each new RAID item takes the next record number (R-001, A-002...), so creates must not overlap
       const item = await riskService.create({
         projectId: parsed.projectId,
         type: 'action',

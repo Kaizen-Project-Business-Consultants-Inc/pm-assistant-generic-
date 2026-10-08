@@ -62,7 +62,9 @@ export class DigestService {
           continue;
         }
 
+        // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
         await emailService.sendDigestEmail(user.email, user.full_name || user.username, digest);
+        // eslint-disable-next-line no-await-in-loop -- records the send only after this user's digest email went out
         await this.updateLastSent(user.id, now);
         sentCount++;
       } catch (err) {

@@ -20,6 +20,7 @@ export async function runStorageSync(): Promise<void> {
   // Process with bounded concurrency
   for (let i = 0; i < connectors.length; i += MAX_CONCURRENT_SYNCS) {
     const batch = connectors.slice(i, i + MAX_CONCURRENT_SYNCS);
+    // eslint-disable-next-line no-await-in-loop -- bounded concurrency: syncs MAX_CONCURRENT_SYNCS connectors at a time, batch after batch
     await Promise.allSettled(
       batch.map(async (connector) => {
         const start = Date.now();

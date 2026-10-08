@@ -30,6 +30,7 @@ export async function forEachTenant(callback: (tenant: TenantInfo | null) => Pro
   const concurrency = 3;
   for (let i = 0; i < orgs.length; i += concurrency) {
     const batch = orgs.slice(i, i + concurrency);
+    // eslint-disable-next-line no-await-in-loop -- already bounded: 3 companies run together per round, each with its own tenant database
     await Promise.allSettled(
       batch.map(org =>
         runWithTenantContext(org.dbName, org.id, () =>

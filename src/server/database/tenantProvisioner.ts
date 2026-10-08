@@ -162,6 +162,7 @@ async function seedStarterTemplates(dbName: string): Promise<void> {
     }
 
     for (const t of STARTER_TEMPLATES) {
+      // eslint-disable-next-line no-await-in-loop -- five fixed starter templates, once per new company, on one connection
       await conn.query(
         `INSERT INTO \`${dbName}\`.templates (id, name, description, category, project_type, default_duration, is_system, phases) VALUES (UUID(), ?, ?, ?, ?, ?, 1, ?)`,
         [t.name, t.description, t.category, t.projectType, t.defaultDuration, t.phases]

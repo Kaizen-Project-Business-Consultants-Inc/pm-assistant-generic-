@@ -826,6 +826,7 @@ export class ClaudeService {
 
     for (let i = 0; i < maxIter; i++) {
       const startMs = Date.now();
+      // eslint-disable-next-line no-await-in-loop -- tool-use loop: each Claude turn needs the previous turn's tool results
       const response = await this.client!.messages.create({
         model: this.pickModel(options),
         max_tokens: options.maxTokens ?? this.maxTokens,
@@ -863,6 +864,7 @@ export class ClaudeService {
       const toolResultContents: Anthropic.ToolResultBlockParam[] = [];
       for (const toolUse of toolUseBlocks) {
         try {
+          // eslint-disable-next-line no-await-in-loop -- tools run in the order Claude asked; some change data, so they must not overlap
           const result = await options.executeToolFn(toolUse.name, toolUse.input as Record<string, any>);
           toolResults.push({ toolName: toolUse.name, result });
           toolResultContents.push({

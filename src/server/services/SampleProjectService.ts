@@ -108,6 +108,7 @@ class SampleProjectService {
       const kept = new Set<string>();
       for (const { t, c } of personRefs) {
         if (!/^\w+$/.test(t) || !/^\w+$/.test(c) || appendOnly.has(t) || !hasId.has(t)) continue;
+        // eslint-disable-next-line no-await-in-loop -- one query per table that points at people, inside one transaction on one connection; a rare remove-sample action
         const used = await databaseService.queryOn<{ r: string }>(conn,
           `SELECT DISTINCT \`${c}\` AS r FROM \`${t}\` WHERE \`${c}\` LIKE ? AND id NOT LIKE ?`, [`${SAMPLE_PREFIX}%`, `${SAMPLE_PREFIX}%`]);
         for (const u of used) kept.add(u.r);
@@ -123,6 +124,7 @@ class SampleProjectService {
       for (const { t, c } of cols) {
         const list = targets[c];
         if (!list?.length || !/^\w+$/.test(t) || appendOnly.has(t)) continue;
+        // eslint-disable-next-line no-await-in-loop -- deletes run in one transaction on one connection, children tables before the parents
         await del(`DELETE FROM \`${t}\` WHERE \`${c}\` IN (${list.map(() => '?').join(',')})`, list);
       }
       // The seed's own rows that don't point at the project (e.g. custom field definitions)
@@ -131,6 +133,7 @@ class SampleProjectService {
         // a kept person keeps their own sample rows (availability etc.)
         const keepTheirs = keptIds.length && resourceCols.has(t)
           ? ` AND (resource_id IS NULL OR resource_id NOT IN (${keptIds.map(() => '?').join(',')}))` : '';
+        // eslint-disable-next-line no-await-in-loop -- deletes run in one transaction on one connection, children tables before the parents
         await del(`DELETE FROM \`${t}\` WHERE id LIKE ?${keepTheirs}`, [`${SAMPLE_PREFIX}%`, ...(keepTheirs ? keptIds : [])]);
       }
       if (taskIds.length) await del(`DELETE FROM tasks WHERE id IN (${taskIds.map(() => '?').join(',')})`, taskIds);
@@ -151,8 +154,10 @@ class SampleProjectService {
     const conn = await this.connect(dbName);
     try {
       await conn.beginTransaction();
+      // eslint-disable-next-line no-await-in-loop -- seed SQL statements run in file order inside one transaction
       for (const stmt of seedStatements()) await databaseService.queryOn(conn, stmt, []);
       for (const file of SAMPLE_FIX_FILES) {
+        // eslint-disable-next-line no-await-in-loop -- seed fix statements run in file order inside one transaction
         for (const stmt of seedStatements(fs.readFileSync(file, 'utf-8'))) await databaseService.queryOn(conn, stmt, []);
       }
       await conn.commit();

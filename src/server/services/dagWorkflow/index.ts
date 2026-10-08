@@ -208,6 +208,7 @@ class DagWorkflowService {
         const triggerNodes = fullDef.nodes.filter(n => n.nodeType === 'trigger');
         for (const triggerNode of triggerNodes) {
           if (matchesTrigger(triggerNode.config, task, oldTask)) {
+            // eslint-disable-next-line no-await-in-loop -- workflows fired by one change run one at a time so their actions do not race on the same task
             await runAsWorkflow(() => this.executeWorkflow(fullDef, triggerNode, task));
           }
         }
@@ -249,6 +250,7 @@ class DagWorkflowService {
           }
 
           if (matched) {
+            // eslint-disable-next-line no-await-in-loop -- workflows fired by one change run one at a time so their actions do not race on the same project
             await runAsWorkflow(() => this.executeWorkflow(fullDef, triggerNode, null));
           }
         }
@@ -285,6 +287,7 @@ class DagWorkflowService {
           if (config.riskLevel && data.riskLevel !== config.riskLevel) matched = false;
 
           if (matched) {
+            // eslint-disable-next-line no-await-in-loop -- workflows fired by one event run one at a time so their actions do not race on the same proposal
             await runAsWorkflow(() => this.executeWorkflow(fullDef, triggerNode, null, {
               entityType: 'proposal',
               entityId: data.proposalId,

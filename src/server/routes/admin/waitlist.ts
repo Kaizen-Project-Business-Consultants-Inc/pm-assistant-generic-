@@ -111,7 +111,9 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     // Send individually to avoid Resend batch limits and for better tracking
     for (const row of rows) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- launch emails go one by one to stay inside the Resend rate limit and record each send
         await emailService.sendLaunchAnnouncementEmail(row.email);
+        // eslint-disable-next-line no-await-in-loop -- marks this address sent right after its email, so a failure part-way never re-sends
         await databaseService.query(
           'UPDATE waitlist SET launch_email_sent = TRUE, launch_email_sent_at = NOW() WHERE email = ?',
           [row.email]

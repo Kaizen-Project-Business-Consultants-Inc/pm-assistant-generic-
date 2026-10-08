@@ -323,6 +323,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       organizationService.getAllActiveProvisioned().then(async (orgs: any[]) => {
         for (const org of orgs) {
           try {
+            // eslint-disable-next-line no-await-in-loop -- one company at a time: each switches the tenant database (fire-and-forget after signup)
             await runWithTenantContext(org.dbName, org.id, async () => {
               // Link pending project members
               await databaseService.query(

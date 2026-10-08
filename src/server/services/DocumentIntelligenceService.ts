@@ -208,6 +208,7 @@ ${milestoneList}`;
     const chunks = chunkText(text);
     for (let i = 0; i < chunks.length; i++) {
       const chunkId = `${documentId}_chunk_${i}`;
+      // eslint-disable-next-line no-await-in-loop -- each chunk calls the OpenAI embeddings API, which is rate-limited; chunks go one by one
       await embeddingService.upsertEmbedding('project_document', chunkId, chunks[i]);
     }
   }

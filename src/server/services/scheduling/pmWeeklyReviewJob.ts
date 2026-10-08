@@ -61,6 +61,7 @@ export async function runPmWeeklyReviews(opts: { orgId?: string | null; now?: Da
   // decisions each left open. A run cut short is picked up next hour (finished ones are skipped).
   const done = new Map<string, { name: string; open: number }>();
   for (let i = 0; i < projects.length; i += REVIEWS_AT_ONCE) {
+    // eslint-disable-next-line no-await-in-loop -- already batched: REVIEWS_AT_ONCE projects run together per round so the small database pool is not swamped
     await Promise.all(projects.slice(i, i + REVIEWS_AT_ONCE).map(async (p) => {
       try {
         const review = await weeklyReviewService.run(p.id, 'friday', null);
@@ -92,6 +93,7 @@ export async function runPmWeeklyReviews(opts: { orgId?: string | null; now?: Da
     const rows = projectIds.map(id => done.get(id)!);
     const needs = rows.filter(r => r.open > 0).length;
     try {
+      // eslint-disable-next-line no-await-in-loop -- each notification may also send an email; sent one by one to stay inside the mail provider rate limit
       await notificationService.create({
         userId,
         type: 'weekly_pm_review',

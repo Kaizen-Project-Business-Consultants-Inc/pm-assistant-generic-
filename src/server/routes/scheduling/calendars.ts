@@ -52,6 +52,7 @@ export async function calendarRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', async (request, reply) => {
     if (reply.sent) return;
     for (const gate of request.method === 'GET' ? readGate : writeGate) {
+      // eslint-disable-next-line no-await-in-loop -- access gates run in order; each may send the refusal, and the next must not run after it
       await (gate as any)(request, reply);
       if (reply.sent) return;
     }

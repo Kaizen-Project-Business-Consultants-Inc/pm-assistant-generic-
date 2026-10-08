@@ -43,6 +43,7 @@ export async function runPendingPaymentSweep(): Promise<{ rescued: number; remin
     for (const row of pending) {
       // --- 1. Rescue: did they actually pay? ---
       try {
+        // eslint-disable-next-line no-await-in-loop -- Stripe API is rate-limited; calls go one by one
         const paid = await stripeService.reconcileFromStripe(row.id);
         if (paid) {
           result.rescued++;
@@ -63,9 +64,12 @@ export async function runPendingPaymentSweep(): Promise<{ rescued: number; remin
       // --- 2a. Chase once ---
       if (ageDays >= REMIND_AFTER_DAYS && ageDays < PURGE_AFTER_DAYS) {
         const key = `pending-payment-reminded:${row.id}`;
+        // eslint-disable-next-line no-await-in-loop -- send-once check for this user's reminder email, done only after their Stripe check
         if (!(await redisService.get(key))) {
           try {
+            // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
             await emailService.sendPendingPaymentEmail(row.email, row.full_name || 'there', row.pending_tier);
+            // eslint-disable-next-line no-await-in-loop -- marks the reminder sent only after this user's email went out
             await redisService.set(key, '1', 30 * 24 * 60 * 60);
             result.reminded++;
           } catch (err) {
@@ -80,6 +84,7 @@ export async function runPendingPaymentSweep(): Promise<{ rescued: number; remin
 
       // --- 2b. Let go of an abandoned, empty signup ---
       if (ageDays >= PURGE_AFTER_DAYS) {
+        // eslint-disable-next-line no-await-in-loop -- runs only after this user's Stripe check above; the loop is paced by Stripe calls
         const [owned] = await databaseService.queryControlPlane(
           'SELECT COUNT(*) AS n FROM organizations WHERE owner_user_id = ? AND is_provisioned = 1',
           [row.id],
@@ -89,6 +94,7 @@ export async function runPendingPaymentSweep(): Promise<{ rescued: number; remin
           continue;
         }
 
+        // eslint-disable-next-line no-await-in-loop -- runs only after this user's Stripe check above; the loop is paced by Stripe calls
         await databaseService.queryControlPlane(
           'UPDATE users SET is_active = 0 WHERE id = ? AND subscription_status = \'incomplete\'',
           [row.id],

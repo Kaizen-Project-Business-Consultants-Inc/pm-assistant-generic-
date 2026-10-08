@@ -41,6 +41,7 @@ export async function runDueScheduledAutomations(): Promise<number> {
       };
 
       // Execute through the event bus pipeline (conditions, actions, cooldowns, logging)
+      // eslint-disable-next-line no-await-in-loop -- due automations run one at a time so their actions and cooldowns do not race each other
       await automationEventBus.runScheduled(automation, event);
       executed++;
     } catch (err) {
@@ -52,6 +53,7 @@ export async function runDueScheduledAutomations(): Promise<number> {
       const nextRun = automation.scheduleConfig
         ? computeNextRun(automation.scheduleConfig, automation.timezone || 'UTC')
         : null;
+      // eslint-disable-next-line no-await-in-loop -- the next run time is saved only after that automation has run
       await automationRepository.updateScheduleAfterRun(automation.id, nextRun);
     } catch (err) {
       logger.error(`[ScheduledRunner] Failed to update next_run_at for automation ${automation.id}:`, err);

@@ -317,6 +317,7 @@ class StorageConnectorService {
         }
 
         // Download file
+        // eslint-disable-next-line no-await-in-loop -- downloads go one by one: the storage provider rate-limits and the sync is capped at MAX_FILES_PER_SYNC
         const buffer = await adapter.downloadFile(accessToken, item.id, connectorConfig);
 
         // Validate MIME
@@ -330,8 +331,10 @@ class StorageConnectorService {
         const ext = path.extname(item.name) || '';
         const tmpFilename = `tmp_${uuidv4()}${ext}`;
         const tmpDir = path.join(config.UPLOAD_DIR, 'documents', '_tmp');
+        // eslint-disable-next-line no-await-in-loop -- temp folder is created before this file is written; one file per downloaded item
         await fs.mkdir(tmpDir, { recursive: true });
         const tmpPath = path.join(tmpDir, tmpFilename);
+        // eslint-disable-next-line no-await-in-loop -- writes the file just downloaded; one per item, after its download
         await fs.writeFile(tmpPath, buffer);
 
         // Build external path
@@ -339,6 +342,7 @@ class StorageConnectorService {
           ? `${item.parentPath}/${item.name}`
           : item.name;
 
+        // eslint-disable-next-line no-await-in-loop -- saves the row for the file just downloaded; one per item, after its download
         const doc = await projectDocumentRepository.upsertFromConnector({
           existingId: existing?.id,
           projectId: connector.projectId,

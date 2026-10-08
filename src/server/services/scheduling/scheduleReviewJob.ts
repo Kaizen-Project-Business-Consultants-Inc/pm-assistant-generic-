@@ -32,6 +32,7 @@ export async function runScheduleReview(): Promise<number> {
   for (const row of rows) {
     try {
       const previous = await scheduleReviewService.latest(row.id);
+      // eslint-disable-next-line no-await-in-loop -- each schedule review is heavy (32 rules over the whole plan); one schedule at a time bounds the load
       const current = await scheduleReviewService.run(row.id, 'agent');
 
       // A new rules version re-scores every schedule; a drop caused by the rules changing is
@@ -69,6 +70,7 @@ export async function runScheduleReview(): Promise<number> {
 
       for (const r of recipients) {
         if (!r.user_id) continue;
+        // eslint-disable-next-line no-await-in-loop -- recipients are the project's few PMs/owners
         await notificationService.create({
           userId: r.user_id,
           type: 'schedule_review',

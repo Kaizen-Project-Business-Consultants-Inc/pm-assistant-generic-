@@ -85,16 +85,19 @@ Return ONLY valid JSON like: {"went_well":["..."],"to_improve":["..."],"action_i
       const items: RetrospectiveItem[] = [];
 
       for (const text of (parsed.went_well || [])) {
+        // eslint-disable-next-line no-await-in-loop -- a few AI-written items (800-token reply), inserted in order so the board lists them as written
         items.push(await retrospectiveRepository.create({
           sprintId, projectId, category: 'went_well', content: text, createdBy: userId, aiGenerated: true,
         }));
       }
       for (const text of (parsed.to_improve || [])) {
+        // eslint-disable-next-line no-await-in-loop -- a few AI-written items (800-token reply), inserted in order so the board lists them as written
         items.push(await retrospectiveRepository.create({
           sprintId, projectId, category: 'to_improve', content: text, createdBy: userId, aiGenerated: true,
         }));
       }
       for (const text of (parsed.action_items || [])) {
+        // eslint-disable-next-line no-await-in-loop -- a few AI-written items (800-token reply), inserted in order so the board lists them as written
         items.push(await retrospectiveRepository.create({
           sprintId, projectId, category: 'action_item', content: text, createdBy: userId, aiGenerated: true,
         }));

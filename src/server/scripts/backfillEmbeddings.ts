@@ -60,6 +60,7 @@ async function backfill() {
     };
 
     try {
+      // eslint-disable-next-line no-await-in-loop -- one-off script: the embeddings API is rate-limited, so lessons are indexed one by one
       await ragService.indexLesson(lesson);
       indexed++;
       if (indexed % 10 === 0) {
@@ -105,6 +106,7 @@ async function backfill() {
     };
 
     try {
+      // eslint-disable-next-line no-await-in-loop -- one-off script: the embeddings API is rate-limited, so meetings are indexed one by one
       await ragService.indexMeeting(analysis);
       meetingsIndexed++;
       if (meetingsIndexed % 10 === 0) {

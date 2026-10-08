@@ -12,6 +12,7 @@ export async function mapWithLimit<T, R>(items: readonly T[], limit: number, fn:
   const worker = async () => {
     while (next < items.length) {
       const i = next++;
+      // eslint-disable-next-line no-await-in-loop -- this is the bounded-concurrency worker: it takes the next item when its last one finishes
       results[i] = await fn(items[i], i);
     }
   };

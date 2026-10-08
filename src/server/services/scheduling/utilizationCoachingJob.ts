@@ -82,6 +82,7 @@ export async function runUtilizationCoaching(): Promise<number> {
     }
 
     try {
+      // eslint-disable-next-line no-await-in-loop -- Claude writes each coaching tip; AI calls go one by one (rate limits, max 20 a run)
       const tip = await timeAnomalyService.generateCoachingTip(
         row.full_name || 'Team member',
         pattern,
@@ -89,6 +90,7 @@ export async function runUtilizationCoaching(): Promise<number> {
         row.project_name || 'your project',
       );
 
+      // eslint-disable-next-line no-await-in-loop -- at most 20 notifications a run, each after its own AI tip
       await notificationService.create({
         userId: row.user_id,
         type: 'time_coaching',

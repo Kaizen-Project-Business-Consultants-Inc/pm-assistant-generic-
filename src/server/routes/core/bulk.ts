@@ -51,6 +51,20 @@ async function projectOfSchedule(scheduleId: string): Promise<string | null> {
 }
 
 const MAX_BULK = 100;
+/** A deadlock or lock-wait timeout ends the whole transaction: never retry row by row after one */
+const TRANSACTION_ENDED = new Set([1213, 1205]);
+
+/**
+ * Set one column on many tasks in ONE statement: `UPDATE tasks SET col = CASE id WHEN … END
+ * WHERE id IN (…)`. `column` is a fixed name from this file, never user input (2026-10-08).
+ */
+async function setColumnByCase(run: (sql: string, params: any[]) => Promise<any>, column: 'dependency' | 'parent_task_id', pairs: Array<[string, string]>): Promise<void> {
+  if (pairs.length === 0) return;
+  await run(
+    `UPDATE tasks SET ${column} = CASE id ${pairs.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE id IN (${pairs.map(() => '?').join(',')})`,
+    [...pairs.flat(), ...pairs.map(([id]) => id)],
+  );
+}
 
 // Field names deliberately match the single-task route (schedules.ts createTaskSchema)
 // rather than inventing bulk-only names — `duration`/`progress`/`dependencies`/`notes`/
@@ -133,7 +147,11 @@ export const bulkUpdateItemSchema = z.object({
 });
 
 export const bulkUpdateSchema = z.object({
-  updates: z.array(bulkUpdateItemSchema).min(1).max(MAX_BULK),
+  updates: z.array(bulkUpdateItemSchema).min(1).max(MAX_BULK)
+    // the same change is saved in one statement per group, so one task listed twice could end
+    // with a different value than the order sent — refuse it plainly instead (2026-10-08)
+    .refine(list => new Set(list.map(u => u.id).filter(Boolean)).size === list.filter(u => u.id).length,
+      { message: 'Each task may appear only once in a bulk edit — combine its changes into one entry.' }),
 });
 
 const bulkStatusSchema = z.object({
@@ -201,54 +219,81 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           connection, 'SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM tasks WHERE schedule_id = ?', [body.scheduleId]);
         const firstSortOrder = Number(maxRows[0]?.max_order ?? -1) + 1;
 
+        const run = (sql: string, params: any[]) => databaseService.queryOn(connection, sql, params);
+
         // Pass 1: insert every task. Batch-local refs (name/position) can't be
         // written yet — the tasks they point to may not have an id yet either,
         // if the reference points forward in the array.
-        for (let i = 0; i < body.tasks.length; i++) {
-          const t = body.tasks[i];
-          try {
-            const id = uuidv4();
-            const depIsBatchRef = !!t.dependency && batchDependencyIndex(t.dependency, i, body.tasks) !== undefined;
-            const parentIsBatchRef = !!t.parentTaskId && batchDependencyIndex(t.parentTaskId, i, body.tasks) !== undefined;
-            await databaseService.queryOn(connection, 
-              `INSERT INTO tasks
-                 (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
-                  status, priority, assigned_to, dependency, dependency_type, comments, is_milestone,
-                  parent_task_id, sort_order, created_by, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-              [
-                id,
-                body.scheduleId,
-                t.name,
-                t.startDate || null,
-                bulkFinishDate(t, isWorking),
-                t.estimatedDays ?? null,
-                t.progressPercentage ?? 0,
-                t.status || 'pending',
-                t.priority || 'medium',
-                t.assignedTo || null,
-                // A batch-local reference is resolved in pass 2, once every id
-                // exists; a literal external ID is fine to write now.
-                depIsBatchRef ? null : (t.dependency || null),
-                t.dependencyType || null,
-                t.comments || null,
-                t.isMilestone ? 1 : 0,
-                parentIsBatchRef ? null : (t.parentTaskId || null),
-                firstSortOrder + i,
-                user.userId,
-              ],
-            );
-            createdIds[i] = id;
-            succeeded.push({ id, name: t.name });
-            if (!parentIsBatchRef && t.parentTaskId) parentsToRecompute.add(t.parentTaskId);
-          } catch (err: any) {
-            failed.push({ index: i, name: t.name || '', error: err.message || 'Unknown error' });
+        // Written INSERT_BATCH rows per statement (it was one statement per task, 2026-10-08); a
+        // batch that fails is retried row by row so each bad row is still reported on its own.
+        const rows = body.tasks.map((t, i) => {
+          const depIsBatchRef = !!t.dependency && batchDependencyIndex(t.dependency, i, body.tasks) !== undefined;
+          const parentIsBatchRef = !!t.parentTaskId && batchDependencyIndex(t.parentTaskId, i, body.tasks) !== undefined;
+          const id = uuidv4();
+          return {
+            i, id, parentIsBatchRef,
+            params: [
+              id,
+              body.scheduleId,
+              t.name,
+              t.startDate || null,
+              bulkFinishDate(t, isWorking),
+              t.estimatedDays ?? null,
+              t.progressPercentage ?? 0,
+              t.status || 'pending',
+              t.priority || 'medium',
+              t.assignedTo || null,
+              // A batch-local reference is resolved in pass 2, once every id
+              // exists; a literal external ID is fine to write now.
+              depIsBatchRef ? null : (t.dependency || null),
+              t.dependencyType || null,
+              t.comments || null,
+              t.isMilestone ? 1 : 0,
+              parentIsBatchRef ? null : (t.parentTaskId || null),
+              firstSortOrder + i,
+              user.userId,
+            ],
+          };
+        });
+        const insertRows = (chunk: typeof rows) => run(
+          `INSERT INTO tasks
+             (id, schedule_id, name, start_date, end_date, estimated_days, progress_percentage,
+              status, priority, assigned_to, dependency, dependency_type, comments, is_milestone,
+              parent_task_id, sort_order, created_by, created_at, updated_at)
+           VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(', ')}`,
+          chunk.flatMap(r => r.params),
+        );
+        const inserted = (r: (typeof rows)[number]) => {
+          const t = body.tasks[r.i];
+          createdIds[r.i] = r.id;
+          succeeded.push({ id: r.id, name: t.name });
+          if (!r.parentIsBatchRef && t.parentTaskId) parentsToRecompute.add(t.parentTaskId);
+        };
+        // one statement for all of them (at most MAX_BULK)
+        try {
+          if (rows.length) await insertRows(rows);
+          rows.forEach(inserted);
+        } catch (batchErr: any) {
+          if (TRANSACTION_ENDED.has(batchErr?.errno)) throw batchErr;
+          for (const r of rows) {
+            try {
+              // eslint-disable-next-line no-await-in-loop -- only after the batch failed: find which rows were bad
+              await insertRows([r]);
+              inserted(r);
+            } catch (err: any) {
+              if (TRANSACTION_ENDED.has(err?.errno)) throw err;
+              failed.push({ index: r.i, name: body.tasks[r.i].name || '', error: err.message || 'Unknown error' });
+            }
           }
         }
 
         // Pass 2: now that every task in the batch has a real id, resolve each
         // dependency/parentTaskId that referred to another task in this same
-        // batch by name or position, and write the actual foreign key.
+        // batch by name or position, and write the actual foreign key — collected
+        // here and written in a few statements (it was several per task, 2026-10-08).
+        const depColumn: Array<[string, string]> = [];      // [taskId, dependency id] for the legacy column
+        const parentColumn: Array<[string, string]> = [];   // [taskId, parent id]
+        const links: Array<{ taskId: string; ref: string; resolved?: string; type: string }> = [];
         for (let i = 0; i < body.tasks.length; i++) {
           const t = body.tasks[i];
           const selfId = createdIds[i];
@@ -257,23 +302,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           if (t.dependency) {
             const depIndex = batchDependencyIndex(t.dependency, i, body.tasks);
             const resolvedId = depIndex !== undefined ? createdIds[depIndex] : undefined;
-            if (resolvedId) {
-              await databaseService.queryOn(connection, `UPDATE tasks SET dependency = ? WHERE id = ?`, [resolvedId, selfId]);
-            }
+            if (resolvedId) depColumn.push([selfId, resolvedId]);
             // The link itself lives in task_dependencies — that is what the schedule, critical
             // path, review and re-flow read. Until 2026-09-25 bulk create only wrote the legacy
             // `dependency` column, so every link made this way (e.g. by the MCP connector) was
             // stored but invisible. An external id must be a task in this schedule.
-            let depId = resolvedId;
-            if (!depId && depIndex === undefined) {
-              const found = await databaseService.queryOn<{ id: string }>(connection,
-                'SELECT id FROM tasks WHERE id = ? AND schedule_id = ?', [t.dependency, body.scheduleId]);
-              depId = found[0]?.id;
-            }
-            if (depId && depId !== selfId) {
-              await databaseService.queryOn(connection,
-                `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, 0)`,
-                [uuidv4(), selfId, depId, t.dependencyType || 'FS']);
+            if (resolvedId || depIndex === undefined) {
+              links.push({ taskId: selfId, ref: t.dependency, resolved: resolvedId, type: t.dependencyType || 'FS' });
             }
           }
 
@@ -281,10 +316,26 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             const parentIndex = batchDependencyIndex(t.parentTaskId, i, body.tasks);
             const resolvedParentId = parentIndex !== undefined ? createdIds[parentIndex] : undefined;
             if (resolvedParentId) {
-              await databaseService.queryOn(connection, `UPDATE tasks SET parent_task_id = ? WHERE id = ?`, [resolvedParentId, selfId]);
+              parentColumn.push([selfId, resolvedParentId]);
               parentsToRecompute.add(resolvedParentId);
             }
           }
+        }
+        await setColumnByCase(run, 'dependency', depColumn);
+        await setColumnByCase(run, 'parent_task_id', parentColumn);
+        // external ids: one look-up for all of them, limited to this schedule
+        const external = [...new Set(links.filter(l => !l.resolved).map(l => l.ref))];
+        const inSchedule = new Set(external.length
+          ? (await run(`SELECT id FROM tasks WHERE schedule_id = ? AND id IN (${external.map(() => '?').join(',')})`, [body.scheduleId, ...external]) as Array<{ id: string }>).map(r => r.id)
+          : []);
+        const linkRows = links
+          .map(l => ({ ...l, depId: l.resolved ?? (inSchedule.has(l.ref) ? l.ref : undefined) }))
+          .filter(l => l.depId && l.depId !== l.taskId);
+        if (linkRows.length) {
+          await run(
+            `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${linkRows.map(() => '(?, ?, ?, ?, 0)').join(', ')}`,
+            linkRows.flatMap(l => [uuidv4(), l.taskId, l.depId, l.type]),
+          );
         }
       });
 
@@ -374,6 +425,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const parents: string[] = [];
       const readParents = async (run: (sql: string, params: any[]) => Promise<any>) => {
         for (const sid of rollupSchedules) {
+          // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one), on the transaction's one connection
           parents.push(...await parentIdsOf(run, sid, rollupUpdates.filter(u => u.scheduleId === sid).map(u => u.id)));
         }
       };
@@ -382,6 +434,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         const run = (sql: string, params: any[]) => databaseService.queryOn(connection, sql, params);
         await readParents(run);
         const datesBefore = await taskDatesOf(run, body.updates.filter(u => u.startDate !== undefined || u.endDate !== undefined).map(u => u.id));
+        // Every link/parent named in the batch, looked up once (it was one query per task, 2026-10-08)
+        const allRefs = [...new Set(body.updates.flatMap(u => [u.dependency, u.parentTaskId]).filter((r): r is string => !!r))];
+        const planOfRef = new Map(allRefs.length
+          ? (await run(`SELECT id, schedule_id FROM tasks WHERE id IN (${allRefs.map(() => '?').join(',')})`, allRefs) as Array<{ id: string; schedule_id: string }>).map(r => [r.id, r.schedule_id])
+          : []);
+        // Updates with exactly the same change in the same plan are saved in one statement
+        const groups = new Map<string, { sql: string; params: any[]; scheduleId: string; ids: string[] }>();
         for (const u of body.updates) {
           try {
             if (!u.id || !u.scheduleId) {
@@ -396,12 +455,9 @@ export async function bulkRoutes(fastify: FastifyInstance) {
               failed.push({ id: u.id, error: 'A task cannot be linked to or nested under itself' });
               continue;
             }
-            if (refs.length) {
-              const found = await run(`SELECT id FROM tasks WHERE schedule_id = ? AND id IN (${refs.map(() => '?').join(',')})`, [u.scheduleId, ...refs]) as Array<{ id: string }>;
-              if (new Set(found.map(r => r.id)).size < new Set(refs).size) {
-                failed.push({ id: u.id, error: 'The predecessor or parent task must be in the same schedule' });
-                continue;
-              }
+            if (refs.some(r => planOfRef.get(r) !== u.scheduleId)) {
+              failed.push({ id: u.id, error: 'The predecessor or parent task must be in the same schedule' });
+              continue;
             }
 
             const sets: string[] = [];
@@ -428,17 +484,41 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             }
 
             sets.push('updated_at = NOW()');
-            params.push(u.id, u.scheduleId);
-
-            await databaseService.queryOn(connection, 
-              `UPDATE tasks SET ${sets.join(', ')} WHERE id = ? AND schedule_id = ?`,
-              params,
-            );
-            succeeded.push({ id: u.id });
+            const sql = `UPDATE tasks SET ${sets.join(', ')}`;
+            const key = JSON.stringify([u.scheduleId, sql, params]);
+            const group = groups.get(key);
+            if (group) group.ids.push(u.id);
+            else groups.set(key, { sql, params, scheduleId: u.scheduleId, ids: [u.id] });
           } catch (err: any) {
             failed.push({ id: u.id || 'unknown', error: err.message || 'Unknown error' });
           }
         }
+        const saved = new Set<string>();
+        const saveRows = (g: { sql: string; params: any[]; scheduleId: string }, ids: string[]) =>
+          run(`${g.sql} WHERE schedule_id = ? AND id IN (${ids.map(() => '?').join(',')})`, [...g.params, g.scheduleId, ...ids]);
+        for (const g of groups.values()) {
+          try {
+            // eslint-disable-next-line no-await-in-loop -- one statement per distinct change, on the transaction's one connection
+            await saveRows(g, g.ids);
+            g.ids.forEach(id => saved.add(id));
+          } catch (groupErr: any) {
+            if (TRANSACTION_ENDED.has(groupErr?.errno)) throw groupErr;
+            for (const id of g.ids) {
+              try {
+                // eslint-disable-next-line no-await-in-loop -- only after a group failed: find which rows were bad
+                await saveRows(g, [id]);
+                saved.add(id);
+              } catch (err: any) {
+                if (TRANSACTION_ENDED.has(err?.errno)) throw err;
+                failed.push({ id, error: err.message || 'Unknown error' });
+              }
+            }
+          }
+        }
+        // both lists in the order they were asked for
+        for (const u of body.updates) if (u.id && saved.has(u.id)) succeeded.push({ id: u.id });
+        const askedAt = new Map(body.updates.map((u, i) => [u.id || 'unknown', i]));
+        failed.sort((a, b) => (askedAt.get(a.id) ?? 0) - (askedAt.get(b.id) ?? 0));
         // booked hours move with their tasks
         await moveBookingsWithTasks(run, datesBefore);
         await readParents(run);
@@ -451,10 +531,12 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       for (const sid of new Set(body.updates.filter(u => doneIds.has(u.id)).map(u => u.scheduleId))) {
         planChanged(sid);
         const ids = body.updates.filter(u => u.scheduleId === sid && doneIds.has(u.id)).map(u => u.id);
+        // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one); History entries in order
         const projectId = await projectOfSchedule(sid);
         if (projectId) {
           const fields = [...new Set(body.updates.filter(u => ids.includes(u.id)).flatMap(u =>
             Object.keys(BULK_UPDATE_COLUMNS).filter(k => (u as any)[k] !== undefined)))];
+          // eslint-disable-next-line no-await-in-loop -- one History entry per plan, recorded in order
           await changeHistoryService.record({
             projectId,
             scheduleId: sid,

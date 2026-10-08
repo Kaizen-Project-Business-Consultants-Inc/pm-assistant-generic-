@@ -31,6 +31,7 @@ export async function runWeeklyReviewPack(): Promise<number> {
   for (const project of projects) {
     try {
       // Lazy import to avoid circular dependencies
+      // eslint-disable-next-line no-await-in-loop -- lazy import (avoids a circular import); Node caches it after the first project
       const { timeAnomalyService } = await import('../TimeAnomalyService');
       const review = await timeAnomalyService.generateWeeklyReview(project.id, weekStart);
 
@@ -59,6 +60,7 @@ export async function runWeeklyReviewPack(): Promise<number> {
 
       for (const mgr of managers) {
         try {
+          // eslint-disable-next-line no-await-in-loop -- each notification may also send an email; sent one by one to stay inside the mail provider rate limit
           await notificationService.create({
             userId: mgr.user_id,
             type: 'weekly_review',

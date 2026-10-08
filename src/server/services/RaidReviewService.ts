@@ -206,6 +206,7 @@ export class RaidReviewService {
         case 'set_owner': {
           if (!value) throw new RaidReviewInputError(`Pick a person for ${label}`);
           if (value.startsWith('user:') || value.startsWith('resource:')) {
+            // eslint-disable-next-line no-await-in-loop -- loads the people list once (??=); later iterations skip the await
             people ??= await this.people(projectId);
             if (!people.some(p => p.value === value)) throw new RaidReviewInputError(`The person picked for ${label} is not on this project. Pick someone from the list.`);
             const id = value.slice(value.indexOf(':') + 1);
@@ -259,10 +260,12 @@ export class RaidReviewService {
       if (fix.kind === 'change_type') {
         const toType = data.type as RaidType;
         const status = RAID_STATUSES[toType].includes(item.status) ? undefined : 'open';
+        // eslint-disable-next-line no-await-in-loop -- a move takes the next record number in its new register; moves must run one after another or two get the same number
         const { sequenceNumber, recordId } = await riskRepository.nextSequenceId(toType, projectId);
         const update: Record<string, any> = { type: toType, recordId, sequenceNumber };
         if (status) update.status = status;
         remember(item, ['type', 'recordId', 'sequenceNumber', 'status', 'resolvedAt']);
+        // eslint-disable-next-line no-await-in-loop -- the move must be saved before the next move asks for the next record number
         await riskService.update(item.id, update, userId);
         counts.moved++;
         moveTargets.set(item.id, toType);
@@ -328,12 +331,15 @@ export class RaidReviewService {
       if (Object.keys(prev).length === 0) continue;
       // The old record id may have been reused since (numbering follows the highest number)
       if (typeof prev.recordId === 'string' && prev.recordId !== item.recordId
+        // eslint-disable-next-line no-await-in-loop -- Undo restores items in order; an earlier restore can take a record id a later one wants
         && await riskRepository.recordIdTaken(projectId, prev.recordId, item.id)) {
+        // eslint-disable-next-line no-await-in-loop -- Undo restores items in order; the next free record id depends on the restores before it
         const next = await riskRepository.nextSequenceId(String(prev.type || item.type), projectId);
         prev.recordId = next.recordId;
         prev.sequenceNumber = next.sequenceNumber;
       }
       // Explicit nulls must clear the field; resolveOwner:false writes owners exactly as they were
+      // eslint-disable-next-line no-await-in-loop -- Undo restores items in order; later record-id checks depend on this write
       await riskRepository.update(item.id, prev, { resolveOwner: false });
       restored++;
       riskRepository.createActivityLog({

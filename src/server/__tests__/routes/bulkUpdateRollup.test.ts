@@ -55,10 +55,12 @@ describe('PUT /bulk/tasks — summaries above the edited tasks roll up', () => {
         return [...new Set(ids.map(id => parentOf[id]).filter(Boolean))].map(p => ({ parent_task_id: p }));
       }
       // same-plan check for a predecessor/parent: every task here is in plan s1
-      if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND id IN')) return params.slice(1).map((id: string) => ({ id }));
+      if (sql.startsWith('SELECT id, schedule_id FROM tasks WHERE id IN')) return params.map((id: string) => ({ id, schedule_id: 's1' }));
+      // a bulk save: UPDATE tasks SET … WHERE schedule_id = ? AND id IN (…) — one statement for every task given the same change
       if (sql.startsWith('UPDATE tasks') && sql.includes('parent_task_id = ?')) {
-        const id = params[params.length - 2];
-        parentOf[id] = params[sql.split('?').length - 4];
+        const setCount = sql.split(' WHERE ')[0].split('?').length - 1;
+        const value = params[setCount - 1]; // parent_task_id is the last field set
+        for (const id of params.slice(setCount + 1)) parentOf[id] = value;
       }
       if (sql.startsWith('SELECT')) return [];
       return { affectedRows: 1 };

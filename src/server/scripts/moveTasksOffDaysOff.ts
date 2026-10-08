@@ -24,11 +24,13 @@ async function run() {
   let total = 0;
   for (const org of orgs) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- one company at a time: each switches the tenant database
       await runWithTenantContext(org.db_name, org.id, async () => {
         const projects = await databaseService.query(
           'SELECT id, name FROM projects WHERE archived_at IS NULL',
         ) as Array<{ id: string; name: string }>;
         for (const p of projects) {
+          // eslint-disable-next-line no-await-in-loop -- one-off repair script: one project at a time, each moving its own tasks and re-flowing successors
           const res = await workingCalendarService.moveTasksOffDaysOff(p.id, { dryRun: DRY_RUN });
           if (res.tasksMoved > 0) {
             total += res.tasksMoved;

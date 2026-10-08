@@ -43,6 +43,7 @@ async function run() {
 
   for (const o of owners) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- one company at a time: each switches the tenant database
       await runWithTenantContext(o.db_name, o.org_id, async () => {
         const existing = await databaseService.query(
           'SELECT id, user_id FROM resources WHERE user_id = ? OR LOWER(email) = LOWER(?) LIMIT 1',

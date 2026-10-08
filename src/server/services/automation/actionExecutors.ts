@@ -26,22 +26,26 @@ async function resolveRecipients(
       if (t === 'assignee') {
         const uid = context.entity?.assignedTo || context.entity?.assigned_to;
         if (uid) {
+          // eslint-disable-next-line no-await-in-loop -- an automation rule names a handful of recipients (assignee, creator, owner...)
           const user = await userService.findById(uid);
           if (user) results.push({ userId: user.id, email: user.email });
         }
       } else if (t === 'creator') {
         const uid = context.entity?.createdBy || context.entity?.created_by || context.entity?.ownerUserId;
         if (uid) {
+          // eslint-disable-next-line no-await-in-loop -- an automation rule names a handful of recipients (assignee, creator, owner...)
           const user = await userService.findById(uid);
           if (user) results.push({ userId: user.id, email: user.email });
         }
       } else if (t === 'project_owner') {
         const pid = context.project?.createdBy || context.project?.created_by;
         if (pid) {
+          // eslint-disable-next-line no-await-in-loop -- an automation rule names a handful of recipients (assignee, creator, owner...)
           const user = await userService.findById(pid);
           if (user) results.push({ userId: user.id, email: user.email });
         }
       } else if (t === 'trigger_user') {
+        // eslint-disable-next-line no-await-in-loop -- an automation rule names a handful of recipients (assignee, creator, owner...)
         const user = await userService.findById(event.userId);
         if (user) results.push({ userId: user.id, email: user.email });
       } else if (token.includes('@')) {
@@ -49,6 +53,7 @@ async function resolveRecipients(
         results.push({ userId: '', email: token });
       } else if (/^[0-9a-f-]{36}$/i.test(token)) {
         // UUID — look up user
+        // eslint-disable-next-line no-await-in-loop -- an automation rule names a handful of recipients (assignee, creator, owner...)
         const user = await userService.findById(token);
         if (user) results.push({ userId: user.id, email: user.email });
       } else {
@@ -56,6 +61,7 @@ async function resolveRecipients(
         if (token.includes('@')) {
           results.push({ userId: '', email: token });
         } else if (token) {
+          // eslint-disable-next-line no-await-in-loop -- an automation rule names a handful of recipients (assignee, creator, owner...)
           const user = await userService.findById(token);
           if (user) results.push({ userId: user.id, email: user.email });
         }
@@ -110,6 +116,7 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       return;
     }
     for (const r of resolved) {
+      // eslint-disable-next-line no-await-in-loop -- an automation rule resolves to a handful of recipients
       await notificationService.create({
         userId: r.userId,
         type: 'automation',
@@ -131,6 +138,7 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       return;
     }
     for (const r of resolved) {
+      // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
       await emailService.sendNotificationEmail(r.email, params.subject, params.subject, params.body);
     }
     logger.info(`[AutomationAction] Sent email to ${resolved.map(r => r.email).join(', ')}`);
@@ -188,6 +196,7 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       return;
     }
     for (const r of resolved) {
+      // eslint-disable-next-line no-await-in-loop -- an automation rule resolves to a handful of recipients
       await notificationService.create({
         userId: r.userId,
         type: 'automation',
@@ -271,6 +280,7 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     const recipients = params.recipients || 'project_owner';
     const resolved = await resolveRecipients(recipients, context, event);
     for (const r of resolved) {
+      // eslint-disable-next-line no-await-in-loop -- an automation rule resolves to a handful of recipients
       await notificationService.create({
         userId: r.userId,
         type: 'automation',

@@ -46,8 +46,10 @@ export class AIActionExecutor {
     }
     for (const key of ['taskId', 'dependsOnTaskId', 'dependencyId', 'predecessorId']) {
       if (!input[key]) continue;
+      // eslint-disable-next-line no-await-in-loop -- at most four id fields on one tool call, and it stops at the first one that is missing
       const t = await scheduleService.findTaskById(String(input[key]));
       if (!t) return null;
+      // eslint-disable-next-line no-await-in-loop -- at most four id fields on one tool call, and it stops at the first one that is missing
       const sch = await scheduleService.findById(t.scheduleId);
       if (!sch) return null;
       projects.add(sch.projectId);
@@ -71,6 +73,7 @@ export class AIActionExecutor {
     const refuse = (summary: string): ActionResult => ({ success: false, toolName, summary, error: 'Not allowed' });
     if (!projects) return refuse("I couldn't find that project.");
     for (const projectId of projects) {
+      // eslint-disable-next-line no-await-in-loop -- one tool call names one or two projects, and it stops at the first refusal
       const d = await checkProjectRoleFor({ userId: context.userId, role: context.userRole }, projectId, 'viewer');
       if (!d.ok) return refuse("I couldn't find that project among the projects you're on.");
     }

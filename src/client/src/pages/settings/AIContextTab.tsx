@@ -94,6 +94,7 @@ export const AIContextTab: React.FC = () => {
       updates.push({ key: 'ai_temperature', value: temperature });
 
       for (const u of updates) {
+        // eslint-disable-next-line no-await-in-loop -- a fixed handful of preference keys, saved in order
         await apiService.updateContextConfig('user', user.id, u.key, u.value);
       }
 

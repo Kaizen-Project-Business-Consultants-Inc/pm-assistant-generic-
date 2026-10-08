@@ -24,10 +24,12 @@ class CalendarSyncService {
     for (const integ of integrations) {
       try {
         const cfg = parseConfig(integ.config);
+        // eslint-disable-next-line no-await-in-loop -- one user's calendar connections (usually one); each needs its own access token before calling Google
         const accessToken = await this.getAccessToken(integ.id, cfg);
         const calendarId = cfg.calendarId || 'primary';
 
         // Check for existing mapping
+        // eslint-disable-next-line no-await-in-loop -- one user's calendar connections (usually one); this mapping lookup decides update vs create below
         const [existing] = await databaseService.query(
           'SELECT * FROM calendar_sync_mappings WHERE integration_id = ? AND task_id = ?',
           [integ.id, task.id],
@@ -36,14 +38,18 @@ class CalendarSyncService {
         const event = googleCalendarAdapter.taskToEvent(task);
 
         if (existing) {
+          // eslint-disable-next-line no-await-in-loop -- Google Calendar API is rate-limited; calls go one by one
           const updated = await googleCalendarAdapter.updateEvent(accessToken, calendarId, existing.calendarEventId, event);
+          // eslint-disable-next-line no-await-in-loop -- stores the etag Google just returned for this event
           await databaseService.query(
             'UPDATE calendar_sync_mappings SET etag = ?, last_synced_at = NOW() WHERE id = ?',
             [updated.etag || null, existing.id],
           );
         } else {
+          // eslint-disable-next-line no-await-in-loop -- Google Calendar API is rate-limited; calls go one by one
           const created = await googleCalendarAdapter.createEvent(accessToken, calendarId, event);
           const id = uuidv4();
+          // eslint-disable-next-line no-await-in-loop -- records the event id Google just returned for this task
           await databaseService.query(
             `INSERT INTO calendar_sync_mappings (id, user_id, integration_id, task_id, calendar_event_id, calendar_id, sync_direction, etag, last_synced_at)
              VALUES (?, ?, ?, ?, ?, ?, 'both', ?, NOW())`,
@@ -64,15 +70,18 @@ class CalendarSyncService {
     for (const integ of integrations) {
       try {
         const cfg = parseConfig(integ.config);
+        // eslint-disable-next-line no-await-in-loop -- one user's calendar connections (usually one); each needs its own access token before calling Google
         const accessToken = await this.getAccessToken(integ.id, cfg);
         const calendarId = cfg.calendarId || 'primary';
         const syncToken = cfg.syncToken;
 
+        // eslint-disable-next-line no-await-in-loop -- Google Calendar API is rate-limited; calls go one by one
         const { events, nextSyncToken } = await googleCalendarAdapter.listEvents(accessToken, calendarId, syncToken);
 
         // Update sync token
         if (nextSyncToken && nextSyncToken !== syncToken) {
           cfg.syncToken = nextSyncToken;
+          // eslint-disable-next-line no-await-in-loop -- saves this connection's new sync token before processing its events
           await integrationRepository.updateIntegration(integ.id, { config: cfg });
         }
 
@@ -97,6 +106,7 @@ class CalendarSyncService {
           }
         }
 
+        // eslint-disable-next-line no-await-in-loop -- marks this connection synced after its own events are processed
         await integrationRepository.updateLastSyncAt(integ.id);
       } catch (err) {
         logger.error('[CalendarSync] Sync failed', { userId, integrationId: integ.id, error: err });
@@ -116,6 +126,7 @@ class CalendarSyncService {
 
       for (const row of rows) {
         try {
+          // eslint-disable-next-line no-await-in-loop -- one user at a time: each sync calls the rate-limited Google Calendar API
           await this.syncUserCalendar(row.user_id);
           synced++;
         } catch {

@@ -107,8 +107,10 @@ export class ApprovedTimeService {
     }
 
     for (const pid of parents) {
+      // eslint-disable-next-line no-await-in-loop -- roll-ups walk up to shared parent rows; running them together would race on the same summary rows
       await scheduleService.recomputeParentRollup(pid).catch(err => logger.warn('[ApprovedTime] roll-up failed', { pid, error: err?.message }));
     }
+    // eslint-disable-next-line no-await-in-loop -- one approved timesheet touches a handful of projects
     for (const projectId of projects) await this.applyToProject(projectId);
     for (const sid of scheduleIds) planChanged(sid);
     return { tasks: tasks.length, projects: projects.size };

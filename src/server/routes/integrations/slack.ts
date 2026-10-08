@@ -109,6 +109,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
           return reply.status(404).send({ error: 'Not found', message: 'No Slack workspace is connected yet.' });
         }
         for (const si of slackIntegs) {
+          // eslint-disable-next-line no-await-in-loop -- a user has one or two Slack entries and the loop stops at the first with a bot token
           const candidate = await integrationRepository.findRawById(si.id);
           if (!candidate) continue;
           const parsed = parseConfig(candidate.config);
@@ -262,6 +263,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
       const results: { integrationId: string; success: boolean; message: string }[] = [];
       for (const row of rows) {
         const slackConfig = parseConfig(row.config) as SlackConfig;
+        // eslint-disable-next-line no-await-in-loop -- Slack API is rate-limited; messages go one by one
         const result = await slackAdapter.deliver(slackConfig, { text });
         results.push({ integrationId: row.id, ...result });
       }
@@ -288,6 +290,7 @@ export async function slackRoutes(fastify: FastifyInstance) {
       const results: { integrationId: string; success: boolean; message: string }[] = [];
       for (const row of rows) {
         const slackConfig = parseConfig(row.config) as SlackConfig;
+        // eslint-disable-next-line no-await-in-loop -- Slack API is rate-limited; connection tests go one by one
         const result = await slackAdapter.testConnection(slackConfig);
         results.push({ integrationId: row.id, ...result });
       }

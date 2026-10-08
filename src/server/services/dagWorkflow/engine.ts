@@ -252,6 +252,7 @@ export async function advanceExecution(
   for (const edge of outEdges) {
     if (visited.has(edge.targetNodeId)) {
       logger.error(`[DagWorkflow] Cycle detected: ${edge.targetNodeId}`);
+      // eslint-disable-next-line no-await-in-loop -- marks the run failed and stops at once; runs at most once per walk
       await workflowRepository.updateExecutionStatus(execId, 'failed', 'Cycle detected');
       return;
     }
@@ -265,6 +266,7 @@ export async function advanceExecution(
     if (!targetNode) continue;
 
     visited.add(edge.targetNodeId);
+    // eslint-disable-next-line no-await-in-loop -- workflow nodes run in graph order; a node reads the outputs earlier nodes stored in nodeOutputs
     await executeNode(execId, targetNode, def, adjacency, visited, task, scheduleService, nodeOutputs, triggerContext);
   }
 }
@@ -303,6 +305,7 @@ async function executeNode(
           const targetNode = def.nodes.find(n => n.id === edge.targetNodeId);
           if (!targetNode) continue;
           visited.add(edge.targetNodeId);
+          // eslint-disable-next-line no-await-in-loop -- workflow nodes run in graph order; the branch taken depends on this condition and later nodes read earlier outputs
           await executeNode(execId, targetNode, def, adjacency, visited, task, scheduleService, nodeOutputs, triggerContext);
         }
         return;
@@ -325,9 +328,11 @@ async function executeNode(
         let lastError: string | undefined;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           if (attempt > 0) {
+            // eslint-disable-next-line no-await-in-loop -- retry with backoff: each attempt waits longer than the last
             await new Promise(r => setTimeout(r, backoffMs * attempt));
           }
           const resolvedInput = resolveTemplates(node.config.input ?? {}, nodeOutputs, task, triggerContext);
+          // eslint-disable-next-line no-await-in-loop -- retry with backoff: next attempt runs only if this one failed
           const result = await agentRegistry.invoke(capabilityId, resolvedInput, {
             actorId: 'system', actorType: 'system', source: 'system',
             projectId: (def.projectId ?? node.config.projectId) as string | undefined,
@@ -335,6 +340,7 @@ async function executeNode(
           if (result.success) {
             const agentOutput = { agentOutput: result.output, durationMs: result.durationMs };
             nodeOutputs[node.id] = agentOutput;
+            // eslint-disable-next-line no-await-in-loop -- records the successful attempt, then leaves the retry loop
             await workflowRepository.updateNodeExecutionCompleted(nodeExecId, JSON.stringify(agentOutput));
             lastError = undefined;
             break;

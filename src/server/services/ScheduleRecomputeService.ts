@@ -26,6 +26,7 @@ function auditMoves(
   void (async () => {
     const schedule = await scheduleService.findById(scheduleId).catch(() => null);
     for (const m of moves) {
+      // eslint-disable-next-line no-await-in-loop -- audit ledger is hash-chained per company, so entries append one after another (runs in the background)
       await auditLedgerService.append({
         actorId,
         actorType: actorId === 'system' ? 'system' : 'user',
@@ -274,6 +275,7 @@ export class ScheduleRecomputeService {
 
     if (!opts.dryRun) {
       for (const parentId of affectedParents) {
+        // eslint-disable-next-line no-await-in-loop -- each rollup walks up to shared ancestor summaries; run in parallel they would race on the same rows
         await scheduleService.recomputeParentRollup(parentId).catch((err: any) =>
           logger.warn('[ScheduleRecompute] rollup failed', { parentId, error: err?.message }));
       }
@@ -369,6 +371,7 @@ export async function restoreTaskDates(
   const restored = moves.length;
   auditMoves(scheduleId, moves, 'undo');
   for (const p of parents) {
+    // eslint-disable-next-line no-await-in-loop -- each rollup walks up to shared ancestor summaries; run in parallel they would race on the same rows
     await scheduleService.recomputeParentRollup(p).catch((err: any) =>
       logger.warn('[ScheduleRecompute] rollup failed', { parentId: p, error: err?.message }));
   }

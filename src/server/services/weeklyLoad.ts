@@ -68,6 +68,7 @@ export async function calendarsFor(scheduleIds: Iterable<string>, lookup: (sched
   const map = new Map<string, IsWorking>();
   const ids = [...new Set(scheduleIds)];
   for (let i = 0; i < ids.length; i += CALENDAR_LOOKUPS_AT_ONCE) {
+    // eslint-disable-next-line no-await-in-loop -- calendars load CALENDAR_LOOKUPS_AT_ONCE at a time so the small database pool is not swamped
     await Promise.all(ids.slice(i, i + CALENDAR_LOOKUPS_AT_ONCE).map(async (id) => {
       try { map.set(id, await lookup(id)); return; } catch { /* once more */ }
       try { map.set(id, await lookup(id)); } catch { map.set(id, weekdaysOnly); }

@@ -96,11 +96,13 @@ export class WorkingCalendarService {
     const schedules = (await scheduleService.findByProjectId(projectId)).filter((s: any) => !s.isScenario);
     const moves: CalendarMove[] = [];
     for (const sch of schedules) {
+      // eslint-disable-next-line no-await-in-loop -- a project has a handful of plans; each re-flow rewrites many task dates, so plans go one at a time
       const res = await scheduleRecomputeService.recompute(sch.id, {
         respan: true, dryRun: opts.dryRun, reason: opts.reason, calendar: { isWorking, wasWorking },
       });
       moves.push(...res.deltas.map(d => ({ ...d, projectId, scheduleId: sch.id, scheduleName: sch.name })));
       if (!opts.dryRun && res.deltas.length > 0) {
+        // eslint-disable-next-line no-await-in-loop -- history entry for the plan just re-flowed; one per plan, after its re-flow
         await changeHistoryService.record({
           projectId, scheduleId: sch.id, kind: 'calendar',
           summary: `${opts.label} — moved ${res.deltas.length} task${res.deltas.length === 1 ? '' : 's'}`,

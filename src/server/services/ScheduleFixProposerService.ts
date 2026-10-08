@@ -255,6 +255,7 @@ export class ScheduleFixProposerService {
     const applied: AppliedAction[] = [];
     let appliedCount = 0;
 
+    /* eslint-disable no-await-in-loop -- fixes apply one by one, in order: each is logged for undo and the cycle/duplicate checks see the links earlier fixes added */
     // 1) dependencies
     for (const f of fixes.filter(f => f.type === 'add_dependency')) {
       try {
@@ -464,6 +465,7 @@ export class ScheduleFixProposerService {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not add phase task' });
       }
     }
+    /* eslint-enable no-await-in-loop */
 
     // Re-flow dates so the schedule respects the new logic (SR1). Pinned tasks
     // (completed / actual-dated) stay put. Never fails the apply.
@@ -537,6 +539,7 @@ export class ScheduleFixProposerService {
     if (proposal.status !== 'applied') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not applied`);
 
     const log = proposal.appliedData ?? [];
+    /* eslint-disable no-await-in-loop -- undo replays the applied log newest-first; a created parent must be deleted only after its children are restored */
     for (const action of [...log].reverse()) {
       try {
         switch (action.op) {
@@ -585,6 +588,7 @@ export class ScheduleFixProposerService {
         logger.warn('[ScheduleFix] undo step failed', { proposalId, op: action.op, error: err?.message });
       }
     }
+    /* eslint-enable no-await-in-loop */
 
     // Restore every task's dates from the Pre-review baseline (the recompute on
     // apply moved them), then remove that baseline so undo returns the exact prior

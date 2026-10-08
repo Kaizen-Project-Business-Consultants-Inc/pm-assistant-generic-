@@ -43,8 +43,10 @@ export async function serverErrorActivity(): Promise<{ total: number; routes: Ar
     let total = 0;
     const byRoute = new Map<string, number>();
     for (const hour of hours) {
+      // eslint-disable-next-line no-await-in-loop -- two hours only (this hour and the last)
       total += Number(await client.get(`err5xx:count:${hour}`)) || 0;
       const prefix = `err5xx:route:${hour}:`;
+      // eslint-disable-next-line no-await-in-loop -- two hours only (this hour and the last)
       const keys: string[] = await client.keys(`${prefix}*`);
       for (const key of keys) {
         const route = key.slice(prefix.length);

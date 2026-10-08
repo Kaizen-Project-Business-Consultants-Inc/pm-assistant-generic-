@@ -94,14 +94,17 @@ export async function runTrialReminders(): Promise<void> {
       try {
         const name = row.full_name || 'there';
         if (daysLeft <= 0) {
+          // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
           await emailService.sendTrialExpiredEmail(row.email, name);
           logger.info(`[trial-reminder] Sent expired email to ${row.id}`);
         } else {
+          // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
           await emailService.sendTrialReminderEmail(row.email, name, daysLeft);
           logger.info(`[trial-reminder] Sent ${daysLeft}-day reminder to ${row.id}`);
         }
 
         // Mark as sent (30-day TTL to auto-cleanup)
+        // eslint-disable-next-line no-await-in-loop -- marks the reminder sent only after this user's email went out
         await redisService.set(reminderKey, '1', 30 * 24 * 60 * 60);
       } catch (err) {
         logger.error(`[trial-reminder] Failed to send email to ${row.id}`, {

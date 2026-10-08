@@ -128,6 +128,7 @@ export class SupportSessionService {
   private async endAllFor(adminUserId: string): Promise<void> {
     const open = await databaseService.queryControlPlane<{ id: string }>(
       'SELECT id FROM support_sessions WHERE admin_user_id = ? AND ended_at IS NULL AND expires_at > NOW()', [adminUserId]);
+    // eslint-disable-next-line no-await-in-loop -- an admin has at most one open support session, so this ends zero or one
     for (const o of open) await this.end(o.id, adminUserId);
   }
 }

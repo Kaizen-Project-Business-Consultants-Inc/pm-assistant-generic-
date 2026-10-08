@@ -121,6 +121,11 @@ export interface CreateScheduleData {
 export interface CreateTaskData {
   scheduleId: string;
   name: string;
+  /** For imports (2026-10-08): the caller recalculates each parent ONCE when it's done (it was once
+   *  per child, so a phase of 50 rows was recalculated 50 times over a growing list) */
+  deferParentRollup?: boolean;
+  /** For imports: the plan's working-day test, looked up once by the caller instead of per task */
+  isWorking?: IsWorking;
   description?: string;
   status?: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'completed' | 'blocked' | 'cancelled';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -684,7 +689,7 @@ export class ScheduleService {
     // Default startDate to schedule start date (or today) if missing — like MS Project —
     // moved on to the first working day of the project calendar. A start the user typed
     // is kept even on a day off (they're warned in the form).
-    const isWorking = await this.workingDayTest(data.scheduleId);
+    const isWorking = data.isWorking ?? await this.workingDayTest(data.scheduleId);
     if (!data.startDate) {
       const schedule = await this.findById(data.scheduleId);
       const raw = schedule?.startDate
@@ -815,8 +820,8 @@ export class ScheduleService {
 
     const task = (await this.findTaskById(id))!;
 
-    // Recompute parent rollup if this task has a parent
-    if (data.parentTaskId) {
+    // Recompute parent rollup if this task has a parent (an import does it once per parent at the end)
+    if (data.parentTaskId && !data.deferParentRollup) {
       await this.recomputeParentRollup(data.parentTaskId).catch(err =>
         logger.error('[Rollup] recomputeParentRollup error on create:', err)
       );

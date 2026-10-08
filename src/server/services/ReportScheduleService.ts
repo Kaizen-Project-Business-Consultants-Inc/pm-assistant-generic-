@@ -137,6 +137,7 @@ export class ReportScheduleService {
         // Handle status report schedules
         if (schedule.templateId.startsWith('status-report::')) {
           const projectId = schedule.templateId.replace('status-report::', '');
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
           await projectStatusReportService.generate(projectId, schedule.createdBy, {
             recipients: schedule.recipients,
             sendEmail: true,
@@ -145,6 +146,7 @@ export class ReportScheduleService {
           const nextRun = this.computeNextRun(
             schedule.frequency, schedule.dayOfWeek, schedule.dayOfMonth, schedule.timeOfDay,
           );
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
           await this.updateRunStatus(schedule.id, 'success', null, nextRun);
           executed++;
           continue;
@@ -153,6 +155,7 @@ export class ReportScheduleService {
         // Handle RAID report schedules
         if (schedule.templateId.startsWith('raid-report::')) {
           const projectId = schedule.templateId.replace('raid-report::', '');
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
           await raidReportService.generate(projectId, schedule.createdBy, {
             recipients: schedule.recipients,
             sendEmail: true,
@@ -161,20 +164,25 @@ export class ReportScheduleService {
           const nextRun = this.computeNextRun(
             schedule.frequency, schedule.dayOfWeek, schedule.dayOfMonth, schedule.timeOfDay,
           );
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
           await this.updateRunStatus(schedule.id, 'success', null, nextRun);
           executed++;
           continue;
         }
 
+        // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
         const template = await reportBuilderService.getTemplateById(schedule.templateId);
         if (!template) {
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
           await this.updateRunStatus(schedule.id, 'error', 'Template not found');
           continue;
         }
 
         // Runs as the person who scheduled it: only the projects they can read
+        // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
         const { data: csvContent } = await reportBuilderService.exportReport(schedule.templateId, 'csv', undefined, await readableProjectIdsForUserId(schedule.createdBy));
 
+        // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
         await emailService.sendReportEmail(
           schedule.recipients,
           template.name,
@@ -184,6 +192,7 @@ export class ReportScheduleService {
         const nextRun = this.computeNextRun(
           schedule.frequency, schedule.dayOfWeek, schedule.dayOfMonth, schedule.timeOfDay,
         );
+        // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
         await this.updateRunStatus(schedule.id, 'success', null, nextRun);
         executed++;
       } catch (err: any) {
@@ -191,6 +200,7 @@ export class ReportScheduleService {
         const nextRun = this.computeNextRun(
           schedule.frequency, schedule.dayOfWeek, schedule.dayOfMonth, schedule.timeOfDay,
         );
+        // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
         await this.updateRunStatus(schedule.id, 'error', err.message || 'Unknown error', nextRun);
       }
     }

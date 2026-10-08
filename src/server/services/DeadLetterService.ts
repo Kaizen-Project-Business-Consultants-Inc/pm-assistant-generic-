@@ -48,21 +48,26 @@ class DeadLetterService {
           payload = JSON.parse(entry.payload);
         } catch {
           // Malformed payload — mark as failed immediately
+          // eslint-disable-next-line no-await-in-loop -- retry queue: each failed operation is replayed and its outcome recorded one by one
           await deadLetterRepository.markFailed(entry.id, entry.max_attempts);
           continue;
         }
+        // eslint-disable-next-line no-await-in-loop -- retry queue: failed operations are replayed one by one, in due order
         await executor(entry.operation, payload);
         // Success — mark resolved
+        // eslint-disable-next-line no-await-in-loop -- retry queue: records this operation's outcome right after its replay
         await deadLetterRepository.markResolved(entry.id);
         processed++;
       } catch (retryErr) {
         const attempts = entry.attempts + 1;
         if (attempts >= entry.max_attempts) {
+          // eslint-disable-next-line no-await-in-loop -- retry queue: records this operation's outcome right after its replay
           await deadLetterRepository.markFailed(entry.id, attempts);
         } else {
           // Exponential backoff: 5min, 25min, 125min...
           const delayMs = Math.pow(5, attempts) * 60 * 1000;
           const nextRetry = new Date(Date.now() + delayMs).toISOString().replace('T', ' ').substring(0, 19);
+          // eslint-disable-next-line no-await-in-loop -- retry queue: schedules this operation's backoff right after its replay failed
           await deadLetterRepository.markRetrying(
             entry.id, attempts, nextRetry,
             retryErr instanceof Error ? retryErr.message : String(retryErr),

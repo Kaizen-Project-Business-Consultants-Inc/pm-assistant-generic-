@@ -113,6 +113,7 @@ export class AutomationEventBus {
     for (const action of actions) {
       try {
         const resolvedParams = resolveTemplate(action.params, context);
+        // eslint-disable-next-line no-await-in-loop -- automation actions run in their set order; later steps read earlier steps' AI outputs
         await executeAction(action.type, resolvedParams, context, event);
         actionsExecuted++;
         results.push({ actionId: action.id, type: action.type, status: 'success' });

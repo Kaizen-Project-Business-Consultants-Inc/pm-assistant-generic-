@@ -493,6 +493,9 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       const nameToTaskId = new Map<string, string>();
       for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
       const createdTaskIds: string[] = []; // phase summaries and rows, for Undo in Schedule History
+      // looked up once for the whole file, not once per row (2026-10-08)
+      const planIsWorking = await scheduleService.workingDayTest(scheduleId);
+      const parentsToRoll = new Set<string>();
 
       for (const p of prepared) {
         try {
@@ -503,8 +506,10 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
             if (!phaseTaskIds.has(phase)) {
               const phaseDedupKey = `${phase.toLowerCase()}|`;
               if (!existingKeys.has(phaseDedupKey)) {
+                // eslint-disable-next-line no-await-in-loop -- each row is created in file order: later rows reuse its phase, and it gets its own audit entry and workflow notice
                 const phaseTask = await scheduleService.createTask({
                   scheduleId,
+                  isWorking: planIsWorking,
                   name: phase,
                   status: 'in_progress' as CreateTaskData['status'],
                   priority: 'medium' as CreateTaskData['priority'],
@@ -530,8 +535,11 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           const estimatedDays = durationUnit === 'days' ? (p.durationValue ?? undefined) : undefined;
           const estimatedDurationHours = durationUnit === 'days' ? undefined : (p.durationValue ?? undefined);
 
+          // eslint-disable-next-line no-await-in-loop -- rows are created in file order (duplicates and phases depend on earlier rows), each with its own audit entry and workflow notice
           const created = await scheduleService.createTask({
             scheduleId,
+            isWorking: planIsWorking,
+            deferParentRollup: true,
             name: p.name,
             description: p.description,
             status: p.status as CreateTaskData['status'],
@@ -555,6 +563,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           });
 
           existingKeys.add(dedupKey);
+          if (parentTaskId) parentsToRoll.add(parentTaskId);
           createdTaskIds.push(created.id);
           rowNumToTaskId.set(String(p.rowNum), created.id);
           nameToTaskId.set(p.name.toLowerCase(), created.id);
@@ -562,6 +571,12 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
         } catch (rowErr: any) {
           failed.push({ row: p.rowNum, error: rowErr.message || 'Unknown error' });
         }
+      }
+
+      // Each summary recalculated ONCE now that all its rows exist (it was once per row, 2026-10-08)
+      for (const pid of parentsToRoll) {
+        // eslint-disable-next-line no-await-in-loop -- one parent at a time: each walks up to its own summaries, which parents share
+        await scheduleService.recomputeParentRollup(pid).catch(err => logger.error('[import] summary roll-up failed', { pid, error: (err as Error).message }));
       }
 
       // ---- Pass 3: resolve predecessors into dependencies ----
@@ -584,6 +599,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           }
           if (res.taskId === selfId) continue; // ignore self-reference
           try {
+            // eslint-disable-next-line no-await-in-loop -- each link is checked for a loop against the links added before it
             await scheduleService.addDependency(selfId, res.taskId, res.type, res.lagDays);
             dependenciesCreated++;
           } catch {
@@ -768,7 +784,9 @@ Return a JSON object mapping unmapped headers to target fields.`;
       const failed: { row: number; error: string }[] = [];
       const warnings: string[] = [];
       const createdTaskIds: string[] = []; // for Undo in Schedule History
-      let isWorking: IsWorking | undefined; // the project calendar, read on first need
+      // the project calendar, read once for the whole file (every row's create used to read it again)
+      const isWorking: IsWorking = await scheduleService.workingDayTest(scheduleId);
+      const parentsToRoll = new Set<string>();
 
       for (let i = 0; i < body.tasks.length; i++) {
         const t = body.tasks[i];
@@ -788,14 +806,16 @@ Return a JSON object mapping unmapped headers to target fields.`;
           const startDate = t.startDate ? toDateStr(t.startDate) : null;
           let endDate = t.endDate ? toDateStr(t.endDate) : null;
           if (!endDate && startDate && t.duration) {
-            isWorking ??= await scheduleService.workingDayTest(scheduleId);
             endDate = structuredFinish(startDate, null, t.duration, isWorking);
           }
 
           const isMilestone = t.isMilestone === true || t.duration === 0;
 
+          // eslint-disable-next-line no-await-in-loop -- rows are created in outline order (each parent before its children), each with its own audit entry and workflow notice
           const task = await scheduleService.createTask({
             scheduleId,
+            isWorking,
+            deferParentRollup: true,
             name: t.name.trim(),
             startDate: startDate || undefined,
             endDate: endDate || undefined,
@@ -811,11 +831,18 @@ Return a JSON object mapping unmapped headers to target fields.`;
           if (t.wbs) byWbs.set(t.wbs.trim(), task.id);
           nameToTaskId.set(t.name.trim().toLowerCase(), task.id);
           levelStack.push({ level, taskId: task.id });
+          if (parentTaskId) parentsToRoll.add(parentTaskId);
           createdTaskIds.push(task.id);
           succeeded.push(i + 1);
         } catch (rowErr: any) {
           failed.push({ row: i + 1, error: rowErr.message || 'Unknown error' });
         }
+      }
+
+      // Each summary recalculated ONCE now that all its rows exist (it was once per row, 2026-10-08)
+      for (const pid of parentsToRoll) {
+        // eslint-disable-next-line no-await-in-loop -- one parent at a time: each walks up to its own summaries, which parents share
+        await scheduleService.recomputeParentRollup(pid).catch(err => logger.error('[import] summary roll-up failed', { pid, error: (err as Error).message }));
       }
 
       // Second pass: resolve predecessors (uid, WBS, or name) into dependencies
@@ -840,6 +867,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
           }
           if (res.taskId === taskId) continue; // ignore self-reference
           try {
+            // eslint-disable-next-line no-await-in-loop -- each link is checked for a loop against the links added before it
             await scheduleService.addDependency(taskId, res.taskId, res.type, res.lagDays);
             depsCreated++;
           } catch {

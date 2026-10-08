@@ -73,6 +73,7 @@ export async function parentIdsOf(run: Run, scheduleId: string, taskIds: string[
  */
 export async function rollUpSummaries(parentIds: Iterable<string>): Promise<void> {
   for (const pid of new Set(parentIds)) {
+    // eslint-disable-next-line no-await-in-loop -- roll-ups run one after another and finish before the caller records Schedule History
     await scheduleService.recomputeParentRollup(pid).catch((err: any) =>
       logger.error('[Rollup] recomputeParentRollup error after a bulk change', { pid, error: err?.message }));
   }
@@ -303,11 +304,13 @@ async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Pr
       throw new ChangeStateError('This schedule no longer exists.');
     }
     const columns = await columnsOf(run, RESTORE_TABLES);
+    // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction: parents are inserted before their children
     for (const t of parentsFirst(tasks)) await insertRow(run, 'tasks', { ...t, schedule_id: scheduleId }, columns);
 
     const links = snap.links ?? [];
     const ends = await idsPresent(run, 'tasks', links.flatMap(l => [String(l.task_id), String(l.dependency_id)]));
     for (const l of links) {
+      // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction: links go back after both their tasks exist
       if (ends.has(String(l.task_id)) && ends.has(String(l.dependency_id))) await insertRow(run, 'task_dependencies', l, columns, true);
       else skippedLinks++;
     }
@@ -316,18 +319,23 @@ async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Pr
     const assignments = snap.assignments ?? [];
     const people = await idsPresent(run, 'resources', [...bookings, ...assignments].map(r => String(r.resource_id)));
     for (const b of bookings) {
+      // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
       if (people.has(String(b.resource_id))) await insertRow(run, 'resource_assignments', { ...b, schedule_id: scheduleId }, columns, true);
       else skippedPeople++;
     }
     for (const a of assignments) {
+      // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
       if (people.has(String(a.resource_id))) await insertRow(run, 'task_assignments', a, columns, true);
       else skippedPeople++;
     }
+    // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
     for (const c of snap.comments ?? []) await insertRow(run, 'task_comments', c, columns, true);
+    // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
     for (const a of snap.activities ?? []) await insertRow(run, 'task_activities', a, columns, true);
 
     // The old single-predecessor columns the delete cleared on the tasks that followed
     for (const s of snap.successors ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
       await run(
         'UPDATE tasks SET dependency = ?, dependency_type = ?, dependency_lag_days = ? WHERE id = ? AND schedule_id = ? AND dependency IS NULL',
         [s.dependency, s.dependency_type ?? null, s.dependency_lag_days ?? 0, s.id, scheduleId]);
@@ -339,6 +347,7 @@ async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Pr
   // Summary tasks the deleted tasks sat under get their dates and totals back
   const parents = new Set(tasks.map(t => t.parent_task_id as string | null).filter((p): p is string => !!p && !ids.includes(p)));
   for (const pid of parents) {
+    // eslint-disable-next-line no-await-in-loop -- summary roll-ups after an undo run one by one so nested summaries settle in order
     await scheduleService.recomputeParentRollup(pid).catch((err: any) =>
       logger.warn('[ChangeHistory] roll-up after restore failed', { pid, error: err?.message }));
   }
@@ -366,6 +375,7 @@ async function unusedResources(run: Run, resourceIds: string[], createdAt: unkno
   for (const { t, c } of columns) {
     if (candidates.size === 0) break;
     const list = [...candidates];
+    // eslint-disable-next-line no-await-in-loop -- each column check shrinks the candidate list and the loop stops once nothing is left
     const used = await run(`SELECT DISTINCT \`${c}\` AS id FROM \`${t}\` WHERE \`${c}\` IN (${ph(list.length)})`, list);
     for (const u of Array.isArray(used) ? used : []) candidates.delete(String(u.id));
   }
@@ -585,6 +595,7 @@ class ChangeHistoryService {
           for (const p of prev) {
             const cols = Object.keys(p.values).filter(c => allowed.has(c));
             if (!cols.length) continue;
+            // eslint-disable-next-line no-await-in-loop -- undo of a bulk edit inside one transaction on one connection
             await databaseService.queryOn(conn,
               `UPDATE tasks SET ${cols.map(c => `${c} = ?`).join(', ')}, updated_at = NOW() WHERE id = ? AND schedule_id = ?`,
               [...cols.map(c => p.values[c]), p.id, scheduleId]);
@@ -599,6 +610,7 @@ class ChangeHistoryService {
       }
       case 'bulk_create': {
         for (const id of (p.createdIds ?? []) as string[]) {
+          // eslint-disable-next-line no-await-in-loop -- undo of a bulk create: each task delete cascades and may re-roll its summary, so they go one at a time
           if (await scheduleService.deleteTask(id).catch(() => false)) restored++;
         }
         break;

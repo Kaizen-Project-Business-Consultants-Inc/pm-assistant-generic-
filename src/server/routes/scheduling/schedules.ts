@@ -119,6 +119,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     if (!p?.scheduleId || reply.sent) return;
     for (const id of [p.taskId, p.epicId]) {
       if (!id) continue;
+      // eslint-disable-next-line no-await-in-loop -- at most two ids (task and epic) from the URL
       const task = await scheduleService.findTaskById(id);
       if (!task || task.scheduleId !== p.scheduleId) return reply.status(404).send({ error: 'Not found', message: 'Task not found in this schedule' });
     }

@@ -56,6 +56,7 @@ class TokenTopUpRepository {
     for (const topUp of topUps) {
       if (remaining <= 0) break;
       const consume = Math.min(remaining, topUp.tokens_remaining);
+      // eslint-disable-next-line no-await-in-loop -- FIFO: draws down the oldest top-up first and stops once the amount is covered; a user holds only a few
       await databaseService.queryControlPlane(
         'UPDATE token_top_ups SET tokens_remaining = tokens_remaining - ? WHERE id = ?',
         [consume, topUp.id],

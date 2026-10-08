@@ -276,6 +276,7 @@ Analyze this meeting transcript and extract all actionable information.`;
       try {
         switch (update.type) {
           case 'create': {
+            // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             await scheduleService.createTask({
               scheduleId: analysis.scheduleId,
               name: update.taskName,
@@ -288,6 +289,7 @@ Analyze this meeting transcript and extract all actionable information.`;
               createdBy: userId || 'meeting-intelligence',
             });
 
+            // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             await scheduleService.logActivity(
               'system',
               userId || '1',
@@ -312,6 +314,7 @@ Analyze this meeting transcript and extract all actionable information.`;
               continue;
             }
 
+            // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             const existingTask = await scheduleService.findTaskById(taskId);
             if (!existingTask) {
               errors.push(`Task not found: ${taskId} for "${update.taskName}"`);
@@ -323,6 +326,7 @@ Analyze this meeting transcript and extract all actionable information.`;
             if (update.assignee) updateData.assignedTo = update.assignee;
             if (update.priority) updateData.priority = update.priority;
 
+            // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             await scheduleService.updateTask(taskId, updateData);
             applied++;
             analysis.appliedItems.push(index);
@@ -339,6 +343,7 @@ Analyze this meeting transcript and extract all actionable information.`;
             }
 
             const taskToReschedule =
+              // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
               await scheduleService.findTaskById(rescheduleTaskId);
             if (!taskToReschedule) {
               errors.push(`Task not found: ${rescheduleTaskId} for "${update.taskName}"`);
@@ -352,6 +357,7 @@ Analyze this meeting transcript and extract all actionable information.`;
               rescheduleData.endDate = update.newEndDate;
             if (update.assignee) rescheduleData.assignedTo = update.assignee;
 
+            // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             const rescheduled = await scheduleService.updateTask(rescheduleTaskId, rescheduleData);
 
             // The meeting's dates are kept as given; if the finish moved, successors
@@ -360,6 +366,7 @@ Analyze this meeting transcript and extract all actionable information.`;
             const newEnd = rescheduled?.endDate ? utcDay(rescheduled.endDate) : null;
             if (oldEnd && newEnd && !isNaN(oldEnd.getTime()) && !isNaN(newEnd.getTime()) && oldEnd.getTime() !== newEnd.getTime()) {
               try {
+                // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
                 await scheduleService.cascadeReschedule(rescheduleTaskId, oldEnd, newEnd);
               } catch (err: any) {
                 logger.warn('[MeetingIntelligence] successors could not follow the rescheduled task', { taskId: rescheduleTaskId, error: err?.message });

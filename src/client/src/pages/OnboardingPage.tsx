@@ -249,6 +249,7 @@ export const OnboardingPage: React.FC = () => {
     let sent = 0;
     try {
       for (const invite of pendingInvites) {
+        // eslint-disable-next-line no-await-in-loop -- each invite sends an email; they go in order and stop at the first failure so the sent count is right
         await apiService.inviteOrgMember(invite.email, invite.role);
         sent++;
       }

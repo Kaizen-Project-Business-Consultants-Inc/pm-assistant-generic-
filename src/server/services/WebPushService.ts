@@ -71,6 +71,7 @@ class WebPushService {
 
     for (const row of rows) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- one person's few devices; push services rate-limit and a dead endpoint is noted per device
         await webpush.sendNotification(
           {
             endpoint: row.endpoint,

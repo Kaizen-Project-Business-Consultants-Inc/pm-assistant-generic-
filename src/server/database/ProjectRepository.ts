@@ -172,6 +172,7 @@ export class ProjectRepository extends BaseRepository<Project> {
     // so a code clash just takes the next number (2026-10-07: it surfaced as "code already in use")
     for (let attempt = 1; ; attempt++) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- retry loop: on a project-code clash, try again with the next code (at most 5 attempts)
         return await this.insertProject(data, await this.generateProjectCode());
       } catch (err) {
         if (!isDuplicateCodeDbError(err) || attempt >= 5) throw err;

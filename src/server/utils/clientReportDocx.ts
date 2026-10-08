@@ -53,6 +53,7 @@ export async function buildClientReportDocx(r: ClientReport): Promise<Buffer> {
     children.push(sectionHeading(3, 'SCHEDULE TIMELINES'));
     for (const p of withTimeline) {
       const { svg, width, height } = timelineSvg(p.timeline!, r.today);
+      // eslint-disable-next-line no-await-in-loop -- timeline images render one at a time to keep the image library's memory use down
       const png = svg ? await svgToPng(svg, width) : null;
       if (!png) continue;
       children.push(new Paragraph({ children: [new TextRun({ text: label(p), bold: true, size: 20, font: 'Calibri' })], spacing: { before: 120, after: 40 } }));

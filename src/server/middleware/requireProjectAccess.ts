@@ -56,6 +56,7 @@ export async function projectsOfSchedules(scheduleIds: Array<string | undefined 
   if (ids.length === 0) return null;
   const projects: string[] = [];
   for (const id of ids) {
+    // eslint-disable-next-line no-await-in-loop -- callers pass one schedule (sprint add: the few schedules of the picked tasks); stops at the first unknown one
     const s = await scheduleService.findById(id);
     if (!s) return null; // an unknown schedule — refuse rather than guess
     projects.push(s.projectId);
@@ -188,6 +189,7 @@ export function requireProjectAccess(minRole: ProjectRole = 'viewer', opts: { re
 
     let membership: Membership | undefined;
     for (const projectId of projectIds) {
+      // eslint-disable-next-line no-await-in-loop -- a request names one project, rarely a few; stops at the first refusal
       const d = await checkProjectRole(request, projectId, minRole);
       if (!d.ok) return reply.status(d.status).send(d.body);
       membership = membership ?? d.membership;

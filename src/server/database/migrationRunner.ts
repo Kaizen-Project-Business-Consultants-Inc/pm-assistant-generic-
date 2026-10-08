@@ -154,25 +154,31 @@ export async function runMigrations(): Promise<MigrationOutcome> {
       .map(s => s.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').trim())
       .filter(s => s.length > 0);
 
+    // eslint-disable-next-line no-await-in-loop -- migration files must apply in order, each on its own connection and transaction
     const connection = await databaseService.getConnection();
     try {
+      // eslint-disable-next-line no-await-in-loop -- migration files must apply in order, each in its own transaction
       await connection.beginTransaction();
 
       for (const stmt of statements) {
+        // eslint-disable-next-line no-await-in-loop -- statements within a migration must run in order
         await connection.query(stmt);
       }
 
       // Record migration as applied (INSERT IGNORE to handle files that self-insert)
+      // eslint-disable-next-line no-await-in-loop -- records this migration inside its own transaction before the next file
       await connection.query(
         'INSERT IGNORE INTO _migrations (name) VALUES (?)',
         [file]
       );
 
+      // eslint-disable-next-line no-await-in-loop -- commit this migration before starting the next one
       await connection.commit();
       console.log(`[migration] Applied #${String(num).padStart(3, '0')}: ${file} (${statements.length} statements)`);
       outcome.applied.push(file);
       ranCount++;
     } catch (error) {
+      // eslint-disable-next-line no-await-in-loop -- roll back this migration before deciding whether to continue
       await connection.rollback();
 
       if (ALREADY_APPLIED_ERROR_CODES.has(errorCode(error))) {
@@ -184,6 +190,7 @@ export async function runMigrations(): Promise<MigrationOutcome> {
           `${(error as Error).message}. Recording as applied and continuing.`,
         );
         try {
+          // eslint-disable-next-line no-await-in-loop -- records an already-present migration before moving to the next file
           await databaseService.query('INSERT IGNORE INTO _migrations (name) VALUES (?)', [file]);
           outcome.alreadyPresent.push(file);
           continue;

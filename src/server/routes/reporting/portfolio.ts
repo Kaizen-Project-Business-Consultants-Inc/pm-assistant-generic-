@@ -266,6 +266,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
 
       for (let i = 0; i < activeProjects.length; i += CONCURRENCY) {
         const batch = activeProjects.slice(i, i + CONCURRENCY);
+        // eslint-disable-next-line no-await-in-loop -- projects load in parallel batches of CONCURRENCY; batches go one after another to bound load
         const batchResults = await Promise.allSettled(
           batch.map(async (project) => {
             const projSchedules = schedulesByProject.get(project.id) ?? [];

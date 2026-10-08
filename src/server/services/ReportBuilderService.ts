@@ -140,6 +140,7 @@ class ReportBuilderService {
         ...(params?.projectId ? { projectId: params.projectId } : {}),
       };
 
+      // eslint-disable-next-line no-await-in-loop -- each report section runs its own different query; a template has only a few sections
       const data = await this.executeSectionQuery(section.type, section.dataSource, mergedFilters, section.groupBy, section.columns, readable);
       sections.push({
         title: section.title || `${section.dataSource} ${section.type}`,

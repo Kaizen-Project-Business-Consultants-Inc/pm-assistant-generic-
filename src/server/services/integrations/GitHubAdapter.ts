@@ -56,6 +56,7 @@ export class GitHubAdapter {
     let count = 0;
     for (const task of tasks) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- GitHub API is rate-limited; issues are created one by one
         const response = await fetch(
           `${GITHUB_API}/repos/${config.owner}/${config.repo}/issues`,
           {

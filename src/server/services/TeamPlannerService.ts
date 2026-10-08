@@ -486,6 +486,7 @@ export class TeamPlannerService {
     let restored = 0;
     // entries recorded before bookings moved with their task (2026-10-02) carry them; newer ones don't
     for (const b of u.bookings ?? []) {
+      // eslint-disable-next-line no-await-in-loop -- Undo of an old planner move: only entries recorded before 2026-10-02 carry bookings, and it runs once per undo
       await databaseService.query('UPDATE resource_assignments SET start_date = ?, end_date = ? WHERE id = ? AND schedule_id = ?', [b.startDate, b.endDate, b.id, scheduleId]);
     }
     if (u.moved?.length) restored += await restoreTaskDates(scheduleId, u.moved);

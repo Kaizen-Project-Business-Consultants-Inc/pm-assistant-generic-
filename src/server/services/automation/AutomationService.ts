@@ -168,6 +168,7 @@ export class AutomationService {
 
     const ids: string[] = [];
     for (const auto of pack.automations) {
+      // eslint-disable-next-line no-await-in-loop -- a governance pack is a fixed set of three or four automations
       const rule = await automationRepository.create(projectId, {
         name: auto.name,
         description: auto.description,

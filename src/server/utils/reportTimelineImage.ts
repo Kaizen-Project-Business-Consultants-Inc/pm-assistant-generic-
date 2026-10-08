@@ -36,6 +36,7 @@ export async function timelineForEmail(html: string): Promise<{ html: string; at
     const b = a === -1 ? -1 : rest.indexOf(TIMELINE_END, a);
     if (a === -1 || b === -1) break;
     const svg = rest.slice(a + TIMELINE_START.length, b).match(/<svg[\s\S]*<\/svg>/)?.[0];
+    // eslint-disable-next-line no-await-in-loop -- SVG-to-PNG rendering is CPU and memory heavy; one picture at a time
     const png = svg ? await svgToPng(svg) : null;
     const cid = n === 0 ? TIMELINE_CID : `${TIMELINE_CID}-${n + 1}`;
     out += rest.slice(0, a) + (png

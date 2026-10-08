@@ -42,6 +42,7 @@ export class RedisService {
     if (this.connected) return true;
     this.connect(url);
     const started = Date.now();
+    // eslint-disable-next-line no-await-in-loop -- polls every 50 ms until Redis connects or the wait runs out
     while (!this.connected && Date.now() - started < ms) await new Promise((r) => setTimeout(r, 50));
     return this.connected;
   }

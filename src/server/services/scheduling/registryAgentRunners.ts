@@ -106,10 +106,12 @@ export async function runMonteCarloConfidenceAgent(
 
   for (const schedule of schedules) {
     const ctx = { actorId: 'system' as const, actorType: 'system' as const, source: 'system' as const, projectId: project.id };
+    // eslint-disable-next-line no-await-in-loop -- Monte Carlo is CPU-heavy; the nightly scan simulates one plan at a time so it doesn't saturate the server
     const invocationResult = await agentRegistry.invoke('monte-carlo-v1', { scheduleId: schedule.id }, ctx);
     if (!invocationResult.success) {
       // A plan with no tasks has nothing to simulate — not an error (it filled the log every night)
       if (/no tasks/i.test(String(invocationResult.error ?? ''))) {
+        // eslint-disable-next-line no-await-in-loop -- one activity-log line per plan, written as each plan is simulated one at a time
         await activityLog.log({
           projectId: project.id, agentName: 'monte_carlo', result: 'skipped',
           summary: `"${schedule.name}" has no tasks yet`, details: { scheduleId: schedule.id, scheduleName: schedule.name },
@@ -129,6 +131,7 @@ export async function runMonteCarloConfidenceAgent(
 
     if (pDay > end) {
       // late by WORKING days, on the plan's calendar (it counted calendar days)
+      // eslint-disable-next-line no-await-in-loop -- only for a plan found late; follows that plan's own simulation, one plan at a time
       const isWorking = await scheduleService.workingDayTest(schedule.id);
       const daysOver = Math.max(1, workingDaysAfter(utcDay(end), utcDay(pDay), isWorking));
 
@@ -139,6 +142,7 @@ export async function runMonteCarloConfidenceAgent(
       const notifyUserId = await alertRecipient(project);
       if (!notifyUserId) continue;
 
+      // eslint-disable-next-line no-await-in-loop -- one alert per late plan, raised as each plan is simulated one at a time
       await notificationService.create({
         userId: notifyUserId,
         type: 'monte_carlo_alert',
@@ -158,6 +162,7 @@ export async function runMonteCarloConfidenceAgent(
       logger.info(`[Agent:MonteCarlo] Alert for "${schedule.name}": P${confidenceLevel} +${daysOver}d`);
       alertCount++;
 
+      // eslint-disable-next-line no-await-in-loop -- one activity-log line per plan, written as each plan is simulated one at a time
       await activityLog.log({
         projectId: project.id,
         agentName: 'monte_carlo',
@@ -166,6 +171,7 @@ export async function runMonteCarloConfidenceAgent(
         details: { scheduleId: schedule.id, scheduleName: schedule.name, confidenceLevel, daysOver, criticalTasks: criticalTasks.slice(0, 5) },
       });
     } else {
+      // eslint-disable-next-line no-await-in-loop -- one activity-log line per plan, written as each plan is simulated one at a time
       await activityLog.log({
         projectId: project.id,
         agentName: 'monte_carlo',

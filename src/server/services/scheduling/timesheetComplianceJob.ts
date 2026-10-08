@@ -118,6 +118,7 @@ export async function runTimesheetCompliance(): Promise<number> {
     }
 
     try {
+      // eslint-disable-next-line no-await-in-loop -- each reminder may also send an email; sent one by one to stay inside the mail provider rate limit
       await notificationService.create({
         userId,
         type: 'timesheet_reminder',
@@ -160,6 +161,7 @@ export async function runTimesheetCompliance(): Promise<number> {
 
         for (const mgr of managers) {
           try {
+            // eslint-disable-next-line no-await-in-loop -- each alert may also send an email; sent one by one to stay inside the mail provider rate limit
             await notificationService.create({
               userId: mgr.user_id,
               type: 'timesheet_reminder',

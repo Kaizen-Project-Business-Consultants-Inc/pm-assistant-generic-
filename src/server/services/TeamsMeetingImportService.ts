@@ -164,6 +164,7 @@ class TeamsMeetingImportService {
     const out: any[] = [];
     for (let i = 0; i < meetings.length; i += 5) {
       const batch = meetings.slice(i, i + 5);
+      // eslint-disable-next-line no-await-in-loop -- five meetings at a time; Microsoft Graph is rate-limited
       const lookups = await Promise.all(batch.map(m => findTranscript(token, m)));
       batch.forEach((m, j) => out.push({
         eventId: m.eventId, subject: m.subject, start: m.start, end: m.end,

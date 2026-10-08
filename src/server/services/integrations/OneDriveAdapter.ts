@@ -153,12 +153,14 @@ class OneDriveAdapter implements StorageAdapter {
     let pages = 0;
 
     while (currentUrl && pages < MAX_PAGES) {
+      // eslint-disable-next-line no-await-in-loop -- Microsoft Graph paging: each page's URL comes from the previous page's nextLink
       const resp: Response = await fetch(currentUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
         signal: AbortSignal.timeout(30000),
       });
 
       if (!resp.ok) throw new Error(`Delta query failed: ${resp.status}`);
+      // eslint-disable-next-line no-await-in-loop -- Microsoft Graph paging: each page's URL comes from the previous page's nextLink
       const data: any = await resp.json();
       allItems = allItems.concat((data.value || []).map(toStorageItem));
       currentUrl = data['@odata.nextLink'] as string | undefined;
@@ -186,12 +188,14 @@ class OneDriveAdapter implements StorageAdapter {
       let currentUrl: string | undefined = `${base}/items/${id}/children?$select=id,name,size,file,folder,parentReference,lastModifiedDateTime,eTag&$top=200`;
 
       while (currentUrl) {
+        // eslint-disable-next-line no-await-in-loop -- Microsoft Graph paging: each page's URL comes from the previous page's nextLink
         const resp: Response = await fetch(currentUrl, {
           headers: { Authorization: `Bearer ${accessToken}` },
           signal: AbortSignal.timeout(30000),
         });
 
         if (!resp.ok) throw new Error(`List folder files failed: ${resp.status}`);
+        // eslint-disable-next-line no-await-in-loop -- Microsoft Graph paging: each page's URL comes from the previous page's nextLink
         const data: any = await resp.json();
         const items: StorageItem[] = (data.value || []).map(toStorageItem);
 
@@ -240,6 +244,7 @@ class OneDriveAdapter implements StorageAdapter {
     let resp!: Response;
 
     for (let i = 0; i < 10; i++) {
+      // eslint-disable-next-line no-await-in-loop -- follows share-link redirects one hop at a time; each hop's URL comes from the last response
       resp = await fetch(url, { headers, redirect: 'manual' });
 
       if ([301, 302, 307, 308].includes(resp.status)) {

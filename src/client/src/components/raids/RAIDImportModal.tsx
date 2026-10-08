@@ -404,6 +404,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
         const outCsv = outLines.join('\n');
         headerMap['_raid_type_'] = 'type';
 
+        // eslint-disable-next-line no-await-in-loop -- one sheet per RAID type (at most four); imports run one at a time so record numbers don't clash
         const res = await apiService.importRaidItems(projectId, outCsv, headerMap, raidType);
         const data = res?.data ?? res;
         const problems = [

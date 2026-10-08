@@ -517,9 +517,11 @@ export class StripeService {
 
       let applied = false;
       for (const customerId of customerIds) {
+        // eslint-disable-next-line no-await-in-loop -- Stripe API is rate-limited; calls go one by one
         const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
         for (const subscription of subs.data) {
           if (!['active', 'trialing', 'past_due'].includes(subscription.status)) continue;
+          // eslint-disable-next-line no-await-in-loop -- a customer has at most a couple of live subscriptions; each is saved in Stripe's order
           await this.upsertSubscription(subscription, `reconcile:${subscription.id}`);
           applied = true;
         }
@@ -709,10 +711,12 @@ export class StripeService {
     if (!this.stripe) return;
     const subscriptions = await this.stripe.subscriptions.list({ customer: stripeCustomerId, status: 'active' });
     for (const sub of subscriptions.data) {
+      // eslint-disable-next-line no-await-in-loop -- Stripe API is rate-limited; calls go one by one
       await this.stripe.subscriptions.cancel(sub.id);
     }
     const trialing = await this.stripe.subscriptions.list({ customer: stripeCustomerId, status: 'trialing' });
     for (const sub of trialing.data) {
+      // eslint-disable-next-line no-await-in-loop -- Stripe API is rate-limited; calls go one by one
       await this.stripe.subscriptions.cancel(sub.id);
     }
   }

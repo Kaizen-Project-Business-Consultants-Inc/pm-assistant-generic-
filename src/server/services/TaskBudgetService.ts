@@ -65,6 +65,7 @@ export class TaskBudgetService {
     // "the plan changed since" and block its Undo in Schedule History
     for (let i = 0; i < writes.length; i += 100) {
       const chunk = writes.slice(i, i + 100);
+      // eslint-disable-next-line no-await-in-loop -- already batched: one UPDATE per 100 tasks
       await databaseService.query(
         `UPDATE tasks SET budget_allocated = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END, updated_at = updated_at
           WHERE id IN (${chunk.map(() => '?').join(',')})`,
@@ -73,6 +74,7 @@ export class TaskBudgetService {
     }
     const changed = writes.length;
     for (const pid of parents) {
+      // eslint-disable-next-line no-await-in-loop -- roll-ups walk up to shared parent rows; running them together would race on the same summary rows
       await scheduleService.recomputeParentRollup(pid, 0, { quiet: true }).catch(err => logger.warn('[TaskBudget] roll-up failed', { pid, error: err?.message }));
     }
     return changed;

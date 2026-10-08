@@ -671,6 +671,7 @@ export class TemplateService {
       taskStart = onOrAfterWorking(taskStart, isWorking);
       const taskEnd = finishFor(taskStart, tt.estimatedDays, isWorking);
 
+      // eslint-disable-next-line no-await-in-loop -- tasks are created in template order: a task's parent and predecessors must exist first so their new ids can be linked
       const task = await scheduleService.createTask({
         scheduleId: schedule.id,
         name: tt.name,
@@ -706,6 +707,7 @@ export class TemplateService {
       const { riskService } = await import('./RiskService');
       for (const item of template.raidItems) {
         try {
+          // eslint-disable-next-line no-await-in-loop -- a template carries only a handful of RAID items; each goes through riskService.create for its own validation and audit
           const created = await riskService.create({
             projectId: project.id,
             type: item.type,

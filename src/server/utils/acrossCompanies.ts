@@ -23,6 +23,7 @@ export async function selectAcrossCompanies<T = any>(sql: string, params: any[] 
   const results: T[][] = [];
   for (const org of orgs) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- one company at a time: each switches the tenant database
       results.push(await runWithTenantContext(org.dbName, org.id, () => databaseService.query<T>(sql, params)));
     } catch (err) {
       logger.warn(`[acrossCompanies] ${org.slug}: ${err instanceof Error ? err.message : String(err)}`);

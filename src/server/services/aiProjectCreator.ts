@@ -74,6 +74,7 @@ export class AIProjectCreatorService {
     for (const suggestion of taskSuggestions) {
       const dueDate = finishFor(now, suggestion.estimatedDays || 7, weekdaysOnly);
 
+      // eslint-disable-next-line no-await-in-loop -- tasks are created in the AI's order; the plan sorts ties by creation time
       const task = await this.scheduleService.createTask({
         scheduleId: schedule.id,
         name: suggestion.name,

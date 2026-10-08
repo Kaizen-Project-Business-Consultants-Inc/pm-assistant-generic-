@@ -38,6 +38,7 @@ async function parallelLimit<T>(tasks: (() => Promise<T>)[], concurrency: number
   async function worker() {
     while (idx < tasks.length) {
       const i = idx++;
+      // eslint-disable-next-line no-await-in-loop -- worker of a bounded-concurrency pool: each worker takes the next job when its last one finishes
       results[i] = await tasks[i]();
     }
   }
@@ -173,10 +174,12 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
     for (const schedule of schedules) {
       pStats.schedulesScanned++;
       try {
+        // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
         const delays = await autoRescheduleService.detectDelays(schedule.id);
         const significant = delays.filter(d => d.delayDays >= thresholdDays || d.isOnCriticalPath);
         pStats.delaysDetected += significant.length;
         if (significant.length === 0) {
+          // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
           await activityLog.log({
             projectId: project.id, agentName: 'auto_reschedule', result: 'skipped',
             summary: `No significant delays in "${schedule.name}" (threshold: ${thresholdDays} working days)`,
@@ -189,7 +192,9 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
         const worst = significant[0]; // most severe first
         const late = `${worst.delayDays} working day${worst.delayDays === 1 ? '' : 's'}`;
         // the PM if their login still exists, else the company owner
+        // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
         const recipient = await alertRecipient(project);
+        // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
         if (recipient) await notificationService.create({
           userId: recipient,
           type: 'reschedule_proposal',
@@ -202,6 +207,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
           linkId: schedule.id, // one unread alert per plan, not one a night
         });
         if (recipient) pStats.notificationsSent++;
+        // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
         await activityLog.log({
           projectId: project.id, agentName: 'auto_reschedule', result: 'alert_created',
           summary: `${significant.length} significant delay(s) in "${schedule.name}"`,
@@ -209,6 +215,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
         });
       } catch (error) {
         logger.error(`[Agent] Error processing schedule ${schedule.id} (${schedule.name}):`, error);
+        // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
         await activityLog.log({
           projectId: project.id, agentName: 'auto_reschedule', result: 'error',
           summary: `Error processing schedule "${schedule.name}": ${error instanceof Error ? error.message : String(error)}`,

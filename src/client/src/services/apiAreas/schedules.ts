@@ -50,6 +50,7 @@ export class SchedulesApi extends ApiBase {
     const all = [...(first?.data ?? [])];
     const total = Number(first?.total ?? all.length);
     while (all.length < total) {
+      // eslint-disable-next-line no-await-in-loop -- pages of 200: each request starts where the last one ended and stops on an empty page
       const next = (await this.api.get(`/schedules/${scheduleId}/tasks`, { params: { limit: PAGE, offset: all.length } })).data;
       const rows = next?.data ?? [];
       if (rows.length === 0) break;

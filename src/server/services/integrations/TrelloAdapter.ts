@@ -71,6 +71,7 @@ export class TrelloAdapter {
     let count = 0;
     for (const task of tasks) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- Trello API is rate-limited; cards are created one by one
         const response = await fetch(
           `${TRELLO_API}/cards?${this.authParams(config)}`,
           {

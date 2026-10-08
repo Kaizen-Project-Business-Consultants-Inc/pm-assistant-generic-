@@ -150,6 +150,7 @@ class DropboxAdapter implements StorageAdapter {
       let pages = 0;
 
       while (hasMore && pages < MAX_PAGES) {
+        // eslint-disable-next-line no-await-in-loop -- Dropbox paging: each request needs the cursor from the previous page
         const resp = await fetch(`${API_BASE}/files/list_folder/continue`, {
           method: 'POST',
           headers: {
@@ -161,6 +162,7 @@ class DropboxAdapter implements StorageAdapter {
         });
 
         if (!resp.ok) throw new Error(`Delta continue failed: ${resp.status}`);
+        // eslint-disable-next-line no-await-in-loop -- Dropbox paging: reads this page before the next cursor is known
         const data: any = await resp.json();
         allItems = allItems.concat((data.entries || []).map(toStorageItem));
         cursor = data.cursor;
@@ -210,6 +212,7 @@ class DropboxAdapter implements StorageAdapter {
 
     // Paginate
     while (hasMore && cursor) {
+      // eslint-disable-next-line no-await-in-loop -- Dropbox paging: each request needs the cursor from the previous page
       const contResp = await fetch(`${API_BASE}/files/list_folder/continue`, {
         method: 'POST',
         headers: {
@@ -221,6 +224,7 @@ class DropboxAdapter implements StorageAdapter {
       });
 
       if (!contResp.ok) throw new Error(`List folder continue failed: ${contResp.status}`);
+      // eslint-disable-next-line no-await-in-loop -- Dropbox paging: reads this page before the next cursor is known
       const contData: any = await contResp.json();
       allItems = allItems.concat((contData.entries || []).map(toStorageItem));
       cursor = contData.cursor;

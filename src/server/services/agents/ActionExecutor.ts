@@ -44,7 +44,9 @@ export class ActionExecutor {
 
     for (const action of actions) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- a proposal's actions run in order and stop at the first failure so the rest can be rolled back
         await this.executeAction(action, proposal);
+        // eslint-disable-next-line no-await-in-loop -- marks this action done before the next one runs
         await actionProposalService.updateActionStatus(action.id, 'executed');
         executedActions.push(action);
 
@@ -67,6 +69,7 @@ export class ActionExecutor {
       } catch (err) {
         failedAction = action;
         failError = err instanceof Error ? err.message : String(err);
+        // eslint-disable-next-line no-await-in-loop -- marks the failed action before stopping the run
         await actionProposalService.updateActionStatus(action.id, 'failed', failError);
 
         logger.error(`[ActionExecutor] Action ${action.id} failed:`, failError);
@@ -250,7 +253,9 @@ export class ActionExecutor {
 
     for (const action of reversed) {
       try {
+        // eslint-disable-next-line no-await-in-loop -- rollback undoes executed actions one by one in reverse order
         await this.rollbackAction(action);
+        // eslint-disable-next-line no-await-in-loop -- marks this action rolled back before undoing the previous one
         await actionProposalService.updateActionStatus(action.id, 'rolled_back');
         rolledBack++;
 
