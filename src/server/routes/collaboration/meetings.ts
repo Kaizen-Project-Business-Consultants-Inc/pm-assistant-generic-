@@ -270,6 +270,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
         analysis.actionItems || [],
         analysis.decisions || [],
         meeting.attendees || [],
+        meeting.projectId,
       );
 
       return { success: true, recipientCount: body.recipientEmails.length };

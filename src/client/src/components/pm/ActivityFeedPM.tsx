@@ -5,6 +5,8 @@ import { Bell, ArrowRight, CheckCheck } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
 import { notificationLink } from '../../utils/notificationLink';
+import { useCanOpenPage } from '../../hooks/useCanOpenPage';
+import { ROUTES } from '../../routes';
 
 interface ActivityFeedPMProps {
   limit?: number;
@@ -45,6 +47,8 @@ function resolveLink(notification: any): string {
 
 export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
   const navigate = useNavigate();
+  // A page the role can't open (e.g. Meeting Intelligence) falls back to Notifications
+  const canOpen = useCanOpenPage();
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All');
 
@@ -87,7 +91,8 @@ export function ActivityFeedPM({ limit = 10 }: ActivityFeedPMProps) {
         // non-critical — navigate anyway
       }
     }
-    navigate(resolveLink(notification));
+    const link = resolveLink(notification);
+    navigate(canOpen(link) ? link : ROUTES.notifications);
   }
 
   async function handleMarkAllRead() {

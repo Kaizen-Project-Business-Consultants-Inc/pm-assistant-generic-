@@ -2,6 +2,8 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Users, AlertTriangle, AlertOctagon } from 'lucide-react';
 import { apiService } from '../../../services/api';
+import { ROUTES } from '../../../routes';
+import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
 
 interface Project {
   id: string;
@@ -30,6 +32,8 @@ interface Props {
 
 export function TeamWorkloadWidget({ projects }: Props) {
   const navigate = useNavigate();
+  // A row opens the Resources page — only for roles that may open it (constants/roleRoutes.ts)
+  const canOpenResources = useCanOpenPage()(ROUTES.resources);
 
   const { data: resourcesData, isLoading: resLoading } = useQuery({
     queryKey: ['resources', 'widget'],
@@ -158,8 +162,13 @@ export function TeamWorkloadWidget({ projects }: Props) {
             return (
               <div
                 key={r.name}
-                onClick={() => navigate('/resources')}
-                className="flex items-center gap-2.5 px-1.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                {...(canOpenResources ? {
+                  role: 'link',
+                  tabIndex: 0,
+                  onClick: () => { void navigate(ROUTES.resources); },
+                  onKeyDown: (e: React.KeyboardEvent) => { if (e.key === 'Enter') void navigate(ROUTES.resources); },
+                } : {})}
+                className={`flex items-center gap-2.5 px-1.5 py-1 rounded-lg transition-colors ${canOpenResources ? 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer' : ''}`}
               >
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${hasWarning ? 'bg-red-100 dark:bg-red-900/30' : 'bg-primary-100 dark:bg-primary-900/30'}`}>
                   <span className={`text-xs font-semibold ${hasWarning ? 'text-red-700 dark:text-red-300' : 'text-primary-700 dark:text-primary-300'}`}>

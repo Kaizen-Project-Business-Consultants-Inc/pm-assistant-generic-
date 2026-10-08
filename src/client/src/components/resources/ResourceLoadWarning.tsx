@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { describeOverload, type LoadCheckResult } from '../../utils/resourceLoad';
+import { useCanOpenPage } from '../../hooks/useCanOpenPage';
+import { ROUTES } from '../../routes';
 
 interface Props {
   resourceId: string;
@@ -21,6 +23,8 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
  * % or dates change (debounced).
  */
 export function ResourceLoadWarning({ resourceId, startDate, endDate, allocationPct, excludeTaskId }: Props) {
+  // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
+  const canOpenResources = useCanOpenPage()(ROUTES.resources);
   const params = { resourceId, startDate: startDate.slice(0, 10), endDate: endDate.slice(0, 10), allocationPct, excludeTaskId };
   const key = JSON.stringify(params);
   const [debounced, setDebounced] = useState(key);
@@ -50,7 +54,7 @@ export function ResourceLoadWarning({ resourceId, startDate, endDate, allocation
       <span>
         {text}{' '}
         {/* New tab: the form being filled in stays open */}
-        <a href="/resources?tab=workload" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">See Workload Heatmap</a>
+        {canOpenResources && <a href="/resources?tab=workload" target="_blank" rel="noopener noreferrer" className="underline font-medium hover:text-amber-900 dark:hover:text-amber-100">See Workload Heatmap</a>}
       </span>
     </div>
   );

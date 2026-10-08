@@ -252,6 +252,8 @@ The middleware is applied to all project-scoped routes across:
 
 Routes without a project context (e.g., `GET /projects` list, `GET /timesheet` for the current user) are not affected — the middleware skips when no projectId can be extracted.
 
+**App pages by role (Oct 2026):** the app hides pages a role can't use — typing their address goes to the dashboard (`constants/roleRoutes.ts`, `RoleRouteGuard`), and billing buttons show only to the company owner. This is a UI tidy-up, not the security boundary: the server still decides what data anyone may read or change, whatever page they open.
+
 ---
 
 ## 5. Password Security

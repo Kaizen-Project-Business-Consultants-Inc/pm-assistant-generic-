@@ -37,6 +37,7 @@ describe('the company owner works as PMO', () => {
     for (const f of [['components', 'layout', 'Sidebar.tsx'], ['components', 'layout', 'TopBar.tsx'], ['pages', 'settings', 'ProfileTab.tsx']]) {
       expect(client(...f)).toMatch(/roleLabel\(user\.accountRole \?\? user\.role\)/);
     }
-    expect(client('components', 'layout', 'Sidebar.tsx')).toMatch(/NON_VIEWER_ROLES: NavItem\['roles'\] = \['admin', 'executive', 'project_manager', 'pmo'\]/);
+    // the menu (and the router) read who may open what from constants/roleRoutes.ts since 2026-10-08
+    expect(client('constants', 'roleRoutes.ts')).toMatch(/NON_VIEWER_ROLES: Role\[\] = \['admin', 'executive', 'project_manager', 'pmo'\]/);
   });
 });

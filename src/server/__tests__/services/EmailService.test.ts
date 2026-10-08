@@ -598,6 +598,13 @@ describe('EmailService', () => {
       );
     });
 
+    it('links to Reports, which every role can open (Report Builder is managers-only)', async () => {
+      await service.sendReportEmail(['a@t.com'], 'Weekly', 'data');
+      const html = mockSend.mock.calls[0][0].html as string;
+      expect(html).toContain('/reports"');
+      expect(html).not.toContain('/report-builder');
+    });
+
     it('sanitizes filename for special characters', async () => {
       await service.sendReportEmail(['a@t.com'], 'My Report: Q3/2026!', 'data');
 
@@ -1152,6 +1159,13 @@ describe('EmailService', () => {
 
       expect(mockSend).not.toHaveBeenCalled();
       (config as any).RESEND_API_KEY = origKey;
+    });
+
+    it("the button opens the meeting's project RAID log, not the managers-only Meeting Intelligence page", async () => {
+      await service.sendMeetingMinutes(['a@t.com'], 'Retro', '2026-09-10', 'S', [], [], [], 'p-1');
+      const html = mockSend.mock.calls[0][0].html as string;
+      expect(html).toContain('/project/p-1?tab=raid');
+      expect(html).not.toContain('/meetings"');
     });
 
     it('sends meeting minutes with all sections', async () => {

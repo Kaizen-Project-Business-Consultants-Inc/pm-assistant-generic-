@@ -408,7 +408,7 @@ export class EmailService {
         Your scheduled report <strong>${escapeHtml(reportName)}</strong> is attached as a CSV file.
       </p>
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${config.APP_URL}/report-builder" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+        <a href="${config.APP_URL}/reports" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
           View Reports
         </a>
       </div>
@@ -1001,6 +1001,9 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
     actionItems: Array<{ description: string; assignee: string; dueDate?: string; priority: string }>,
     decisions: Array<{ decision: string; madeBy?: string }>,
     attendees: string[],
+    /** The meeting's project: the button opens its RAID log, where the actions live. Attendees are
+     *  often team members, who can't open the company-wide Meeting Intelligence page (2026-10-08). */
+    projectId?: string,
   ): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Meeting minutes email would be sent to ${recipients.map(r => maskPii(r)).join(', ')}: ${meetingTitle}`);
@@ -1056,7 +1059,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
     // CTA
     bodyHtml += `
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${config.APP_URL}/meetings" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+        <a href="${config.APP_URL}${projectId ? `/project/${encodeURIComponent(projectId)}?tab=raid` : '/dashboard'}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
           View in PM Assistant
         </a>
       </div>

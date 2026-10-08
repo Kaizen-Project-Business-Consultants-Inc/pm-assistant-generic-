@@ -2,7 +2,8 @@ import { useId, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
-import { ROUTES, routeTo } from '../../routes';
+import { routeTo } from '../../routes';
+import { ClientBreadcrumb } from './ClientBreadcrumb';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
@@ -67,11 +68,7 @@ export function ClientRaidPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <nav aria-label="Breadcrumb" className="text-sm text-gray-500 dark:text-gray-400">
-        <Link to={ROUTES.clients} className="hover:underline text-primary-600 dark:text-primary-400">Clients</Link>
-        <span className="mx-1.5" aria-hidden="true">›</span>
-        <span className="text-gray-700 dark:text-gray-200">{name}</span>
-      </nav>
+      <ClientBreadcrumb name={name} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>

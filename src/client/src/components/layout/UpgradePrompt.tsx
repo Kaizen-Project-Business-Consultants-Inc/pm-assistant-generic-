@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, X } from 'lucide-react';
+import { useCanManageBilling } from '../../hooks/useCanManageBilling';
 
 interface BlockDetail {
   message?: string;
@@ -14,6 +15,8 @@ const TIER_ONLY_FALLBACK = 'Your trial has ended. Subscribe to continue creating
 export function UpgradePrompt() {
   const [visible, setVisible] = useState(false);
   const [detail, setDetail] = useState<BlockDetail | null>(null);
+  // Only the company owner pays; everyone else is told who does instead of being sent to Pricing
+  const canBill = useCanManageBilling();
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -50,7 +53,10 @@ export function UpgradePrompt() {
             <Crown className="w-6 h-6 text-amber-600 dark:text-amber-400" />
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{heading}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">{body}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+            {body}
+            {!canBill && <> Your company's owner manages the plan.</>}
+          </p>
           <div className="flex gap-3">
             <button
               onClick={() => setVisible(false)}
@@ -58,6 +64,7 @@ export function UpgradePrompt() {
             >
               Dismiss
             </button>
+            {canBill && (
             <Link
               to="/pricing"
               onClick={() => setVisible(false)}
@@ -65,6 +72,7 @@ export function UpgradePrompt() {
             >
               {ctaLabel}
             </Link>
+            )}
           </div>
         </div>
       </div>

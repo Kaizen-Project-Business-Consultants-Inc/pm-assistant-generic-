@@ -5,6 +5,7 @@ import { useUIStore, Notification } from '../../stores/uiStore';
 import { apiService } from '../../services/api';
 import { timeAgo } from '../../utils/timeAgo';
 import { notificationLink } from '../../utils/notificationLink';
+import { useCanOpenPage } from '../../hooks/useCanOpenPage';
 import { AlertActionButton } from './AlertActionButton';
 
 const typeIcons: Record<string, React.ElementType> = {
@@ -57,6 +58,8 @@ export function NotificationBell() {
   const [fetchedPersisted, setFetchedPersisted] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  // A notification about a page the role can't open (e.g. Meeting Intelligence) isn't a link
+  const canOpen = useCanOpenPage();
 
   const notifications = useUIStore((state) => state.notifications);
   const unreadCount = useUIStore((state) => state.unreadCount);
@@ -274,7 +277,8 @@ export function NotificationBell() {
                 const severityColor = severityColors[notification.severity] || 'bg-gray-400';
                 const severityText = severityTextColors[notification.severity] || 'text-gray-600 dark:text-gray-400';
 
-                const target = notificationLink(notification);
+                const link = notificationLink(notification);
+                const target = link && canOpen(link) ? link : null;
                 const isClickable = !!target;
 
                 return (

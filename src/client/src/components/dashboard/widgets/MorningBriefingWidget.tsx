@@ -4,6 +4,7 @@ import { Sun, ChevronDown, ChevronUp, Users, CheckSquare } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../../stores/authStore';
+import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
 import { formatCalendarDate } from '../../../utils/dateUtils';
 import {
   buildProjectBriefings, statusSummary, YOURS_WINDOW_DAYS,
@@ -54,6 +55,8 @@ interface Props {
 
 export function MorningBriefingWidget({ scope }: Props) {
   const user = useAuthStore(s => s.user);
+  // An item or "See all" pointing at a page the role can't open (e.g. AI Proposals) isn't a link
+  const canOpen = useCanOpenPage();
   const isViewer = user?.role === 'viewer';
 
   const [collapsed, setCollapsed] = useState(() => {
@@ -160,23 +163,32 @@ export function MorningBriefingWidget({ scope }: Props) {
       showOwner && item.resourceName ? `Owner: ${item.resourceName}` : '',
     ].filter(Boolean).join(' · ');
     const noOwner = showOwner && !item.resourceName;
+    const content = (
+      <>
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 group-hover:underline" title={item.label}>{item.label}</span>
+          {item.tag && <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded ${TONE_CLASSES[item.tone]}`}>{item.tag}</span>}
+        </div>
+        {(second || noOwner) && (
+          <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5" title={second}>
+            {second}
+            {noOwner && <>{second ? ' · ' : ''}<span className="font-semibold text-amber-700 dark:text-amber-400">No owner</span></>}
+          </div>
+        )}
+      </>
+    );
     return (
       <li key={item.id}>
-        <Link
-          to={item.link}
-          className="block -mx-2 px-2 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 group-hover:underline" title={item.label}>{item.label}</span>
-            {item.tag && <span className={`shrink-0 text-xs font-medium px-1.5 py-0.5 rounded ${TONE_CLASSES[item.tone]}`}>{item.tag}</span>}
-          </div>
-          {(second || noOwner) && (
-            <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-0.5" title={second}>
-              {second}
-              {noOwner && <>{second ? ' · ' : ''}<span className="font-semibold text-amber-700 dark:text-amber-400">No owner</span></>}
-            </div>
-          )}
-        </Link>
+        {canOpen(item.link) ? (
+          <Link
+            to={item.link}
+            className="block -mx-2 px-2 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 group"
+          >
+            {content}
+          </Link>
+        ) : (
+          <div className="block -mx-2 px-2 py-1.5">{content}</div>
+        )}
       </li>
     );
   };
@@ -191,7 +203,7 @@ export function MorningBriefingWidget({ scope }: Props) {
       ) : (
         <ul className="space-y-0.5">
           {s.items.slice(0, max).map(i => renderItem(i, ownerless(s.key)))}
-          {s.count > Math.min(max, s.items.length) && (
+          {s.count > Math.min(max, s.items.length) && canOpen(s.moreLink) && (
             <li className="pt-1">
               <Link to={s.moreLink} className="text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline">
                 See all {s.count} →

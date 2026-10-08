@@ -9,6 +9,7 @@ import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { apiService } from './services/api';
 import AppLayout from './components/layout/AppLayout';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { RoleRouteGuard } from './components/layout/RoleRouteGuard';
 
 // Eagerly loaded (part of initial bundle — needed immediately)
 import { LoginPage } from './pages/LoginPage';
@@ -164,6 +165,8 @@ function App() {
       <AppUpdater />
       <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
+      {/* Pages a role can't open (constants/roleRoutes.ts) go to the dashboard */}
+      <RoleRouteGuard>
       <Routes>
         {/* Public routes */}
         <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
@@ -238,6 +241,7 @@ function App() {
         {/* Catch-all */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
+      </RoleRouteGuard>
       </Suspense>
       </ErrorBoundary>
       <CookieConsentBanner />

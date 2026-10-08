@@ -10,6 +10,8 @@ import {
 import { apiService } from '../../services/api';
 import { severityColor } from '../../utils/severityColors';
 import { useModal } from '../../hooks/useModal';
+import { useCanOpenPage } from '../../hooks/useCanOpenPage';
+import { ROUTES } from '../../routes';
 
 // --- Types ---
 
@@ -201,26 +203,30 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
 
   const { dialogRef, handleKeyDown: modalKeyDown } = useModal(isOpen, onClose);
 
+  // Only pages this person's role can open (constants/roleRoutes.ts) — same as the sidebar
+  const canOpen = useCanOpenPage();
+  const commands = useMemo(() => allCommands.filter(c => canOpen(c.path)), [canOpen]);
+
   // Filter commands by query
   const filteredCommands = useMemo(() => {
     if (query.length >= 2) return []; // Switch to entity search mode
     if (!query) return [];
     const lower = query.toLowerCase();
-    return allCommands.filter(c =>
+    return commands.filter(c =>
       c.label.toLowerCase().includes(lower) ||
       (c.description && c.description.toLowerCase().includes(lower))
     );
-  }, [query]);
+  }, [query, commands]);
 
   // Build recent command items
   const recentCommands = useMemo(() => {
     if (query) return []; // Hide recents when filtering
     const recentIds = getRecents();
     return recentIds
-      .map(id => allCommands.find(c => c.id === id))
+      .map(id => commands.find(c => c.id === id))
       .filter((c): c is CommandItem => !!c)
       .map(c => ({ ...c, section: 'recent' as const }));
-  }, [query, isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [query, isOpen, commands]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Determine what to show in empty/command mode
   const showEntitySearch = query.length >= 2;
@@ -229,7 +235,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
 
   // Items for keyboard navigation in command mode
   const commandItems = showDefaultCommands
-    ? [...recentCommands, ...actionCommands, ...navigateCommands]
+    ? [...recentCommands, ...commands]
     : showCommandFilter
       ? filteredCommands
       : [];
@@ -257,7 +263,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     debounceRef.current = setTimeout(async () => {
       try {
         const data = await apiService.search(query);
-        setResults(data.results || []);
+        // A person found here opens on the Resources page — left out for roles that can't open it
+        setResults((data.results || []).filter((r: SearchResult) => r.type !== 'resource' || canOpen(ROUTES.resources)));
         setSelectedIndex(0);
       } catch {
         setResults([]);
@@ -268,7 +275,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query]);
+  }, [query, canOpen]);
 
   // Reset selected index when items change
   useEffect(() => {

@@ -12,6 +12,7 @@ import { getInitials } from '../ui/Avatar';
 import CommandPalette from './CommandPalette';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 import { ROUTES, ROUTE_PATTERNS } from '../../routes';
+import { canOpenPath } from '../../constants/roleRoutes';
 
 interface Breadcrumb {
   label: string;
@@ -148,9 +149,11 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
   });
   const clientName = clientId ? clientsData?.groups?.find(g => g.id === clientId)?.name : undefined;
 
+  // A crumb for a page the role can't open (e.g. Clients above a client report) is plain text
   const breadcrumbs = useMemo(
-    () => buildBreadcrumbs(location.pathname, { project: projectName, client: clientName }),
-    [location.pathname, projectName, clientName],
+    () => buildBreadcrumbs(location.pathname, { project: projectName, client: clientName })
+      .map(c => (c.to && !canOpenPath(user, c.to) ? { label: c.label } : c)),
+    [location.pathname, projectName, clientName, user],
   );
 
   // Close dropdown when clicking outside

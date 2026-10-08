@@ -63,6 +63,8 @@ const sections: Section[] = [
       'Use the sidebar to navigate between features',
       'Want to see every feature filled in? Tick "Explore a sample project first" in setup, or load it later in Settings → Sample project (company owner or PMO). It is read-only, never counts in your totals, and can be removed any time',
       'The person who set up the company (the owner) can do everything a PMO can — every project and the company-wide settings — whatever role they picked',
+      "Team members, viewers and the other non-manager roles open Dashboard, Projects, Lessons, Reports, AI Query, their personal pages, and everything inside their projects; typing the address of a company-wide page your role can't use takes you to the Dashboard",
+      "Billing (plan, payment, AI top-ups, seats) is the company owner's: others see the plan and AI usage on Account, without the billing buttons",
       'Something not in your plan? A "Part of a paid plan" window shows the plans; nothing you have set up is lost',
     ],
   },

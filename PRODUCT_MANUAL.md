@@ -2100,6 +2100,8 @@ Five user roles with hierarchical scope-based permissions. The `write` scope all
 
 **Legacy roles:** The backend retains 14 historical roles (scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme) for backward compatibility with existing users. These roles are no longer offered in UI dropdowns but continue to function with their original scope permissions. Users with legacy roles see sidebar items as locked until their role is updated to one of the 5 active roles.
 
+**Pages by role (October 2026).** One list, `src/client/src/constants/roleRoutes.ts`, drives both the sidebar menu and the router. A page whose menu entry is limited to some roles can't be opened by others: typing its address (or a deeper one, or with `?tab=`) goes to the Dashboard, replacing the history entry so Back doesn't loop. Team members, viewers and the legacy roles lose Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM, Simulation, Scenarios, Report Builder and AI Proposals; project managers lose Portfolio; executives lose Integrations and AI Proposals; PMO (and the company owner) keep everything. Pages outside the menu — a project and its tabs, a client's RAID and report (linked from Projects), Help, Settings, Account, KPI drill-ins — stay open. Links to hidden pages (command palette, dashboard widgets, notifications, breadcrumbs, Workload Heatmap links, email buttons) are hidden or pointed elsewhere. The server's own checks are unchanged; this is what the app shows.
+
 #### Guest Collaborator Role
 
 External stakeholders (clients, contractors, auditors) can be invited as guest collaborators with authenticated, scoped access to specific projects — without consuming a paid seat.
@@ -2276,6 +2278,7 @@ The `AccountBillingPage` (`/account/billing`) shows:
 
 - **Plan name**: dynamically resolved from the user's actual subscription tier — never hardcoded. Trial tier shows "Trial Plan", paid tiers show "Consultant Basic Plan", "Consultant Pro Plan", "SME Plan", or "Enterprise Plan" accordingly.
 - **Top-up balance**: remaining purchased token balance with a **Buy More** button linking to the token top-up Stripe checkout.
+- **Owner only (October 2026)**: Manage Billing, the top-up card, seat buttons and View Plans & Subscribe show only to the company owner (or the platform admin) — billing runs on the owner's own payment account. Everyone else sees the plan and AI usage and "Your company's owner manages the plan, payment and AI top-ups." The trial banner and the paid-plan window follow the same rule.
 - **AI usage meter**: progress bar showing current-month token consumption vs the effective budget (tier allowance + top-up balance), color-coded green/amber/red.
 
 ### Viewer Invite Flow

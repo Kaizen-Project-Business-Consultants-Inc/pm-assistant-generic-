@@ -2,46 +2,24 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  FileText,
   Settings,
   ChevronLeft,
   ChevronRight,
-  Layers,
-  Search,
-  Clock,
-  BarChart3,
-  Target,
-  Bell,
   Gauge,
-  Briefcase,
   Users,
   Building,
-  Building2,
   Cpu,
   ScrollText,
   ArrowLeftRight,
   HelpCircle,
-  UserCog,
-
-  BookOpen,
-  GitPullRequest,
-  TrendingUp,
   Star,
   MessageCircleHeart,
   Zap,
   DollarSign,
   Tag,
-  Dices,
-  FlaskConical,
-  Workflow,
-  FileBarChart,
-  ClipboardList,
-  Plug,
-  Bot,
   Calendar,
   CalendarClock,
   Mail,
-  Brain,
   Lock,
 } from 'lucide-react';
 import { useAuthStore, withoutCompany, isPlatformAdmin } from '../../stores/authStore';
@@ -50,6 +28,8 @@ import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 import { roleLabel } from '../../constants/branding';
 import { KovartiMark } from '../ui/KovartiMark';
+import { PM_NAV_SECTIONS, GUEST_HIDDEN_PATHS } from '../../constants/roleRoutes';
+import type { NavItem, NavSection } from '../../constants/roleRoutes';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -58,72 +38,7 @@ interface SidebarProps {
   onMobileClose?: () => void;
 }
 
-interface NavItem {
-  labelKey: string;
-  icon: React.ElementType;
-  path: string;
-  roles?: Array<'admin' | 'executive' | 'project_manager' | 'team_member' | 'scrum_master' | 'finance_officer' | 'risk_manager' | 'pmo' | 'ba' | 'qa' | 'tester' | 'devops' | 'claude_sme' | 'viewer'>;
-}
-
-interface NavSection {
-  titleKey: string;
-  items: NavItem[];
-}
-
-// All roles except viewer and team_member (PMO was missing — and the company owner works as PMO)
-const NON_VIEWER_ROLES: NavItem['roles'] = ['admin', 'executive', 'project_manager', 'pmo'];
-
-const pmNavSections: NavSection[] = [
-  {
-    titleKey: 'section.work',
-    items: [
-      { labelKey: 'nav.dashboard', icon: Gauge, path: '/dashboard' },
-      { labelKey: 'nav.projects', icon: Briefcase, path: '/projects' },
-      { labelKey: 'nav.clients', icon: Building2, path: '/clients', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.portfolio', icon: Layers, path: '/portfolio', roles: ['admin', 'executive', 'pmo'] },
-    ],
-  },
-  {
-    titleKey: 'section.manage',
-    items: [
-      { labelKey: 'nav.resources', icon: UserCog, path: '/resources', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.intelligence', icon: Brain, path: '/meetings', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.lessons', icon: BookOpen, path: '/lessons' },
-      { labelKey: 'nav.changeRequests', icon: GitPullRequest, path: '/change-requests', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.workflows', icon: Workflow, path: '/workflows', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.intake', icon: ClipboardList, path: '/intake', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.integrations', icon: Plug, path: '/integrations', roles: ['admin', 'project_manager', 'pmo'] },
-    ],
-  },
-  {
-    titleKey: 'section.insights',
-    items: [
-      { labelKey: 'nav.analytics', icon: BarChart3, path: '/analytics', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.evm', icon: TrendingUp, path: '/evm', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.simulation', icon: Dices, path: '/monte-carlo', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.scenarios', icon: FlaskConical, path: '/scenarios', roles: NON_VIEWER_ROLES },
-      { labelKey: 'nav.reports', icon: FileText, path: '/reports' },
-      { labelKey: 'nav.reportBuilder', icon: FileBarChart, path: '/report-builder', roles: NON_VIEWER_ROLES },
-    ],
-  },
-  {
-    titleKey: 'section.ai',
-    items: [
-      { labelKey: 'nav.aiQuery', icon: Search, path: '/query' },
-      { labelKey: 'nav.aiProposals', icon: Bot, path: '/agent', roles: ['admin', 'project_manager', 'pmo'] },
-    ],
-  },
-  {
-    titleKey: 'section.personal',
-    items: [
-      { labelKey: 'nav.notifications', icon: Bell, path: '/notifications' },
-      { labelKey: 'nav.timesheets', icon: Clock, path: '/timesheet' },
-      { labelKey: 'nav.goals', icon: Target, path: '/goals' },
-      { labelKey: 'nav.myFeedback', icon: MessageCircleHeart, path: '/my-feedback' },
-      { labelKey: 'nav.settings', icon: Settings, path: '/settings' },
-    ],
-  },
-];
+// The project-side menu and who may open each page live in constants/roleRoutes.ts (the router uses the same list)
 
 const adminNavSections: NavSection[] = [
   {
@@ -256,10 +171,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
   const pinnedProjects: { id: string; name: string }[] = (favData?.projects || []).slice(0, 5);
 
   const isGuest = user?.isGuest;
-  const GUEST_BLOCKED_PATHS = new Set(['/resources', '/integrations', '/admin', '/settings', '/workflows', '/intake', '/change-requests']);
-  const baseNav = isAdmin && adminView ? adminNavSections : pmNavSections;
+  const baseNav = isAdmin && adminView ? adminNavSections : PM_NAV_SECTIONS;
   const navSections = isGuest
-    ? baseNav.map(s => ({ ...s, items: s.items.filter(i => !GUEST_BLOCKED_PATHS.has(i.path)) })).filter(s => s.items.length > 0)
+    ? baseNav.map(s => ({ ...s, items: s.items.filter(i => !GUEST_HIDDEN_PATHS.has(i.path)) })).filter(s => s.items.length > 0)
     : baseNav;
 
   const isActive = (path: string): boolean => {

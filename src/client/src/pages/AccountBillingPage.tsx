@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { formatCalendarDate } from '../utils/dateUtils';
+import { useCanManageBilling } from '../hooks/useCanManageBilling';
 
 interface SubscriptionStatus {
   tier: string;
@@ -97,8 +98,13 @@ function formatTokens(n: number) {
   return String(n);
 }
 
+/** Said where the billing buttons are hidden for everyone but the owner */
+const OWNER_MANAGES_BILLING = "Your company's owner manages the plan, payment and AI top-ups.";
+
 export const AccountBillingPage: React.FC = () => {
   const queryClient = useQueryClient();
+  // Billing is the company owner's (or the platform admin's); others see the plan and usage only
+  const canManageBilling = useCanManageBilling();
   const [portalLoading, setPortalLoading] = useState(false);
   const [topUpLoading, setTopUpLoading] = useState(false);
   const [seatLoading, setSeatLoading] = useState(false);
@@ -112,6 +118,7 @@ export const AccountBillingPage: React.FC = () => {
   const { data: topUpData } = useQuery({
     queryKey: ['topup-balance'],
     queryFn: () => apiService.getTopUpBalance(),
+    enabled: canManageBilling,
   });
 
   const { data: budgetData } = useQuery({
@@ -123,7 +130,7 @@ export const AccountBillingPage: React.FC = () => {
   const { data: seatData } = useQuery({
     queryKey: ['seat-info'],
     queryFn: () => apiService.getSeatInfo(),
-    enabled: data?.tier === 'sme',
+    enabled: canManageBilling && data?.tier === 'sme',
   });
 
   const handleManageBilling = async () => {
@@ -198,7 +205,7 @@ export const AccountBillingPage: React.FC = () => {
     <div className="p-6 max-w-3xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Account & Billing</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your subscription and billing details</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{canManageBilling ? 'Manage your subscription and billing details' : "Your company's plan and AI usage"}</p>
       </div>
 
       {isPaid ? (
@@ -243,6 +250,7 @@ export const AccountBillingPage: React.FC = () => {
                   )}
                 </div>
 
+                {canManageBilling ? (
                 <button
                   onClick={handleManageBilling}
                   disabled={portalLoading}
@@ -255,6 +263,9 @@ export const AccountBillingPage: React.FC = () => {
                   )}
                   Manage Billing
                 </button>
+                ) : (
+                  <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">{OWNER_MANAGES_BILLING}</p>
+                )}
               </div>
             </div>
           </div>
@@ -284,7 +295,7 @@ export const AccountBillingPage: React.FC = () => {
           )}
 
           {/* Seat Management (SME per-seat only) */}
-          {seatData && seatData.billingModel === 'per_seat' && (
+          {canManageBilling && seatData && seatData.billingModel === 'per_seat' && (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6 mb-4">
               <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Team Seats</h2>
               <div className="flex items-center justify-between mb-3">
@@ -342,7 +353,8 @@ export const AccountBillingPage: React.FC = () => {
             </div>
           )}
 
-          {/* Top-up Balance */}
+          {/* Top-up Balance — bought on the owner's own payment account, so only the owner's to see */}
+          {canManageBilling && (
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6 mb-4">
             <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Token Top-ups</h2>
             <div className="flex items-center justify-between">
@@ -366,6 +378,7 @@ export const AccountBillingPage: React.FC = () => {
               </button>
             </div>
           </div>
+          )}
 
           {/* Plan Details */}
           <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-6">
@@ -396,6 +409,7 @@ export const AccountBillingPage: React.FC = () => {
                 : 'Your trial has ended. Subscribe to restore full access to all features.'}
             </p>
 
+            {canManageBilling ? (
             <Link
               to="/pricing"
               className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary-600 text-white text-sm font-semibold rounded-lg hover:bg-primary-700 transition-colors"
@@ -403,6 +417,9 @@ export const AccountBillingPage: React.FC = () => {
               <Crown className="w-4 h-4" />
               View Plans & Subscribe
             </Link>
+            ) : (
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{OWNER_MANAGES_BILLING}</p>
+            )}
           </div>
         </div>
       )}

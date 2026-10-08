@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import { apiService } from '../../../services/api';
-import { routeTo } from '../../../routes';
+import { ROUTES, routeTo } from '../../../routes';
+import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
 
 interface CRSummary {
   /** Keyed by status — camelCased by the server like every response key ('in_review' arrives as 'inReview') */
@@ -36,6 +37,7 @@ function statusLabel(status: string): string {
 }
 
 export function ChangeRequestWidget() {
+  const canOpen = useCanOpenPage();
   const { data, isLoading } = useQuery<CRSummary>({
     queryKey: ['dashboard-cr-summary'],
     queryFn: () => apiService.getDashboardCRSummary(),
@@ -94,9 +96,10 @@ export function ChangeRequestWidget() {
       )}
 
       {/* Drill-down link */}
-      {total > 0 && (
+      {/* The all-requests page is for roles that may open it (constants/roleRoutes.ts) */}
+      {total > 0 && canOpen(ROUTES.changeRequests) && (
         <Link
-          to="/change-requests"
+          to={ROUTES.changeRequests}
           className="inline-flex items-center gap-1 text-xs text-primary-600 dark:text-primary-400 hover:underline"
         >
           <FileText className="w-3 h-3" />

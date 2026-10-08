@@ -5,6 +5,8 @@ import type { SavedView } from '../SavedViewsDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, type ColumnKey } from '../tableColumns';
 import { ColumnPickerDropdown } from '../ColumnPickerDropdown';
 import { GanttExportDropdown } from './GanttExportDropdown';
+import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
+import { ROUTES } from '../../../routes';
 import { WorkingCalendarButton } from '../calendar/WorkingCalendarButton';
 import {
   type GanttTask,
@@ -129,6 +131,8 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   calendarActive,
 }: GanttToolbarProps) {
   const colPickerId = useId();
+  // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
+  const canOpenResources = useCanOpenPage()(ROUTES.resources);
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
 
@@ -446,7 +450,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             <span className="ml-0.5 px-1.5 py-0.5 text-xs font-bold bg-amber-200 text-amber-800 rounded-full">{overallocatedCount}</span>
           )}
         </button>
-        {showOverallocation && (
+        {showOverallocation && canOpenResources && (
           <a
             href="/resources?tab=workload"
             className="text-xs font-medium text-amber-700 dark:text-amber-400 underline hover:text-amber-800 dark:hover:text-amber-300 print:hidden whitespace-nowrap"

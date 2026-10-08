@@ -168,6 +168,7 @@ The left sidebar is grouped into sections. Some items only show for certain role
 |---------|-----------|---------------|-----|
 | **Work** | Dashboard | Portfolio overview with KPI tiles, daily briefing, and widgets (default landing page) | Everyone |
 | | Projects | Create and manage projects | Everyone |
+| | Clients | Projects grouped by client; each client's risks & issues and client report | PMs, PMO, executives |
 | | Portfolio | Cross-project Gantt and portfolio view | PMO, executives |
 | **Manage** | Resources | People list, Team Planner, workload heatmap, histogram, capacity forecast | PMs, PMO, executives |
 | | Meeting Intelligence | Meeting transcript analysis, RAID import, and history | PMs, PMO, executives |
@@ -191,6 +192,10 @@ The left sidebar is grouped into sections. Some items only show for certain role
 | | Settings | Your profile and preferences; team, rate card and company settings for those who manage them | Everyone |
 
 The company owner works as PMO, so sees the PMO items. **Help** is in the menu under your name (top right) → **Help & Support**. **Account** (plan and billing) opens from the command palette (**Go to Account & Billing**) or from the AI usage indicator in the sidebar.
+
+**Pages your role can't open (October 2026).** The "Who" column is also what you can open by typing an address. If your role can't use a page — for a team member, viewer or any other role that isn't Admin, Executive, Project Manager or PMO: Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM Dashboard, Simulation, Scenario Modeling, Report Builder and AI Proposals — typing its address (or a deeper one such as `/workflows/…`) takes you to the Dashboard, and Back returns you to where you were. Links to those pages are hidden for you too: in the command palette (Ctrl+K), dashboard widgets, notifications, breadcrumbs and the Workload Heatmap links. Everything you reach from inside your projects still works — the project pages, a client's **Risks & issues** and **Client report** from the Projects page, Help, Settings, Timesheets, Goals and Account. Guests (invited outside collaborators) also don't get Resources, Workflows, Intake, Integrations or Change Requests.
+
+**Account page.** Everyone sees the company's plan and AI usage. **Manage Billing**, **Buy More Tokens**, the seat buttons and **View Plans & Subscribe** are shown only to the company owner, because billing is the owner's; others see "Your company's owner manages the plan, payment and AI top-ups." The trial banner and the "Part of a paid plan" window work the same way.
 
 The sidebar can be collapsed using the toggle at the bottom. On mobile devices, it slides in as an overlay.
 
@@ -2715,8 +2720,8 @@ Buttons that change company-wide things — New Project, Start, Add person, New 
 | **Admin** | The Kovarti platform team only (October 2026) — not part of any company. Runs the admin pages and can look into a company only through the read-only, recorded Support view. A company owner can't give anyone this role. |
 | **Company owner** | The person who set up the company (October 2026): whatever their role says, they can do everything a **PMO** can inside the company — every project, company-wide workflows and AI settings, resource requests, the people list, holidays, the rate card. Their own role is still what's shown as "your role". |
 | **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
-| **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). |
-| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Sidebar shows only Dashboard, Projects, Lessons, Reports, AI Query, and personal items. Free — no seat consumption. |
+| **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). Opens the same pages as a Viewer (see **Sidebar Navigation** for the list); the company-wide pages are hidden. |
+| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Opens only Dashboard, Projects, Lessons, Reports, AI Query and the personal pages; the other menu items show greyed out with a lock, and typing their address goes to the Dashboard. Free — no seat consumption. |
 | **Executive** | Pure read-only — dashboards, portfolio, and reports. No edits, no comments. |
 
 **My Assignments Widget** *(removed September 2026)*: its tasks and RAID items now appear under **Yours to do** in each project of the Morning Briefing (it also showed archived projects and the old meeting action-item list).

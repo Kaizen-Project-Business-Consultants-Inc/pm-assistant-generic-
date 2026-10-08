@@ -44,6 +44,8 @@ import { QuickFilterPills, type QuickFilterType } from './QuickFilterPills';
 import { useScheduleMutations } from './useScheduleMutations';
 import { buildTaskRiskMap, DEFAULT_RISK_THRESHOLDS, type RiskThresholds } from '../../../utils/taskRiskAssessment';
 import { useAuthStore } from '../../../stores/authStore';
+import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
+import { ROUTES } from '../../../routes';
 import { announce } from '../../../utils/announce';
 import { isCalendarOverdue, toCalendarDate } from '../../../utils/dateUtils';
 import type { WorkCalendar } from '../../../utils/workingDays';
@@ -51,6 +53,8 @@ import type { WorkCalendar } from '../../../utils/workingDays';
 export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
   const uid = useId();
   const queryClient = useQueryClient();
+  // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
+  const canOpenResources = useCanOpenPage()(ROUTES.resources);
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
@@ -960,7 +964,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
           <span>
             {loadWarning}{' '}
-            <a href="/resources?tab=workload" className="underline font-medium">See Workload Heatmap</a>
+            {canOpenResources && <a href="/resources?tab=workload" className="underline font-medium">See Workload Heatmap</a>}
           </span>
           <button
             onClick={() => { setLoadWarning(null); clearTimeout(loadTimerRef.current); }}

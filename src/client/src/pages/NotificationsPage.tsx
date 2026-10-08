@@ -5,6 +5,7 @@ import { useUIStore, Notification } from '../stores/uiStore';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
 import { notificationLink } from '../utils/notificationLink';
+import { useCanOpenPage } from '../hooks/useCanOpenPage';
 import { severityColor } from '../utils/severityColors';
 
 // ---------------------------------------------------------------------------
@@ -104,6 +105,8 @@ function groupRepeats(list: Notification[]): Array<{ key: string; items: Notific
 export function NotificationsPage() {
   const uid = useId();
   const navigate = useNavigate();
+  // A notification about a page the role can't open (e.g. Meeting Intelligence) isn't a link
+  const canOpen = useCanOpenPage();
   const notifications = useUIStore((state) => state.notifications);
   const addNotification = useUIStore((state) => state.addNotification);
   const dismissNotification = useUIStore((state) => state.dismissNotification);
@@ -318,7 +321,8 @@ export function NotificationsPage() {
             }
             return g.items.map((n: Notification) => {
             const Icon = typeIcons[n.type] || Info;
-            const target = notificationLink(n);
+            const link = notificationLink(n);
+            const target = link && canOpen(link) ? link : null;
             const isClickable = !!target;
             return (
               <div

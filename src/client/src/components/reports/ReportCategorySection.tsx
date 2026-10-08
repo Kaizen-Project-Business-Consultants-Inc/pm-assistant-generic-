@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { ReportCategory, ReportDefinition } from './reportCatalog';
 import { ReportTile } from './ReportTile';
+import { useCanOpenPage } from '../../hooks/useCanOpenPage';
 
 interface ReportCategorySectionProps {
   category: ReportCategory;
@@ -25,6 +26,9 @@ export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
   onToggleFavorite,
 }) => {
   const Icon = category.icon;
+  // "See also" pages the person's role can open (constants/roleRoutes.ts)
+  const canOpen = useCanOpenPage();
+  const seeAlso = (category.seeAlso ?? []).filter(link => canOpen(link.path));
 
   return (
     <div className="card p-0 overflow-hidden">
@@ -58,9 +62,9 @@ export const ReportCategorySection: React.FC<ReportCategorySectionProps> = ({
             ))}
           </div>
 
-          {category.seeAlso && category.seeAlso.length > 0 && (
+          {seeAlso.length > 0 && (
             <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-              {category.seeAlso.map(link => (
+              {seeAlso.map(link => (
                 <Link
                   key={link.path}
                   to={link.path}

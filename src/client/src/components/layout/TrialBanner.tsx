@@ -2,11 +2,24 @@ import { Link } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { Crown, Clock } from 'lucide-react';
 import { isPaidTier } from '../../constants/branding';
+import { canManageBilling } from '../../hooks/useCanManageBilling';
+
+/** The plan button. Only the company owner pays, so everyone else is told who does instead. */
+function PlanAction({ canBill, className, children }: { canBill: boolean; className: string; children: React.ReactNode }) {
+  if (!canBill) return <span className="text-xs font-normal opacity-90 flex-shrink-0">Your company's owner manages the plan.</span>;
+  return (
+    <Link to="/pricing" className={className}>
+      <Crown className="w-3 h-3" />
+      {children}
+    </Link>
+  );
+}
 
 export function TrialBanner() {
   const { user } = useAuthStore();
 
   if (!user) return null;
+  const canBill = canManageBilling(user);
 
   const tier = user.subscriptionTier || 'trial';
   const status = user.subscriptionStatus || 'none';
@@ -22,13 +35,7 @@ export function TrialBanner() {
     return (
       <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-sm font-medium flex items-center justify-center gap-3">
         <span>Your account is not active yet. Complete your payment to start using Kovarti PM.</span>
-        <Link
-          to="/pricing"
-          className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-amber-700 text-xs font-semibold rounded-full hover:bg-amber-50 transition-colors"
-        >
-          <Crown className="w-3 h-3" />
-          Complete Checkout
-        </Link>
+        <PlanAction canBill={canBill} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-amber-700 text-xs font-semibold rounded-full hover:bg-amber-50 transition-colors">Complete Checkout</PlanAction>
       </div>
     );
   }
@@ -52,13 +59,7 @@ export function TrialBanner() {
                 ? 'Last day of your trial — upgrade now to avoid interruption.'
                 : 'Your trial ends today!'}
         </span>
-        <Link
-          to="/pricing"
-          className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-primary-700 text-xs font-semibold rounded-full hover:bg-primary-50 transition-colors flex-shrink-0"
-        >
-          <Crown className="w-3 h-3" />
-          View Plans
-        </Link>
+        <PlanAction canBill={canBill} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-primary-700 text-xs font-semibold rounded-full hover:bg-primary-50 transition-colors flex-shrink-0">View Plans</PlanAction>
       </div>
     );
   }
@@ -67,13 +68,7 @@ export function TrialBanner() {
   return (
     <div className="bg-amber-500 text-white text-center py-2.5 px-4 text-sm font-medium flex items-center justify-center gap-3">
       <span>Your trial has ended. Subscribe to a plan to continue using Kovarti PM.</span>
-      <Link
-        to="/pricing"
-        className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-amber-700 text-xs font-semibold rounded-full hover:bg-amber-50 transition-colors"
-      >
-        <Crown className="w-3 h-3" />
-        Upgrade
-      </Link>
+      <PlanAction canBill={canBill} className="inline-flex items-center gap-1.5 px-3 py-1 bg-white text-amber-700 text-xs font-semibold rounded-full hover:bg-amber-50 transition-colors">Upgrade</PlanAction>
     </div>
   );
 }
