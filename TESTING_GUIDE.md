@@ -1508,6 +1508,14 @@ The code checker adds the in-memory side: **`no-restricted-syntax`** flags searc
 
 `npm run duplication` (`scripts/duplicationCheck.mjs`, ~20 s; settings `.jscpd.json`): jscpd finds blocks of 15+ lines that appear in two places (tests excluded). 2026-10-08: 69 copies, 2,070 lines in 67 files (measured on a clean checkout — files with Windows line endings in a working folder hide some copies from jscpd, so a working folder may show fewer; releases build from a clean checkout), listed in `scripts/duplication-baseline.json`. A copied block in a file that has never had one fails, and so do more copies than the baseline or the copied lines growing by more than 60: make it one shared function or component. (It compares by file, not by pair, because jscpd can pair the same block with a different file from one machine to another.) Shrink the list with `--update` after removing copies. Runs in `deploy.sh` with the code checker.
 
+## Speed tests (Oct 2026)
+
+`src/server/__tests__/performance/*.perf.test.ts` and `src/client/src/__tests__/performance/scheduleScreens.perf.test.tsx` run the heavy jobs on a generated plan (`perfData.ts`: 2,000 tasks in phases, ~1.2 links per task, a working-days calendar, 55 people) and fail if a job gets slower than its limit or stops growing in step with the plan. Each test measures the job at N/4 and N; the growth per doubling must stay under 3.0 (in proportion ≈ 2, an accidental n² ≈ 4). Limits are 3× the measured median on 2026-10-08 (minimum 50 ms) and are checked against the fastest of a few samples, with one retry, so a busy machine doesn't fail them while a real slowdown does. The table in each file's header has the numbers.
+
+Covered: Schedule Review, date cascade, critical path, Monte Carlo (plan size and iterations), status report, client report, re-flow (save, dry run, calendar change), Team Planner board, workload heatmap (one project, everyone); in the browser: Gantt rows and numbering, timeline strip, Gantt search and sort, Table sort by Duration and group, planner lanes, resource conflicts. About 45 s in total when run one file at a time.
+
+Slow but in proportion (limits set at today's speed, marked in the file headers): the workload heatmap (`ResourceService` visits every person × week × booking; 1.5 s at 4,000 tasks) and Table sort by Duration (`useTableGrouping` counts working days for every comparison; 2.4 s at 4,000 tasks). Both have a known fix: work out each value once.
+
 ## App download size limit (Oct 2026)
 
 `npm run bundle-budget` (`scripts/bundleBudget.mjs`, after `npm run build:client`) checks `src/client/dist`. `deploy.sh` runs it after every build that includes the client.
