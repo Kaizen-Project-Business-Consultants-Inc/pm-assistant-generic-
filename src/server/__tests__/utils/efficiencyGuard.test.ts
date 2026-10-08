@@ -52,8 +52,8 @@ const UNINDEXED_ALLOWED: Record<string, number> = {
   'services/scheduling/utilizationCoachingJob.ts': 1,
 };
 const NO_CLEANUP_ALLOWED: string[] = [
-  'workflow_executions', 'workflow_node_executions', 'agent_activity_log', 'ai_usage_log', 'api_key_usage_log',
-  'automation_executions', 'chat_messages', 'integration_sync_log', 'webhook_deliveries',
+  'workflow_executions', 'workflow_node_executions', 'agent_activity_log', 'ai_usage_log',
+  'automation_executions', 'chat_messages', 'integration_sync_log',
 ];
 const HEAVY_ROUTE_ALLOWED: Record<string, number> = {
   'routes/admin/auditTrail.ts': 2, // /verify (any reader — report item 1) and compliance export
@@ -204,6 +204,9 @@ describe('efficiency guard', () => {
       const m = /^\s*DELETE\s+FROM\s+`?(\w+)`?/i.exec(sql);
       if (m && /INTERVAL|<\s*(?:\?|NOW|CURDATE|DATE_SUB|UTC_TIMESTAMP)/i.test(sql)) cleaned.add(m[1].toLowerCase());
     }
+    // the nightly data-retention job names its tables at run time: deleteOlderThan…('table', days)
+    const retention = readFileSync(join(SERVER, 'services', 'DataRetentionService.ts'), 'utf-8');
+    for (const m of retention.matchAll(/deleteOlderThan\w*\(\s*'(\w+)'/g)) cleaned.add(m[1].toLowerCase());
     const missing = GROWING.filter(t => !cleaned.has(t) && !KEEP_FOREVER[t]);
     if (process.env.PRINT_EFFICIENCY) console.log('NO CLEANUP', missing);
     const unexpected = missing.filter(t => !NO_CLEANUP_ALLOWED.includes(t));
