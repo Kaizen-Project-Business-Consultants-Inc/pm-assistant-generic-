@@ -1,34 +1,77 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { BookOpen, Search, ArrowLeft } from 'lucide-react';
 // The same file that is updated with every change — one guide, never a second copy
 import guideMarkdown from '../../../../docs/USER_GUIDE.md?raw';
 import { renderMarkdown } from '../utils/renderMarkdown';
-import { splitUserGuide, searchGuide } from '../utils/userGuide';
+import { splitUserGuide, searchGuide, findGuideAnchor } from '../utils/userGuide';
 import { useAuthStore } from '../stores/authStore';
 
-const chapterFromHash = () => (typeof window !== 'undefined' ? decodeURIComponent(window.location.hash.replace(/^#/, '')) : '');
+/** The #id in the address; '' when there is none or it is malformed (e.g. #%E0) */
+const idFromHash = () => {
+  if (typeof window === 'undefined') return '';
+  try { return decodeURIComponent(window.location.hash.replace(/^#/, '')); } catch { return ''; }
+};
 
-/** The complete user guide inside the app: chapter list, search, one chapter at a time. */
+/** Where a #link should land: a heading in the shown chapter (none = the chapter title). Set when
+ *  the address's #id changes; following the same link again only gets the browser's own jump. */
+interface Landing { headingId?: string }
+
+/**
+ * The complete user guide inside the app: chapter list, search, one chapter at a time.
+ * A #link may name a chapter or any sub-heading in it (#rate-card): the reader opens the chapter
+ * that holds it, scrolls to the heading and moves keyboard / screen-reader focus there.
+ */
 export function FullUserGuidePage() {
   const role = useAuthStore((s) => s.user?.role);
   const chapters = useMemo(() => splitUserGuide(guideMarkdown, role), [role]);
   const [query, setQuery] = useState('');
-  const [activeId, setActiveId] = useState(() => chapterFromHash() || chapters[0]?.id || '');
+  const [initial] = useState(() => findGuideAnchor(chapters, idFromHash()));
+  const [activeId, setActiveId] = useState(() => initial?.chapterId || chapters[0]?.id || '');
+  const [landing, setLanding] = useState<Landing | null>(() => (initial?.headingId ? { headingId: initial.headingId } : null));
+  const articleRef = useRef<HTMLElement>(null);
 
   const shown = useMemo(() => searchGuide(chapters, query), [chapters, query]);
   const active = chapters.find(c => c.id === activeId) ?? chapters[0];
   const html = useMemo(() => (active ? DOMPurify.sanitize(renderMarkdown(active.markdown)) : ''), [active]);
 
   useEffect(() => {
-    const onHash = () => { const id = chapterFromHash(); if (id) setActiveId(id); };
+    const onHash = () => {
+      const target = findGuideAnchor(chapters, idFromHash());
+      if (!target) return;
+      setActiveId(target.chapterId);
+      setLanding({ headingId: target.headingId });
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  }, [chapters]);
+
+  // Give the shown chapter's sub-headings their ids, so links to them work. The page and the ids
+  // come from the same markdown and parser, so they pair up by position; if the counts ever differ
+  // (e.g. a raw HTML heading in the guide) no ids are set, and the guide test fails.
+  useEffect(() => {
+    const ids = active?.headingIds ?? [];
+    const headings = articleRef.current?.querySelectorAll('h3, h4, h5, h6');
+    if (!headings || headings.length !== ids.length) return;
+    headings.forEach((h, i) => { h.id = ids[i]; });
+  }, [html, active]);
+
+  // Land on the linked heading (or the chapter title): scroll to it and move focus there
+  useEffect(() => {
+    if (!landing) return;
+    setLanding(null);
+    const article = articleRef.current;
+    const el = landing.headingId ? article?.querySelector(`[id="${CSS.escape(landing.headingId)}"]`) : article?.querySelector('h2');
+    if (!(el instanceof HTMLElement)) return;
+    el.tabIndex = -1;
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [landing, html]);
 
   const open = (id: string) => {
     setActiveId(id);
+    setLanding(null);
     window.history.replaceState(null, '', `#${encodeURIComponent(id)}`);
     document.getElementById('guide-chapter')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -81,8 +124,9 @@ export function FullUserGuidePage() {
         </nav>
 
         <article
+          ref={articleRef}
           id="guide-chapter"
-          className="prose max-w-none min-w-0 overflow-x-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 md:p-8 scroll-mt-4"
+          className="prose max-w-none min-w-0 overflow-x-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 md:p-8 scroll-mt-4 [&_h2]:scroll-mt-20 [&_h3]:scroll-mt-20 [&_h4]:scroll-mt-20"
           dangerouslySetInnerHTML={{ __html: html }}
         />
       </div>

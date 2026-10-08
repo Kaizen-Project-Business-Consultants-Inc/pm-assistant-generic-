@@ -978,7 +978,7 @@ Look at the new images before committing — a baseline taken from a broken scre
 npx playwright test --config playwright.staging-full.config.ts linkcrawl --workers=1
 ```
 
-**Guide links** — `src/client/src/__tests__/utils/guideAnchors.test.tsx` (part of `npx vitest run`). Every `#link` in the text of `docs/USER_GUIDE.md` must be a chapter id, because the in-app reader (`/help/guide`) opens chapters only and sends any other id to chapter 1; the guide's own contents list (seen on GitHub only) must point at real `## ` headings and list every numbered chapter; the quick guide's (`/help`) contents links must match its section ids. Same rule: known breakages are allowed with a reason, and the list can only shrink.
+**Guide links** — `src/client/src/__tests__/utils/guideAnchors.test.tsx` (part of `npx vitest run`). Every `#link` in the text of `docs/USER_GUIDE.md` must lead somewhere both in the app and on GitHub: a chapter, or a sub-heading — the in-app reader (`/help/guide`) opens the chapter that holds a sub-heading, scrolls to it and moves focus there (since 2026-10-08). Ids are GitHub's heading ids (repeats numbered -1, -2… across the whole file). The guide's own contents list (seen on GitHub only) must point at real `## ` headings and list every numbered chapter; the quick guide's (`/help`) contents links must match its section ids. The allow-list is empty and can only stay that way or shrink. `src/client/src/__tests__/pages/fullUserGuideAnchors.test.tsx` drives the reader itself: every sub-heading of every chapter gets its id (as admin and as team member), a link to a heading in another chapter lands and takes focus, a malformed address opens chapter 1.
 
 ---
 

@@ -3,64 +3,45 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { splitUserGuide } from '../../utils/userGuide';
+import { splitUserGuide, findGuideAnchor, githubSlug } from '../../utils/userGuide';
 import { UserGuideContent } from '../../pages/UserGuidePage';
 
 /**
  * Guide links land where they say (2026-10-08).
  *
  * The full guide (docs/USER_GUIDE.md) is read in the app at /help/guide. The reader shows one
- * chapter ("## " heading) at a time and treats a #link as a CHAPTER id; any other id falls back
- * to chapter 1 — so a link to a sub-heading quietly opens the wrong page. Its own contents list
- * ("## Table of Contents") is dropped in the app, so that list is only read on GitHub, where ids
- * are GitHub's heading slugs.
+ * chapter ("## " heading) at a time; a #link may name a chapter or a sub-heading, which opens the
+ * chapter holding it and scrolls there (findGuideAnchor). The ids are GitHub's heading ids, so the
+ * same links work on GitHub. The guide's own contents list ("## Table of Contents") is dropped in
+ * the app, so that list is only read on GitHub.
  *
- * Known breakages are allowed below, each with a reason. The lists can only shrink: an entry
- * that works again fails the test until it is removed.
+ * Known breakages may be allowed below, each with a reason. The list can only shrink: an entry
+ * that works again fails the test until it is removed. (Emptied 2026-10-08.)
  */
-const ALLOWED: Record<string, string> = {
-  // In-text links that point at a sub-heading, not a chapter (open chapter 1 in the app)
-  'text:#working-calendar-and-company-holidays': 'KNOWN — efficiency report: sub-heading of 22, not a chapter',
-  'text:#slack-setup': 'KNOWN — efficiency report: sub-heading, not a chapter',
-  'text:#viewer-invites': 'KNOWN — efficiency report: sub-heading, not a chapter',
-  'text:#rate-card': 'KNOWN — efficiency report: sub-heading, not a chapter',
-  'text:#clients-october-2026': 'KNOWN — efficiency report: sub-heading, not a chapter',
-  // Contents list: wrong targets
-  'toc:#29-dashboard-widget-drag-to-reorder': 'KNOWN — efficiency report: chapter 29 is now "Dashboard Widget Customization"',
-  'toc:#32-scrum-enhancements': 'KNOWN — efficiency report: Scrum Enhancements is chapter 33',
-  // Contents list: numbered chapters it leaves out
-  'toc-missing:33-scrum-enhancements': 'KNOWN — efficiency report: not in the contents list',
-  'toc-missing:36-cookie-consent-analytics': 'KNOWN — efficiency report: not in the contents list',
-  'toc-missing:37-product-roadmap': 'KNOWN — efficiency report: not in the contents list',
-  'toc-missing:39-automation-engine': 'KNOWN — efficiency report: not in the contents list',
-  'toc-missing:40-document-intelligence': 'KNOWN — efficiency report: not in the contents list',
-  'toc-missing:29-dashboard-widget-customization': 'FOUND by guide-link test 2026-10-08: listed under its old name (see toc:#29-…)',
-  'toc-missing:26b-resource-management-enhancements': 'FOUND by guide-link test 2026-10-08: not in the contents list',
-};
+const ALLOWED: Record<string, string> = {};
 
 const guide = readFileSync(join(__dirname, '../../../../../docs/USER_GUIDE.md'), 'utf-8').replace(/\r\n/g, '\n');
-
-/** GitHub's heading id (github-slugger): lower case, punctuation dropped, each space a hyphen */
-const githubSlug = (s: string) => s.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, '').replace(/ /g, '-');
 
 function guideProblems(): string[] {
   const problems = new Set<string>();
   const chapters = splitUserGuide(guide, 'admin');
-  const chapterIds = new Set(chapters.map(c => c.id));
 
   const tocStart = guide.indexOf('## Table of Contents\n');
   const tocEnd = guide.indexOf('\n## ', tocStart + 1);
   const toc = guide.slice(tocStart, tocEnd);
   const body = guide.slice(0, tocStart) + guide.slice(tocEnd);
 
-  // 1. Links in the text, as the in-app reader resolves them: chapter ids only
+  // GitHub's ids for the chapters ("## " headings)
+  const githubIds = new Set([...guide.matchAll(/^## (.+)$/gm)].map(m => githubSlug(m[1])));
+
+  // 1. Links in the text: the in-app reader finds them (chapter or sub-heading), and so does GitHub
   for (const m of body.matchAll(/\]\(#([^)\s]+)\)/g)) {
     const id = decodeURIComponent(m[1]);
-    if (!chapterIds.has(id)) problems.add(`text:#${id}`);
+    if (!findGuideAnchor(chapters, id)) problems.add(`text:#${id}`);
+    if (!githubIds.has(id) && !chapters.some(c => c.headingIds.includes(id))) problems.add(`text-github:#${id}`);
   }
 
-  // 2. Contents list, as GitHub resolves it: the "## " headings' GitHub ids
-  const githubIds = new Set([...guide.matchAll(/^## (.+)$/gm)].map(m => githubSlug(m[1])));
+  // 2. Contents list, as GitHub resolves it: the chapters' GitHub ids
   const linked = new Set<string>();
   for (const m of toc.matchAll(/\]\(#([^)\s]+)\)/g)) {
     linked.add(m[1]);

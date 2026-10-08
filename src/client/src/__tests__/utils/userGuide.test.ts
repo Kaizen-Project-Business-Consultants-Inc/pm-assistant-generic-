@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { splitUserGuide, searchGuide } from '../../utils/userGuide';
+import { splitUserGuide, searchGuide, findGuideAnchor } from '../../utils/userGuide';
 
 const sample = [
   '# PM Assistant -- User Guide',
@@ -49,5 +49,38 @@ describe('splitUserGuide (in-app full guide)', () => {
     expect(ch.length).toBeGreaterThan(30);
     expect(ch.some(c => /Resources/.test(c.title))).toBe(true);
     expect(ch.every(c => !/admin only/i.test(c.markdown.split('\n').filter(l => l.startsWith('###')).join('\n')))).toBe(true);
+  });
+});
+
+describe('sub-heading ids (links to a heading, 2026-10-08)', () => {
+  const md = [
+    '## 1. Setup',
+    '### Admin Tools (Admin Only)',
+    '#### Permissions',
+    'admin text',
+    '### Everyday',
+    '#### Permissions',
+    'everyone',
+    '## 2. Notifications & Alerts',
+    '### Notifications',
+    '### A <kbd>key</kbd> trick',
+  ].join('\n');
+
+  it("a repeated heading keeps GitHub's number even when an earlier copy is hidden from this reader", () => {
+    expect(splitUserGuide(md, 'admin')[0].headingIds).toEqual(['admin-tools-admin-only', 'permissions', 'everyday', 'permissions-1']);
+    expect(splitUserGuide(md, 'team_member')[0].headingIds).toEqual(['everyday', 'permissions-1']);
+  });
+
+  it('a heading repeating a chapter title is numbered; inline HTML is left out of the id', () => {
+    expect(splitUserGuide(md)[1].headingIds).toEqual(['notifications', 'a-key-trick']);
+  });
+
+  it("finds a chapter by the app's id or GitHub's, and a sub-heading's chapter", () => {
+    const ch = splitUserGuide(md, 'team_member');
+    expect(findGuideAnchor(ch, '2-notifications-alerts')).toEqual({ chapterId: '2-notifications-alerts' });
+    expect(findGuideAnchor(ch, '2-notifications--alerts')).toEqual({ chapterId: '2-notifications-alerts' });
+    expect(findGuideAnchor(ch, 'permissions-1')).toEqual({ chapterId: '1-setup', headingId: 'permissions-1' });
+    expect(findGuideAnchor(ch, 'permissions')).toBeNull(); // the admin-only copy
+    expect(findGuideAnchor(ch, '')).toBeNull();
   });
 });
