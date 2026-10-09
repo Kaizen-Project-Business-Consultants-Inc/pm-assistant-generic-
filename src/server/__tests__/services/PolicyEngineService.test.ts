@@ -9,9 +9,15 @@ vi.mock('../../database/PolicyRepository', () => {
     insert: vi.fn(),
     updateFields: vi.fn(),
     deleteById: vi.fn().mockResolvedValue(false),
+    // one line per policy, as the tests below read them
     logEvaluation: vi.fn().mockResolvedValue(undefined),
     getEvaluationStats: vi.fn().mockResolvedValue({ total: 0, allowed: 0, blocked: 0, pendingApproval: 0 }),
   };
+  // the lines are now written in one statement (2026-10-09); each is handed to logEvaluation so the
+  // checks below still see every policy's line
+  (mockRepo as any).logEvaluations = vi.fn(async (rows: any[]) => {
+    for (const r of rows) await mockRepo.logEvaluation(r.policyId, r.action, r.actorId, r.entityType, r.entityId, r.matched, r.enforcementResult, r.contextSnapshot);
+  });
   return { policyRepository: mockRepo };
 });
 
@@ -180,6 +186,19 @@ describe('PolicyEngineService', () => {
       mockRepo.logEvaluation.mockRejectedValueOnce(new Error('DB down'));
       const result = await service.evaluate('task.create', baseContext);
       expect(result.enforcement).toBe('blocked');
+    });
+
+    it('three policies: their log lines go in one write', async () => {
+      mockRepo.findActive.mockResolvedValueOnce([
+        makePolicy({ id: 'a', conditionExpr: { field: '', op: '==', value: '' } }),
+        makePolicy({ id: 'b', conditionExpr: { field: 'budget', op: '>', value: 1000 } }),
+        makePolicy({ id: 'c', actionPattern: 'project.delete' }),
+      ]);
+      await service.evaluate('task.create', { ...baseContext, data: { budget: 5 } });
+      expect(mockRepo.logEvaluations).toHaveBeenCalledTimes(1);
+      expect(mockRepo.logEvaluations.mock.calls[0][0].map((r: any) => [r.policyId, r.matched, r.enforcementResult])).toEqual([
+        ['a', true, 'blocked'], ['b', false, 'allowed'],
+      ]);
     });
 
     it('passes projectId to getActivePolicies', async () => {

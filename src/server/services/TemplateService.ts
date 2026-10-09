@@ -644,6 +644,7 @@ export class TemplateService {
     const firstWorking = onOrAfterWorking(startDate, isWorking);
     const refIdToTaskId = new Map<string, string>();
     const createdTasks: any[] = [];
+    const createdById = new Map<string, any>(); // the same tasks by id, for the look-ups below
 
     for (const tt of sorted) {
       let taskStart = shiftWorking(firstWorking, Math.max(0, Math.round(tt.offsetDays || 0)), isWorking);
@@ -651,7 +652,7 @@ export class TemplateService {
       // Start after its predecessors: the main one sets the start, any others can only push it later
       const links = this.templateLinks(tt).filter(l => refIdToTaskId.has(l.refId));
       links.forEach((l, i) => {
-        const depTask = createdTasks.find(t => t.id === refIdToTaskId.get(l.refId));
+        const depTask = createdById.get(refIdToTaskId.get(l.refId)!);
         if (!depTask?.endDate) return;
         let earliest: Date | null = null;
         if (l.dependencyType === 'FS') earliest = shiftWorking(utcDay(depTask.endDate), 1 + Math.max(0, l.lagDays), isWorking);
@@ -661,7 +662,7 @@ export class TemplateService {
 
       // If this task has a parent, ensure it starts no earlier than parent
       if (tt.parentRefId && refIdToTaskId.has(tt.parentRefId)) {
-        const parentTask = createdTasks.find(t => t.id === refIdToTaskId.get(tt.parentRefId!));
+        const parentTask = createdById.get(refIdToTaskId.get(tt.parentRefId!)!);
         if (parentTask && parentTask.startDate) {
           const parentStart = utcDay(parentTask.startDate);
           if (taskStart < parentStart) taskStart = parentStart;
@@ -691,6 +692,7 @@ export class TemplateService {
 
       refIdToTaskId.set(tt.refId, task.id);
       createdTasks.push(task);
+      createdById.set(task.id, task);
     }
 
     // ── 5. The governance scaffold ──
@@ -797,6 +799,7 @@ export class TemplateService {
 
     for (const schedule of schedules) {
       const tasks = tasksBySchedule.get(schedule.id) ?? [];
+      // eslint-disable-next-line no-await-in-loop -- one calendar read per plan of the project (a handful)
       const isWorking = await this.workingDayTestFor(schedule.id);
       const taskIdToRefId = new Map<string, string>();
 
@@ -810,6 +813,7 @@ export class TemplateService {
         const t = tasks[i];
         const refId = taskIdToRefId.get(t.id)!;
         const parentRefId = t.parentTaskId ? taskIdToRefId.get(t.parentTaskId) || null : null;
+        // eslint-disable-next-line no-restricted-syntax -- small: one task's links (at most 20), Map look-up
         const deps = (t.dependencies ?? []).filter((d: any) => taskIdToRefId.has(d.dependencyId));
         const firstDep = deps[0];
         const depRefId = firstDep ? taskIdToRefId.get(firstDep.dependencyId) || null : null;

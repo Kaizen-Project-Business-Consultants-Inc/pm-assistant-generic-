@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, finishFor, utcDay, ymdOf } from '../utils/workingDays';
+import { chunksOf } from '../utils/chunksOf';
 
 interface ParsedRule {
   freq: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
@@ -95,6 +96,7 @@ export class RecurrenceService {
     for (const tpl of templates) {
       const rule = parseRecurrenceRule(tpl.recurrence_rule);
       if (!rule) continue;
+      // eslint-disable-next-line no-await-in-loop -- each template on its own plan's calendar; a few reads per template, not per date
       created += await this.expand(tpl, rule, horizon, Infinity);
     }
 
@@ -139,52 +141,56 @@ export class RecurrenceService {
     const latest = instances.length > 0 && instances[0].start_date ? utcDay(instances[0].start_date) : null;
     const anchor = tpl.start_date ? utcDay(tpl.start_date) : (latest ?? utcDay(new Date()));
 
-    let created = 0;
+    // The dates due (each working day once), then: one read of those already made, one read of the
+    // next free position, one INSERT per 200 — it was a read and an INSERT per date (2026-10-09)
+    const due: Array<{ day: Date; ymd: string }> = [];
     const used = new Set<string>();
     let next = getNextOccurrence(rule, anchor, isWorking);
-    for (let guard = 0; next <= horizon && created < max && guard < 20000; guard++) {
+    for (let guard = 0; next <= horizon && due.length < max && guard < 20000; guard++) {
       const day = instanceDate(next, isWorking);
       const ymd = formatDate(day);
       if ((!latest || day > latest) && !used.has(ymd)) {
         used.add(ymd);
-        // Check if instance already exists for this date
-        const existing = await databaseService.query(
-          `SELECT id FROM tasks WHERE recurrence_parent_id = ? AND start_date = ?`,
-          [tpl.id, ymd]
-        );
-
-        if (existing.length === 0) {
-          const id = uuidv4();
-          const duration = tpl.estimated_days || 1;
-          const endDate = finishFor(day, duration, isWorking);
-
-          await databaseService.query(
-            `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
-              estimated_days, start_date, end_date, progress_percentage, parent_task_id,
-              recurrence_parent_id, is_recurrence_template, sort_order, created_by)
-             SELECT ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, COALESCE(MAX(sort_order), -1) + 1, ? FROM tasks WHERE schedule_id = ?`,
-            [
-              id,
-              tpl.schedule_id,
-              tpl.name,
-              tpl.description || null,
-              tpl.priority || 'medium',
-              tpl.assigned_to || null,
-              tpl.estimated_days || null,
-              ymd,
-              formatDate(endDate),
-              tpl.parent_task_id || null,
-              tpl.id,
-              tpl.created_by,
-              tpl.schedule_id, // next free position in the schedule
-            ]
-          );
-          created++;
-        }
+        due.push({ day, ymd });
       }
-
       next = getNextOccurrence(rule, next, isWorking);
     }
+    if (due.length === 0) return 0;
+
+    const made = new Set<string>();
+    for (const part of chunksOf(due, 500)) {
+      // eslint-disable-next-line no-await-in-loop -- one read per 500 dates
+      const rows = await databaseService.query(
+        `SELECT DATE_FORMAT(start_date, '%Y-%m-%d') AS d FROM tasks WHERE recurrence_parent_id = ? AND start_date IN (${part.map(() => '?').join(',')})`,
+        [tpl.id, ...part.map(x => x.ymd)],
+      );
+      for (const r of rows) made.add(r.d);
+    }
+    const toMake = due.filter(x => !made.has(x.ymd)).slice(0, max === Infinity ? undefined : max);
+    if (toMake.length === 0) return 0;
+
+    const orderRows = await databaseService.query(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM tasks WHERE schedule_id = ?',
+      [tpl.schedule_id],
+    );
+    const firstOrder = Number(orderRows[0]?.next_order ?? 0);
+    const duration = tpl.estimated_days || 1;
+    const rows = toMake.map((x, i) => [
+      uuidv4(), tpl.schedule_id, tpl.name, tpl.description || null, tpl.priority || 'medium', tpl.assigned_to || null,
+      tpl.estimated_days || null, x.ymd, formatDate(finishFor(x.day, duration, isWorking)),
+      tpl.parent_task_id || null, tpl.id, tpl.created_by, firstOrder + i,
+    ]);
+    for (const part of chunksOf(rows, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 instances, positions in date order
+      await databaseService.query(
+        `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
+          estimated_days, start_date, end_date, progress_percentage, parent_task_id,
+          recurrence_parent_id, is_recurrence_template, created_by, sort_order)
+         VALUES ${part.map(() => "(?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, 0, ?, ?, 0, ?, ?)").join(', ')}`,
+        part.flat(),
+      );
+    }
+    const created = toMake.length;
 
     return created;
   }

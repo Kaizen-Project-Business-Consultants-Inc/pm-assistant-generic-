@@ -71,6 +71,7 @@ export class PolicyEngineService {
     const matchedPolicies: EvaluationResult['matchedPolicies'] = [];
     let strictestEnforcement: 'allowed' | 'blocked' | 'pending_approval' = 'allowed';
     const enforcementOrder = { allowed: 0, pending_approval: 1, blocked: 2 };
+    const evaluations: Parameters<typeof policyRepository.logEvaluations>[0] = [];
 
     for (const policy of policies) {
       if (!matchesPattern(policy.actionPattern, action)) continue;
@@ -102,14 +103,13 @@ export class PolicyEngineService {
         }
       }
 
-      try {
-        await policyRepository.logEvaluation(
-          policy.id, action, context.actorId, context.entityType || null,
-          context.entityId || null, conditionMatched,
-          conditionMatched ? enforcementResult : 'allowed', conditionData,
-        );
-      } catch { /* Non-critical */ }
+      evaluations.push({
+        policyId: policy.id, action, actorId: context.actorId, entityType: context.entityType || null,
+        entityId: context.entityId || null, matched: conditionMatched,
+        enforcementResult: conditionMatched ? enforcementResult : 'allowed', contextSnapshot: conditionData,
+      });
     }
+    try { await policyRepository.logEvaluations(evaluations); } catch { /* Non-critical */ }
 
     return { allowed: strictestEnforcement !== 'blocked', enforcement: strictestEnforcement, matchedPolicies };
   }

@@ -50,9 +50,10 @@ export class CustomFieldService {
   }
 
   async bulkSetValues(entityId: string, values: Array<{ fieldId: string; text?: string; number?: number; date?: string; boolean?: boolean }>): Promise<void> {
-    for (const v of values) {
-      await this.setValue(v.fieldId, entityId, v);
-    }
+    // every field is checked before anything is saved (a missing one used to stop half-way)
+    const existing = await customFieldRepository.existingFieldIds([...new Set(values.map(v => v.fieldId))]);
+    if (values.some(v => !existing.has(v.fieldId))) throw new Error('Field not found');
+    await customFieldRepository.upsertValues(entityId, values);
   }
 }
 

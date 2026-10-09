@@ -167,14 +167,12 @@ export class ActionProposalService {
         input.createdBy, connection,
       );
 
-      for (const action of input.actions) {
-        await actionProposalRepository.insertAction(
-          uuidv4(), id, action.executionOrder, action.actionType,
-          action.targetEntityType, action.targetEntityId,
-          action.oldValue ? JSON.stringify(action.oldValue) : null,
-          JSON.stringify(action.newValue), action.reasoning ?? null, connection,
-        );
-      }
+      await actionProposalRepository.insertActions(id, input.actions.map(action => ({
+        id: uuidv4(), executionOrder: action.executionOrder, actionType: action.actionType,
+        targetEntityType: action.targetEntityType, targetEntityId: action.targetEntityId,
+        oldValue: action.oldValue ? JSON.stringify(action.oldValue) : null,
+        newValue: JSON.stringify(action.newValue), reasoning: action.reasoning ?? null,
+      })), connection);
 
       await connection.commit();
     } catch (err) {

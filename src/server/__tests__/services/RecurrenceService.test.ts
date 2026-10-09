@@ -269,7 +269,7 @@ describe('RecurrenceService', () => {
       mockQuery
         .mockResolvedValueOnce([tpl])     // templates
         .mockResolvedValueOnce([])        // latest instance
-        .mockResolvedValueOnce([{ id: 'existing-1' }]) // existing check → already exists
+        .mockImplementationOnce(async (_sql: string, params: any[]) => params.slice(1).map((d: string) => ({ d }))) // every due date already exists
         .mockResolvedValue([]);           // rest
 
       const result = await service.generateInstances(1);
@@ -476,9 +476,10 @@ describe('RecurrenceService', () => {
 
   // ── working days (project calendar) ────────────────────────────────
   describe('working days', () => {
+    // instances are saved several to a statement (2026-10-09): 13 values a row
     const inserts = () => mockQuery.mock.calls
       .filter((c: any[]) => typeof c[0] === 'string' && c[0].includes('INSERT INTO tasks'))
-      .map((c: any[]) => ({ start: c[1][7], end: c[1][8] }));
+      .flatMap((c: any[]) => Array.from({ length: c[1].length / 13 }, (_, k) => ({ start: c[1][k * 13 + 7], end: c[1][k * 13 + 8] })));
 
     beforeEach(() => {
       vi.useFakeTimers();

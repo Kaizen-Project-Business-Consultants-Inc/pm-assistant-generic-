@@ -120,6 +120,29 @@ export class CustomFieldRepository extends BaseRepository<CustomField> {
     return rows.map(valueRowToDTO);
   }
 
+  /** Which of these fields exist */
+  async existingFieldIds(fieldIds: string[]): Promise<Set<string>> {
+    if (fieldIds.length === 0) return new Set();
+    const rows = await this.queryRaw(`SELECT id FROM custom_fields WHERE id IN (${fieldIds.map(() => '?').join(',')})`, fieldIds);
+    return new Set(rows.map((r: any) => r.id));
+  }
+
+  /**
+   * Several values for one item in one statement (was 3 per value; 2026-10-09). (field, item) is
+   * unique, so a value already there is overwritten, as upsertValue does; a field listed twice keeps
+   * its last value.
+   */
+  async upsertValues(entityId: string, list: Array<{ fieldId: string; text?: string; number?: number; date?: string; boolean?: boolean }>): Promise<void> {
+    const values = [...new Map(list.map(v => [v.fieldId, v])).values()]; // a field listed twice: its last value
+    if (values.length === 0) return;
+    await this.queryRaw(
+      `INSERT INTO custom_field_values (id, field_id, entity_id, value_text, value_number, value_date, value_boolean)
+       VALUES ${values.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}
+       ON DUPLICATE KEY UPDATE value_text = VALUES(value_text), value_number = VALUES(value_number), value_date = VALUES(value_date), value_boolean = VALUES(value_boolean)`,
+      values.flatMap(v => [uuidv4(), v.fieldId, entityId, v.text ?? null, v.number ?? null, v.date ?? null, v.boolean ?? null]),
+    );
+  }
+
   async findValue(fieldId: string, entityId: string): Promise<CustomFieldValue | null> {
     const rows = await this.queryRaw(
       'SELECT * FROM custom_field_values WHERE field_id = ? AND entity_id = ?',

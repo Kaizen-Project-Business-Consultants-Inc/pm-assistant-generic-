@@ -2455,11 +2455,6 @@
       "count": 1
     }
   },
-  "src/server/services/CustomFieldService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/services/DailyBriefingService.ts": {
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2562,11 +2557,6 @@
       "count": 1
     }
   },
-  "src/server/services/PolicyEngineService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/services/PricingConfigService.ts": {
     "no-restricted-syntax": {
       "count": 1
@@ -2602,11 +2592,6 @@
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
-    }
-  },
-  "src/server/services/RecurrenceService.ts": {
-    "no-await-in-loop": {
-      "count": 3
     }
   },
   "src/server/services/RedisService.ts": {
@@ -2789,11 +2774,8 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 2
     },
-    "no-await-in-loop": {
-      "count": 1
-    },
     "no-restricted-syntax": {
-      "count": 4
+      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -2829,11 +2811,6 @@
   "src/server/services/WorkingCalendarService.ts": {
     "no-await-in-loop": {
       "count": 2
-    }
-  },
-  "src/server/services/agents/ActionProposalService.ts": {
-    "no-await-in-loop": {
-      "count": 1
     }
   },
   "src/server/services/agents/InterAgentQueryService.ts": {
@@ -2941,17 +2918,6 @@
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
-    }
-  },
-  "src/server/services/dagWorkflow/index.ts": {
-    "no-await-in-loop": {
-      "count": 7
-    },
-    "no-restricted-syntax": {
-      "count": 3
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 2
     }
   },
   "src/server/services/dataProviders/weatherProviders.ts": {

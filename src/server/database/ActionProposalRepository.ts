@@ -63,16 +63,17 @@ class ActionProposalRepository {
     );
   }
 
-  async insertAction(
-    id: string, proposalId: string, executionOrder: number, actionType: string,
-    targetEntityType: string, targetEntityId: string, oldValue: string | null,
-    newValue: string, reasoning: string | null, connection: any,
+  /** A proposal's actions in one INSERT (was one per action; 2026-10-09), on the caller's transaction */
+  async insertActions(
+    proposalId: string,
+    actions: Array<{ id: string; executionOrder: number; actionType: string; targetEntityType: string; targetEntityId: string; oldValue: string | null; newValue: string; reasoning: string | null }>,
+    connection: any,
   ): Promise<void> {
+    if (actions.length === 0) return;
     await connection.query(
       `INSERT INTO agent_proposal_actions (id, proposal_id, execution_order, action_type, target_entity_type, target_entity_id, old_value, new_value, reasoning, status, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())`,
-      [id, proposalId, executionOrder, actionType, targetEntityType, targetEntityId,
-       oldValue, newValue, reasoning],
+       VALUES ${actions.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())").join(', ')}`,
+      actions.flatMap(a => [a.id, proposalId, a.executionOrder, a.actionType, a.targetEntityType, a.targetEntityId, a.oldValue, a.newValue, a.reasoning]),
     );
   }
 

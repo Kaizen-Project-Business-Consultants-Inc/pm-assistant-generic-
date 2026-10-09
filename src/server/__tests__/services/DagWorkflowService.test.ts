@@ -9,19 +9,19 @@ vi.mock('../../database/WorkflowRepository', () => {
   const mockRepo = {
     checkTablesExist: vi.fn().mockResolvedValue(true),
     insertDefinition: vi.fn().mockResolvedValue(undefined),
-    insertNode: vi.fn().mockImplementation((id, wfId, nodeType, name, config, posX, posY) => ({
-      id, workflowId: wfId, nodeType, name, config, positionX: posX, positionY: posY, createdAt: '2026-01-01',
-    })),
-    insertEdge: vi.fn().mockImplementation((id, wfId, srcId, tgtId, condExpr, label, sortOrder) => ({
-      id, workflowId: wfId, sourceNodeId: srcId, targetNodeId: tgtId,
-      conditionExpr: condExpr, label, sortOrder,
-    })),
-    insertEdgeNoReturn: vi.fn().mockResolvedValue(undefined),
+    insertNodes: vi.fn().mockResolvedValue(undefined),
+    insertEdges: vi.fn().mockResolvedValue(undefined),
     findDefinitionById: vi.fn().mockResolvedValue(null),
     findDefinitions: vi.fn().mockResolvedValue([]),
     findEnabledDefinitions: vi.fn().mockResolvedValue([]),
     findNodesByWorkflow: vi.fn().mockResolvedValue([]),
     findEdgesByWorkflow: vi.fn().mockResolvedValue([]),
+    // the several-workflows reads answer from the per-workflow fakes above, so each test still
+    // sets up "this workflow's steps" the way it did (2026-10-09)
+    findNodesByWorkflows: vi.fn(async (ids: string[]) => (await Promise.all(ids.map(async id =>
+      ((await mockRepo.findNodesByWorkflow(id)) ?? []).map((n: any) => ({ ...n, workflowId: id }))))).flat()),
+    findEdgesByWorkflows: vi.fn(async (ids: string[]) => (await Promise.all(ids.map(async id =>
+      ((await mockRepo.findEdgesByWorkflow(id)) ?? []).map((e: any) => ({ ...e, workflowId: id }))))).flat()),
     updateDefinitionFields: vi.fn().mockResolvedValue(undefined),
     deleteDefinition: vi.fn().mockResolvedValue(true),
     deleteNodesByWorkflow: vi.fn().mockResolvedValue(undefined),
@@ -619,6 +619,11 @@ let dagWorkflowService: any;
 
 beforeEach(async () => {
   vi.clearAllMocks();
+  // a value queued for a read the code no longer makes must not leak into the next test
+  // (the trigger checks stopped re-reading each workflow's definition by id; 2026-10-09)
+  mockRepo.findDefinitionById.mockReset().mockResolvedValue(null);
+  mockRepo.findNodesByWorkflow.mockReset().mockResolvedValue([]);
+  mockRepo.findEdgesByWorkflow.mockReset().mockResolvedValue([]);
   // Reset the uuid counter for deterministic IDs
   let uuidCounter = 0;
   mockUuid.mockImplementation(() => `uuid-${uuidCounter++}`);
@@ -649,8 +654,12 @@ describe('DagWorkflowService', () => {
       });
 
       expect(mockRepo.insertDefinition).toHaveBeenCalledWith('uuid-0', 'p1', 'Test Workflow', null, 'u1');
-      expect(mockRepo.insertNode).toHaveBeenCalledTimes(2);
-      expect(mockRepo.insertEdge).toHaveBeenCalledTimes(1);
+      // one statement for the steps, one for the links (was one per step and per link)
+      expect(mockRepo.insertNodes).toHaveBeenCalledTimes(1);
+      expect(mockRepo.insertNodes.mock.calls[0][1].map((n: any) => n.name)).toEqual(['Trigger', 'Action']);
+      expect(mockRepo.insertEdges).toHaveBeenCalledTimes(1);
+      const [node0, node1] = mockRepo.insertNodes.mock.calls[0][1];
+      expect(mockRepo.insertEdges.mock.calls[0][1]).toEqual([expect.objectContaining({ sourceNodeId: node0.id, targetNodeId: node1.id })]);
       expect(result).toHaveProperty('nodes');
       expect(result).toHaveProperty('edges');
     });
@@ -680,7 +689,7 @@ describe('DagWorkflowService', () => {
         edges: [{ sourceIndex: 0, targetIndex: 5 }], // index 5 doesn't exist
       });
 
-      expect(mockRepo.insertEdge).not.toHaveBeenCalled();
+      expect(mockRepo.insertEdges.mock.calls[0][1]).toEqual([]); // the bad link is left out
     });
   });
 
@@ -800,8 +809,9 @@ describe('DagWorkflowService', () => {
 
       expect(mockRepo.deleteEdgesByWorkflow).toHaveBeenCalledWith('wf1');
       expect(mockRepo.deleteNodesByWorkflow).toHaveBeenCalledWith('wf1');
-      expect(mockRepo.insertNode).toHaveBeenCalledTimes(2);
-      expect(mockRepo.insertEdgeNoReturn).toHaveBeenCalledTimes(1);
+      expect(mockRepo.insertNodes).toHaveBeenCalledTimes(1);
+      expect(mockRepo.insertNodes.mock.calls[0][1]).toHaveLength(2);
+      expect(mockRepo.insertEdges.mock.calls[0][1]).toHaveLength(1);
     });
 
     it('does not call updateDefinitionFields when no scalar fields changed', async () => {
@@ -999,16 +1009,26 @@ describe('DagWorkflowService', () => {
       await dagWorkflowService.evaluateProjectChange('p2', 'budget_update', { utilization: 99 });
       await dagWorkflowService.evaluateProposalEvent('proposal_created', { proposalId: 'x', projectId: 'p2', agentId: 'a', confidenceScore: 99, riskLevel: 'low', title: 't' });
       // never even looked at the workflow's steps
-      expect(mockRepo.findDefinitionById).not.toHaveBeenCalled();
+      expect(mockRepo.findNodesByWorkflows).not.toHaveBeenCalled();
       expect(mockRepo.insertExecution).not.toHaveBeenCalled();
       mockRepo.findEnabledDefinitions.mockResolvedValue([]);
     });
 
+    it('three workflows checked on one task save: their steps and links in one read each (was 3 reads per workflow)', async () => {
+      mockRepo.findEnabledDefinitions.mockResolvedValueOnce([
+        makeDef({ id: 'wa', projectId: 'p1' }), makeDef({ id: 'wb', projectId: null }), makeDef({ id: 'wc', projectId: 'p1' }), makeDef({ id: 'other', projectId: 'p9' }),
+      ]);
+      await dagWorkflowService.evaluateTaskChange(makeTask({ status: 'completed' }), makeTask({ status: 'in_progress' }), {} as any);
+      expect(mockRepo.findNodesByWorkflows).toHaveBeenCalledTimes(1);
+      expect(mockRepo.findNodesByWorkflows).toHaveBeenCalledWith(['wa', 'wb', 'wc']); // not another project's
+      expect(mockRepo.findEdgesByWorkflows).toHaveBeenCalledTimes(1);
+      expect(mockRepo.findDefinitionById).not.toHaveBeenCalled();
+    });
+
     it('a company-wide workflow (no project) still runs everywhere', async () => {
       mockRepo.findEnabledDefinitions.mockResolvedValueOnce([makeDef({ id: 'wf9', projectId: null })]);
-      mockRepo.findDefinitionById.mockResolvedValueOnce(null);
       await dagWorkflowService.evaluateProjectChange('p2', 'budget_update', { utilization: 99 });
-      expect(mockRepo.findDefinitionById).toHaveBeenCalledWith('wf9');
+      expect(mockRepo.findNodesByWorkflows).toHaveBeenCalledWith(['wf9']);
     });
   });
 

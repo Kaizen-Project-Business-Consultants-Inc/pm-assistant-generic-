@@ -4,6 +4,7 @@ import {
   WorkflowExecution, WorkflowNodeExecution, NodeType,
 } from '../services/dagWorkflow/types';
 import { rowToDef, rowToNode, rowToEdge, rowToExecution, rowToNodeExec, parseJson } from '../services/dagWorkflow/rowMappers';
+import { chunksOf } from '../utils/chunksOf';
 
 export type { WorkflowDefinition, WorkflowNode, WorkflowEdge, WorkflowExecution, WorkflowNodeExecution };
 
@@ -83,17 +84,25 @@ class WorkflowRepository {
 
   // ── Nodes ─────────────────────────────────────────────────────────────
 
-  async insertNode(
-    id: string, workflowId: string, nodeType: NodeType, name: string,
-    config: Record<string, any>, positionX: number, positionY: number,
-  ): Promise<WorkflowNode> {
-    await databaseService.query(
-      `INSERT INTO workflow_nodes (id, workflow_id, node_type, name, config, position_x, position_y) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, workflowId, nodeType, name, JSON.stringify(config), positionX, positionY],
+  /** A workflow's steps, 200 per statement (was one INSERT + one read-back per step; 2026-10-09) */
+  async insertNodes(workflowId: string, nodes: Array<{ id: string; nodeType: NodeType; name: string; config: Record<string, any>; positionX: number; positionY: number }>): Promise<void> {
+    for (const chunk of chunksOf(nodes, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 steps
+      await databaseService.query(
+        `INSERT INTO workflow_nodes (id, workflow_id, node_type, name, config, position_x, position_y) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flatMap(n => [n.id, workflowId, n.nodeType, n.name, JSON.stringify(n.config), n.positionX, n.positionY]),
+      );
+    }
+  }
+
+  /** The steps of several workflows in one read, in the same order as findNodesByWorkflow */
+  async findNodesByWorkflows(workflowIds: string[]): Promise<WorkflowNode[]> {
+    if (workflowIds.length === 0) return [];
+    const rows = await databaseService.query(
+      `SELECT * FROM workflow_nodes WHERE workflow_id IN (${workflowIds.map(() => '?').join(',')}) ORDER BY position_y, position_x`,
+      workflowIds,
     );
-    const rows = await databaseService.query('SELECT * FROM workflow_nodes WHERE id = ?', [id]);
-    if (!rows[0]) throw new Error(`WorkflowNode not found: ${id}`);
-    return rowToNode(rows[0]);
+    return rows.map(rowToNode);
   }
 
   async findNodesByWorkflow(workflowId: string): Promise<WorkflowNode[]> {
@@ -110,26 +119,25 @@ class WorkflowRepository {
 
   // ── Edges ─────────────────────────────────────────────────────────────
 
-  async insertEdge(
-    id: string, workflowId: string, sourceNodeId: string, targetNodeId: string,
-    conditionExpr: Record<string, any> | null, label: string | null, sortOrder: number,
-  ): Promise<WorkflowEdge> {
-    await databaseService.query(
-      `INSERT INTO workflow_edges (id, workflow_id, source_node_id, target_node_id, condition_expr, label, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, workflowId, sourceNodeId, targetNodeId, conditionExpr ? JSON.stringify(conditionExpr) : null, label, sortOrder],
-    );
-    const rows = await databaseService.query('SELECT * FROM workflow_edges WHERE id = ?', [id]);
-    return rowToEdge(rows[0]);
+  /** A workflow's links, 200 per statement (was one INSERT per link; 2026-10-09) */
+  async insertEdges(workflowId: string, edges: Array<{ id: string; sourceNodeId: string; targetNodeId: string; conditionExpr: Record<string, any> | null; label: string | null; sortOrder: number }>): Promise<void> {
+    for (const chunk of chunksOf(edges, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 links
+      await databaseService.query(
+        `INSERT INTO workflow_edges (id, workflow_id, source_node_id, target_node_id, condition_expr, label, sort_order) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flatMap(e => [e.id, workflowId, e.sourceNodeId, e.targetNodeId, e.conditionExpr ? JSON.stringify(e.conditionExpr) : null, e.label, e.sortOrder]),
+      );
+    }
   }
 
-  async insertEdgeNoReturn(
-    id: string, workflowId: string, sourceNodeId: string, targetNodeId: string,
-    conditionExpr: Record<string, any> | null, label: string | null, sortOrder: number,
-  ): Promise<void> {
-    await databaseService.query(
-      `INSERT INTO workflow_edges (id, workflow_id, source_node_id, target_node_id, condition_expr, label, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, workflowId, sourceNodeId, targetNodeId, conditionExpr ? JSON.stringify(conditionExpr) : null, label, sortOrder],
+  /** The links of several workflows in one read, in the same order as findEdgesByWorkflow */
+  async findEdgesByWorkflows(workflowIds: string[]): Promise<WorkflowEdge[]> {
+    if (workflowIds.length === 0) return [];
+    const rows = await databaseService.query(
+      `SELECT * FROM workflow_edges WHERE workflow_id IN (${workflowIds.map(() => '?').join(',')}) ORDER BY sort_order`,
+      workflowIds,
     );
+    return rows.map(rowToEdge);
   }
 
   async findEdgesByWorkflow(workflowId: string): Promise<WorkflowEdge[]> {

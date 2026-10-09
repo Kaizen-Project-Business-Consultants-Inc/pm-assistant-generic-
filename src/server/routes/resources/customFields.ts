@@ -18,7 +18,9 @@ const bulkValuesSchema = z.object({
     number: z.number().optional().nullable(),
     date: z.string().optional().nullable(),
     boolean: z.boolean().optional().nullable(),
-  }).passthrough(), { message: 'Send the custom field values to save (values).' }),
+  }).passthrough(), { message: 'Send the custom field values to save (values).' })
+    // saved in one statement (2026-10-09): bounded so it stays well inside the database's limits
+    .max(500, 'Save at most 500 custom field values at a time.'),
 });
 
 // Field definitions (2026-10-07): an empty or partial body used to reach the database and come

@@ -11,6 +11,7 @@ import {
 import { matchesTrigger, buildAdjacencyList, advanceExecution, executeWorkflowEngine } from './engine';
 import { databaseService } from '../../database/connection';
 import { getRequestContext, runAsWorkflow } from '../../middleware/requestContext';
+import { groupBy } from '../../utils/groupBy';
 
 /** How many workflows may start one another in a row (a workflow's change → another workflow …) */
 const MAX_WORKFLOW_DEPTH = 3;
@@ -34,6 +35,12 @@ function stoppedByDepth(kind: 'task' | 'project' | 'proposal', id: string): bool
  */
 function appliesTo(def: { projectId: string | null }, projectId: string | null): boolean {
   return !def.projectId || def.projectId === projectId;
+}
+
+/** The items whose ids are listed, in the listed order */
+function inOrder<T extends { id: string }>(items: T[], ids: string[]): T[] {
+  const byId = new Map(items.map(i => [i.id, i]));
+  return ids.flatMap(id => (byId.has(id) ? [byId.get(id)!] : []));
 }
 
 async function projectOfSchedule(scheduleId: string | null | undefined): Promise<string | null> {
@@ -71,25 +78,41 @@ class DagWorkflowService {
     const defId = uuidv4();
     await workflowRepository.insertDefinition(defId, data.projectId ?? null, data.name, data.description ?? null, data.createdBy);
 
-    const nodes: WorkflowNode[] = [];
-    for (const n of data.nodes) {
-      const nodeId = uuidv4();
-      const node = await workflowRepository.insertNode(nodeId, defId, n.nodeType, n.name, n.config, n.positionX ?? 0, n.positionY ?? 0);
-      nodes.push(node);
-    }
+    const { nodeIds, edgeIds } = await this.saveGraph(defId, data.nodes, data.edges);
+    // read back once; steps and links in the order they were given
+    const saved = await this.getDefinition(defId);
+    return { ...saved!, nodes: inOrder(saved!.nodes, nodeIds), edges: inOrder(saved!.edges, edgeIds) };
+  }
 
-    const edges: import('./types').WorkflowEdge[] = [];
-    for (const e of data.edges) {
-      const edgeId = uuidv4();
-      const srcId = nodes[e.sourceIndex]?.id;
-      const tgtId = nodes[e.targetIndex]?.id;
-      if (!srcId || !tgtId) continue;
-      const edge = await workflowRepository.insertEdge(edgeId, defId, srcId, tgtId, e.conditionExpr ?? null, e.label ?? null, e.sortOrder ?? 0);
-      edges.push(edge);
-    }
+  /** Write a workflow's steps and links: one statement each (edges point at steps by position) */
+  private async saveGraph(
+    workflowId: string,
+    nodes: { nodeType: NodeType; name: string; config: Record<string, any>; positionX?: number; positionY?: number }[],
+    edges: { sourceIndex: number; targetIndex: number; conditionExpr?: Record<string, any>; label?: string; sortOrder?: number }[] | undefined,
+  ): Promise<{ nodeIds: string[]; edgeIds: string[] }> {
+    const nodeRows = nodes.map(n => ({ id: uuidv4(), nodeType: n.nodeType, name: n.name, config: n.config, positionX: n.positionX ?? 0, positionY: n.positionY ?? 0 }));
+    await workflowRepository.insertNodes(workflowId, nodeRows);
+    const edgeRows = (edges ?? []).flatMap(e => {
+      const sourceNodeId = nodeRows[e.sourceIndex]?.id;
+      const targetNodeId = nodeRows[e.targetIndex]?.id;
+      if (!sourceNodeId || !targetNodeId) return [];
+      return [{ id: uuidv4(), sourceNodeId, targetNodeId, conditionExpr: e.conditionExpr ?? null, label: e.label ?? null, sortOrder: e.sortOrder ?? 0 }];
+    });
+    await workflowRepository.insertEdges(workflowId, edgeRows);
+    return { nodeIds: nodeRows.map(n => n.id), edgeIds: edgeRows.map(e => e.id) };
+  }
 
-    const def = await workflowRepository.findDefinitionById(defId);
-    return { ...def!, nodes, edges };
+  /**
+   * Several workflows' steps and links in two reads (2026-10-09: every task save loaded each enabled
+   * workflow with three queries of its own). Same order per workflow as getDefinition.
+   */
+  private async withGraphs(defs: WorkflowDefinition[]): Promise<DefinitionWithGraph[]> {
+    if (defs.length === 0) return [];
+    const ids = defs.map(d => d.id);
+    const [nodes, edges] = await Promise.all([workflowRepository.findNodesByWorkflows(ids), workflowRepository.findEdgesByWorkflows(ids)]);
+    const nodesOf = groupBy(nodes, n => n.workflowId);
+    const edgesOf = groupBy(edges, e => e.workflowId);
+    return defs.map(d => ({ ...d, nodes: nodesOf.get(d.id) ?? [], edges: edgesOf.get(d.id) ?? [] }));
   }
 
   async getDefinition(id: string): Promise<DefinitionWithGraph | null> {
@@ -131,22 +154,7 @@ class DagWorkflowService {
       await workflowRepository.deleteEdgesByWorkflow(id);
       await workflowRepository.deleteNodesByWorkflow(id);
 
-      const nodes: WorkflowNode[] = [];
-      for (const n of data.nodes) {
-        const nodeId = uuidv4();
-        const node = await workflowRepository.insertNode(nodeId, id, n.nodeType, n.name, n.config, n.positionX ?? 0, n.positionY ?? 0);
-        nodes.push(node);
-      }
-
-      if (data.edges) {
-        for (const e of data.edges) {
-          const edgeId = uuidv4();
-          const srcId = nodes[e.sourceIndex]?.id;
-          const tgtId = nodes[e.targetIndex]?.id;
-          if (!srcId || !tgtId) continue;
-          await workflowRepository.insertEdgeNoReturn(edgeId, id, srcId, tgtId, e.conditionExpr ?? null, e.label ?? null, e.sortOrder ?? 0);
-        }
-      }
+      await this.saveGraph(id, data.nodes, data.edges);
     }
 
     return this.getDefinition(id);
@@ -200,11 +208,12 @@ class DagWorkflowService {
       const defs = await workflowRepository.findEnabledDefinitions();
       const taskProject = defs.some(d => d.projectId) ? await projectOfSchedule(task.scheduleId) : null;
 
-      for (const def of defs) {
-        if (!appliesTo(def, taskProject)) continue;
-        const fullDef = await this.getDefinition(def.id);
-        if (!fullDef) continue;
+      // the workflows that apply, with their steps and links, in two reads
 
+      const applicable = await this.withGraphs(defs.filter(def => appliesTo(def, taskProject)));
+
+      for (const fullDef of applicable) {
+        // eslint-disable-next-line no-restricted-syntax -- small: one workflow's own steps
         const triggerNodes = fullDef.nodes.filter(n => n.nodeType === 'trigger');
         for (const triggerNode of triggerNodes) {
           if (matchesTrigger(triggerNode.config, task, oldTask)) {
@@ -229,11 +238,12 @@ class DagWorkflowService {
     try {
       const defs = await workflowRepository.findEnabledDefinitions();
 
-      for (const def of defs) {
-        if (!appliesTo(def, projectId)) continue;
-        const fullDef = await this.getDefinition(def.id);
-        if (!fullDef) continue;
+      // the workflows that apply, with their steps and links, in two reads
 
+      const applicable = await this.withGraphs(defs.filter(def => appliesTo(def, projectId)));
+
+      for (const fullDef of applicable) {
+        // eslint-disable-next-line no-restricted-syntax -- small: one workflow's own steps
         const triggerNodes = fullDef.nodes.filter(n => n.nodeType === 'trigger');
         for (const triggerNode of triggerNodes) {
           const config = triggerNode.config;
@@ -270,11 +280,12 @@ class DagWorkflowService {
     try {
       const defs = await workflowRepository.findEnabledDefinitions();
 
-      for (const def of defs) {
-        if (!appliesTo(def, data.projectId)) continue;
-        const fullDef = await this.getDefinition(def.id);
-        if (!fullDef) continue;
+      // the workflows that apply, with their steps and links, in two reads
 
+      const applicable = await this.withGraphs(defs.filter(def => appliesTo(def, data.projectId)));
+
+      for (const fullDef of applicable) {
+        // eslint-disable-next-line no-restricted-syntax -- small: one workflow's own steps
         const triggerNodes = fullDef.nodes.filter(n => n.nodeType === 'trigger');
         for (const triggerNode of triggerNodes) {
           const config = triggerNode.config;

@@ -100,16 +100,24 @@ describe('CustomFieldService', () => {
   });
 
   describe('bulkSetValues', () => {
-    it('sets multiple values sequentially', async () => {
-      mockRepo.findById.mockResolvedValue(sampleField);
-      mockRepo.upsertValue.mockResolvedValue({});
+    it('checks the fields once and saves every value in one go (2026-10-09)', async () => {
+      mockRepo.existingFieldIds = vi.fn().mockResolvedValue(new Set(['cf1', 'cf2']));
+      mockRepo.upsertValues = vi.fn().mockResolvedValue(undefined);
+      const values = [{ fieldId: 'cf1', number: 10 }, { fieldId: 'cf2', text: 'hello' }];
 
-      await service.bulkSetValues('t1', [
-        { fieldId: 'cf1', number: 10 },
-        { fieldId: 'cf2', text: 'hello' },
-      ]);
+      await service.bulkSetValues('t1', values);
 
-      expect(mockRepo.upsertValue).toHaveBeenCalledTimes(2);
+      expect(mockRepo.existingFieldIds).toHaveBeenCalledWith(['cf1', 'cf2']);
+      expect(mockRepo.upsertValues).toHaveBeenCalledTimes(1);
+      expect(mockRepo.upsertValues).toHaveBeenCalledWith('t1', values);
+      expect(mockRepo.upsertValue).not.toHaveBeenCalled();
+    });
+
+    it('an unknown field: refused before anything is saved (it used to save the values before it)', async () => {
+      mockRepo.existingFieldIds = vi.fn().mockResolvedValue(new Set(['cf1']));
+      mockRepo.upsertValues = vi.fn();
+      await expect(service.bulkSetValues('t1', [{ fieldId: 'cf1', number: 1 }, { fieldId: 'gone', text: 'x' }])).rejects.toThrow('Field not found');
+      expect(mockRepo.upsertValues).not.toHaveBeenCalled();
     });
   });
 });

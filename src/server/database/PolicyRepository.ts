@@ -86,15 +86,17 @@ class PolicyRepository {
     return (result.affectedRows ?? 0) > 0;
   }
 
-  async logEvaluation(
-    policyId: string, action: string, actorId: string, entityType: string | null,
-    entityId: string | null, matched: boolean, enforcementResult: string, contextSnapshot: object,
-  ): Promise<void> {
+  /** One check's log lines in one INSERT (was one per policy; 2026-10-09) */
+  async logEvaluations(rows: Array<{
+    policyId: string; action: string; actorId: string; entityType: string | null;
+    entityId: string | null; matched: boolean; enforcementResult: string; contextSnapshot: object;
+  }>): Promise<void> {
+    if (rows.length === 0) return;
     await databaseService.query(
       `INSERT INTO policy_evaluations
         (policy_id, action, actor_id, entity_type, entity_id, matched, enforcement_result, context_snapshot)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [policyId, action, actorId, entityType, entityId, matched ? 1 : 0, enforcementResult, JSON.stringify(contextSnapshot)],
+       VALUES ${rows.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+      rows.flatMap(r => [r.policyId, r.action, r.actorId, r.entityType, r.entityId, r.matched ? 1 : 0, r.enforcementResult, JSON.stringify(r.contextSnapshot)]),
     );
   }
 

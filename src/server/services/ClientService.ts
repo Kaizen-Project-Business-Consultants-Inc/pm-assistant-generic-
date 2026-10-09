@@ -5,6 +5,7 @@ import { approvalWorkflowRepository } from '../database/ApprovalWorkflowReposito
 import { scheduleService } from './ScheduleService';
 import { readableProjectIds } from '../utils/readableProjects';
 import { reportTimeline, type ReportTimeline } from '../utils/timelineStrip';
+import { groupBy } from '../utils/groupBy';
 
 /**
  * Clients (2026-10-07): a client is a project group (project_groups) — a consultant's customer.
@@ -68,17 +69,6 @@ function toRaidItem(r: ProjectRisk, p: ClientProject): ClientRaidItem {
 }
 
 const isOpen = (r: ProjectRisk) => !r.resolvedAt && !CLOSED_RAID.has(String(r.status).toLowerCase());
-
-/** Items grouped by a key, keeping their order */
-function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
-  const out = new Map<K, T[]>();
-  for (const it of items) {
-    const k = key(it);
-    const list = out.get(k);
-    if (list) list.push(it); else out.set(k, [it]);
-  }
-  return out;
-}
 
 export const clientService = {
   /**
