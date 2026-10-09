@@ -1,5 +1,6 @@
 import { criticalPathService } from './CriticalPathService';
 import { scheduleService, Task } from './ScheduleService';
+import { taskRepository } from '../database/TaskRepository';
 import { resourceService } from './ResourceService';
 import type { Resource, ResourceAssignment } from './ResourceService';
 import { resourceAvailabilityService } from './ResourceAvailabilityService';
@@ -383,10 +384,21 @@ export class ResourceLevelingService {
   ): Promise<{ applied: number; errors: string[] }> {
     let applied = 0;
     const errors: string[] = [];
+    if (adjustments.length === 0) return { applied, errors };
+
+    // One read for every task being moved (it used to be one per task)
+    let tasksById: Map<string, Task>;
+    try {
+      tasksById = new Map((await taskRepository.findByIds(adjustments.map(a => a.taskId))).map(t => [t.id, t]));
+    } catch (err: any) {
+      // Same outcome as when each task's own read failed: every task reports it, nothing moves
+      for (const adj of adjustments) errors.push(`Failed to update task ${adj.taskId}: ${err.message || String(err)}`);
+      return { applied, errors };
+    }
 
     for (const adj of adjustments) {
       try {
-        const task = await scheduleService.findTaskById(adj.taskId);
+        const task = tasksById.get(adj.taskId);
         if (!task) {
           errors.push(`Task ${adj.taskId} not found`);
           continue;
@@ -396,6 +408,10 @@ export class ResourceLevelingService {
           continue;
         }
 
+        // One task at a time on purpose: each save records its field changes, re-rolls the
+        // parent summary, writes the task.update audit and fires the task-changed event, and a
+        // failure is reported for that task only while the others still move.
+        // eslint-disable-next-line no-await-in-loop -- per-task save side effects and per-task error reporting (see above)
         await scheduleService.updateTask(adj.taskId, {
           startDate: adj.newStart,
           endDate: adj.newEnd,

@@ -38,7 +38,10 @@ vi.mock('../../services/BaselineService', () => ({
 }));
 
 vi.mock('../../database/TaskRepository', () => ({
-  taskRepository: { updateDates: vi.fn().mockResolvedValue(undefined) },
+  taskRepository: {
+    updateDates: vi.fn().mockResolvedValue(undefined),
+    updateDatesMany: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 vi.mock('../../services/ScheduleRecomputeService', () => ({
@@ -395,12 +398,42 @@ describe('ScheduleFixProposerService', () => {
     const { baselineService } = await import('../../services/BaselineService');
     const { taskRepository } = await import('../../database/TaskRepository');
     // dates restored from the baseline snapshot, then the baseline removed
-    expect(taskRepository.updateDates).toHaveBeenCalledWith('b', '2026-10-05', '2026-10-09');
-    expect(taskRepository.updateDates).toHaveBeenCalledWith('x', '2026-10-10', '2026-10-12');
+    // ...in ONE batched write, same values as the old per-task updateDates calls
+    expect(taskRepository.updateDatesMany).toHaveBeenCalledTimes(1);
+    expect(taskRepository.updateDatesMany).toHaveBeenCalledWith([
+      { id: 'b', startDate: '2026-10-05', endDate: '2026-10-09' },
+      { id: 'x', startDate: '2026-10-10', endDate: '2026-10-12' },
+    ]);
+    expect(taskRepository.updateDates).not.toHaveBeenCalled();
     expect(baselineService.delete).toHaveBeenCalledWith('baseline-1');
     expect(repo.setStatus).toHaveBeenCalledWith('prop-1', 'undone');
     expect(res.score).toBe(63);
     void calls;
+  });
+
+  it('undo restores a large baseline in one batched date write, null dates kept as null', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const { baselineService } = await import('../../services/BaselineService');
+    const { taskRepository } = await import('../../database/TaskRepository');
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL, status: 'applied', baselineId: 'baseline-1', appliedData: [] } as any);
+    const tasks = Array.from({ length: 500 }, (_, i) => ({
+      taskId: `t${i}`,
+      startDate: i % 7 ? '2026-10-05T00:00:00.000Z' : '',
+      endDate: '2026-10-09T00:00:00.000Z',
+    }));
+    vi.mocked(baselineService.findById).mockResolvedValueOnce({ id: 'baseline-1', tasks } as any);
+    vi.mocked(taskRepository.updateDatesMany).mockClear();
+    vi.mocked(taskRepository.updateDates).mockClear();
+
+    await (await svc()).undo('s1', 'prop-1', 'u1');
+
+    expect(taskRepository.updateDatesMany).toHaveBeenCalledTimes(1);
+    expect(taskRepository.updateDates).not.toHaveBeenCalled();
+    const written = vi.mocked(taskRepository.updateDatesMany).mock.calls[0][0];
+    expect(written).toHaveLength(500);
+    expect(written[0]).toEqual({ id: 't0', startDate: null, endDate: '2026-10-09' });
+    expect(written[1]).toEqual({ id: 't1', startDate: '2026-10-05', endDate: '2026-10-09' });
+    expect(baselineService.delete).toHaveBeenCalledWith('baseline-1');
   });
 
   it('reject records negative feedback and marks the proposal rejected', async () => {

@@ -38,7 +38,28 @@ describe('booked hours move with their task', () => {
     const n = await moveBookingsWithTasks(run, new Map([['t1', before], ['t2', { start: '2026-10-05', end: '2026-10-09' }]]));
     expect(n).toBe(1);
     expect(calls.find(c => c[0].includes('FROM resource_assignments'))![1]).toEqual(['t1']);
-    expect(calls.at(-1)).toEqual(['UPDATE resource_assignments SET start_date = ?, end_date = ? WHERE id = ?', ['2026-11-09', '2026-11-20', 'ra1']]);
+    expect(calls.at(-1)).toEqual([
+      'UPDATE resource_assignments SET start_date = CASE id WHEN ? THEN ? END, end_date = CASE id WHEN ? THEN ? END WHERE id IN (?)',
+      ['ra1', '2026-11-09', 'ra1', '2026-11-20', 'ra1'],
+    ]);
+  });
+
+  it('many bookings are moved 100 per statement, each to its own new dates (2026-10-08)', async () => {
+    const bookings = Array.from({ length: 250 }, (_, i) => ({ id: `ra${i}`, task_id: 't1', s: '2026-10-19', e: '2026-10-30' }));
+    const updates: any[][] = [];
+    const run = vi.fn(async (sql: string, params: any[]) => {
+      if (sql.startsWith('UPDATE')) updates.push(params);
+      if (sql.includes('FROM tasks')) return [{ id: 't1', s: '2026-11-09', e: '2026-11-20' }];
+      if (sql.includes('FROM resource_assignments')) return bookings;
+      return [];
+    });
+    const n = await moveBookingsWithTasks(run, new Map([['t1', before]]));
+    expect(n).toBe(250);
+    expect(updates.map(p => p.length / 5)).toEqual([100, 100, 50]);
+    const last = updates[2];
+    expect(last.slice(0, 2)).toEqual(['ra200', '2026-11-09']);
+    expect(last.slice(100, 102)).toEqual(['ra200', '2026-11-20']);
+    expect(last.slice(200)).toEqual(bookings.slice(200).map(b => b.id));
   });
 });
 

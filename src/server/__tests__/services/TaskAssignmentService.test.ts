@@ -15,6 +15,7 @@ vi.mock('../../database/connection', () => ({
 vi.mock('../../database/ResourceRepository', () => ({
   resourceRepository: {
     findById: vi.fn().mockResolvedValue(null),
+    findByIds: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -199,10 +200,36 @@ describe('TaskAssignmentService', () => {
 
       await service.setAssignments('t1', assignments);
 
-      // DELETE + 2 INSERTs + UPDATE assigned_to
-      expect(mockQueryOn).toHaveBeenCalledTimes(4);
+      // DELETE + one multi-row INSERT + UPDATE assigned_to
+      expect(mockQueryOn).toHaveBeenCalledTimes(3);
+      expect(mockQueryOn.mock.calls[1][1]).toContain('VALUES (?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?)');
+      // Rows go in the order given, with the same values per row as before
+      expect(mockQueryOn.mock.calls[1][2]).toEqual([
+        'mock-uuid', 't1', 'r1', 100, null, null,
+        'mock-uuid', 't1', 'r2', 50, null, null,
+      ]);
       // assigned_to should be set to first resource
-      expect(mockQueryOn.mock.calls[3][2]).toEqual(['r1', 't1']);
+      expect(mockQueryOn.mock.calls[2][2]).toEqual(['r1', 't1']);
+    });
+
+    it('uses a fixed number of queries however many people are on the task', async () => {
+      for (const n of [1, 5, 40]) {
+        vi.clearAllMocks();
+        mockTransaction.mockImplementation(async (cb: any) => cb({}));
+        mockQuery.mockResolvedValue([] as any);
+        const assignments = Array.from({ length: n }, (_, i) => ({ resourceId: `r${i}`, allocationPct: 10 + i }));
+
+        await service.setAssignments('t1', assignments);
+
+        expect(mockQueryOn).toHaveBeenCalledTimes(3); // DELETE, INSERT, UPDATE
+        expect(mockQuery).toHaveBeenCalledTimes(2);   // the task's plan + read back
+        const insertParams = mockQueryOn.mock.calls[1][2] as unknown[];
+        expect(insertParams).toHaveLength(n * 6);
+        expect(insertParams.filter((_, i) => i % 6 === 2)).toEqual(assignments.map((a) => a.resourceId));
+        expect(insertParams.filter((_, i) => i % 6 === 3)).toEqual(assignments.map((a) => a.allocationPct));
+      }
+      mockQuery.mockReset();
+      mockQuery.mockResolvedValue([] as any);
     });
 
     it('returns the result of getForTask after setting', async () => {
@@ -415,10 +442,8 @@ describe('TaskAssignmentService', () => {
         hours_planned: null,
         created_at: '2026-01-01',
       }] as any);
-      // resourceRepository.findById
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce({
-        capacityHoursPerWeek: 40,
-      } as any);
+      // resourceRepository.findByIds
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([{ id: 'r1', capacityHoursPerWeek: 40 }] as any);
       // UPDATE tasks
       mockQuery.mockResolvedValueOnce([] as any);
 
@@ -458,7 +483,7 @@ describe('TaskAssignmentService', () => {
         hours_planned: null,
         created_at: '2026-01-01',
       }] as any);
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce(null);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([]);
       mockQuery.mockResolvedValueOnce([] as any);
 
       await service.recalcEffortDriven('t1');
@@ -497,9 +522,7 @@ describe('TaskAssignmentService', () => {
         hours_planned: null,
         created_at: '2026-01-01',
       }] as any);
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce({
-        capacityHoursPerWeek: 40,
-      } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([{ id: 'r1', capacityHoursPerWeek: 40 }] as any);
       mockQuery.mockResolvedValueOnce([] as any);
 
       await service.recalcEffortDriven('t1');
@@ -529,9 +552,10 @@ describe('TaskAssignmentService', () => {
         { id: 'a1', task_id: 't1', resource_id: 'r1', allocation_pct: 100, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
         { id: 'a2', task_id: 't1', resource_id: 'r2', allocation_pct: 100, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
       ] as any);
-      vi.mocked(resourceRepository.findById)
-        .mockResolvedValueOnce({ capacityHoursPerWeek: 40 } as any)
-        .mockResolvedValueOnce({ capacityHoursPerWeek: 40 } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([
+        { id: 'r1', capacityHoursPerWeek: 40 },
+        { id: 'r2', capacityHoursPerWeek: 40 },
+      ] as any);
       mockQuery.mockResolvedValueOnce([] as any);
 
       await service.recalcEffortDriven('t1');
@@ -556,9 +580,7 @@ describe('TaskAssignmentService', () => {
         id: 'a1', task_id: 't1', resource_id: 'r1', allocation_pct: 100,
         role_on_task: null, hours_planned: null, created_at: '2026-01-01',
       }] as any);
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce({
-        capacityHoursPerWeek: 40,
-      } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([{ id: 'r1', capacityHoursPerWeek: 40 }] as any);
       mockQuery.mockResolvedValueOnce([] as any);
 
       await service.recalcEffortDriven('t1');
@@ -579,15 +601,40 @@ describe('TaskAssignmentService', () => {
         { id: 'a1', task_id: 't1', resource_id: 'r1', allocation_pct: 100, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
         { id: 'a2', task_id: 't1', resource_id: 'r2', allocation_pct: 100, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
       ] as any);
-      vi.mocked(resourceRepository.findById)
-        .mockResolvedValueOnce({ capacityHoursPerWeek: 40 } as any)
-        .mockResolvedValueOnce({ capacityHoursPerWeek: 40 } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([
+        { id: 'r1', capacityHoursPerWeek: 40 },
+        { id: 'r2', capacityHoursPerWeek: 40 },
+      ] as any);
       mockQuery.mockResolvedValueOnce([] as any);
 
       await service.recalcEffortDriven('t1');
 
       const updateCall = mockQuery.mock.calls[2];
       expect(updateCall[1][1]).toBe(1); // minimum 1 day
+    });
+
+    it('looks up all resources in one call and sums the same hours per day as before', async () => {
+      // r1 40h/wk at 100% = 8, r2 20h/wk at 50% = 2, r3 unknown = 8 default -> 18 h/day.
+      // 54 work hours / 18 = 3 working days: Thu 8, Fri 9, Mon 12.
+      mockQuery.mockResolvedValueOnce([{ work_hours: 54, effort_driven: 1, start_date: '2026-01-07' }] as any);
+      mockQuery.mockResolvedValueOnce([
+        { id: 'a1', task_id: 't1', resource_id: 'r1', allocation_pct: 100, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
+        { id: 'a2', task_id: 't1', resource_id: 'r2', allocation_pct: 50, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
+        { id: 'a3', task_id: 't1', resource_id: 'r3', allocation_pct: 100, role_on_task: null, hours_planned: null, created_at: '2026-01-01' },
+      ] as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([
+        { id: 'r2', capacityHoursPerWeek: 20 },
+        { id: 'r1', capacityHoursPerWeek: 40 },
+      ] as any);
+      mockQuery.mockResolvedValueOnce([] as any);
+
+      await service.recalcEffortDriven('t1');
+
+      expect(resourceRepository.findByIds).toHaveBeenCalledTimes(1);
+      expect(resourceRepository.findByIds).toHaveBeenCalledWith(['r1', 'r2', 'r3']);
+      expect(resourceRepository.findById).not.toHaveBeenCalled();
+      expect(mockQuery).toHaveBeenCalledTimes(3);
+      expect(mockQuery.mock.calls[2][1]).toEqual(['2026-01-12', 3, 't1']);
     });
 
     it('does nothing if totalHoursPerDay is zero', async () => {
@@ -600,9 +647,7 @@ describe('TaskAssignmentService', () => {
         id: 'a1', task_id: 't1', resource_id: 'r1', allocation_pct: 0,
         role_on_task: null, hours_planned: null, created_at: '2026-01-01',
       }] as any);
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce({
-        capacityHoursPerWeek: 40,
-      } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([{ id: 'r1', capacityHoursPerWeek: 40 }] as any);
 
       await service.recalcEffortDriven('t1');
 
@@ -626,9 +671,7 @@ describe('TaskAssignmentService', () => {
         id: 'a1', task_id: 't1', resource_id: 'r1', allocation_pct: 100,
         role_on_task: null, hours_planned: null, created_at: '2026-01-01',
       }] as any);
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce({
-        capacityHoursPerWeek: 40,
-      } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([{ id: 'r1', capacityHoursPerWeek: 40 }] as any);
 
       await service.recalcEffortDriven('t1');
 
@@ -660,9 +703,7 @@ describe('TaskAssignmentService', () => {
         role_on_task: null, hours_planned: null, created_at: '2026-01-01',
       }] as any);
       // Resource works 20 hrs/week → 4 hrs/day
-      vi.mocked(resourceRepository.findById).mockResolvedValueOnce({
-        capacityHoursPerWeek: 20,
-      } as any);
+      vi.mocked(resourceRepository.findByIds).mockResolvedValueOnce([{ id: 'r1', capacityHoursPerWeek: 20 }] as any);
       mockQuery.mockResolvedValueOnce([] as any);
 
       await service.recalcEffortDriven('t1');

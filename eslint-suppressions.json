@@ -2121,16 +2121,6 @@
       "count": 1
     }
   },
-  "src/server/database/TaskRepository.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    }
-  },
-  "src/server/database/bookingDates.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/database/migrationRunner.ts": {
     "no-restricted-syntax": {
       "count": 3
@@ -2445,19 +2435,11 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
-    "no-await-in-loop": {
-      "count": 3
-    },
     "no-restricted-syntax": {
       "count": 5
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
-    }
-  },
-  "src/server/services/BaselineService.ts": {
-    "no-await-in-loop": {
-      "count": 1
     }
   },
   "src/server/services/BurndownService.ts": {
@@ -2680,9 +2662,6 @@
     "max-depth": {
       "count": 1
     },
-    "no-await-in-loop": {
-      "count": 2
-    },
     "no-restricted-syntax": {
       "count": 3
     },
@@ -2759,9 +2738,6 @@
     }
   },
   "src/server/services/ScheduleFixProposerService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "no-restricted-syntax": {
       "count": 12
     },
@@ -2773,12 +2749,6 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
-    "no-await-in-loop": {
-      "count": 2
-    },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2786,12 +2756,6 @@
   "src/server/services/ScheduleService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-await-in-loop": {
-      "count": 13
-    },
-    "no-restricted-syntax": {
-      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
@@ -2831,15 +2795,7 @@
       "count": 2
     }
   },
-  "src/server/services/TaskAssignmentService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    }
-  },
   "src/server/services/TaskPrioritizationService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }

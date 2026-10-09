@@ -1,8 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const updateDates = vi.fn().mockResolvedValue(undefined);
+// Dates are saved in one batched call (2026-10-08); `updateDates` records each task written, so the
+// tests read "task X got these dates" whichever way they were saved. `updateDatesOne` is the per-task
+// save, used only when a batch fails.
+const updateDates = vi.fn();
+const updateDatesMany = vi.fn(async (list: Array<{ id: string; startDate: string; endDate: string }>) => {
+  for (const c of list) updateDates(c.id, c.startDate, c.endDate);
+});
+const updateDatesOne = vi.fn(async (id: string, s: string, e: string) => { updateDates(id, s, e); });
 vi.mock('../../database/TaskRepository', () => ({
-  taskRepository: { updateDates },
+  taskRepository: { updateDates: updateDatesOne, updateDatesMany },
 }));
 
 const findTasksByScheduleId = vi.fn();
@@ -136,9 +143,37 @@ describe('ScheduleRecomputeService', () => {
     expect(n).toBe(1);
     expect(updateDates).toHaveBeenCalledTimes(1);
     expect(updateDates).toHaveBeenCalledWith('B', '2026-10-05', '2026-10-07');
+    expect(updateDatesMany).toHaveBeenCalledTimes(1); // one batched save
     expect(recomputeParentRollup).toHaveBeenCalledWith('P');
     await vi.waitFor(() => expect(append).toHaveBeenCalledTimes(1));
     expect(append.mock.calls[0][0]).toMatchObject({ action: 'task.reschedule', entityId: 'B', payload: { reason: 'undo', after: { startDate: '2026-10-05', endDate: '2026-10-07' } } });
+  });
+
+  it('saves every moved task in one batched call, not one per task', async () => {
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-09', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    const C = task({ id: 'C', startDate: '2026-10-05', endDate: '2026-10-09', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    await run([A, B, C]);
+    expect(updateDatesMany).toHaveBeenCalledTimes(1);
+    expect(updateDatesMany.mock.calls[0][0].map((c: any) => c.id)).toEqual(['B', 'C']);
+    expect(updateDatesOne).not.toHaveBeenCalled();
+  });
+
+  it('if the batch fails, each task is saved on its own; a bad one is skipped and the rest still move', async () => {
+    updateDatesMany.mockRejectedValueOnce(new Error('batch refused'));
+    updateDatesOne.mockImplementation(async (id: string, s: string, e: string) => {
+      if (id === 'B') throw new Error('bad row');
+      updateDates(id, s, e);
+    });
+    const A = task({ id: 'A', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const B = task({ id: 'B', startDate: '2026-10-05', endDate: '2026-10-09', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    const C = task({ id: 'C', startDate: '2026-10-05', endDate: '2026-10-09', dependencies: [{ dependencyId: 'A', dependencyType: 'FS', lagDays: 0 }] });
+    const res = await run([A, B, C]);
+    updateDatesOne.mockImplementation(async (id: string, s: string, e: string) => { updateDates(id, s, e); });
+    expect(updateDatesOne).toHaveBeenCalledTimes(2);
+    expect(updateDates).toHaveBeenCalledWith('C', '2026-10-12', '2026-10-16');
+    expect(updateDates).not.toHaveBeenCalledWith('B', expect.anything(), expect.anything());
+    expect(res.tasksMoved).toBe(2); // reported as before: the move was worked out for both
   });
 
   it('leaves a task that already satisfies its predecessor untouched', async () => {

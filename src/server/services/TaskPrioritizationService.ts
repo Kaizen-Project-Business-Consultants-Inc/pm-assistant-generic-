@@ -24,6 +24,52 @@ function scoreToPriority(score: number): Priority {
   return 'low';
 }
 
+/**
+ * For every task, the number of rows `TaskRepository.findAllDownstream` returns for it: its
+ * recursive query walks the links with UNION ALL, so a task reachable along two paths is counted
+ * twice. Same count here, from the plan's own links (links never cross plans), with no queries:
+ * rows(t) = sum over t's successors s of (1 + rows(s)). Iterative, so a long chain can't overflow
+ * the stack; a link loop (which saving refuses) counts its back link once instead of never ending.
+ */
+export function downstreamRowCounts(tasks: Array<Pick<Task, 'id' | 'dependencies'>>): Map<string, number> {
+  const successors = successorsByTask(tasks);
+  const rows = new Map<string, number>();
+  const open = new Set<string>(); // on the current walk, children not all counted yet
+  for (const root of tasks) countFrom(root.id, successors, rows, open);
+  return rows;
+}
+
+/** Task id -> the tasks that depend on it */
+function successorsByTask(tasks: Array<Pick<Task, 'id' | 'dependencies'>>): Map<string, string[]> {
+  const successors = new Map<string, string[]>();
+  for (const t of tasks) {
+    for (const d of t.dependencies ?? []) {
+      const list = successors.get(d.dependencyId);
+      if (list) list.push(t.id); else successors.set(d.dependencyId, [t.id]);
+    }
+  }
+  return successors;
+}
+
+/** Depth-first from one task with an explicit stack; fills `rows` for it and everything after it */
+function countFrom(rootId: string, successors: Map<string, string[]>, rows: Map<string, number>, open: Set<string>): void {
+  const stack = [rootId];
+  while (stack.length > 0) {
+    const id = stack[stack.length - 1];
+    const next = successors.get(id) ?? [];
+    if (rows.has(id)) {
+      stack.pop();
+    } else if (!open.has(id)) {
+      open.add(id);
+      for (const s of next) if (!rows.has(s) && !open.has(s)) stack.push(s);
+    } else {
+      rows.set(id, next.reduce((n, s) => n + 1 + (rows.get(s) ?? 0), 0));
+      open.delete(id);
+      stack.pop();
+    }
+  }
+}
+
 export class TaskPrioritizationService {
   // ---------------------------------------------------------------------------
   // Prioritize Tasks
@@ -66,12 +112,9 @@ export class TaskPrioritizationService {
       };
     }
 
-    // Count downstream tasks for each task (for downstream impact factor)
-    const downstreamCounts = new Map<string, number>();
-    for (const task of activeTasks) {
-      const downstream = await scheduleService.findAllDownstreamTasks(task.id);
-      downstreamCounts.set(task.id, downstream.length);
-    }
+    // Count downstream tasks for each task (for downstream impact factor), walked in memory over
+    // the links the plan's tasks already carry (it used to be one recursive query per task)
+    const downstreamCounts = downstreamRowCounts(tasks);
 
     // Calculate algorithmic scores
     const now = utcDay(new Date());
@@ -243,6 +286,10 @@ export class TaskPrioritizationService {
   async applyAllPriorityChanges(changes: Array<{ taskId: string; priority: Priority }>): Promise<number> {
     let applied = 0;
     for (const change of changes) {
+      // One task at a time on purpose: each save records the priority change in the task's
+      // activity, writes the task.update audit and fires the task-changed event (workflows,
+      // live updates), which a plain bulk UPDATE would skip.
+      // eslint-disable-next-line no-await-in-loop -- per-task save side effects (see above)
       const updated = await scheduleService.updateTask(change.taskId, {
         priority: change.priority,
       });

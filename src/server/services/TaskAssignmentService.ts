@@ -25,12 +25,16 @@ export class TaskAssignmentService {
     await databaseService.transaction(async (conn) => {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
       await q('DELETE FROM task_assignments WHERE task_id = ?', [taskId]);
-      for (const a of assignments) {
-        const id = uuidv4();
+      // One multi-row INSERT for everyone on the task (rows in the order given)
+      if (assignments.length > 0) {
+        const rowsSql = assignments.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+        const params = assignments.flatMap((a) => [
+          uuidv4(), taskId, a.resourceId, a.allocationPct ?? 100, a.roleOnTask || null, a.hoursPlanned ?? null,
+        ]);
         await q(
           `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned)
-           VALUES (?, ?, ?, ?, ?, ?)`,
-          [id, taskId, a.resourceId, a.allocationPct ?? 100, a.roleOnTask || null, a.hoursPlanned ?? null],
+           VALUES ${rowsSql}`,
+          params,
         );
       }
       // Denormalize primary assignee to tasks.assigned_to
@@ -95,9 +99,12 @@ export class TaskAssignmentService {
     if (assignments.length === 0) return;
 
     // Calculate average hours per day across assigned resources
+    // One lookup for every assigned resource
+    const resources = await resourceRepository.findByIds([...new Set(assignments.map((a) => a.resourceId))]);
+    const resourceById = new Map(resources.map((r) => [r.id, r]));
     let totalHoursPerDay = 0;
     for (const a of assignments) {
-      const resource = await resourceRepository.findById(a.resourceId);
+      const resource = resourceById.get(a.resourceId);
       const hoursPerDay = resource ? resource.capacityHoursPerWeek / 5 : 8;
       totalHoursPerDay += hoursPerDay * ((a.allocationPct || 100) / 100);
     }

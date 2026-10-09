@@ -3,6 +3,7 @@ import { taskDatesOf, moveBookingsWithTasks } from './bookingDates';
 import { databaseService } from './connection';
 import type { Task, TaskDependency, TaskComment, TaskActivityEntry } from '../services/ScheduleService';
 import { taskAssignmentRepository } from './TaskAssignmentRepository';
+import { chunksOf } from '../utils/chunksOf';
 
 // ---------------------------------------------------------------------------
 // Row mappers
@@ -178,6 +179,19 @@ export class TaskRepository {
     return task;
   }
 
+  /** Several tasks by id in one query (same shape as findById; order not guaranteed, missing ids skipped) */
+  async findByIds(ids: string[]): Promise<Task[]> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return [];
+    const rows = await databaseService.query(
+      `SELECT * FROM tasks WHERE id IN (${unique.map(() => '?').join(',')})`,
+      unique,
+    );
+    const tasks = rows.map(rowToTask);
+    await this.attachDependencies(tasks);
+    return tasks;
+  }
+
   async findByScheduleId(scheduleId: string): Promise<Task[]> {
     const rows = await databaseService.query(
       'SELECT * FROM tasks WHERE schedule_id = ? ORDER BY sort_order, created_at, id',
@@ -279,25 +293,31 @@ export class TaskRepository {
   /**
    * New dates for many tasks at once: one UPDATE per 100 tasks, and their booked hours move with
    * them. Moving a chain of successors used to cost ~6 queries per task (2026-10-04 audit).
+   * All or nothing (2026-10-08): if any piece fails nothing is saved, so a caller that then saves
+   * task by task starts from the true old dates and every task's bookings still move. A task
+   * listed twice gets its last dates, as when they were saved one by one.
    */
   async updateDatesMany(changes: Array<{ id: string; startDate: string | null; endDate: string | null }>): Promise<void> {
-    if (changes.length === 0) return;
-    const run = (sql: string, params: any[]) => databaseService.query(sql, params);
-    const before = await taskDatesOf(run, changes.map(c => c.id));
-    for (let i = 0; i < changes.length; i += 100) {
-      const chunk = changes.slice(i, i + 100);
-      const cases = chunk.map(() => 'WHEN ? THEN ?').join(' ');
-      await databaseService.query(
-        `UPDATE tasks SET start_date = CASE id ${cases} END, end_date = CASE id ${cases} END
-         WHERE id IN (${chunk.map(() => '?').join(',')})`,
-        [
-          ...chunk.flatMap(c => [c.id, c.startDate]),
-          ...chunk.flatMap(c => [c.id, c.endDate]),
-          ...chunk.map(c => c.id),
-        ],
-      );
-    }
-    await moveBookingsWithTasks(run, before);
+    const last = [...new Map(changes.map(c => [c.id, c])).values()];
+    if (last.length === 0) return;
+    await databaseService.transaction(async (conn) => {
+      const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
+      const before = await taskDatesOf(run, last.map(c => c.id));
+      for (const chunk of chunksOf(last, 100)) {
+        const cases = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+        // eslint-disable-next-line no-await-in-loop -- one statement per 100 tasks, in one transaction
+        await run(
+          `UPDATE tasks SET start_date = CASE id ${cases} END, end_date = CASE id ${cases} END
+           WHERE id IN (${chunk.map(() => '?').join(',')})`,
+          [
+            ...chunk.flatMap(c => [c.id, c.startDate]),
+            ...chunk.flatMap(c => [c.id, c.endDate]),
+            ...chunk.map(c => c.id),
+          ],
+        );
+      }
+      await moveBookingsWithTasks(run, before);
+    });
   }
 
   // --- Comments ---
@@ -349,8 +369,8 @@ export class TaskRepository {
 
   /** Several activity lines in one INSERT (nothing read back) */
   async logActivities(rows: Array<{ taskId: string; userId: string; userName: string; action: string; field?: string; oldValue?: string; newValue?: string }>): Promise<void> {
-    for (let i = 0; i < rows.length; i += 100) {
-      const chunk = rows.slice(i, i + 100);
+    for (const chunk of chunksOf(rows, 100)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 100 lines
       await databaseService.query(
         `INSERT INTO task_activities (id, task_id, user_id, user_name, action, field, old_value, new_value)
          VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,

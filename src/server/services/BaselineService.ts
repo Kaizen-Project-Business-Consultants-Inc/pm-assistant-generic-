@@ -2,6 +2,7 @@ import { scheduleService } from './ScheduleService';
 import { baselineRepository } from '../database/BaselineRepository';
 import { databaseService } from '../database/connection';
 import { type IsWorking, utcDay, workingDaysAfter, workingSpread } from '../utils/workingDays';
+import { chunksOf } from '../utils/chunksOf';
 
 export interface BaselineTask {
   taskId: string;
@@ -84,6 +85,9 @@ function daysDuration(start: string, end: string, isWorking: IsWorking): number 
   return Math.max(1, workingSpread(utcDay(start), utcDay(end), isWorking).workingDays);
 }
 
+/** Tasks per baseline-stamping UPDATE */
+const BASELINE_STAMP_CHUNK = 200;
+
 export class BaselineService {
   async create(scheduleId: string, name: string, createdBy: string): Promise<Baseline> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
@@ -109,13 +113,28 @@ export class BaselineService {
 
     await baselineRepository.create(baseline);
 
-    // Stamp task-level baseline fields for MPP parity
-    for (const t of tasks) {
-      const startDate = t.startDate ? t.startDate.slice(0, 10) : null;
-      const endDate = t.endDate ? t.endDate.slice(0, 10) : null;
+    // Stamp task-level baseline fields for MPP parity: one CASE UPDATE per 200 tasks
+    // (it used to be one UPDATE per task)
+    const stamps = tasks.map((t) => ({
+      id: t.id,
+      values: [
+        t.startDate ? t.startDate.slice(0, 10) : null,
+        t.endDate ? t.endDate.slice(0, 10) : null,
+        t.estimatedDays ?? null,
+        t.budgetAllocated ?? null,
+      ],
+    }));
+    const columns = ['baseline_start_date', 'baseline_finish_date', 'baseline_duration_days', 'baseline_cost'];
+    for (const chunk of chunksOf(stamps, BASELINE_STAMP_CHUNK)) {
+      const cases = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks keeps each UPDATE's size bounded
       await databaseService.query(
-        `UPDATE tasks SET baseline_start_date = ?, baseline_finish_date = ?, baseline_duration_days = ?, baseline_cost = ? WHERE id = ?`,
-        [startDate, endDate, t.estimatedDays ?? null, t.budgetAllocated ?? null, t.id],
+        `UPDATE tasks SET ${columns.map((c) => `${c} = CASE id ${cases} END`).join(', ')}
+         WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [
+          ...columns.flatMap((_, col) => chunk.flatMap((st) => [st.id, st.values[col]])),
+          ...chunk.map((st) => st.id),
+        ],
       );
     }
 

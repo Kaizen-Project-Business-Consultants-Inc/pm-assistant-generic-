@@ -15,6 +15,11 @@ vi.mock('../../services/ScheduleService', () => ({
   },
 }));
 
+const mockFindTasksByIds = vi.fn();
+vi.mock('../../database/TaskRepository', () => ({
+  taskRepository: { findByIds: (...args: any[]) => mockFindTasksByIds(...args) },
+}));
+
 const mockCalculateCriticalPath = vi.fn();
 vi.mock('../../services/CriticalPathService', () => ({
   criticalPathService: {
@@ -297,9 +302,7 @@ describe('ResourceLevelingService', () => {
     ];
 
     it('applies all adjustments successfully', async () => {
-      mockFindTaskById.mockImplementation((id: string) =>
-        Promise.resolve({ id, scheduleId: 'sch-1' })
-      );
+      mockFindTasksByIds.mockResolvedValue([{ id: 't1', scheduleId: 'sch-1' }, { id: 't2', scheduleId: 'sch-1' }]);
       mockUpdateTask.mockResolvedValue({});
 
       const result = await service.applyLeveledDates('sch-1', adjustments);
@@ -318,34 +321,41 @@ describe('ResourceLevelingService', () => {
     });
 
     it('records error when task is not found', async () => {
-      mockFindTaskById.mockResolvedValue(null);
+      mockFindTasksByIds.mockResolvedValue([]);
 
       const result = await service.applyLeveledDates('sch-1', [adjustments[0]]);
 
       expect(result.applied).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('not found');
+      expect(result.errors).toEqual(['Task t1 not found']);
     });
 
     it('records error when task belongs to different schedule', async () => {
-      mockFindTaskById.mockResolvedValue({ id: 't1', scheduleId: 'sch-other' });
+      mockFindTasksByIds.mockResolvedValue([{ id: 't1', scheduleId: 'sch-other' }]);
 
       const result = await service.applyLeveledDates('sch-1', [adjustments[0]]);
 
       expect(result.applied).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('does not belong to schedule');
+      expect(result.errors).toEqual(['Task t1 does not belong to schedule sch-1']);
     });
 
     it('records error when updateTask throws', async () => {
-      mockFindTaskById.mockResolvedValue({ id: 't1', scheduleId: 'sch-1' });
+      mockFindTasksByIds.mockResolvedValue([{ id: 't1', scheduleId: 'sch-1' }]);
       mockUpdateTask.mockRejectedValue(new Error('DB write error'));
 
       const result = await service.applyLeveledDates('sch-1', [adjustments[0]]);
 
       expect(result.applied).toBe(0);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('DB write error');
+      expect(result.errors).toEqual(['Failed to update task t1: DB write error']);
+    });
+
+    it('records the read failure against every task when the tasks cannot be read', async () => {
+      mockFindTasksByIds.mockRejectedValue(new Error('db down'));
+
+      const result = await service.applyLeveledDates('sch-1', adjustments);
+
+      expect(result.applied).toBe(0);
+      expect(result.errors).toEqual(['Failed to update task t1: db down', 'Failed to update task t2: db down']);
+      expect(mockUpdateTask).not.toHaveBeenCalled();
     });
 
     it('handles empty adjustments array', async () => {
@@ -353,22 +363,44 @@ describe('ResourceLevelingService', () => {
 
       expect(result.applied).toBe(0);
       expect(result.errors).toEqual([]);
+      expect(mockFindTasksByIds).not.toHaveBeenCalled();
       expect(mockFindTaskById).not.toHaveBeenCalled();
     });
 
     it('continues processing after individual task errors', async () => {
       // t1 not found, t2 succeeds
-      mockFindTaskById.mockImplementation((id: string) => {
-        if (id === 't1') return Promise.resolve(null);
-        return Promise.resolve({ id, scheduleId: 'sch-1' });
-      });
+      mockFindTasksByIds.mockResolvedValue([{ id: 't2', scheduleId: 'sch-1' }]);
       mockUpdateTask.mockResolvedValue({});
 
       const result = await service.applyLeveledDates('sch-1', adjustments);
 
       expect(result.applied).toBe(1);
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0]).toContain('t1');
+      expect(result.errors).toEqual(['Task t1 not found']);
+      expect(mockUpdateTask).toHaveBeenCalledWith('t2', { startDate: '2026-01-08', endDate: '2026-01-10' });
+    });
+
+    it('reads the tasks in one call however many move; saves stay one per task, in order', async () => {
+      for (const n of [1, 10, 80]) {
+        mockFindTasksByIds.mockReset();
+        mockUpdateTask.mockReset();
+        mockFindTaskById.mockReset();
+        const many = Array.from({ length: n }, (_, i) => ({
+          taskId: `t${i}`, taskName: `T${i}`, originalStart: '2026-01-05', originalEnd: '2026-01-06',
+          newStart: '2026-01-07', newEnd: '2026-01-08', reason: 'R',
+        }));
+        // every 5th task is in another plan; returned in reverse order
+        mockFindTasksByIds.mockResolvedValue(many.map((a, i) => ({ id: a.taskId, scheduleId: i % 5 === 4 ? 'sch-x' : 'sch-1' })).reverse());
+        mockUpdateTask.mockResolvedValue({});
+
+        const result = await service.applyLeveledDates('sch-1', many);
+
+        expect(mockFindTasksByIds).toHaveBeenCalledTimes(1);
+        expect(mockFindTaskById).not.toHaveBeenCalled();
+        const moved = many.filter((_, i) => i % 5 !== 4);
+        expect(mockUpdateTask.mock.calls.map(c => c[0])).toEqual(moved.map(a => a.taskId));
+        expect(result.applied).toBe(moved.length);
+        expect(result.errors).toEqual(many.filter((_, i) => i % 5 === 4).map(a => `Task ${a.taskId} does not belong to schedule sch-1`));
+      }
     });
   });
 });

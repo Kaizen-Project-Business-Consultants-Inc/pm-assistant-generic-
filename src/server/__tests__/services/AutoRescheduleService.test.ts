@@ -34,6 +34,15 @@ const {
   mockAuditAppend: vi.fn().mockResolvedValue(undefined),
 }));
 
+const { mockFindTasksByIds, mockLogActivities } = vi.hoisted(() => ({
+  mockFindTasksByIds: vi.fn(),
+  mockLogActivities: vi.fn(),
+}));
+
+vi.mock('../../database/TaskRepository', () => ({
+  taskRepository: { findByIds: mockFindTasksByIds, logActivities: mockLogActivities },
+}));
+
 const { mockWorkingDayTest, mockRecompute, mockCalendarSpec, mockNonWorking, mockHistoryRecord, mockFindTaskById } = vi.hoisted(() => ({
   mockWorkingDayTest: vi.fn(),
   mockRecompute: vi.fn(),
@@ -224,8 +233,11 @@ describe('AutoRescheduleService', () => {
     mockCalculateCriticalPath.mockResolvedValue(makeCriticalPathResult());
     mockFindTasksByScheduleId.mockResolvedValue([]);
     mockFindScheduleById.mockResolvedValue(null);
-    mockUpdateTask.mockResolvedValue(undefined);
+    // updateTask returns the saved task (null only when the task no longer exists)
+    mockUpdateTask.mockImplementation(async (id: string) => ({ id }));
     mockLogActivity.mockResolvedValue(undefined);
+    mockFindTasksByIds.mockResolvedValue([]);
+    mockLogActivities.mockResolvedValue(undefined);
     mockRepoInsert.mockResolvedValue(undefined);
     mockRepoUpdateStatus.mockResolvedValue(undefined);
     mockRepoUpdateProposalData.mockResolvedValue(undefined);
@@ -1002,7 +1014,7 @@ describe('AutoRescheduleService', () => {
     it('re-flows successors of the moved tasks in working days, and Undo covers them', async () => {
       mockRepoFindById.mockResolvedValue(makeProposalRow());
       mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' });
-      mockFindTaskById.mockResolvedValue({ id: 't1', startDate: '2026-01-01', endDate: '2026-01-10' });
+      mockFindTasksByIds.mockResolvedValue([{ id: 't1', startDate: '2026-01-01', endDate: '2026-01-10' }]);
       mockRecompute.mockResolvedValue({ deltas: [
         { taskId: 't1', oldStart: '2026-01-01', oldEnd: '2026-01-10', newStart: '2026-01-01', newEnd: '2026-01-15' },
         { taskId: 't9', oldStart: '2026-01-12', oldEnd: '2026-01-13', newStart: '2026-01-16', newEnd: '2026-01-19' },
@@ -1029,15 +1041,16 @@ describe('AutoRescheduleService', () => {
       mockRepoFindById.mockResolvedValue(makeProposalRow());
       await service.acceptProposal('prop-1');
 
-      expect(mockLogActivity).toHaveBeenCalledWith(
-        't1',
-        '1',
-        'System',
-        'auto-rescheduled',
-        'dates',
-        '2026-01-01 - 2026-01-10',
-        '2026-01-01 - 2026-01-15',
-      );
+      expect(mockLogActivities).toHaveBeenCalledWith([{
+        taskId: 't1',
+        userId: '1',
+        userName: 'System',
+        action: 'auto-rescheduled',
+        field: 'dates',
+        oldValue: '2026-01-01 - 2026-01-10',
+        newValue: '2026-01-01 - 2026-01-15',
+      }]);
+      expect(mockLogActivity).not.toHaveBeenCalled();
     });
 
     it('appends audit ledger entry for each change', async () => {
@@ -1083,7 +1096,72 @@ describe('AutoRescheduleService', () => {
 
       await service.acceptProposal('prop-1');
       expect(mockUpdateTask).toHaveBeenCalledTimes(2);
-      expect(mockLogActivity).toHaveBeenCalledTimes(2);
+      expect(mockLogActivities).toHaveBeenCalledTimes(1);
+      expect(mockLogActivities.mock.calls[0][0].map((r: any) => [r.taskId, r.oldValue, r.newValue])).toEqual([
+        ['t1', '2026-01-01 - 2026-01-10', '2026-01-01 - 2026-01-15'],
+        ['t2', '2026-01-11 - 2026-01-20', '2026-01-16 - 2026-01-25'],
+      ]);
+    });
+
+    function bigProposal(n: number) {
+      const proposedChanges = Array.from({ length: n }, (_, i) => ({
+        taskId: `t${i}`, taskName: `T${i}`,
+        currentStartDate: '2026-01-01', currentEndDate: '2026-01-10',
+        proposedStartDate: '2026-01-05', proposedEndDate: '2026-01-14', reason: 'R',
+      }));
+      return makeProposalRow({ proposal_data: JSON.stringify({
+        delayedTasks: [], proposedChanges, rationale: 'Many',
+        estimatedImpact: { originalEndDate: '2026-01-10', proposedEndDate: '2026-01-14', daysChange: 4, criticalPathImpact: 'N' },
+      }) });
+    }
+
+    it('reads the current dates once and writes the activity lines once, however many tasks move', async () => {
+      for (const n of [1, 10, 60]) {
+        vi.clearAllMocks();
+        mockUpdateTask.mockImplementation(async (id: string) => ({ id }));
+        mockRepoFindById.mockResolvedValue(bigProposal(n));
+        mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' });
+        // returned out of order on purpose: Undo's list keeps the proposal's order
+        mockFindTasksByIds.mockResolvedValue(Array.from({ length: n }, (_, i) => ({
+          id: `t${n - 1 - i}`, startDate: '2026-01-01', endDate: '2026-01-10',
+        })));
+
+        expect(await service.acceptProposal('prop-1')).toBe(true);
+
+        expect(mockFindTasksByIds).toHaveBeenCalledTimes(1);
+        expect(mockFindTasksByIds).toHaveBeenCalledWith(Array.from({ length: n }, (_, i) => `t${i}`));
+        expect(mockFindTaskById).not.toHaveBeenCalled();
+        expect(mockLogActivities).toHaveBeenCalledTimes(1);
+        expect(mockLogActivities.mock.calls[0][0]).toHaveLength(n);
+        expect(mockLogActivity).not.toHaveBeenCalled();
+        // kept per task: the save (rollup, task.update audit, change event) and the reschedule audit line
+        expect(mockUpdateTask).toHaveBeenCalledTimes(n);
+        expect(mockAuditAppend).toHaveBeenCalledTimes(n);
+        const undo = mockHistoryRecord.mock.calls[0][0].undo.moved;
+        expect(undo.map((u: any) => u.taskId)).toEqual(Array.from({ length: n }, (_, i) => `t${i}`));
+      }
+    });
+
+    it('a task deleted since the proposal stops the accept there, after logging the tasks saved before it', async () => {
+      mockRepoFindById.mockResolvedValue(bigProposal(4));
+      mockUpdateTask.mockImplementation(async (id: string) => (id === 't2' ? null : { id }));
+      mockLogActivity.mockRejectedValue(new Error('foreign key'));
+
+      await expect(service.acceptProposal('prop-1')).rejects.toThrow('foreign key');
+
+      expect(mockUpdateTask.mock.calls.map(c => c[0])).toEqual(['t0', 't1', 't2']);
+      expect(mockLogActivities.mock.calls.flatMap(c => c[0]).map((r: any) => r.taskId)).toEqual(['t0', 't1']);
+      expect(mockLogActivity).toHaveBeenCalledWith('t2', '1', 'System', 'auto-rescheduled', 'dates', '2026-01-01 - 2026-01-10', '2026-01-05 - 2026-01-14');
+      expect(mockRepoUpdateStatus).not.toHaveBeenCalled();
+    });
+
+    it('when a save fails, the activity lines for the tasks already saved are still written', async () => {
+      mockRepoFindById.mockResolvedValue(bigProposal(3));
+      mockUpdateTask.mockImplementation(async (id: string) => { if (id === 't1') throw new Error('save failed'); return { id }; });
+
+      await expect(service.acceptProposal('prop-1')).rejects.toThrow('save failed');
+
+      expect(mockLogActivities.mock.calls.flatMap(c => c[0]).map((r: any) => r.taskId)).toEqual(['t0']);
     });
   });
 

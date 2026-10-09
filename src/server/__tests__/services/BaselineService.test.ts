@@ -136,12 +136,50 @@ describe('BaselineService', () => {
 
       await service.create('sch-1', 'BL', 'user-1');
 
-      // One UPDATE per task
+      // One CASE UPDATE for the task: (id, value) per column, then the id list
       expect(mockQuery).toHaveBeenCalledTimes(1);
       expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining('UPDATE tasks SET baseline_start_date'),
-        ['2026-03-01', '2026-03-10', 10, 5000, 't1'],
+        expect.stringContaining('UPDATE tasks SET baseline_start_date = CASE id WHEN ? THEN ? END'),
+        ['t1', '2026-03-01', 't1', '2026-03-10', 't1', 10, 't1', 5000, 't1'],
       );
+    });
+
+    it('stamps every task with the same values as before in one UPDATE per 200 tasks', async () => {
+      for (const [n, statements] of [[3, 1], [200, 1], [201, 2], [450, 3]] as const) {
+        mockQuery.mockReset();
+        mockQuery.mockResolvedValue(undefined);
+        const tasks = Array.from({ length: n }, (_, i) => makeTask(`t${i}`, `T${i}`, {
+          startDate: i % 2 ? '2026-03-01T00:00:00Z' : null,
+          endDate: '2026-03-10',
+          estimatedDays: i % 3 ? i : null,
+          budgetAllocated: i % 5 ? i * 100 : null,
+        }));
+        mockFindTasks.mockResolvedValue(tasks);
+        mockRepoCreate.mockResolvedValue(undefined);
+
+        await service.create('sch-1', 'BL', 'user-1');
+
+        expect(mockQuery).toHaveBeenCalledTimes(statements);
+        // Decode each statement back into per-task values and compare with the old per-task UPDATE's
+        const stamped = new Map<string, unknown[]>();
+        for (const [sql, params] of mockQuery.mock.calls as Array<[string, unknown[]]>) {
+          const m = (sql.match(/WHERE id IN \(([?,]*)\)/) as RegExpMatchArray)[1].split(',').length;
+          for (let k = 0; k < m; k++) {
+            const id = params[2 * k] as string;
+            stamped.set(id, [0, 1, 2, 3].map((col) => params[col * 2 * m + 2 * k + 1]));
+            expect(params[8 * m + k]).toBe(id); // the WHERE id IN list, same order
+          }
+        }
+        expect(stamped.size).toBe(n);
+        for (const t of tasks) {
+          expect(stamped.get(t.id)).toEqual([
+            t.startDate ? t.startDate.slice(0, 10) : null,
+            t.endDate ? t.endDate.slice(0, 10) : null,
+            t.estimatedDays ?? null,
+            t.budgetAllocated ?? null,
+          ]);
+        }
+      }
     });
 
     it('handles tasks with null dates and no budget', async () => {
@@ -158,7 +196,7 @@ describe('BaselineService', () => {
       expect(result.tasks[0].endDate).toBe('');
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE tasks'),
-        [null, null, null, null, 't1'],
+        ['t1', null, 't1', null, 't1', null, 't1', null, 't1'],
       );
     });
 

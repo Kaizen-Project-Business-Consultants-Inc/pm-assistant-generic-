@@ -596,11 +596,13 @@ export class ScheduleFixProposerService {
     if (proposal.baselineId) {
       try {
         const baseline = await baselineService.findById(proposal.baselineId);
-        for (const bt of baseline?.tasks ?? []) {
-          const start = bt.startDate ? new Date(bt.startDate).toISOString().slice(0, 10) : null;
-          const end = bt.endDate ? new Date(bt.endDate).toISOString().slice(0, 10) : null;
-          await taskRepository.updateDates(bt.taskId, start, end).catch(() => { /* task may have been removed */ });
-        }
+        // All tasks in one batched write (one UPDATE per 100 tasks; their bookings move with
+        // them). A task removed since is simply not matched by the UPDATE.
+        await taskRepository.updateDatesMany((baseline?.tasks ?? []).map((bt) => ({
+          id: bt.taskId,
+          startDate: bt.startDate ? new Date(bt.startDate).toISOString().slice(0, 10) : null,
+          endDate: bt.endDate ? new Date(bt.endDate).toISOString().slice(0, 10) : null,
+        })));
       } catch (err: any) {
         logger.warn('[ScheduleFix] undo date restore failed', { proposalId, error: err?.message });
       }

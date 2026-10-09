@@ -6,6 +6,7 @@ import { calendarsFor } from './weeklyLoad';
 import { workingDaysBetween } from '../utils/workingDays';
 import logger from '../utils/logger';
 import { planChanged } from './domainEvents';
+import { chunksOf } from '../utils/chunksOf';
 
 /**
  * A task's budget = its planned work effort × rate (2026-10-02, agreed with the user) — never
@@ -63,8 +64,7 @@ export class TaskBudgetService {
     // Written 100 at a time (it was one UPDATE per task — 2026-10-04 audit). A worked-out figure,
     // not an edit: updated_at stays, so a background re-price ~20 s after a change doesn't count as
     // "the plan changed since" and block its Undo in Schedule History
-    for (let i = 0; i < writes.length; i += 100) {
-      const chunk = writes.slice(i, i + 100);
+    for (const chunk of chunksOf(writes, 100)) {
       // eslint-disable-next-line no-await-in-loop -- already batched: one UPDATE per 100 tasks
       await databaseService.query(
         `UPDATE tasks SET budget_allocated = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END, updated_at = updated_at

@@ -18,6 +18,7 @@ import {
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import { calendarService } from './CalendarService';
 import { scheduleRecomputeService } from './ScheduleRecomputeService';
+import { taskRepository } from '../database/TaskRepository';
 import {
   type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor, addCalendarDays,
 } from '../utils/workingDays';
@@ -441,8 +442,11 @@ Please propose date changes to reschedule affected tasks with minimal disruption
     // The dates as they are now (the proposal's "current" dates may be stale) — for History's Undo
     const before: Array<{ taskId: string; startDate: string | null; endDate: string | null }> = [];
     try {
+      // One read for every task in the proposal (it used to be one per task)
+      const found = await taskRepository.findByIds(proposal.proposedChanges.map(c => c.taskId));
+      const byId = new Map(found.map(t => [t.id, t]));
       for (const change of proposal.proposedChanges) {
-        const t = await this.scheduleService.findTaskById(change.taskId);
+        const t = byId.get(change.taskId);
         if (t) before.push({ taskId: t.id, startDate: t.startDate ? String(t.startDate).slice(0, 10) : null, endDate: t.endDate ? String(t.endDate).slice(0, 10) : null });
       }
     } catch (err: any) {
@@ -450,39 +454,68 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       before.length = 0;
     }
 
-    // Apply all proposed changes
-    for (const change of proposal.proposedChanges) {
-      await this.scheduleService.updateTask(change.taskId, {
-        startDate: change.proposedStartDate,
-        endDate: change.proposedEndDate,
-      });
+    // Apply all proposed changes. updateTask stays one task at a time: each save also records
+    // the field changes, re-rolls the parent summary, writes the task.update audit and fires the
+    // task-changed event, none of which a plain bulk date write does. The 'auto-rescheduled'
+    // activity lines are written together (one INSERT) after the saves, and also for the tasks
+    // saved before a failure.
+    type Change = (typeof proposal.proposedChanges)[number];
+    const activityFor = (change: Change) => ({
+      taskId: change.taskId,
+      userId: '1',
+      userName: 'System',
+      action: 'auto-rescheduled',
+      field: 'dates',
+      oldValue: `${change.currentStartDate} - ${change.currentEndDate}`,
+      newValue: `${change.proposedStartDate} - ${change.proposedEndDate}`,
+    });
+    let pendingActivity: Change[] = [];
+    const writeActivity = async () => {
+      const rows = pendingActivity;
+      pendingActivity = [];
+      await taskRepository.logActivities(rows.map(activityFor));
+    };
+    try {
+      for (const change of proposal.proposedChanges) {
+        // eslint-disable-next-line no-await-in-loop -- each task's save has its own rollup, audit and change event (see above)
+        const saved = await this.scheduleService.updateTask(change.taskId, {
+          startDate: change.proposedStartDate,
+          endDate: change.proposedEndDate,
+        });
+        if (saved) {
+          pendingActivity.push(change);
+        } else {
+          // A task deleted since the proposal: write its line on its own, exactly as before
+          // batching (the database refuses it, which stops the accept at this task)
+          // eslint-disable-next-line no-await-in-loop -- rare path; keeps the old outcome for a deleted task
+          await writeActivity();
+          const a = activityFor(change);
+          // eslint-disable-next-line no-await-in-loop -- rare path (see above)
+          await this.scheduleService.logActivity(a.taskId, a.userId, a.userName, a.action, a.field, a.oldValue, a.newValue);
+        }
 
-      await this.scheduleService.logActivity(
-        change.taskId,
-        '1',
-        'System',
-        'auto-rescheduled',
-        'dates',
-        `${change.currentStartDate} - ${change.currentEndDate}`,
-        `${change.proposedStartDate} - ${change.proposedEndDate}`,
-      );
-
-      auditLedgerService.append({
-        actorId: 'system',
-        actorType: 'system',
-        action: 'schedule.auto_reschedule',
-        entityType: 'task',
-        entityId: change.taskId,
-        projectId: null,
-        payload: {
-          proposalId,
-          before: { startDate: change.currentStartDate, endDate: change.currentEndDate },
-          after: { startDate: change.proposedStartDate, endDate: change.proposedEndDate },
-          reason: change.reason,
-        },
-        source: 'system',
-      }).catch(err => deadLetterService.capture('audit.reschedule', { proposalId, taskId: change.taskId }, err));
+        auditLedgerService.append({
+          actorId: 'system',
+          actorType: 'system',
+          action: 'schedule.auto_reschedule',
+          entityType: 'task',
+          entityId: change.taskId,
+          projectId: null,
+          payload: {
+            proposalId,
+            before: { startDate: change.currentStartDate, endDate: change.currentEndDate },
+            after: { startDate: change.proposedStartDate, endDate: change.proposedEndDate },
+            reason: change.reason,
+          },
+          source: 'system',
+        }).catch(err => deadLetterService.capture('audit.reschedule', { proposalId, taskId: change.taskId }, err));
+      }
+    } catch (err) {
+      // the lines for tasks already saved are still written; a failure here must not hide `err`
+      await writeActivity().catch(e => logger.warn('[AutoReschedule] activity lines not written', { proposalId, error: e?.message }));
+      throw err;
     }
+    await writeActivity();
 
     // Successors follow the new dates: anything now starting before its predecessor
     // allows is pushed later, in working days (never pulled earlier; audited).

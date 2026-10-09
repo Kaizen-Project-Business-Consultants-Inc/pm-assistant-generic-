@@ -20,7 +20,11 @@ import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
+import { chunksOf } from '../utils/chunksOf';
 
+
+/** Rows per statement when copying a plan */
+const CLONE_CHUNK = 200;
 export interface Schedule {
   id: string;
   projectId: string;
@@ -433,6 +437,7 @@ export class ScheduleService {
     } as any);
     const previous: Array<{ id: string; parentTaskId: string | null }> = [];
     for (const t of tasks) {
+      // eslint-disable-next-line no-await-in-loop -- each move is a full task save (history, roll-ups, notices), in order
       await this.updateTask(t.id, { parentTaskId: summary.id });
       previous.push({ id: t.id, parentTaskId: t.parentTaskId ?? null });
     }
@@ -443,6 +448,7 @@ export class ScheduleService {
   async ungroupTasks(summaryId: string, previous: Array<{ id: string; parentTaskId: string | null }>): Promise<number> {
     let restored = 0;
     for (const p of previous) {
+      // eslint-disable-next-line no-await-in-loop -- each move back is a full task save, in order
       await this.updateTask(p.id, { parentTaskId: p.parentTaskId } as any);
       restored++;
     }
@@ -499,12 +505,15 @@ export class ScheduleService {
 
     // Write through updateTask so legacy columns, rollups and the audit trail behave exactly
     // as for a single edit. Everything that could fail validation has been checked above.
+    const addedByTask = new Map<string, typeof added>();
+    for (const a of added) addedByTask.set(a.taskId, [...(addedByTask.get(a.taskId) ?? []), a]);
     for (const [taskId] of newPerTask) {
       const task = byId.get(taskId)!;
       const merged = [
         ...task.dependencies.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
-        ...added.filter(a => a.taskId === taskId).map(a => ({ dependencyId: a.dependencyId, dependencyType: a.dependencyType, lagDays: a.lagDays })),
+        ...(addedByTask.get(taskId) ?? []).map(a => ({ dependencyId: a.dependencyId, dependencyType: a.dependencyType, lagDays: a.lagDays })),
       ];
+      // eslint-disable-next-line no-await-in-loop -- each task's links are a full task save (history, re-flow), in order
       await this.updateTask(taskId, { dependencies: merged } as any);
     }
     return { added, skipped };
@@ -523,9 +532,11 @@ export class ScheduleService {
     let removed = 0;
     for (const [taskId, ids] of toRemove) {
       const task = byId.get(taskId)!;
+      // eslint-disable-next-line no-restricted-syntax -- small: one task's links (at most 20), Set look-up
       const remaining = task.dependencies.filter(d => !ids.has(d.dependencyId));
       if (remaining.length === task.dependencies.length) continue;
       removed += task.dependencies.length - remaining.length;
+      // eslint-disable-next-line no-await-in-loop -- each task's links are a full task save, in order
       await this.updateTask(taskId, {
         dependencies: remaining.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
       } as any);
@@ -676,6 +687,7 @@ export class ScheduleService {
     }
 
     for (const dep of deps) {
+      // eslint-disable-next-line no-await-in-loop -- at most 20 links (checked above); stops at the first bad one
       await this.validateDependency(null, dep.dependencyId, data.scheduleId);
     }
     if (data.parentTaskId) await this.validateSameScheduleRef(null, data.parentTaskId, data.scheduleId, 'parent task');
@@ -804,11 +816,10 @@ export class ScheduleService {
         ],
       );
 
-      for (const dep of deps) {
-        const depId = uuidv4();
+      if (deps.length > 0) {
         await q(
-          `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)`,
-          [depId, id, dep.dependencyId, dep.dependencyType || 'FS', dep.lagDays ?? 0],
+          `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${deps.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
+          deps.flatMap(dep => [uuidv4(), id, dep.dependencyId, dep.dependencyType || 'FS', dep.lagDays ?? 0]),
         );
       }
     });
@@ -890,6 +901,7 @@ export class ScheduleService {
         throw new DependencyValidationError('A task cannot have more than 20 predecessors');
       }
       for (const dep of deps) {
+        // eslint-disable-next-line no-await-in-loop -- at most 20 links (checked above); stops at the first bad one
         await this.validateDependency(id, dep.dependencyId, oldTask.scheduleId);
       }
     } else if (data.dependency !== undefined && data.dependency) {
@@ -1004,11 +1016,10 @@ export class ScheduleService {
       if (data.dependencies !== undefined) {
         const deps = data.dependencies;
         await q('DELETE FROM task_dependencies WHERE task_id = ?', [id]);
-        for (const dep of deps) {
-          const depRowId = uuidv4();
+        if (deps.length > 0) {
           await q(
-            `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)`,
-            [depRowId, id, dep.dependencyId, dep.dependencyType || 'FS', dep.lagDays ?? 0],
+            `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${deps.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
+            deps.flatMap(dep => [uuidv4(), id, dep.dependencyId, dep.dependencyType || 'FS', dep.lagDays ?? 0]),
           );
         }
         const first = deps[0];
@@ -1027,18 +1038,20 @@ export class ScheduleService {
       }
 
       const trackFields: (keyof Task)[] = ['status', 'priority', 'assignedTo', 'progressPercentage', 'startDate', 'endDate', 'name'];
+      const activity: any[][] = [];
       for (const field of trackFields) {
         if (field in data && data[field as keyof typeof data] !== undefined) {
           const oldVal = String(oldTask[field] ?? '');
           const newVal = String(data[field as keyof typeof data] ?? '');
-          if (oldVal !== newVal) {
-            await q(
-              `INSERT INTO task_activities (id, task_id, user_id, user_name, action, field, old_value, new_value)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-              [uuidv4(), id, '1', 'System', 'updated', field, oldVal, newVal],
-            );
-          }
+          if (oldVal !== newVal) activity.push([uuidv4(), id, '1', 'System', 'updated', field, oldVal, newVal]);
         }
+      }
+      if (activity.length > 0) {
+        await q(
+          `INSERT INTO task_activities (id, task_id, user_id, user_name, action, field, old_value, new_value)
+           VALUES ${activity.map(() => '(?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+          activity.flat(),
+        );
       }
 
       const fields: string[] = [];
@@ -1424,14 +1437,27 @@ export class ScheduleService {
        source.startDate, source.endDate, userId, scheduleId, label, source.progressMode || 'duration'],
     );
 
-    // Clone all tasks
+    // Clone all tasks — 200 per statement, then one statement per 200 parents and links
+    // (it was one INSERT per task, one UPDATE per child and one INSERT per link; 2026-10-08)
     const tasks = await this.findTasksByScheduleId(scheduleId);
-    const oldToNew = new Map<string, string>();
-
-    for (const t of tasks) {
-      const newTaskId = uuidv4();
-      oldToNew.set(t.id, newTaskId);
-
+    const oldToNew = new Map(tasks.map(t => [t.id, uuidv4()] as [string, string]));
+    const COLS = 34;
+    const taskRows = tasks.map(t => [
+      oldToNew.get(t.id), newId, t.name, t.description || null, t.status, t.priority, t.assignedTo || null,
+      t.dueDate || null, t.estimatedDays ?? null, t.estimatedDurationHours ?? null, t.actualDurationHours ?? null,
+      t.startDate || null, t.endDate || null, t.progressPercentage ?? 0,
+      null, null, // dependencies are re-created below
+      t.risks || null, t.issues || null, t.comments || null,
+      null, // parentTaskId is remapped below, once every copy exists
+      t.isMilestone ? 1 : 0, t.dependencyLagDays ?? 0, t.sortOrder, userId,
+      t.recurrenceRule || null, null, t.isRecurrenceTemplate ? 1 : 0,
+      t.budgetAllocated ?? null, t.actualCost ?? null,
+      t.constraintType || 'ASAP', t.constraintDate || null,
+      t.workHours ?? null, t.effortDriven ? 1 : 0, t.id,
+    ]);
+    const row = `(${new Array(COLS).fill('?').join(', ')})`;
+    for (const chunk of chunksOf(taskRows, CLONE_CHUNK)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks, in order
       await databaseService.query(
         `INSERT INTO tasks (id, schedule_id, name, description, status, priority, assigned_to,
           due_date, estimated_days, estimated_duration_hours, actual_duration_hours,
@@ -1439,47 +1465,38 @@ export class ScheduleService {
           risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
           constraint_type, constraint_date, work_hours, effort_driven, original_task_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          newTaskId, newId, t.name, t.description || null, t.status, t.priority, t.assignedTo || null,
-          t.dueDate || null, t.estimatedDays ?? null, t.estimatedDurationHours ?? null, t.actualDurationHours ?? null,
-          t.startDate || null, t.endDate || null, t.progressPercentage ?? 0,
-          null, null, // dependencies will be re-created below
-          t.risks || null, t.issues || null, t.comments || null,
-          null, // parentTaskId remapped below
-          t.isMilestone ? 1 : 0, t.dependencyLagDays ?? 0, t.sortOrder, userId,
-          t.recurrenceRule || null, null, t.isRecurrenceTemplate ? 1 : 0,
-          t.budgetAllocated ?? null, t.actualCost ?? null,
-          t.constraintType || 'ASAP', t.constraintDate || null,
-          t.workHours ?? null, t.effortDriven ? 1 : 0, t.id,
-        ],
+         VALUES ${chunk.map(() => row).join(', ')}`,
+        chunk.flat(),
       );
     }
 
     // Fix parent references
-    for (const t of tasks) {
-      if (t.parentTaskId && oldToNew.has(t.parentTaskId)) {
-        await databaseService.query(
-          'UPDATE tasks SET parent_task_id = ? WHERE id = ?',
-          [oldToNew.get(t.parentTaskId), oldToNew.get(t.id)],
-        );
-      }
+    const parents = tasks
+      .filter(t => t.parentTaskId && oldToNew.has(t.parentTaskId))
+      .map(t => [oldToNew.get(t.id)!, oldToNew.get(t.parentTaskId!)!] as [string, string]);
+    for (const chunk of chunksOf(parents, CLONE_CHUNK)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 parents
+      await databaseService.query(
+        `UPDATE tasks SET parent_task_id = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flat(), ...chunk.map(([id]) => id)],
+      );
     }
 
     // Clone dependencies with remapped IDs
+    const links: any[][] = [];
     for (const t of tasks) {
-      if (t.dependencies && t.dependencies.length > 0) {
-        for (const dep of t.dependencies) {
-          const newTaskId = oldToNew.get(t.id);
-          const newDepId = oldToNew.get(dep.dependencyId);
-          if (newTaskId && newDepId) {
-            await databaseService.query(
-              'INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)',
-              [uuidv4(), newTaskId, newDepId, dep.dependencyType, dep.lagDays],
-            );
-          }
-        }
+      for (const dep of t.dependencies ?? []) {
+        const from = oldToNew.get(t.id);
+        const to = oldToNew.get(dep.dependencyId);
+        if (from && to) links.push([uuidv4(), from, to, dep.dependencyType, dep.lagDays]);
       }
+    }
+    for (const chunk of chunksOf(links, CLONE_CHUNK)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 links
+      await databaseService.query(
+        `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flat(),
+      );
     }
 
     return (await this.findById(newId))!;
@@ -1589,14 +1606,21 @@ export class ScheduleService {
     // Update base tasks with scenario dates/durations (booked hours move with them)
     const run = (sql: string, params: any[]) => databaseService.query(sql, params);
     const before = await taskDatesOf(run, baseTasks.map(t => t.id));
-    for (const bt of baseTasks) {
+    // 200 tasks per statement (it was one UPDATE per task; 2026-10-08)
+    const moves = baseTasks.flatMap(bt => {
       const st = scenarioByOriginal.get(bt.id);
-      if (st) {
-        await databaseService.query(
-          'UPDATE tasks SET start_date = ?, end_date = ?, estimated_days = ?, progress_percentage = ? WHERE id = ?',
-          [st.startDate || null, st.endDate || null, st.estimatedDays ?? null, st.progressPercentage ?? 0, bt.id],
-        );
-      }
+      return st ? [{ id: bt.id, start: st.startDate || null, end: st.endDate || null, days: st.estimatedDays ?? null, pct: st.progressPercentage ?? 0 }] : [];
+    });
+    for (const chunk of chunksOf(moves, CLONE_CHUNK)) {
+      const when = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+      const by = (pick: (m: typeof moves[number]) => any) => chunk.flatMap(m => [m.id, pick(m)]);
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks
+      await databaseService.query(
+        `UPDATE tasks SET start_date = CASE id ${when} END, end_date = CASE id ${when} END,
+           estimated_days = CASE id ${when} END, progress_percentage = CASE id ${when} END
+         WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [...by(m => m.start), ...by(m => m.end), ...by(m => m.days), ...by(m => m.pct), ...chunk.map(m => m.id)],
+      );
     }
     await moveBookingsWithTasks(run, before);
 

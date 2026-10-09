@@ -1,4 +1,5 @@
 import { addCalendarDays, calendarDaysBetween } from '../utils/workingDays';
+import { chunksOf } from '../utils/chunksOf';
 
 /**
  * A person's hours booked on a task (resource_assignments) move with the task (user, 2026-10-02 —
@@ -56,13 +57,21 @@ export async function moveBookingsWithTasks(run: Run, before: Map<string, Span>)
   const bookings = await run(
     `SELECT id, task_id, DATE_FORMAT(start_date, '%Y-%m-%d') AS s, DATE_FORMAT(end_date, '%Y-%m-%d') AS e
        FROM resource_assignments WHERE task_id IN (${ph(moved.length)})`, moved.map(([id]) => id));
-  let n = 0;
+  const changes: Array<{ id: string; start: string; end: string }> = [];
   for (const bk of Array.isArray(bookings) ? bookings : []) {
     if (!bk.s || !bk.e) continue;
     const next = followTask({ start: bk.s, end: bk.e }, before.get(bk.task_id)!, after.get(bk.task_id)!);
     if (next.start === bk.s && next.end === bk.e) continue;
-    await run('UPDATE resource_assignments SET start_date = ?, end_date = ? WHERE id = ?', [next.start, next.end, bk.id]);
-    n++;
+    changes.push({ id: bk.id, start: next.start, end: next.end });
   }
-  return n;
+  // 100 bookings per statement (it was one UPDATE per booking; 2026-10-08)
+  for (const chunk of chunksOf(changes, 100)) {
+    const when = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+    // eslint-disable-next-line no-await-in-loop -- one statement per 100 bookings, on the caller's connection
+    await run(
+      `UPDATE resource_assignments SET start_date = CASE id ${when} END, end_date = CASE id ${when} END WHERE id IN (${ph(chunk.length)})`,
+      [...chunk.flatMap(c => [c.id, c.start]), ...chunk.flatMap(c => [c.id, c.end]), ...chunk.map(c => c.id)],
+    );
+  }
+  return changes.length;
 }

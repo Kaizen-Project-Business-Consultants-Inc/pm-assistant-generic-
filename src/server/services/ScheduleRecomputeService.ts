@@ -252,6 +252,8 @@ export class ScheduleRecomputeService {
     // Collect deltas + write changed leaf dates via the fast raw update.
     const deltas: DateDelta[] = [];
     const affectedParents = new Set<string>();
+    const parentOf = new Map(tasks.map(t => [t.id, t.parentTaskId ?? null]));
+    const writes: Array<{ id: string; startDate: string; endDate: string }> = [];
     for (const n of leaves) {
       if (n.pinned) continue;
       const ns = newStart.get(n.id);
@@ -264,14 +266,11 @@ export class ScheduleRecomputeService {
       if (newS === oldS && newE === oldE) continue;
       deltas.push({ taskId: n.id, name: n.name, oldStart: oldS, oldEnd: oldE, newStart: newS, newEnd: newE, movedDays: n.start ? diffDays(ns, n.start) : 0 });
       if (opts.dryRun) continue;
-      try {
-        await taskRepository.updateDates(n.id, newS, newE);
-      } catch (err: any) {
-        logger.warn('[ScheduleRecompute] date write failed', { taskId: n.id, error: err?.message });
-      }
-      const parentId = (tasks.find(t => t.id === n.id)?.parentTaskId) ?? null;
+      writes.push({ id: n.id, startDate: newS, endDate: newE });
+      const parentId = parentOf.get(n.id) ?? null;
       if (parentId) affectedParents.add(parentId);
     }
+    if (!opts.dryRun) await writeDates(writes);
 
     if (!opts.dryRun) {
       for (const parentId of affectedParents) {
@@ -350,6 +349,26 @@ function topoSort(leaves: Node[], leafIds: Set<string>): string[] {
 export const scheduleRecomputeService = new ScheduleRecomputeService();
 
 /**
+ * Save new dates for many tasks: 100 per statement (it was one per task; 2026-10-08). If a batch
+ * fails, each task is tried on its own so one bad row is logged and the rest still move, as before.
+ */
+async function writeDates(writes: Array<{ id: string; startDate: string; endDate: string }>): Promise<void> {
+  if (writes.length === 0) return;
+  try {
+    await taskRepository.updateDatesMany(writes);
+  } catch {
+    for (const w of writes) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- fallback only, after the batch failed: find the bad row
+        await taskRepository.updateDates(w.id, w.startDate, w.endDate);
+      } catch (err: any) {
+        logger.warn('[ScheduleRecompute] date write failed', { taskId: w.id, error: err?.message });
+      }
+    }
+  }
+}
+
+/**
  * Put tasks back on the dates they had before a re-flow (undo of "link tasks").
  * Only tasks in this schedule are touched; parent rollups are refreshed.
  */
@@ -361,13 +380,15 @@ export async function restoreTaskDates(
   const byId = new Map(tasks.map(t => [t.id, t]));
   const parents = new Set<string>();
   const moves: Parameters<typeof auditMoves>[1] = [];
+  const writes: Array<{ id: string; startDate: string; endDate: string }> = [];
   for (const d of dates) {
     const t = byId.get(d.taskId);
     if (!t || !d.startDate || !d.endDate) continue;
-    await taskRepository.updateDates(d.taskId, d.startDate, d.endDate);
+    writes.push({ id: d.taskId, startDate: d.startDate, endDate: d.endDate });
     moves.push({ taskId: t.id, name: t.name, oldStart: t.startDate ? String(t.startDate).slice(0, 10) : null, oldEnd: t.endDate ? String(t.endDate).slice(0, 10) : null, newStart: d.startDate, newEnd: d.endDate });
     if (t.parentTaskId) parents.add(t.parentTaskId);
   }
+  await taskRepository.updateDatesMany(writes);
   const restored = moves.length;
   auditMoves(scheduleId, moves, 'undo');
   for (const p of parents) {
