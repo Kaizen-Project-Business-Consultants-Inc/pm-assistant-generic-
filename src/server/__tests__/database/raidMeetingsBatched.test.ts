@@ -34,43 +34,6 @@ describe('meeting speaker names', () => {
   });
 });
 
-describe('RAID owner backfill', () => {
-  it('one name look-up and one update for every item; "A / B" takes the first with an account', async () => {
-    db.answer = (sql) => {
-      if (sql.includes('FROM project_risks')) return [
-        { id: 'r1', owner_name: 'Ann Lee' },
-        { id: 'r2', owner_name: 'Nobody (contractor) / Bob' },
-        { id: 'r3', owner_name: 'Nobody' },
-        { id: 'r4', owner_name: 'Bob & Ann Lee' },
-      ];
-      if (sql.includes('FROM resources')) return [{ name: 'Ann Lee', user_id: 'uA' }, { name: 'Bob', user_id: 'uB' }];
-      return [];
-    };
-    const linked = await riskRepository.backfillOwnerIds();
-    expect(linked).toBe(3);
-    expect(stmts(/FROM resources/)).toHaveLength(1);
-    const ups = stmts(/^UPDATE project_risks SET owner_id = CASE/);
-    expect(ups).toHaveLength(1);
-    expect(ups[0].params).toEqual(['r1', 'uA', 'r2', 'uB', 'r4', 'uB', 'r1', 'r2', 'r4']);
-  });
-
-  it('names match as the database does: capitals, accents and spaces do not matter', async () => {
-    db.answer = (sql) => {
-      if (sql.includes('FROM project_risks')) return [{ id: 'r1', owner_name: 'ann lee' }, { id: 'r2', owner_name: 'Jose Diaz' }];
-      if (sql.includes('FROM resources')) return [{ name: 'Ann Lee ', user_id: 'uA' }, { name: 'José Díaz', user_id: 'uJ' }];
-      return [];
-    };
-    expect(await riskRepository.backfillOwnerIds()).toBe(2);
-    expect(stmts(/^UPDATE project_risks/)[0].params).toEqual(['r1', 'uA', 'r2', 'uJ', 'r1', 'r2']);
-  });
-
-  it('nothing to link: no updates', async () => {
-    db.answer = (sql) => (sql.includes('FROM project_risks') ? [{ id: 'r1', owner_name: 'Ghost' }] : []);
-    expect(await riskRepository.backfillOwnerIds()).toBe(0);
-    expect(stmts(/^UPDATE/)).toHaveLength(0);
-  });
-});
-
 describe('RAID items by id', () => {
   it('one read for many ids, duplicates asked once; none for an empty list', async () => {
     await riskRepository.findByIds(['a', 'b', 'a']);

@@ -1,7 +1,6 @@
 import { BaseRepository } from './BaseRepository';
 import { databaseService } from './connection';
 import { v4 as uuidv4 } from 'uuid';
-import { chunksOf } from '../utils/chunksOf';
 
 export interface ProjectRisk {
   id: string;
@@ -663,47 +662,6 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
       names,
     );
     return rows.length > 0 ? rows[0].id : null;
-  }
-
-  /**
-   * Backfill owner_id for all RAID items that have owner_name but no owner_id.
-   * Runs once on startup or on-demand.
-   */
-  async backfillOwnerIds(): Promise<number> {
-    const rows = await databaseService.query<any>(
-      `SELECT pr.id, pr.owner_name FROM project_risks pr
-       WHERE pr.owner_name IS NOT NULL AND pr.owner_name != '' AND pr.owner_id IS NULL`,
-      [],
-    );
-    // One look-up of every name and one UPDATE per 200 items (was two queries per item; 2026-10-09).
-    // Same rule as resolveOwnerId: "A / B & C" → the first of those people with an account.
-    const allNames = [...new Set(rows.flatMap((r: any) => ownerNamesOf(r.owner_name)))];
-    if (allNames.length === 0) return 0;
-    // names compare as the database does (resources.name is utf8mb4_unicode_ci): capitals, accents
-    // and trailing spaces don't matter — "ann lee" finds "Ann Lee", "Jose" finds "José"
-    const nameKey = (n: string) => n.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
-    const userByName = new Map<string, string>();
-    for (const names of chunksOf(allNames, 500)) {
-      // eslint-disable-next-line no-await-in-loop -- one look-up per 500 names
-      const people = await databaseService.query<any>(
-        `SELECT name, user_id FROM resources WHERE user_id IS NOT NULL AND name IN (${names.map(() => '?').join(',')})`,
-        names,
-      );
-      for (const p of people) if (!userByName.has(nameKey(p.name))) userByName.set(nameKey(p.name), p.user_id);
-    }
-    const links = rows.flatMap((r: any) => {
-      // eslint-disable-next-line no-restricted-syntax -- small: the few names in one owner field, Map look-ups
-      const userId = ownerNamesOf(r.owner_name).map(n => userByName.get(nameKey(n))).find(Boolean);
-      return userId ? [{ id: r.id as string, userId }] : [];
-    });
-    for (const chunk of chunksOf(links, 200)) {
-      // eslint-disable-next-line no-await-in-loop -- one statement per 200 items
-      await databaseService.query(
-        `UPDATE project_risks SET owner_id = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE id IN (${chunk.map(() => '?').join(',')})`,
-        [...chunk.flatMap(l => [l.id, l.userId]), ...chunk.map(l => l.id)],
-      );
-    }
-    return links.length;
   }
 }
 
