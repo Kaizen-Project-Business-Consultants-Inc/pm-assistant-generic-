@@ -19,7 +19,7 @@ export async function knowledgeBaseRoutes(fastify: FastifyInstance) {
 
   // POST /reindex — Rebuild knowledge base embeddings from doc files
   fastify.post('/reindex', { preHandler: [heavyActionLimit('kb-reindex', 5)] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
 
     const result = await knowledgeBaseService.reindex();
     return reply.send(result);
@@ -27,7 +27,7 @@ export async function knowledgeBaseRoutes(fastify: FastifyInstance) {
 
   // GET /status — Chunk count and last indexed timestamp
   fastify.get('/status', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
 
     const [count, lastUpdated] = await Promise.all([
       knowledgeBaseRepository.count(),

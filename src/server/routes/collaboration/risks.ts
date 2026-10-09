@@ -239,7 +239,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
 
       const gate = await raidItemGate(request, reply);
-      if (!gate) return;
+      if (!gate) return reply;
       if (!gate.asManager) {
         const other = Object.keys(body).filter(k => !OWNER_EDITABLE_FIELDS.has(k));
         if (other.length > 0) {
@@ -330,7 +330,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const { comment } = commentSchema.parse(request.body);
       const userId = request.user!.userId;
 
-      if (!(await raidItemGate(request, reply))) return;
+      if (!(await raidItemGate(request, reply))) return reply;
 
       await riskService.addComment(riskId, projectId, userId, comment);
       return reply.status(201).send({ message: 'Comment added' });
@@ -369,7 +369,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const { text } = updateSchema.parse(request.body);
       const userId = request.user!.userId;
 
-      if (!(await raidItemGate(request, reply))) return;
+      if (!(await raidItemGate(request, reply))) return reply;
 
       const update = await riskService.addUpdate(riskId, projectId, userId, text);
       return reply.status(201).send({ data: update });
@@ -389,7 +389,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const { text } = updateSchema.parse(request.body);
       const userId = request.user!.userId;
       const gate = await raidItemGate(request, reply);
-      if (!gate) return;
+      if (!gate) return reply;
       const update = await riskService.editUpdate(updateId, userId, text, { asManager: gate.asManager, raidItemId: riskId });
       return reply.send({ data: update });
     } catch (err) {
@@ -409,7 +409,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const { riskId, updateId } = request.params as { projectId: string; riskId: string; updateId: string };
       const userId = request.user!.userId;
       const gate = await raidItemGate(request, reply);
-      if (!gate) return;
+      if (!gate) return reply;
       await riskService.deleteUpdate(updateId, userId, { asManager: gate.asManager, raidItemId: riskId });
       return reply.send({ message: 'Update deleted' });
     } catch (err) {

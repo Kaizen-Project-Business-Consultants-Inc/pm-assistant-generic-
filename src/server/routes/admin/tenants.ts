@@ -32,7 +32,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/tenants
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const rows = await databaseService.queryControlPlane(
         `SELECT o.*,
@@ -52,7 +52,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/tenants/:id
   fastify.get('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
     try {
       const org = await organizationRepository.findById(id);
@@ -97,7 +97,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/v1/admin/tenants/:id
   fastify.patch('/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
 
     const result = updateSchema.safeParse(request.body);
@@ -132,7 +132,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/admin/tenants/:id/provision
   fastify.post('/:id/provision', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
 
     try {
@@ -154,7 +154,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/admin/tenants/:id/run-migrations
   fastify.post('/:id/run-migrations', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
 
     try {

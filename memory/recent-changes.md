@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-09 — SECURITY: a refusal now stops the route (not deployed when written)
+- **Found while chasing 'Reply was already sent' on staging (~300/day).** Responses go through async onSend hooks, so right after `reply.send()` Fastify hasn't marked the reply sent. A preHandler that sent 403 and returned nothing let the ROUTE RUN: `platformAdminOnly` (24 routes: kill switch, shared Mjuzi memory, policies, skills, versioned memory, context config, dreaming, predictions admin, feedback inbox) did its work for any signed-in user, blind (reads couldn't leak; writes happened). Also `readByEntity`/`readById` (attachment reads) and `securityValidationMiddleware`. All now `return reply`.
+- 60 handlers (38 `if (!check(…, reply)) return;` + 22 two-line `if (!ok) return;`) → `return reply` (second answer + logged 500 per refusal). `duplicateProjectNameReply` returns boolean (awaiting a reply = undefined → the create route sent a second answer).
+- Proven with a Fastify app + async onSend: refused hook → handler ran (before); not now. Guard: `__tests__/middleware/replyDiscipline.test.ts` (runtime + static scan of every gate/handler). CODING_STANDARDS §3 + SECURITY_GUIDE §14c-2.
+- Prod logs since 1 Sep 2026 (checked 2026-10-09): no refused request on a platformAdminOnly route reached its handler (only 9 admin-page GET double answers). Review: passed after fixes (guard regexes caught only some forms → rebuilt and proven against 5 planted mistakes; 22 two-line sites).
+
 ## 2026-10-09 — Database calls in loops, batch 4: RAID, meetings, lessons learned (not deployed when written)
 - **RAID owner backfill** (`RiskRepository.backfillOwnerIds`): one look-up of every owner name + one CASE update per 200 items (was 2 queries per item); same "A / B & C → first with an account" rule, now one shared `ownerNamesOf`. New `riskRepository.findByIds`; **RAID Review apply** reads every ticked item in one go (was one read per fix).
 - **Meetings**: deleting a meeting unlinks its analyses in one UPDATE (`meetingAnalysisRepository.unlinkMeeting`, was one per analysis); speaker who's-who saved one statement per 200 names.

@@ -76,7 +76,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
   // --- Admin endpoints (JWT auth) ---
 
   fastify.get('/admin/list', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const rows = await databaseService.query<any>(
       'SELECT email, created_at, launch_email_sent, launch_email_sent_at FROM waitlist ORDER BY created_at DESC'
     );
@@ -84,7 +84,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/admin/export', { preHandler: [authMiddleware, heavyActionLimit('waitlist-export', 5)] }, async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const rows = await databaseService.query<any>(
       'SELECT email, created_at FROM waitlist ORDER BY created_at ASC'
     );
@@ -95,7 +95,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/admin/send-launch-email', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
 
     const rows = await databaseService.query<any>(
       'SELECT email FROM waitlist WHERE launch_email_sent = FALSE ORDER BY created_at ASC'

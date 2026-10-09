@@ -26,7 +26,7 @@ export function guestExpired(user: { isGuest?: boolean; guestExpiresAt?: Date | 
 
 const GUEST_BLOCKED_METHODS_ON_PROJECTS: Set<string> = new Set(['POST']);
 
-export async function guestGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+export async function guestGuard(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> {
   const user = request.user;
   if (!user || !user.isGuest) return;
 

@@ -60,12 +60,13 @@ async function attachmentGate(request: FastifyRequest, reply: FastifyReply, enti
 /** Reading files needs access to the item's project (it used to need only a login) */
 async function readByEntity(request: FastifyRequest, reply: FastifyReply) {
   const { entityType, entityId } = request.params as { entityType: string; entityId: string };
-  await attachmentGate(request, reply, entityType, entityId, false);
+  // a refusal is RETURNED, or the route runs anyway (see utils/platformAdmin.ts platformAdminOnly)
+  if (!(await attachmentGate(request, reply, entityType, entityId, false))) return reply;
 }
 async function readById(request: FastifyRequest, reply: FastifyReply) {
   const existing = await fileAttachmentService.getById((request.params as { id: string }).id);
   if (!existing) return reply.status(404).send({ error: 'Attachment not found' });
-  await attachmentGate(request, reply, existing.entityType, existing.entityId, false);
+  if (!(await attachmentGate(request, reply, existing.entityType, existing.entityId, false))) return reply;
 }
 
 export async function fileAttachmentRoutes(fastify: FastifyInstance) {
@@ -81,7 +82,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
       const { entityType, entityId } = request.params as { entityType: string; entityId: string };
 
       // Project check (checkProjectRole): the PM, or the owner of this RAID item
-      if (!(await attachmentGate(request, reply, entityType, entityId, true))) return;
+      if (!(await attachmentGate(request, reply, entityType, entityId, true))) return reply;
       // A JSON (or empty) body makes request.file() throw "the request is not multipart" — a 500 (2026-10-07)
       if (!request.isMultipart()) {
         return reply.status(400).send({ error: 'No file uploaded', message: 'Send the file as a form upload (multipart/form-data).' });
@@ -157,7 +158,7 @@ export async function fileAttachmentRoutes(fastify: FastifyInstance) {
       const existing = await fileAttachmentService.getById(id);
       if (!existing) return reply.status(404).send({ error: 'Attachment not found' });
       // Project check (checkProjectRole) on the item the file belongs to
-      if (!(await attachmentGate(request, reply, existing.entityType, existing.entityId, true))) return;
+      if (!(await attachmentGate(request, reply, existing.entityType, existing.entityId, true))) return reply;
       // A JSON (or empty) body makes request.file() throw "the request is not multipart" — a 500 (2026-10-07)
       if (!request.isMultipart()) {
         return reply.status(400).send({ error: 'No file uploaded', message: 'Send the file as a form upload (multipart/form-data).' });

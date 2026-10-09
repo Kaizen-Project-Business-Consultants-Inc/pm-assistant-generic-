@@ -30,19 +30,22 @@ export function isDuplicateCodeDbError(err: unknown): boolean {
 
 /**
  * Answer 409 for a duplicate name. `canOpen` says whether this person may open the existing
- * project — only then does the reply carry its id (for an "Open it" link).
+ * project — only then does the reply carry its id (for an "Open it" link). Returns true when it
+ * answered; the caller then `return reply`. (It returned the reply itself until 2026-10-09 — but a
+ * reply is thenable, so `await` turned it into undefined and the caller sent a second answer.)
  */
 export async function duplicateProjectNameReply(
   err: unknown,
   reply: FastifyReply,
   canOpen: (projectId: string) => Promise<boolean>,
-): Promise<FastifyReply | null> {
-  if (!(err instanceof DuplicateProjectNameError)) return null;
+): Promise<boolean> {
+  if (!(err instanceof DuplicateProjectNameError)) return false;
   const id = err.existingProjectId && (await canOpen(err.existingProjectId).catch(() => false)) ? err.existingProjectId : null;
-  return reply.status(409).send({
+  reply.status(409).send({
     error: 'Duplicate project name',
     message: err.message,
     field: 'name',
     ...(id ? { existingProjectId: id } : {}),
   });
+  return true;
 }

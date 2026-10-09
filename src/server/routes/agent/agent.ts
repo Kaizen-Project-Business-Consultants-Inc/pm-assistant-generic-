@@ -76,7 +76,7 @@ export async function agentRoutes(fastify: FastifyInstance) {
       // Full portfolio scan: admin only
       await requireScope('admin')(request, reply);
       if (reply.sent) return;
-      if (!requirePlatformAdmin(request, reply)) return;
+      if (!requirePlatformAdmin(request, reply)) return reply;
     }
 
     try {

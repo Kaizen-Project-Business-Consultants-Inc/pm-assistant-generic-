@@ -476,6 +476,32 @@ Tests: `routes/crossCompanyAiSettings.test.ts`, `routes/auditVerifyAccess.test.t
 
 **Heavy actions are rate-limited per person** (2026-10-08): imports, exports, downloads, Word reports, Monte Carlo, AI risk scan, bulk links, knowledge-base rebuild, waitlist and log downloads use `heavyActionLimit(action, limit)` (`middleware/rateLimiter.ts`; in-memory per server, per user, else per IP; 429 with `Retry-After`). Limits per 10 minutes: 5 admin actions, 10 simulate/scan/AI import, 20 imports and bulk changes, 30 Word/exports, 60 bulk link/unlink (Undo uses them) and file downloads, 120 sprint readiness, 300 single-project export (Export my data fetches every project one at a time and stops with a message rather than a file with gaps). The app does not retry a 429. The efficiency guard fails a new heavy route without a gate and a limit.
 
+## 14c-2. A refusal stops the route (Oct 2026)
+
+Found 2026-10-09: a gate that sent its 403 without *returning* it let the route run anyway, because the
+response's async onSend hooks hadn't finished, so Fastify didn't yet count it as sent. Affected:
+
+- **`platformAdminOnly`** (24 routes: AI kill switch, shared Mjuzi memory, agent policies, skills, versioned
+  memory, context settings, dreaming, prediction admin, the feedback inbox). Any signed-in user got 403, but the
+  route still did its work. Writes happened. A read leaking is very unlikely: the 403 was already on its way, so the
+  route's own answer would have to win a race against it. Prod logs since 1 Sep 2026 show no refused request on these
+  routes reaching its handler.
+- **File attachment read gates** (`readByEntity`, `readById`): reads only, so nothing leaked.
+- **The global request-size / content-type check**.
+
+All three now return the refusal. 60 handlers that stopped with a bare `return` after a check answered now
+`return reply` (38 one-line `if (!check(…, reply)) return;`, 22 two-line `const ok = await check(…, reply); if (!ok) return;`) (they caused a second answer, and a logged 500, on every refusal; no data effect). The duplicate-name
+helper returns true/false instead of the reply, because awaiting a reply yields undefined.
+
+Guard: `__tests__/middleware/replyDiscipline.test.ts`. It runs the gates with an async onSend hook and checks
+the route doesn't run. It also scans the code for:
+- both handler forms above;
+- every `.send(` in `middleware/` that isn't returned;
+- the helpers trusted to return the reply;
+- every named gate.
+
+I checked that each scan catches a deliberately planted mistake.
+
 ## 14d. Clients (project groups) — who may do what (Oct 2026)
 
 Before October 2026 any member with write scope could create, rename or delete project groups and move ANY project in the company into one. Now (`routes/core/projectGroups.ts`): managing the client list (create, update, delete, reorder) and emailing a client report need the role `pmo` or `project_manager` (the company owner works as PMO); assigning/unassigning a project needs that project's Manager/Owner (`checkProjectRoleFor(…, 'manager')`). The client RAID view and client report (`ClientService`) include only projects the viewer can open (`readableProjectIds`), never archived ones or the sample, and change nothing. Project create/update and template apply check the client exists before writing (400 otherwise). Tests: `__tests__/services/ClientService.test.ts`, `emptyBodyErrors.test.ts`.

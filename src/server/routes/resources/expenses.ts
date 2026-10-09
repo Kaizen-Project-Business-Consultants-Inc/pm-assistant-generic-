@@ -77,7 +77,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
       const isOwner = existing.createdBy === user.userId;
       const minRole = 'manager'; // only the PM changes project costs
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       const body = updateExpenseSchema.parse(request.body);
       const expense = await expenseService.update(id, body);
@@ -99,7 +99,7 @@ export async function expenseRoutes(fastify: FastifyInstance) {
       const isOwner = existing.createdBy === user.userId;
       const minRole = 'manager'; // only the PM changes project costs
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       await expenseService.delete(id);
       return { message: 'Expense deleted' };

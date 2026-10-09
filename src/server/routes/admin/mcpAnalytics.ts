@@ -23,7 +23,7 @@ export async function mcpAnalyticsRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/mcp-analytics
   fastify.get('/', async (request: FastifyRequest<{ Querystring: AnalyticsQuery }>, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
 
     try {
       const { since, until, groupBy = 'tool' } = request.query;

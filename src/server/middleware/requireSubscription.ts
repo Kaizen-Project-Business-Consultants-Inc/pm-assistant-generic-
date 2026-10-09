@@ -72,7 +72,7 @@ const ALWAYS_ALLOWED = [
   '/api/v1/health',
 ];
 
-export async function subscriptionGuard(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+export async function subscriptionGuard(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> {
   if (!WRITE_METHODS.has(request.method)) return;
 
   const url = request.url.split('?')[0];

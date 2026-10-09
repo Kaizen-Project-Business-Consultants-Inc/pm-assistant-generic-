@@ -55,7 +55,7 @@ export async function sponsorRoutes(fastify: FastifyInstance) {
   fastify.put('/:projectId/sponsor', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request, reply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      if (await sampleReadOnly(projectId, reply)) return;
+      if (await sampleReadOnly(projectId, reply)) return reply;
       const body = setSchema.parse(request.body ?? {});
       const org = await organizationService.findByUserId(request.user!.userId).catch(() => null);
       return { sponsor: await sponsorService.set(projectId, body, org?.id ?? null) };
@@ -65,7 +65,7 @@ export async function sponsorRoutes(fastify: FastifyInstance) {
   fastify.post('/:projectId/risks/:riskId/escalate', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, riskId } = request.params as { projectId: string; riskId: string };
-      if (await sampleReadOnly(projectId, reply)) return;
+      if (await sampleReadOnly(projectId, reply)) return reply;
       const { note } = escalateSchema.parse(request.body ?? {});
       const item = await riskService.findById(riskId);
       if (!item || item.projectId !== projectId) return reply.status(404).send({ error: 'RAID item not found' });

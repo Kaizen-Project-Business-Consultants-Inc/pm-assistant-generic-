@@ -92,7 +92,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
       if (!existing) return reply.status(404).send({ error: 'Custom field not found' });
 
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, 'manager', reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       const body = updateFieldSchema.parse(request.body ?? {});
       const field = await customFieldService.updateField(id, body);
@@ -113,7 +113,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
       if (!existing) return reply.status(404).send({ error: 'Custom field not found' });
 
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, 'manager', reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       await customFieldService.deleteField(id);
       return { message: 'Custom field deleted' };
@@ -156,7 +156,7 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
       }
       if (projectId) {
         const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'manager', reply);
-        if (!allowed) return;
+        if (!allowed) return reply;
       }
 
       await customFieldService.bulkSetValues(entityId, body.values);

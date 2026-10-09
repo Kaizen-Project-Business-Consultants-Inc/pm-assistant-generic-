@@ -71,6 +71,13 @@ allowances at the top of guard tests). **They only shrink.** Adding to one needs
 - **No `eval`, `new Function` or risky regular expressions on user input** (lint).
   `dangerouslySetInnerHTML` only after DOMPurify.
 - **No secrets in code or logs.**
+- **A refusal stops the route.** Our replies pass through async onSend hooks, so straight after
+  `reply.send()` Fastify does not yet count the reply as sent. A gate (preHandler) that refuses
+  must `return reply.status(…).send(…)` — sending and returning nothing lets the route run anyway.
+  In a handler, stop with `return reply`, never a bare `return`. Don't test `reply.sent` after a
+  helper unless that helper returns the reply; an async helper must not return the reply for the
+  caller to test (it is thenable — `await` gives undefined): return true/false. Guard:
+  `__tests__/middleware/replyDiscipline.test.ts`.
 
 ## 4. Correctness
 

@@ -179,8 +179,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
     } catch (error: any) {
       if (error instanceof z.ZodError) return sendValidationError(reply, error);
       // a live project already has that name: say so (it was a 500 with the database's text)
-      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
-      if (nameTaken) return nameTaken;
+      if (await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok))) return reply;
       logger.error('Apply template error', { error: error.message, stack: error.stack });
       if (error.message === 'Template not found') {
         return reply.status(404).send({ error: 'Template not found' });

@@ -287,7 +287,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       if (!projectId) return reply.status(400).send({ error: 'projectId is required' });
 
       const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'viewer', reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       const suggestion = await timeAnomalyService.getTimeSuggestion(user.userId, projectId, date || new Date().toISOString().slice(0, 10));
       return { suggestion };
@@ -304,7 +304,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       if (!anomaly || !projectId) return reply.status(400).send({ error: 'anomaly and projectId are required' });
 
       const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       const explanation = await timeAnomalyService.explainAnomaly(anomaly, projectId);
       return { explanation };
@@ -382,7 +382,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const isOwner = existing.userId === user.userId;
       const minRole = isOwner ? 'viewer' : 'manager'; // own time: any member; others': the PM
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       const body = updateTimeEntrySchema.parse(request.body ?? {});
       // Neither the day it's on nor a day it moves to may be in a closed month
@@ -412,7 +412,7 @@ export async function timeEntryRoutes(fastify: FastifyInstance) {
       const isOwner = existing.userId === user.userId;
       const minRole = isOwner ? 'viewer' : 'manager'; // own time: any member; others': the PM
       const allowed = await checkEntityProjectAccess(existing.projectId, user.userId, user.role, minRole as any, reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       try {
         await weeklyTimesheetService.assertDayOpen(existing.date);

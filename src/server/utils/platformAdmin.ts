@@ -26,7 +26,12 @@ export function requirePlatformAdmin(request: FastifyRequest, reply: FastifyRepl
   return true;
 }
 
-/** As a route preHandler */
-export async function platformAdminOnly(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-  requirePlatformAdmin(request, reply);
+/**
+ * As a route preHandler. It must RETURN the reply when it refuses: an async hook that sends and
+ * returns nothing lets the route run anyway (the response's async onSend hooks haven't finished,
+ * so Fastify doesn't yet count it as sent) — until 2026-10-09 every route behind this gate still
+ * did its work for anyone signed in, after answering 403 (guard: replyDiscipline.test.ts).
+ */
+export async function platformAdminOnly(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> {
+  if (!requirePlatformAdmin(request, reply)) return reply;
 }

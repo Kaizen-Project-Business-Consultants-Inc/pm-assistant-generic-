@@ -301,8 +301,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
       } catch (error) {
         // Bad input is a 400 with a plain message, not "Failed to …" 500 (2026-10-07)
         if (error instanceof z.ZodError) return sendValidationError(reply, error);
-        const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
-        if (nameTaken) return nameTaken;
+        if (await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok))) return reply;
         fastify.log.error({ err: error instanceof Error ? error : new Error(String(error)) }, 'Project creation failed');
         return reply.code(500).send({
           error: 'Failed to create project from description',

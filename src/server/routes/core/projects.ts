@@ -249,8 +249,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'project.created', entityType: 'project', entityId: project.id, projectId: project.id, userId, payload: project as any, timestamp: new Date().toISOString() }).catch(() => {});
       return reply.status(201).send({ project: toProjectDTO(project) });
     } catch (error) {
-      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
-      if (nameTaken) return nameTaken;
+      if (await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok))) return reply;
       const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
       if (dup) return dup;
       if (error instanceof z.ZodError) {
@@ -271,7 +270,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      if (await rejectIfDemo(id, reply)) return;
+      if (await rejectIfDemo(id, reply)) return reply;
       const data = updateProjectSchema.parse(request.body);
       const userId = request.user!.userId;
 
@@ -316,8 +315,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       teamsEventDispatcher.dispatchToTeams('project.updated', { project }, id);
       return { project: toProjectDTO(project) };
     } catch (error) {
-      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
-      if (nameTaken) return nameTaken;
+      if (await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok))) return reply;
       const dup = duplicateProjectReply(error, reply, (request.body as { name?: string })?.name);
       if (dup) return dup;
       // A rejected field is the caller's mistake, not a server fault. Saying
@@ -342,7 +340,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
     try {
       const user = request.user!;
       const { id } = request.params as { id: string };
-      if (await rejectIfDemo(id, reply)) return;
+      if (await rejectIfDemo(id, reply)) return reply;
       const { status, cancellationReason } = statusUpdateSchema.parse(request.body);
 
       if (status === 'cancelled' && !cancellationReason?.trim()) {
@@ -387,7 +385,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      if (await rejectIfDemo(id, reply)) return;
+      if (await rejectIfDemo(id, reply)) return reply;
       const userId = request.user!.userId;
 
       // SME/Enterprise tiers cannot delete projects — archive instead

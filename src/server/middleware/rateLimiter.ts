@@ -114,7 +114,7 @@ if (cleanupInterval.unref) {
 
 /** preHandler: at most `limit` calls per `windowMs` per user for one heavy action (2026-10-08) */
 export function heavyActionLimit(action: string, limit = 10, windowMs = 10 * 60_000) {
-  return async function heavyActionLimitHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  return async function heavyActionLimitHandler(request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | void> {
     const rl = rateLimiter.check(`${action}:${request.user?.userId ?? request.ip}`, limit, windowMs);
     if (!rl.allowed) {
       reply.header('Retry-After', String(Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000))));

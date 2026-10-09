@@ -52,7 +52,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!projectId) return reply.status(400).send({ error: 'projectId query parameter is required' });
 
     const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     const meetings = await meetingService.getMeetings(projectId, { status, type, from, to });
     return { meetings };
@@ -64,7 +64,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!projectId) return reply.status(400).send({ error: 'projectId query parameter is required' });
 
     const allowed = await checkEntityProjectAccess(projectId, request.user!.userId, request.user!.role, 'viewer', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     const meetings = await meetingService.getUpcoming(projectId);
     return { meetings };
@@ -85,7 +85,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!result) return reply.status(404).send({ error: 'Meeting not found' });
 
     const allowed = await checkEntityProjectAccess(result.meeting.projectId, request.user!.userId, request.user!.role, 'viewer', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     return result;
   });
@@ -98,7 +98,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
     const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     const parsed = updateSchema.parse(request.body);
     return meetingService.updateMeeting(id, parsed, user.userId);
@@ -114,7 +114,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const isOwner = meeting.createdBy === user.userId;
     const minRole = 'manager'; // only the PM deletes (creator no longer enough)
     const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, minRole as any, reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     await meetingService.deleteMeeting(id, user.userId);
     return reply.status(204).send();
@@ -128,7 +128,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
     const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     return meetingService.completeMeeting(id, user.userId);
   });
@@ -141,7 +141,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
     const allowed = await checkEntityProjectAccess(meeting.projectId, user.userId, user.role, 'manager', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     return meetingService.cancelMeeting(id, user.userId);
   });
@@ -153,7 +153,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     if (!meeting) return reply.status(404).send({ error: 'Meeting not found' });
 
     const allowed = await checkEntityProjectAccess(meeting.projectId, request.user!.userId, request.user!.role, 'manager', reply);
-    if (!allowed) return;
+    if (!allowed) return reply;
 
     const { analysisId } = (request.body as { analysisId?: string }) || {};
     if (!analysisId) return reply.status(400).send({ error: 'analysisId is required' });
@@ -253,7 +253,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
       if (!meetingData) return reply.status(404).send({ error: 'Meeting not found' });
 
       const allowed = await checkEntityProjectAccess(meetingData.meeting.projectId, request.user!.userId, request.user!.role, 'manager', reply);
-      if (!allowed) return;
+      if (!allowed) return reply;
 
       const analysis = await meetingIntelligenceService.getAnalysis(body.analysisId);
       if (!analysis) return reply.status(404).send({ error: 'Analysis not found' });

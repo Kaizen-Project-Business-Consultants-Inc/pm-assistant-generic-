@@ -73,7 +73,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/users
   fastify.get('/users', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const query = request.query as { limit?: string; offset?: string; subscriptionStatus?: string };
       const limit = Math.min(Math.max(parseInt(query.limit || '100', 10) || 100, 1), 500);
@@ -139,7 +139,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/users/:id/subscription-events
   fastify.get('/users/:id/subscription-events', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
     try {
       const events = await subscriptionEventRepository.findByUser(id);
@@ -152,7 +152,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/v1/admin/users/:id/status
   fastify.patch('/users/:id/status', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const requestingUser = request.user!;
     const { id } = request.params as { id: string };
 
@@ -201,7 +201,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/v1/admin/users/:id/tier — admin change user tier
   fastify.patch('/users/:id/tier', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
     const result = changeTierSchema.safeParse(request.body);
     if (!result.success) {
@@ -254,7 +254,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/admin/users/:id/reset-password
   fastify.post('/users/:id/reset-password', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
 
     try {
@@ -280,7 +280,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/admin/users/:id/clear-login-token
   fastify.post('/users/:id/clear-login-token', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
 
     try {
@@ -303,7 +303,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // PATCH /api/v1/admin/users/:id/budget
   fastify.patch('/users/:id/budget', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { id } = request.params as { id: string };
     const body = (request.body ?? {}) as { budget?: number | null };
 
@@ -329,7 +329,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/stats
   fastify.get('/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const rows = await databaseService.queryControlPlane(
         `SELECT
@@ -351,7 +351,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/audit — cross-project audit trail (admin only)
   fastify.get('/audit', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const q = request.query as {
         limit?: string; offset?: string;
@@ -373,7 +373,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/ai-usage
   fastify.get('/ai-usage', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const q = request.query as { since?: string };
       const sinceClause = q.since ? 'AND a.created_at >= ?' : '';
@@ -429,7 +429,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/config — System configuration overview
   fastify.get('/config', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       // Feature flags
       const features = [
@@ -551,7 +551,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/pricing — all tiers + features
   fastify.get('/pricing', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const tiers = await pricingConfigRepository.findAllActive();
       const features = await pricingConfigRepository.getAllFeatures();
@@ -564,7 +564,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/admin/pricing/:tier — update tier config
   fastify.put('/pricing/:tier', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { tier } = request.params as { tier: string };
     const parsed = pricingTierUpdateSchema.safeParse(request.body ?? {});
     if (!parsed.success) return sendValidationError(reply, parsed.error);
@@ -589,7 +589,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/admin/pricing/:tier/features — update feature toggles
   fastify.put('/pricing/:tier/features', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     const { tier } = request.params as { tier: string };
     const parsed = tierFeaturesUpdateSchema.safeParse(request.body ?? {});
     if (!parsed.success) return sendValidationError(reply, parsed.error);
@@ -609,7 +609,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/usage-analytics — Agent & feature usage analytics
   fastify.get('/usage-analytics', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
     try {
       const q = request.query as { days?: string };
       const days = Math.min(Math.max(parseInt(q.days || '30', 10) || 30, 1), 365);

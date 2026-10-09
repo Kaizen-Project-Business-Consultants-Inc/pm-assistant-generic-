@@ -63,17 +63,17 @@ describe('a duplicate name answers one plain 409', () => {
     const err = new DuplicateProjectNameError('Website', 'existing-1');
     expect(err.message).toBe('A project called "Website" already exists. Open it, or archive it first if you are replacing it.');
     const allowed = reply();
-    await duplicateProjectNameReply(err, allowed, async () => true);
+    expect(await duplicateProjectNameReply(err, allowed, async () => true)).toBe(true);
     expect(allowed.code).toBe(409);
     expect(allowed.body).toMatchObject({ field: 'name', existingProjectId: 'existing-1' });
     const notAllowed = reply();
-    await duplicateProjectNameReply(err, notAllowed, async () => false);
+    expect(await duplicateProjectNameReply(err, notAllowed, async () => false)).toBe(true);
     expect(notAllowed.code).toBe(409);
     expect(notAllowed.body.existingProjectId).toBeUndefined();
   });
 
   it('other errors are left alone', async () => {
-    expect(await duplicateProjectNameReply(new Error('boom'), reply(), async () => true)).toBeNull();
+    expect(await duplicateProjectNameReply(new Error('boom'), reply(), async () => true)).toBe(false);
   });
 
   it('every way of making a project uses it, and the create screen shows the message', () => {

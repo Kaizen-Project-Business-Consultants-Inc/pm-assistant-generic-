@@ -265,7 +265,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
       const projectId = schedule.templateId?.split('::')[1];
       if (projectId) {
         const allowed = await checkEntityProjectAccess(projectId, userId, request.user!.role, 'manager', reply);
-        if (!allowed) return;
+        if (!allowed) return reply;
       }
 
       if (schedule.createdBy !== userId && request.user!.role !== 'admin' && request.user!.role !== 'pmo') {

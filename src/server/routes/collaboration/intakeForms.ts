@@ -171,8 +171,7 @@ export async function intakeFormRoutes(fastify: FastifyInstance) {
       const message = error instanceof Error ? error.message : '';
       if (message === 'Submission not found') return reply.status(404).send({ error: 'Not found', message: 'That intake submission no longer exists.' });
       if (message === 'Form not found') return reply.status(404).send({ error: 'Not found', message: 'The intake form for this submission no longer exists.' });
-      const nameTaken = await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok));
-      if (nameTaken) return nameTaken;
+      if (await duplicateProjectNameReply(error, reply, (pid) => checkProjectRoleFor(request.user!, pid, 'viewer').then(d => d.ok))) return reply;
       logger.error('Convert to project error', { error });
       return reply.status(500).send({ error: 'Failed to convert to project' });
     }

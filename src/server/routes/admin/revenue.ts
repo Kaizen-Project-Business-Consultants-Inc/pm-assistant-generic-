@@ -19,7 +19,7 @@ export async function revenueRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/admin/revenue
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
 
     try {
       // MRR calculation from active subscriptions

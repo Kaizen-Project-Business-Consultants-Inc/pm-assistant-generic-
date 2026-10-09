@@ -416,7 +416,7 @@ export async function operationsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!requireAdmin(request, reply)) return;
+    if (!requireAdmin(request, reply)) return reply;
 
     try {
       // System metrics (sync)

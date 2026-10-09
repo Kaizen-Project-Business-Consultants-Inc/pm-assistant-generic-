@@ -26,13 +26,13 @@ export async function securityMiddleware(
 export async function securityValidationMiddleware(
   request: FastifyRequest,
   reply: FastifyReply
-): Promise<void> {
+): Promise<FastifyReply | void> {
   const contentLength = parseInt(request.headers['content-length'] || '0');
   const maxSize = 10 * 1024 * 1024; // 10MB
 
+  // a refusal is RETURNED, or the route runs anyway (see utils/platformAdmin.ts platformAdminOnly)
   if (contentLength > maxSize) {
-    reply.code(413).send({ error: 'Request too large' });
-    return;
+    return reply.code(413).send({ error: 'Request too large' });
   }
 
   if (['POST', 'PUT', 'PATCH'].includes(request.method)) {
@@ -40,8 +40,7 @@ export async function securityValidationMiddleware(
     const bodyLength = parseInt(request.headers['content-length'] || '0');
     // Only enforce Content-Type when request has a body
     if (bodyLength > 0 && (!contentType || (!contentType.includes('application/json') && !contentType.includes('multipart/form-data')))) {
-      reply.code(400).send({ error: 'Invalid content type' });
-      return;
+      return reply.code(400).send({ error: 'Invalid content type' });
     }
   }
 
