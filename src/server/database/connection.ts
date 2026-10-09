@@ -25,6 +25,9 @@ const CONTROL_PLANE_ONLY_TABLES = new Set([
   'pricing_config', 'tier_features', 'token_top_ups',
   'ai_conversations', 'feedback',
   'oauth_auth_codes', 'oauth_clients', 'oauth_tokens',
+  // Shared by design for every person (see sharedDbWatch SHARED_TABLES). Company DBs still hold
+  // an old, unused copy of each, so a tenant-routed read would quietly hit that copy: warn.
+  'notifications', 'ai_usage_log',
 ]);
 
 // Extract the first table name from a SQL statement (handles FROM, INTO, UPDATE, DELETE FROM, JOIN)

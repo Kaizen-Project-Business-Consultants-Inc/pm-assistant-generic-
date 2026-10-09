@@ -4,7 +4,7 @@
 - `node_modules` in root, `src/client` and `mcp-server` keep going corrupt (`MODULE_NOT_FOUND` / esbuild platform errors) — `rm -rf node_modules && npm install`.
 - `deploy.sh --mcp` deploys ONLY the MCP server (a failed MCP build now stops it — fixed 2026-10-03).
 - After every prod deploy run `scripts/prod-smoke.cjs` (credentials in auto-memory).
-- nginx config lives ONLY on the servers, and `sites-enabled/pm-app` is a **separate file, not a symlink** to `sites-available` — editing the obvious one changes nothing. Staging allows `challenges.cloudflare.com`; production does not.
+- nginx config lives ONLY on the servers. On both staging and prod `sites-enabled/pm-app` is a symlink to `sites-available/pm-app` (staging was a separate copy until 2026-10-09; old files backed up in `/etc/nginx/backup-2026-10-09/` on staging), so edit `sites-available/pm-app`, then `sudo nginx -t && sudo systemctl reload nginx`. Staging also has `pm-testbed` (internal test bed, keep it). Staging allows `challenges.cloudflare.com`; production does not.
 - CAPTCHA (Cloudflare Turnstile) is built but switched off everywhere (no keys in either `.env`). **Do not restart it without the user asking.** Playwright can't test its happy path — only a human can.
 - Current deploy state and history live in auto-memory (`MEMORY.md`, `todo.md`) and `git log`, not here.
 
