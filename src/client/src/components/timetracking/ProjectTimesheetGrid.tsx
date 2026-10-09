@@ -36,10 +36,17 @@ function getDays(weekStart: string): string[] {
   return days;
 }
 
+/** date → hours on that date, added up in list order (what filter-by-date then reduce gave) */
+export function hoursByDate(entries: any[]): Map<string, number> {
+  const byDate = new Map<string, number>();
+  for (const e of entries) byDate.set(e.date, (byDate.get(e.date) ?? 0) + (e.hours || 0));
+  return byDate;
+}
+
 interface UserGroup {
   userId: string;
   userName: string;
-  tasks: Map<string, { taskId: string; taskName: string; entries: any[] }>;
+  tasks: Map<string, { taskId: string; taskName: string; entries: any[]; hoursByDate: Map<string, number> }>;
 }
 
 export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
@@ -54,7 +61,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
     enabled: !!projectId,
   });
 
-  const entries: any[] = data?.entries || [];
+  const entries = useMemo<any[]>(() => data?.entries || [], [data]);
 
   // Group by user, then by task
   const userGroups = useMemo(() => {
@@ -67,12 +74,17 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
       const group = map.get(uid)!;
       const tid = e.taskId || 'no-task';
       if (!group.tasks.has(tid)) {
-        group.tasks.set(tid, { taskId: tid, taskName: e.taskName || e.description || tid.slice(0, 8), entries: [] });
+        group.tasks.set(tid, { taskId: tid, taskName: e.taskName || e.description || tid.slice(0, 8), entries: [], hoursByDate: new Map() });
       }
       group.tasks.get(tid)!.entries.push(e);
     }
+    for (const group of map.values()) {
+      for (const task of group.tasks.values()) task.hoursByDate = hoursByDate(task.entries);
+    }
     return Array.from(map.values()).sort((a, b) => a.userName.localeCompare(b.userName));
   }, [entries]);
+  // The footer's per-day totals for the whole project
+  const projectHoursByDate = useMemo(() => hoursByDate(entries), [entries]);
 
   const navigateWeek = (offset: number) => {
     const d = new Date(weekStart + 'T00:00:00');
@@ -144,7 +156,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
                         </td>
                         {days.map(d => {
                           const dayTotal = taskRows.reduce((sum, t) => {
-                            return sum + t.entries.filter((e: any) => e.date === d).reduce((s: number, e: any) => s + (e.hours || 0), 0);
+                            return sum + (t.hoursByDate.get(d) ?? 0);
                           }, 0);
                           return (
                             <td key={d} className="text-center py-2 px-2 text-xs font-semibold text-gray-500 dark:text-gray-400">
@@ -156,9 +168,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
                       </tr>
                       {/* Task rows */}
                       {taskRows.map((task) => {
-                        const dayHours = days.map(d =>
-                          task.entries.filter((e: any) => e.date === d).reduce((s: number, e: any) => s + (e.hours || 0), 0)
-                        );
+                        const dayHours = days.map(d => task.hoursByDate.get(d) ?? 0);
                         const rowTotal = dayHours.reduce((s, h) => s + h, 0);
                         return (
                           <tr key={task.taskId} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
@@ -190,7 +200,7 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
                     <Users className="w-4 h-4 text-gray-500" /> Project Total
                   </td>
                   {days.map(d => {
-                    const dayTotal = entries.filter((e: any) => e.date === d).reduce((s: number, e: any) => s + (e.hours || 0), 0);
+                    const dayTotal = projectHoursByDate.get(d) ?? 0;
                     return (
                       <td key={d} className="text-center py-2.5 px-2 font-semibold text-gray-700 dark:text-gray-300">
                         {dayTotal > 0 ? `${dayTotal}` : '-'}

@@ -48,6 +48,7 @@ export function TimesheetApprovalPanel() {
   }
 
   const projects = sheet ? [...new Set(sheet.lines.map(l => l.projectId))] : [];
+  // eslint-disable-next-line no-restricted-syntax -- small: one person's week, a few projects × their few task lines
   const perProject = projects.map(pid => ({ name: sheet!.lines.find(l => l.projectId === pid)!.projectName, hours: sheet!.lines.filter(l => l.projectId === pid).reduce((n, l) => n + l.workedThisWeek, 0) }));
 
   return (
@@ -79,6 +80,7 @@ export function TimesheetApprovalPanel() {
               <div className="px-4 py-2">Project · task</div><div className="py-2 text-center">Planned</div><div className="py-2 text-center">Worked</div>
             </div>
             {sheet.lines.filter(l => l.workedThisWeek > 0 || l.plannedThisWeek > 0).map(l => {
+              // eslint-disable-next-line no-restricted-syntax -- small: one person's week of task lines × the few PM flags on it
               const flags = sheet.flags.filter(f => f.taskId === l.taskId);
               return (
                 <div key={l.taskId} className={`grid grid-cols-[minmax(0,1fr)_88px_88px] border-t border-gray-100 dark:border-gray-700 ${flags.length ? 'bg-amber-50 dark:bg-amber-900/10' : l.overPlanBy > 0 ? 'bg-red-50/70 dark:bg-red-900/10' : ''}`}>

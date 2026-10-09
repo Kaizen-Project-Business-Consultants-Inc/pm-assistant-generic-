@@ -117,6 +117,7 @@ export function TimesheetGrid() {
           )}
 
           {week && projects.map(pid => {
+            // eslint-disable-next-line no-restricted-syntax -- small: your own week, a few projects × your few task lines
             const lines = week.lines.filter(l => l.projectId === pid);
             return (
               <div key={pid}>
