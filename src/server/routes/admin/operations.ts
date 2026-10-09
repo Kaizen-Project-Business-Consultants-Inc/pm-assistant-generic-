@@ -11,6 +11,7 @@ import { EmailService } from '../../services/EmailService';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
 import { neverConfirmedSql } from '../../constants/neverConfirmed';
+import { mergeAgentRuns } from '../../utils/agentStats';
 function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
   const user = request.user!;
   if (!isPlatformAdmin(user)) {
@@ -370,12 +371,14 @@ async function getUserActivity(): Promise<{ dau: number; wau: number; mau: numbe
 // ── Agent Performance ──
 async function getAgentStats(): Promise<{ agentId: string; totalRuns: number; lastRun: string | null }[]> {
   try {
-    const rows = await databaseService.queryControlPlane<{ agent_id: string; total_runs: number; last_run: string }>(
+    // each company's own agent memory (T087, 2026-10-09), merged per agent
+    const perCompany = await selectAcrossCompanies<{ agent_id: string; total_runs: number; last_run: string }>(
       `SELECT agent_id, COUNT(*) as total_runs, MAX(created_at) as last_run
        FROM agent_memory WHERE memory_type = 'reflection'
-       GROUP BY agent_id ORDER BY total_runs DESC`
+       GROUP BY agent_id`
     );
-    return rows.map(r => ({ agentId: r.agent_id, totalRuns: Number(r.total_runs), lastRun: r.last_run }));
+    return mergeAgentRuns(perCompany.map(rows => rows.map(r => ({ agent_id: r.agent_id, runs: r.total_runs, last_run: r.last_run }))))
+      .map(r => ({ agentId: r.agent_id, totalRuns: r.runs, lastRun: r.last_run }));
   } catch {
     return [];
   }

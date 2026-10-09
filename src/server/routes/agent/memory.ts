@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { platformAdminOnly } from '../../utils/platformAdmin';
-import { agentMemoryService, type MemoryType } from '../../services/AgentMemoryService';
+import { agentMemoryService, AgentMemoryNoCompanyError, type MemoryType } from '../../services/AgentMemoryService';
 import { clampPagination } from '../../schemas/paginationSchema';
 
 const VALID_MEMORY_TYPES: MemoryType[] = ['session', 'project', 'role', 'reflection'];
@@ -84,6 +84,7 @@ export async function agentMemoryRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ memory });
     } catch (err) {
+      if (err instanceof AgentMemoryNoCompanyError) return reply.status(400).send({ error: 'No company', message: err.message });
       fastify.log.error({ err }, 'Failed to store agent memory');
       return reply.status(500).send({ error: 'Failed to store agent memory' });
     }

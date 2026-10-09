@@ -1,5 +1,19 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
+import { config } from '../config';
+import { getRequestContext } from '../middleware/requestContext';
+
+/**
+ * Agent memory is company data: it lives in the company's own database (T087, 2026-10-09 —
+ * it used to go to one shared table for every company). With no company selected a read or write
+ * would reach the shared database, so it is refused instead.
+ */
+export class AgentMemoryNoCompanyError extends Error {
+  constructor() { super("Mjuzi can only remember things inside a company account — this account isn't part of a company."); this.name = 'AgentMemoryNoCompanyError'; }
+}
+function companySelected(): boolean {
+  return !config.MULTI_TENANT_ENABLED || !!getRequestContext()?.tenantDbName;
+}
 
 export type MemoryType = 'session' | 'project' | 'role' | 'reflection';
 
@@ -53,24 +67,25 @@ export class AgentMemoryService {
     value: unknown,
     ttlSeconds?: number,
   ): Promise<AgentMemory> {
+    if (!companySelected()) throw new AgentMemoryNoCompanyError();
     const expiresAt = ttlSeconds
       ? new Date(Date.now() + ttlSeconds * 1000).toISOString().slice(0, 19).replace('T', ' ')
       : null;
 
     // Upsert: check if exists
-    const existing = await databaseService.queryControlPlane<MemoryRow>(
+    const existing = await databaseService.query<MemoryRow>(
       `SELECT id FROM agent_memory
        WHERE agent_id = ? AND memory_type = ? AND (entity_id = ? OR (entity_id IS NULL AND ? IS NULL)) AND key_name = ?`,
       [agentId, memoryType, entityId, entityId, keyName],
     );
 
     if (existing.length > 0) {
-      await databaseService.queryControlPlane(
+      await databaseService.query(
         `UPDATE agent_memory SET value = ?, expires_at = ?, updated_at = NOW()
          WHERE id = ?`,
         [JSON.stringify(value), expiresAt, existing[0].id],
       );
-      const rows = await databaseService.queryControlPlane<MemoryRow>(
+      const rows = await databaseService.query<MemoryRow>(
         'SELECT * FROM agent_memory WHERE id = ?',
         [existing[0].id],
       );
@@ -78,13 +93,13 @@ export class AgentMemoryService {
     }
 
     const id = uuidv4();
-    await databaseService.queryControlPlane(
+    await databaseService.query(
       `INSERT INTO agent_memory (id, agent_id, memory_type, entity_id, key_name, value, expires_at)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [id, agentId, memoryType, entityId, keyName, JSON.stringify(value), expiresAt],
     );
 
-    const rows = await databaseService.queryControlPlane<MemoryRow>(
+    const rows = await databaseService.query<MemoryRow>(
       'SELECT * FROM agent_memory WHERE id = ?',
       [id],
     );
@@ -101,6 +116,7 @@ export class AgentMemoryService {
     entityId?: string | null,
     keyName?: string,
   ): Promise<AgentMemory[]> {
+    if (!companySelected()) return [];
     let sql = `SELECT * FROM agent_memory
       WHERE agent_id = ? AND memory_type = ?
       AND (expires_at IS NULL OR expires_at > NOW())`;
@@ -122,7 +138,20 @@ export class AgentMemoryService {
 
     sql += ' ORDER BY updated_at DESC';
 
-    const rows = await databaseService.queryControlPlane<MemoryRow>(sql, params);
+    const rows = await databaseService.query<MemoryRow>(sql, params);
+    return rows.map(rowToMemory);
+  }
+
+  /** Every agent's memories of one kind for one item (e.g. each agent's latest scan of a project) */
+  async recallByEntity(memoryType: MemoryType, entityId: string, keyName: string): Promise<AgentMemory[]> {
+    if (!companySelected()) return [];
+    const rows = await databaseService.query<MemoryRow>(
+      `SELECT * FROM agent_memory
+       WHERE memory_type = ? AND entity_id = ? AND key_name = ?
+       AND (expires_at IS NULL OR expires_at > NOW())
+       ORDER BY updated_at DESC`,
+      [memoryType, entityId, keyName],
+    );
     return rows.map(rowToMemory);
   }
 
@@ -135,6 +164,7 @@ export class AgentMemoryService {
     entityId?: string | null,
     keyName?: string,
   ): Promise<number> {
+    if (!companySelected()) return 0;
     let sql = 'DELETE FROM agent_memory WHERE agent_id = ? AND memory_type = ?';
     const params: unknown[] = [agentId, memoryType];
 
@@ -152,7 +182,7 @@ export class AgentMemoryService {
       params.push(keyName);
     }
 
-    const result: any = await databaseService.queryControlPlane(sql, params);
+    const result: any = await databaseService.query(sql, params);
     return result.affectedRows ?? 0;
   }
 
@@ -169,7 +199,9 @@ export class AgentMemoryService {
       outcome: string;
       timestamp: string;
     },
-  ): Promise<AgentMemory> {
+  ): Promise<AgentMemory | null> {
+    // an action with no company behind it (e.g. the platform admin) leaves no reflection
+    if (!companySelected()) return null;
     const keyName = `reflection_${Date.now()}`;
     return this.store(agentId, 'reflection', entityId, keyName, reflection);
   }
@@ -182,6 +214,7 @@ export class AgentMemoryService {
     entityId?: string | null,
     limit = 10,
   ): Promise<AgentMemory[]> {
+    if (!companySelected()) return [];
     let sql = `SELECT * FROM agent_memory
       WHERE agent_id = ? AND memory_type = 'reflection'
       AND (expires_at IS NULL OR expires_at > NOW())`;
@@ -199,7 +232,7 @@ export class AgentMemoryService {
     sql += ' ORDER BY updated_at DESC LIMIT ?';
     params.push(limit);
 
-    const rows = await databaseService.queryControlPlane<MemoryRow>(sql, params);
+    const rows = await databaseService.query<MemoryRow>(sql, params);
     return rows.map(rowToMemory);
   }
 
@@ -207,7 +240,8 @@ export class AgentMemoryService {
    * Clean up expired memories (can be called periodically).
    */
   async cleanExpired(): Promise<number> {
-    const result: any = await databaseService.queryControlPlane(
+    if (!companySelected()) return 0;
+    const result: any = await databaseService.query(
       'DELETE FROM agent_memory WHERE expires_at IS NOT NULL AND expires_at < NOW()',
     );
     return result.affectedRows ?? 0;

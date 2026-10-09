@@ -102,11 +102,12 @@ describe('DataRetentionService', () => {
         agentActivityLog: 0,
         automationRuns: 0,
         integrationSyncLog: 0,
+        agentReflections: 0, // agent memory reflections past 90 days, per company (2026-10-09)
         aiUsageLog: 0,
       });
 
       // Verify tenant queries
-      expect(mockQuery).toHaveBeenCalledTimes(6); // webhook, dead letters, workflow runs, agent log, automation runs, sync log
+      expect(mockQuery).toHaveBeenCalledTimes(7); // webhook, dead letters, workflow runs, agent log, automation runs, sync log, old agent reflections
       // Verify control plane queries
       expect(mockQueryControlPlane).toHaveBeenCalledTimes(5); // + AI usage log
       // Verify agent memory cleanup
@@ -462,6 +463,7 @@ describe('DataRetentionService', () => {
         agentActivityLog: 0,
         automationRuns: 0,
         integrationSyncLog: 0,
+        agentReflections: 0, // agent memory reflections past 90 days, per company (2026-10-09)
         aiUsageLog: 0,
       });
 
@@ -566,9 +568,20 @@ describe('DataRetentionService', () => {
       await service.purgeStaleData();
 
       // First two calls go to tenant DB
-      expect(mockQuery).toHaveBeenCalledTimes(6); // + workflow runs, agent log, automation runs, sync log (2026-10-08)
+      expect(mockQuery).toHaveBeenCalledTimes(7); // + workflow runs, agent log, automation runs, sync log (2026-10-08), old agent reflections (2026-10-09)
       expect(mockQuery.mock.calls[0][0]).toContain('webhook_deliveries');
       expect(mockQuery.mock.calls[1][0]).toContain('dead_letter_queue');
+    });
+
+    it("agent reflections older than 90 days go, in each company's database, and nothing else in agent memory (2026-10-09)", async () => {
+      mockQuery.mockResolvedValue({ affectedRows: 0 });
+      mockCleanExpired.mockResolvedValueOnce(0);
+      mockQueryControlPlane.mockResolvedValue({ affectedRows: 0 });
+      await service.purgeStaleData();
+      const del = mockQuery.mock.calls.find((c: any[]) => String(c[0]).includes('agent_memory'))!;
+      expect(del[0]).toMatch(/^DELETE FROM agent_memory WHERE created_at < NOW\(\) - INTERVAL \? DAY AND memory_type = 'reflection' LIMIT/);
+      expect(del[1]).toEqual([90]);
+      expect(mockQueryControlPlane.mock.calls.some((c: any[]) => String(c[0]).includes('agent_memory'))).toBe(false);
     });
 
     it('uses control plane DB for notifications, api_key_usage_log, mcp_tool_invocations, and ai_conversations', async () => {

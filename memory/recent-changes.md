@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-09 — Agent memory moved into each company's own database (efficiency-check item 2; user: agreed) (not deployed when written)
+- Every company database already had an (unused) `agent_memory` table from T001; **T087** only adds its indexes (type+date for the clean-up and counts; project+type+date for the pairs). `AgentMemoryService` (agents' per-project notes, Mjuzi's per-project memories, reflections) now reads/writes the company database; with no company selected it refuses (store → `AgentMemoryNoCompanyError`, a plain 400 on the admin route; reads empty; reflections skipped) — never the shared database again.
+- Found on the way: InterAgentQuery read scan findings from the company DB while the agents wrote them to the shared DB, so the insights never reached Mjuzi; fixed by the move.
+- Retention: reflections deleted after 90 days per company (`RETENTION_AGENT_REFLECTION_DAYS`); expired entries per company. Staging had ~42,600 reflections in the shared table.
+- Admin usage analytics + operations agent stats counted across companies (`selectAcrossCompanies`, merged per agent/pair/day).
+- Shared `pmassist.agent_memory` keeps Mjuzi's curated platform-admin memory (VersionedMemoryService, Dreaming). Prod's shared table is empty. Staging: Mjuzi's 26 own rows (24 project notes, 2 user preferences) copied into the right company's table, then the agent rows deleted — after a backup.
+- Review fixes: T087 was a CREATE TABLE that would never run (the table existed) — now the indexes; Mjuzi's project insights read through the service's company check (`recallByEntity`); admin merges in `utils/agentStats.ts` with tests (a pair seen once in two companies counts); plainer no-company message.
+- Tests: AgentMemoryService (+2: company DB only; nothing at all with no company), DataRetention (+1). AGENT_ENABLED stays off on prod.
+
 ## 2026-10-09 — 'Searching a list inside a loop' clean-up, client (83 → 3) + 2 client await-in-loop (branch client-loops, not deployed when written)
 - **Lookups built once** (new `src/client/src/utils/lookup.ts`: `firstByKey` = .find first match, `firstIndexByKey` = .findIndex, `firstWithAnyKey`, `groupByKey` = .filter in order): Gantt rows get `taskById` (useMemo in GanttChart) instead of the task list for predecessor/successor names; Table names; indent/outdent keys (Gantt + Table), multi-bar drag, reorder and bulk-update undo; TaskFormModal people; import column sampler stops after 5 values; project timesheet day totals (`hoursByDate`); briefing per-project risk/change counts; printed report critical path names; Overview "Blocked"; sprint swimlanes; project client groups.
 - **Kept with a reason:** small fixed lists and click handlers (`small:` disables). The two await-in-loops stay sequential with reasons: sprint add takes one task; Duplicate needs description + stop at first failure (bulk create has neither).

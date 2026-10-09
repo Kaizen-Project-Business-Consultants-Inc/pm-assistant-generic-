@@ -49,7 +49,7 @@ Mjuzi is the persistent, context-aware conversational AI assistant available thr
 - Context-aware: knows which page and project the user is viewing (`dashboard`, `project`, `schedule`, `reports`, `general`)
 - Agentic tool use: Claude can call tools to create tasks, update projects, assign resources, and more -- all gated by the policy engine
 - **Database-backed persistence:** conversations and messages stored in `chat_conversations` and `chat_messages` tables via `ChatRepository`. Survives server restarts.
-- **Agent memory integration:** injects `InterAgentQueryService` scan findings (none today — the nightly scan is switched off, `AGENT_ENABLED` unset), prior conversation count, and Mjuzi's own project memories (`agentMemoryService.recall('mjuzi-chat', ...)`) into the system prompt
+- **Agent memory integration:** injects `InterAgentQueryService` scan findings (none today — the nightly scan is switched off, `AGENT_ENABLED` unset), prior conversation count, and Mjuzi's own project memories (`agentMemoryService.recall('mjuzi-chat', ...)`) into the system prompt. All of these live in the company's own database since 2026-10-09; before that the scan findings were written to the shared database but read from the company's, so they never reached the prompt
 - **Action memory:** after tool use, stores a summary via `agentMemoryService.store()` for future reference
 - Action results embedded in responses (e.g., "I created task X" with confirmation)
 - Conversation history UI: browse, switch, and resume past conversations

@@ -196,7 +196,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - **Circuit Breakers** -- Per-agent circuit breakers open after 3 consecutive failures, auto-retry after cooldown
 - **Degradation Handling** -- Graceful scope reduction when Claude API or database is unhealthy
 - **Feedback Loop** -- Users rate proposal outcomes; feedback improves future confidence scores
-- **Agent Memory Layer** -- Persistent memory across sessions: session, project, role, and reflection memory types with TTL expiry. Agents store reflections after each action (what was decided, why, outcome). Memory API: `GET/POST/DELETE /api/v1/agent/memory`
+- **Agent Memory Layer** -- Persistent memory across sessions: session, project, role, and reflection memory types with TTL expiry. Agents store reflections after each action (what was decided, why, outcome), kept 90 days. Stored in each company's own database (since 2026-10-09). Memory API: `GET/POST/DELETE /api/v1/agent/memory` (platform admin; a company's memory only inside a Support view)
 - **Agent Proposals UI** -- Dedicated page (`/agent`, sidebar **AI Proposals**) where the project's Manager/Owner can review, approve/reject, execute, rollback, and rate agent proposals with full reasoning and action detail; "Load More" pagination for large proposal lists
 
 ### Reporting & Analytics
@@ -413,7 +413,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Memory context helper: agents access past reflections and cross-agent insights during reasoning
 - InterAgentQueryService: agents query other agents' latest scan results
 - InsightAssemblyService: combines multi-agent outputs into unified project health narratives
-- Scan orchestrator stores per-project results in `agent_memory` table (24h TTL)
+- Scan orchestrator stores per-project results in the company's own `agent_memory` table (24h TTL; used since 2026-10-09)
 - Scope and budget analysis generators enriched with historical memory context
 
 ### Intelligent Dashboard Narratives

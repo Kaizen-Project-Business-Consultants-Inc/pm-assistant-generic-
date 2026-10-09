@@ -14,6 +14,8 @@ const DEFAULT_AGENT_LOG_RETENTION_DAYS = 180;
 const DEFAULT_AUTOMATION_RUN_RETENTION_DAYS = ANALYTICS_WINDOW_DAYS;
 const DEFAULT_SYNC_LOG_RETENTION_DAYS = 30;
 const DEFAULT_AI_USAGE_RETENTION_DAYS = 400;
+/** Agents' notes to themselves after each action: one row per action, nothing ever read them back past days */
+const DEFAULT_AGENT_REFLECTION_RETENTION_DAYS = 90;
 /** Rows deleted per statement */
 const PURGE_BATCH = 5000;
 
@@ -46,6 +48,9 @@ export class DataRetentionService {
     results.agentActivityLog = 0;
     results.automationRuns = 0;
     results.integrationSyncLog = 0;
+    const reflectionDays = envInt('RETENTION_AGENT_REFLECTION_DAYS', DEFAULT_AGENT_REFLECTION_RETENTION_DAYS);
+    results.agentMemory = 0;
+    results.agentReflections = 0;
     await forEachTenant(async () => {
       results.webhookDeliveries += await this.deleteOlderThan('webhook_deliveries', webhookDays);
       results.deadLetterQueue += await this.deleteOlderThanWithStatus('dead_letter_queue', dlqDays, ['resolved', 'failed']);
@@ -53,15 +58,14 @@ export class DataRetentionService {
       results.agentActivityLog += await this.deleteOlderThan('agent_activity_log', agentLogDays);
       results.automationRuns += await this.deleteOlderThan('automation_executions', automationDays);
       results.integrationSyncLog += await this.deleteOlderThan('integration_sync_log', syncLogDays, 'started_at');
+      // 3. Agent memory, in each company's own database since T087: expired entries, old reflections
+      try {
+        results.agentMemory += await agentMemoryService.cleanExpired();
+      } catch (err) {
+        logger.error('[DataRetention] Failed to clean expired agent memory', err instanceof Error ? err.message : err);
+      }
+      results.agentReflections += await this.deleteOlderThan('agent_memory', reflectionDays, 'created_at', "AND memory_type = 'reflection'");
     });
-
-    // 3. Agent memory expired entries
-    try {
-      results.agentMemory = await agentMemoryService.cleanExpired();
-    } catch (err) {
-      logger.error('[DataRetention] Failed to clean expired agent memory', err instanceof Error ? err.message : err);
-      results.agentMemory = 0;
-    }
 
     // 4. Read notifications older than N days (control plane table)
     const notifDays = envInt('RETENTION_NOTIFICATION_DAYS', DEFAULT_NOTIFICATION_RETENTION_DAYS);

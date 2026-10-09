@@ -409,7 +409,8 @@ The following custom indexes exist beyond the default primary/foreign key indexe
 | `idx_projects_name` | `projects` | `name` | Project by name (Slack) — T084 |
 | `idx_time_date` | `time_entries` | `date` | Timesheet compliance and coaching jobs — T084 |
 | `idx_raid_activity_created` | `raid_activity_log` | `created_at` | Morning briefing — T084 |
-| `idx_memory_type_created` | `agent_memory` (shared) | `memory_type, created_at` | Admin agent statistics — 130 |
+| `idx_memory_type_created` | `agent_memory` (shared, and each company's own table) | `memory_type, created_at` | Admin agent statistics (counted across companies since 2026-10-09), reflection clean-up — 130, T087 |
+| `idx_memory_entity_type_created` | `agent_memory` (each company) | `entity_id, memory_type, created_at` | Admin agent-after-agent pairs — T087 |
 | `idx_projects_demo` | `projects` | `is_demo` | "Projects I can read" as three indexed lookups (created by me / member / sample) instead of one query that read every project — T086 |
 | `ft_projects_search`, `ft_tasks_search`, `ft_goals_search` | `projects`, `tasks`, `goals` | FULLTEXT `name, description` | Global search (word match, `MATCH … AGAINST` in boolean mode) — T085 |
 | `ft_lessons_learned_search`, `ft_change_requests_search`, `ft_project_risks_search` | `lessons_learned`, `change_requests`, `project_risks` | FULLTEXT `title, description` | Global search — T085 |

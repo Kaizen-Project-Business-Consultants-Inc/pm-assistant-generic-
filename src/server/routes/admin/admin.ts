@@ -19,6 +19,7 @@ import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossC
 import { isPlatformAdmin } from '../../utils/platformAdmin';
 import { neverConfirmedSql } from '../../constants/neverConfirmed';
 import { clampPagination } from '../../schemas/paginationSchema';
+import { mergeAgentRuns, mergeAgentPairs, mergeDailyRuns } from '../../utils/agentStats';
 const statusSchema = z.object({
   active: z.boolean(),
 });
@@ -615,17 +616,18 @@ export async function adminRoutes(fastify: FastifyInstance) {
       const days = Math.min(Math.max(parseInt(q.days || '30', 10) || 30, 1), 365);
       const sinceDate = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 
-      // 1. Agent usage frequency
-      const agentUsage = await databaseService.queryControlPlane(
+      // 1–2. Agent usage and agent-after-agent patterns, counted in each company's own database
+      // (agent memory moved there with T087, 2026-10-09; counts only, never the notes themselves)
+      const agentUsage = mergeAgentRuns(await selectAcrossCompanies(
         `SELECT agent_id, COUNT(*) AS runs, COUNT(DISTINCT entity_id) AS unique_projects,
                 MIN(created_at) AS first_run, MAX(created_at) AS last_run
          FROM agent_memory WHERE memory_type = 'reflection' AND created_at >= ?
-         GROUP BY agent_id ORDER BY runs DESC`,
+         GROUP BY agent_id`,
         [sinceDate]
-      );
+      ));
 
-      // 2. Sequential agent patterns (agent B triggered within 30 min of agent A on same project)
-      const agentPatterns = await databaseService.queryControlPlane(
+      // Sequential agent patterns (agent B triggered within 30 min of agent A on same project)
+      const agentPatterns = mergeAgentPairs(await selectAcrossCompanies(
         `SELECT a1.agent_id AS first_agent, a2.agent_id AS second_agent, COUNT(*) AS frequency
          FROM agent_memory a1
          JOIN agent_memory a2 ON a1.entity_id = a2.entity_id
@@ -634,12 +636,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
            AND a1.id != a2.id
          WHERE a1.memory_type = 'reflection' AND a2.memory_type = 'reflection'
            AND a1.created_at >= ?
-         GROUP BY first_agent, second_agent
-         HAVING frequency >= 2
-         ORDER BY frequency DESC
-         LIMIT 20`,
+         GROUP BY first_agent, second_agent`,
         [sinceDate]
-      );
+      ));
 
       // 3. Feature usage (top actions from every company's audit trail — counts only)
       const featureUsage = mergeGroups(
@@ -665,13 +664,13 @@ export async function adminRoutes(fastify: FastifyInstance) {
       );
       const chatStats = [chatTotals];
 
-      // 5. Daily agent runs (for chart)
-      const dailyAgentRuns = await databaseService.queryControlPlane(
-        `SELECT DATE(created_at) AS day, COUNT(*) AS runs
+      // 5. Daily agent runs (for chart), across every company
+      const dailyAgentRuns = mergeDailyRuns(await selectAcrossCompanies(
+        `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS day, COUNT(*) AS runs
          FROM agent_memory WHERE memory_type = 'reflection' AND created_at >= ?
-         GROUP BY DATE(created_at) ORDER BY day`,
+         GROUP BY day`,
         [sinceDate]
-      );
+      ));
 
       return {
         agentUsage,

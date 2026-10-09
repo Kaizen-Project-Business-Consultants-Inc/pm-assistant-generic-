@@ -33,20 +33,14 @@ export class InterAgentQueryService {
    * Get all latest scan results for a specific project across all agents.
    */
   async getInsightsByProject(projectId: string): Promise<AgentInsight[]> {
-    const { databaseService } = await import('../../database/connection');
-    const rows = await databaseService.query<any>(
-      `SELECT * FROM agent_memory
-       WHERE memory_type = 'project' AND entity_id = ? AND key_name = 'latest_scan'
-       AND (expires_at IS NULL OR expires_at > NOW())
-       ORDER BY updated_at DESC`,
-      [projectId],
-    );
-    return rows.map((row: any) => ({
-      agentId: row.agent_id,
-      projectId: row.entity_id,
-      key: row.key_name,
-      value: typeof row.value === 'string' ? JSON.parse(row.value) : row.value,
-      updatedAt: row.updated_at,
+    // through the service, so it is never read without a company selected (2026-10-09)
+    const memories = await agentMemoryService.recallByEntity('project', projectId, 'latest_scan');
+    return memories.map(m => ({
+      agentId: m.agentId,
+      projectId: m.entityId || projectId,
+      key: m.keyName,
+      value: m.value,
+      updatedAt: m.updatedAt,
     }));
   }
 

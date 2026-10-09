@@ -8,11 +8,16 @@ vi.mock('../../database/connection', () => ({
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'test-memory-id' }));
+// agent memory lives in the company's own database (T087, 2026-10-09): a company is selected
+// unless a test says otherwise
+const ctx = vi.hoisted(() => ({ tenantDbName: 'pmassist_t_acme' as string | undefined }));
+vi.mock('../../config', () => ({ config: { MULTI_TENANT_ENABLED: true } }));
+vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => (ctx.tenantDbName ? { tenantDbName: ctx.tenantDbName } : undefined) }));
 
-import { AgentMemoryService } from '../../services/AgentMemoryService';
+import { AgentMemoryService, AgentMemoryNoCompanyError } from '../../services/AgentMemoryService';
 import { databaseService } from '../../database/connection';
 
-const mockQuery = databaseService.queryControlPlane as ReturnType<typeof vi.fn>;
+const mockQuery = databaseService.query as ReturnType<typeof vi.fn>;
 
 const sampleRow = {
   id: 'mem-1',
@@ -32,6 +37,31 @@ describe('AgentMemoryService', () => {
   beforeEach(() => {
     service = new AgentMemoryService();
     vi.clearAllMocks();
+    ctx.tenantDbName = 'pmassist_t_acme';
+  });
+
+  describe('company data, never the shared database (2026-10-09)', () => {
+    it('reads and writes go to the company database, not the shared one', async () => {
+      mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce([]).mockResolvedValueOnce([sampleRow]);
+      await service.store('a', 'project', 'p1', 'k', { x: 1 });
+      await service.recall('a', 'project');
+      expect(mockQuery.mock.calls.some((c: any[]) => String(c[0]).includes('INSERT INTO agent_memory'))).toBe(true);
+      expect(mockQuery.mock.calls.some((c: any[]) => String(c[0]).includes('FROM agent_memory'))).toBe(true);
+      expect(databaseService.queryControlPlane).not.toHaveBeenCalled();
+    });
+
+    it('with no company selected: nothing is read or written anywhere', async () => {
+      ctx.tenantDbName = undefined;
+      await expect(service.store('a', 'project', 'p1', 'k', 1)).rejects.toBeInstanceOf(AgentMemoryNoCompanyError);
+      expect(await service.recall('a', 'project')).toEqual([]);
+      expect(await service.recallByEntity('project', 'p1', 'latest_scan')).toEqual([]);
+      expect(await service.getReflections('a')).toEqual([]);
+      expect(await service.forget('a', 'project')).toBe(0);
+      expect(await service.cleanExpired()).toBe(0);
+      expect(await service.storeReflection('a', null, { action: 'x', decision: 'y', reasoning: 'z', outcome: 'ok', timestamp: 't' })).toBeNull();
+      expect(databaseService.query).not.toHaveBeenCalled();
+      expect(databaseService.queryControlPlane).not.toHaveBeenCalled();
+    });
   });
 
   describe('store', () => {
