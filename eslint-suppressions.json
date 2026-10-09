@@ -136,9 +136,6 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 1
     },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
@@ -158,9 +155,6 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 2
     },
-    "no-await-in-loop": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 2
     }
@@ -176,9 +170,6 @@
       "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -232,9 +223,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/components/documents/FolderPicker.tsx": {
@@ -275,11 +263,6 @@
       "count": 4
     }
   },
-  "src/client/src/components/intake/IntakeFormDesigner.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/client/src/components/intake/IntakeReviewPanel.tsx": {
     "jsx-a11y/label-has-associated-control": {
       "count": 1
@@ -290,9 +273,6 @@
       "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
       "count": 1
     },
     "react-hooks/exhaustive-deps": {
@@ -352,9 +332,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/client/src/components/layout/KeyboardShortcuts.tsx": {
@@ -560,17 +537,11 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/client/src/components/raids/review/RaidFixPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
-    },
-    "no-restricted-syntax": {
-      "count": 1
     },
     "react-hooks/exhaustive-deps": {
       "count": 1
@@ -595,9 +566,6 @@
   "src/client/src/components/reports/ReportDesigner.tsx": {
     "@typescript-eslint/no-unused-expressions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 4
     }
   },
   "src/client/src/components/reports/ReportScheduleModal.tsx": {
@@ -679,19 +647,11 @@
     },
     "jsx-a11y/label-has-associated-control": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/components/resources/TeamPlanner.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
-    }
-  },
-  "src/client/src/components/resources/UnfilledDemand.tsx": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/components/resources/UtilizationTrendChart.tsx": {
@@ -762,16 +722,6 @@
       "count": 2
     }
   },
-  "src/client/src/components/schedule/ColumnMapper.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
-  "src/client/src/components/schedule/ColumnPickerDropdown.tsx": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/client/src/components/schedule/GanttChart.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
@@ -795,9 +745,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/client/src/components/schedule/KanbanBoard.tsx": {
@@ -805,9 +752,6 @@
       "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 2
-    },
-    "no-restricted-syntax": {
       "count": 2
     }
   },
@@ -834,9 +778,6 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "react-hooks/exhaustive-deps": {
       "count": 3
     },
@@ -855,9 +796,6 @@
     },
     "jsx-a11y/no-autofocus": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 5
     },
     "sonarjs/no-all-duplicated-branches": {
       "count": 1
@@ -896,9 +834,6 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
     },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -912,9 +847,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 13
-    },
-    "no-restricted-syntax": {
-      "count": 4
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -935,9 +867,6 @@
     "jsx-a11y/no-static-element-interactions": {
       "count": 6
     },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -948,9 +877,6 @@
     }
   },
   "src/client/src/components/schedule/gantt/hooks/useBarDrag.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "react-hooks/exhaustive-deps": {
       "count": 3
     },
@@ -983,9 +909,6 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 2
     },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -1011,9 +934,6 @@
       "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
       "count": 1
     },
     "react-hooks/exhaustive-deps": {
@@ -1056,9 +976,6 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 2
     },
-    "no-restricted-syntax": {
-      "count": 3
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -1090,9 +1007,6 @@
     },
     "jsx-a11y/no-redundant-roles": {
       "count": 3
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/components/sprints/SprintBoard.tsx": {
@@ -1107,9 +1021,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/client/src/components/sprints/SprintList.tsx": {
@@ -1173,14 +1084,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/timetracking/ProjectTimesheetGrid.tsx": {
-    "no-restricted-syntax": {
-      "count": 3
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    }
-  },
   "src/client/src/components/timetracking/TimeLogForm.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
@@ -1190,18 +1093,12 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 1
     },
-    "no-restricted-syntax": {
-      "count": 3
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     }
   },
   "src/client/src/components/timetracking/TimesheetGrid.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -1387,9 +1284,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/pages/OnboardingPage.tsx": {
@@ -1398,9 +1292,6 @@
     },
     "jsx-a11y/label-has-associated-control": {
       "count": 3
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/pages/PortalViewPage.tsx": {
@@ -1466,9 +1357,6 @@
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -1578,20 +1466,11 @@
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 8
-    },
-    "no-await-in-loop": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/client/src/pages/ProjectsPM.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     },
     "react-hooks/exhaustive-deps": {
       "count": 2
@@ -1641,9 +1520,6 @@
   "src/client/src/pages/ScenarioModelingPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/pages/TimesheetPage.tsx": {
@@ -1762,9 +1638,6 @@
   "src/client/src/pages/settings/TeamTab.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 5
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/client/src/pages/settings/WebhooksTab.tsx": {
@@ -1778,11 +1651,6 @@
   "src/client/src/services/api.ts": {
     "@typescript-eslint/no-unsafe-declaration-merging": {
       "count": 2
-    }
-  },
-  "src/client/src/services/apiAreas/reports.ts": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/stores/aiChatStore.ts": {
@@ -1806,22 +1674,11 @@
     }
   },
   "src/client/src/utils/briefingByProject.ts": {
-    "no-restricted-syntax": {
-      "count": 7
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
-  "src/client/src/utils/plannerLayout.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/client/src/utils/resourceConflicts.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
