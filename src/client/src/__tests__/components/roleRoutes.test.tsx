@@ -39,7 +39,7 @@ function signIn(role: User['role'], extra: Partial<User> = {}) {
 
 const label = (key: string) => key.split('.').reduce<any>((o, k) => o?.[k], en) as string;
 
-/** What the real sidebar shows: [label, opens?] per menu item, in order */
+/** What the real sidebar shows: [label, opens?] per menu item, in order (items a role can't open are left out — no greyed lock rows, 2026-10-08) */
 function sidebarItems(): Array<[string, boolean]> {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
@@ -48,7 +48,7 @@ function sidebarItems(): Array<[string, boolean]> {
     </MemoryRouter>,
   );
   const nav = screen.getByRole('navigation', { name: 'Primary' });
-  const rows = [...nav.querySelectorAll('a[href], [aria-disabled="true"]')]
+  const rows = [...nav.querySelectorAll('a[href], [aria-disabled="true"]')] // a disabled row would be a regression
     .filter(el => !el.getAttribute('href')?.startsWith('/project/')); // pinned projects
   return rows.map(el => [el.textContent!.trim(), el.tagName === 'A']);
 }
@@ -58,15 +58,24 @@ const MENU = PM_NAV_SECTIONS.flatMap(s => s.items);
 describe('sidebar ⇄ role map (they cannot drift)', () => {
   for (const role of ALL_ROLES) {
     for (const isGuest of role === 'viewer' ? [false, true] : [false]) {
-      it(`${role}${isGuest ? ' (guest)' : ''}: every menu item is shown and opens exactly when the map allows it`, () => {
+      it(`${role}${isGuest ? ' (guest)' : ''}: the menu shows exactly the items the map lets this role open, all as links`, () => {
         const user = signIn(role, { isGuest });
         const expected = MENU
           .filter(i => !(isGuest && GUEST_HIDDEN_PATHS.has(i.path)))
-          .map(i => [label(i.labelKey), canOpenPath(user, i.path)]);
+          .filter(i => canOpenPath(user, i.path))
+          .map(i => [label(i.labelKey), true]);
         expect(sidebarItems()).toEqual(expected);
       });
     }
   }
+});
+
+describe('sidebar before the user has loaded', () => {
+  it('shows only the items with no role restriction, and drops a section with nothing left', () => {
+    useAuthStore.setState({ user: null, isAuthenticated: false, isLoading: true });
+    const expected = MENU.filter(i => !i.roles).map(i => [label(i.labelKey), true]);
+    expect(sidebarItems()).toEqual(expected);
+  });
 });
 
 describe('who may open what (deliberate — change here only on purpose)', () => {

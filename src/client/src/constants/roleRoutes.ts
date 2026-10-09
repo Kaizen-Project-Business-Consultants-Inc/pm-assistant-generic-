@@ -21,7 +21,7 @@ import { ROUTES, ROUTE_PATTERNS } from '../routes';
 import { isPersonalPath } from '../stores/authStore';
 import type { User } from '../stores/authStore';
 
-export type Role = User['role'];
+type Role = User['role'];
 
 export interface NavItem {
   labelKey: string;

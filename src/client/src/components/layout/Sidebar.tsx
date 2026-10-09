@@ -20,7 +20,6 @@ import {
   Calendar,
   CalendarClock,
   Mail,
-  Lock,
 } from 'lucide-react';
 import { useAuthStore, withoutCompany, isPlatformAdmin } from '../../stores/authStore';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -28,8 +27,8 @@ import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 import { roleLabel } from '../../constants/branding';
 import { KovartiMark } from '../ui/KovartiMark';
-import { PM_NAV_SECTIONS, GUEST_HIDDEN_PATHS } from '../../constants/roleRoutes';
-import type { NavItem, NavSection } from '../../constants/roleRoutes';
+import { PM_NAV_SECTIONS, GUEST_HIDDEN_PATHS, canOpenPath } from '../../constants/roleRoutes';
+import type { NavSection } from '../../constants/roleRoutes';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -170,11 +169,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
   });
   const pinnedProjects: { id: string; name: string }[] = (favData?.projects || []).slice(0, 5);
 
-  const isGuest = user?.isGuest;
   const baseNav = isAdmin && adminView ? adminNavSections : PM_NAV_SECTIONS;
-  const navSections = isGuest
-    ? baseNav.map(s => ({ ...s, items: s.items.filter(i => !GUEST_HIDDEN_PATHS.has(i.path)) })).filter(s => s.items.length > 0)
-    : baseNav;
 
   const isActive = (path: string): boolean => {
     if (path === '/dashboard') {
@@ -186,11 +181,14 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
     return location.pathname.startsWith(path);
   };
 
-  const isItemDisabled = (item: NavItem): boolean => {
-    if (!item.roles) return false;
-    if (!user) return true;
-    return !item.roles.includes(user.role);
-  };
+  // The menu shows only what this person can open (one rule with the router: canOpenPath) —
+  // items their role can't use are left out, not greyed; a section with nothing left is dropped.
+  // Until the user has loaded, role-restricted items stay hidden.
+  const navSections = baseNav
+    // Guests also lose GUEST_HIDDEN_PATHS from the menu (e.g. Settings, reached from the top-right menu instead).
+    // eslint-disable-next-line no-restricted-syntax -- small: ~6 sections of at most ~10 menu items
+    .map(s => ({ ...s, items: s.items.filter(i => (user ? canOpenPath(user, i.path) && !(user.isGuest && GUEST_HIDDEN_PATHS.has(i.path)) : !i.roles)) }))
+    .filter(s => s.items.length > 0);
 
   const userInitials = user?.fullName
     ? user.fullName
@@ -260,43 +258,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
 
               {section.items.map((item) => {
                 const Icon = item.icon;
-                const disabled = isItemDisabled(item);
-                const active = !disabled && isActive(item.path);
-                const disabledTooltip = 'Premium feature — contact your administrator';
-
-                if (disabled) {
-                  return (
-                    <div
-                      key={item.path}
-                      title={collapsed ? `${t(item.labelKey)} — ${disabledTooltip}` : disabledTooltip}
-                      className={`
-                        group relative flex items-center rounded-lg cursor-not-allowed
-                        ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'}
-                        text-sidebar-text/30
-                      `}
-                      aria-disabled="true"
-                    >
-                      <Icon
-                        className={`
-                          flex-shrink-0
-                          ${collapsed ? 'w-5 h-5' : 'w-[18px] h-[18px]'}
-                        `}
-                      />
-                      <span
-                        className={`
-                          ml-3 text-sm font-medium whitespace-nowrap
-                          transition-all duration-300
-                          ${collapsed ? 'sr-only' : 'block'}
-                        `}
-                      >
-                        {t(item.labelKey)}
-                      </span>
-                      {!collapsed && (
-                        <Lock className="ml-auto w-3 h-3 flex-shrink-0 opacity-60" />
-                      )}
-                    </div>
-                  );
-                }
+                const active = isActive(item.path);
 
                 return (
                   <Link

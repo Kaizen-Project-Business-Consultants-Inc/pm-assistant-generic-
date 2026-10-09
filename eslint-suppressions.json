@@ -371,9 +371,6 @@
   "src/client/src/components/layout/Sidebar.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/client/src/components/meeting/ChairsCard.tsx": {

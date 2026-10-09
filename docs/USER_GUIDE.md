@@ -162,7 +162,7 @@ Click **Customize** next to the dashboard title to toggle widget sections on/off
 
 ### Sidebar Navigation
 
-The left sidebar is grouped into sections. Some items only show for certain roles; team members and viewers see the others greyed out with a lock.
+The left sidebar is grouped into sections. Some items only show for certain roles: team members and viewers see only the pages they can use (the others are left out of their menu, and typing their address opens the Dashboard).
 
 | Section | Menu item | What it's for | Who |
 |---------|-----------|---------------|-----|
@@ -2724,7 +2724,7 @@ Buttons that change company-wide things — New Project, Start, Add person, New 
 | **Company owner** | The person who set up the company (October 2026): whatever their role says, they can do everything a **PMO** can inside the company — every project, company-wide workflows and AI settings, resource requests, the people list, holidays, the rate card. Their own role is still what's shown as "your role". |
 | **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
 | **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). Opens the same pages as a Viewer (see **Sidebar Navigation** for the list); the company-wide pages are hidden. |
-| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Opens only Dashboard, Projects, Lessons, Reports, AI Query and the personal pages; the other menu items show greyed out with a lock, and typing their address goes to the Dashboard. Free — no seat consumption. |
+| **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Opens only Dashboard, Projects, Lessons, Reports, AI Query and the personal pages; the other menu items are left out of their menu, and typing their address goes to the Dashboard. Free — no seat consumption. |
 | **Executive** | Pure read-only — dashboards, portfolio, and reports. No edits, no comments. |
 
 **My Assignments Widget** *(removed September 2026)*: its tasks and RAID items now appear under **Yours to do** in each project of the Morning Briefing (it also showed archived projects and the old meeting action-item list).
