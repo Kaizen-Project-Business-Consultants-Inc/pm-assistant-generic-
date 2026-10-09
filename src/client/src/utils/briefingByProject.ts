@@ -279,6 +279,7 @@ export function buildProjectBriefings(
     schedCount.set(t.projectId, m);
   }
   for (const [projectId, m] of schedCount) {
+    // eslint-disable-next-line no-restricted-syntax -- small: one project's few schedules
     const top = [...m.entries()].sort((a, b) => b[1] - a[1])[0][0];
     yoursFor(projectId).allTasksLink = `/project/${projectId}?tab=schedule&schedule=${top}&qf=my_tasks`;
   }
@@ -305,9 +306,18 @@ export function buildProjectBriefings(
     yoursFor(r.projectId).raid.push({
       id: r.id, label: r.title, link: `/project/${r.projectId}?tab=raid`, tag,
       tone: overdue ? 'red' : r.status === 'pending_decision' ? 'amber' : r.dueDate ? 'purple' : 'gray',
+      // eslint-disable-next-line no-restricted-syntax -- small: a two-item list
       extra: [RAID_TYPE_LABEL[r.type] ?? capitalize(r.type ?? ''), r.severity ? capitalize(r.severity) : ''].filter(Boolean).join(' · '),
     });
   }
+
+  // Per project: new high risks that aren't already in "yours", and RAID changes (counted once, not per project)
+  const newRisksBy = new Map<unknown, number>();
+  for (const r of (briefing.recentHighRisks ?? []) as any[]) {
+    if (!mineIds.has(r.id)) newRisksBy.set(r.projectId, (newRisksBy.get(r.projectId) ?? 0) + 1);
+  }
+  const recentChangesBy = new Map<unknown, number>();
+  for (const r of (briefing.raidChanges ?? []) as any[]) recentChangesBy.set(r.projectId, (recentChangesBy.get(r.projectId) ?? 0) + 1);
 
   const result: ProjectBriefing[] = [];
   for (const p of byId.values()) {
@@ -316,8 +326,8 @@ export function buildProjectBriefings(
     const yours = yoursBy.get(p.id) ?? emptyYours(p.id);
     const lateCount = Math.max((c?.overdue ?? 0) - mv.late, p.late.length);
     const blockedCount = Math.max((c?.blocked ?? 0) - mv.blocked, p.blocked.length);
-    const newRisks = (briefing.recentHighRisks ?? []).filter((r: any) => r.projectId === p.id && !mineIds.has(r.id)).length;
-    const recentChanges = (briefing.raidChanges ?? []).filter((r: any) => r.projectId === p.id).length;
+    const newRisks = newRisksBy.get(p.id) ?? 0;
+    const recentChanges = recentChangesBy.get(p.id) ?? 0;
     const riskTotal = Math.max((c?.openIssues ?? 0) + (c?.overdueActions ?? 0) - mv.risks + newRisks + recentChanges, p.risks.length);
     const dueCount = Math.max((c?.dueSoon ?? 0) - mv.due, p.due.length);
     const base = `/project/${p.id}`;
@@ -334,8 +344,10 @@ export function buildProjectBriefings(
     ];
 
     // What someone can't see shouldn't colour the project: a non-manager is judged on their own work
+    // eslint-disable-next-line no-restricted-syntax -- small: this project's own "yours to do" items, read once
     const myLate = yours.tasks.filter(t => t.tone === 'red');
     const myLateMax = Math.max(0, ...myLate.map(t => parseInt(t.tag ?? '0', 10) || 0));
+    // eslint-disable-next-line no-restricted-syntax -- small: this project's own "yours to do" items, read once
     const myBlocked = yours.tasks.filter(t => t.tone === 'orange').length;
     const team = p.canManage
       ? { late: lateCount, lateMaxDays: p.lateMaxDays, blocked: blockedCount, critical: p.critical, other: riskTotal + p.approvals.length + p.stalled.length, due: dueCount }
@@ -345,6 +357,7 @@ export function buildProjectBriefings(
     const urgency = (team.late + myLate.length) * 10 + lateMax + (team.blocked + myBlocked) * 15 + team.critical * 30
       + team.other * 8 + team.due * 2 + yours.tasks.length * 3 + yours.raid.length;
     const typeLabel = p.projectType ? PROJECT_TYPE_LABELS[p.projectType] ?? capitalize(p.projectType.replace(/_/g, ' ')) : '';
+    // eslint-disable-next-line no-restricted-syntax -- small: a three-item list
     const subtitle = [p.code, typeLabel, p.methodology ? capitalize(p.methodology) : ''].filter(Boolean).join(' · ');
     result.push({
       id: p.id, name: p.name, code: p.code, subtitle, level, urgency, sections,

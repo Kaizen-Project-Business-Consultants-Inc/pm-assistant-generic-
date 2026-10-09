@@ -474,6 +474,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-gray-500 dark:text-gray-400">#{index + 1}</span>
                   <span className={`text-xs font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${TYPE_BADGE_COLORS[section.type]}`}>
+                    {/* eslint-disable-next-line no-restricted-syntax -- small: the 5 section types */}
                     {SECTION_TYPE_OPTIONS.find((o) => o.value === section.type)?.label}
                   </span>
                 </div>
@@ -608,6 +609,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                       className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-800"
                     >
                       <option value="">All Statuses</option>
+                      {/* eslint-disable-next-line no-restricted-syntax -- small: the 5 fixed project statuses */}
                       {STATUS_OPTIONS.filter(Boolean).map((s) => (
                         <option key={s} value={s}>{s.replace('_', ' ')}</option>
                       ))}
@@ -645,6 +647,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                             key={col.value}
                             onClick={() => {
                               const newCols = isSelected
+                                // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over one section's chosen columns
                                 ? section.columns.filter(c => c !== col.value)
                                 : [...section.columns, col.value];
                               updateSection(section.id, { columns: newCols });
@@ -710,6 +713,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
             form.sections.forEach(s => { counts[s.type] = (counts[s.type] || 0) + 1; });
             return Object.entries(counts).map(([type, count]) => (
               <span key={type} className={`text-xs px-2 py-0.5 rounded-full ${TYPE_BADGE_COLORS[type as SectionType] || 'bg-gray-100 text-gray-600'}`}>
+                {/* eslint-disable-next-line no-restricted-syntax -- small: the 5 section types */}
                 {count} {SECTION_TYPE_OPTIONS.find(o => o.value === type)?.label || type}
               </span>
             ));

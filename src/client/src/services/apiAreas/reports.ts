@@ -1,4 +1,14 @@
 import { ApiBase } from './http';
+import { firstByKey } from '../../utils/lookup';
+
+/** A schedule's critical path as task names (the id when the task isn't in the list), joined by arrows */
+export function criticalPathNames(s: { tasks: any[]; criticalPath: { criticalPathTaskIds: string[] } }): string {
+  const taskById = firstByKey(s.tasks, (t: any) => t.id);
+  return s.criticalPath.criticalPathTaskIds.map((id: string) => {
+    const task = taskById.get(id);
+    return task ? task.name : id;
+  }).join(' → ');
+}
 
 /**
  * Reports (AI, instant, status, custom, scheduled), exports, portfolio, analytics and dashboard data.
@@ -272,10 +282,7 @@ ${schedules.some((s: any) => s.criticalPath?.criticalPathTaskIds?.length) ? `
 <h2>Critical Path</h2>
 ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map((s: any) => `
   <p style="margin-bottom:4px"><strong>${s.name}</strong> - Duration: ${s.criticalPath.projectDuration} days, Critical tasks: ${s.criticalPath.criticalPathTaskIds.length}</p>
-  <p style="color:#6b7280;margin-bottom:12px">${s.criticalPath.criticalPathTaskIds.map((id: string) => {
-    const task = s.tasks.find((t: any) => t.id === id);
-    return task ? task.name : id;
-  }).join(' → ')}</p>
+  <p style="color:#6b7280;margin-bottom:12px">${criticalPathNames(s)}</p>
 `).join('')}` : ''}
 
 <div class="footer">Kovarti PM - Project Report</div>

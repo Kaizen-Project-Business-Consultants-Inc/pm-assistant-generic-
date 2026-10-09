@@ -193,3 +193,23 @@ describe('Team follow-up vs Yours to do (Sep 2026)', () => {
     expect(statusSummary(get('nswma'))).toContain('3 yours');
   });
 });
+
+describe('risk counts per project (counted once for all projects, 2026-10-09)', () => {
+  const project = (id: string, openIssues: number) => ({ id, name: id.toUpperCase(), code: id, projectType: 'it', methodology: null, canManage: true, counts: { overdue: 0, dueSoon: 0, blocked: 0, openIssues, overdueActions: 0 }, nextMilestone: null });
+  const risk = (id: string, projectId: string) => ({ id, title: `Risk ${id}`, severity: 'high', projectId, projectName: projectId, projectCode: projectId });
+  const change = (id: string, projectId: string) => ({ id, title: `Item ${id}`, type: 'risk', change: 'closed', to: 'closed', projectId, projectName: projectId, projectCode: projectId });
+  const ps = buildProjectBriefings({
+    projects: [project('a', 20), project('b', 20), project('c', 0)],
+    // the same risk twice is counted twice (as the per-project filter did); yours is left out
+    recentHighRisks: [risk('rh1', 'a'), risk('rh2', 'a'), risk('rh1', 'a'), risk('r-mine', 'a'), risk('rh3', 'b')],
+    raidChanges: [change('c1', 'a'), change('c2', 'b'), change('c3', 'a'), change('c4', 'a'), change('c5', 'c')],
+    mine: { tasks: [], raidItems: [{ id: 'r-mine', title: 'Mine', type: 'risk', status: 'open', severity: 'high', dueDate: null, projectId: 'a' }] },
+  }, { showApprovals: true, formatDate: (d: string) => d, today: TODAY });
+  const risks = (id: string) => ps.find(p => p.id === id)!.sections.find(s => s.key === 'risks')!.count;
+
+  it('adds each project’s own new risks and changes, and no one else’s', () => {
+    expect(risks('a')).toBe(20 + 3 + 3);
+    expect(risks('b')).toBe(20 + 1 + 1);
+    expect(risks('c')).toBe(1);
+  });
+});
