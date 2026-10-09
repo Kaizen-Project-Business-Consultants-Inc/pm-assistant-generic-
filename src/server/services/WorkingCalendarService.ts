@@ -169,10 +169,12 @@ export class WorkingCalendarService {
     let projects = 0;
     for (const projectId of await this.activeProjectIds()) {
       // Before/after for this project, whichever way round the saved state now is
+      // eslint-disable-next-line no-await-in-loop -- a company holiday change (rare, admin) re-fits each active project on its own calendar, one after another
       const spec = await calendarService.calendarSpec(projectId);
       const withIt = cloneSpec(spec); withIt.company.add(date);
       const without = cloneSpec(spec); without.company.delete(date);
       const [b, a] = 'add' in change ? [without, withIt] : [withIt, without];
+      // eslint-disable-next-line no-await-in-loop -- as above
       const m = await this.refit(projectId, checker(b), checker(a), { dryRun, reason: 'calendar_change', label });
       if (m.length) projects++;
       moves.push(...m);

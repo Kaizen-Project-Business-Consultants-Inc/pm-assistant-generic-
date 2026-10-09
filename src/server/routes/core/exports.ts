@@ -53,9 +53,11 @@ export async function exportRoutes(fastify: FastifyInstance) {
         let allTaskCount = 0;
         let allProgressSum = 0;
         for (const schedule of schedules) {
+          // eslint-disable-next-line no-await-in-loop -- small: a project's plans (a handful), each with its own tasks
           const tasks = await scheduleService.findTasksByScheduleId(schedule.id);
           let criticalPath = null;
           try {
+            // eslint-disable-next-line no-await-in-loop -- small: one critical path per plan of the project
             criticalPath = await criticalPathService.calculateCriticalPath(schedule.id);
           } catch { /* ignore */ }
           for (const t of tasks) {
@@ -119,6 +121,7 @@ export async function exportRoutes(fastify: FastifyInstance) {
         const parentIds = new Set<string>();
 
         for (const schedule of schedules) {
+          // eslint-disable-next-line no-await-in-loop -- small: a project's plans (a handful), each with its own tasks
           const tasks = await scheduleService.findTasksByScheduleId(schedule.id);
           for (const t of tasks) { if (t.parentTaskId) parentIds.add(t.parentTaskId); }
           // Build WBS by outline level
@@ -244,6 +247,7 @@ ${assignmentsXml}
       const rows: string[][] = [];
 
       for (const schedule of schedules) {
+        // eslint-disable-next-line no-await-in-loop -- small: a project's plans (a handful), each with its own tasks
         const tasks = await scheduleService.findTasksByScheduleId(schedule.id);
         // Build row number map for MS Project-style predecessor labels
         const taskRowNum = new Map<string, number>();

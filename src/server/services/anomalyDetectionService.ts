@@ -95,6 +95,7 @@ export class AnomalyDetectionService {
 
     for (const p of portfolio.projects) {
       if (p.status !== 'active' && p.status !== 'in_progress') continue;
+      // eslint-disable-next-line no-await-in-loop -- each project's check builds that project's own full context (the same builder the one-project check uses), one project at a time so a large portfolio doesn't open every project's reads at once; a failure skips only that project
       const projectAnomalies = await this.detectForProject(p.id, p.name);
       anomalies.push(...projectAnomalies);
     }

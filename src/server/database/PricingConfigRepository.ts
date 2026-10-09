@@ -1,4 +1,5 @@
 import { BaseRepository } from './BaseRepository';
+import { chunksOf } from '../utils/chunksOf';
 
 export interface PricingConfigRecord {
   id: string;
@@ -187,11 +188,14 @@ class PricingConfigRepository extends BaseRepository<PricingConfigRecord> {
     return (result.affectedRows ?? 0) > 0;
   }
 
+  /** Several toggles for one tier: one `CASE feature_key` UPDATE per 200, not one per feature (2026-10-09) */
   async setFeaturesBulk(tier: string, features: Record<string, boolean>): Promise<void> {
-    for (const [featureKey, enabled] of Object.entries(features)) {
+    for (const chunk of chunksOf(Object.entries(features), 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 features; a tier has ~30
       await this.queryRaw(
-        'UPDATE tier_features SET enabled = ? WHERE tier = ? AND feature_key = ?',
-        [enabled ? 1 : 0, tier, featureKey],
+        `UPDATE tier_features SET enabled = CASE feature_key ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END
+          WHERE tier = ? AND feature_key IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flatMap(([key, enabled]) => [key, enabled ? 1 : 0]), tier, ...chunk.map(([key]) => key)],
       );
     }
   }

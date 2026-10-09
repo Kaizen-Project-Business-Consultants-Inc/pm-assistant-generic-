@@ -270,6 +270,9 @@ class StorageConnectorService {
       let synced = 0;
       let deleted = 0;
       let skipped = 0;
+      // What is already synced for these items, in one read (was one read per item; 2026-10-09).
+      // Kept current below as files are removed and saved.
+      const known = await projectDocumentRepository.findByExternalIds(connectorId, items.filter(i => !i.isFolder).map(i => i.id));
 
       for (const item of items) {
         if (synced + deleted >= MAX_FILES_PER_SYNC) {
@@ -279,10 +282,12 @@ class StorageConnectorService {
 
         // Handle deletions
         if (item.deleted) {
-          const existing = await projectDocumentRepository.findByExternalId(connectorId, item.id);
+          const existing = known.get(item.id);
           if (existing) {
             documentIntelligenceService.deleteDocumentEmbeddings(existing.id).catch(() => {});
+            // eslint-disable-next-line no-await-in-loop -- removes one file deleted in the drive (with its embeddings); counts toward the 50-file cap per sync
             await projectDocumentRepository.delete(existing.id);
+            known.delete(item.id);
             deleted++;
           }
           continue;
@@ -305,7 +310,7 @@ class StorageConnectorService {
         }
 
         // Check if already synced with same etag
-        const existing = await projectDocumentRepository.findByExternalId(connectorId, item.id);
+        const existing = known.get(item.id);
         if (existing && existing.externalEtag === item.eTag) {
           continue; // unchanged
         }
@@ -363,6 +368,7 @@ class StorageConnectorService {
           .catch(err => logger.error('Connector doc processing error', { documentId: doc.id, error: err.message }))
           .finally(() => fs.unlink(tmpPath).catch(() => {}));
 
+        known.set(item.id, doc);
         synced++;
         if (!existing) remainingDocs--;
       }

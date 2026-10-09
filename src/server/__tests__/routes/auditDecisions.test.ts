@@ -34,7 +34,8 @@ describe('never-confirmed sign-ups: labelled, not counted, never deleted', () =>
     const admin = server('routes', 'admin', 'admin.ts');
     expect(admin).toMatch(/FROM users WHERE NOT \$\{neverConfirmedSql\(\)\}\) AS total_users/);
     expect(admin).toMatch(/AS never_confirmed_users/);
-    expect(server('routes', 'admin', 'operations.ts')).toMatch(/organization_id = \? AND NOT \$\{neverConfirmedSql\(\)\}/);
+    // each company's count, all in one read since 2026-10-09: the never-confirmed are still left out
+    expect(server('routes', 'admin', 'operations.ts')).toMatch(/FROM users WHERE NOT \$\{neverConfirmedSql\(\)\} GROUP BY organization_id/);
     expect(server('routes', 'admin', 'tenants.ts')).toMatch(/\$\{neverConfirmedSql\('u'\)\} AS never_confirmed/);
   });
 

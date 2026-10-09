@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from './connection';
 import type { ProjectDocument, DocumentType, ProjectPhase, ProcessingStatus, DocumentAIResponse } from '../schemas/documentSchemas';
+import { chunksOf } from '../utils/chunksOf';
 
 function parseJson<T>(val: unknown, fallback: T): T {
   if (!val) return fallback;
@@ -162,12 +163,19 @@ class ProjectDocumentRepository {
     return rows.map((r: any) => r.folder);
   }
 
-  async findByExternalId(connectorId: string, externalId: string): Promise<ProjectDocument | null> {
-    const rows = await databaseService.query<any>(
-      'SELECT * FROM project_documents WHERE connector_id = ? AND external_id = ?',
-      [connectorId, externalId],
-    );
-    return rows.length > 0 ? mapRow(rows[0]) : null;
+  /** A connector's documents for these drive items, by item id (500 ids per read) */
+  async findByExternalIds(connectorId: string, externalIds: string[]): Promise<Map<string, { id: string; externalEtag: string | null }>> {
+    const out = new Map<string, { id: string; externalEtag: string | null }>();
+    for (const ids of chunksOf([...new Set(externalIds)], 500)) {
+      // eslint-disable-next-line no-await-in-loop -- one read per 500 items
+      const rows = await databaseService.query<any>(
+        // only what the sync compares — not each document's extracted text
+        `SELECT id, external_id, external_etag FROM project_documents WHERE connector_id = ? AND external_id IN (${ids.map(() => '?').join(',')})`,
+        [connectorId, ...ids],
+      );
+      for (const r of rows) out.set(r.external_id, { id: r.id, externalEtag: r.external_etag ?? null });
+    }
+    return out;
   }
 
   async upsertFromConnector(data: {

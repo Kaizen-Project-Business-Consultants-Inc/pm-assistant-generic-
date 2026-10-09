@@ -47,6 +47,33 @@ function controlPlane() {
 describe('WeeklyTimesheetService', () => {
   beforeEach(() => { vi.clearAllMocks(); controlPlane(); });
 
+  describe("a project's sheets waiting for approval", () => {
+    it('three person-weeks: their sheets in one read, each matched to its person and week (2026-10-09)', async () => {
+      query.mockImplementation(async (sql: string, params: any[]) => {
+        if (sql.includes('FROM time_entries te')) return [
+          { user_id: 'u-peter', task_id: 't1', task_name: 'A', week_start: '2026-09-21', hours: '4' },
+          { user_id: 'u-peter', task_id: 't2', task_name: 'B', week_start: '2026-09-21', hours: '2' },
+          { user_id: 'u-peter', task_id: 't1', task_name: 'A', week_start: '2026-09-28', hours: '1' },
+          { user_id: 'u-michael', task_id: 't1', task_name: 'A', week_start: '2026-09-28', hours: '3' },
+        ];
+        if (sql.includes('FROM timesheets WHERE (user_id, week_start) IN')) {
+          expect(params).toEqual(['u-peter', '2026-09-21', 'u-peter', '2026-09-28', 'u-michael', '2026-09-28']);
+          return [{ id: 'sh-p21', user_id: 'u-peter', week_start: '2026-09-21' }, { id: 'sh-m28', user_id: 'u-michael', week_start: '2026-09-28' }];
+        }
+        return [];
+      });
+      const weekView = vi.spyOn(weeklyTimesheetService, 'weekView').mockResolvedValue({ lines: [{ taskId: 't1', plannedThisWeek: 8 }] } as any);
+      const out = await weeklyTimesheetService.projectPending('p1');
+      weekView.mockRestore();
+      expect(query.mock.calls.filter((c: any[]) => String(c[0]).includes('FROM timesheets'))).toHaveLength(1);
+      query.mockReset();
+      expect(out.map(g => [g.userName, g.weekStart, g.sheetId, g.lines.length])).toEqual([
+        ['Peter', '2026-09-21', 'sh-p21', 2], ['Peter', '2026-09-28', null, 1], ['Michael', '2026-09-28', 'sh-m28', 1],
+      ]);
+      expect(out[0].lines[0].plannedThisWeek).toBe(8);
+    });
+  });
+
   describe('who approves', () => {
     it("the person's line manager", async () => {
       query.mockResolvedValueOnce([{ id: 'r-peter', line_manager_user_id: 'u-michael' }]);

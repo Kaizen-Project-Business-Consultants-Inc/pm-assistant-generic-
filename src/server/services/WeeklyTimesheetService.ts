@@ -429,16 +429,25 @@ export class WeeklyTimesheetService {
         ORDER BY week_start, te.user_id`, [projectId]);
     const groups = new Map<string, { sheetId: string | null; userId: string; userName: string; weekStart: string; lines: any[] }>();
     const names = await this.userNames(rows.map((r: any) => r.user_id));
+    // every person-week's sheet in one read (was one per person-week; 2026-10-09)
+    const pairs = [...new Map(rows.map((r: any) => [`${r.user_id}|${r.week_start}`, [r.user_id, r.week_start]])).values()] as string[][];
+    const sheetOf = new Map<string, string>();
+    if (pairs.length) {
+      const sheets = await databaseService.query<any>(
+        `SELECT id, user_id, DATE_FORMAT(week_start, '%Y-%m-%d') AS week_start FROM timesheets WHERE (user_id, week_start) IN (${pairs.map(() => '(?, ?)').join(', ')})`,
+        pairs.flat());
+      for (const sh of sheets) sheetOf.set(`${sh.user_id}|${sh.week_start}`, sh.id);
+    }
     for (const r of rows) {
       const key = `${r.user_id}|${r.week_start}`;
       if (!groups.has(key)) {
-        const sheet = await this.sheetRow(r.user_id, r.week_start);
-        groups.set(key, { sheetId: sheet?.id ?? null, userId: r.user_id, userName: names.get(r.user_id) ?? 'Someone', weekStart: r.week_start, lines: [] });
+        groups.set(key, { sheetId: sheetOf.get(key) ?? null, userId: r.user_id, userName: names.get(r.user_id) ?? 'Someone', weekStart: r.week_start, lines: [] });
       }
       groups.get(key)!.lines.push({ taskId: r.task_id, taskName: r.task_name, hours: r1(Number(r.hours)), plannedThisWeek: 0 });
     }
     // Planned hours for each line, from the person's week (this project only)
     for (const g of groups.values()) {
+      // eslint-disable-next-line no-await-in-loop -- one person's planned week per sheet waiting for approval (a few); each reads that person's own bookings and calendar
       const view = await this.weekView(g.userId, g.weekStart, new Set([projectId]));
       for (const l of g.lines) l.plannedThisWeek = view.lines.find(x => x.taskId === l.taskId)?.plannedThisWeek ?? 0;
     }

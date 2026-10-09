@@ -643,7 +643,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         const group = (row.resourceGroup || row.department || row.Department || '').trim() || null;
 
         try {
+          // eslint-disable-next-line no-await-in-loop -- each row is checked and created on its own so a bad row gets its own error line (a duplicate of an earlier row included)
           await checkCreate(request.user, { email });
+          // eslint-disable-next-line no-await-in-loop -- as above
           await resourceService.createResource({
             name, role, email,
             capacityHoursPerWeek: capacity,
@@ -680,21 +682,34 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     // Gather task names for each assignment — but only for projects the viewer is on; elsewhere
     // the hours count, the task and project stay private ("Work on another project")
     const readable = await readableProjectIds(request.user!);
+    // Which project each plan belongs to and each task's name: one read each (was a read per
+    // booking for the plan and another for the task; 2026-10-09)
+    const scheduleIds = [...new Set(assignments.map(a => a.scheduleId))];
     const projectOfSchedule = new Map<string, string | null>();
-    const visible = async (scheduleId: string) => {
+    if (readable !== 'all' && scheduleIds.length) {
+      const rows = await databaseService.query<{ id: string; project_id: string | null }>(
+        `SELECT id, project_id FROM schedules WHERE id IN (${scheduleIds.map(() => '?').join(',')})`, scheduleIds);
+      for (const r of rows) projectOfSchedule.set(r.id, r.project_id);
+    }
+    const visible = (scheduleId: string) => {
       if (readable === 'all') return true;
-      if (!projectOfSchedule.has(scheduleId)) projectOfSchedule.set(scheduleId, (await scheduleService.findById(scheduleId))?.projectId ?? null);
       const pid = projectOfSchedule.get(scheduleId);
       return !!pid && readable.has(pid);
     };
+    const shownTaskIds = [...new Set(assignments.filter(a => visible(a.scheduleId)).map(a => a.taskId))];
+    const taskName = new Map<string, string>();
+    if (shownTaskIds.length) {
+      const rows = await databaseService.query<{ id: string; name: string }>(
+        `SELECT id, name FROM tasks WHERE id IN (${shownTaskIds.map(() => '?').join(',')})`, shownTaskIds);
+      for (const r of rows) taskName.set(r.id, r.name);
+    }
     const taskDetails: Array<{ assignmentId: string; taskId: string; taskName: string; scheduleId: string; hoursPerWeek: number; startDate: string; endDate: string }> = [];
     for (const a of assignments) {
-      const show = await visible(a.scheduleId);
-      const task = show ? await scheduleService.findTaskById(a.taskId) : null;
+      const show = visible(a.scheduleId);
       taskDetails.push({
         assignmentId: show && a.source === 'manual' ? a.id : '', // only hours bookings can be removed here
         taskId: show ? a.taskId : '',
-        taskName: show ? (task?.name || 'Unknown Task') : 'Work on another project',
+        taskName: show ? (taskName.get(a.taskId) || 'Unknown Task') : 'Work on another project',
         scheduleId: show ? a.scheduleId : '',
         hoursPerWeek: a.hoursPerWeek,
         startDate: a.startDate,

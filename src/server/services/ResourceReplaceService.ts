@@ -100,12 +100,17 @@ export class ResourceReplaceService {
       for (const p of people) {
         if (Number(p.already)) {
           // The new person is already on this task: one line for them is enough
-          await databaseService.queryOn(conn, 'DELETE FROM task_assignments WHERE id = ?', [p.id]);
           undo.removedPeople.push({ id: p.id, task_id: p.task_id, allocation_pct: Number(p.allocation_pct), role_on_task: p.role_on_task ?? null, hours_planned: p.hours_planned != null ? Number(p.hours_planned) : null });
         } else {
-          await databaseService.queryOn(conn, 'UPDATE task_assignments SET resource_id = ? WHERE id = ?', [toId, p.id]);
           undo.movedPeople.push(p.id);
         }
+      }
+      // one DELETE and one UPDATE for all of them (was one statement per line; 2026-10-09)
+      if (undo.removedPeople.length) {
+        await databaseService.queryOn(conn, `DELETE FROM task_assignments WHERE id IN (${placeholders(undo.removedPeople.length)})`, undo.removedPeople.map(r => r.id));
+      }
+      if (undo.movedPeople.length) {
+        await databaseService.queryOn(conn, `UPDATE task_assignments SET resource_id = ? WHERE id IN (${placeholders(undo.movedPeople.length)})`, [toId, ...undo.movedPeople]);
       }
       const owned = await databaseService.queryOn<{ id: string }>(conn,
         `SELECT id FROM tasks WHERE assigned_to = ? AND id IN (${ph})`, [fromId, ...taskIds]);
@@ -151,11 +156,11 @@ export class ResourceReplaceService {
           `SELECT task_id FROM task_assignments WHERE id IN (${placeholders(u.movedPeople.length)})`, u.movedPeople);
         rows.forEach((r) => taskIds.add(r.task_id));
       }
-      for (const p of u.removedPeople) {
+      if (u.removedPeople.length) {
         await databaseService.queryOn(conn,
-          `INSERT IGNORE INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned) VALUES (?, ?, ?, ?, ?, ?)`,
-          [p.id, p.task_id, u.fromId, p.allocation_pct, p.role_on_task, p.hours_planned]);
-        taskIds.add(p.task_id);
+          `INSERT IGNORE INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned) VALUES ${u.removedPeople.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
+          u.removedPeople.flatMap(p => [p.id, p.task_id, u.fromId, p.allocation_pct, p.role_on_task, p.hours_planned]));
+        u.removedPeople.forEach(p => taskIds.add(p.task_id));
       }
       if (u.assignedTo.length) {
         await databaseService.queryOn(conn,

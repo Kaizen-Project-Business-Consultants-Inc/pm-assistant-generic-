@@ -759,6 +759,10 @@ export class ResourceService {
 
     const baseCapacity = resource.capacityHoursPerWeek;
     const result: Array<{ weekStart: string; planned: number; actual: number; capacity: number; utilization: number }> = [];
+    // every week's capacity in one read of their time off (was one read per week; 2026-10-09).
+    // No calendar template, as the per-week call had it.
+    const capacityOf = (await resourceAvailabilityService.getEffectiveCapacityBatch(
+      [{ id: resourceId, capacityHoursPerWeek: baseCapacity, calendarTemplateId: null }], weekStarts)).get(resourceId);
 
     for (const ws of weekStarts) {
       const weekEnd = new Date(ws.getTime() + WEEK_MS);
@@ -770,7 +774,7 @@ export class ResourceService {
 
       const weekKey = ws.toISOString().slice(0, 10);
       const actual = actualByWeek?.get(weekKey) ?? 0;
-      const capacity = await resourceAvailabilityService.getEffectiveCapacity(resourceId, ws, baseCapacity);
+      const capacity = capacityOf?.get(weekKey) ?? baseCapacity;
       const utilization = capacity > 0 ? Math.round((planned / capacity) * 100) : 0;
 
       result.push({ weekStart: weekKey, planned, actual, capacity, utilization });

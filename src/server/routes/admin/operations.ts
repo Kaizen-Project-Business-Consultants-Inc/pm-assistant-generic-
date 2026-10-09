@@ -194,23 +194,24 @@ async function getTenantStats(): Promise<any[]> {
 
   if (config.MULTI_TENANT_ENABLED) {
     try {
-      const orgs = await databaseService.queryControlPlane<{ id: string; name: string; slug: string }>(
-        `SELECT o.id, o.name, o.slug, ${neverConfirmedSql('u')} AS never_confirmed
-           FROM organizations o LEFT JOIN users u ON u.id = o.owner_user_id WHERE o.is_active = 1`
+      // Each company's user counts come with it in the same read, not one count per company
+      // (2026-10-09). Never-confirmed sign-ups aren't counted as users (they never signed in).
+      const orgs = await databaseService.queryControlPlane<{ id: string; name: string; slug: string; never_confirmed: number; total: number | null; active: number | null }>(
+        `SELECT o.id, o.name, o.slug, ${neverConfirmedSql('u')} AS never_confirmed, c.total, c.active
+           FROM organizations o
+           LEFT JOIN users u ON u.id = o.owner_user_id
+           LEFT JOIN (SELECT organization_id, COUNT(*) AS total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS active
+                        FROM users WHERE NOT ${neverConfirmedSql()} GROUP BY organization_id) c ON c.organization_id = o.id
+          WHERE o.is_active = 1`
       );
       for (const org of orgs) {
-        // never-confirmed sign-ups aren't counted as users (they never signed in)
-        const userRows = await databaseService.queryControlPlane<{ total: number; active: number }>(
-          `SELECT COUNT(*) as total, SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active FROM users WHERE organization_id = ? AND NOT ${neverConfirmedSql()}`,
-          [org.id]
-        );
         tenants.push({
           id: org.id,
           name: org.name,
           slug: org.slug,
-          neverConfirmed: !!Number((org as any).never_confirmed),
-          totalUsers: Number(userRows[0]?.total || 0),
-          activeUsers: Number(userRows[0]?.active || 0),
+          neverConfirmed: !!Number(org.never_confirmed),
+          totalUsers: Number(org.total || 0),
+          activeUsers: Number(org.active || 0),
           apiRequestsToday: 0,
           apiRequestsWeek: 0,
           aiTokensThisMonth: 0,

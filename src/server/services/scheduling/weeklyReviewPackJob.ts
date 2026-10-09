@@ -1,6 +1,7 @@
 import { databaseService } from '../../database/connection';
 import { notificationService } from '../NotificationService';
 import logger from '../../utils/logger';
+import { groupBy } from '../../utils/groupBy';
 
 /**
  * Generates weekly review packs for all active projects and notifies
@@ -28,27 +29,32 @@ export async function runWeeklyReviewPack(): Promise<number> {
 
   let notified = 0;
 
+  // Every project's owners/managers in one read (2026-10-09), not one read per project.
+  // If it fails, no project is announced — as when each project's own read failed.
+  let managersByProject: Map<string, any[]>;
+  try {
+    managersByProject = groupBy(await databaseService.query<{ project_id: string; user_id: string }>(
+      `SELECT project_id, user_id FROM project_members
+       WHERE project_id IN (${projects.map(() => '?').join(',')}) AND role IN ('owner', 'manager')`,
+      projects.map(p => p.id),
+    ), r => r.project_id);
+  } catch {
+    return 0;
+  }
+
   for (const project of projects) {
     try {
       // Lazy import to avoid circular dependencies
       // eslint-disable-next-line no-await-in-loop -- lazy import (avoids a circular import); Node caches it after the first project
       const { timeAnomalyService } = await import('../TimeAnomalyService');
+      // eslint-disable-next-line no-await-in-loop -- each project's review is its own calculation over that project's week of time entries; one project at a time (at most 200)
       const review = await timeAnomalyService.generateWeeklyReview(project.id, weekStart);
 
       // Skip projects with no time entries this week
       if (review.totalHours === 0) continue;
 
-      // Find owners/managers to notify
-      let managers: any[];
-      try {
-        managers = await databaseService.query(
-          `SELECT user_id FROM project_members
-           WHERE project_id = ? AND role IN ('owner', 'manager')`,
-          [project.id],
-        );
-      } catch {
-        continue;
-      }
+      // Owners/managers to notify
+      const managers = managersByProject.get(project.id) ?? [];
 
       const summaryParts = [
         `${review.totalHours.toFixed(1)}h total`,

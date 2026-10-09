@@ -3,6 +3,7 @@ import { documentEntityLinkRepository } from '../database/DocumentEntityLinkRepo
 import { databaseService } from '../database/connection';
 import { claudeService } from './claudeService';
 import { embeddingService } from './EmbeddingService';
+import { embeddingRepository } from '../database/EmbeddingRepository';
 import { extractText, chunkText } from './documentTextExtractor';
 import { DocumentAIResponseSchema, type DocumentAIResponse, type EntityLinkType } from '../schemas/documentSchemas';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
@@ -227,9 +228,11 @@ ${milestoneList}`;
       const doc = await projectDocumentRepository.findById(documentId);
       const textLength = doc?.extractedText?.length || 0;
       const estimatedChunks = Math.ceil(textLength / 4000) + 1;
-      for (let i = 0; i < estimatedChunks; i++) {
-        await embeddingService.deleteEmbedding('project_document', `${documentId}_chunk_${i}`);
-      }
+      // All the chunks in one DELETE (per 500), not one per chunk (2026-10-09)
+      await embeddingRepository.deleteMany(
+        'project_document',
+        Array.from({ length: estimatedChunks }, (_, i) => `${documentId}_chunk_${i}`),
+      );
     } catch (err: any) {
       logger.warn('Failed to clean up document embeddings', { documentId, error: err.message });
     }

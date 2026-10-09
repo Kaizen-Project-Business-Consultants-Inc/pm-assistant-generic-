@@ -3,6 +3,7 @@ import { notificationService } from '../NotificationService';
 import { timeAnomalyService } from '../TimeAnomalyService';
 import { redisService } from '../RedisService';
 import logger from '../../utils/logger';
+import { keysAlreadySet } from '../../utils/redisKeysSet';
 
 /**
  * Monday 09:00 cron — identifies under-utilized (<60%) and over-utilized (>110%)
@@ -62,9 +63,10 @@ export async function runUtilizationCoaching(): Promise<number> {
   let notified = 0;
   const MAX_NOTIFICATIONS = 20;
 
+  // Who is under or over, worked out first so the dedup check is one MGET for everyone, not a
+  // GET per person (2026-10-09)
+  const candidates: Array<{ row: any; pattern: 'under' | 'over'; avgDailyHours: number; redisKey: string }> = [];
   for (const row of memberRows) {
-    if (notified >= MAX_NOTIFICATIONS) break;
-
     const avgDailyHours = row.work_days > 0 ? Number(row.total_hours) / weekdayCount : 0;
     const utilization = (avgDailyHours / targetDailyHours) * 100;
 
@@ -73,13 +75,18 @@ export async function runUtilizationCoaching(): Promise<number> {
     else if (utilization > 110) pattern = 'over';
 
     if (!pattern) continue;
+    candidates.push({ row, pattern, avgDailyHours, redisKey: `coaching:sent:${row.user_id}:${weekStart}` });
+  }
+  const sentBefore = await keysAlreadySet(candidates.map(c => c.redisKey));
+  // Marked during this run (one row per person per project: their first qualifying row wins, as
+  // when each row re-read the key the previous one had just set)
+  const markedNow = new Set<string>();
+
+  for (const [i, { row, pattern, avgDailyHours, redisKey }] of candidates.entries()) {
+    if (notified >= MAX_NOTIFICATIONS) break;
 
     // Redis dedup
-    const redisKey = `coaching:sent:${row.user_id}:${weekStart}`;
-    if (redisService.isConnected()) {
-      const existing = await redisService.get(redisKey);
-      if (existing) continue;
-    }
+    if (sentBefore[i] || markedNow.has(redisKey)) continue;
 
     try {
       // eslint-disable-next-line no-await-in-loop -- Claude writes each coaching tip; AI calls go one by one (rate limits, max 20 a run)
@@ -103,6 +110,7 @@ export async function runUtilizationCoaching(): Promise<number> {
 
       if (redisService.isConnected()) {
         redisService.set(redisKey, '1', 604800).catch(() => {}); // 7-day TTL
+        markedNow.add(redisKey);
       }
 
       notified++;

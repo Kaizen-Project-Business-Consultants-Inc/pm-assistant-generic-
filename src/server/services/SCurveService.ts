@@ -148,8 +148,10 @@ export class SCurveService {
     }> = [];
 
     let totalBacklogPoints = 0;
+    // every sprint's points in one read (was one per sprint; 2026-10-09)
+    const pointsOf = await sprintRepository.getSprintTaskPointsMany(sorted.map(s => s.id));
     for (const s of sorted) {
-      const pts = await sprintRepository.getSprintTaskPoints(s.id);
+      const pts = pointsOf.get(s.id)!;
       totalBacklogPoints += pts.committed;
       sprintPoints.push({ sprint: s, committed: pts.committed, completed: pts.completed });
     }

@@ -68,6 +68,7 @@ export class WeeklyReviewService {
         return rows.map(r => ({
           resourceId: r.resourceId,
           resourceName: r.resourceName,
+          // eslint-disable-next-line no-restricted-syntax -- small: each person's own weeks, filtered once (one pass over the workload, not a search)
           weeks: r.weeks
             .filter(w => w.weekStart >= from && w.weekStart < until && w.capacity > 0 && w.allocated > w.capacity + 0.5
               && (w.thisProject ?? 1) > 0)
@@ -84,13 +85,16 @@ export class WeeklyReviewService {
       safe('plan quality', projectId, async () => {
         const out: WeeklyFacts['plans'] = [];
         for (const s of schedules) {
+          // eslint-disable-next-line no-await-in-loop -- one project's schedules (usually 1–3), two reads each, run in parallel per schedule
           const [latest, history] = await Promise.all([scheduleReviewService.latest(s.id), scheduleReviewService.history(s.id, 8)]);
           if (!latest || latest.leafTaskCount === 0) continue;
           // The score a week ago: the newest run at least 6 days older than the latest
+          // eslint-disable-next-line no-restricted-syntax -- small: at most 8 past runs of this schedule
           const weekAgo = history.find(h => dayOf(h.createdAt) <= addCalendarDays(dayOf(latest.createdAt), -6));
           out.push({
             scheduleId: s.id, name: s.name, score: latest.score, previousScore: weekAgo ? weekAgo.score : null,
             critical: latest.counts.critical,
+            // eslint-disable-next-line no-restricted-syntax -- small: one review's findings (one per rule, ~32)
             staleTasks: latest.findings.filter(f => f.ruleId === 'R24').reduce((n, f) => n + f.taskIds.length, 0),
           });
         }

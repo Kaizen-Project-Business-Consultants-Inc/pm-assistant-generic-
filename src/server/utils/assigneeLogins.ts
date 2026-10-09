@@ -1,5 +1,6 @@
 import { databaseService } from '../database/connection';
 import { userService } from '../services/UserService';
+import { chunksOf } from './chunksOf';
 
 /**
  * Who to tell about a task: turn a task's "assigned to" into a login (2026-10-03).
@@ -24,11 +25,37 @@ export async function loginsForAssignees(values: Array<string | null | undefined
     if (p.user_id) out.set(p.id, p.user_id);
   }
   // Older tasks: the value is a login id already — keep it only if that login exists
-  for (const id of ids.filter(v => !isPerson.has(v))) {
-    const user = await userService.findById(id).catch(() => null);
-    if (user) out.set(id, user.id);
+  // (one read per 200 values, 2026-10-09; one at a time only if that read fails)
+  const rest = ids.filter(v => !isPerson.has(v));
+  for (const chunk of chunksOf(rest, 200)) {
+    // eslint-disable-next-line no-await-in-loop -- one read per 200 values
+    for (const [id, login] of await existingLogins(chunk)) out.set(id, login);
   }
   return out;
+}
+
+/**
+ * Which of these values are logins: value → the login's id as stored (matched the way the
+ * database compares ids, ignoring case). If the one read fails, each is looked up alone, as before.
+ */
+async function existingLogins(ids: string[]): Promise<Array<[string, string]>> {
+  try {
+    const rows = await databaseService.queryControlPlane<{ id: string }>(
+      `SELECT id FROM users WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+    const byKey = new Map(rows.map(r => [r.id.toLowerCase(), r.id]));
+    return ids.flatMap((id): Array<[string, string]> => {
+      const login = byKey.get(id.toLowerCase());
+      return login ? [[id, login]] : [];
+    });
+  } catch {
+    const found: Array<[string, string]> = [];
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop -- fallback only when the one read above failed: a value that can't be checked is skipped, the rest still count
+      const user = await userService.findById(id).catch(() => null);
+      if (user) found.push([id, user.id]);
+    }
+    return found;
+  }
 }
 
 export async function loginForAssignee(value: string | null | undefined): Promise<string | null> {

@@ -103,6 +103,9 @@ export async function runMonteCarloConfidenceAgent(
   let alertCount = 0;
   const confidenceLevel = config.AGENT_MC_CONFIDENCE_LEVEL;
   const pKey = `p${confidenceLevel}` as 'p50' | 'p80' | 'p90';
+  // Who to alert is the same for every plan of this project: looked up once, on the first late
+  // plan, not once per late plan (2026-10-09)
+  let recipient: Promise<string | null> | undefined;
 
   for (const schedule of schedules) {
     const ctx = { actorId: 'system' as const, actorType: 'system' as const, source: 'system' as const, projectId: project.id };
@@ -135,11 +138,14 @@ export async function runMonteCarloConfidenceAgent(
       const isWorking = await scheduleService.workingDayTest(schedule.id);
       const daysOver = Math.max(1, workingDaysAfter(utcDay(end), utcDay(pDay), isWorking));
 
+      // eslint-disable-next-line no-restricted-syntax -- small: this plan's own simulation result, filtered once (one pass, not a search)
       const criticalTasks = result.criticalityIndex
         .filter((t: any) => t.criticalityPercent > 80)
         .map((t: any) => t.taskName);
 
-      const notifyUserId = await alertRecipient(project);
+      recipient ??= alertRecipient(project);
+      // eslint-disable-next-line no-await-in-loop -- the lookup above runs once per project; later late plans reuse its answer
+      const notifyUserId = await recipient;
       if (!notifyUserId) continue;
 
       // eslint-disable-next-line no-await-in-loop -- one alert per late plan, raised as each plan is simulated one at a time

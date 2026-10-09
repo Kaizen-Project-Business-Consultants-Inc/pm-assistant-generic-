@@ -36,14 +36,22 @@ vi.mock('../../database/StorageConnectorRepository', () => ({
   },
 }));
 
-vi.mock('../../database/ProjectDocumentRepository', () => ({
-  projectDocumentRepository: {
+vi.mock('../../database/ProjectDocumentRepository', () => {
+  const repo: any = {
+    // per item, as the tests below set it up; the service now reads every item in one go
+    // (findByExternalIds, 2026-10-09), which answers from this
     findByExternalId: vi.fn(),
     countByProject: vi.fn(),
     delete: vi.fn().mockResolvedValue(undefined),
     upsertFromConnector: vi.fn(),
-  },
-}));
+  };
+  repo.findByExternalIds = vi.fn(async (connectorId: string, ids: string[]) => {
+    const out = new Map();
+    for (const id of ids) { const doc = await repo.findByExternalId(connectorId, id); if (doc) out.set(id, doc); }
+    return out;
+  });
+  return { projectDocumentRepository: repo };
+});
 
 vi.mock('../../services/DocumentIntelligenceService', () => ({
   documentIntelligenceService: {
@@ -480,6 +488,29 @@ describe('StorageConnectorService', () => {
         externalPath: '/docs/report.pdf',
       }));
       expect(documentIntelligenceService.processDocument).toHaveBeenCalled();
+    });
+
+    it('what is already synced is read once for the whole delta, and kept current as files go (2026-10-09)', async () => {
+      const connector = makeConnector();
+      vi.mocked(storageConnectorRepository.findById).mockResolvedValue(connector);
+      vi.mocked(userService.findById).mockResolvedValue({ subscriptionTier: 'enterprise' } as any);
+      vi.mocked(projectDocumentRepository.findByExternalId).mockImplementation(async (_c: string, id: string) => (id === 'gone' ? { id: 'doc-gone' } as any : null));
+      vi.mocked(projectDocumentRepository.upsertFromConnector).mockImplementation(async (d: any) => ({ id: `doc-${d.externalId}`, externalEtag: d.externalEtag }) as any);
+      const file = (id: string) => ({ id, name: `${id}.pdf`, isFolder: false, size: 10, mimeType: 'application/pdf', eTag: 'e1', parentPath: '/d' });
+      mockAdapter.getDelta.mockResolvedValue({
+        // the same file twice in one delta: the second is seen as already synced (same etag)
+        items: [file('a'), { id: 'gone', name: 'x.pdf', isFolder: false, deleted: true }, file('b'), file('a'), { id: 'folder', name: 'f', isFolder: true }],
+        deltaToken: 'd',
+      });
+      mockAdapter.downloadFile.mockResolvedValue(Buffer.from('%PDF-1.4 x'));
+      vi.mocked(projectDocumentRepository.findByExternalIds).mockClear();
+
+      const result = await storageConnectorService.syncConnector('conn-1');
+
+      expect(projectDocumentRepository.findByExternalIds).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(projectDocumentRepository.findByExternalIds).mock.calls[0][1]).toEqual(['a', 'gone', 'b', 'a']);
+      expect(result.deleted).toBe(1);
+      expect(projectDocumentRepository.upsertFromConnector).toHaveBeenCalledTimes(2); // a and b, not a again
     });
 
     it('should handle deleted items', async () => {

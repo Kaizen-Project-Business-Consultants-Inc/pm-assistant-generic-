@@ -344,8 +344,11 @@ export class InstantReportService {
       // What fills each over week, booking by booking
       const first = overWeeks[0].weekStart;
       const last = weekEndOf(overWeeks[overWeeks.length - 1].weekStart);
+      // eslint-disable-next-line no-await-in-loop -- per over-booked person on this project (a few): their own bookings across all projects
       const bookings = await resourceService.findEffectiveAssignments({ resourceId: w.resourceId, from: first, to: last });
+      // eslint-disable-next-line no-await-in-loop -- as above: those bookings' calendars
       const calOf = await calendarsFor(bookings.map(b => b.scheduleId), (id) => scheduleService.workingDayTest(id));
+      // eslint-disable-next-line no-await-in-loop -- as above: those bookings' names
       const info = await this.taskAndProjectNames(bookings.map(b => b.taskId));
 
       const weeks = overWeeks.map(wk => {

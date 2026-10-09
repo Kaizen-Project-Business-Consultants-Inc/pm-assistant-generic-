@@ -1,5 +1,6 @@
 import { BaseRepository } from './BaseRepository';
 import { randomUUID } from 'crypto';
+import { chunksOf } from '../utils/chunksOf';
 
 export interface ProjectLink {
   id: string;
@@ -80,11 +81,19 @@ class ProjectLinkRepository extends BaseRepository<ProjectLink> {
     return this.deleteById(id, { column: 'project_id', value: projectId });
   }
 
+  /**
+   * Each link's position in the list: one `CASE id` UPDATE per 200 links, not one per link
+   * (2026-10-09). An id listed twice keeps its last position, as the one-row updates left it;
+   * ids from another project are still left alone.
+   */
   async reorder(projectId: string, orderedIds: string[]): Promise<void> {
-    for (let i = 0; i < orderedIds.length; i++) {
+    const position = new Map(orderedIds.map((id, i) => [id, i]));
+    for (const chunk of chunksOf([...position], 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 links
       await this.queryRaw(
-        'UPDATE project_links SET sort_order = ? WHERE id = ? AND project_id = ?',
-        [i, orderedIds[i], projectId],
+        `UPDATE project_links SET sort_order = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END
+          WHERE project_id = ? AND id IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flat(), projectId, ...chunk.map(([id]) => id)],
       );
     }
   }

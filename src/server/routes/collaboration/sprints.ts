@@ -10,6 +10,7 @@ import { ownWorkScope } from '../../middleware/viewerWriteBypass';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { scheduleService } from '../../services/ScheduleService';
 import { taskChecklistRepository } from '../../database/TaskChecklistRepository';
+import { taskRepository } from '../../database/TaskRepository';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
@@ -73,11 +74,13 @@ const bulkTasksMember = requireProjectAccess('viewer', {
   resolve: async (req) => {
     const ids = String((req.query as { taskIds?: string }).taskIds ?? '').split(',').filter(Boolean).slice(0, 200);
     if (ids.length === 0) return null;
+    // One read for all of them (2026-10-09); an unknown id still refuses the whole list
+    const planOf = await taskRepository.scheduleIdsOf(ids);
     const schedules = new Set<string>();
     for (const id of ids) {
-      const t = await scheduleService.findTaskById(id);
-      if (!t) return null;
-      schedules.add(t.scheduleId);
+      const scheduleId = planOf.get(id);
+      if (!scheduleId) return null;
+      schedules.add(scheduleId);
     }
     return projectsOfSchedules([...schedules]);
   },

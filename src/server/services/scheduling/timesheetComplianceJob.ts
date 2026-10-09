@@ -2,6 +2,9 @@ import { databaseService } from '../../database/connection';
 import { notificationService } from '../NotificationService';
 import { redisService } from '../RedisService';
 import logger from '../../utils/logger';
+import { chunksOf } from '../../utils/chunksOf';
+import { groupBy } from '../../utils/groupBy';
+import { keysAlreadySet } from '../../utils/redisKeysSet';
 import { isLocalHour, timezonesFor } from '../../utils/recipientTime';
 import { today as todayIn, dayOfWeekFor, startOfWeek, addDays } from '../../utils/calendarDate';
 
@@ -87,11 +90,12 @@ export async function runTimesheetCompliance(): Promise<number> {
   // Each person's zone, looked up once.
   const zones = await timezonesFor(Array.from(uniqueUsers.keys()));
 
+  // Who is due a reminder now, worked out first so the dedup checks and the managers can be
+  // read once for everyone (2026-10-09) instead of once per person / per project.
+  const sorted = [...datesToCheck].sort(); // dates in chronological order
+  const due: Array<{ userId: string; userData: { fullName: string; projectIds: string[] }; consecutive: number; redisKey: string }> = [];
   for (const [userId, userData] of uniqueUsers) {
     let consecutive = 0;
-
-    // Check dates in chronological order
-    const sorted = [...datesToCheck].sort();
     for (const date of sorted) {
       const hours = entryMap.get(`${userId}:${date}`) || 0;
       if (hours < 1) {
@@ -111,12 +115,20 @@ export async function runTimesheetCompliance(): Promise<number> {
     if (!isLocalHour(zones.get(userId) || 'UTC', SEND_HOUR)) continue;
 
     // Redis dedup — don't remind same user for same date twice
-    const redisKey = `compliance:reminder:${userId}:${todayStr}`;
-    if (redisService.isConnected()) {
-      const existing = await redisService.get(redisKey);
-      if (existing) continue;
-    }
+    due.push({ userId, userData, consecutive, redisKey: `compliance:reminder:${userId}:${todayStr}` });
+  }
+  const reminded = await keysAlreadySet(due.map(d => d.redisKey));
+  const toRemind = due.filter((_, i) => !reminded[i]);
 
+  // Escalation: 3+ consecutive missing days → the project managers. Dedup keys in one MGET and
+  // every affected project's managers in one read (per 200 projects).
+  const escalations = toRemind.filter(d => d.consecutive >= 3)
+    .flatMap(d => d.userData.projectIds.map(projectId => ({ userId: d.userId, projectId, key: `compliance:escalation:${d.userId}:${projectId}:${todayStr}` })));
+  const escalated = await keysAlreadySet(escalations.map(e => e.key));
+  const escalatedKeys = new Set(escalations.filter((_, i) => escalated[i]).map(e => e.key));
+  const managersByProject = await managersOf([...new Set(escalations.filter((_, i) => !escalated[i]).map(e => e.projectId))]);
+
+  for (const { userId, userData, consecutive, redisKey } of toRemind) {
     try {
       // eslint-disable-next-line no-await-in-loop -- each reminder may also send an email; sent one by one to stay inside the mail provider rate limit
       await notificationService.create({
@@ -138,32 +150,21 @@ export async function runTimesheetCompliance(): Promise<number> {
       logger.error('[TimesheetCompliance] Failed to send reminder', { userId, error: err });
     }
 
-    // Escalation: 3+ consecutive missing days → notify project managers
     if (consecutive >= 3) {
       for (const projectId of userData.projectIds) {
         const escalationKey = `compliance:escalation:${userId}:${projectId}:${todayStr}`;
-        if (redisService.isConnected()) {
-          const existing = await redisService.get(escalationKey);
-          if (existing) continue;
-        }
+        if (escalatedKeys.has(escalationKey)) continue;
 
-        // Find project managers/owners
-        let managers: any[];
-        try {
-          managers = await databaseService.query(
-            `SELECT user_id FROM project_members
-             WHERE project_id = ? AND role IN ('owner', 'manager') AND user_id != ?`,
-            [projectId, userId],
-          );
-        } catch {
-          continue;
-        }
+        // Project managers/owners (not the person themselves); none if they couldn't be read
+        if (!managersByProject) continue;
+        // eslint-disable-next-line no-restricted-syntax -- small: one project's owners/managers
+        const managers = (managersByProject.get(projectId) ?? []).filter(m => !!m && m !== userId);
 
         for (const mgr of managers) {
           try {
             // eslint-disable-next-line no-await-in-loop -- each alert may also send an email; sent one by one to stay inside the mail provider rate limit
             await notificationService.create({
-              userId: mgr.user_id,
+              userId: mgr,
               type: 'timesheet_reminder',
               severity: 'high',
               title: 'Timesheet compliance alert',
@@ -172,7 +173,7 @@ export async function runTimesheetCompliance(): Promise<number> {
               linkType: 'timesheet',
             });
           } catch (err) {
-            logger.error('[TimesheetCompliance] Failed to escalate', { userId, managerId: mgr.user_id, error: err });
+            logger.error('[TimesheetCompliance] Failed to escalate', { userId, managerId: mgr, error: err });
           }
         }
 
@@ -188,4 +189,26 @@ export async function runTimesheetCompliance(): Promise<number> {
   }
 
   return notified;
+}
+
+/**
+ * Owners and managers of these projects: project id → their user ids, in one read per 200
+ * projects. `null` if they couldn't be read — no escalation is sent then, as before.
+ */
+async function managersOf(projectIds: string[]): Promise<Map<string, string[]> | null> {
+  const out = new Map<string, string[]>();
+  try {
+    for (const chunk of chunksOf(projectIds, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one read per 200 projects
+      const rows = await databaseService.query<{ project_id: string; user_id: string }>(
+        `SELECT project_id, user_id FROM project_members
+         WHERE project_id IN (${chunk.map(() => '?').join(',')}) AND role IN ('owner', 'manager')`,
+        chunk,
+      );
+      for (const [projectId, members] of groupBy(rows, r => r.project_id)) out.set(projectId, members.map(r => r.user_id));
+    }
+  } catch {
+    return null;
+  }
+  return out;
 }

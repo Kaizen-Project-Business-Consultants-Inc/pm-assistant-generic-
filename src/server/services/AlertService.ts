@@ -229,6 +229,7 @@ class AlertService {
     for (const { job, maxQuietHours } of EXPECTED_CRON_JOBS) {
       let raw: string | null = null;
       try {
+        // eslint-disable-next-line no-await-in-loop -- small: 15 fixed Redis keys, read every 30 minutes (redisService.get answers null on a Redis error, as it always has)
         raw = await redisService.get(`cron:last:${job}`);
       } catch {
         return; // Redis unreliable — do not guess.

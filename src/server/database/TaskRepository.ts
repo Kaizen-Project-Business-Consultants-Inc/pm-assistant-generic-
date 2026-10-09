@@ -179,6 +179,15 @@ export class TaskRepository {
     return task;
   }
 
+  /** Which plan each of these tasks is in, in one read (missing ids are left out) */
+  async scheduleIdsOf(ids: string[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return new Map();
+    const rows = await databaseService.query<{ id: string; schedule_id: string }>(
+      `SELECT id, schedule_id FROM tasks WHERE id IN (${unique.map(() => '?').join(',')})`, unique);
+    return new Map(rows.map(r => [r.id, r.schedule_id]));
+  }
+
   /** Several tasks by id in one query (same shape as findById; order not guaranteed, missing ids skipped) */
   async findByIds(ids: string[]): Promise<Task[]> {
     const unique = [...new Set(ids.filter(Boolean))];

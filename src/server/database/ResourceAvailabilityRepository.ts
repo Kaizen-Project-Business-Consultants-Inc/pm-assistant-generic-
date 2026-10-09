@@ -84,15 +84,6 @@ export class ResourceAvailabilityRepository extends BaseRepository<ResourceAvail
     );
     return this.mapRows(rows);
   }
-
-  async findOverlapping(resourceId: string, weekStart: string, weekEnd: string): Promise<ResourceAvailability[]> {
-    const rows = await this.queryRaw(
-      `SELECT * FROM resource_availability
-       WHERE resource_id = ? AND date_from <= ? AND date_to >= ?`,
-      [resourceId, weekEnd, weekStart],
-    );
-    return this.mapRows(rows);
-  }
 }
 
 export const resourceAvailabilityRepository = new ResourceAvailabilityRepository();

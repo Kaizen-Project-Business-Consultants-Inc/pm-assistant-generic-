@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, resolve, relative } from 'path';
 
-const db = vi.hoisted(() => ({ query: vi.fn() }));
+const db = vi.hoisted(() => ({ query: vi.fn(), queryControlPlane: vi.fn() }));
 vi.mock('../../database/connection', () => ({ databaseService: db }));
 const users = vi.hoisted(() => ({ findById: vi.fn() }));
 vi.mock('../../services/UserService', () => ({ userService: users }));
@@ -22,6 +22,9 @@ describe('who to tell about a task', () => {
       { id: 'res-no-login', user_id: null },
     ]);
     users.findById.mockImplementation(async (id: string) => (id === 'legacy-user' ? { id } : null));
+    // The one read for older login ids answers from the same fake as the one-at-a-time look-up
+    db.queryControlPlane.mockImplementation(async (_sql: string, ids: string[]) =>
+      ids.filter(id => id === 'legacy-user').map(id => ({ id })));
   });
 
   it('a person from Resources with a login → their login', async () => {
@@ -43,6 +46,26 @@ describe('who to tell about a task', () => {
     const m = await loginsForAssignees(['res-with-login', 'res-no-login', 'legacy-user', 'res-with-login']);
     expect([...m.entries()]).toEqual([['res-with-login', 'user-1'], ['legacy-user', 'legacy-user']]);
     expect(db.query).toHaveBeenCalledTimes(1);
+  });
+  it('many older login ids: one read for all of them (per 200), not one each', async () => {
+    db.query.mockResolvedValueOnce([]); // none of them is a person from Resources
+    const values = ['legacy-user', ...Array.from({ length: 250 }, (_, i) => `gone-${i}`)];
+    const m = await loginsForAssignees(values);
+    expect([...m.entries()]).toEqual([['legacy-user', 'legacy-user']]);
+    expect(db.queryControlPlane.mock.calls.map(c => c[1].length)).toEqual([200, 51]);
+    expect(db.queryControlPlane.mock.calls[0][0]).toMatch(/SELECT id FROM users WHERE id IN/);
+    expect(users.findById).not.toHaveBeenCalled();
+  });
+  it('the database compares ids ignoring case: the stored login id is used, as one look-up gave it', async () => {
+    db.queryControlPlane.mockResolvedValueOnce([{ id: 'legacy-user' }]);
+    expect(await loginForAssignee('LEGACY-USER')).toBe('legacy-user');
+  });
+  it('if that read fails, each is checked alone as before', async () => {
+    db.query.mockResolvedValueOnce([]);
+    db.queryControlPlane.mockRejectedValueOnce(new Error('down'));
+    const m = await loginsForAssignees(['legacy-user', 'free text name']);
+    expect([...m.entries()]).toEqual([['legacy-user', 'legacy-user']]);
+    expect(users.findById).toHaveBeenCalledTimes(2);
   });
 });
 

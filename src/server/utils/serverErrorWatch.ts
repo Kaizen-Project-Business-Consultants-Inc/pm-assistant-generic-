@@ -48,10 +48,13 @@ export async function serverErrorActivity(): Promise<{ total: number; routes: Ar
       const prefix = `err5xx:route:${hour}:`;
       // eslint-disable-next-line no-await-in-loop -- two hours only (this hour and the last)
       const keys: string[] = await client.keys(`${prefix}*`);
-      for (const key of keys) {
+      // Every route's count in one MGET, not one GET per route (2026-10-09)
+      // eslint-disable-next-line no-await-in-loop -- two hours only (this hour and the last)
+      const counts: Array<string | null> = keys.length ? await client.mget(keys) : [];
+      keys.forEach((key, i) => {
         const route = key.slice(prefix.length);
-        byRoute.set(route, (byRoute.get(route) ?? 0) + (Number(await client.get(key)) || 0));
-      }
+        byRoute.set(route, (byRoute.get(route) ?? 0) + (Number(counts[i]) || 0));
+      });
     }
     const routes = [...byRoute.entries()].map(([route, count]) => ({ route, count })).sort((a, b) => b.count - a.count);
     return { total, routes };

@@ -92,6 +92,7 @@ export class ApprovedTimeService {
       const status = !done && hours > 0 && (t.status === 'pending' || t.status === 'not_started') ? 'in_progress' : null;
 
       // SET runs left to right: other_cost is fixed from the old figures before labour changes
+      // eslint-disable-next-line no-await-in-loop -- the tasks of one approval (a person's week: a handful), each with figures of its own
       await databaseService.query(
         `UPDATE tasks SET
            other_cost = 0,

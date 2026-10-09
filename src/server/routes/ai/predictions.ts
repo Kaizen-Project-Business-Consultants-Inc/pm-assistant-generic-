@@ -123,9 +123,11 @@ export async function predictionRoutes(fastify: FastifyInstance) {
       let comparison: any = null;
       let hasBaseline = false;
       for (const sched of schedules) {
+        // eslint-disable-next-line no-await-in-loop -- a project's plans (a handful), stopping at the first with a baseline
         const baselines = await baselineService.findByScheduleId(sched.id);
         if (baselines.length > 0) {
           hasBaseline = true;
+          // eslint-disable-next-line no-await-in-loop -- runs once, then the loop stops
           comparison = await baselineService.compareBaseline(baselines[baselines.length - 1].id);
           break;
         }
@@ -135,6 +137,7 @@ export async function predictionRoutes(fastify: FastifyInstance) {
       let currentTaskCount = 0;
       let totalEstimateDays = 0;
       for (const sched of schedules) {
+        // eslint-disable-next-line no-await-in-loop -- small: a project's plans (a handful)
         const tasks = await scheduleService.findTasksByScheduleId(sched.id);
         currentTaskCount += tasks.length;
         totalEstimateDays += tasks.reduce((sum, t) => sum + (t.estimatedDays || 0), 0);

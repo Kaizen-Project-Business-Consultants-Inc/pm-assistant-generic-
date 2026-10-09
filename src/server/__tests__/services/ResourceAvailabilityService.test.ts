@@ -11,7 +11,7 @@ vi.mock('../../database/ResourceAvailabilityRepository', () => {
     insert: vi.fn(),
     update: vi.fn(),
     deleteById: vi.fn().mockResolvedValue(false),
-    findOverlapping: vi.fn().mockResolvedValue([]),
+    findOverlappingBatch: vi.fn().mockResolvedValue([]),
   };
   return { resourceAvailabilityRepository: mockRepo };
 });
@@ -76,28 +76,29 @@ describe('ResourceAvailabilityService', () => {
     });
   });
 
-  describe('getEffectiveCapacity', () => {
+  describe("a week's capacity (getEffectiveCapacityBatch)", () => {
+    const week = new Date('2026-01-05'); // a Monday
+    const one = async (blocks: any[]) => {
+      mockRepo.findOverlappingBatch.mockResolvedValueOnce(blocks.map(b => ({ resourceId: 'r1', ...b })));
+      return (await service.getEffectiveCapacityBatch([{ id: 'r1', capacityHoursPerWeek: 40 }], [week])).get('r1')!.get('2026-01-05');
+    };
+
     it('returns full capacity when no blocks', async () => {
-      const capacity = await service.getEffectiveCapacity('r1', new Date('2026-01-06'), 40);
-      expect(capacity).toBe(40);
+      expect(await one([])).toBe(40);
     });
 
     it('reduces capacity for vacation days', async () => {
-      mockRepo.findOverlapping.mockResolvedValueOnce([
-        { dateFrom: '2026-01-06', dateTo: '2026-01-07', type: 'vacation', hoursAvailable: null },
-      ]);
-      const capacity = await service.getEffectiveCapacity('r1', new Date('2026-01-06'), 40);
-      // 2 days unavailable out of 5 work days = 40 - (2 * 8) = 24
-      expect(capacity).toBe(24);
+      // 2 days unavailable: 40 - (2 * 8) = 24
+      expect(await one([{ dateFrom: '2026-01-06', dateTo: '2026-01-07', type: 'vacation', hoursAvailable: null }])).toBe(24);
     });
 
     it('handles reduced hours blocks', async () => {
-      mockRepo.findOverlapping.mockResolvedValueOnce([
-        { dateFrom: '2026-01-06', dateTo: '2026-01-06', type: 'reduced', hoursAvailable: 4 },
-      ]);
-      const capacity = await service.getEffectiveCapacity('r1', new Date('2026-01-06'), 40);
       // 1 reduced day: 40 - (1 * 8) + (4 * 1) = 36
-      expect(capacity).toBe(36);
+      expect(await one([{ dateFrom: '2026-01-06', dateTo: '2026-01-06', type: 'reduced', hoursAvailable: 4 }])).toBe(36);
+    });
+
+    it("one day off mid-week counts (2026-10-09: the profile's history used to ignore any time off not covering the whole week)", async () => {
+      expect(await one([{ dateFrom: '2026-01-07', dateTo: '2026-01-07', type: 'vacation', hoursAvailable: null }])).toBe(32);
     });
   });
 });

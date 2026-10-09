@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from './connection';
+import { chunksOf } from '../utils/chunksOf';
 
 export interface ProjectGroup {
   id: string;
@@ -92,11 +93,18 @@ class ProjectGroupRepository {
     );
   }
 
+  /**
+   * Each group's position in the list: one `CASE id` UPDATE per 200 groups, not one per group
+   * (2026-10-09). An id listed twice keeps its last position, as the one-row updates left it.
+   */
   async reorder(orderedIds: string[]): Promise<void> {
-    for (let i = 0; i < orderedIds.length; i++) {
+    const position = new Map(orderedIds.map((id, i) => [id, i]));
+    for (const chunk of chunksOf([...position], 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 groups
       await databaseService.query(
-        'UPDATE project_groups SET sort_order = ? WHERE id = ?',
-        [i, orderedIds[i]],
+        `UPDATE project_groups SET sort_order = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END
+          WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flat(), ...chunk.map(([id]) => id)],
       );
     }
   }

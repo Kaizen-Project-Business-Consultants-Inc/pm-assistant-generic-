@@ -6,13 +6,14 @@ const h = vi.hoisted(() => ({
   metrics: vi.fn(),
   invoke: vi.fn(),
   notify: vi.fn(async (..._a: any[]) => ({})),
+  recipient: vi.fn(async (p: any) => p.projectManagerId || p.createdBy),
 }));
 vi.mock('../../config', () => ({ config: { AGENT_BUDGET_CPI_THRESHOLD: 0.9, AGENT_BUDGET_OVERRUN_THRESHOLD: 50, AGENT_MC_CONFIDENCE_LEVEL: 80 } }));
 vi.mock('../../services/EVMForecastService', () => ({ evmForecastService: { generateMetricsOnly: (...a: any[]) => h.metrics(...a), generateForecast: vi.fn() } }));
 vi.mock('../../services/AgentRegistryService', () => ({ agentRegistry: { invoke: (...a: any[]) => h.invoke(...a) } }));
 vi.mock('../../services/NotificationService', () => ({ notificationService: { create: (...a: any[]) => h.notify(...a) } }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: { workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 } }));
-vi.mock('../../services/scheduling/alertRecipient', () => ({ alertRecipient: async (p: any) => p.projectManagerId || p.createdBy }));
+vi.mock('../../services/scheduling/alertRecipient', () => ({ alertRecipient: (p: any) => h.recipient(p) }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { runBudgetBurnRateAgent, runMonteCarloConfidenceAgent } from '../../services/scheduling/registryAgentRunners';
@@ -38,6 +39,16 @@ describe('Monte Carlo check', () => {
     const n = h.notify.mock.calls[0][0] as any;
     expect(n).toMatchObject({ type: 'monte_carlo_alert', linkType: 'schedule', linkId: 's1' });
     expect(n.message).toContain('5 working day(s)');
+  });
+});
+
+describe('Monte Carlo check — several late plans', () => {
+  it('looks up who to alert once per project, and alerts each late plan to that person', async () => {
+    h.invoke.mockResolvedValue({ success: true, output: { result: { completionDate: { p80: '2026-11-20' }, criticalityIndex: [] } } });
+    const plans = ['s1', 's2', 's3'].map(id => ({ id, name: id, endDate: '2026-11-13' }));
+    expect(await runMonteCarloConfidenceAgent(project, plans, log)).toBe(3);
+    expect(h.recipient).toHaveBeenCalledTimes(1);
+    expect(h.notify.mock.calls.map(c => [(c[0] as any).userId, (c[0] as any).linkId])).toEqual([['pm1', 's1'], ['pm1', 's2'], ['pm1', 's3']]);
   });
 });
 

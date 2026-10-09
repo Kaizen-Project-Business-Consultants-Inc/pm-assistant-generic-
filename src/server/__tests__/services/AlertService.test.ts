@@ -14,12 +14,17 @@ vi.mock('../../config', () => ({
   },
 }));
 
-const redisClient = vi.hoisted(() => ({
-  get: vi.fn().mockResolvedValue(null),
-  keys: vi.fn().mockResolvedValue([]),
-  incr: vi.fn().mockResolvedValue(1),
-  expire: vi.fn().mockResolvedValue(1),
-}));
+const redisClient = vi.hoisted(() => {
+  const c = {
+    get: vi.fn().mockResolvedValue(null),
+    keys: vi.fn().mockResolvedValue([]),
+    incr: vi.fn().mockResolvedValue(1),
+    expire: vi.fn().mockResolvedValue(1),
+    // The flood check reads every address's count in one MGET; it answers from the same fake as GET
+    mget: vi.fn(async (keys: string[]) => Promise.all(keys.map(k => c.get(k)))),
+  };
+  return c;
+});
 
 vi.mock('../../services/RedisService', () => ({
   redisService: {

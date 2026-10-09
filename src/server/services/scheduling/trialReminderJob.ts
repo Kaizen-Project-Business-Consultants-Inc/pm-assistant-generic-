@@ -1,6 +1,7 @@
 import { databaseService } from '../../database/connection';
 import { emailService } from '../EmailService';
 import logger from '../../utils/logger';
+import { keysAlreadySet } from '../../utils/redisKeysSet';
 
 /**
  * Sends trial reminder emails to users whose trial is ending soon (3 days, 1 day)
@@ -66,6 +67,9 @@ export async function runTrialReminders(): Promise<void> {
 
     const { redisService } = await import('../RedisService');
 
+    // Which reminder each person is due, worked out first so "already sent?" is one MGET for
+    // everyone, not a GET per person (2026-10-09)
+    const due: Array<{ row: any; daysLeft: number; reminderKey: string }> = [];
     for (const row of rows) {
       const trialEnd = new Date(row.trial_ends_at);
       const now = new Date();
@@ -87,9 +91,14 @@ export async function runTrialReminders(): Promise<void> {
         continue;
       }
 
-      // Check if this reminder was already sent (Redis key with 30-day TTL)
-      const alreadySent = await redisService.get(reminderKey);
-      if (alreadySent) continue;
+      due.push({ row, daysLeft, reminderKey });
+    }
+
+    // Check if this reminder was already sent (Redis key with 30-day TTL)
+    const alreadySent = await keysAlreadySet(due.map(d => d.reminderKey));
+
+    for (const [i, { row, daysLeft, reminderKey }] of due.entries()) {
+      if (alreadySent[i]) continue;
 
       try {
         const name = row.full_name || 'there';

@@ -285,6 +285,7 @@ Rules:
         const status = proposal.confidence >= AUTO_APPLY_THRESHOLD ? 'auto_applied' : 'pending';
         const memoryType = proposal.key?.startsWith('correction:') ? 'role' : 'role';
 
+        // eslint-disable-next-line no-await-in-loop -- at most 20 proposals per run (MAX_PROPOSALS_PER_RUN), each recorded before it is applied; Dreaming is switched off
         await databaseService.queryControlPlane(
           `INSERT INTO dreaming_proposals (id, run_id, proposal_type, target_agent_id, target_memory_type, proposed_key, proposed_value, evidence, confidence, status)
            VALUES (?, ?, ?, 'mjuzi-chat', ?, ?, ?, ?, ?, ?)`,
@@ -302,6 +303,7 @@ Rules:
         );
 
         if (status === 'auto_applied') {
+          // eslint-disable-next-line no-await-in-loop -- versioned memory write for this proposal only after its record exists; at most 20 per run
           await this.applyProposal({
             proposedKey: proposal.key,
             proposedValue: proposal.value,

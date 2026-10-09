@@ -2070,21 +2070,6 @@
       "count": 1
     }
   },
-  "src/server/database/PricingConfigRepository.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
-  "src/server/database/ProjectGroupRepository.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
-  "src/server/database/ProjectLinkRepository.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/database/RetrospectiveRepository.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -2155,9 +2140,6 @@
     }
   },
   "src/server/routes/admin/operations.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 1
     }
@@ -2173,9 +2155,6 @@
     }
   },
   "src/server/routes/ai/aiChat.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 1
     }
@@ -2193,9 +2172,6 @@
   "src/server/routes/ai/predictions.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-await-in-loop": {
-      "count": 3
     }
   },
   "src/server/routes/automation/automations.ts": {
@@ -2227,9 +2203,6 @@
   "src/server/routes/collaboration/sprints.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 7
-    },
-    "no-await-in-loop": {
-      "count": 1
     }
   },
   "src/server/routes/collaboration/templates.ts": {
@@ -2253,9 +2226,6 @@
   "src/server/routes/core/exports.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    },
-    "no-await-in-loop": {
-      "count": 4
     },
     "no-restricted-syntax": {
       "count": 2
@@ -2307,11 +2277,6 @@
       "count": 3
     }
   },
-  "src/server/routes/reporting/reportSchedules.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/routes/reporting/strategicRiskScan.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -2330,9 +2295,6 @@
   "src/server/routes/resources/resources.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-await-in-loop": {
-      "count": 4
     },
     "no-restricted-syntax": {
       "count": 4
@@ -2383,11 +2345,6 @@
       "count": 1
     }
   },
-  "src/server/services/AlertService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/services/AnalyticsSummaryService.ts": {
     "no-restricted-syntax": {
       "count": 1
@@ -2405,9 +2362,6 @@
     }
   },
   "src/server/services/ApprovedTimeService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "no-restricted-syntax": {
       "count": 2
     }
@@ -2460,16 +2414,6 @@
       "count": 1
     }
   },
-  "src/server/services/DigestService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    }
-  },
-  "src/server/services/DocumentIntelligenceService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/services/EVMForecastService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -2495,9 +2439,6 @@
     }
   },
   "src/server/services/InstantReportService.ts": {
-    "no-await-in-loop": {
-      "count": 3
-    },
     "no-restricted-syntax": {
       "count": 6
     },
@@ -2605,9 +2546,6 @@
     }
   },
   "src/server/services/ResourceAvailabilityService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "no-restricted-syntax": {
       "count": 1
     },
@@ -2630,26 +2568,15 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 3
     },
-    "no-await-in-loop": {
-      "count": 4
-    },
     "no-restricted-syntax": {
-      "count": 3
+      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
   },
-  "src/server/services/ResourceReplaceService.ts": {
-    "no-await-in-loop": {
-      "count": 3
-    }
-  },
   "src/server/services/ResourceService.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-await-in-loop": {
       "count": 1
     },
     "no-restricted-syntax": {
@@ -2672,9 +2599,6 @@
   "src/server/services/SCurveService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    },
-    "no-await-in-loop": {
-      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2731,9 +2655,6 @@
   "src/server/services/StorageConnectorService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-await-in-loop": {
-      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2792,25 +2713,9 @@
       "count": 1
     }
   },
-  "src/server/services/WeeklyReviewService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "src/server/services/WeeklyTimesheetService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    },
     "no-restricted-syntax": {
       "count": 5
-    }
-  },
-  "src/server/services/WorkingCalendarService.ts": {
-    "no-await-in-loop": {
-      "count": 2
     }
   },
   "src/server/services/agents/InterAgentQueryService.ts": {
@@ -2842,9 +2747,6 @@
     }
   },
   "src/server/services/anomalyDetectionService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2886,9 +2788,6 @@
     }
   },
   "src/server/services/context/DreamingService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    },
     "sonarjs/no-all-duplicated-branches": {
       "count": 1
     }
@@ -2931,9 +2830,6 @@
   "src/server/services/integrations/CalendarSyncService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-await-in-loop": {
-      "count": 2
     },
     "prefer-const": {
       "count": 1
@@ -3019,30 +2915,12 @@
       "count": 1
     }
   },
-  "src/server/services/scheduling/deadlineNotificationJob.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    }
-  },
-  "src/server/services/scheduling/healthSnapshotJob.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    }
-  },
   "src/server/services/scheduling/pendingPaymentJob.ts": {
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/services/scheduling/pmWeeklyReviewJob.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "src/server/services/scheduling/registryAgentRunners.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "no-restricted-syntax": {
       "count": 1
     }
@@ -3059,46 +2937,21 @@
     }
   },
   "src/server/services/scheduling/scheduleReviewJob.ts": {
-    "no-await-in-loop": {
-      "count": 3
-    },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/services/scheduling/timesheetComplianceJob.ts": {
-    "no-await-in-loop": {
-      "count": 3
-    },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
-  "src/server/services/scheduling/trialReminderJob.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/services/scheduling/utilizationCoachingJob.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "no-unmodified-loop-condition": {
       "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
-    }
-  },
-  "src/server/services/scheduling/weeklyReviewPackJob.ts": {
-    "no-await-in-loop": {
-      "count": 2
     }
   },
   "src/server/services/weeklyReview/picker.ts": {
@@ -3107,29 +2960,10 @@
     }
   },
   "src/server/services/whatIfScenarioService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 2
     },
     "sonarjs/cognitive-complexity": {
-      "count": 1
-    }
-  },
-  "src/server/utils/assigneeLogins.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "src/server/utils/assigneeResources.ts": {
-    "no-await-in-loop": {
       "count": 1
     }
   },
@@ -3164,21 +2998,11 @@
       "count": 2
     }
   },
-  "src/server/utils/registrationWatch.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/utils/scheduleReviewDocxBuilder.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
     "no-restricted-syntax": {
-      "count": 1
-    }
-  },
-  "src/server/utils/serverErrorWatch.ts": {
-    "no-await-in-loop": {
       "count": 1
     }
   },

@@ -340,20 +340,22 @@ export class SprintRepository extends BaseRepository<Sprint> {
     return Number(rows[0].completed);
   }
 
-  async getSprintTaskPoints(sprintId: string): Promise<{ committed: number; completed: number }> {
+  /** Committed and completed points of several sprints in one read; a sprint with none gets 0 / 0 */
+  async getSprintTaskPointsMany(sprintIds: string[]): Promise<Map<string, { committed: number; completed: number }>> {
+    const out = new Map(sprintIds.map(id => [id, { committed: 0, completed: 0 }]));
+    if (sprintIds.length === 0) return out;
     const rows = await this.queryRaw(
-      `SELECT
+      `SELECT st.sprint_id,
          COALESCE(SUM(st.story_points), 0) as committed,
          COALESCE(SUM(CASE WHEN t.status = 'completed' THEN st.story_points ELSE 0 END), 0) as completed
        FROM sprint_tasks st
        JOIN tasks t ON t.id = st.task_id
-       WHERE st.sprint_id = ?`,
-      [sprintId],
+       WHERE st.sprint_id IN (${sprintIds.map(() => '?').join(',')})
+       GROUP BY st.sprint_id`,
+      sprintIds,
     );
-    return {
-      committed: Number(rows[0].committed),
-      completed: Number(rows[0].completed),
-    };
+    for (const r of rows) out.set(r.sprint_id, { committed: Number(r.committed), completed: Number(r.completed) });
+    return out;
   }
 }
 

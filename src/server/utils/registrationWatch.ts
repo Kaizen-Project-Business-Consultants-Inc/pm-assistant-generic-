@@ -45,10 +45,12 @@ export async function registrationActivity(): Promise<{ total: number; worstIp: 
     let worstIp: string | null = null;
     let worstCount = 0;
     const keys: string[] = await client.keys(`reg:ip:${hour}:*`);
-    for (const key of keys) {
-      const n = Number(await client.get(key)) || 0;
+    // Every address's count in one MGET, not one GET per address (2026-10-09)
+    const counts: Array<string | null> = keys.length ? await client.mget(keys) : [];
+    keys.forEach((key, i) => {
+      const n = Number(counts[i]) || 0;
       if (n > worstCount) { worstCount = n; worstIp = key.split(':').slice(3).join(':'); }
-    }
+    });
     return { total, worstIp, worstCount };
   } catch {
     return empty;

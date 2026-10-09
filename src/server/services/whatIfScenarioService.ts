@@ -5,7 +5,7 @@ import { claudeService, PromptTemplate } from './claudeService';
 import { logAIUsage } from './aiUsageLogger';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import { computeEVMMetrics, computeDeterministicRiskScore } from './predictiveIntelligence';
-import { criticalPathService, type CPMTaskResult } from './CriticalPathService';
+import { criticalPathService, type CPMTaskResult, type CriticalPathResult } from './CriticalPathService';
 import { databaseService } from '../database/connection';
 import { scheduleService } from './ScheduleService';
 import { type IsWorking, weekdaysOnly, shiftWorking, utcDay, workingDaysAfter } from '../utils/workingDays';
@@ -195,23 +195,39 @@ export class WhatIfScenarioService {
   // #4/#5: Smart affected tasks using critical path
   // -------------------------------------------------------------------------
 
-  private async getSmartAffectedTasks(
+  /**
+   * Each schedule's critical path, in schedule order — worked out once per scenario and shared by
+   * the affected-task scoring and the AI prompt (2026-10-09: it used to be calculated twice). A
+   * schedule whose calculation failed (e.g. no tasks) is `null`.
+   */
+  private async criticalPaths(context: ProjectContext): Promise<Array<CriticalPathResult | null>> {
+    const out: Array<CriticalPathResult | null> = [];
+    for (const s of context.schedules) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- each schedule's critical path is its own calculation over that schedule's tasks and links; a project has a few schedules, one at a time
+        out.push(await criticalPathService.calculateCriticalPath(s.id));
+      } catch { out.push(null); /* schedule may have no tasks */ }
+    }
+    return out;
+  }
+
+  private getSmartAffectedTasks(
     context: ProjectContext,
     params: AIScenarioRequest['parameters'],
     isWorking: IsWorking,
-  ): Promise<AIScenarioResult['affectedTasks']> {
+    paths: Array<CriticalPathResult | null>,
+  ): AIScenarioResult['affectedTasks'] {
     const today = utcDay(new Date());
-    const scheduleIds = context.schedules.map(s => s.id);
     let criticalTaskIds = new Set<string>();
     let cpmResults: CPMTaskResult[] = [];
 
-    // Get critical path for each schedule
-    for (const sid of scheduleIds) {
+    // Critical path of each schedule
+    for (const cpResult of paths) {
+      if (!cpResult) continue;
       try {
-        const cpResult = await criticalPathService.calculateCriticalPath(sid);
         cpResult.criticalPathTaskIds.forEach(id => criticalTaskIds.add(id));
         cpmResults.push(...cpResult.tasks);
-      } catch { /* schedule may have no tasks */ }
+      } catch { /* malformed result: skip this schedule, as before */ }
     }
 
     const allTasks = context.schedules.flatMap(s => s.tasks);
@@ -377,15 +393,17 @@ export class WhatIfScenarioService {
       : 0;
 
     // #4/#5: Smart affected tasks with critical path analysis
-    const affectedTasks = await this.getSmartAffectedTasks(context, request.parameters, isWorking);
+    const paths = await this.criticalPaths(context);
+    const affectedTasks = this.getSmartAffectedTasks(context, request.parameters, isWorking, paths);
 
-    // Get critical path info for AI prompt
+    // Critical path info for AI prompt: the first schedule that has one (stops at a schedule
+    // whose calculation failed, as it always has)
     let criticalPathInfo = 'No critical path data available.';
     try {
-      const scheduleIds = context.schedules.map(s => s.id);
-      for (const sid of scheduleIds) {
-        const cp = await criticalPathService.calculateCriticalPath(sid);
+      for (const cp of paths) {
+        if (!cp) break;
         if (cp.criticalPathTaskIds.length > 0) {
+          // eslint-disable-next-line no-restricted-syntax -- small: runs once — the loop stops at the first schedule with a critical path
           const cpTasks = cp.tasks.filter(t => t.isCritical).map(t => `${t.name} (${t.duration}d, float: ${t.totalFloat}d)`);
           criticalPathInfo = `Project duration: ${cp.projectDuration} days. Critical tasks: ${cpTasks.join(', ')}`;
           break;

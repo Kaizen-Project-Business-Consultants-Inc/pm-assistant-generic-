@@ -6,6 +6,7 @@ import logger from '../../utils/logger';
 import { isLocalHour, timezonesFor } from '../../utils/recipientTime';
 import { today as todayIn } from '../../utils/calendarDate';
 import { companyCacheKey } from '../../utils/companyCacheKey';
+import { keysAlreadySet } from '../../utils/redisKeysSet';
 
 /** Local hour at which to send. */
 const SEND_HOUR = 8;
@@ -49,24 +50,21 @@ export async function runDeadlineNotifications(): Promise<number> {
   const recipientIds = Array.from(new Set(rows.map(recipientOf).filter(Boolean))) as string[];
   const zones = await timezonesFor(recipientIds);
 
+  // The tasks due a reminder now: it is SEND_HOUR where their person is. Dedup by the
+  // recipient's own day, so someone who changes zone is not notified twice.
+  const due: Array<{ row: any; recipientId: string; redisKey: string }> = [];
   for (const row of rows) {
     const recipient = recipientOf(row);
     if (!recipient) continue;
-
-    // Only send when it is SEND_HOUR where this person is.
     const zone = zones.get(recipient) || 'UTC';
     if (!isLocalHour(zone, SEND_HOUR)) continue;
+    due.push({ row, recipientId: recipient, redisKey: companyCacheKey(`deadline-notified:${row.id}:${todayIn(zone)}`) });
+  }
+  // Already notified today? One MGET for all of them, not a GET per task (2026-10-09)
+  const sent = await keysAlreadySet(due.map(d => d.redisKey));
 
-    // Dedup by the recipient's own day, so someone who changes zone is not notified twice.
-    const redisKey = companyCacheKey(`deadline-notified:${row.id}:${todayIn(zone)}`);
-
-    // Check Redis dedup (skip if already notified today)
-    if (redisService.isConnected()) {
-      const existing = await redisService.get(redisKey);
-      if (existing) continue;
-    }
-
-    const recipientId = recipient;
+  for (const [i, { row, recipientId, redisKey }] of due.entries()) {
+    if (sent[i]) continue;
 
     const deadline = row.due_date || row.end_date;
     const deadlineStr = deadline instanceof Date
@@ -74,6 +72,7 @@ export async function runDeadlineNotifications(): Promise<number> {
       : String(deadline).slice(0, 10);
 
     try {
+      // eslint-disable-next-line no-await-in-loop -- each notice goes through create (the person's preferences, unread de-dup, optional email); at most 500 tasks, only those at 08:00 for their person
       await notificationService.create({
         userId: recipientId,
         type: 'deadline_approaching',

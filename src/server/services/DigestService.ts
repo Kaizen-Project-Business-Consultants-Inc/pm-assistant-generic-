@@ -55,9 +55,11 @@ export class DigestService {
       if (!this.isDue(user, now, dayOfWeek)) continue;
 
       try {
+        // eslint-disable-next-line no-await-in-loop -- each user's digest reads their own projects, sections and since-date; a failure skips only that user, and only users at their chosen hour are due
         const digest = await this.buildDigest(user);
         if (this.isDigestEmpty(digest)) {
           // Nothing to report — skip but update timestamp
+          // eslint-disable-next-line no-await-in-loop -- marks this user done only once their digest was built (a failure above leaves them due for the next run)
           await this.updateLastSent(user.id, now);
           continue;
         }

@@ -5,11 +5,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockComputeWorkload = vi.fn();
 const mockFindAllResources = vi.fn();
 const mockFindAssignmentsBySchedule = vi.fn();
+const effectiveReads = vi.hoisted(() => ({ n: 0 }));
 vi.mock('../../services/ResourceService', () => ({
   resourceService: {
     computeWorkload: (...args: any[]) => mockComputeWorkload(...args),
     findAllResources: (...args: any[]) => mockFindAllResources(...args),
-    findEffectiveAssignments: (filter: { scheduleIds?: string[] }) => mockFindAssignmentsBySchedule(filter?.scheduleIds?.[0]),
+    // every plan's bookings in one read (2026-10-09): answered plan by plan from the per-plan fake
+    findEffectiveAssignments: async (filter: { scheduleIds?: string[] }) => {
+      effectiveReads.n++;
+      return (await Promise.all((filter?.scheduleIds ?? []).map(id => mockFindAssignmentsBySchedule(id)))).flat();
+    },
   },
 }));
 
@@ -26,6 +31,16 @@ vi.mock('../../services/ScheduleService', () => ({
 
 const mockIsAvailable = vi.fn();
 const mockCompleteWithJsonSchema = vi.fn();
+// task names now come in one read (2026-10-09); it answers from the findTaskById fake per id
+vi.mock('../../database/connection', () => ({
+  databaseService: {
+    query: async (_sql: string, ids: string[]) => (await Promise.all(ids.map(async (id: string) => {
+      const t = await mockFindTaskById(id);
+      return t ? { id, name: t.name } : null;
+    }))).filter(Boolean),
+  },
+}));
+
 vi.mock('../../services/claudeService', () => ({
   claudeService: {
     isAvailable: (...args: any[]) => mockIsAvailable(...args),
@@ -544,6 +559,28 @@ describe('ResourceOptimizerService', () => {
         taskName: 'Build API',
         hoursPerWeek: 30,
       });
+    });
+
+    it('three over-booked weeks across two plans: the plans and bookings are read once, names once', async () => {
+      const weeks = [1, 2, 3].map(futureWeekStart);
+      mockComputeWorkload.mockResolvedValue([makeWorkload('r-1', 'Alice', weeks.map(w => ({ weekStart: w, utilization: 130 })))]);
+      mockFindAllResources.mockResolvedValue([]);
+      mockFindByProjectId.mockResolvedValue([{ id: 'sch-1' }, { id: 'sch-2' }]);
+      const span = { startDate: weeks[0], endDate: new Date(new Date(weeks[2]).getTime() + 6 * 86_400_000).toISOString().slice(0, 10) };
+      mockFindAssignmentsBySchedule.mockImplementation(async (sid: string) => [
+        { id: `a-${sid}`, resourceId: 'r-1', taskId: `t-${sid}`, scheduleId: sid, hoursPerWeek: 30, ...span },
+      ]);
+      mockFindTaskById.mockImplementation(async (id: string) => ({ id, name: `Task ${id}` }));
+      effectiveReads.n = 0;
+      mockFindByProjectId.mockClear();
+
+      const result = await service.predictBottlenecks('proj-1');
+
+      expect(result.bottlenecks).toHaveLength(3);
+      expect(mockFindByProjectId).toHaveBeenCalledTimes(1);
+      expect(effectiveReads.n).toBe(1);
+      // plan order kept: sch-1's task first, then sch-2's
+      expect(result.bottlenecks[0].contributingTasks.map(t => t.taskName)).toEqual(['Task t-sch-1', 'Task t-sch-2']);
     });
 
     it('uses task ID as fallback name when task not found', async () => {

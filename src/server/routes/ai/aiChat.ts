@@ -367,6 +367,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
           const scheduleService = new ScheduleService();
 
           for (const task of result.data.tasks) {
+            // eslint-disable-next-line no-await-in-loop -- each task goes through createTask (checks, then the next row position in its own transaction), in the meeting notes' order; the AI extracts a handful
             const created = await scheduleService.createTask({
               scheduleId: body.scheduleId,
               name: task.name,

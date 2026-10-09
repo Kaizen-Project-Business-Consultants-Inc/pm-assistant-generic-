@@ -53,7 +53,6 @@ vi.mock('../../services/AuditLedgerService', () => ({
 
 vi.mock('../../services/ResourceAvailabilityService', () => ({
   resourceAvailabilityService: {
-    getEffectiveCapacity: vi.fn().mockResolvedValue(40),
     getEffectiveCapacityBatch: vi.fn().mockResolvedValue(new Map()),
   },
 }));
@@ -917,7 +916,6 @@ describe('ResourceService', () => {
     it('returns 12 weeks by default', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
-      mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       const result = await service.computeUtilizationHistory('r1');
       expect(result.weeks).toHaveLength(12);
@@ -926,7 +924,6 @@ describe('ResourceService', () => {
     it('respects custom numWeeks', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource);
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
-      mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       const result = await service.computeUtilizationHistory('r1', 4);
       expect(result.weeks).toHaveLength(4);
@@ -944,7 +941,6 @@ describe('ResourceService', () => {
           endDate: '2030-12-31',
         },
       ]);
-      mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       const result = await service.computeUtilizationHistory('r1', 4);
       // All weeks should have planned=30 since the assignment spans everything
@@ -958,7 +954,6 @@ describe('ResourceService', () => {
       const linkedResource = { ...sampleResource, userId: 'u1' };
       mockRepo.findById.mockResolvedValueOnce(linkedResource);
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
-      mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       mockTimeEntryRepo.sumHoursByUserAndWeekRange.mockResolvedValueOnce([]);
 
@@ -971,17 +966,26 @@ describe('ResourceService', () => {
     it('does not fetch actual hours when resource has no userId', async () => {
       mockRepo.findById.mockResolvedValueOnce(sampleResource); // userId = null
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
-      mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(40);
 
       await service.computeUtilizationHistory('r1', 4);
       expect(mockTimeEntryRepo.sumHoursByUserAndWeekRange).not.toHaveBeenCalled();
+    });
+
+    it("every week's capacity comes from one read of their time off, with no calendar template (2026-10-09)", async () => {
+      mockRepo.findById.mockResolvedValueOnce(sampleResource);
+      mockRepo.findEffectiveAssignments.mockResolvedValueOnce([{ ...sampleAssignment, hoursPerWeek: 16, startDate: '2020-01-01', endDate: '2030-12-31' }]);
+      mockAvailabilityService.getEffectiveCapacityBatch.mockImplementationOnce(async (resources: any[], weeks: Date[]) =>
+        new Map([[resources[0].id, new Map(weeks.map((w: Date, i: number) => [w.toISOString().slice(0, 10), i === 0 ? 32 : 40]))]]));
+      const result = await service.computeUtilizationHistory('r1', 3);
+      expect(mockAvailabilityService.getEffectiveCapacityBatch).toHaveBeenCalledTimes(1);
+      expect(mockAvailabilityService.getEffectiveCapacityBatch.mock.calls[0][0]).toEqual([{ id: sampleResource.id, capacityHoursPerWeek: sampleResource.capacityHoursPerWeek, calendarTemplateId: null }]);
+      expect(result.weeks.map((w: any) => [w.capacity, w.utilization])).toEqual([[32, 50], [40, 40], [40, 40]]);
     });
 
     it('handles zero capacity in utilization history', async () => {
       const zeroCap = { ...sampleResource, capacityHoursPerWeek: 0 };
       mockRepo.findById.mockResolvedValueOnce(zeroCap);
       mockRepo.findEffectiveAssignments.mockResolvedValueOnce([]);
-      mockAvailabilityService.getEffectiveCapacity.mockResolvedValue(0);
 
       const result = await service.computeUtilizationHistory('r1', 2);
       for (const week of result.weeks) {

@@ -31,6 +31,7 @@ export async function runScheduleReview(): Promise<number> {
 
   for (const row of rows) {
     try {
+      // eslint-disable-next-line no-await-in-loop -- the previous review, read just before this schedule's re-run below replaces it as the latest; one schedule at a time (see below)
       const previous = await scheduleReviewService.latest(row.id);
       // eslint-disable-next-line no-await-in-loop -- each schedule review is heavy (32 rules over the whole plan); one schedule at a time bounds the load
       const current = await scheduleReviewService.run(row.id, 'agent');
@@ -47,12 +48,14 @@ export async function runScheduleReview(): Promise<number> {
       // Dedup on schedule + score so the same standing drop is not re-sent weekly.
       const redisKey = companyCacheKey(`schedule-review-notified:${row.id}:${current.score}`);
       if (redisService.isConnected()) {
+        // eslint-disable-next-line no-await-in-loop -- only for a schedule whose score dropped or gained a critical/high finding (a few a week)
         const existing = await redisService.get(redisKey);
         if (existing) continue;
       }
 
       const severity: 'high' | 'medium' = newCritical ? 'high' : 'medium';
       // Say which schedule and what was found — "a new critical issue was found" told nobody anything
+      // eslint-disable-next-line no-restricted-syntax -- small: one review's findings (one per rule, ~32), only for a schedule being alerted
       const worst = (current.findings ?? []).find(f => f.severity === (newCritical ? 'critical' : 'high'));
       const reason = newCritical
         ? `new critical issue — ${worst?.message ?? worst?.rule ?? 'see the review'}`
@@ -62,6 +65,7 @@ export async function runScheduleReview(): Promise<number> {
 
       let recipients: Array<{ user_id: string }> = [];
       try {
+        // eslint-disable-next-line no-await-in-loop -- only for a schedule being alerted (a few a week), after its dedup check
         recipients = await databaseService.query(
           `SELECT user_id FROM project_members WHERE project_id = ? AND role IN ('owner','manager')`,
           [row.project_id],

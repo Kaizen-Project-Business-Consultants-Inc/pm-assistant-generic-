@@ -24,7 +24,8 @@ const mockGetSprintTaskPoints = vi.fn();
 vi.mock('../../database/SprintRepository', () => ({
   sprintRepository: {
     findByProject: (...args: any[]) => mockFindByProject(...args),
-    getSprintTaskPoints: (...args: any[]) => mockGetSprintTaskPoints(...args),
+    // every sprint's points now come in one read (2026-10-09); it answers from the per-sprint fake
+    getSprintTaskPointsMany: async (ids: string[]) => new Map(await Promise.all(ids.map(async id => [id, await mockGetSprintTaskPoints(id)] as const))),
   },
 }));
 

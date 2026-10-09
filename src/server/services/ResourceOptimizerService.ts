@@ -1,4 +1,4 @@
-import { resourceService, ResourceWorkload, WeeklyUtilization } from './ResourceService';
+import { resourceService, ResourceWorkload, WeeklyUtilization, type ResourceAssignment } from './ResourceService';
 import { scheduleService, Task } from './ScheduleService';
 import { claudeService } from './claudeService';
 import { config } from '../config';
@@ -14,10 +14,21 @@ import {
   SkillMatch,
 } from '../schemas/resourceOptimizerSchemas';
 import { z } from 'zod';
-import { hoursInWeek } from './weeklyLoad';
-import { weekdaysOnly, mondaysBetween } from '../utils/workingDays';
+import { hoursInWeek, calendarsFor } from './weeklyLoad';
+import { databaseService } from '../database/connection';
+import { weekdaysOnly, mondaysBetween, type IsWorking } from '../utils/workingDays';
 import { isExamplePerson } from '../utils/sampleData';
 
+
+/** One project's bookings and its plans' calendars (see projectBookings) */
+interface ProjectBookings { assignments: ResourceAssignment[]; calOf: (scheduleId: string) => IsWorking }
+
+/** Task names by id, in one read */
+async function taskNames(ids: string[]): Promise<Map<string, string>> {
+  const rows = await databaseService.query<{ id: string; name: string }>(
+    `SELECT id, name FROM tasks WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
+  return new Map(rows.map(r => [r.id, r.name]));
+}
 
 export class ResourceOptimizerService {
 
@@ -43,6 +54,9 @@ export class ResourceOptimizerService {
 
     // 2. Detect upcoming bottlenecks: weeks where utilization > 100%
     const bottlenecks: BottleneckPrediction[] = [];
+    // The project's plans, bookings and calendars, read once on the first bottleneck (2026-10-09:
+    // every over-booked week of every person re-read every plan's bookings and each task's name)
+    let bookings: ProjectBookings | null = null;
 
     for (const workload of workloads) {
       // Limit to the requested number of weeks ahead from now
@@ -69,11 +83,9 @@ export class ResourceOptimizerService {
           }
 
           // Get contributing tasks from assignments for this resource during this week
-          const contributingTasks = await this.getContributingTasks(
-            workload.resourceId,
-            projectId,
-            week.weekStart,
-          );
+          // eslint-disable-next-line no-await-in-loop -- reads only once (the first bottleneck); later weeks reuse it
+          bookings ??= await this.projectBookings(projectId);
+          const contributingTasks = this.contributingTasks(bookings, workload.resourceId, week.weekStart);
           // Their other projects' hours that week, without naming those projects
           if ((week.otherProjects ?? 0) > 0) {
             contributingTasks.push({ taskId: '', taskName: 'Work on other projects', hoursPerWeek: week.otherProjects! });
@@ -89,6 +101,13 @@ export class ResourceOptimizerService {
           });
         }
       }
+    }
+
+    // The contributing tasks' names, in one read
+    const named = bottlenecks.flatMap(b => b.contributingTasks).filter(t => t.taskId);
+    if (named.length) {
+      const names = await taskNames([...new Set(named.map(t => t.taskId))]);
+      for (const t of named) t.taskName = names.get(t.taskId) || t.taskId;
     }
 
     // 3. Assess burnout risk: resources with 3+ consecutive overload weeks
@@ -281,39 +300,34 @@ export class ResourceOptimizerService {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private async getContributingTasks(
-    resourceId: string,
-    projectId: string,
-    weekStart: string,
-  ): Promise<Array<{ taskId: string; taskName: string; hoursPerWeek: number }>> {
+  /** The project's bookings, per plan in plan order, and each plan's calendar: four reads */
+  private async projectBookings(projectId: string): Promise<ProjectBookings> {
     const schedules = await scheduleService.findByProjectId(projectId);
-    const contributing: Array<{ taskId: string; taskName: string; hoursPerWeek: number }> = [];
+    const ids = schedules.map(sc => sc.id);
+    const all = ids.length ? await resourceService.findEffectiveAssignments({ scheduleIds: ids }) : [];
+    const order = new Map(ids.map((id, n) => [id, n]));
+    // plan by plan, as the per-plan reads returned them
+    const byPlan = [...all].sort((x, y) => (order.get(x.scheduleId) ?? 0) - (order.get(y.scheduleId) ?? 0));
+    return { assignments: byPlan, calOf: await calendarsFor(ids, (id) => scheduleService.workingDayTest(id)) };
+  }
 
+  /** A person's tasks that fill part of a week (names are added afterwards, in one read) */
+  private contributingTasks(
+    bookings: ProjectBookings,
+    resourceId: string,
+    weekStart: string,
+  ): Array<{ taskId: string; taskName: string; hoursPerWeek: number }> {
     const weekDate = new Date(weekStart).getTime();
     const weekEnd = weekDate + 7 * 24 * 60 * 60 * 1000;
-
-    for (const schedule of schedules) {
-      const assignments = await resourceService.findEffectiveAssignments({ scheduleIds: [schedule.id] });
-      const resourceAssignments = assignments.filter((a) => a.resourceId === resourceId);
-      const isWorkingFor = await scheduleService.workingDayTest(schedule.id).catch(() => weekdaysOnly);
-
-      for (const assignment of resourceAssignments) {
-        const aStart = new Date(assignment.startDate).getTime();
-        const aEnd = new Date(assignment.endDate).getTime();
-
-        // Only the days of that week the task covers
-        const hours = aStart < weekEnd && aEnd >= weekDate ? hoursInWeek(assignment, String(weekStart).slice(0, 10), isWorkingFor) : 0;
-        if (hours > 0) {
-          const task = await scheduleService.findTaskById(assignment.taskId);
-          contributing.push({
-            taskId: assignment.taskId,
-            taskName: task?.name || assignment.taskId,
-            hoursPerWeek: hours,
-          });
-        }
-      }
+    const contributing: Array<{ taskId: string; taskName: string; hoursPerWeek: number }> = [];
+    for (const assignment of bookings.assignments) {
+      if (assignment.resourceId !== resourceId) continue;
+      const aStart = new Date(assignment.startDate).getTime();
+      const aEnd = new Date(assignment.endDate).getTime();
+      // Only the days of that week the task covers
+      const hours = aStart < weekEnd && aEnd >= weekDate ? hoursInWeek(assignment, String(weekStart).slice(0, 10), bookings.calOf(assignment.scheduleId)) : 0;
+      if (hours > 0) contributing.push({ taskId: assignment.taskId, taskName: assignment.taskId, hoursPerWeek: hours });
     }
-
     return contributing;
   }
 

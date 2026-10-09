@@ -40,6 +40,10 @@ vi.mock('../../services/EmbeddingService', () => ({
   },
 }));
 
+vi.mock('../../database/EmbeddingRepository', () => ({
+  embeddingRepository: { deleteMany: vi.fn().mockResolvedValue(undefined) },
+}));
+
 vi.mock('../../services/documentTextExtractor', () => ({
   extractText: vi.fn().mockResolvedValue('Extracted document text content for testing purposes.'),
   chunkText: vi.fn().mockReturnValue(['chunk-0', 'chunk-1']),
@@ -75,6 +79,7 @@ import { documentEntityLinkRepository } from '../../database/DocumentEntityLinkR
 import { databaseService } from '../../database/connection';
 import { claudeService } from '../../services/claudeService';
 import { embeddingService } from '../../services/EmbeddingService';
+import { embeddingRepository } from '../../database/EmbeddingRepository';
 import { extractText } from '../../services/documentTextExtractor';
 import logger from '../../utils/logger';
 import fs from 'fs/promises';
@@ -417,7 +422,7 @@ describe('DocumentIntelligenceService', () => {
       await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
 
       expect(projectDocumentRepository.findById).not.toHaveBeenCalled();
-      expect(embeddingService.deleteEmbedding).not.toHaveBeenCalled();
+      expect(embeddingRepository.deleteMany).not.toHaveBeenCalled();
     });
 
     it('deletes estimated chunk embeddings based on text length', async () => {
@@ -429,11 +434,10 @@ describe('DocumentIntelligenceService', () => {
 
       await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
 
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledTimes(4);
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_0');
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_1');
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_2');
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_3');
+      // One bulk delete for all four chunk ids (2026-10-09), not one call per chunk
+      expect(embeddingRepository.deleteMany).toHaveBeenCalledTimes(1);
+      expect(embeddingRepository.deleteMany).toHaveBeenCalledWith('project_document', ['doc-1_chunk_0', 'doc-1_chunk_1', 'doc-1_chunk_2', 'doc-1_chunk_3']);
+      expect(embeddingService.deleteEmbedding).not.toHaveBeenCalled();
     });
 
     it('handles document with no extracted text', async () => {
@@ -445,8 +449,8 @@ describe('DocumentIntelligenceService', () => {
       await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
 
       // ceil(0/4000)+1 = 1 chunk
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledTimes(1);
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_0');
+      expect(embeddingRepository.deleteMany).toHaveBeenCalledTimes(1);
+      expect(embeddingRepository.deleteMany).toHaveBeenCalledWith('project_document', ['doc-1_chunk_0']);
     });
 
     it('handles document not found (null)', async () => {
@@ -456,7 +460,7 @@ describe('DocumentIntelligenceService', () => {
       await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
 
       // textLength = 0 => 1 chunk
-      expect(embeddingService.deleteEmbedding).toHaveBeenCalledTimes(1);
+      expect(embeddingRepository.deleteMany).toHaveBeenCalledWith('project_document', ['doc-1_chunk_0']);
     });
 
     it('logs warning when cleanup fails but does not throw', async () => {

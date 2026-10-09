@@ -547,6 +547,10 @@ describe('WhatIfScenarioService', () => {
       const criticalTask = result.affectedTasks.find(t => t.taskName === 'Critical Task');
       expect(criticalTask).toBeDefined();
       expect(criticalTask!.severity).toBe('high');
+      // One critical-path calculation per schedule, shared by the scoring and the AI prompt
+      // (2026-10-09: it used to be calculated twice)
+      expect(mockCalculateCriticalPath).toHaveBeenCalledTimes(1);
+      expect(mockCalculateCriticalPath).toHaveBeenCalledWith('sch-1');
     });
 
     it('returns empty affected tasks when all tasks are completed', async () => {

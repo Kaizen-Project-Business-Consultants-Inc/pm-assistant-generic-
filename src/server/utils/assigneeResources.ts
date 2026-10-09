@@ -43,6 +43,7 @@ export async function resolveAssigneeResources(
     if (!name) continue;
     const key = normalizeAssigneeName(name);
     if (idByName.has(key)) continue;
+    // eslint-disable-next-line no-await-in-loop -- the caller's one-person create (the import's resourceService.createResource); only names not yet in Resources, each new id kept for the import's Undo
     const resource = await createResource(name);
     idByName.set(key, resource.id);
     createdIds.push(resource.id);

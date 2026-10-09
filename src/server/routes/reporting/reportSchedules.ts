@@ -22,11 +22,20 @@ const updateScheduleSchema = createScheduleSchema.partial();
  * A report schedule (and its recipients) is visible to whoever set it up, admin/PMO, and — for a
  * project's status/RAID report ("status-report::<projectId>") — that project's members.
  */
-async function canSeeSchedule(request: FastifyRequest, schedule: { createdBy?: string; templateId?: string }): Promise<boolean> {
+async function canSeeSchedule(
+  request: FastifyRequest,
+  schedule: { createdBy?: string; templateId?: string },
+  /** answers already worked out in this request, by project (a list checks one project once) */
+  byProject?: Map<string, boolean>,
+): Promise<boolean> {
   const user = request.user!;
   if (schedule.createdBy === user.userId || ['admin', 'pmo'].includes(user.role)) return true;
   const projectId = schedule.templateId?.includes('::') ? schedule.templateId.split('::')[1] : null;
-  return !!projectId && (await checkProjectRole(request, projectId, 'viewer')).ok;
+  if (!projectId) return false;
+  if (byProject?.has(projectId)) return byProject.get(projectId)!;
+  const ok = (await checkProjectRole(request, projectId, 'viewer')).ok;
+  byProject?.set(projectId, ok);
+  return ok;
 }
 
 export async function reportScheduleRoutes(fastify: FastifyInstance) {
@@ -116,8 +125,10 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
     try {
       const { templateId } = request.params as { templateId: string };
       const schedules = [];
+      const byProject = new Map<string, boolean>();
       for (const sch of await reportScheduleService.getByTemplateId(templateId)) {
-        if (await canSeeSchedule(request, sch)) schedules.push(sch);
+        // eslint-disable-next-line no-await-in-loop -- one template's schedules share its project: checked once, then answered from byProject
+        if (await canSeeSchedule(request, sch, byProject)) schedules.push(sch);
       }
       return { schedules };
     } catch (error) {

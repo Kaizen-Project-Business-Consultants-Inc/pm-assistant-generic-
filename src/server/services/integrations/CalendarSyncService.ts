@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { googleCalendarAdapter, CalendarEvent } from './GoogleCalendarAdapter';
 import { integrationRepository, parseConfig } from '../../database/IntegrationRepository';
 import { databaseService } from '../../database/connection';
+import { chunksOf } from '../../utils/chunksOf';
 import logger from '../../utils/logger';
 
 interface SyncMapping {
@@ -85,26 +86,29 @@ class CalendarSyncService {
           await integrationRepository.updateIntegration(integ.id, { config: cfg });
         }
 
-        // Process pulled events
+        // Process pulled events: this connection's mappings for all of them in one read (per 200
+        // events) and the changed etags in one UPDATE, not a read + update per event (2026-10-09)
+        // eslint-disable-next-line no-restricted-syntax -- small: one pass over this connection's events to list their ids (not a search)
+        const eventIds = events.map(e => e.id).filter(Boolean) as string[];
+        // eslint-disable-next-line no-await-in-loop -- one user's calendar connections (usually one); reads this connection's mappings
+        const mappings = await this.mappingsForEvents(integ.id, eventIds);
+        const changedEtag = new Map<string, string | null>();
         for (const event of events) {
           if (!event.id) continue;
-          const [mapping] = await databaseService.query(
-            'SELECT * FROM calendar_sync_mappings WHERE integration_id = ? AND calendar_event_id = ?',
-            [integ.id, event.id],
-          ) as SyncMapping[];
+          const mapping = mappings.get(event.id);
 
           if (mapping && mapping.taskId && mapping.syncDirection !== 'push') {
             if (event.status === 'cancelled') continue;
             if (event.etag !== mapping.etag) {
               // Event changed — update task dates (fire-and-forget, no circular push)
               pulled++;
-              await databaseService.query(
-                'UPDATE calendar_sync_mappings SET etag = ?, last_synced_at = NOW() WHERE id = ?',
-                [event.etag, mapping.id],
-              );
+              changedEtag.set(mapping.id, event.etag ?? null);
+              mapping.etag = event.etag ?? null; // a repeat of this event compares with what was just saved
             }
           }
         }
+        // eslint-disable-next-line no-await-in-loop -- one user's calendar connections (usually one); saves this connection's changed etags
+        await this.saveEtags(changedEtag);
 
         // eslint-disable-next-line no-await-in-loop -- marks this connection synced after its own events are processed
         await integrationRepository.updateLastSyncAt(integ.id);
@@ -114,6 +118,32 @@ class CalendarSyncService {
     }
 
     return { pushed, pulled };
+  }
+
+  /** A connection's mappings for these event ids, by event id — one read per 200 ids */
+  private async mappingsForEvents(integrationId: string, eventIds: string[]): Promise<Map<string, SyncMapping>> {
+    const out = new Map<string, SyncMapping>();
+    for (const chunk of chunksOf([...new Set(eventIds)], 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one read per 200 events
+      const rows = await databaseService.query(
+        `SELECT * FROM calendar_sync_mappings WHERE integration_id = ? AND calendar_event_id IN (${chunk.map(() => '?').join(',')})`,
+        [integrationId, ...chunk],
+      ) as Array<SyncMapping & { calendar_event_id: string }>;
+      for (const row of rows) out.set(row.calendar_event_id, row);
+    }
+    return out;
+  }
+
+  /** New etags (mapping id → etag), stamped as synced now — one UPDATE per 200 */
+  private async saveEtags(etagById: Map<string, string | null>): Promise<void> {
+    for (const chunk of chunksOf([...etagById], 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 mappings
+      await databaseService.query(
+        `UPDATE calendar_sync_mappings SET etag = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END, last_synced_at = NOW()
+          WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flat(), ...chunk.map(([id]) => id)],
+      );
+    }
   }
 
   async syncAllUsers(): Promise<{ synced: number; errors: number }> {
