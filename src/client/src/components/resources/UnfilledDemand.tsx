@@ -22,6 +22,7 @@ export function UnfilledDemand({ rows, canEdit, onReplace }: {
 }) {
   if (rows.length === 0) return null;
   // Only the weeks that need someone, so the table stays readable
+  // eslint-disable-next-line no-restricted-syntax -- small: each row filters only its own weeks
   const weeks = [...new Set(rows.flatMap(r => r.weeks.filter(w => w.people > 0).map(w => w.weekStart)))].sort().slice(0, MAX_WEEKS);
   const peopleIn = (r: DemandRow, w: string) => r.weeks.find(x => x.weekStart === w)?.people ?? 0;
   const peak = rows

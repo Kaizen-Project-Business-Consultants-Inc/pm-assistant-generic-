@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Kanban, Settings, Users, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { announce } from '../../utils/announce';
+import { groupByKey } from '../../utils/lookup';
 import { saveFailedMessage, TRY_AGAIN } from '../../utils/saveFailedMessage';
 import { Avatar } from '../ui/Avatar';
 
@@ -219,8 +220,9 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
   const swimlaneGroups = useMemo(() => {
     if (swimlane === 'none') return [{ key: '__all', label: '', tasks }];
     const groups: { key: string; label: string; tasks: BoardTask[] }[] = [];
+    const byAssignee = groupByKey(tasks, (t) => t.assignedTo);
     for (const a of assignees) {
-      groups.push({ key: a, label: a, tasks: tasks.filter((t) => t.assignedTo === a) });
+      groups.push({ key: a, label: a, tasks: byAssignee.get(a) ?? [] });
     }
     const unassigned = tasks.filter((t) => !t.assignedTo);
     if (unassigned.length > 0) groups.push({ key: '__unassigned', label: 'Unassigned', tasks: unassigned });
@@ -416,6 +418,7 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
           )}
           <div className="flex gap-3 p-4 overflow-x-auto" style={{ minHeight: group.label ? '200px' : '400px' }}>
             {COLUMNS.map((col) => {
+              // eslint-disable-next-line no-restricted-syntax -- small: the 5 status columns, one pass over the lane's cards each
               const columnTasks = group.tasks.filter((t) => {
                 if (t.status === col.id) return true;
                 // blocked/cancelled tasks show in Todo column with a badge

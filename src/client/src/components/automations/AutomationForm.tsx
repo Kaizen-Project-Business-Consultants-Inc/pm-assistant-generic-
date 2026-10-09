@@ -877,6 +877,7 @@ export function AutomationForm({ projectId, automationId, onClose, onSaved }: Au
                 next[idx] = a;
                 setActions(next);
               }}
+              // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over one rule's few actions
               onRemove={() => setActions(actions.filter((_, i) => i !== idx))}
             />
           ))}

@@ -223,6 +223,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     if (query) return []; // Hide recents when filtering
     const recentIds = getRecents();
     return recentIds
+      // eslint-disable-next-line no-restricted-syntax -- small: at most 5 recent commands
       .map(id => commands.find(c => c.id === id))
       .filter((c): c is CommandItem => !!c)
       .map(c => ({ ...c, section: 'recent' as const }));
@@ -368,6 +369,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     flatIndexMap.set(result, flatIndex++);
   }
   for (const cat of categories) {
+    // eslint-disable-next-line no-restricted-syntax -- small: the few result categories × the search results shown
     const items = results.filter(r => r.type === cat.type);
     if (items.length > 0) {
       groupedResults.push({ config: cat, items });

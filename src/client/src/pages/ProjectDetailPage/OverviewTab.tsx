@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { firstIndexByKey, firstWithAnyKey } from '../../utils/lookup';
 import {
   Clock,
   ShieldAlert,
@@ -318,12 +319,17 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     return { date: forecastDate, label: forecastDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) };
   })();
 
+  // A link's task, found without searching the whole plan for every link: the first task whose id
+  // is either of the link's two id fields, as allTasks.find gave (built per render, like the rest here)
+  const taskIndexById = firstIndexByKey(allTasks, (t: any) => t.id);
+  const linkedTask = (d: any): any => firstWithAnyKey(allTasks, taskIndexById, [d.dependencyId, d.dependency_id]);
+
   const blockedTasks = allTasks.filter((t: any) => {
     if (t.status === 'completed' || t.status === 'done' || t.status === 'cancelled') return false;
     const deps: any[] = t.dependencies || [];
     if (deps.length === 0) return false;
     return deps.some((d: any) => {
-      const depTask = allTasks.find((dt: any) => dt.id === d.dependencyId || dt.id === d.dependency_id);
+      const depTask = linkedTask(d);
       return depTask && depTask.status !== 'completed' && depTask.status !== 'done';
     });
   }).slice(0, 5);
@@ -822,9 +828,10 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
       <div className="space-y-2">
         {blockedTasks.map((t: any) => {
           const deps: any[] = t.dependencies || [];
+          // eslint-disable-next-line no-restricted-syntax -- small: this task's own few links (at most 5 blocked tasks are listed)
           const blockerNames = deps
             .map((d: any) => {
-              const dep = allTasks.find((dt: any) => dt.id === d.dependencyId || dt.id === d.dependency_id);
+              const dep = linkedTask(d);
               return dep && dep.status !== 'completed' && dep.status !== 'done' ? dep.name : null;
             })
             .filter(Boolean);

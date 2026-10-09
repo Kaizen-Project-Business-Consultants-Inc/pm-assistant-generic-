@@ -1211,6 +1211,7 @@ const WhatIfScenario: React.FC = () => {
                     <th key={idx} className="text-left py-2 px-3 text-gray-700 dark:text-gray-200 font-medium">
                       <div className="flex items-center gap-1">
                         <span className="truncate max-w-[120px]">{p.label}</span>
+                        {/* eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over the few pinned results */}
                         <button type="button" onClick={() => setPinnedResults((prev) => prev.filter((_, i) => i !== idx))} aria-label={`Unpin ${p.label}`} className="text-gray-500 hover:text-red-500 flex-shrink-0">
                           <X className="w-3 h-3" />
                         </button>

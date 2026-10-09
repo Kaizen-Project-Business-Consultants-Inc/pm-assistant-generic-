@@ -39,6 +39,7 @@ export function packLanes<T extends { startDate: string; endDate: string }>(bloc
     .filter((x): x is { block: T; span: { first: number; last: number } } => !!x.span)
     .sort((a, b) => a.span.first - b.span.first || b.span.last - a.span.last);
   for (const { block, span } of spans) {
+    // eslint-disable-next-line no-restricted-syntax -- small: the lanes are as many as one person's bookings that overlap at once
     let lane = laneEnds.findIndex(end => end < span.first);
     if (lane === -1) { lane = laneEnds.length; laneEnds.push(span.last); } else laneEnds[lane] = span.last;
     placed.push({ block, first: span.first, last: span.last, lane });

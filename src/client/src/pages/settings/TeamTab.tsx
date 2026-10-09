@@ -173,10 +173,12 @@ export const TeamTab: React.FC = () => {
                     {isMe ? (
                       <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-300">
                         <Shield className="w-3 h-3" />
+                        {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
                         {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
                       </span>
                     ) : isConsultant ? (
                       <span className="text-gray-700 dark:text-gray-300">
+                        {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
                         {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
                       </span>
                     ) : (

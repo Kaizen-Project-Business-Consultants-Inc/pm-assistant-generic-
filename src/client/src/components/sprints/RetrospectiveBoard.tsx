@@ -116,6 +116,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId, canEdit = 
       {/* 3-column board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {COLUMNS.map((col) => {
+          // eslint-disable-next-line no-restricted-syntax -- small: the 3 board columns, one pass over the items each
           const columnItems = items.filter((i) => i.category === col.id);
           return (
             <div key={col.id} className={`rounded-lg border ${col.border} ${col.bg} min-h-[200px]`}>

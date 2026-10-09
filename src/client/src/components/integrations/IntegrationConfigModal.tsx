@@ -598,6 +598,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
                         onChange={() => {
                           setNotifyEvents((prev) =>
                             prev.includes(evt.key)
+                              // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over the few notification events
                               ? prev.filter((e) => e !== evt.key)
                               : [...prev, evt.key],
                           );

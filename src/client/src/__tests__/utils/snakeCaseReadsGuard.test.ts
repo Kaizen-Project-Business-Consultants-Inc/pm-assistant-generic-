@@ -27,7 +27,7 @@ import { join } from 'path';
  * (the second test fails until you do, so a fixed file can't quietly regress).
  */
 const BASELINE: Record<string, number> = {
-  'pages/ProjectDetailPage/OverviewTab.tsx': 24, // all camelCase-first fallbacks
+  'pages/ProjectDetailPage/OverviewTab.tsx': 23, // all camelCase-first fallbacks
   'components/sprints/SprintPlanningPanel.tsx': 10, // 8 = its own create form; 2 = story_points ?? storyPoints
   'components/project/EditProjectModal.tsx': 10, // camelCase-first fallbacks
   'pages/ProjectDetailPage.tsx': 8, // camelCase-first fallbacks

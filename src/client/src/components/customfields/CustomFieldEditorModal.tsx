@@ -121,6 +121,7 @@ export function CustomFieldEditorModal({ projectId, entityType, field, onClose }
                     <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{opt}</span>
                     <button
                       type="button"
+                      // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over one field's few options
                       onClick={() => setForm(p => ({ ...p, options: p.options.filter((_: string, j: number) => j !== i) }))}
                       className="text-red-400 hover:text-red-600"
                       aria-label="Remove option"

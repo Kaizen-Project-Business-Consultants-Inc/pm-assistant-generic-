@@ -504,6 +504,7 @@ export const OnboardingPage: React.FC = () => {
                         <Mail className="w-4 h-4 text-gray-500 flex-shrink-0" />
                         <span className="text-sm text-gray-700 dark:text-gray-200 truncate">{invite.email}</span>
                         <span className="text-xs text-gray-500 flex-shrink-0">
+                          {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
                           {TEAM_ROLE_OPTIONS.find(r => r.value === invite.role)?.label || invite.role}
                         </span>
                       </div>

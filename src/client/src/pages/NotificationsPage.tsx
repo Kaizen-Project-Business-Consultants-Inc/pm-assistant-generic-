@@ -297,6 +297,7 @@ export function NotificationsPage() {
             if (g.items.length >= 3 && !openGroups.has(g.key)) {
               const first = g.items[0];
               const GIcon = typeIcons[first.type] || Info;
+              // eslint-disable-next-line no-restricted-syntax -- small: counts only this group's own items
               const unread = g.items.filter(x => !x.read).length;
               return (
                 <button

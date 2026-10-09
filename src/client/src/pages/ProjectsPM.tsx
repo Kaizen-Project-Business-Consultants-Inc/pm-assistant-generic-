@@ -11,6 +11,7 @@ import { ProjectGroupManager } from '../components/projects/ProjectGroupManager'
 import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
 import type { ProjectSummaryPM } from '../types/pm';
 import { formatCalendarDate } from '../utils/dateUtils';
+import { groupByKey } from '../utils/lookup';
 import { useCanChangeData } from '../hooks/useCanChangeData';
 import { useCanManageClients } from '../hooks/useCanManageClients';
 import { routeTo } from '../routes';
@@ -226,8 +227,9 @@ export function ProjectsPM() {
     if (groups.length === 0 || groupFilter !== 'all') return null;
     const sections: Array<{ id: string; name: string; color: string; projects: typeof sorted }> = [];
     const assigned = new Set<string>();
+    const byGroup = groupByKey(sorted, p => (p as any).groupId);
     for (const g of groups) {
-      const gProjects = sorted.filter(p => (p as any).groupId === g.id);
+      const gProjects = byGroup.get(g.id) ?? [];
       if (gProjects.length > 0) {
         sections.push({ id: g.id, name: g.name, color: g.color, projects: gProjects });
         for (const p of gProjects) assigned.add(p.id);
@@ -443,6 +445,7 @@ export function ProjectsPM() {
                         {p.name}
                         {(p as any).isDemo && <span className="ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 uppercase">Sample</span>}
                       </Link>
+                      {/* eslint-disable-next-line no-restricted-syntax -- small: a two-item list */}
                       {(p.code || p.client) && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{[p.code, p.client].filter(Boolean).join(' · ')}</p>}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{statusDisplay}</td>

@@ -390,6 +390,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
 
         // If a "type" column exists but we're setting type from the sheet name,
         // remap that column to actionType (for Actions sheets where "Type" = category)
+        // eslint-disable-next-line no-restricted-syntax -- small: one sheet's column headers
         const typeHeader = p.headers.find(h => headerMap[h] === 'type');
         if (typeHeader) {
           headerMap[typeHeader] = 'actionType';
@@ -599,6 +600,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                             {parsed.headers.map((h, i) => (
                               <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
                                 {h}
+                                {/* eslint-disable-next-line no-restricted-syntax -- small: the file's column headers × the 40 RAID import fields */}
                                 {columnMap[i] && <span className="ml-1 text-blue-500">({RAID_TARGET_COLUMNS.find((c) => c.value === columnMap[i])?.label})</span>}
                               </th>
                             ))}

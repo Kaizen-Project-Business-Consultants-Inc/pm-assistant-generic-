@@ -97,6 +97,7 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
   }, []);
 
   const grouped = useMemo(
+    // eslint-disable-next-line no-restricted-syntax -- small: the 4 fix kinds, one pass over the fixes each
     () => KIND_ORDER.map(kind => ({ kind, items: fixes.filter(f => f.kind === kind) })).filter(g => g.items.length > 0),
     [fixes],
   );

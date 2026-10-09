@@ -126,6 +126,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
         required: f.required,
         options:
           f.type === 'dropdown'
+            // eslint-disable-next-line no-restricted-syntax -- small: one dropdown field's few typed options
             ? f.options
                 .split(',')
                 .map((o) => o.trim())
@@ -402,6 +403,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                         className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 dark:text-gray-400"
                       >
                         <option>Select an option...</option>
+                        {/* eslint-disable-next-line no-restricted-syntax -- small: one dropdown field's few typed options */}
                         {field.options
                           .split(',')
                           .map((o) => o.trim())

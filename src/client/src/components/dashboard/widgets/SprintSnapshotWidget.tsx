@@ -78,6 +78,7 @@ export function SprintSnapshotWidget({ projects }: Props) {
   projects.slice(0, 10).forEach((p, i) => {
     const rawSprints = sprintQueries[i]?.data?.sprints || sprintQueries[i]?.data;
     const sprints: Sprint[] = Array.isArray(rawSprints) ? rawSprints : [];
+    // eslint-disable-next-line no-restricted-syntax -- small: at most 10 projects, each searching only its own sprints
     const activeSprint = sprints.find(s => s.status === 'active');
     if (!activeSprint) return;
 

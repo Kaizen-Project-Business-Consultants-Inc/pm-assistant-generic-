@@ -35,6 +35,7 @@ export function findResourceConflicts(
 ): Map<string, string[]> {
   const over = new Map<string, { name: string; weeks: WorkloadWeek[] }>();
   for (const w of workload) {
+    // eslint-disable-next-line no-restricted-syntax -- small: each person filters only their own weeks
     const weeks = w.weeks.filter(x => x.utilization > 100);
     if (weeks.length) over.set(w.resourceId, { name: w.resourceName, weeks });
   }
@@ -53,6 +54,7 @@ export function findResourceConflicts(
     for (const pid of people) {
       const o = over.get(pid);
       if (!o) continue;
+      // eslint-disable-next-line no-restricted-syntax -- small: one person's over-100% weeks in the loaded range, for each of the task's few people
       const hit = o.weeks.filter(w => day(w.weekStart) <= end && addDays(w.weekStart, 6) >= start);
       if (!hit.length) continue;
       const worst = hit.reduce((a, b) => (b.utilization > a.utilization ? b : a));
