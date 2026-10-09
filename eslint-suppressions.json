@@ -2073,11 +2073,6 @@
       "count": 1
     }
   },
-  "src/server/database/MeetingSpeakerLinkRepository.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/database/PricingConfigRepository.ts": {
     "no-await-in-loop": {
       "count": 1
@@ -2099,11 +2094,8 @@
     }
   },
   "src/server/database/RiskRepository.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    },
     "no-useless-escape": {
-      "count": 2
+      "count": 1
     }
   },
   "src/server/database/SprintRepository.ts": {
@@ -2219,11 +2211,6 @@
       "count": 3
     }
   },
-  "src/server/routes/collaboration/meetingIntelligence.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
   "src/server/routes/collaboration/meetings.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -2232,9 +2219,6 @@
   "src/server/routes/collaboration/risks.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
-    },
-    "no-await-in-loop": {
-      "count": 2
     },
     "security/detect-unsafe-regex": {
       "count": 1
@@ -2533,9 +2517,6 @@
     }
   },
   "src/server/services/KnowledgeBaseService.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2551,9 +2532,6 @@
   "src/server/services/MeetingService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    },
-    "no-await-in-loop": {
-      "count": 1
     }
   },
   "src/server/services/MonteCarloService.ts": {
@@ -2624,9 +2602,6 @@
   "src/server/services/RaidReviewService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-await-in-loop": {
-      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2708,9 +2683,6 @@
     }
   },
   "src/server/services/RiskService.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
@@ -3024,28 +2996,7 @@
       "count": 1
     }
   },
-  "src/server/services/lessonsLearned/extractor.ts": {
-    "no-await-in-loop": {
-      "count": 2
-    }
-  },
-  "src/server/services/lessonsLearned/index.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    }
-  },
-  "src/server/services/lessonsLearned/patternDetector.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/server/services/lessonsLearned/seeder.ts": {
-    "no-await-in-loop": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }

@@ -1,6 +1,7 @@
 import { BaseRepository } from './BaseRepository';
 import { databaseService } from './connection';
 import { v4 as uuidv4 } from 'uuid';
+import { chunksOf } from '../utils/chunksOf';
 
 export interface ProjectRisk {
   id: string;
@@ -102,6 +103,11 @@ function mapUpdateRow(row: any): RaidUpdate {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/** "Ann Lee / Bob (QA) & Cy" → ["Ann Lee", "Bob", "Cy"]: an owner field may name several people */
+function ownerNamesOf(ownerName: string): string[] {
+  return ownerName.split(/[\/&,]/).map(n => n.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
 }
 
 function mapRow(row: any): ProjectRisk {
@@ -622,9 +628,15 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
    * Handles multi-person names like "Marsha Turner / Claudia Andrews" by
    * matching the first name that corresponds to a system user.
    */
+  async findByIds(ids: string[]): Promise<ProjectRisk[]> {
+    const unique = [...new Set(ids.filter(Boolean))];
+    if (unique.length === 0) return [];
+    const rows = await this.queryRaw(`SELECT * FROM project_risks WHERE id IN (${unique.map(() => '?').join(',')})`, unique);
+    return rows.map(mapRow);
+  }
+
   private async resolveOwnerId(ownerName: string): Promise<string | null> {
-    // Split on common separators: "/", "&", ","
-    const names = ownerName.split(/[\/&,]/).map(n => n.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+    const names = ownerNamesOf(ownerName);
     if (names.length === 0) return null;
 
     const placeholders = names.map(() => '?').join(',');
@@ -642,7 +654,7 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
    * resource that DOES have an account still resolves to that account instead.
    */
   private async resolveOwnerResourceId(ownerName: string): Promise<string | null> {
-    const names = ownerName.split(/[\/&,]/).map(n => n.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+    const names = ownerNamesOf(ownerName);
     if (names.length === 0) return null;
 
     const placeholders = names.map(() => '?').join(',');
@@ -663,15 +675,35 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
        WHERE pr.owner_name IS NOT NULL AND pr.owner_name != '' AND pr.owner_id IS NULL`,
       [],
     );
-    let linked = 0;
-    for (const row of rows) {
-      const userId = await this.resolveOwnerId(row.owner_name);
-      if (userId) {
-        await databaseService.query(`UPDATE project_risks SET owner_id = ? WHERE id = ?`, [userId, row.id]);
-        linked++;
-      }
+    // One look-up of every name and one UPDATE per 200 items (was two queries per item; 2026-10-09).
+    // Same rule as resolveOwnerId: "A / B & C" → the first of those people with an account.
+    const allNames = [...new Set(rows.flatMap((r: any) => ownerNamesOf(r.owner_name)))];
+    if (allNames.length === 0) return 0;
+    // names compare as the database does (resources.name is utf8mb4_unicode_ci): capitals, accents
+    // and trailing spaces don't matter — "ann lee" finds "Ann Lee", "Jose" finds "José"
+    const nameKey = (n: string) => n.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim();
+    const userByName = new Map<string, string>();
+    for (const names of chunksOf(allNames, 500)) {
+      // eslint-disable-next-line no-await-in-loop -- one look-up per 500 names
+      const people = await databaseService.query<any>(
+        `SELECT name, user_id FROM resources WHERE user_id IS NOT NULL AND name IN (${names.map(() => '?').join(',')})`,
+        names,
+      );
+      for (const p of people) if (!userByName.has(nameKey(p.name))) userByName.set(nameKey(p.name), p.user_id);
     }
-    return linked;
+    const links = rows.flatMap((r: any) => {
+      // eslint-disable-next-line no-restricted-syntax -- small: the few names in one owner field, Map look-ups
+      const userId = ownerNamesOf(r.owner_name).map(n => userByName.get(nameKey(n))).find(Boolean);
+      return userId ? [{ id: r.id as string, userId }] : [];
+    });
+    for (const chunk of chunksOf(links, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 items
+      await databaseService.query(
+        `UPDATE project_risks SET owner_id = CASE id ${chunk.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE id IN (${chunk.map(() => '?').join(',')})`,
+        [...chunk.flatMap(l => [l.id, l.userId]), ...chunk.map(l => l.id)],
+      );
+    }
+    return links.length;
   }
 }
 

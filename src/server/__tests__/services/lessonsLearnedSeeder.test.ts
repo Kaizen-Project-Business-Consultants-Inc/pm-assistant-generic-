@@ -20,7 +20,7 @@ describe('lessons-learned seeder', () => {
           { id: 'p1', name: 'Alpha', projectType: 'it', status: 'active', startDate: '2026-09-01', endDate: '2026-10-01' },
         ]);
         const lessons: any[] = [];
-        await seedFromProjects(async (l) => { lessons.push(l); });
+        await seedFromProjects(async (ls) => { lessons.push(...ls); });
         return lessons.find((l) => l.title === 'Significant schedule delay detected')?.description;
       } finally {
         vi.useRealTimers();

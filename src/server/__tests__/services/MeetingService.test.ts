@@ -25,6 +25,7 @@ vi.mock('../../database/MeetingAnalysisRepository', () => {
     findByMeeting: vi.fn().mockResolvedValue([]),
     findById: vi.fn().mockResolvedValue(null),
     updateMeetingId: vi.fn(),
+    unlinkMeeting: vi.fn().mockResolvedValue({}),
   };
   return { meetingAnalysisRepository: mockRepo };
 });
@@ -200,12 +201,11 @@ describe('MeetingService', () => {
   describe('deleteMeeting', () => {
     it('cascades deletes: action items, unlinks analyses, deletes meeting', async () => {
       mockMeetingRepo.findById.mockResolvedValueOnce(sampleMeeting);
-      mockAnalysisRepo.findByMeeting.mockResolvedValueOnce([sampleAnalysis]);
 
       await meetingService.deleteMeeting('m1', 'u1');
 
       expect(mockActionItemRepo.deleteByMeeting).toHaveBeenCalledWith('m1');
-      expect(mockAnalysisRepo.updateMeetingId).toHaveBeenCalledWith('an1', null);
+      expect(mockAnalysisRepo.unlinkMeeting).toHaveBeenCalledWith('m1');
       expect(mockMeetingRepo.delete).toHaveBeenCalledWith('m1');
       expect(mockAudit.append).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -215,31 +215,14 @@ describe('MeetingService', () => {
       );
     });
 
-    it('handles deletion with no linked analyses', async () => {
+    it('unlinks every analysis in one statement, not one per analysis (2026-10-09)', async () => {
       mockMeetingRepo.findById.mockResolvedValueOnce(sampleMeeting);
-      mockAnalysisRepo.findByMeeting.mockResolvedValueOnce([]);
 
       await meetingService.deleteMeeting('m1', 'u1');
 
+      expect(mockAnalysisRepo.unlinkMeeting).toHaveBeenCalledTimes(1);
+      expect(mockAnalysisRepo.findByMeeting).not.toHaveBeenCalled();
       expect(mockAnalysisRepo.updateMeetingId).not.toHaveBeenCalled();
-      expect(mockMeetingRepo.delete).toHaveBeenCalledWith('m1');
-    });
-
-    it('unlinks multiple analyses', async () => {
-      const analyses = [
-        { ...sampleAnalysis, id: 'an1' },
-        { ...sampleAnalysis, id: 'an2' },
-        { ...sampleAnalysis, id: 'an3' },
-      ];
-      mockMeetingRepo.findById.mockResolvedValueOnce(sampleMeeting);
-      mockAnalysisRepo.findByMeeting.mockResolvedValueOnce(analyses);
-
-      await meetingService.deleteMeeting('m1', 'u1');
-
-      expect(mockAnalysisRepo.updateMeetingId).toHaveBeenCalledTimes(3);
-      expect(mockAnalysisRepo.updateMeetingId).toHaveBeenCalledWith('an1', null);
-      expect(mockAnalysisRepo.updateMeetingId).toHaveBeenCalledWith('an2', null);
-      expect(mockAnalysisRepo.updateMeetingId).toHaveBeenCalledWith('an3', null);
     });
 
     it('throws when meeting not found', async () => {

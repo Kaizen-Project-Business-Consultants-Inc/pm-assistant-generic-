@@ -180,18 +180,14 @@ export class RaidReviewService {
     if (fixes.length === 0) throw new RaidReviewInputError('Tick at least one fix to apply.');
 
     // Load and check everything first, so a bad request changes nothing
-    const itemCache = new Map<string, ProjectRisk>();
+    // every item in one read (was one per fix; 2026-10-09)
+    const itemCache = new Map((await riskRepository.findByIds(fixes.map(f => f.itemId))).map(r => [r.id, r] as [string, ProjectRisk]));
     const plans: Array<{ fix: RaidFixRequest; item: ProjectRisk; data: Record<string, any> }> = [];
     let people: PersonOption[] | null = null;
 
     for (const fix of fixes) {
-      let item = itemCache.get(fix.itemId);
-      if (!item) {
-        const found = await riskRepository.findById(fix.itemId);
-        if (!found || found.projectId !== projectId) throw new RaidReviewInputError('One of these RAID items no longer exists. Re-run the review and try again.');
-        item = found;
-        itemCache.set(item.id, item);
-      }
+      const item = itemCache.get(fix.itemId);
+      if (!item || item.projectId !== projectId) throw new RaidReviewInputError('One of these RAID items no longer exists. Re-run the review and try again.');
       const label = item.recordId || `"${item.title}"`;
       const value = typeof fix.value === 'string' ? fix.value.trim() : '';
 
@@ -271,6 +267,7 @@ export class RaidReviewService {
         moveTargets.set(item.id, toType);
       } else {
         remember(item, Object.keys(data));
+        // eslint-disable-next-line no-await-in-loop -- each fix is a full RAID save (history, audit, notices), in the order ticked
         await riskService.update(item.id, { ...data }, userId);
         if (fix.kind === 'set_owner') counts.owner++;
         else if (fix.kind === 'set_due_date') counts.due++;

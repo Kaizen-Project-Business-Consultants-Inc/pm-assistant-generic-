@@ -5,6 +5,7 @@ const items = new Map<string, any>();
 const repo = {
   findByProject: vi.fn(async () => [...items.values()]),
   findById: vi.fn(async (id: string) => (items.has(id) ? { ...items.get(id) } : null)),
+  findByIds: vi.fn(async (ids: string[]) => [...new Set(ids)].filter(id => items.has(id)).map(id => ({ ...items.get(id) }))),
   nextSequenceId: vi.fn(async (type: string) => ({ sequenceNumber: 7, recordId: type === 'action' ? 'A-007' : 'R-099' })),
   update: vi.fn(async (id: string, data: any) => { items.set(id, { ...items.get(id), ...data }); return items.get(id); }),
   recordIdTaken: vi.fn(async () => false),

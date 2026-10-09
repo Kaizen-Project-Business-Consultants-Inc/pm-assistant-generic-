@@ -1,5 +1,6 @@
 import { databaseService } from './connection';
 import type { EmbeddingRow } from '../services/EmbeddingService';
+import { chunksOf } from '../utils/chunksOf';
 
 class EmbeddingRepository {
   async findByDocument(documentType: string, documentId: string): Promise<EmbeddingRow[]> {
@@ -46,6 +47,17 @@ class EmbeddingRepository {
       document_id: r.document_id,
       score: Number(r.score),
     }));
+  }
+
+  /** Several documents' embeddings, 500 ids per statement */
+  async deleteMany(documentType: string, documentIds: string[]): Promise<void> {
+    for (const chunk of chunksOf(documentIds, 500)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 500 ids
+      await databaseService.queryControlPlane(
+        `DELETE FROM embeddings WHERE document_type = ? AND document_id IN (${chunk.map(() => '?').join(',')})`,
+        [documentType, ...chunk],
+      );
+    }
   }
 
   delete(documentType: string, documentId: string): Promise<any> {

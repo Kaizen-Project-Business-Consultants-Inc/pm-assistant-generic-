@@ -15,6 +15,7 @@ import { seedFromProjects } from './seeder';
 import { extractLessons } from './extractor';
 import { detectPatterns } from './patternDetector';
 import { suggestMitigations, type SuggestionField } from './mitigationAdvisor';
+import { chunksOf } from '../../utils/chunksOf';
 
 // ── Row mapper ────────────────────────────────────────────────────────────
 
@@ -74,47 +75,58 @@ function rowToPattern(row: any): Pattern {
 
 export class LessonsLearnedService {
   async persistLesson(lesson: LessonLearned): Promise<void> {
-    await databaseService.query(
-      `INSERT INTO lessons_learned (id, project_id, project_name, project_type, category, title, description, impact, recommendation, root_cause, severity, recurrence_score, is_elevated, source_artifacts, confidence, status, created_by, source_type, tags, applied_count, effectiveness_rating, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), recommendation = VALUES(recommendation), root_cause = VALUES(root_cause), severity = VALUES(severity), recurrence_score = VALUES(recurrence_score), is_elevated = VALUES(is_elevated), source_artifacts = VALUES(source_artifacts), confidence = VALUES(confidence)`,
-      [
-        lesson.id, lesson.projectId, lesson.projectName, lesson.projectType,
-        lesson.category, lesson.title, lesson.description, lesson.impact,
-        lesson.recommendation,
-        lesson.rootCause ?? null,
-        lesson.severity ?? null,
-        lesson.recurrenceScore ?? 0,
-        lesson.isElevated ? 1 : 0,
-        lesson.sourceArtifacts ? JSON.stringify(lesson.sourceArtifacts) : null,
-        lesson.confidence,
-        lesson.status ?? 'approved',
-        lesson.createdBy ?? null,
-        lesson.sourceType ?? 'manual',
-        lesson.tags ? JSON.stringify(lesson.tags) : null,
-        lesson.appliedCount ?? 0,
-        lesson.effectivenessRating ?? null,
-        lesson.createdAt,
-      ],
-    );
+    await this.persistLessons([lesson]);
+  }
 
-    // Index + recurrence check (fire-and-forget)
-    ragService.indexLesson(lesson).catch((err) => {
-      logger.error(`[RAG] Failed to index lesson ${lesson.id}:`, (err as Error).message);
-    });
-    this.checkRecurrence(lesson).catch((err) => {
-      logger.error(`[Recurrence] Failed for lesson ${lesson.id}:`, (err as Error).message);
-    });
+  /** Save lessons 100 per statement (was one per lesson; 2026-10-09), then index each one */
+  async persistLessons(lessons: LessonLearned[]): Promise<void> {
+    for (const chunk of chunksOf(lessons, 100)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 100 lessons
+      await databaseService.query(
+        `INSERT INTO lessons_learned (id, project_id, project_name, project_type, category, title, description, impact, recommendation, root_cause, severity, recurrence_score, is_elevated, source_artifacts, confidence, status, created_by, source_type, tags, applied_count, effectiveness_rating, created_at)
+         VALUES ${chunk.map(() => `(${new Array(22).fill('?').join(', ')})`).join(', ')}
+         ON DUPLICATE KEY UPDATE title = VALUES(title), description = VALUES(description), recommendation = VALUES(recommendation), root_cause = VALUES(root_cause), severity = VALUES(severity), recurrence_score = VALUES(recurrence_score), is_elevated = VALUES(is_elevated), source_artifacts = VALUES(source_artifacts), confidence = VALUES(confidence)`,
+        chunk.flatMap(lesson => [
+          lesson.id, lesson.projectId, lesson.projectName, lesson.projectType,
+          lesson.category, lesson.title, lesson.description, lesson.impact,
+          lesson.recommendation,
+          lesson.rootCause ?? null,
+          lesson.severity ?? null,
+          lesson.recurrenceScore ?? 0,
+          lesson.isElevated ? 1 : 0,
+          lesson.sourceArtifacts ? JSON.stringify(lesson.sourceArtifacts) : null,
+          lesson.confidence,
+          lesson.status ?? 'approved',
+          lesson.createdBy ?? null,
+          lesson.sourceType ?? 'manual',
+          lesson.tags ? JSON.stringify(lesson.tags) : null,
+          lesson.appliedCount ?? 0,
+          lesson.effectivenessRating ?? null,
+          lesson.createdAt,
+        ]),
+      );
+      // Index + recurrence check (fire-and-forget), for each piece as soon as it is saved — if a
+      // later piece fails, the lessons already saved are still indexed
+      for (const lesson of chunk) {
+        ragService.indexLesson(lesson).catch((err) => {
+          logger.error(`[RAG] Failed to index lesson ${lesson.id}:`, (err as Error).message);
+        });
+        this.checkRecurrence(lesson).catch((err) => {
+          logger.error(`[Recurrence] Failed for lesson ${lesson.id}:`, (err as Error).message);
+        });
+      }
+    }
   }
 
   async persistPatterns(patterns: Pattern[]): Promise<void> {
     // Clear old patterns and insert new ones
     await databaseService.query('DELETE FROM lesson_patterns');
-    for (const p of patterns) {
+    for (const chunk of chunksOf(patterns, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 patterns
       await databaseService.query(
         `INSERT INTO lesson_patterns (id, title, description, frequency, project_types, category, recommendation, confidence, detected_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [p.id, p.title, p.description, p.frequency, JSON.stringify(p.projectTypes), p.category, p.recommendation, p.confidence, p.detectedAt || new Date().toISOString()],
+         VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flatMap(p => [p.id, p.title, p.description, p.frequency, JSON.stringify(p.projectTypes), p.category, p.recommendation, p.confidence, p.detectedAt || new Date().toISOString()]),
       );
     }
   }
@@ -129,11 +141,11 @@ export class LessonsLearnedService {
   }
 
   async seedFromProjects(): Promise<number> {
-    return seedFromProjects(this.persistLesson.bind(this));
+    return seedFromProjects(this.persistLessons.bind(this));
   }
 
   async extractLessons(projectId: string, userId?: string): Promise<LessonLearned[]> {
-    return extractLessons(projectId, this.persistLesson.bind(this), userId ? parseInt(userId, 10) : undefined);
+    return extractLessons(projectId, this.persistLessons.bind(this), userId ? parseInt(userId, 10) : undefined);
   }
 
   async getKnowledgeBase(): Promise<KnowledgeBaseOverview> {

@@ -1,4 +1,5 @@
 import { databaseService } from './connection';
+import { chunksOf } from '../utils/chunksOf';
 
 /** The PM's "who's who" choice for a meeting speaker name; userId null = not a project member */
 export interface SpeakerLink { speakerName: string; userId: string | null }
@@ -17,11 +18,14 @@ class MeetingSpeakerLinkRepository {
   }
 
   async save(links: SpeakerLink[], updatedBy: string): Promise<void> {
-    for (const l of links) {
+    // one statement per 200 names (was one per name; 2026-10-09). Rows apply in order, so a
+    // name listed twice keeps its last person, as before.
+    for (const chunk of chunksOf(links, 200)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 names
       await databaseService.query(
-        `INSERT INTO meeting_speaker_links (speaker_key, speaker_name, user_id, updated_by) VALUES (?, ?, ?, ?)
+        `INSERT INTO meeting_speaker_links (speaker_key, speaker_name, user_id, updated_by) VALUES ${chunk.map(() => '(?, ?, ?, ?)').join(', ')}
          ON DUPLICATE KEY UPDATE speaker_name = VALUES(speaker_name), user_id = VALUES(user_id), updated_by = VALUES(updated_by)`,
-        [speakerKey(l.speakerName), l.speakerName.slice(0, 255), l.userId, updatedBy],
+        chunk.flatMap(l => [speakerKey(l.speakerName), l.speakerName.slice(0, 255), l.userId, updatedBy]),
       );
     }
   }

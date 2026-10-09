@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-09 — Database calls in loops, batch 4: RAID, meetings, lessons learned (not deployed when written)
+- **RAID owner backfill** (`RiskRepository.backfillOwnerIds`): one look-up of every owner name + one CASE update per 200 items (was 2 queries per item); same "A / B & C → first with an account" rule, now one shared `ownerNamesOf`. New `riskRepository.findByIds`; **RAID Review apply** reads every ticked item in one go (was one read per fix).
+- **Meetings**: deleting a meeting unlinks its analyses in one UPDATE (`meetingAnalysisRepository.unlinkMeeting`, was one per analysis); speaker who's-who saved one statement per 200 names.
+- **Lessons learned**: `persistLessons` (100 per statement; same columns, same ON DUPLICATE KEY rule; indexing + recurrence still per lesson, fire-and-forget) — extractor and seeder now hand over the whole list; patterns one insert per 200. **Help knowledge base** re-index: old sections' embeddings deleted 500 per statement (`embeddingRepository.deleteMany`).
+- Kept one by one on purpose (reasoned disables): RAID creates in imports / meeting send-to-RAID / AI scan (each takes the next record number), RAID Review fixes (full save with history + audit), KB chunk text (paired with the rate-limited embedding call).
+- **Review fixes:** backfill name matching folds capitals/accents/spaces like the database collation ("ann lee" → "Ann Lee", "Jose" → "José"), names looked up 500 at a time; lessons are indexed per saved piece, so a later failed piece can't leave saved lessons unindexed. **Open:** `backfillOwnerIds` has NO caller (dead code) — delete it? (user's yes needed). Follow-up: seeding fires one embedding call per lesson all at once (was so before).
+- Tests: raidMeetingsBatched (new, 9), MeetingService, RaidReviewService, lessonsLearnedSeeder updated. Server suite 4,679 passed.
+
 ## 2026-10-08 — Database calls in loops, batch 3: schedule screens (list 131 → ~100, not deployed when written)
 - **Copy a plan** (`ScheduleService.cloneSchedule`, what-if scenarios): one INSERT per 200 tasks, one CASE update per 200 parents, one INSERT per 200 links (was one statement per task, per child, per link). **Apply a scenario** (`promoteScenario`): one CASE update per 200 tasks.
 - **Saving a task**: its links (≤20) and its activity lines are each one multi-row INSERT (create + update). Group/ungroup, bulk link/unlink keep one full `updateTask` per task on purpose (history, roll-ups, notices) — reasoned disables.

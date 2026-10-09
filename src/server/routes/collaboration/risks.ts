@@ -499,6 +499,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
       let imported = 0;
       for (const item of body.items) {
+        // eslint-disable-next-line no-await-in-loop -- each RAID item takes the next record number, so creates must not overlap
         await riskService.create({
           projectId,
           type: item.type || 'risk',
@@ -742,6 +743,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
           details.push(...noteLines);
           const description = describeWithRegisterDetails(mapped.description, details);
 
+          // eslint-disable-next-line no-await-in-loop -- each RAID item takes the next record number, so creates must not overlap
           await riskService.create({
             projectId,
             type,

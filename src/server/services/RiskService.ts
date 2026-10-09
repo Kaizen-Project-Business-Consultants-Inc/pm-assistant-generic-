@@ -587,6 +587,7 @@ class RiskService {
         if (aiRisk.impact && aiRisk.impact !== match.impact) updates.impact = aiRisk.impact;
 
         if (Object.keys(updates).length > 0) {
+          // eslint-disable-next-line no-await-in-loop -- small: one AI scan's risks, saved in step with the creates that must run in order
           await riskRepository.update(match.id, updates);
           updated++;
         } else {

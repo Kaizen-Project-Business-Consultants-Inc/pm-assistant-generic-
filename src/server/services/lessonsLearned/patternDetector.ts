@@ -85,7 +85,9 @@ async function detectPatternsDeterministic(
   for (const [category, categoryLessons] of Object.entries(categoryGroups)) {
     if (categoryLessons.length < 2) continue;
 
+    // eslint-disable-next-line no-restricted-syntax -- small: this category's own lessons; each lesson is counted once overall
     const negativeCount = categoryLessons.filter((l) => l.impact === 'negative').length;
+    // eslint-disable-next-line no-restricted-syntax -- small: as above
     const positiveCount = categoryLessons.filter((l) => l.impact === 'positive').length;
     const projectTypes = Array.from(new Set(categoryLessons.map((l) => l.projectType)));
     const projectCount = Array.from(new Set(categoryLessons.map((l) => l.projectId))).length;

@@ -66,10 +66,7 @@ class MeetingService {
     await meetingActionItemRepository.deleteByMeeting(id);
 
     // Unlink meeting_analyses
-    const analyses = await meetingAnalysisRepository.findByMeeting(id);
-    for (const a of analyses) {
-      await meetingAnalysisRepository.updateMeetingId(a.id, null);
-    }
+    await meetingAnalysisRepository.unlinkMeeting(id);
 
     await meetingRepository.delete(id);
 

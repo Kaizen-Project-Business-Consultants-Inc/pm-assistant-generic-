@@ -16,7 +16,7 @@ import { isOverdue } from '../../utils/calendarDate';
 
 export async function extractLessons(
   projectId: string,
-  persistLesson: (lesson: LessonLearned) => Promise<void>,
+  persistLessons: (lessons: LessonLearned[]) => Promise<void>,
   createdBy?: number,
 ): Promise<LessonLearned[]> {
   const project = await projectService.findById(projectId);
@@ -139,9 +139,7 @@ export async function extractLessons(
         createdAt: new Date().toISOString(),
       }));
 
-      for (const lesson of newLessons) {
-        await persistLesson(lesson);
-      }
+      await persistLessons(newLessons);
 
       return newLessons;
     } catch {
@@ -149,7 +147,7 @@ export async function extractLessons(
     }
   }
 
-  return extractLessonsDeterministic(project, scheduleData, persistLesson, createdBy);
+  return extractLessonsDeterministic(project, scheduleData, persistLessons, createdBy);
 }
 
 /** Creates a deterministic lesson with new fields pre-filled */
@@ -179,7 +177,7 @@ function makeDeterministicLesson(
 async function extractLessonsDeterministic(
   project: { id: string; name: string; projectType: string; budgetAllocated?: number; budgetSpent: number; startDate?: string; endDate?: string; status: string },
   scheduleData: Array<{ scheduleName: string; tasks: any[] }>,
-  persistLesson: (lesson: LessonLearned) => Promise<void>,
+  persistLessons: (lessons: LessonLearned[]) => Promise<void>,
   createdBy?: number,
 ): Promise<LessonLearned[]> {
   const newLessons: LessonLearned[] = [];
@@ -250,9 +248,7 @@ async function extractLessonsDeterministic(
     }, createdBy));
   }
 
-  for (const lesson of newLessons) {
-    await persistLesson(lesson);
-  }
+  await persistLessons(newLessons);
 
   return newLessons;
 }

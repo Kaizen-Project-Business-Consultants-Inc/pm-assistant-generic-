@@ -172,6 +172,7 @@ export class KnowledgeBaseService {
       }
 
       // Upsert chunk text
+      // eslint-disable-next-line no-await-in-loop -- paired with its embedding below, which is rate-limited and done one by one
       await knowledgeBaseRepository.upsertChunk(
         chunk.id,
         chunk.sourceFile,
@@ -192,9 +193,7 @@ export class KnowledgeBaseService {
     const orphanIds = allExistingIds.filter(id => !newChunkMap.has(id));
     if (orphanIds.length > 0) {
       await knowledgeBaseRepository.deleteByIds(orphanIds);
-      for (const id of orphanIds) {
-        await embeddingRepository.delete('knowledge_base', id);
-      }
+      await embeddingRepository.deleteMany('knowledge_base', orphanIds);
       logger.info(`KB reindex: pruned ${orphanIds.length} orphaned chunks`);
     }
 

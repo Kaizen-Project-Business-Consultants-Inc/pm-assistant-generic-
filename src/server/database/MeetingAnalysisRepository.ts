@@ -90,6 +90,11 @@ class MeetingAnalysisRepository {
     return new Map(rows.map(r => [r.source_ref, r.id]));
   }
 
+  /** Every analysis of this meeting keeps its content but no longer points at it */
+  unlinkMeeting(meetingId: string): Promise<any> {
+    return databaseService.query('UPDATE meeting_analyses SET meeting_id = NULL WHERE meeting_id = ?', [meetingId]);
+  }
+
   updateMeetingId(id: string, meetingId: string | null): Promise<any> {
     return databaseService.query(
       'UPDATE meeting_analyses SET meeting_id = ? WHERE id = ?',

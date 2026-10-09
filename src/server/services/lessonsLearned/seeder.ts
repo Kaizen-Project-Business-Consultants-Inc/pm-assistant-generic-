@@ -14,7 +14,7 @@ function seedLesson(base: Omit<LessonLearned, 'status' | 'sourceType' | 'created
   return { ...base, rootCause: null, severity: null, recurrenceScore: 0, isElevated: false, sourceArtifacts: null, status: 'approved', sourceType: 'seeded', createdBy: null, tags: null, appliedCount: 0, effectivenessRating: null, helpfulCount: 0, dismissedCount: 0 };
 }
 
-export async function seedFromProjects(persistLesson: (lesson: LessonLearned) => Promise<void>): Promise<number> {
+export async function seedFromProjects(persistLessons: (lessons: LessonLearned[]) => Promise<void>): Promise<number> {
   const existing = await databaseService.query<{ cnt: number }>(
     'SELECT COUNT(*) as cnt FROM lessons_learned WHERE id LIKE ?',
     ['ll-seed-%'],
@@ -49,7 +49,9 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
     const projectTasks = schedules.flatMap(s => tasksBySchedule.get(s.id) ?? []);
 
     const totalTasks = projectTasks.length;
+    // eslint-disable-next-line no-restricted-syntax -- small: this project's own tasks; each task is looked at once overall
     const completedTasks = projectTasks.filter((t) => t.status === 'completed').length;
+    // eslint-disable-next-line no-restricted-syntax -- small: as above
     const overdueTasks = projectTasks.filter(
       (t) => t.status !== 'completed' && t.dueDate && isOverdue(t.dueDate),
     ).length;
@@ -159,9 +161,7 @@ export async function seedFromProjects(persistLesson: (lesson: LessonLearned) =>
     }
   }
 
-  for (const lesson of seededLessons) {
-    await persistLesson(lesson);
-  }
+  await persistLessons(seededLessons);
 
   return seededLessons.length;
 }
