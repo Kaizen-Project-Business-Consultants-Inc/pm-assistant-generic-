@@ -65,6 +65,8 @@ vi.mock('../../utils/logger', () => ({
 
 import { ResourceOptimizerService } from '../../services/ResourceOptimizerService';
 import { config } from '../../config';
+import { hoursInWeek } from '../../services/weeklyLoad';
+import { mondaysBetween } from '../../utils/workingDays';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -922,4 +924,39 @@ describe('ResourceOptimizerService', () => {
       expect(result[result.length - 1].resourceId).toBe('r-2');
     });
   });
+});
+
+// Each person's bookings come from a list grouped once, not a scan per person (2026-10-09)
+describe('findBestResourceForTask — many people and bookings', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("gives each person the same free capacity as scanning every booking per person, and quickly", async () => {
+    const isWorking = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+    mockFindTaskById.mockResolvedValue({ id: 't-1', name: 'Build API', startDate: '2026-06-01', endDate: '2026-08-28' });
+    const people = Array.from({ length: 120 }, (_, i) => makeResource(`r-${i}`, `P${i}`, { skills: [], capacityHoursPerWeek: 30 + (i % 15) }));
+    mockFindAllResources.mockResolvedValue(people);
+    const bookings: any[] = [];
+    for (let k = 0; k < 40; k++) people.forEach((p, i) => {
+      if ((i + k) % 2) bookings.push({ id: `a-${i}-${k}`, resourceId: p.id, taskId: `t-${k}`, scheduleId: 'sch-1', hoursPerWeek: 1 + ((i * k) % 9), startDate: `2026-0${5 + (k % 4)}-0${1 + (k % 9)}`, endDate: `2026-0${6 + (k % 4)}-1${k % 9}` });
+    });
+    mockFindAssignmentsBySchedule.mockResolvedValue(bookings);
+
+    const t0 = performance.now();
+    const result = await service().findBestResourceForTask('t-1', 'sch-1');
+    const ms = performance.now() - t0;
+
+    const weeks = mondaysBetween('2026-06-01', '2026-08-28');
+    for (const m of result) {
+      // what it was before: every booking scanned for this person
+      const mine = bookings.filter(a => a.resourceId === m.resourceId);
+      let busiest = 0;
+      for (const wk of weeks) busiest = Math.max(busiest, Math.round(mine.reduce((n, a) => n + hoursInWeek(a, wk, isWorking), 0) * 10) / 10);
+      const cap = people.find(p => p.id === m.resourceId)!.capacityHoursPerWeek;
+      expect(m.availableCapacity).toBe(Math.max(0, cap - busiest));
+    }
+    expect(result).toHaveLength(120);
+    expect(ms).toBeLessThan(1000);
+  });
+
+  const service = () => new ResourceOptimizerService();
 });

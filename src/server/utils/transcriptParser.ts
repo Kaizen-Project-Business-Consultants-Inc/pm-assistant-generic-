@@ -77,6 +77,7 @@ export function parseVtt(content: string): TranscriptSegment[] {
     if (lines.length < 2) continue;
 
     // Find timestamp line
+    // eslint-disable-next-line no-restricted-syntax -- small: one caption block's 2-3 lines
     const tsLineIdx = lines.findIndex(l => /-->/.test(l));
     if (tsLineIdx < 0) continue;
 

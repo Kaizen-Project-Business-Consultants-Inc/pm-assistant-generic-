@@ -222,6 +222,7 @@ export class ProjectStatusReportService {
     overallArea.trend = computeTrend(overallArea.status, overallArea.previousStatus);
 
     const dimensionAreas: RAGArea[] = aiResponse.areas.map(area => {
+      // eslint-disable-next-line no-restricted-syntax -- small: the report's fixed 7 status areas
       const prev = previousAreas?.find(p => p.name === area.name);
       const status = area.status as 'green' | 'amber' | 'red';
       const previousStatus = (prev?.status as 'green' | 'amber' | 'red') || null;

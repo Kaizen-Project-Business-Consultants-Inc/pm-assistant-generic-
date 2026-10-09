@@ -706,6 +706,38 @@ describe('AutoRescheduleService', () => {
       expect(t3Changes.length).toBeLessThanOrEqual(1);
     });
 
+    it('a big plan (1,500 delayed tasks, 1,500 dependents): each change once, quickly', async () => {
+      // dependents are looked up from an index built once, not by scanning the plan per delay (2026-10-09)
+      const N = 1500;
+      const tasks: Task[] = [];
+      for (let i = 0; i < N; i++) {
+        tasks.push(makeTask(`p${i}`, `Late ${i}`, { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }));
+      }
+      for (let i = 0; i < N; i++) {
+        // each dependent waits on two late tasks — it must still be proposed once
+        tasks.push(makeTask(`d${i}`, `Next ${i}`, {
+          startDate: daysFromNow(6), endDate: daysFromNow(16), progressPercentage: 0,
+          dependencies: [
+            { dependencyId: `p${i}`, dependencyType: 'FS', lagDays: 0 },
+            { dependencyId: `p${(i + 1) % N}`, dependencyType: 'FS', lagDays: 0 },
+          ],
+        }));
+      }
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue(tasks);
+
+      const started = Date.now();
+      const proposal = await service.generateProposal('sch-1');
+      expect(Date.now() - started).toBeLessThan(5000);
+
+      const ids = proposal.proposedChanges.map(c => c.taskId);
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids.filter(id => id.startsWith('p')).length).toBe(N);
+      expect(ids.filter(id => id.startsWith('d')).length).toBe(N);
+      // the first delay pulls in d0 and d(N-1) (both wait on p0), in plan order
+      expect(ids.slice(0, 3)).toEqual(['p0', 'd0', `d${N - 1}`]);
+    });
+
     it('calculates estimatedImpact with correct daysChange', async () => {
       const originalEnd = daysFromNow(10);
       mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: originalEnd });

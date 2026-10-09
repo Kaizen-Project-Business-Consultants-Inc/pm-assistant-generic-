@@ -215,6 +215,7 @@ export class ResourceLevelingService {
       if (onlyIds && !onlyIds.has(rid)) continue;
       const r = m.resources.get(rid);
       const name = r?.name ?? 'Unknown resource';
+      // eslint-disable-next-line no-restricted-syntax -- each person's own days, filtered and sorted once per person (the input differs each time); no search across lists
       const dates = [...days.keys()].filter(d => (days.get(d) ?? 0) > EPS).sort();
       const demand = dates.map(date => {
         const hours = Math.round(days.get(date)! * 10) / 10;
@@ -337,6 +338,7 @@ export class ResourceLevelingService {
         if (!who) continue;
         const days = m.cal.workdays(a.startDate, a.endDate);
         if (!days.some(d => overSet.has(`${who.name}|${d}`))) continue;
+        // eslint-disable-next-line no-restricted-syntax -- small: the words of one task's own name and description
         const words = new Set(`${t.name} ${t.description || ''}`.toLowerCase().split(/\s+/).filter(w => w.length > 2));
         let best: { r: Resource; score: number } | null = null;
         for (const r of active) {

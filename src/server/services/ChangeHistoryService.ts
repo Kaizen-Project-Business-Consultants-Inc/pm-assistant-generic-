@@ -593,6 +593,7 @@ class ChangeHistoryService {
           parents.push(...await parentIdsOf(run, scheduleId, rollupIds));
           const datesBefore = await taskDatesOf(run, prev.filter(p => 'start_date' in p.values || 'end_date' in p.values).map(p => p.id));
           for (const p of prev) {
+            // eslint-disable-next-line no-restricted-syntax -- small: one changed task's own columns
             const cols = Object.keys(p.values).filter(c => allowed.has(c));
             if (!cols.length) continue;
             // eslint-disable-next-line no-await-in-loop -- undo of a bulk edit inside one transaction on one connection
@@ -732,6 +733,7 @@ async function describeChange(input: RecordInput): Promise<string[]> {
     case 'bulk_status':
       for (const prev of (undo.previous ?? []) as PreviousValues[]) {
         const now = byId.get(prev.id); if (!now) continue;
+        // eslint-disable-next-line no-restricted-syntax -- small: one changed task's own columns
         const parts = Object.entries(prev.values)
           .filter(([c, v]) => String(v ?? '') !== String(now[c] ?? ''))
           .map(([c, v]) => `${FIELD_LABELS[c] ?? c} ${show(c, v)} → ${show(c, now[c])}`);
@@ -743,7 +745,8 @@ async function describeChange(input: RecordInput): Promise<string[]> {
       break;
     case 'group': {
       const summary = undo.summaryId ? nameOf(undo.summaryId) : 'a new group';
-      for (const id of ids.filter(x => x !== undo.summaryId)) lines.push(`${nameOf(id)} → grouped under ${summary}`);
+      const grouped = ids.filter(x => x !== undo.summaryId); // once, before the loop
+      for (const id of grouped) lines.push(`${nameOf(id)} → grouped under ${summary}`);
       break;
     }
     case 'review_fix': {

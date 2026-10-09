@@ -650,6 +650,7 @@ export class TemplateService {
       let taskStart = shiftWorking(firstWorking, Math.max(0, Math.round(tt.offsetDays || 0)), isWorking);
 
       // Start after its predecessors: the main one sets the start, any others can only push it later
+      // eslint-disable-next-line no-restricted-syntax -- small: one template task's own links
       const links = this.templateLinks(tt).filter(l => refIdToTaskId.has(l.refId));
       links.forEach((l, i) => {
         const depTask = createdById.get(refIdToTaskId.get(l.refId)!);
@@ -813,7 +814,7 @@ export class TemplateService {
         const t = tasks[i];
         const refId = taskIdToRefId.get(t.id)!;
         const parentRefId = t.parentTaskId ? taskIdToRefId.get(t.parentTaskId) || null : null;
-        // eslint-disable-next-line no-restricted-syntax -- small: one task's links (at most 20), Map look-up
+        // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once), Map look-up
         const deps = (t.dependencies ?? []).filter((d: any) => taskIdToRefId.has(d.dependencyId));
         const firstDep = deps[0];
         const depRefId = firstDep ? taskIdToRefId.get(firstDep.dependencyId) || null : null;

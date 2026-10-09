@@ -11,6 +11,7 @@ import { getRequestContext } from '../middleware/requestContext';
 import { organizationTimezone } from './StatusDateService';
 import { today as calendarToday } from '../utils/calendarDate';
 import logger from '../utils/logger';
+import { groupBy } from '../utils/groupBy';
 
 /**
  * Weekly timesheets (2026-10-02, mock approved). One timesheet per person per week, across all
@@ -166,24 +167,30 @@ export class WeeklyTimesheetService {
       [userId, ...taskIds]);
     const approvedBy = new Map(approvedRows.map(r => [r.task_id, Number(r.total)]));
 
+    // Each task's bookings and entries, in list order, looked up per line below
+    const weekBookingsOf = groupBy(bookings, b => b.taskId);
+    const allBookingsOf = groupBy(allBookings, b => b.taskId);
+    const entriesOf = groupBy(entries, (x: any) => x.task_id);
+
     const lines: TimesheetLine[] = [];
     for (const taskId of taskIds) {
       const t = info.get(taskId);
       if (!t) continue;
       if (projectIds && !projectIds.has(t.projectId)) continue;
       const cal = calOf(t.scheduleId);
-      const plannedThisWeek = r1(bookings.filter(b => b.taskId === taskId).reduce((n, b) => n + hoursInWeek(b, weekStart, cal), 0));
-      const taskPlanned = r1(allBookings.filter(b => b.taskId === taskId)
+      const taskEntries = entriesOf.get(taskId) ?? [];
+      const plannedThisWeek = r1((weekBookingsOf.get(taskId) ?? []).reduce((n, b) => n + hoursInWeek(b, weekStart, cal), 0));
+      const taskPlanned = r1((allBookingsOf.get(taskId) ?? [])
         .reduce((n, b) => n + (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, cal), 0));
       const dayMap: TimesheetLine['days'] = {};
-      for (const e of entries.filter((x: any) => x.task_id === taskId)) {
+      for (const e of taskEntries) {
         const prev = dayMap[e.date];
         dayMap[e.date] = { entryId: prev?.entryId ?? e.id, hours: r1((prev?.hours ?? 0) + Number(e.hours)), status: e.status };
       }
       const workedThisWeek = r1(Object.values(dayMap).reduce((n, d) => n + d.hours, 0));
       const taskApproved = r1(approvedBy.get(taskId) ?? 0);
       // This week's hours still to be approved count toward "over plan" as soon as they're entered
-      const notYetApproved = entries.filter((x: any) => x.task_id === taskId && x.status !== 'approved').reduce((n: number, x: any) => n + Number(x.hours), 0);
+      const notYetApproved = taskEntries.reduce((n: number, x: any) => (x.status !== 'approved' ? n + Number(x.hours) : n), 0);
       const taskDone = t.status === 'completed';
       // % stops at 99 until the PM marks the task done (user's rule, 2026-10-02)
       const raw = taskPlanned > 0 ? Math.round((taskApproved / taskPlanned) * 100) : 0;
@@ -449,7 +456,9 @@ export class WeeklyTimesheetService {
     for (const g of groups.values()) {
       // eslint-disable-next-line no-await-in-loop -- one person's planned week per sheet waiting for approval (a few); each reads that person's own bookings and calendar
       const view = await this.weekView(g.userId, g.weekStart, new Set([projectId]));
-      for (const l of g.lines) l.plannedThisWeek = view.lines.find(x => x.taskId === l.taskId)?.plannedThisWeek ?? 0;
+      const plannedOf = new Map<string, number>(); // first line per task wins, as a find would
+      for (const x of view.lines) if (!plannedOf.has(x.taskId)) plannedOf.set(x.taskId, x.plannedThisWeek);
+      for (const l of g.lines) l.plannedThisWeek = plannedOf.get(l.taskId) ?? 0;
     }
     return [...groups.values()];
   }

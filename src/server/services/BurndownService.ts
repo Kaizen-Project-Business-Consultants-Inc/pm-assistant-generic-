@@ -55,11 +55,13 @@ export class BurndownService {
 
     // Build a "completed on date" map — use task endDate for completed tasks
     const completedTasks = tasks.filter(t => t.status === 'completed');
-    const completionDates: Date[] = completedTasks.map(t => {
-      if (t.endDate) return new Date(t.endDate);
-      return new Date();
-    });
-    completionDates.sort((a, b) => a.getTime() - b.getTime());
+    // As times, earliest first (an unreadable date never counts), so each data point below
+    // only moves a pointer forward instead of re-counting every completed task
+    const completionTimes: number[] = completedTasks
+      .map(t => (t.endDate ? new Date(t.endDate) : new Date()).getTime())
+      .filter(ms => !Number.isNaN(ms))
+      .sort((a, b) => a - b);
+    let completedSoFar = 0;
 
     // Generate data points (weekly or daily depending on duration)
     const interval = totalDays > 60 ? 7 : 1;
@@ -75,7 +77,10 @@ export class BurndownService {
       // Actual: count completed tasks up to this date
       let completedByDate = 0;
       if (currentDate <= today) {
-        completedByDate = completionDates.filter(d => d <= currentDate).length;
+        // data points only move forward in time, so the pointer never goes back
+        const upTo = currentDate.getTime();
+        while (completedSoFar < completionTimes.length && completionTimes[completedSoFar] <= upTo) completedSoFar++;
+        completedByDate = completedSoFar;
       }
 
       const actualRemaining = currentDate <= today ? totalScope - completedByDate : -1;
@@ -130,6 +135,12 @@ export class BurndownService {
 
     const weeks: VelocityDataPoint[] = [];
     let weekStart = firstMonday;
+    // Completed tasks' finish days, earliest first; the weeks walk forward through them once
+    const finishDays = completedTasks
+      .map(t => toDateString(t.endDate))
+      .filter((d): d is string => d !== null)
+      .sort();
+    let next = 0;
 
     // Only whole weeks count toward velocity. A partial current week always looks slow
     // and would drag the average down for no real reason. (The previous code excluded it
@@ -137,10 +148,9 @@ export class BurndownService {
     // happened to work and stopped working once dates became plain dates.)
     while (addDays(weekStart, 7)! <= todayStr) {
       const weekEnd = addDays(weekStart, 7)!;
-      const completed = completedTasks.filter(t => {
-        const endDate = toDateString(t.endDate);
-        return endDate !== null && endDate >= weekStart && endDate < weekEnd;
-      }).length;
+      while (next < finishDays.length && finishDays[next] < weekStart) next++; // before this week
+      let completed = 0;
+      while (next < finishDays.length && finishDays[next] < weekEnd) { completed++; next++; }
 
       weeks.push({ weekStart, completed });
 

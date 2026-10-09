@@ -247,7 +247,9 @@ export class AIContextBuilder {
       s += `\nSchedules (${ctx.schedules.length}):\n`;
       for (const sched of ctx.schedules) {
         const total = sched.tasks.length;
+        // eslint-disable-next-line no-restricted-syntax -- small: one plan's own tasks, each counted once
         const completed = sched.tasks.filter(t => t.status === 'completed').length;
+        // eslint-disable-next-line no-restricted-syntax -- small: one plan's own tasks, each counted once
         const overdue = sched.tasks.filter(t => {
           if (t.status === 'completed') return false;
           const due = t.dueDate;

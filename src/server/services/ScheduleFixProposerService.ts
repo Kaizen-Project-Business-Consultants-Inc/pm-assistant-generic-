@@ -12,6 +12,7 @@ import { config } from '../config';
 import { AILearningServiceV2 } from './aiLearningService';
 import { auditLedgerService } from './AuditLedgerService';
 import logger from '../utils/logger';
+import { groupBy } from '../utils/groupBy';
 import { type IsWorking, weekdaysOnly, shiftWorking, finishFor, utcDay, ymdOf } from '../utils/workingDays';
 import {
   proposeFixesDeterministic,
@@ -254,10 +255,13 @@ export class ScheduleFixProposerService {
 
     const applied: AppliedAction[] = [];
     let appliedCount = 0;
+    // The fixes of each kind, in the order they were proposed
+    const fixesOfType = groupBy(fixes, f => f.type);
+    const ofType = (type: ProposedFix['type']) => fixesOfType.get(type) ?? [];
 
     /* eslint-disable no-await-in-loop -- fixes apply one by one, in order: each is logged for undo and the cycle/duplicate checks see the links earlier fixes added */
     // 1) dependencies
-    for (const f of fixes.filter(f => f.type === 'add_dependency')) {
+    for (const f of ofType('add_dependency')) {
       try {
         await scheduleService.addDependency(f.taskId!, f.dependsOnTaskId!, f.dependencyType ?? 'FS', f.lagDays ?? 0);
         applied.push({ op: 'remove_dependency', taskId: f.taskId!, dependencyId: f.dependsOnTaskId! });
@@ -269,7 +273,7 @@ export class ScheduleFixProposerService {
 
     // 2) milestones — a milestone is a point in time: also zero its duration and
     // collapse its end date to its start, else it trips R04 (milestone with duration).
-    for (const f of fixes.filter(f => f.type === 'set_milestone')) {
+    for (const f of ofType('set_milestone')) {
       const t = taskById.get(f.taskId!);
       const oldValue = {
         isMilestone: t?.isMilestone ?? false,
@@ -289,7 +293,7 @@ export class ScheduleFixProposerService {
 
     // 3) parents — create one phase parent per distinct newParentName, then reparent.
     const parentIdByName = new Map<string, string>();
-    for (const f of fixes.filter(f => f.type === 'set_parent')) {
+    for (const f of ofType('set_parent')) {
       try {
         let parentId = f.parentTaskId;
         if (!parentId && f.newParentName) {
@@ -313,7 +317,7 @@ export class ScheduleFixProposerService {
     }
 
     // 4) durations — correct estimatedDays to match the task's dates
-    for (const f of fixes.filter(f => f.type === 'set_duration')) {
+    for (const f of ofType('set_duration')) {
       const old = taskById.get(f.taskId!)?.estimatedDays ?? null;
       try {
         await scheduleService.updateTask(f.taskId!, { estimatedDays: f.newDuration });
@@ -327,7 +331,7 @@ export class ScheduleFixProposerService {
     // 5) buffers — insert a protective task between a gate and its predecessors.
     // Rewire: preds → buffer → gate. Record readd_dependency so undo restores the
     // gate's original links, plus delete_task for the created buffer.
-    for (const f of fixes.filter(f => f.type === 'insert_buffer')) {
+    for (const f of ofType('insert_buffer')) {
       try {
         const gate = taskById.get(f.gateTaskId!);
         if (!gate) { skipped.push({ fixId: f.id, reason: 'gate not found' }); continue; }
@@ -336,7 +340,9 @@ export class ScheduleFixProposerService {
 
         // The buffer runs from the first working day after its latest feeder finishes, for
         // its length in working days (the re-flow below settles the final dates).
+        // eslint-disable-next-line no-restricted-syntax -- small: one gate's own links (each read once)
         const feederEnds = preds.map(p => taskById.get(p.id)?.endDate).filter(Boolean).map(e => ymdOf(utcDay(e)));
+        // eslint-disable-next-line no-restricted-syntax -- small: one gate's own links (each read once)
         const latestFeederEnd = feederEnds.sort().pop();
         const bufferStart = latestFeederEnd ? shiftWorking(utcDay(latestFeederEnd), 1, isWorking) : null;
         const buffer = await scheduleService.createTask({
@@ -367,11 +373,23 @@ export class ScheduleFixProposerService {
     // 6) splits — the bundled task becomes a summary over its parts, linked in order, with
     // the task's own dates shared across them. Its links move onto the parts (a summary
     // shouldn't carry links — R29): predecessors to the first part, successors off the last.
-    for (const f of fixes.filter(f => f.type === 'split_task')) {
+    // Looked up per split: who has tasks under it, and each task's successors (plan order, each once)
+    const parentIds = new Set(tasks.map(x => x.parentTaskId).filter(Boolean));
+    const successorsOf = new Map<string, typeof tasks>();
+    for (const x of tasks) {
+      const seen = new Set<string>();
+      for (const d of x.dependencies || []) {
+        if (seen.has(d.dependencyId)) continue;
+        seen.add(d.dependencyId);
+        const list = successorsOf.get(d.dependencyId);
+        if (list) list.push(x); else successorsOf.set(d.dependencyId, [x]);
+      }
+    }
+    for (const f of ofType('split_task')) {
       try {
         const t = taskById.get(f.taskId!);
         if (!t || !t.startDate || !t.endDate || !f.parts?.length) { skipped.push({ fixId: f.id, reason: 'task not found or has no dates' }); continue; }
-        if (tasks.some(x => x.parentTaskId === t.id)) { skipped.push({ fixId: f.id, reason: 'task already has tasks under it' }); continue; }
+        if (parentIds.has(t.id)) { skipped.push({ fixId: f.id, reason: 'task already has tasks under it' }); continue; }
         const planned = planSplitDates(String(t.startDate), String(t.endDate), f.parts, isWorking);
         const created: string[] = [];
         let after = t.id;
@@ -423,7 +441,8 @@ export class ScheduleFixProposerService {
           await scheduleService.removeDependency(t.id, d.dependencyId);
           applied.push({ op: 'readd_dependency', taskId: t.id, dependencyId: d.dependencyId, dependencyType: (d.dependencyType || 'FS') as any, lagDays: d.lagDays ?? 0 });
         }
-        for (const succ of tasks.filter(x => (x.dependencies || []).some(d => d.dependencyId === t.id))) {
+        for (const succ of successorsOf.get(t.id) ?? []) {
+          // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once)
           const d = succ.dependencies.find(dd => dd.dependencyId === t.id)!;
           await scheduleService.addDependency(succ.id, last, (d.dependencyType || 'FS') as any, d.lagDays ?? 0);
           await scheduleService.removeDependency(succ.id, t.id);
@@ -438,7 +457,7 @@ export class ScheduleFixProposerService {
 
     // 7) missing phases — one task, placed after its anchor and linked; the task that should
     // wait for it gets a link too, and the re-flow below pushes it later if needed.
-    for (const f of fixes.filter(f => f.type === 'add_task')) {
+    for (const f of ofType('add_task')) {
       try {
         const anchor = f.afterTaskId ? taskById.get(f.afterTaskId) : undefined;
         // Starts the first working day after its anchor finishes; its length is working days
@@ -488,6 +507,7 @@ export class ScheduleFixProposerService {
       kind: 'review_fix',
       ref: proposalId,
       summary: `Applied ${appliedCount} Schedule Review fix${appliedCount === 1 ? '' : 'es'}${recompute.tasksMoved ? ` · ${recompute.tasksMoved} task${recompute.tasksMoved === 1 ? '' : 's'} moved` : ''}`,
+      // eslint-disable-next-line no-restricted-syntax -- small: a two-item list per action
       taskIds: recompute.deltas.map(d => d.taskId).concat(applied.flatMap((a: any) => [a.taskId, a.newTaskId].filter(Boolean))),
       // History shows what the fixes did (2026-10-01: it only listed task names)
       undo: {

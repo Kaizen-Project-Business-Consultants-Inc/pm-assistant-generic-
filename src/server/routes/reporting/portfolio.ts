@@ -49,6 +49,7 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
         const projectTasks = projScheduleIds.flatMap(sid => tasksBySchedule.get(sid) ?? []);
 
         const totalTasks = projectTasks.length;
+        // eslint-disable-next-line no-restricted-syntax -- small: this project's own tasks (grouped above), each counted once
         const completedTasks = projectTasks.filter(t => t.status === 'completed').length;
         const avgProgress = totalTasks > 0 ? Math.round(projectTasks.reduce((s, t) => s + (t.progressPercentage || 0), 0) / totalTasks) : 0;
 
@@ -304,8 +305,10 @@ export async function portfolioRoutes(fastify: FastifyInstance) {
                 totalTasks = bd.totalScope;
                 completedTasks = bd.completedCount;
                 // Sample to max ~12 points for sparkline
+                // eslint-disable-next-line no-restricted-syntax -- small: one plan's burndown points (one per day or week)
                 const pts = bd.dataPoints.filter(d => d.actual >= 0);
                 const step = Math.max(1, Math.floor(pts.length / 12));
+                // eslint-disable-next-line no-restricted-syntax -- small: one plan's burndown points (one per day or week)
                 burndown = pts
                   .filter((_, idx) => idx % step === 0 || idx === pts.length - 1)
                   .map(d => ({ date: d.date, ideal: d.ideal, actual: d.actual }));

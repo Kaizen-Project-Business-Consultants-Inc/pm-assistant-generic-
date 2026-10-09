@@ -48,8 +48,10 @@ export async function runTenantMigrations(dbName: string): Promise<number> {
 
       logger.info(`[tenant-migration] Running ${file} on ${dbName}`);
 
+      // eslint-disable-next-line no-restricted-syntax -- small: this migration file's own statements and lines, each visited once; not a lookup
       const statements = sql
         .split(/;\s*$/m)
+        // eslint-disable-next-line no-restricted-syntax -- small: this migration file's own statements, each visited once; not a lookup
         .map(s => s.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').trim())
         .filter(s => s.length > 0);
 

@@ -532,7 +532,7 @@ export class ScheduleService {
     let removed = 0;
     for (const [taskId, ids] of toRemove) {
       const task = byId.get(taskId)!;
-      // eslint-disable-next-line no-restricted-syntax -- small: one task's links (at most 20), Set look-up
+      // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once), Set look-up
       const remaining = task.dependencies.filter(d => !ids.has(d.dependencyId));
       if (remaining.length === task.dependencies.length) continue;
       removed += task.dependencies.length - remaining.length;

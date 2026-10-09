@@ -176,6 +176,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
       try {
         // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
         const delays = await autoRescheduleService.detectDelays(schedule.id);
+        // eslint-disable-next-line no-restricted-syntax -- small: one plan's delays, filtered once
         const significant = delays.filter(d => d.delayDays >= thresholdDays || d.isOnCriticalPath);
         pStats.delaysDetected += significant.length;
         if (significant.length === 0) {

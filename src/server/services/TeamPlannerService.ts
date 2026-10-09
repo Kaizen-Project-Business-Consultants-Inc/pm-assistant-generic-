@@ -19,6 +19,7 @@ import {
   workingDaysBetween, calendarDaysBetween, utcDay, ymdOf,
 } from '../utils/workingDays';
 import logger from '../utils/logger';
+import { groupBy } from '../utils/groupBy';
 
 /**
  * Team Planner (2026-10-02): everyone on the PM's projects, week by week, across ALL their work —
@@ -181,8 +182,9 @@ export class TeamPlannerService {
       weeks.map(w => new Date(`${w}T00:00:00Z`)),
     );
 
+    const bookingsOf = groupBy(all, a => a.resourceId); // each person's bookings, in list order
     const people: PlannerPerson[] = resources.map(r => {
-      const rows = all.filter(a => a.resourceId === r.id);
+      const rows = bookingsOf.get(r.id) ?? [];
       // One block per person and task (a booking over two date ranges shows as one)
       const merged = new Map<string, PlannerBlock>();
       for (const a of rows) {
@@ -217,6 +219,7 @@ export class TeamPlannerService {
       const capacity = weeks.map(wk => capacityMap.get(r.id)?.get(wk) ?? r.capacityHoursPerWeek);
       return {
         id: r.id, name: r.name, role: r.role ?? null, isGeneric: !!r.isGeneric, capacity, load,
+        // eslint-disable-next-line no-restricted-syntax -- small: sorts each person's own blocks once
         blocks: [...merged.values()].sort((a, b) => a.startDate.localeCompare(b.startDate)),
       };
     })

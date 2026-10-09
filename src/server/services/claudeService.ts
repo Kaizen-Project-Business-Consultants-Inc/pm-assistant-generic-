@@ -845,6 +845,7 @@ export class ClaudeService {
 
       // If no tool use, extract text and return
       if (response.stop_reason !== 'tool_use') {
+        // eslint-disable-next-line no-restricted-syntax -- small: one AI reply's content blocks (a handful)
         const textBlocks = response.content.filter(
           (block): block is Anthropic.TextBlock => block.type === 'text',
         );
@@ -853,6 +854,7 @@ export class ClaudeService {
       }
 
       // Process tool use blocks
+      // eslint-disable-next-line no-restricted-syntax -- small: one AI reply's content blocks (a handful)
       const toolUseBlocks = response.content.filter(
         (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use',
       );

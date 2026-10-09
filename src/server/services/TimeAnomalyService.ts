@@ -3,6 +3,7 @@ import { projectMemberService } from './ProjectMemberService';
 import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { config } from '../config';
 import logger from '../utils/logger';
+import { groupBy } from '../utils/groupBy';
 import { toDateString, addDays, today as todayDate } from '../utils/calendarDate';
 
 /**
@@ -624,8 +625,9 @@ class TimeAnomalyService {
     const dates = Array.from(datesSet).sort();
 
     // Summary per user
+    const cellsOf = groupBy(cells, c => c.userId); // each person's cells, in list order
     const summary = users.map(u => {
-      const userCells = cells.filter(c => c.userId === u.userId);
+      const userCells = cellsOf.get(u.userId) ?? [];
       const avgHours = userCells.length > 0 ? userCells.reduce((s, c) => s + c.hours, 0) / userCells.length : 0;
       return { userId: u.userId, userName: u.userName, avgHours: Math.round(avgHours * 10) / 10, avgUtilization: Math.round((avgHours / 8) * 100) };
     });

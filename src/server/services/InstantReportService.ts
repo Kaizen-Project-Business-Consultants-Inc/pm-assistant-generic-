@@ -337,6 +337,7 @@ export class InstantReportService {
 
     const resources = [];
     for (const w of workload) {
+      // eslint-disable-next-line no-restricted-syntax -- small: one person's own weekly rows
       const overWeeks = w.weeks.filter(wk => wk.utilization > 100 && (wk.thisProject ?? 0) > 0);
       if (overWeeks.length === 0) continue;
       const busiest = overWeeks.reduce((m, wk) => (wk.utilization > m.utilization ? wk : m));
@@ -352,12 +353,15 @@ export class InstantReportService {
       const info = await this.taskAndProjectNames(bookings.map(b => b.taskId));
 
       const weeks = overWeeks.map(wk => {
+        // eslint-disable-next-line no-restricted-syntax -- small: one over-booked person's bookings in their over weeks; every week needs every booking's hours
         const items = bookings
           .map(b => ({ b, hours: hoursInWeek(b, wk.weekStart, calOf(b.scheduleId)) }))
           .filter(x => x.hours > 0);
+        // eslint-disable-next-line no-restricted-syntax -- small: one over-booked person's bookings in one week
         const thisTasks = items.filter(x => here.has(x.b.scheduleId))
           .map(x => ({ name: info.get(x.b.taskId)?.taskName ?? 'Task', hours: Math.round(x.hours * 10) / 10 }));
         const others = new Map<string, { label: string; hours: number }>();
+        // eslint-disable-next-line no-restricted-syntax -- small: one over-booked person's bookings in one week
         for (const x of items.filter(x => !here.has(x.b.scheduleId))) {
           const pid = info.get(x.b.taskId)?.projectId ?? '';
           const named = readable === 'all' || readable.has(pid);
@@ -593,11 +597,15 @@ export class InstantReportService {
       .map(([resourceId, weekMap]) => {
         const resource = resourceMap.get(resourceId);
         const wl = workloadMap.get(resourceId);
+        // Their workload weeks by start day (the first one wins, as a find would)
+        const wlWeekOf = new Map<string, NonNullable<typeof wl>['weeks'][number]>();
+        for (const w of wl?.weeks ?? []) if (!wlWeekOf.has(w.weekStart)) wlWeekOf.set(w.weekStart, w);
 
+        // eslint-disable-next-line no-restricted-syntax -- small: sorts each person's own weeks once
         const weeks = Array.from(weekMap.entries())
           .sort(([a], [b]) => a.localeCompare(b))
           .map(([weekStart, taskList]) => {
-            const wlWeek = wl?.weeks.find(w => w.weekStart === weekStart);
+            const wlWeek = wlWeekOf.get(weekStart);
             return {
               weekStart,
               tasks: taskList,

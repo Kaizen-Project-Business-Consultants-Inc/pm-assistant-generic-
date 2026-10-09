@@ -11,6 +11,7 @@
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
+import { groupBy } from '../../utils/groupBy';
 
 export const RULES_VERSION = '1.8';
 
@@ -351,6 +352,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   } else if (n >= 2) {
     // R01 — Missing predecessor (exclude the earliest-starting leaf)
     const earliest = [...leaves].sort((a, b) => (ymd(a.startDate) || '9999').localeCompare(ymd(b.startDate) || '9999') || (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+    // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once), checked against a Map
     const noPred = leaves.filter(t => t.id !== earliest?.id && (t.dependencies || []).filter(d => g.byId.has(d.dependencyId)).length === 0);
     if (noPred.length > 0 && noPred.length / n > 0.05) {
       findings.push(make('R01', noPred.map(t => t.id), `${plural(noPred.length, 'task')} (${pct(noPred.length, n)}%) ${agree(noPred.length, 'has', 'have')} no predecessor: ${listNames(noPred)}. Nothing tells the schedule what must finish first.`));
@@ -435,11 +437,19 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
 
   // R11 — Owner is not a person
   const resources = input.resources || [];
+  // Looked up per task: by id or login first, then by name — each the FIRST person in the list
+  // that matches, as the list searches did (2026-10-09: two searches of every person per task)
+  const personByIdOrUser = new Map<string, ReviewResource>();
+  const personByName = new Map<string, ReviewResource>();
+  for (const r of resources) {
+    for (const key of [r.id, r.userId]) if (key && !personByIdOrUser.has(key)) personByIdOrUser.set(key, r);
+    const name = r.name.trim().toLowerCase();
+    if (!personByName.has(name)) personByName.set(name, r);
+  }
   const resolveResource = (value?: string | null): ReviewResource | undefined => {
     const v = (value || '').trim();
     if (!v) return undefined;
-    const lower = v.toLowerCase();
-    return resources.find(r => r.id === v || (r.userId && r.userId === v)) || resources.find(r => r.name.trim().toLowerCase() === lower);
+    return personByIdOrUser.get(v) || personByName.get(v.toLowerCase());
   };
   // A generic role is a deliberate stand-in (R37 covers it); a placeholder email is no email
   const orgOwned = leaves.filter(t => { const r = resolveResource(t.assignedTo); return r && !r.isGeneric && (!r.email || isPlaceholderEmail(r.email)) && !r.userId; });
@@ -532,6 +542,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   if (hasFloat) {
     const gates = g.all.filter(t => isMilestoneLike(t) && !t.isSummary);
     const unprotected = gates.filter(gate => {
+      // eslint-disable-next-line no-restricted-syntax -- small: one gate's own links (each read once)
       const preds = (gate.dependencies || []).map(d => g.byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
       if (preds.length === 0) return false;
       const allZero = preds.every(p => (input.floatByTask!.get(p.id) ?? 0) <= 0);
@@ -554,13 +565,29 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
       r.dates.push(o.date);
       r.peak = Math.max(r.peak, o.demand);
     }
+    // Looked up once, not per person (2026-10-09): people by name (the first with that name, as a
+    // .find would), and the tasks by who they are assigned to (as written, and lower-cased)
+    const resourceByName = new Map<string, ReviewResource>();
+    for (const r of resources) {
+      const k = r.name.trim().toLowerCase();
+      if (!resourceByName.has(k)) resourceByName.set(k, r);
+    }
+    const assigned = leaves.filter(t => (t.assignedTo || '').trim());
+    const leavesByAssignee = groupBy(assigned, t => (t.assignedTo || '').trim());
+    const leavesByAssigneeLower = groupBy(assigned, t => (t.assignedTo || '').trim().toLowerCase());
+    const leafOrder = new Map(leaves.map((t, i) => [t, i]));
     for (const [name, info] of byResource) {
       const lower = name.trim().toLowerCase();
-      const res = resources.find(r => r.name.trim().toLowerCase() === lower);
-      const owned = leaves.filter(t => {
-        const a = (t.assignedTo || '').trim();
-        return a && (a.toLowerCase() === lower || (res && (a === res.id || a === res.userId)));
-      });
+      const res = resourceByName.get(lower);
+      // assigned by name, or by the person's id or login — each task once, in plan order
+      const hits = new Set(leavesByAssigneeLower.get(lower) ?? []);
+      if (res) {
+        for (const t of leavesByAssignee.get(res.id) ?? []) hits.add(t);
+        if (res.userId) for (const t of leavesByAssignee.get(res.userId) ?? []) hits.add(t);
+      }
+      // eslint-disable-next-line no-restricted-syntax -- this person's own tasks put back in plan order (a different list per person)
+      const owned = [...hits].sort((x, y) => leafOrder.get(x)! - leafOrder.get(y)!);
+      // eslint-disable-next-line no-restricted-syntax -- this person's own over-capacity dates (a different list per person)
       const dates = info.dates.sort();
       const pctLoad = info.capacity > 0 ? Math.round((info.peak / info.capacity) * 100) : 0;
       findings.push(make('R21', owned.map(t => t.id), `${name} peaks at ${pctLoad}% between ${dates[0]} and ${dates[dates.length - 1]} across ${plural(owned.length, 'overlapping task')}.`));
@@ -636,10 +663,12 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   for (const s of g.summaries) {
     const ss = ymd(s.startDate); const se = ymd(s.endDate);
     if (!ss || !se) continue;
+    // eslint-disable-next-line no-restricted-syntax -- this summary's own children (each task sits under one summary, so all summaries together read the plan once)
     const kids = (g.childrenOf.get(s.id) || []).filter(c => ymd(c.startDate) && ymd(c.endDate));
     if (kids.length === 0) continue;
-    const minStart = kids.map(c => ymd(c.startDate)!).sort()[0];
-    const maxEnd = kids.map(c => ymd(c.endDate)!).sort().slice(-1)[0];
+    // earliest start and latest finish (plain string order, as a default sort gives)
+    const minStart = kids.reduce((m, c) => { const d = ymd(c.startDate)!; return d < m ? d : m; }, ymd(kids[0].startDate)!);
+    const maxEnd = kids.reduce((m, c) => { const d = ymd(c.endDate)!; return d > m ? d : m; }, ymd(kids[0].endDate)!);
     if (minStart < ss || maxEnd > se) {
       findings.push(make('R30', [s.id], `Summary task '${s.name}' runs ${ss} to ${se}, but the tasks under it run ${minStart} to ${maxEnd}. A summary should span exactly its tasks.`));
     }

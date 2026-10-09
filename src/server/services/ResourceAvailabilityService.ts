@@ -95,6 +95,7 @@ export class ResourceAvailabilityService {
         const weekKey = weekStart.toISOString().slice(0, 10);
 
         // Filter blocks overlapping this specific week
+        // eslint-disable-next-line no-restricted-syntax -- small: one person's own time-off blocks
         const weekBlocks = resBlocks.filter(b =>
           new Date(b.dateFrom).getTime() <= weekEnd.getTime() &&
           new Date(b.dateTo).getTime() >= weekStart.getTime()

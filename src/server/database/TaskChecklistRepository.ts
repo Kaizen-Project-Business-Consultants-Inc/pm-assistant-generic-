@@ -87,6 +87,7 @@ class TaskChecklistRepository extends BaseRepository<TaskChecklist> {
     for (const row of rows) {
       const items: TaskChecklistItem[] = typeof row.items === 'string' ? JSON.parse(row.items) : (row.items || []);
       const total = items.length;
+      // eslint-disable-next-line no-restricted-syntax -- small: counts one task's own checklist items (a single row's list), not a search across lists
       const checked = items.filter((i) => i.checked).length;
       result[row.task_id] = { ready: total > 0 && checked === total, checked, total };
     }

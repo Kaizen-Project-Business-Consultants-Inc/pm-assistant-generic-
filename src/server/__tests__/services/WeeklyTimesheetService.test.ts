@@ -33,6 +33,8 @@ vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(awai
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { weeklyTimesheetService, TimesheetError, isMonthLocked, lockDateFor, lockMessage } from '../../services/WeeklyTimesheetService';
+import { hoursInWeek } from '../../services/weeklyLoad';
+import { workingDaysBetween } from '../../utils/workingDays';
 
 const OWNER = 'owner-1';
 /** Answers for the shared database: the company owner, and user names */
@@ -262,5 +264,55 @@ describe('WeeklyTimesheetService', () => {
       expect(query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO timesheet_flags'), [expect.any(String), 'ts1', 'p-mary', 't-mig', 'u-mary', '2h belong to Data cleanup']);
       expect(notify).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u-michael', type: 'timesheet_flagged' }));
     });
+  });
+});
+
+// Each line's bookings and entries come from lists grouped once, not a scan per task (2026-10-09)
+describe('WeeklyTimesheetService — a week with many tasks', () => {
+  beforeEach(() => { vi.clearAllMocks(); controlPlane(); });
+
+  it('every line has the same figures as scanning the lists per task, and the week is quick', async () => {
+    const isWorking = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+    const N = 400;
+    const ids = Array.from({ length: N }, (_, i) => `t${String(i).padStart(3, '0')}`);
+    const week: any[] = []; const all: any[] = []; const entries: any[] = [];
+    ids.forEach((id, i) => {
+      week.push({ resourceId: 'r-peter', taskId: id, scheduleId: 's1', hoursPerWeek: 4 + (i % 5), startDate: '2026-10-05', endDate: '2026-10-16' });
+      if (i % 3 === 0) week.push({ resourceId: 'r-peter', taskId: id, scheduleId: 's1', hoursPerWeek: 2, startDate: '2026-10-14', endDate: '2026-10-30' });
+      for (let k = 0; k < 3; k++) all.push({ resourceId: 'r-peter', taskId: id, scheduleId: 's1', hoursPerWeek: 3 + k + (i % 4), startDate: '2026-09-0' + (k + 1), endDate: '2026-10-2' + k });
+      for (let k = 0; k < 3; k++) entries.push({ id: `e${i}-${k}`, task_id: id, schedule_id: 's1', project_id: 'p1', date: k === 2 ? '2026-10-12' : `2026-10-1${2 + k}`, hours: 0.5 + ((i + k) % 7), status: k === 1 ? 'approved' : 'draft' });
+    });
+    findEffectiveAssignments.mockImplementation(async (f: any) => (f.from ? week : all));
+    query.mockImplementation((sql: string) => {
+      if (sql.includes('FROM time_entries WHERE user_id = ? AND date')) return Promise.resolve(entries);
+      if (sql.includes('FROM resources WHERE user_id')) return Promise.resolve([{ id: 'r-peter', line_manager_user_id: 'u-michael' }]);
+      if (sql.includes('FROM tasks t JOIN schedules')) return Promise.resolve(ids.map(id => ({ id, name: `Task ${id}`, status: 'in_progress', schedule_id: 's1', project_id: 'p1', project_name: 'NSWMA' })));
+      if (sql.includes("status = 'approved' AND task_id IN")) return Promise.resolve(ids.map((id, i) => ({ task_id: id, total: i % 40 })));
+      return Promise.resolve([]);
+    });
+
+    const t0 = performance.now();
+    const view = await weeklyTimesheetService.weekView('u-peter', '2026-10-14');
+    const ms = performance.now() - t0;
+
+    // what each line was before: the lists scanned for every task
+    const r1 = (n: number) => Math.round(n * 10) / 10;
+    expect(view.lines).toHaveLength(N);
+    for (const line of view.lines) {
+      const id = line.taskId;
+      const i = ids.indexOf(id);
+      const planned = r1(all.filter(b => b.taskId === id).reduce((n, b) => n + (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, isWorking), 0));
+      const days: Record<string, any> = {};
+      for (const e of entries.filter(x => x.task_id === id)) {
+        const prev = days[e.date];
+        days[e.date] = { entryId: prev?.entryId ?? e.id, hours: r1((prev?.hours ?? 0) + Number(e.hours)), status: e.status };
+      }
+      const notYet = entries.filter(x => x.task_id === id && x.status !== 'approved').reduce((n, x) => n + Number(x.hours), 0);
+      expect(line.plannedThisWeek).toBe(r1(week.filter(b => b.taskId === id).reduce((n, b) => n + hoursInWeek(b, '2026-10-12', isWorking), 0)));
+      expect(line.taskPlanned).toBe(planned);
+      expect(line.days).toEqual(days);
+      expect(line.overPlanBy).toBe(planned > 0 ? r1(Math.max(0, (i % 40) + notYet - planned)) : 0);
+    }
+    expect(ms).toBeLessThan(1000);
   });
 });

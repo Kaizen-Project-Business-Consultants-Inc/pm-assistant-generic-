@@ -18,6 +18,7 @@ export function toDate(s?: string | null): Date | null {
 /** Rough text width in the strip's drawing units (≈ 0.55 em per character) */
 export const textWidth = (text: string, fontSize: number) => text.length * fontSize * 0.55;
 
+/* eslint-disable no-restricted-syntax -- placeLabels and layoutTimelineStrip must stay character-for-character the same as the client copy (a test checks), so no line comments inside them. Small: rowEnds has one entry per label row (2), laneEnds at most 3 lanes; the milestone list in the for-of is built once. */
 /**
  * Place labels left to right; a label that would overlap the one before it (on its row) is left
  * for hover. Two rows. Returns the row per label, or null = hover only.
@@ -102,6 +103,7 @@ export function layoutTimelineStrip(tasks: StripTask[], projectName = 'Project')
   const milestones = [...byDay.values()].sort((a, b) => a.date.getTime() - b.date.getTime());
   return { start, end, phases, milestones, lanes: Math.max(1, laneEnds.length), noPhases };
 }
+/* eslint-enable no-restricted-syntax */
 
 // ---------------------------------------------------------------------------
 // The strip as it travels inside a stored status report (dates as 'YYYY-MM-DD')
@@ -171,7 +173,8 @@ export function timelineSvg(t: ReportTimeline, today?: string | null): { svg: st
   parts.push(`<rect x="0" y="0" width="${W}" height="${H}" fill="#ffffff"/>`);
   parts.push(`<text x="${PAD}" y="11" font-size="10" fill="#6b7280">${fmt(start)}</text>`);
   parts.push(`<text x="${W - PAD}" y="11" font-size="10" text-anchor="end" fill="#6b7280">${fmt(end, true)}</text>`);
-  for (const m of monthTicks(start, end).filter(m => x(m) > PAD + 50 && x(m) < W - PAD - 90)) {
+  const ticks = monthTicks(start, end).filter(m => x(m) > PAD + 50 && x(m) < W - PAD - 90);
+  for (const m of ticks) {
     parts.push(`<line x1="${x(m)}" x2="${x(m)}" y1="14" y2="${H}" stroke="#e5e7eb" stroke-width="1"/>`);
     parts.push(`<text x="${x(m) + 3}" y="11" font-size="10" fill="#6b7280">${MONTHS[m.getUTCMonth()]}${m.getUTCMonth() === 0 ? ` ${m.getUTCFullYear()}` : ''}</text>`);
   }

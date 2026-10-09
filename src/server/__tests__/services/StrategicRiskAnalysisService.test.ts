@@ -334,3 +334,40 @@ describe('detectBudgetRisks', () => {
     expect(risks).toHaveLength(0);
   });
 });
+
+// Milestone clusters are counted with binary searches now, not a full scan per milestone (2026-10-09)
+describe('detectMilestoneRisks — clusters on many milestones', () => {
+  const DAY = 86_400_000;
+  /** What the detector reported before: a full scan per milestone, the first window of 3+ */
+  function oldCluster(tasks: Task[]): { count: number; at: string } | null {
+    const dates = tasks.map(t => t.endDate || t.dueDate || t.startDate).filter(Boolean)
+      .map(d => new Date(d!).getTime()).sort((a, b) => a - b);
+    for (let i = 0; i < dates.length - 2; i++) {
+      const n = dates.filter(d => d >= dates[i] && d <= dates[i] + 5 * DAY).length;
+      if (n >= 3) return { count: n, at: new Date(dates[i]).toISOString().slice(0, 10) };
+    }
+    return null;
+  }
+  let seed = 11;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const day = (n: number) => new Date(Date.UTC(2027, 0, 1) + n * DAY).toISOString().slice(0, 10);
+
+  it.each([
+    ['spread out, no cluster', () => Array.from({ length: 3000 }, (_, i) => day(i * 6))],
+    ['random, with same-day repeats', () => Array.from({ length: 3000 }, () => day(Math.floor(rnd() * 20000)))],
+    ['a late cluster', () => [...Array.from({ length: 2000 }, (_, i) => day(i * 7)), day(14001), day(14002), day(14003)]],
+  ])('%s: same cluster as a full scan, and quick', (_label, ends) => {
+    const tasks = (ends as () => string[])().map((e, i) => makeTask({ id: `m${i}`, name: `M${i}`, status: 'pending', isMilestone: true, endDate: e }));
+    const t0 = performance.now();
+    const risks = detectMilestoneRisks(tasks, null);
+    const ms = performance.now() - t0;
+    const cluster = risks.find(r => r.riskStatement.includes('clustered'));
+    const want = oldCluster(tasks);
+    if (want === null) expect(cluster).toBeUndefined();
+    else {
+      expect(cluster?.riskStatement.startsWith(`${want.count} milestones`)).toBe(true);
+      expect(cluster?.impactedElement).toBe(`Cluster around ${want.at}`);
+    }
+    expect(ms).toBeLessThan(500);
+  });
+});

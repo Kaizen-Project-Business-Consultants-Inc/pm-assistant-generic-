@@ -58,6 +58,7 @@ class FlowMetricsService {
       const createdAt = new Date(task.created_at).getTime();
 
       // Lead time: created_at -> completed
+      // eslint-disable-next-line no-restricted-syntax -- small: one task's own status-change rows
       const completedAct = acts.find(a => a.newValue === 'completed');
       if (completedAct) {
         const completedAt = new Date(completedAct.createdAt).getTime();
@@ -66,6 +67,7 @@ class FlowMetricsService {
       }
 
       // Cycle time: first in_progress -> completed
+      // eslint-disable-next-line no-restricted-syntax -- small: one task's own status-change rows
       const startAct = acts.find(a => a.newValue === 'in_progress');
       if (startAct && completedAct) {
         const startedAt = new Date(startAct.createdAt).getTime();

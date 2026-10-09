@@ -867,3 +867,30 @@ describe('TimeAnomalyService', () => {
     });
   });
 });
+
+// Each person's average comes from their cells grouped once, not a scan of every cell per person (2026-10-09)
+describe('getUtilizationHeatmap — many people and days', () => {
+  it('gives each person the same averages as scanning every cell, and quickly', async () => {
+    const rows: any[] = [];
+    for (let u = 0; u < 80; u++) {
+      for (let d = 0; d < 365; d++) {
+        if ((u * 7 + d) % 3 === 0) continue; // not every day
+        rows.push({ user_id: `u${u}`, user_name: `User ${u}`, d: new Date(Date.UTC(2026, 0, 1) + d * 86_400_000).toISOString().slice(0, 10), hours: ((u + d) % 11) + 0.25 });
+      }
+    }
+    mockQuery.mockResolvedValueOnce(rows);
+    const t0 = performance.now();
+    const result = await timeAnomalyService.getUtilizationHeatmap('proj-1', '2026-01-01', '2026-12-31');
+    const ms = performance.now() - t0;
+
+    // what the summary was before: a scan of every cell for each person
+    const expected = result.users.map(u => {
+      const mine = result.cells.filter(c => c.userId === u.userId);
+      const avg = mine.length > 0 ? mine.reduce((s, c) => s + c.hours, 0) / mine.length : 0;
+      return { userId: u.userId, userName: u.userName, avgHours: Math.round(avg * 10) / 10, avgUtilization: Math.round((avg / 8) * 100) };
+    });
+    expect(result.summary).toEqual(expected);
+    expect(result.summary).toHaveLength(80);
+    expect(ms).toBeLessThan(500);
+  });
+});

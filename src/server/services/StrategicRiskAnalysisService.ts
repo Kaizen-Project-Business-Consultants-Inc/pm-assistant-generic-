@@ -297,9 +297,11 @@ function detectMilestoneRisks(tasks: Task[], cpm: CriticalPathResult | null): St
 
   // Milestone clusters (3+ within 5 days)
   const sortedDates = [...milestoneDates];
+  // Readable dates in order, so each window is counted by two binary searches, not a full scan
+  const ordered = sortedDates.filter(d => !Number.isNaN(d)).sort((a, b) => a - b);
   for (let i = 0; i < sortedDates.length - 2; i++) {
     const windowEnd = sortedDates[i] + 5 * 86_400_000;
-    const inWindow = sortedDates.filter(d => d >= sortedDates[i] && d <= windowEnd).length;
+    const inWindow = Number.isNaN(sortedDates[i]) ? 0 : countInRange(ordered, sortedDates[i], windowEnd);
     if (inWindow >= 3) {
       risks.push({
         category: 'milestone',
@@ -314,6 +316,20 @@ function detectMilestoneRisks(tasks: Task[], cpm: CriticalPathResult | null): St
   }
 
   return risks;
+}
+
+/** How many of `sorted` (ascending numbers) lie in [from, to] */
+function countInRange(sorted: number[], from: number, to: number): number {
+  // index of the first value >= x (atOrAbove) or > x (otherwise)
+  const firstFrom = (x: number, atOrAbove: boolean) => {
+    let lo = 0, hi = sorted.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (atOrAbove ? sorted[mid] < x : sorted[mid] <= x) lo = mid + 1; else hi = mid;
+    }
+    return lo;
+  };
+  return Math.max(0, firstFrom(to, false) - firstFrom(from, true));
 }
 
 function detectBudgetRisks(project: Project, tasks: Task[], evm: any | null): StructuralRisk[] {

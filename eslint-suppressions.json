@@ -2090,15 +2090,7 @@
       "count": 1
     }
   },
-  "src/server/database/TaskChecklistRepository.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/server/database/migrationRunner.ts": {
-    "no-restricted-syntax": {
-      "count": 3
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2109,9 +2101,6 @@
     }
   },
   "src/server/database/tenantMigrationRunner.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2205,29 +2194,18 @@
       "count": 7
     }
   },
-  "src/server/routes/collaboration/templates.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/server/routes/core/auth.ts": {
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/routes/core/bulk.ts": {
-    "no-restricted-syntax": {
-      "count": 8
-    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
   },
   "src/server/routes/core/exports.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
-    },
-    "no-restricted-syntax": {
       "count": 2
     },
     "sonarjs/cognitive-complexity": {
@@ -2272,11 +2250,6 @@
       "count": 2
     }
   },
-  "src/server/routes/reporting/portfolio.ts": {
-    "no-restricted-syntax": {
-      "count": 3
-    }
-  },
   "src/server/routes/reporting/strategicRiskScan.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
@@ -2295,9 +2268,6 @@
   "src/server/routes/resources/resources.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 4
     }
   },
   "src/server/routes/scheduling/autoReschedule.ts": {
@@ -2308,9 +2278,6 @@
   "src/server/routes/scheduling/import.ts": {
     "max-depth": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 2
     },
     "prefer-const": {
       "count": 1
@@ -2346,9 +2313,6 @@
     }
   },
   "src/server/services/AnalyticsSummaryService.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 1
     },
@@ -2361,18 +2325,7 @@
       "count": 1
     }
   },
-  "src/server/services/ApprovedTimeService.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/server/services/AutoRescheduleService.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 5
-    },
     "sonarjs/cognitive-complexity": {
       "count": 3
     }
@@ -2380,23 +2333,14 @@
   "src/server/services/BurndownService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 3
-    },
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/server/services/ChangeHistoryService.ts": {
-    "no-restricted-syntax": {
-      "count": 3
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/services/ClientService.ts": {
-    "no-restricted-syntax": {
-      "count": 4
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2433,15 +2377,7 @@
       "count": 1
     }
   },
-  "src/server/services/FlowMetricsService.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    }
-  },
   "src/server/services/InstantReportService.ts": {
-    "no-restricted-syntax": {
-      "count": 6
-    },
     "no-unmodified-loop-condition": {
       "count": 2
     },
@@ -2486,20 +2422,12 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/services/NotificationService.ts": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    }
-  },
-  "src/server/services/PricingConfigService.ts": {
-    "no-restricted-syntax": {
       "count": 1
     }
   },
@@ -2513,9 +2441,6 @@
   },
   "src/server/services/ProjectStatusReportService.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    },
-    "no-restricted-syntax": {
       "count": 1
     },
     "sonarjs/cognitive-complexity": {
@@ -2546,9 +2471,6 @@
     }
   },
   "src/server/services/ResourceAvailabilityService.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2556,9 +2478,6 @@
   "src/server/services/ResourceLevelingService.ts": {
     "max-depth": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2568,9 +2487,6 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 3
     },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
@@ -2578,9 +2494,6 @@
   "src/server/services/ResourceService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 5
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2605,9 +2518,6 @@
     }
   },
   "src/server/services/SampleProjectService.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "security/detect-unsafe-regex": {
       "count": 1
     },
@@ -2616,9 +2526,6 @@
     }
   },
   "src/server/services/ScheduleFixProposerService.ts": {
-    "no-restricted-syntax": {
-      "count": 12
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
@@ -2660,11 +2567,6 @@
       "count": 1
     }
   },
-  "src/server/services/StrategicRiskAnalysisService.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/server/services/StripeService.ts": {
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -2679,24 +2581,13 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
-    }
-  },
-  "src/server/services/TeamsMeetingImportService.ts": {
-    "no-restricted-syntax": {
-      "count": 3
     }
   },
   "src/server/services/TemplateService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    },
-    "no-restricted-syntax": {
-      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 2
@@ -2706,16 +2597,8 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 2
     },
-    "no-restricted-syntax": {
-      "count": 1
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
-    }
-  },
-  "src/server/services/WeeklyTimesheetService.ts": {
-    "no-restricted-syntax": {
-      "count": 5
     }
   },
   "src/server/services/agents/InterAgentQueryService.ts": {
@@ -2734,11 +2617,6 @@
   "src/server/services/aiChatService.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    }
-  },
-  "src/server/services/aiContextBuilder.ts": {
-    "no-restricted-syntax": {
-      "count": 2
     }
   },
   "src/server/services/aiLearningService.ts": {
@@ -2775,9 +2653,6 @@
     }
   },
   "src/server/services/claudeService.ts": {
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "prefer-const": {
       "count": 2
     }
@@ -2811,9 +2686,6 @@
     },
     "no-promise-executor-return": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 3
@@ -2864,9 +2736,6 @@
     "@typescript-eslint/no-unused-vars": {
       "count": 1
     },
-    "no-restricted-syntax": {
-      "count": 2
-    },
     "sonarjs/cognitive-complexity": {
       "count": 2
     }
@@ -2891,23 +2760,12 @@
       "count": 1
     }
   },
-  "src/server/services/scheduleReview/domainProfiles.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/server/services/scheduleReview/fixProposer.ts": {
-    "no-restricted-syntax": {
-      "count": 7
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }
   },
   "src/server/services/scheduleReview/rules.ts": {
-    "no-restricted-syntax": {
-      "count": 8
-    },
     "security/detect-unsafe-regex": {
       "count": 1
     },
@@ -2920,17 +2778,9 @@
       "count": 1
     }
   },
-  "src/server/services/scheduling/pmWeeklyReviewJob.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/server/services/scheduling/scanOrchestrator.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
-    },
-    "no-restricted-syntax": {
-      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2980,11 +2830,6 @@
       "count": 1
     }
   },
-  "src/server/utils/instantReportRenderer.ts": {
-    "no-restricted-syntax": {
-      "count": 1
-    }
-  },
   "src/server/utils/promptSanitizer.ts": {
     "security/detect-unsafe-regex": {
       "count": 3
@@ -3001,9 +2846,6 @@
   "src/server/utils/scheduleReviewDocxBuilder.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "no-restricted-syntax": {
-      "count": 1
     }
   },
   "src/server/utils/statusReportDocxBuilder.ts": {
@@ -3012,16 +2854,8 @@
     }
   },
   "src/server/utils/timelineStrip.ts": {
-    "no-restricted-syntax": {
-      "count": 4
-    },
     "no-unmodified-loop-condition": {
       "count": 2
-    }
-  },
-  "src/server/utils/transcriptParser.ts": {
-    "no-restricted-syntax": {
-      "count": 1
     }
   }
 }

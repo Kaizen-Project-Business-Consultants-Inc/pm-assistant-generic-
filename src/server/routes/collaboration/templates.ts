@@ -74,7 +74,9 @@ export async function templateRoutes(fastify: FastifyInstance) {
         estimatedDurationDays: t.estimatedDurationDays,
         // Phases are the summary rows; "tasks" are the work items (2026-10-01: the list said 15
         // tasks while the next screen said 11 — it counted the 4 phases as tasks too)
+        // eslint-disable-next-line no-restricted-syntax -- small: counts each template's own tasks once; not a lookup
         taskCount: t.tasks.filter(task => !task.isSummary).length,
+        // eslint-disable-next-line no-restricted-syntax -- small: counts each template's own tasks once; not a lookup
         phaseCount: t.tasks.filter(task => task.isSummary).length,
         tags: t.tags,
         usageCount: t.usageCount,

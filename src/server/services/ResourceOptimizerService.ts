@@ -18,6 +18,7 @@ import { hoursInWeek, calendarsFor } from './weeklyLoad';
 import { databaseService } from '../database/connection';
 import { weekdaysOnly, mondaysBetween, type IsWorking } from '../utils/workingDays';
 import { isExamplePerson } from '../utils/sampleData';
+import { groupBy } from '../utils/groupBy';
 
 
 /** One project's bookings and its plans' calendars (see projectBookings) */
@@ -61,6 +62,7 @@ export class ResourceOptimizerService {
     for (const workload of workloads) {
       // Limit to the requested number of weeks ahead from now
       const now = new Date();
+      // eslint-disable-next-line no-restricted-syntax -- small: one person's own weekly rows, each checked once
       const futureWeeks = workload.weeks.filter((w) => {
         const weekDate = new Date(w.weekStart);
         const weeksFromNow = Math.ceil(
@@ -217,6 +219,7 @@ export class ResourceOptimizerService {
     // Get assignments for this schedule to compute available capacity
     const assignments = await resourceService.findEffectiveAssignments({ scheduleIds: [scheduleId] });
     const isWorking = await scheduleService.workingDayTest(scheduleId).catch(() => weekdaysOnly);
+    const assignmentsOf = groupBy(assignments, (a) => a.resourceId); // each person's, in list order
 
     const matches: SkillMatch[] = [];
 
@@ -263,7 +266,7 @@ export class ResourceOptimizerService {
       }
 
       // Calculate available capacity during the task period
-      const resourceAssignments = assignments.filter((a) => a.resourceId === resource.id);
+      const resourceAssignments = assignmentsOf.get(resource.id) ?? [];
       let currentAllocated = 0;
 
       if (task.startDate && task.endDate) {

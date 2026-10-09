@@ -29,6 +29,7 @@ export const SAMPLE_FIX_FILES = ['T076_sample_spent_fix.sql', 'T081_sample_no_we
 export function seedStatements(sql: string = fs.readFileSync(SEED_FILE, 'utf-8')): string[] {
   return sql
     .split(/;\s*$/m)
+    // eslint-disable-next-line no-restricted-syntax -- small: the seed file's own statements and lines, each visited once; not a lookup
     .map(s => s.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').trim())
     .filter(s => s.length > 0);
 }

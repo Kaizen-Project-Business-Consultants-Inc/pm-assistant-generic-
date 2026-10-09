@@ -344,12 +344,15 @@ export class ResourceService {
     const inWeek = (w: string, wEnd: string) => (a: { startDate: string; endDate: string }) => a.startDate.slice(0, 10) <= wEnd && a.endDate.slice(0, 10) >= w;
     for (const w of weekStarts) {
       const wEnd = iso(at(w) + 6 * DAY);
+      // eslint-disable-next-line no-restricted-syntax -- small: one person's bookings in a window of at most 104 weeks
       const hits = others.filter(inWeek(w, wEnd)).filter(a => hoursInWeek(a, w, calOf(a.scheduleId)) > 0);
+      // eslint-disable-next-line no-restricted-syntax -- small: one person's bookings in a window of at most 104 weeks
       const added = extra.filter(inWeek(w, wEnd)).filter(a => hoursInWeek(a, w, isWorking) > 0);
       const hours = Math.round((hits.reduce((s, a) => s + hoursInWeek(a, w, calOf(a.scheduleId)), 0) + added.reduce((s, a) => s + hoursInWeek(a, w, isWorking), 0)) * 10) / 10;
       const capacity = capacityMap.get(resource.id)?.get(w) ?? resource.capacityHoursPerWeek;
       const utilization = capacity > 0 ? Math.round((hours / capacity) * 100) : (hours > 0 ? 999 : 0);
       if (utilization > 100) overWeeks.push({ weekStart: w, utilization, hours, capacity, // what else is in that week: their other work, plus the other added tasks it overlaps
+        // eslint-disable-next-line no-restricted-syntax -- small: one week's bookings of one person
         otherTaskIds: [...new Set([...hits, ...(added.length > 1 ? added : [])].map(a => a.taskId).filter(Boolean))] });
     }
     return overWeeks;

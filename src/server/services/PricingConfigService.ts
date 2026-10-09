@@ -72,6 +72,7 @@ class PricingConfigService {
     const gaps: string[] = [];
     for (const tier of PLAN_TIERS) {
       if (!priced.has(tier)) gaps.push(`${tier}: no price / plan settings`);
+      // eslint-disable-next-line no-restricted-syntax -- small: fixed lists: plan tiers x feature keys
       const missing = FEATURE_KEYS.filter(k => !have.has(`${tier}|${k}`));
       if (missing.length) gaps.push(`${tier}: no setting for ${missing.join(', ')}`);
     }

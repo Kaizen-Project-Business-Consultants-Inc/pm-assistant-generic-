@@ -11,6 +11,7 @@ import { scheduleService } from '../../services/ScheduleService';
 import logger from '../../utils/logger';
 import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../utils/workingDays';
 import { planChanged } from '../../services/domainEvents';
+import { groupBy } from '../../utils/groupBy';
 import {
   changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary,
   ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries,
@@ -404,6 +405,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       // For Schedule History's Undo: the current values of exactly the fields being changed
       const changedColumns = [...new Set(body.updates.flatMap(u =>
+        // eslint-disable-next-line no-restricted-syntax -- small: BULK_UPDATE_COLUMNS is the fixed list of editable fields
         Object.keys(BULK_UPDATE_COLUMNS).filter(k => (u as any)[k] !== undefined).map(k => BULK_UPDATE_COLUMNS[k])))];
       const previous: PreviousValues[] = await changeHistoryService
         .readPrevious(body.updates.map(u => u.id).filter(Boolean), changedColumns)
@@ -421,12 +423,12 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       // (a task moved out) and after it (a task moved in), like the single-task edit
       const rollupUpdates = body.updates.filter(u => u.id && u.scheduleId && Object.keys(BULK_UPDATE_COLUMNS)
         .some(k => (u as any)[k] !== undefined && ROLLUP_COLUMNS.has(BULK_UPDATE_COLUMNS[k])));
-      const rollupSchedules = [...new Set(rollupUpdates.map(u => u.scheduleId))];
+      const rollupBySchedule = groupBy(rollupUpdates, u => u.scheduleId);
       const parents: string[] = [];
       const readParents = async (run: (sql: string, params: any[]) => Promise<any>) => {
-        for (const sid of rollupSchedules) {
+        for (const [sid, ups] of rollupBySchedule) {
           // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one), on the transaction's one connection
-          parents.push(...await parentIdsOf(run, sid, rollupUpdates.filter(u => u.scheduleId === sid).map(u => u.id)));
+          parents.push(...await parentIdsOf(run, sid, ups.map(u => u.id)));
         }
       };
 
@@ -450,6 +452,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
             // A link or a parent must be a task in the same plan (2026-10-05 audit: these went
             // straight into the row, so they could point into another plan or project)
+            // eslint-disable-next-line no-restricted-syntax -- small: a two-item list (link + parent)
             const refs = [u.dependency, u.parentTaskId].filter((r): r is string => !!r);
             if (refs.some(r => r === u.id)) {
               failed.push({ id: u.id, error: 'A task cannot be linked to or nested under itself' });
@@ -528,13 +531,17 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       await rollUpSummaries(parents);
 
       const doneIds = new Set(succeeded.map(s => s.id));
-      for (const sid of new Set(body.updates.filter(u => doneIds.has(u.id)).map(u => u.scheduleId))) {
+      const doneBySchedule = groupBy(body.updates.filter(u => doneIds.has(u.id)), u => u.scheduleId);
+      for (const [sid, doneUpdates] of doneBySchedule) {
         planChanged(sid);
-        const ids = body.updates.filter(u => u.scheduleId === sid && doneIds.has(u.id)).map(u => u.id);
+        const ids = doneUpdates.map(u => u.id);
+        const idSet = new Set(ids);
         // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one); History entries in order
         const projectId = await projectOfSchedule(sid);
         if (projectId) {
-          const fields = [...new Set(body.updates.filter(u => ids.includes(u.id)).flatMap(u =>
+          // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
+          const fields = [...new Set(body.updates.filter(u => idSet.has(u.id)).flatMap(u =>
+            // eslint-disable-next-line no-restricted-syntax -- small: BULK_UPDATE_COLUMNS is the fixed list of editable fields
             Object.keys(BULK_UPDATE_COLUMNS).filter(k => (u as any)[k] !== undefined)))];
           // eslint-disable-next-line no-await-in-loop -- one History entry per plan, recorded in order
           await changeHistoryService.record({
@@ -543,7 +550,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             kind: 'bulk_update',
             summary: `Edited ${ids.length} task${ids.length === 1 ? '' : 's'} (${describeFields(fields)})`,
             taskIds: ids,
-            undo: { previous: previous.filter(p => ids.includes(p.id)) },
+            // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
+            undo: { previous: previous.filter(p => idSet.has(p.id)) },
           });
         }
       }

@@ -9,6 +9,7 @@
 
 import { isMilestoneLike, BUFFER_NAME, type Finding, type ReviewTask } from './rules';
 import { type IsWorking, weekdaysOnly, workingDaysAfter, onOrAfterWorking, shiftWorking, utcDay, ymdOf } from '../../utils/workingDays';
+import { groupBy } from '../../utils/groupBy';
 
 export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer' | 'split_task' | 'add_task';
 
@@ -100,6 +101,7 @@ export function buildGroupingFixes(
     const name = (g.phaseName || '').trim();
     if (!name) continue;
     const existing = phaseByName.get(name.toLowerCase());
+    // eslint-disable-next-line no-restricted-syntax -- each AI group's own ids, checked against a Map and a Set (no search)
     const members = [...new Set(g.taskIds.filter(id => byId.has(id) && !used.has(id)))];
     // a new phase needs at least two distinct tasks; an existing one can take a single task
     if (members.length < (existing ? 1 : 2)) continue;
@@ -173,6 +175,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   }
   for (const group of groups.values()) {
     if (group.length < 2) continue;
+    // eslint-disable-next-line no-restricted-syntax -- each phase group sorted once (a different list every time; all groups together are the plan's leaves once)
     const ordered = [...group].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
     for (let i = 1; i < ordered.length; i++) {
       const cur = ordered[i];
@@ -205,7 +208,8 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   // --- a "milestone" that spans days (R04/R05): split it into the work and the milestones ---
   // Flagging it would squeeze days of work into a day (it happened to DBJ-Loans, Sep 2026).
   const splitDone = new Set<string>();
-  for (const f of findings.filter(f => f.ruleId === 'R04' || f.ruleId === 'R05')) {
+  const milestoneSpanFindings = findings.filter(f => f.ruleId === 'R04' || f.ruleId === 'R05');
+  for (const f of milestoneSpanFindings) {
     for (const taskId of f.taskIds) {
       const t = byId.get(taskId);
       if (!t || splitDone.has(t.id) || t.isSummary) continue;
@@ -299,6 +303,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   // --- insert_buffer: protect a gate/milestone that already has predecessors ---
   for (const t of leaves) {
     if (!isMilestoneLike(t)) continue;
+    // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once)
     const preds = (t.dependencies || []).map(d => byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
     if (preds.length === 0) continue;                                   // nothing feeding it yet
     if (preds.some(p => BUFFER_NAME.test(p.name || ''))) continue;      // already buffered
@@ -321,6 +326,31 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   if (r02) {
     const proposed = new Set(fixes.map(f => f.id));
     const day = (d?: string | null) => (d ? String(d).slice(0, 10) : '');
+    // The pick below wants: same phase first, then earliest start, then plan order. The leaves
+    // are put in that order ONCE (all of them, and per phase) instead of being filtered and
+    // sorted again for every task (2026-10-09). Same answer: the first match in a stably
+    // sorted list is the first of the matches sorted the same way.
+    const byStart = (a: ReviewTask, b: ReviewTask) =>
+      day(a.startDate).localeCompare(day(b.startDate)) || (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    const inStartOrder = (list: ReviewTask[]) => {
+      const sorted = [...list].sort(byStart);
+      const days = sorted.map(c => day(c.startDate));
+      // when the starts only rise along the list, the first one after a date is found by halving
+      const rising = days.every((d, i) => i === 0 || !(days[i - 1] > d));
+      return { sorted, days, rising };
+    };
+    const allInOrder = inStartOrder(leaves);
+    const phaseInOrder = new Map([...groupBy(leaves, c => c.parentTaskId)].map(([k, v]) => [k, inStartOrder(v)]));
+    const firstStartingAfter = (o: ReturnType<typeof inStartOrder> | undefined, tEnd: string, skip: (c: ReviewTask) => boolean) => {
+      if (!o) return undefined;
+      let lo = 0;
+      if (o.rising) {
+        let hi = o.days.length;
+        while (lo < hi) { const mid = (lo + hi) >> 1; if (o.days[mid] > tEnd) hi = mid; else lo = mid + 1; }
+      }
+      for (let i = lo; i < o.sorted.length; i++) if (o.days[i] > tEnd && !skip(o.sorted[i])) return o.sorted[i];
+      return undefined;
+    };
     for (const taskId of r02.taskIds) {
       const t = byId.get(taskId);
       const tEnd = day(t?.endDate);
@@ -333,12 +363,9 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
           if (!upstream.has(d.dependencyId)) { upstream.add(d.dependencyId); stack.push(d.dependencyId); }
         }
       }
-      const next = leaves
-        .filter(c => c.id !== t.id && !upstream.has(c.id) && day(c.startDate) > tEnd)
-        .sort((a, b) =>
-          Number(b.parentTaskId === t.parentTaskId) - Number(a.parentTaskId === t.parentTaskId)
-          || day(a.startDate).localeCompare(day(b.startDate))
-          || (a.sortOrder ?? 0) - (b.sortOrder ?? 0))[0];
+      const skip = (c: ReviewTask) => c.id === t.id || upstream.has(c.id);
+      const next = firstStartingAfter(phaseInOrder.get(t.parentTaskId), tEnd, skip)
+        ?? firstStartingAfter(allInOrder, tEnd, skip);
       if (!next) continue;
       const id = `add_dependency:${next.id}:${t.id}`;
       if (proposed.has(id)) continue;
@@ -400,6 +427,7 @@ export function buildSplitFixes(
   for (const sp of splits) {
     const t = byId.get(sp.taskId);
     if (!t || done.has(t.id)) continue;
+    // eslint-disable-next-line no-restricted-syntax -- small: one AI split's own parts (a handful; more than 5 is dropped)
     const parts: SplitPart[] = (sp.parts || [])
       .map(p => ({ name: String(p.name || '').trim().slice(0, 200), isMilestone: !!p.isMilestone, days: Math.max(0, Math.round(Number(p.days) || 0)) }))
       .filter(p => p.name);

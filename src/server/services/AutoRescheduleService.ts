@@ -206,6 +206,9 @@ export class AutoRescheduleService {
     const delayedTasks = await this.detectDelays(scheduleId);
     const criticalPathResult = await this.criticalPathService.calculateCriticalPath(scheduleId);
     const allTasks = await this.scheduleService.findTasksByScheduleId(scheduleId);
+    // Looked up by id below — the first task per id, as a .find would
+    const taskById = new Map<string, Task>();
+    for (const t of allTasks) if (!taskById.has(t.id)) taskById.set(t.id, t);
     const schedule = await this.scheduleService.findById(scheduleId);
 
     if (!schedule) {
@@ -289,7 +292,7 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       // proposed date on a day off is put back on the calendar (start → next working
       // day, the task keeps its working-day length).
       proposedChanges = aiResponse.proposedChanges.map((pc) => {
-        const task = allTasks.find((t) => t.id === pc.taskId);
+        const task = taskById.get(pc.taskId);
         const snapped = snapToWorking(pc.proposedStartDate, pc.proposedEndDate, isWorking);
         return {
           taskId: pc.taskId,
@@ -318,9 +321,21 @@ Please propose date changes to reschedule affected tasks with minimal disruption
     } else {
       // Fallback: generate a simple heuristic-based proposal without AI
       proposedChanges = [];
+      const proposedIds = new Set<string>();
+      // Each task's dependents (tasks linking to it), in plan order, each once
+      const dependentsOf = new Map<string, Task[]>();
+      for (const t of allTasks) {
+        const seen = new Set<string>();
+        for (const d of t.dependencies) {
+          if (seen.has(d.dependencyId)) continue;
+          seen.add(d.dependencyId);
+          const list = dependentsOf.get(d.dependencyId);
+          if (list) list.push(t); else dependentsOf.set(d.dependencyId, [t]);
+        }
+      }
 
       for (const delayed of delayedTasks) {
-        const task = allTasks.find((t) => t.id === delayed.taskId);
+        const task = taskById.get(delayed.taskId);
         if (!task || !task.startDate || !task.endDate) continue;
 
         const currentStart = toDateStr(new Date(task.startDate));
@@ -328,6 +343,7 @@ Please propose date changes to reschedule affected tasks with minimal disruption
         // The finish moves out by the delay, in working days
         const newEndDate = shiftWorking(utcDay(task.endDate), delayed.delayDays, isWorking);
 
+        proposedIds.add(task.id);
         proposedChanges.push({
           taskId: task.id,
           taskName: task.name,
@@ -339,7 +355,7 @@ Please propose date changes to reschedule affected tasks with minimal disruption
         });
 
         // Also shift dependent tasks
-        const dependents = allTasks.filter((t) => t.dependencies.some(d => d.dependencyId === task.id));
+        const dependents = dependentsOf.get(task.id) ?? [];
         for (const dep of dependents) {
           if (!dep.startDate || !dep.endDate) continue;
           if (dep.status === 'completed' || dep.status === 'cancelled') continue;
@@ -348,6 +364,7 @@ Please propose date changes to reschedule affected tasks with minimal disruption
           const depCurrentEnd = utcDay(dep.endDate);
           // Keep the dependent's length in working days
           const depDuration = Math.max(0, workingDaysAfter(depCurrentStart, depCurrentEnd, isWorking));
+          // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once)
           const lag = dep.dependencies.find(d => d.dependencyId === task.id)?.lagDays ?? 0;
 
           // New start: the working day after the delayed task's new finish (plus lag)
@@ -355,7 +372,8 @@ Please propose date changes to reschedule affected tasks with minimal disruption
           const depNewEnd = shiftWorking(depNewStart, depDuration, isWorking);
 
           // Only push later, and only once
-          if (depNewStart > depCurrentStart && !proposedChanges.find((pc) => pc.taskId === dep.id)) {
+          if (depNewStart > depCurrentStart && !proposedIds.has(dep.id)) {
+            proposedIds.add(dep.id);
             proposedChanges.push({
               taskId: dep.id,
               taskName: dep.name,

@@ -91,6 +91,7 @@ export async function runPmWeeklyReviews(opts: { orgId?: string | null; now?: Da
   let notified = 0;
   for (const [userId, projectIds] of byPm) {
     const rows = projectIds.map(id => done.get(id)!);
+    // eslint-disable-next-line no-restricted-syntax -- small: one PM's own projects, each counted once
     const needs = rows.filter(r => r.open > 0).length;
     try {
       // eslint-disable-next-line no-await-in-loop -- each notification may also send an email; sent one by one to stay inside the mail provider rate limit

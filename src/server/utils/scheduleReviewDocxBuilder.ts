@@ -19,6 +19,7 @@ import {
   ShadingType, TableLayoutType, convertInchesToTwip,
 } from 'docx';
 import type { Band, Severity, Finding, SkippedRule } from '../services/scheduleReview/rules';
+import { groupBy } from './groupBy';
 
 const NAVY = '283480';
 const WHITE = 'FFFFFF';
@@ -215,8 +216,9 @@ export async function buildScheduleReviewDocx(input: ScheduleReviewDocInput): Pr
       { color: GRAY, size: 20, after: 200 },
     ));
 
+    const bySeverity = groupBy(input.findings, f => f.severity);
     for (const severity of SEVERITY_ORDER) {
-      const group = input.findings.filter(f => f.severity === severity);
+      const group = bySeverity.get(severity) ?? [];
       if (group.length === 0) continue;
 
       children.push(new Paragraph({

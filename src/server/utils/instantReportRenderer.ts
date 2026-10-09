@@ -997,6 +997,7 @@ export function renderWhoDoesWhatWhenReport(data: WhoDoesWhatWhenReportData): st
 
     const taskRows = Array.from(allTaskNames).slice(0, 50).map(taskName => {
       const cells = r.weeks.map(w => {
+        // eslint-disable-next-line no-restricted-syntax -- small: at most 50 task rows x one person's tasks in one week
         const entry = w.tasks.find(t => t.taskName === taskName);
         const hours = entry ? entry.hours : 0;
         return `<td style="${TD} text-align: center; font-size: 11px;${hours > 0 ? '' : ' color: #d1d5db;'}">${hours > 0 ? num(hours, 1) + 'h' : '—'}</td>`;

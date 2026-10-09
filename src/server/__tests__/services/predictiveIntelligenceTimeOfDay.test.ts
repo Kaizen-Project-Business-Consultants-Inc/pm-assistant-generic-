@@ -71,3 +71,27 @@ describe('predictive intelligence gives the same answer whatever the time of day
     expect(morning).toEqual(['Overdue:100:10', 'Running:74:0']);
   });
 });
+
+// Each plan's tasks come from a list grouped once, not a scan per plan (2026-10-09)
+describe('task slips across several plans', () => {
+  it("lists each plan's tasks in the same order as scanning per plan, and is quick", async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    (scheduleService.findByProjectId as any).mockResolvedValueOnce([{ id: 's1', name: 'One' }, { id: 's2', name: 'Two' }, { id: 's3', name: 'Three' }]);
+    // the same figures for every task, so the (stable) ranking keeps plan order, then list order
+    const same = { status: 'in_progress', startDate: '2026-09-01', endDate: '2026-09-20', progressPercentage: 0, dependencies: [] };
+    const list: any[] = [];
+    for (let i = 0; i < 6000; i++) {
+      const sid = i < 24 ? (i % 3 === 0 ? 's1' : i % 3 === 1 ? 's2' : 's3') : (i % 2 ? 's2' : 's3'); // s1 has only 8 tasks
+      list.push({ id: `t${i}`, name: `T${i}`, scheduleId: sid, ...same });
+    }
+    tasks.list = list;
+    const t0 = performance.now();
+    const out = await at('2026-09-30T08:00:00Z', () => service.predictTaskSlips('p1'));
+    const ms = performance.now() - t0;
+    const names: Record<string, string> = { s1: 'One', s2: 'Two', s3: 'Three' };
+    const expected = ['s1', 's2', 's3'].flatMap(sid => list.filter(t => t.scheduleId === sid)).slice(0, 20)
+      .map(t => `${t.name}@${names[t.scheduleId]}`);
+    expect(out.data.tasks.map((t: any) => `${t.taskName}@${t.scheduleName}`)).toEqual(expected);
+    expect(ms).toBeLessThan(1000);
+  });
+});

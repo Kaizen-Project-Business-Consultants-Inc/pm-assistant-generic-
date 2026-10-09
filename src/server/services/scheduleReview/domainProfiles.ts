@@ -28,6 +28,7 @@ export interface DomainProfile {
   milestones: Expectation[];
 }
 
+// eslint-disable-next-line no-restricted-syntax -- runs once at module load to build the constant pattern lists, never per task
 const re = (...parts: string[]) => parts.map(p => new RegExp(p, 'i'));
 
 // Shared vocabulary -------------------------------------------------------------

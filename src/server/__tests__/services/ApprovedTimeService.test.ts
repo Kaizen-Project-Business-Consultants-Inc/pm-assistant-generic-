@@ -22,6 +22,7 @@ vi.mock('../../services/domainEvents', () => ({ planChanged: vi.fn() }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 import { approvedTimeService } from '../../services/ApprovedTimeService';
+import { workingDaysBetween } from '../../utils/workingDays';
 
 function db(over: { tasks?: any[]; entries?: any[]; people?: any[] } = {}) {
   query.mockImplementation((sql: string) => {
@@ -138,5 +139,47 @@ describe('ApprovedTimeService.costTimeline — actual cost by day, for earned va
     expect(costUpTo(t, '2026-01-04')).toBe(250);
     expect(costUpTo(t, '2026-01-06')).toBe(1100);
     expect(costUpTo(t, '2026-12-31')).toBe(2100);
+  });
+});
+
+// Each task's entries and bookings come from lists grouped once, not a scan per task (2026-10-09)
+describe('ApprovedTimeService — an approval touching many tasks', () => {
+  beforeEach(() => { vi.clearAllMocks(); listSafe.mockResolvedValue([]); });
+
+  it('each task gets the same hours, % and first day as scanning the lists per task', async () => {
+    const isWorking = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+    const ids = Array.from({ length: 300 }, (_, i) => `t${i}`);
+    const tasks = ids.map(id => ({ id, schedule_id: 's1', parent_task_id: null, status: 'pending', progress_percentage: 0, project_id: 'p1' }));
+    const entries: any[] = [];
+    const bookings: any[] = [];
+    // interleaved, so a task's rows are spread through the lists
+    for (let k = 0; k < 4; k++) ids.forEach((id, i) => {
+      if ((i + k) % 3 !== 0) entries.push({ task_id: id, user_id: 'u-peter', date: `2026-10-${10 + ((i * 7 + k * 3) % 18)}`, hours: 1 + ((i + k) % 5), rate_type: 'standard' });
+      if (k < 2) bookings.push({ resourceId: 'r1', taskId: id, scheduleId: 's1', hoursPerWeek: 5 + ((i + k) % 30), startDate: '2026-10-05', endDate: `2026-10-${16 + k * 7}` });
+    });
+    bookings.push({ resourceId: 'r1', taskId: 'other', scheduleId: 's1', hoursPerWeek: 40, startDate: '2026-10-05', endDate: '2026-10-30' });
+    db({ tasks, entries });
+    findEffectiveAssignments.mockResolvedValue(bookings);
+
+    const t0 = performance.now();
+    await approvedTimeService.applyToTasks(ids);
+    const ms = performance.now() - t0;
+
+    const updates = query.mock.calls.filter(([sql]) => String(sql).includes('UPDATE tasks SET'));
+    expect(updates).toHaveLength(ids.length);
+    for (const [, params] of updates) {
+      const id = (params as any[]).find(p => typeof p === 'string' && ids.includes(p));
+      // what each task was before: the lists scanned for it
+      const mine = entries.filter(e => e.task_id === id);
+      const hours = mine.reduce((n, e) => n + Number(e.hours), 0);
+      const firstDay = mine.reduce<string | null>((f, e) => (!f || e.date < f ? e.date : f), null);
+      const planned = bookings.filter(b => b.taskId === id)
+        .reduce((n, b) => n + (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, isWorking), 0);
+      const progress = planned > 0 ? Math.min(99, Math.round((hours / planned) * 100)) : null;
+      expect(params[0]).toBe(hours);
+      expect(params[4]).toBe(progress);
+      expect(params[6]).toBe(firstDay);
+    }
+    expect(ms).toBeLessThan(1000);
   });
 });

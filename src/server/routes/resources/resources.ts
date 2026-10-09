@@ -25,6 +25,7 @@ import { utcDay, mondayOf } from '../../utils/workingDays';
 import { hoursInWeek, calendarsFor } from '../../services/weeklyLoad';
 import { isExamplePerson } from '../../utils/sampleData';
 import { clampPagination } from '../../schemas/paginationSchema';
+import { groupBy } from '../../utils/groupBy';
 
 const skillSchema = z.union([
   z.string(),
@@ -639,6 +640,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         const costRaw = row.costRateHourly || row.costRate || row['Cost Rate'] || '';
         const costRate = costRaw ? parseFloat(costRaw) : null;
         const skillsRaw = row.skills || row.Skills || '';
+        // eslint-disable-next-line no-restricted-syntax -- small: one CSV row's own skills
         const skills = skillsRaw ? skillsRaw.split(';').map((s: string) => s.trim()).filter(Boolean).map((s: string) => ({ name: s, level: 3 })) : [];
         const group = (row.resourceGroup || row.department || row.Department || '').trim() || null;
 
@@ -766,10 +768,17 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       roleMap.set(r.role, arr);
     }
 
+    // Each role's bookings (of its active people), in list order — one pass, not one per role
+    const roleOfResource = new Map<string, string>();
+    for (const [role, roleResources] of roleMap) for (const r of roleResources) roleOfResource.set(r.id, role);
+    const assignmentsOfRole = groupBy(
+      allAssignments.filter(a => roleOfResource.has(a.resourceId)),
+      a => roleOfResource.get(a.resourceId)!,
+    );
+
     const roles = [...roleMap.entries()].map(([role, roleResources]) => {
-      const resourceIds = new Set(roleResources.map(r => r.id));
       const totalCapacity = roleResources.reduce((s, r) => s + r.capacityHoursPerWeek, 0);
-      const roleAssignments = allAssignments.filter(a => resourceIds.has(a.resourceId));
+      const roleAssignments = assignmentsOfRole.get(role) ?? [];
 
       const weeklyData = weeks.map(weekStart => {
         const weekEnd = new Date(weekStart.getTime() + WEEK_MS);
@@ -802,7 +811,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     if (readable === 'all') return { allocations };
     const out: typeof allocations = {};
     for (const [rid, list] of Object.entries(allocations)) {
+      // eslint-disable-next-line no-restricted-syntax -- small: each person's own allocations, each counted once
       const mine = list.filter((a) => readable.has(a.projectId));
+      // eslint-disable-next-line no-restricted-syntax -- small: each person's own allocations, each counted once
       const others = list.filter((a) => !readable.has(a.projectId));
       out[rid] = others.length === 0 ? mine : [...mine, {
         projectId: '', projectName: 'Other projects', scheduleName: '',

@@ -158,6 +158,7 @@ export async function exportRoutes(fastify: FastifyInstance) {
           const start = t.startDate ? toISODate(t.startDate) : '';
           const finish = t.endDate ? toISODate(t.endDate) : '';
           const durationDays = start && finish ? Math.max(1, Math.round((new Date(finish).getTime() - new Date(start).getTime()) / 86400000)) : 1;
+          // eslint-disable-next-line no-restricted-syntax -- small: one task's own predecessor links
           const predLinks = t.dependencies.map(d => {
             const predUid = taskUidMap.get(d.dependencyId);
             if (!predUid) return '';
@@ -255,6 +256,7 @@ ${assignmentsXml}
 
         for (const task of tasks) {
           // Build predecessor string in MS Project format: "3FS+2d,5SS"
+          // eslint-disable-next-line no-restricted-syntax -- small: one task's own predecessor links
           const predLabels = task.dependencies.map(d => {
             const rowNum = taskRowNum.get(d.dependencyId);
             if (!rowNum) return '';

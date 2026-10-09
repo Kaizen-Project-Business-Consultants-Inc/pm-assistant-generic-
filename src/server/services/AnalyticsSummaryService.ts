@@ -95,6 +95,7 @@ class AnalyticsSummaryService {
     let totalAllocated = 0;
     let totalSpent = 0;
     const atRiskProjects: Array<{ id: string; name: string; reason: string }> = [];
+    const atRiskIds = new Set<string>(); // ids already in atRiskProjects
     const overBudgetProjects: Array<{ id: string; name: string; overrunPercent: number }> = [];
 
     const projectIds = projects.map((p) => p.id);
@@ -109,6 +110,7 @@ class AnalyticsSummaryService {
 
       // At-risk: budget utilisation > 80 %
       if (allocated > 0 && spent / allocated > 0.8) {
+        atRiskIds.add(p.id);
         atRiskProjects.push({
           id: p.id,
           name: p.name,
@@ -126,7 +128,8 @@ class AnalyticsSummaryService {
           const actualProgress = Number(p.progress) || 0;
           if (elapsed > 0.3 && actualProgress < elapsed * 100 - 20) {
             // Only flag if not already flagged for budget
-            if (!atRiskProjects.find((r) => r.id === p.id)) {
+            if (!atRiskIds.has(p.id)) {
+              atRiskIds.add(p.id);
               atRiskProjects.push({
                 id: p.id,
                 name: p.name,

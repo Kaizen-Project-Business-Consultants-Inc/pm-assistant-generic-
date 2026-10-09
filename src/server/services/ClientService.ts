@@ -134,8 +134,11 @@ export const clientService = {
 
     for (const p of projects) {
       const tasks = tasksOf.get(p.id) ?? [];
+      // eslint-disable-next-line no-restricted-syntax -- small: this project's own tasks (grouped above), each counted once
       const live = tasks.filter((t: any) => !['completed', 'cancelled'].includes(t.status) && !t.isSummary);
+      // eslint-disable-next-line no-restricted-syntax -- small: this project's own open tasks, each counted once
       const late = live.filter((t: any) => ymd(t.endDate) && ymd(t.endDate)! < now).length;
+      // eslint-disable-next-line no-restricted-syntax -- small: filters and sorts this project's own milestones; a fixed 2-status list
       const nextMs = tasks
         .filter((t: any) => t.isMilestone && t.status !== 'completed' && ymd(t.endDate) && ymd(t.endDate)! >= now)
         .sort((a: any, b: any) => ymd(a.endDate)!.localeCompare(ymd(b.endDate)!))[0];

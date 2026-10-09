@@ -388,6 +388,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           if (!name) throw new Error('name is required');
 
           // Drop legend/artefact rows (a lone status word with empty cells).
+          // eslint-disable-next-line no-restricted-syntax -- small: one row's own cells (its mapped columns)
           const otherValues = Object.entries(row).filter(([k]) => k !== 'name').map(([, v]) => v);
           if (isLegendRow(name, otherValues)) {
             skipped.push({ row: rowNum, name, reason: 'legend or artefact row' });
@@ -492,6 +493,12 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       const rowNumToTaskId = new Map<string, string>(); // 1-based row number → taskId
       const nameToTaskId = new Map<string, string>();
       for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
+      // An existing phase task by name: the FIRST task with that name (as a .find would)
+      const existingIdByName = new Map<string, string>();
+      for (const t of existingTasks) {
+        const k = t.name.toLowerCase().trim();
+        if (!existingIdByName.has(k)) existingIdByName.set(k, t.id);
+      }
       const createdTaskIds: string[] = []; // phase summaries and rows, for Undo in Schedule History
       // looked up once for the whole file, not once per row (2026-10-08)
       const planIsWorking = await scheduleService.workingDayTest(scheduleId);
@@ -520,8 +527,8 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
                 nameToTaskId.set(phase.toLowerCase(), phaseTask.id);
                 existingKeys.add(phaseDedupKey);
               } else {
-                const existing = existingTasks.find(t => t.name.toLowerCase().trim() === phase.toLowerCase());
-                if (existing) phaseTaskIds.set(phase, existing.id);
+                const existingId = existingIdByName.get(phase.toLowerCase());
+                if (existingId !== undefined) phaseTaskIds.set(phase, existingId);
               }
             }
             parentTaskId = phaseTaskIds.get(phase);

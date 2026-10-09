@@ -63,9 +63,12 @@ export function matchSpeakers(
     if (prior && (prior.userId === null || memberIds.has(prior.userId))) {
       return { name, lines, userId: prior.userId, matchedBy: 'saved' as const };
     }
+    // eslint-disable-next-line no-restricted-syntax -- small: a meeting's speakers (a handful) against one project's members
     const byName = members.find(m => norm(m.userName || '') === norm(name));
     if (byName) return { name, lines, userId: byName.userId, matchedBy: 'name' as const };
+    // eslint-disable-next-line no-restricted-syntax -- small: a meeting's speakers (a handful) against its invitees
     const invitee = attendees.find(a => norm(a.name) === norm(name) && a.email);
+    // eslint-disable-next-line no-restricted-syntax -- small: a meeting's speakers (a handful) against one project's members
     const byEmail = invitee && members.find(m => (m.email || '').toLowerCase() === invitee.email);
     if (byEmail) return { name, lines, userId: byEmail.userId, matchedBy: 'email' as const };
     return { name, lines, userId: null, matchedBy: null };

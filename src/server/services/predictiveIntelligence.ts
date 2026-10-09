@@ -24,6 +24,7 @@ import logger from '../utils/logger';
 // for anyone west of UTC.
 import { isOverdue } from '../utils/calendarDate';
 import { utcDay } from '../utils/workingDays';
+import { groupBy } from '../utils/groupBy';
 
 const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 // Predictions don't change minute to minute, and every refresh is a paid AI call — the dashboard
@@ -1531,8 +1532,10 @@ export class PredictiveIntelligenceService {
     const schedNameMap = new Map(schedules.map(s => [s.id, s.name]));
     const taskMap = new Map(allBatchedTasks.map((t: any) => [t.id, t]));
 
+    const tasksOfSchedule = groupBy(allBatchedTasks, t => t.scheduleId); // each plan's tasks, in list order
+
     for (const sched of schedules) {
-      const tasks = allBatchedTasks.filter(t => t.scheduleId === sched.id);
+      const tasks = tasksOfSchedule.get(sched.id) ?? [];
 
       for (const task of tasks) {
         if (task.status === 'completed' || task.status === 'cancelled') continue;
@@ -1566,6 +1569,7 @@ export class PredictiveIntelligenceService {
         // Factor 3: Incomplete predecessors (20% weight)
         const deps = task.dependencies.map(d => d.dependencyId);
         if (deps.length > 0) {
+          // eslint-disable-next-line no-restricted-syntax -- small: one task's own predecessors
           const incompleteDeps = deps.filter((did: string) => {
             const dep = taskMap.get(did);
             return dep && dep.status !== 'completed';

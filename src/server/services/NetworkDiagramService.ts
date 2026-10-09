@@ -101,6 +101,7 @@ export class NetworkDiagramService {
 
     // Sort within layers: critical tasks first, then by ES
     for (const [, ids] of layers) {
+      // eslint-disable-next-line no-restricted-syntax -- small: sorts each layer's own tasks once
       ids.sort((a, b) => {
         const ca = cpmMap.get(a);
         const cb = cpmMap.get(b);

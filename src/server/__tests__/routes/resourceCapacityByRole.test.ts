@@ -25,6 +25,7 @@ const res = vi.hoisted(() => ({ findAllResources: vi.fn(), findEffectiveAssignme
 vi.mock('../../services/ResourceService', () => ({ resourceService: res, normalizeSkills: (s: any) => s }));
 
 import { resourceRoutes } from '../../routes/resources/resources';
+import { hoursInWeek } from '../../services/weeklyLoad';
 
 describe('GET /resources/capacity-by-role', () => {
   let app: any;
@@ -56,5 +57,33 @@ describe('GET /resources/capacity-by-role', () => {
     // The booking ending this Monday covers one of this week's five working days: 10 h/week → 2 h
     // (2026-10-01: a week counts only the days a booking covers; it used to count all 10 h)
     expect(morning).toEqual({ headers: ['2026-09-28', '2026-10-05', '2026-10-12'], allocated: [2, 20, 0] });
+  });
+
+  it("many roles and bookings: each role adds up its own active people's bookings, as a scan per role did", async () => {
+    const people: any[] = [];
+    for (let i = 0; i < 300; i++) people.push({ id: 'r' + i, role: 'Role ' + (i % 10), isActive: i % 13 !== 0, capacityHoursPerWeek: 40 });
+    const bookings: any[] = [];
+    for (let k = 0; k < 12; k++) for (let i = 0; i < 320; i++) {
+      // some for people not in the list; dates spread over the 12 weeks
+      bookings.push({ resourceId: 'r' + i, startDate: '2026-' + (k % 2 ? '10' : '11') + '-0' + (1 + (k % 9)), endDate: '2026-12-' + (10 + k), hoursPerWeek: 1 + ((i + k) % 7) });
+    }
+    res.findAllResources.mockResolvedValue(people);
+    res.findEffectiveAssignments.mockResolvedValue(bookings);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-30T08:00:00Z'));
+    let body: any;
+    try {
+      body = (await app.inject({ method: 'GET', url: '/api/v1/resources/capacity-by-role' })).json();
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(body.roles).toHaveLength(10);
+    for (const role of body.roles) {
+      // what it was before: every booking scanned for this role's active people
+      const ids = new Set(people.filter(p => p.isActive && p.role === role.role).map(p => p.id));
+      const mine = bookings.filter(a => ids.has(a.resourceId));
+      expect(role.weeks.map((w: any) => w.allocated)).toEqual(body.weekHeaders.map((wk: string) => Math.round(mine.reduce((n, a) => n + hoursInWeek(a, wk), 0) * 10) / 10));
+    }
+    expect(body.roles.some((r: any) => r.weeks.some((w: any) => w.allocated > 0))).toBe(true);
   });
 });

@@ -120,6 +120,7 @@ export async function runMigrations(): Promise<MigrationOutcome> {
 
   // Log known duplicate warnings
   for (const num of KNOWN_DUPLICATE_PREFIXES) {
+    // eslint-disable-next-line no-restricted-syntax -- small: two known duplicate prefixes, one pass over the files each
     const group = files.filter(f => parseMigrationNumber(f) === num);
     if (group.length > 1) {
       console.log(`[migration] Note: prefix ${String(num).padStart(3, '0')} has known historical duplicates: ${group.join(', ')}`);
@@ -149,8 +150,10 @@ export async function runMigrations(): Promise<MigrationOutcome> {
     // (mysql2 execute doesn't support multi-statement by default)
     // Strip SQL comment lines (-- ...) before filtering so comments
     // preceding a statement don't cause the whole chunk to be discarded.
+    // eslint-disable-next-line no-restricted-syntax -- small: this migration file's own statements and lines, each visited once; not a lookup
     const statements = sql
       .split(/;\s*$/m)
+      // eslint-disable-next-line no-restricted-syntax -- small: this migration file's own statements, each visited once; not a lookup
       .map(s => s.split('\n').filter(line => !line.trimStart().startsWith('--')).join('\n').trim())
       .filter(s => s.length > 0);
 

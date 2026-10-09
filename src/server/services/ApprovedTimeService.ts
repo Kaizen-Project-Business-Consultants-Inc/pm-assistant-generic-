@@ -7,6 +7,7 @@ import { workingDaysBetween } from '../utils/workingDays';
 import { planChanged } from './domainEvents';
 import { projectService } from './ProjectService';
 import logger from '../utils/logger';
+import { groupBy } from '../utils/groupBy';
 import type { CostTimeline } from './costTimeline';
 
 /**
@@ -73,10 +74,14 @@ export class ApprovedTimeService {
     const bookings = await resourceService.findEffectiveAssignments({ scheduleIds, includeDone: true });
     const calOf = await calendarsFor(scheduleIds, (id) => scheduleService.workingDayTest(id));
 
+    // Each task's entries and bookings (in list order), looked up per task below
+    const entriesOf = groupBy(entries, (e: any) => e.task_id);
+    const bookingsOf = groupBy(bookings, b => b.taskId);
+
     const parents = new Set<string>();
     const projects = new Set<string>();
     for (const t of tasks) {
-      const mine = entries.filter((e: any) => e.task_id === t.id);
+      const mine = entriesOf.get(t.id) ?? [];
       let hours = 0;
       let cost = 0;
       let firstDay: string | null = null;
@@ -85,7 +90,7 @@ export class ApprovedTimeService {
         cost += entryCost(e, personOf.get(e.user_id), rateCard);
         if (!firstDay || e.date < firstDay) firstDay = e.date;
       }
-      const planned = bookings.filter(b => b.taskId === t.id)
+      const planned = (bookingsOf.get(t.id) ?? [])
         .reduce((n, b) => n + (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, calOf(t.schedule_id)), 0);
       const done = t.status === 'completed' || t.status === 'cancelled';
       const progress = !done && planned > 0 ? Math.min(99, Math.round((hours / planned) * 100)) : null;

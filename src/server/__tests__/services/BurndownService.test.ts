@@ -11,6 +11,7 @@ vi.mock('../../services/ScheduleService', () => ({
 }));
 
 import { BurndownService, BurndownData, VelocityData } from '../../services/BurndownService';
+import { startOfWeek, addDays, toDateString, today as todayDate } from '../../utils/calendarDate';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function makeSchedule(overrides: Partial<{ id: string; startDate: string; endDate: string }> = {}) {
@@ -609,5 +610,81 @@ describe('BurndownService', () => {
       expect(result.weeks.length).toBeGreaterThan(0);
       expect(result.weeks.every(w => w.completed === 0)).toBe(true);
     });
+  });
+});
+
+// ── Same results, without re-counting every completed task per point / week (2026-10-09) ──
+describe('BurndownService on a big plan: same figures as counting each time, and quick', () => {
+
+  const DAY = 86_400_000;
+  // a fixed pseudo-random sequence, so the plan is the same every run
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+  function bigPlan() {
+    const now = Date.now();
+    const start = now - 700 * DAY;
+    const end = now + 300 * DAY;
+    const tasks = Array.from({ length: 5000 }, (_, i) => {
+      const r = rnd();
+      const endDate = r < 0.05 ? null : r < 0.07 ? 'not a date' : iso(start + Math.floor(rnd() * 1000) * DAY);
+      return makeTask(`t${i}`, { status: rnd() < 0.6 ? 'completed' : 'in_progress', endDate });
+    });
+    return { schedule: makeSchedule({ startDate: iso(start), endDate: iso(end) }), tasks };
+  }
+
+  /** The counting the service did before: a full pass per data point */
+  function oldBurndownCounts(schedule: any, tasks: any[]): number[] {
+    const startDate = new Date(schedule.startDate);
+    const endDate = new Date(schedule.endDate);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / DAY));
+    const completionDates = tasks.filter(t => t.status === 'completed').map(t => (t.endDate ? new Date(t.endDate) : new Date()));
+    completionDates.sort((a, b) => a.getTime() - b.getTime());
+    const interval = totalDays > 60 ? 7 : 1;
+    const out: number[] = [];
+    for (let d = 0; d <= totalDays; d += interval) {
+      const cur = new Date(startDate.getTime() + d * DAY);
+      out.push(cur <= today ? completionDates.filter(x => x <= cur).length : -1);
+    }
+    return out;
+  }
+
+  /** The weekly counting the service did before: a full pass per week */
+  function oldVelocityCounts(schedule: any, tasks: any[]): Array<{ weekStart: string; completed: number }> {
+    const done = tasks.filter(t => t.status === 'completed');
+    const out: Array<{ weekStart: string; completed: number }> = [];
+    let weekStart = startOfWeek(schedule.startDate)!;
+    while (addDays(weekStart, 7)! <= todayDate()) {
+      const weekEnd = addDays(weekStart, 7)!;
+      out.push({ weekStart, completed: done.filter(t => { const e = toDateString(t.endDate); return e !== null && e >= weekStart && e < weekEnd; }).length });
+      weekStart = weekEnd;
+    }
+    return out;
+  }
+
+  it('burndown: every data point counts the same completed tasks', async () => {
+    const { schedule, tasks } = bigPlan();
+    mockFindById.mockResolvedValue(schedule);
+    mockFindTasksByScheduleId.mockResolvedValue(tasks);
+    const t0 = performance.now();
+    const result = await new BurndownService().getBurndownData('sch-1');
+    const ms = performance.now() - t0;
+    expect(result.dataPoints.map(p => p.completed)).toEqual(oldBurndownCounts(schedule, tasks));
+    expect(result.dataPoints.some(p => p.completed > 0)).toBe(true);
+    expect(ms).toBeLessThan(500);
+  });
+
+  it('velocity: every week counts the same completed tasks', async () => {
+    const { schedule, tasks } = bigPlan();
+    mockFindById.mockResolvedValue(schedule);
+    mockFindTasksByScheduleId.mockResolvedValue(tasks);
+    const t0 = performance.now();
+    const result = await new BurndownService().getVelocityData('sch-1');
+    const ms = performance.now() - t0;
+    expect(result.weeks).toEqual(oldVelocityCounts(schedule, tasks));
+    expect(result.weeks.length).toBeGreaterThan(90);
+    expect(ms).toBeLessThan(500);
   });
 });

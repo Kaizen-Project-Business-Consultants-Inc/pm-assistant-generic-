@@ -103,6 +103,7 @@ export function buildAdjacencyList(def: DefinitionWithGraph): Map<string, Workfl
     adj.set(edge.sourceNodeId, list);
   }
   for (const [, list] of adj) {
+    // eslint-disable-next-line no-restricted-syntax -- small: sorts each node's own outgoing edges once
     list.sort((a, b) => a.sortOrder - b.sortOrder);
   }
   return adj;
@@ -262,6 +263,7 @@ export async function advanceExecution(
       if (!condResult) continue;
     }
 
+    // eslint-disable-next-line no-restricted-syntax -- small: one workflow's nodes (a designer graph, dozens)
     const targetNode = def.nodes.find(n => n.id === edge.targetNodeId);
     if (!targetNode) continue;
 
@@ -302,6 +304,7 @@ async function executeNode(
           if (edge.label && edge.label !== matchLabel) continue;
           if (visited.has(edge.targetNodeId)) continue;
 
+          // eslint-disable-next-line no-restricted-syntax -- small: one workflow's nodes (a designer graph, dozens)
           const targetNode = def.nodes.find(n => n.id === edge.targetNodeId);
           if (!targetNode) continue;
           visited.add(edge.targetNodeId);
