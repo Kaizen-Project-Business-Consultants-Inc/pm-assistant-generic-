@@ -7,11 +7,18 @@ import logger from '../utils/logger';
  *
  * The shared database still holds old copies of ~70 company tables from before each company
  * had its own database (Jul 2026). Code that runs with no company selected (scheduled jobs,
- * alerts, some admin and AI paths) and uses query() lands there silently — e.g. notifications
- * that no one can ever see. This watch names the code that does it (2026-09-30 clean-up).
+ * alerts, some admin and AI paths) and uses query() lands there silently — e.g. chats and
+ * audit entries that no one can ever see. This watch names the code that does it (2026-09-30
+ * clean-up).
+ *
+ * Reviewed set: a guard test pins it, so adding or removing a table is always a deliberate change.
  */
 export const SHARED_TABLES = new Set([
   '_migrations',
+  // The bell belongs to a person, not a company (also the platform admin's system alerts) — 2026-10-09
+  'notifications',
+  // Per-person AI usage: the monthly AI budget and billing follow the account — 2026-10-09
+  'ai_usage_log',
   'agent_skills', 'ai_context_configs', 'ai_context_config_history', 'ai_conversations',
   'api_keys', 'api_key_usage_log', 'automation_marketplace', 'deleted_emails',
   'dreaming_proposals', 'dreaming_runs', 'feedback', 'invite_tokens', 'knowledge_base_chunks',
