@@ -326,6 +326,24 @@ describe('edits with undo', () => {
     expect(api.createTask.mock.calls[1][1]).toMatchObject({ status: 'in_progress', priority: 'medium', parentTaskId: 'p', startDate: '2026-03-09' });
   });
 
+  it('duplicate: each copy keeps its description and starts only after the previous one is saved', async () => {
+    const pending: Array<(v: unknown) => void> = [];
+    api.createTask.mockImplementation(() => new Promise(resolve => { pending.push(resolve); }));
+    const { result } = setup();
+    let done = false;
+    act(() => { void result.current.handleDuplicateTasks([{ ...TASKS[0], description: 'Notes' }, TASKS[1]]).then(() => { done = true; }); });
+    await flush();
+    expect(api.createTask).toHaveBeenCalledTimes(1);
+    expect(api.createTask.mock.calls[0][1]).toMatchObject({ name: 'Alpha (copy)', description: 'Notes' });
+    await act(async () => { pending[0]({ task: { id: 'n1' } }); });
+    await flush();
+    expect(api.createTask).toHaveBeenCalledTimes(2);
+    expect(done).toBe(false);
+    await act(async () => { pending[1]({ task: { id: 'n2' } }); });
+    await flush();
+    expect(done).toBe(true);
+  });
+
   it('the Undo toast clears itself after 4 s', async () => {
     vi.useFakeTimers();
     try {

@@ -6,6 +6,7 @@ import {
   useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell, handleGridNavKey,
   TABLE_KEYBOARD_RULES, type GridCell,
 } from '../../shared/hooks/useGridKeyboardPaste';
+import { firstByKey, firstIndexByKey } from '../../../../utils/lookup';
 
 /**
  * The Table view's keyboard: Delete (the selection or the active row, after a confirm), cell
@@ -133,10 +134,11 @@ export function useTableKeyboard({
             ? Array.from(selectedIds)
             : focusedCell?.taskId ? [focusedCell.taskId]
             : activeTaskId ? [activeTaskId] : [];
+          const taskById = firstByKey(tasks, t => t.id);
           for (const id of idsToProcess) {
-            const task = tasks.find(t => t.id === id);
+            const task = taskById.get(id);
             if (task?.parentTaskId) {
-              const parent = tasks.find(t => t.id === task.parentTaskId);
+              const parent = taskById.get(task.parentTaskId);
               if (onBulkUpdate) {
                 onBulkUpdate([id], 'parentTaskId', parent?.parentTaskId || '');
               } else {
@@ -151,11 +153,13 @@ export function useTableKeyboard({
             : activeTaskId ? [activeTaskId] : [];
           if (targetIds.length > 0) {
             const flatList = visibleSorted;
+            const rowIndexById = firstIndexByKey(flatList, t => t.id);
+            const isTarget = new Set(targetIds);
             for (const id of targetIds) {
-              const idx = flatList.findIndex(t => t.id === id);
+              const idx = rowIndexById.get(id) ?? -1;
               if (idx > 0) {
                 const above = flatList[idx - 1];
-                if (!targetIds.includes(above.id)) {
+                if (!isTarget.has(above.id)) {
                   if (onBulkUpdate) {
                     onBulkUpdate([id], 'parentTaskId', above.id);
                   } else {

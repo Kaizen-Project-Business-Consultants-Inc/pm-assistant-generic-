@@ -35,6 +35,7 @@ import { isLockedCell, CALCULATED_CELL_HINTS } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
 import { listenForEscapeCancel } from './shared/escapeCancel';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
+import { firstByKey } from '../../utils/lookup';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -151,6 +152,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   // Fixed row numbers (MS Project-style ID): position in the full plan, unaffected by
   // sort, filter or collapse
   const rowNumMap = useMemo(() => buildRowNumberMap(allTasks ?? tasks), [allTasks, tasks]);
+  // taskId → task for the Predecessors / Successors hover names (first task with that id, as find gave)
+  const taskById = useMemo(() => firstByKey(tasks, t => t.id), [tasks]);
 
   const rowNumToTaskId = useMemo(() => {
     const map = new Map<number, string>();
@@ -1167,7 +1170,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 if (d.dependencyType !== 'FS') label += d.dependencyType;
                 if (d.lagDays !== 0) label += (d.lagDays > 0 ? `+${d.lagDays}d` : `${d.lagDays}d`);
                 labels.push(label);
-                const dt = tasks.find(t => t.id === d.dependencyId);
+                const dt = taskById.get(d.dependencyId);
                 if (dt) names.push(dt.name);
                 const h = getDepHealth(d.dependencyId);
                 if (h === 'at_risk') worstHealth = 'at_risk';
@@ -1203,7 +1206,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           if (s.lag !== 0) label += (s.lag > 0 ? `+${s.lag}d` : `${s.lag}d`);
           return label;
         });
-        const succNames = succs.map(s => tasks.find(t => t.id === s.successorId)?.name || '').filter(Boolean);
+        const succNames = succs.map(s => taskById.get(s.successorId)?.name || '').filter(Boolean);
         return (
           <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 font-mono text-center" title={succNames.join(', ')}>
             {succLabels.join(',')}

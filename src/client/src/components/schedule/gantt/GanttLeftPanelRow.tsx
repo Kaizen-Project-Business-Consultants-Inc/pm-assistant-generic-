@@ -56,7 +56,7 @@ export interface GanttLeftPanelRowProps {
   rowNumMap: Map<string, number>;
   reviewFlagMap?: Map<string, string>;
   successorMap: Map<string, Array<{ successorId: string; type: string; lag: number }>>;
-  tasks: GanttTask[]; // for dependency name tooltips
+  taskById: ReadonlyMap<string, GanttTask>; // for dependency name tooltips
   // Feature flags
   sortField: string | null;
   hasOnBulkUpdate: boolean;
@@ -162,7 +162,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   rowNumMap,
   reviewFlagMap,
   successorMap,
-  tasks,
+  taskById,
   sortField,
   hasOnBulkUpdate,
   hasOnTaskReorder,
@@ -197,6 +197,9 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
   // Fixed row number (position in the full plan), not the position in the current view
   const rowNumber = rowNumMap.get(task.id) ?? rowIdx + 1;
+  // Hover text of the Predecessors / Successors cells: the linked tasks' names
+  const predTitle = (task.dependencies || []).map(d => taskById.get(d.dependencyId)?.name || '').filter(Boolean).join(', ') || undefined;
+  const succTitle = (successorMap.get(task.id) || []).map(s => taskById.get(s.successorId)?.name || '').filter(Boolean).join(', ') || undefined;
 
   // Resource / person id → name (shared cache)
   const resourceNameMap = useResourceNameMap();
@@ -346,7 +349,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono ${cellClass('dependency')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'dependency', task)}
-            title={(task.dependencies || []).map(d => tasks.find(t => t.id === d.dependencyId)?.name || '').filter(Boolean).join(', ') || undefined}
+            title={predTitle}
           >
             {isEditingField(editingField, 'dependency') ? (
               <div>
@@ -398,7 +401,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             key="succ"
             className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono"
             style={{ width: w }}
-            title={(successorMap.get(task.id) || []).map(s => tasks.find(t => t.id === s.successorId)?.name || '').filter(Boolean).join(', ') || undefined}
+            title={succTitle}
           >
             {(() => {
               const succs = successorMap.get(task.id);

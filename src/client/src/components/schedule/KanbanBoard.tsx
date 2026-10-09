@@ -204,6 +204,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
   const groupTasksByStatus = (taskList: KanbanTask[]) => {
     const grouped: Record<string, KanbanTask[]> = {};
     for (const col of COLUMNS) {
+      // eslint-disable-next-line no-restricted-syntax -- small: the 7 status columns; each sorts only its own cards
       grouped[col.id] = taskList
         .filter((t) => t.status === col.id)
         .sort((a, b) => (priorityOrder[a.priority || 'medium'] ?? 2) - (priorityOrder[b.priority || 'medium'] ?? 2));

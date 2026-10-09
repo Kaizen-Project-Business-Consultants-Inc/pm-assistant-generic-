@@ -44,6 +44,24 @@ describe('ColumnMapper — sample values for the AI', () => {
   it('ignores headers that are not in the file', () => {
     expect(sampleValues(headers, ['Nope'], rows)).toEqual({});
   });
+
+  it('gives what the old whole-file read gave (stops once it has 5; 2026-10-09)', () => {
+    const old = (hs: string[], names: string[], rs: string[][]) => {
+      const out: Record<string, string[]> = {};
+      for (const h of names) {
+        const i = hs.indexOf(h);
+        if (i < 0) continue;
+        out[h] = rs.map(r => (r[i] ?? '').trim()).filter(Boolean).slice(0, 5).map(v => v.slice(0, 80));
+      }
+      return out;
+    };
+    const file = Array.from({ length: 3000 }, (_, i) => [
+      i % 3 ? `T${i}` : '', i % 7 ? '' : `  P${i}  `, i < 2990 ? '' : 'y'.repeat(i % 100 + 50), ...(i % 2 ? [] : ['extra']),
+    ]);
+    const hs = ['ID', 'Phase', 'Notes', 'Extra', 'Missing'];
+    expect(sampleValues(hs, hs, file)).toEqual(old(hs, hs, file));
+    expect(sampleValues(hs, ['Phase', 'Phase'], [])).toEqual(old(hs, ['Phase', 'Phase'], []));
+  });
 });
 
 describe('ColumnMapper — "Task" column beside a name column becomes the phase', () => {

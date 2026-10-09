@@ -46,6 +46,7 @@ import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
 import { isLockedCell } from './summaryRollup';
 import { savedViewSortField } from './sortValues';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
+import { firstByKey } from '../../utils/lookup';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -570,6 +571,9 @@ export function GanttChart({
     timescale,
     todayOffset,
   } = useGanttLayout({ tasks, allTasks, rows, inlineInsert, zoom, dayPx, timelineRef, leftPanelRef });
+
+  // taskId → task for the rows' predecessor/successor names (first task with that id, as find gave)
+  const taskById = useMemo(() => firstByKey(tasks, t => t.id), [tasks]);
 
   // Dependencies: successor map, link health, click-drag link drawing (document listeners),
   // pre-computed arrow paths
@@ -1141,7 +1145,7 @@ export function GanttChart({
           sortDirection={sortDirection}
           handleHeaderSort={handleHeaderSort}
           rows={rows}
-          tasks={tasks}
+          taskById={taskById}
           shouldVirtualize={shouldVirtualize}
           totalRowsHeight={totalRowsHeight}
           visStart={visStart}
@@ -1218,7 +1222,7 @@ export function GanttChart({
         <GanttTimelinePanel
           timelineRef={timelineRef}
           rows={rows}
-          tasks={tasks}
+          taskById={taskById}
           zoom={zoom}
           dayPx={dayPx}
           nonWorkingDates={nonWorkingDates}

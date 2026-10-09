@@ -39,7 +39,7 @@ export interface GanttTimelineBarProps {
   dayPx: number;
   colors: { bg: string; fill: string; text: string };
   // For tooltip
-  tasks: GanttTask[];
+  taskById: ReadonlyMap<string, GanttTask>;
   rowNumMap: Map<string, number>;
   getDepHealth: (depTaskId: string) => 'satisfied' | 'in_progress' | 'at_risk';
   // Callbacks
@@ -77,7 +77,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   floatDays,
   dayPx,
   colors,
-  tasks,
+  taskById,
   rowNumMap,
   getDepHealth,
   onBarMouseDown,
@@ -381,7 +381,7 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
         )}
         {task.dependencies && task.dependencies.length > 0 && (() => {
           return task.dependencies.map((dep, di) => {
-            const depTask = tasks.find(t => t.id === dep.dependencyId);
+            const depTask = taskById.get(dep.dependencyId);
             const depRowNum = rowNumMap.get(dep.dependencyId);
             const depType = (dep.dependencyType || 'FS').toUpperCase();
             const lag = dep.lagDays || 0;

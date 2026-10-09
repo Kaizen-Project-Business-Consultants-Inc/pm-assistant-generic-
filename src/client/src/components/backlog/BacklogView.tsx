@@ -106,6 +106,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
   const assignMutation = useMutation({
     mutationFn: async ({ sprintId, taskIds }: { sprintId: string; taskIds: string[] }) => {
       for (const taskId of taskIds) {
+        // eslint-disable-next-line no-await-in-loop -- POST /sprints/:id/tasks takes one task and there is no list endpoint; one at a time so the first refusal stops the rest
         await apiService.addSprintTask(sprintId, taskId);
       }
     },

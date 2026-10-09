@@ -51,7 +51,7 @@ export interface GanttGridPanelProps {
   sortDirection: Filtering['sortDirection'];
   handleHeaderSort: Filtering['handleHeaderSort'];
   rows: Filtering['rows'];
-  tasks: GanttTask[];
+  taskById: ReadonlyMap<string, GanttTask>;
   // layout / virtualisation
   shouldVirtualize: Layout['shouldVirtualize'];
   totalRowsHeight: Layout['totalRowsHeight'];
@@ -125,7 +125,7 @@ export function GanttGridPanel({
   leftPanelRef, panelMode, tableWidth,
   orderedColumns, isColVisible, getColWidth, ganttColDrag, handleColResizeStart, autoFitGanttColumn,
   minRowWidth, ganttKeyToTableKey, moveColumn, columnState,
-  sortField, sortDirection, handleHeaderSort, rows, tasks,
+  sortField, sortDirection, handleHeaderSort, rows, taskById,
   shouldVirtualize, totalRowsHeight, visStart, visEnd, rowNumMap, inlineInsertIdx, inlineInsertIsBefore,
   inlineInsert, setInlineInsert, onInlineInsert, onInlineInsertBefore, onQuickAdd,
   activeTaskId, focusTaskId, highlightTaskIds, selectedIds, someSelected, allSelected, toggleSelectAll,
@@ -243,7 +243,7 @@ export function GanttGridPanel({
             rowNumMap={rowNumMap}
             reviewFlagMap={reviewFlagMap}
             successorMap={successorMap}
-            tasks={tasks}
+            taskById={taskById}
             sortField={sortField}
             hasOnBulkUpdate={!!onBulkUpdate}
             hasOnTaskReorder={!!onTaskReorder}

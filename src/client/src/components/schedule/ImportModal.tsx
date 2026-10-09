@@ -531,6 +531,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                                     <Pencil size={12} />
                                   </button>
                                   <button
+                                    // eslint-disable-next-line no-restricted-syntax -- not per row: runs once, when this row's Remove is clicked
                                     onClick={() => setExtractedTasks(prev => prev!.filter((_, i) => i !== idx))}
                                     className="p-0.5 rounded hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-500 hover:text-red-500"
                                     title="Remove task"
@@ -649,6 +650,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
                             {parsed.headers.map((h, i) => (
                               <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
                                 {h}
+                                {/* eslint-disable-next-line no-restricted-syntax -- small: the file's column headers × our 17 import fields */}
                                 {columnMap[i] && <span className="ml-1 text-blue-500">({TARGET_COLUMNS.find((c) => c.value === columnMap[i])?.label})</span>}
                               </th>
                             ))}

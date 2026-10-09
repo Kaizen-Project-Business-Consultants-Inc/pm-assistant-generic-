@@ -188,6 +188,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHig
   const fixes = proposal?.proposalData.fixes ?? [];
   const grouped = useMemo(() => {
     const order: FixType[] = ['split_task', 'add_task', 'add_dependency', 'set_milestone', 'set_parent', 'set_duration', 'insert_buffer'];
+    // eslint-disable-next-line no-restricted-syntax -- small: the 7 fix types, one pass over the proposal's fixes each
     return order.map(type => ({ type, items: fixes.filter(f => f.type === type) })).filter(g => g.items.length > 0);
   }, [fixes]);
 

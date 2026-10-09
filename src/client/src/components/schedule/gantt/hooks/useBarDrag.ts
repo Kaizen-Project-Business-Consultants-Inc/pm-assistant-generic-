@@ -10,6 +10,7 @@ import {
   AUTO_SCROLL_SPEED,
 } from '../types';
 import { listenForEscapeCancel } from '../../shared/escapeCancel';
+import { firstByKey } from '../../../../utils/lookup';
 import { addCalendarDays, previousWorkingDay, moveKeepingWorkingLength, snapSpanToWorkingDays, type WorkCalendar } from '../../../../utils/workingDays';
 
 /**
@@ -335,8 +336,9 @@ export function useBarDrag({
           const idsToMove = sIds.has(d.taskId) && sIds.size > 1
             ? Array.from(sIds)
             : [d.taskId];
+          const taskById = firstByKey(allTasks, tk => tk.id);
           for (const id of idsToMove) {
-            const t = allTasks.find(tk => tk.id === id);
+            const t = taskById.get(id);
             if (!t || !t.startDate || !t.endDate) continue;
             const moved = moveKeepingWorkingLength(
               t.startDate, t.endDate, addCalendarDays(t.startDate, d.dayDelta), cal, !!t.isMilestone,

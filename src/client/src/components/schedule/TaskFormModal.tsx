@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useId } from 'react';
+import React, { useState, useEffect, useRef, useId, useMemo } from 'react';
 import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
 import { ResourcePickList, ResourceOptionGroups } from '../resources/ResourcePickList';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
@@ -14,6 +14,7 @@ import { TaskChecklistPanel } from '../sprints/TaskChecklistPanel';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
+import { firstByKey } from '../../utils/lookup';
 import { useModal } from '../../hooks/useModal';
 import { isWorkingDay, type WorkCalendar } from '../../utils/workingDays';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -349,7 +350,9 @@ export function TaskFormModal({
   // People for the Resource Assignments rows, and the over-100% warnings (not for headings or
   // milestones — they book no time)
   const { data: resourceData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 60_000 });
-  const resourceList: { id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[] = resourceData?.resources || [];
+  const resourceList = useMemo<{ id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[]>(
+    () => resourceData?.resources || [], [resourceData]);
+  const resourceById = useMemo(() => firstByKey(resourceList, r => r.id), [resourceList]);
   const assignedResource = findResourceForAssignee(resourceList, form.assignedTo);
   // % complete on a task with planned hours comes from approved hours: shown, not typed. The
   // server's answer while dates and people are as saved; the screen's own guess once they change.
@@ -363,7 +366,8 @@ export function TaskFormModal({
   });
   const assignedResourceId = assignedResource?.id ?? '';
   // Picked someone whose email is still a placeholder? They won't hear about this task
-  const unreachable = [assignedResource, ...form.assignments.map(a => resourceList.find(r => r.id === a.resourceId))]
+  const unreachable = [assignedResource, ...form.assignments.map(a => resourceById.get(a.resourceId))]
+    // eslint-disable-next-line no-restricted-syntax -- small: the few people picked on this one task
     .filter((r, i, all): r is NonNullable<typeof r> => !!r && !r.isGeneric && isPlaceholderEmail(r.email) && all.findIndex(x => x?.id === r.id) === i);
   const checkLoad = !isSummary && !form.isMilestone;
 
@@ -692,7 +696,7 @@ export function TaskFormModal({
                   className="input flex-1 text-xs"
                 >
                   <option value="">Select resource...</option>
-                  {a.resourceId && !resourceList.some(r => r.id === a.resourceId) && <option value={a.resourceId}>{a.resourceId}</option>}
+                  {a.resourceId && !resourceById.has(a.resourceId) && <option value={a.resourceId}>{a.resourceId}</option>}
                   <ResourceOptionGroups resources={resourceList} />
                 </select>
                 <input
@@ -724,6 +728,7 @@ export function TaskFormModal({
                 <button
                   type="button"
                   onClick={() => {
+                    // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over the few people picked on this task
                     const updated = form.assignments.filter((_, i) => i !== idx);
                     setForm(f => ({ ...f, assignments: updated }));
                   }}
@@ -733,6 +738,7 @@ export function TaskFormModal({
                   &times;
                 </button>
               </div>
+              {/* eslint-disable-next-line no-restricted-syntax -- small: the few people picked on this one task */}
               {checkLoad && a.resourceId && form.assignments.findIndex(x => x.resourceId === a.resourceId) === idx && (
                 <ResourceLoadWarning resourceId={a.resourceId} startDate={form.startDate} endDate={form.endDate} allocationPct={a.allocationPct} excludeTaskId={task?.id} />
               )}
@@ -842,6 +848,7 @@ export function TaskFormModal({
                 <button
                   type="button"
                   onClick={() => {
+                    // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over this task's few predecessors
                     const updated = form.predecessors.filter((_, i) => i !== idx);
                     setForm(f => ({ ...f, predecessors: updated }));
                   }}

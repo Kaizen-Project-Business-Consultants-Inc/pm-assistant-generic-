@@ -20,6 +20,7 @@ import { useUndoRedo } from '../../../hooks/useUndoRedo';
 import { buildRowNumberMap } from '../../../components/schedule/gantt/types';
 import { buildBulkLinks, type BulkLinkMode } from '../../../components/schedule/bulkLink';
 import { announce } from '../../../utils/announce';
+import { firstByKey } from '../../../utils/lookup';
 import { SHOWN_AGAIN, TRY_AGAIN, saveFailedMessage } from '../../../utils/saveFailedMessage';
 
 /** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
@@ -395,8 +396,9 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
 
   // Row reorder with undo (supports cross-parent reparenting)
   const handleTaskReorder = useCallback((updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => {
+    const taskById = firstByKey(tasks, tt => tt.id);
     const oldValues = updates.map(u => {
-      const t = tasks.find(tt => tt.id === u.taskId);
+      const t = taskById.get(u.taskId);
       return {
         taskId: u.taskId,
         sortOrder: t?.sortOrder ?? 0,
@@ -430,8 +432,9 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
 
   // Bulk update with undo
   const handleBulkUpdate = useCallback(async (taskIds: string[], field: string, value: string) => {
+    const taskById = firstByKey(tasks, tt => tt.id);
     const oldValues = taskIds.map(id => {
-      const t = tasks.find(tt => tt.id === id);
+      const t = taskById.get(id);
       const val = t ? (t as unknown as Record<string, unknown>)[field] : undefined;
       return { id, oldValue: val === undefined ? null : val };
     });
@@ -542,6 +545,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
   const handleDuplicateTasks = useCallback(async (srcTasks: GanttTask[]) => {
     for (const t of srcTasks) {
       // Stop at the first copy that fails (createMutation's onError says which); the callers don't wait
+      // eslint-disable-next-line no-await-in-loop -- POST /bulk/tasks can't take a copy's description and keeps going past a failed row; each copy goes through createMutation so the first failure stops the rest with its own message
       const ok = await createMutation.mutateAsync({
         name: `${t.name} (copy)`,
         status: t.status || 'pending',

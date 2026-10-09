@@ -96,7 +96,7 @@ describe('GanttTimelineBar — the progress handle is reachable under the name l
         task={task} idx={0} left={10} width={width} top={0} barH={20} pct={20}
         isCritical={false} isSelected={false} isOverallocated={false} isParent={false} isDragging={false}
         canDrag isDepDrawSource={false} floatDays={0} dayPx={40} colors={{ bg: '#eee', fill: '#333', text: '#000' }}
-        tasks={[task]} rowNumMap={new Map([['t1', 1]])} getDepHealth={() => 'satisfied'}
+        taskById={new Map([['t1', task]])} rowNumMap={new Map([['t1', 1]])} getDepHealth={() => 'satisfied'}
         onBarMouseDown={onBarMouseDown} onBarClick={vi.fn()} onProgressMouseDown={onProgressMouseDown}
         hasOnTaskUpdate
       />,

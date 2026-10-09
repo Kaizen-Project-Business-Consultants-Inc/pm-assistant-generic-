@@ -70,7 +70,9 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
         const isSortable = sortFieldForCol != null;
         const isActiveSortCol = isSortable && sortField === sortFieldForCol;
         const canReorder = !col.alwaysVisible && !col.fixed;
+        // eslint-disable-next-line no-restricted-syntax -- small: the Gantt's column list (16 built in), once per header cell
         const visibleCols = orderedColumns.filter(c => !c.alwaysVisible && !c.fixed && isColVisible(c));
+        // eslint-disable-next-line no-restricted-syntax -- small: the Gantt's column list (16 built in), once per header cell
         const reorderIdx = visibleCols.findIndex(c => c.key === col.key);
         const colIsDraggable = ganttColDrag.isDraggable(col.key);
         return (

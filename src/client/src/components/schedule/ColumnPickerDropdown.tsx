@@ -55,6 +55,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
   const grouped = groupOrder.map(group => ({
     group,
     label: groupLabels[group],
+    // eslint-disable-next-line no-restricted-syntax -- small: the 5 column groups × the view's columns
     cols: columns.filter(c => c.group === group),
   }));
 
@@ -93,6 +94,7 @@ export function ColumnPickerDropdown({ columns, visibleKeys, onToggle, onToggleG
                 </div>
                 {cols.map(col => {
                   const isFixed = col.key === 'name' || col.key === 'rowNum';
+                  // eslint-disable-next-line no-restricted-syntax -- small: the view's columns × its shown columns
                   const visibleIdx = orderedVisibleCols.findIndex(c => c.key === col.key);
                   const isFirst = visibleIdx <= 1; // 0 = rowNum (pinned), 1 = first moveable
                   const isLast = visibleIdx === orderedVisibleCols.length - 1;

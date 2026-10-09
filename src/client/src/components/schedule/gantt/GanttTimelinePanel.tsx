@@ -28,7 +28,7 @@ export interface GanttTimelinePanelProps {
   /** Attached to the scrolling timeline div (layout, drags, link drawing and scroll-to read it) */
   timelineRef: React.RefObject<HTMLDivElement>;
   rows: ReturnType<typeof useTaskFiltering>['rows'];
-  tasks: GanttTask[];
+  taskById: ReadonlyMap<string, GanttTask>;
   zoom: ZoomLevel;
   dayPx: number;
   nonWorkingDates?: Set<string>;
@@ -81,7 +81,7 @@ export interface GanttTimelinePanelProps {
  *  line, baseline ghosts, link/create previews, task bars and dependency arrows.
  *  Deliberately NOT React.memo: it re-renders whenever GanttChart does, exactly as the inline JSX did. */
 export function GanttTimelinePanel({
-  timelineRef, rows, tasks, zoom, dayPx, nonWorkingDates, workCalendar,
+  timelineRef, rows, taskById, zoom, dayPx, nonWorkingDates, workCalendar,
   minDate, totalDays, timelineWidth, contentHeight, timescale, todayOffset, rowTop, rowNumMap,
   shouldVirtualize, visStart, visEnd,
   baselineMap, criticalSet, selectedIds, parentTaskIds, overallocatedTaskIds, conflictNotes, taskFloatMap, taskRiskMap,
@@ -311,7 +311,7 @@ export function GanttTimelinePanel({
               floatDays={floatDays}
               dayPx={dayPx}
               colors={colors}
-              tasks={tasks}
+              taskById={taskById}
               rowNumMap={rowNumMap}
               getDepHealth={getDepHealth}
               onBarMouseDown={onTaskDragEnd ? handleBarMouseDown : undefined}

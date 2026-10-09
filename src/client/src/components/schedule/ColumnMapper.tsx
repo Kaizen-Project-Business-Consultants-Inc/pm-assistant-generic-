@@ -111,7 +111,15 @@ export function sampleValues(headers: string[], headerNames: string[], rows: str
   for (const h of headerNames) {
     const i = headers.indexOf(h);
     if (i < 0) continue;
-    out[h] = rows.map(r => (r[i] ?? '').trim()).filter(Boolean).slice(0, 5).map(v => v.slice(0, 80));
+    // the first 5 non-empty values: stops reading rows once it has them (a file can have thousands)
+    const values: string[] = [];
+    for (const r of rows) {
+      const v = (r[i] ?? '').trim();
+      if (!v) continue;
+      values.push(v.slice(0, 80));
+      if (values.length === 5) break;
+    }
+    out[h] = values;
   }
   return out;
 }
@@ -156,9 +164,11 @@ function fuzzyMap(
 
   headers.forEach((h, i) => {
     if (map[i]) return; // already mapped
+    // eslint-disable-next-line no-restricted-syntax -- small: the file's column headers × the import fields' names (17 fields for a schedule)
     const labels = availableTargets.filter(t => !used.has(t.field)).map(t => t.label);
     const match = fuzzyMatchColumn(h, labels);
     if (match) {
+      // eslint-disable-next-line no-restricted-syntax -- small: the file's column headers × the import fields' names (17 fields for a schedule)
       const target = availableTargets.find(t => t.label === match);
       if (target && !used.has(target.field)) {
         map[i] = target.field;

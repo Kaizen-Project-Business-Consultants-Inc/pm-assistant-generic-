@@ -2,6 +2,7 @@ import { useMemo, useEffect } from 'react';
 import { type GanttTask, type FlatRow, type EditableField, type GanttColDef } from '../types';
 import { type WorkCalendar } from '../../../../utils/workingDays';
 import { useUnmountSafeTimeouts } from '../../shared/hooks/useUnmountSafeTimeouts';
+import { firstByKey } from '../../../../utils/lookup';
 import {
   useGridCellState, useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell,
   handleGridNavKey, GANTT_KEYBOARD_RULES,
@@ -185,10 +186,12 @@ export function useGridKeyboard({
             // Outdent: all selected tasks that share the same parent get promoted
             // Group by parent and outdent each group
             const grouped = new Map<string, string[]>();
+            const rowByTaskId = firstByKey(rows, r => r.task.id);
+            const taskById = firstByKey(tasks, t => t.id);
             for (const taskId of idsToProcess) {
-              const task = rows.find(r => r.task.id === taskId)?.task;
+              const task = rowByTaskId.get(taskId)?.task;
               if (!task?.parentTaskId) continue;
-              const parent = tasks.find(t => t.id === task.parentTaskId);
+              const parent = taskById.get(task.parentTaskId);
               const newParent = parent?.parentTaskId || '';
               const list = grouped.get(newParent) || [];
               list.push(taskId);
