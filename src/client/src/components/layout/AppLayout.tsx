@@ -169,7 +169,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         Skip to main content
       </a>
       {/* Banners — inside a banner landmark for accessibility */}
-      <div role="banner">
+      <div role="banner" data-modal-background="">
         <OfflineBanner />
         <TrialBanner />
       </div>
@@ -189,9 +189,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
           marginRight: aiPanelWidth,
         }}
       >
-        <SupportBanner />
+        <div className="contents" data-modal-background=""><SupportBanner /></div>
         {/* Top Bar */}
-        <TopBar onMobileMenuToggle={isMobile ? handleMobileSidebarToggle : undefined} />
+        <TopBar onMobileMenuToggle={isMobile ? handleMobileSidebarToggle : undefined} mobileMenuOpen={mobileSidebarOpen} />
 
         {/* Main Content */}
         <main className={`flex-1 p-4 lg:p-6 overflow-y-auto ${isMobile ? 'pb-20' : ''}`} id="main-content" role="main">
@@ -213,6 +213,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
             ${showAiPanel ? 'w-ai-panel translate-x-0' : 'w-0 translate-x-full'}
           `}
           aria-label="AI Assistant panel"
+          data-modal-background=""
         >
           {showAiPanel && (
             <>
@@ -246,7 +247,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
       )}
 
       {/* Mobile Bottom Nav */}
-      {isMobile && <BottomNav onMoreClick={handleMobileSidebarToggle} />}
+      {isMobile && <div className="contents" data-modal-background=""><BottomNav onMoreClick={handleMobileSidebarToggle} /></div>}
 
       {/* Floating AI Toggle */}
       {breakpoint === 'desktop' && !aiPanelOpen && (

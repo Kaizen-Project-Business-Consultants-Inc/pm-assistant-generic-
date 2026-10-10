@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { AccessibleModal } from '../ui/AccessibleModal';
 
 interface ProjectGroup {
   id: string;
@@ -15,6 +16,7 @@ const COLORS = ['#6366f1', '#3b82f6', '#059669', '#f59e0b', '#ef4444', '#8b5cf6'
 
 export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const titleId = useId();
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -50,11 +52,17 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={titleId}
+      closeOnBackdrop={false}
+      backdropClassName="bg-black/40"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 max-h-[80vh] flex flex-col"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage clients</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage clients</h2>
           <button aria-label="Close" onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
@@ -79,7 +87,8 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     autoFocus
                     onKeyDown={e => {
                       if (e.key === 'Enter') updateMut.mutate({ id: g.id, name: editName, color: editColor });
-                      if (e.key === 'Escape') setEditingId(null);
+                      // Escape cancels the rename only — it must not also close the dialog
+                      if (e.key === 'Escape') { e.stopPropagation(); setEditingId(null); }
                     }}
                   />
                   <div className="flex gap-1">
@@ -112,7 +121,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                   <button
                     onClick={() => deleteMut.mutate(g.id)}
                     aria-label={`Delete client ${g.name}`}
-                    className="p-1 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-1 text-gray-500 hover:text-red-500 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -155,7 +164,6 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

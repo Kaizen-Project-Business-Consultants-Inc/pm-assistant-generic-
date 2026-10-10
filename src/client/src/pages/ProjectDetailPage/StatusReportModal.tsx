@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FileText, X, Download, Mail, Calendar, Trash2, Lock, Pencil, Save, RotateCcw, FileDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
+import { AccessibleModal } from '../../components/ui/AccessibleModal';
 
 interface RAGArea {
   name: string;
@@ -347,12 +348,20 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
   const labelClass = 'block text-xs font-medium text-gray-600 dark:text-gray-400 mb-0.5';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={`${uid}-title`}
+      // While editing (or saving an edit) Escape and a backdrop click must not throw the edits away
+      preventClose={isEditing}
+      busy={renderMutation.isPending}
+      backdropClassName="bg-black/40"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col"
+    >
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary-500" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Status Report — {projectName}</h2>
+            <FileText className="w-4 h-4 text-primary-500" aria-hidden="true" />
+            <h2 id={`${uid}-title`} className="text-sm font-semibold text-gray-900 dark:text-white">Status Report — {projectName}</h2>
           </div>
           <div className="flex items-center gap-2">
             {html && !isSample && !isEditing && (
@@ -719,7 +728,6 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

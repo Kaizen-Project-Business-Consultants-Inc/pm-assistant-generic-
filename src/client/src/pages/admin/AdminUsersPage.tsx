@@ -25,6 +25,7 @@ import {
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { NeverConfirmedBadge } from '../../components/admin/NeverConfirmedBadge';
 
+import { AccessibleModal } from '../../components/ui/AccessibleModal';
 interface AdminUser {
   id: string;
   username: string;
@@ -678,8 +679,13 @@ export function AdminUsersPage() {
 
       {/* Subscription History Modal */}
       {historyUserId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setHistoryUserId(null)}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <AccessibleModal
+          isOpen
+          onClose={() => setHistoryUserId(null)}
+          ariaLabel={`Subscription History — ${historyUserName}`}
+          backdropClassName="bg-black/40"
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 w-full max-w-lg mx-4 max-h-[70vh] flex flex-col"
+        >
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Subscription History &mdash; {historyUserName}</h3>
               <button onClick={() => setHistoryUserId(null)} aria-label="Close" className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-200">
@@ -707,8 +713,7 @@ export function AdminUsersPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+        </AccessibleModal>
       )}
       {toggleConfirm && (
         <ConfirmModal

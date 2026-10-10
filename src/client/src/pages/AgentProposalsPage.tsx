@@ -27,6 +27,7 @@ import { useProjectRole } from '../hooks/useProjectRole';
 import { apiService } from '../services/api';
 import { timeAgo } from '../utils/timeAgo';
 import { MetaPill } from '../components/ui/MetaPill';
+import { AccessibleModal } from '../components/ui/AccessibleModal';
 import { RiskBadge as RiskBadgePrimitive } from '../components/ui/RiskBadge';
 import { ConfidenceGauge as ConfidenceGaugePrimitive, ConfidenceBar } from '../components/ui/ConfidenceGauge';
 import { formatCalendarDate } from '../utils/dateUtils';
@@ -312,6 +313,7 @@ function TriageSection({ proposals, onSelect }: { proposals: Proposal[]; onSelec
 
 function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onClose: () => void }) {
   const queryClient = useQueryClient();
+  const titleId = useId();
   const [comment, setComment] = useState('');
   const [feedbackOutcome, setFeedbackOutcome] = useState('');
   const [feedbackComment, setFeedbackComment] = useState('');
@@ -365,12 +367,15 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
   const anyMutating = approveMutation.isPending || rejectMutation.isPending || executeMutation.isPending || rollbackMutation.isPending || feedbackMutation.isPending;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12 px-4" onClick={onClose}>
-      <div className="fixed inset-0 bg-black/50" />
-      <div
-        className="relative bg-white dark:bg-neutral-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      ariaLabel="Agent proposal"
+      labelledBy={proposal ? titleId : undefined}
+      busy={anyMutating}
+      overlayClassName="z-50 flex items-start justify-center pt-12 px-4"
+      className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+    >
         {/* Header — Risk + Confidence dominate */}
         <div className="sticky top-0 bg-white dark:bg-neutral-900 border-b border-gray-200 dark:border-neutral-700 px-6 py-4 rounded-t-xl z-10">
           {isLoading ? (
@@ -378,7 +383,7 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
           ) : proposal ? (
             <>
               <div className="flex items-start justify-between gap-4">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{proposal.title}</h2>
+                <h2 id={titleId} className="text-lg font-bold text-gray-900 dark:text-white leading-snug">{proposal.title}</h2>
                 <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 rounded flex-shrink-0" aria-label="Close">
                   <X className="w-5 h-5" />
                 </button>
@@ -417,7 +422,7 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
                 {new Date(proposal.createdAt).toLocaleString()}
               </span>
               {proposal.expiresAt && (
-                <span className="text-amber-600">
+                <span className="text-amber-600 dark:text-amber-400">
                   Expires {new Date(proposal.expiresAt).toLocaleDateString('en-US')}
                 </span>
               )}
@@ -637,8 +642,7 @@ function ProposalDetailModal({ proposalId, onClose }: { proposalId: string; onCl
         ) : (
           <div className="text-center py-16 text-gray-500">Proposal not found.</div>
         )}
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }
 

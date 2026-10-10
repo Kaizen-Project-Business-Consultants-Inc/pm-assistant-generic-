@@ -1,6 +1,8 @@
+import { useId } from 'react';
 import { X, Download, FileText } from 'lucide-react';
 import DOMPurify from 'dompurify';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface InstantReportModalProps {
   title: string;
   html: string;
@@ -8,6 +10,7 @@ interface InstantReportModalProps {
 }
 
 export const InstantReportModal: React.FC<InstantReportModalProps> = ({ title, html, onClose }) => {
+  const titleId = useId();
   const handleDownloadHtml = () => {
     const blob = new Blob([html], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
@@ -40,13 +43,16 @@ export const InstantReportModal: React.FC<InstantReportModalProps> = ({ title, h
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-4xl max-h-[90vh] mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={titleId}
+      className="w-full max-w-4xl max-h-[90vh] mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col"
+    >
         {/* Header */}
         <div className="flex items-start justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">{title}</h2>
+            <h2 id={titleId} className="text-lg font-bold text-gray-900 dark:text-white truncate">{title}</h2>
             <span className="inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-bold uppercase bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
               Instant Report
             </span>
@@ -80,7 +86,6 @@ export const InstantReportModal: React.FC<InstantReportModalProps> = ({ title, h
         <div className="flex-1 overflow-y-auto p-6" id="instant-report-content">
           <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 };

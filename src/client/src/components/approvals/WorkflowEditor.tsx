@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface WorkflowEditorProps {
   projectId: string;
   workflowId?: string;
@@ -134,11 +135,18 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      busy={saveMutation.isPending}
+      backdropClassName="bg-black/40"
+      closeOnBackdrop={false}
+      labelledBy={`${uid}-dialog-title`}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <h3 id={`${uid}-dialog-title`} className="text-lg font-semibold text-gray-900 dark:text-white">
             {workflowId ? 'Edit Approval Workflow' : 'New Approval Workflow'}
           </h3>
           <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 transition-colors" aria-label="Close">
@@ -317,7 +325,6 @@ export function WorkflowEditor({ projectId, workflowId, onClose, onSaved }: Work
             </div>
           </form>
         )}
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

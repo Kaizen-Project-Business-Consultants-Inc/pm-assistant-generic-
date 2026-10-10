@@ -15,6 +15,38 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 }
 
 /**
+ * Inert is reference-counted per element, so a dialog opened from another dialog
+ * (e.g. a confirm over a form) does not wake the page when the inner one closes.
+ */
+interface InertHold { count: number; inert: string | null; ariaHidden: string | null }
+const inertHolds = new Map<HTMLElement, InertHold>();
+
+function holdInert(el: HTMLElement): void {
+  const hold = inertHolds.get(el);
+  if (hold) { hold.count += 1; return; }
+  // Remember what the element had before (e.g. the closed phone menu drawer is already inert)
+  inertHolds.set(el, { count: 1, inert: el.getAttribute('inert'), ariaHidden: el.getAttribute('aria-hidden') });
+  el.setAttribute('inert', '');
+  el.setAttribute('aria-hidden', 'true');
+}
+
+function restoreAttr(el: HTMLElement, name: string, value: string | null): void {
+  if (value === null) el.removeAttribute(name);
+  else el.setAttribute(name, value);
+}
+
+function releaseInert(el: HTMLElement): void {
+  const hold = inertHolds.get(el);
+  if (!hold) return;
+  hold.count -= 1;
+  if (hold.count > 0) return;
+  inertHolds.delete(el);
+  // Put back exactly what was there, so a dialog never wakes something that was inert already
+  restoreAttr(el, 'inert', hold.inert);
+  restoreAttr(el, 'aria-hidden', hold.ariaHidden);
+}
+
+/**
  * Manages modal accessibility: focus trap, Escape-to-close, focus restoration.
  * Attach the returned ref to the dialog container element.
  */
@@ -52,7 +84,10 @@ export function useModal(isOpen: boolean, onClose: () => void) {
     }
   }, [isOpen]);
 
-  // Gap A: Mark main content inert so screen readers cannot browse behind the dialog.
+  // Gap A: Mark the page behind the dialog inert so screen readers cannot browse it and
+  // Tab cannot reach it: #main-content plus the app chrome tagged data-modal-background
+  // (sidebar, top bar, banners, AI panel). The live region #sr-announcements is left alone
+  // so announcements still reach screen readers while a dialog is open.
   // Only safe when the dialog lives outside #main-content (e.g. AccessibleModal, which
   // portals to document.body). Modals rendered inline inside the page tree would be
   // frozen along with the page — inert blocks clicks and focus for the dialog itself.
@@ -63,12 +98,10 @@ export function useModal(isOpen: boolean, onClose: () => void) {
     const dialog = dialogRef.current;
     if (!dialog || mainContent.contains(dialog)) return;
 
-    mainContent.setAttribute('inert', '');
-    mainContent.setAttribute('aria-hidden', 'true');
-    return () => {
-      mainContent.removeAttribute('inert');
-      mainContent.removeAttribute('aria-hidden');
-    };
+    const targets = [mainContent, ...Array.from(document.querySelectorAll<HTMLElement>('[data-modal-background]'))]
+      .filter((el) => !el.contains(dialog));
+    targets.forEach(holdInert);
+    return () => targets.forEach(releaseInert);
   }, [isOpen]);
 
   // Gap B: Document-level Escape listener (defense in depth — works even if focus escapes the dialog)
