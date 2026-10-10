@@ -30,6 +30,8 @@ import { SetupChecklist } from '../components/project/SetupChecklist';
 import { WeeklyReviewCard } from '../components/weeklyReview/WeeklyReviewCard';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
 import { EditProjectModal } from '../components/project/EditProjectModal';
+import { ProjectStatusSelect } from '../components/project/ProjectStatusSelect';
+import { AccessibleModal } from '../components/ui/AccessibleModal';
 import { getPrimaryTabs, getOverflowTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
 import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 import { PROJECT_TYPE_LABELS } from '../constants/projectTypes';
@@ -387,29 +389,20 @@ export function ProjectDetailPage() {
                 </span>
               )}
               {canEditStatus && !isDemo ? (
-                <select
+                <ProjectStatusSelect
                   value={project.status}
-                  aria-label="Project status"
-                  onChange={(e) => {
-                    const newStatus = e.target.value;
+                  colorClass={status.color}
+                  pending={statusMutation.isPending}
+                  onCommit={(newStatus) => {
                     if (newStatus === 'cancelled') {
                       setStatusError(null);
                       setShowCancelModal(true);
-                    } else if (newStatus === 'completed') {
-                      statusMutation.mutate({ status: newStatus }); // the close-out prompt opens once it has saved
                     } else {
+                      // 'completed': the close-out prompt opens once it has saved
                       statusMutation.mutate({ status: newStatus });
                     }
                   }}
-                  disabled={statusMutation.isPending}
-                  className={`rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer border border-current border-opacity-30 outline-none pr-5 ${status.color} ${statusMutation.isPending ? 'opacity-60' : 'hover:opacity-80'}`}
-                >
-                  <option value="planning">Planning</option>
-                  <option value="active">Active</option>
-                  <option value="on_hold">On Hold</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                />
               ) : (
                 <>
                   <span
@@ -765,11 +758,16 @@ export function ProjectDetailPage() {
       )}
 
       {showCancelModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setShowCancelModal(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Cancel Project</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+        <AccessibleModal
+          isOpen
+          onClose={() => setShowCancelModal(false)}
+          labelledBy="cancel-project-title"
+          describedBy="cancel-project-desc"
+          busy={statusMutation.isPending}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
+        >
+            <h3 id="cancel-project-title" className="text-lg font-bold text-gray-900 dark:text-white mb-2">Cancel Project</h3>
+            <p id="cancel-project-desc" className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               Please provide a reason for cancelling this project. This action will be recorded in the audit trail.
             </p>
             <textarea
@@ -798,21 +796,25 @@ export function ProjectDetailPage() {
                 {statusMutation.isPending ? 'Cancelling...' : 'Cancel Project'}
               </button>
             </div>
-          </div>
-        </div>
+        </AccessibleModal>
       )}
 
       {showCloseoutModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setShowCloseoutModal(false)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+        <AccessibleModal
+          isOpen
+          onClose={() => setShowCloseoutModal(false)}
+          labelledBy="closeout-title"
+          describedBy="closeout-desc"
+          busy={extractingLessons}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 p-6"
+        >
             <div className="flex items-center gap-3 mb-4">
               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30">
                 <BookOpen className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Project Completed</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Capture lessons learned for future projects</p>
+                <h3 id="closeout-title" className="text-lg font-bold text-gray-900 dark:text-white">Project Completed</h3>
+                <p id="closeout-desc" className="text-sm text-gray-500 dark:text-gray-400">Capture lessons learned for future projects</p>
               </div>
             </div>
 
@@ -891,8 +893,7 @@ export function ProjectDetailPage() {
                 </div>
               </>
             )}
-          </div>
-        </div>
+        </AccessibleModal>
       )}
     </div>
   );

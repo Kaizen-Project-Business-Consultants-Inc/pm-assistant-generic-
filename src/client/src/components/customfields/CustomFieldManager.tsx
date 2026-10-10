@@ -69,7 +69,7 @@ export function CustomFieldManager({ projectId, entityType }: CustomFieldManager
                   {field.options?.length > 0 && ` · ${field.options.length} options`}
                 </p>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 <button onClick={() => setEditField(field)} aria-label={`Edit ${field.fieldLabel}`} className="p-1 text-gray-500 hover:text-primary-600">
                   <Edit3 className="w-3.5 h-3.5" />
                 </button>

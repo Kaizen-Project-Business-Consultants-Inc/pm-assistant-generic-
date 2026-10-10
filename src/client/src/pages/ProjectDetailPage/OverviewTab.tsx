@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useId, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { firstIndexByKey, firstWithAnyKey } from '../../utils/lookup';
 import {
@@ -508,7 +508,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 <CheckCircle2 className="w-3.5 h-3.5" /> On track
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400">
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-700 dark:text-orange-400">
                 <AlertTriangle className="w-3.5 h-3.5" /> Behind schedule
               </span>
             )}
@@ -516,7 +516,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
           {completionForecast && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {completionForecast.date
-                ? <>Est. completion: <span className={`font-medium ${end && completionForecast.date > end ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>{completionForecast.label}</span></>
+                ? <>Est. completion: <span className={`font-medium ${end && completionForecast.date > end ? 'text-red-700 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}>{completionForecast.label}</span></>
                 : <span className="text-green-600 dark:text-green-400 font-medium">{completionForecast.label}</span>
               }
             </span>
@@ -564,7 +564,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
                 <p className={`text-sm font-medium truncate ${isDone ? 'text-gray-500 dark:text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}>
                   {m.name}
                 </p>
-                <p className={`text-xs ${isPast && !isDone ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                <p className={`text-xs ${isPast && !isDone ? 'text-red-700 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'}`}>
                   {mDate ? formatDate(mDate) : 'No date'}
                   {isPast && !isDone && ' — overdue'}
                 </p>
@@ -1276,6 +1276,7 @@ function CollapsibleCard({ id, icon, title, className, children, draggable, onDr
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem(storageKey) === '1'; } catch { return false; }
   });
+  const bodyId = useId();
   const toggle = useCallback(() => {
     setCollapsed(prev => {
       const next = !prev;
@@ -1301,12 +1302,17 @@ function CollapsibleCard({ id, icon, title, className, children, draggable, onDr
             <GripVertical className="w-4 h-4" />
           </div>
         )}
-        <button onClick={toggle} className="flex items-center justify-between flex-1 text-base font-semibold text-gray-900 dark:text-white">
+        <button onClick={toggle} aria-expanded={!collapsed} aria-controls={bodyId} className="flex items-center justify-between flex-1 text-base font-semibold text-gray-900 dark:text-white">
           <span className="flex items-center gap-2">{icon} {title}</span>
           <ChevronDown className={`w-4 h-4 text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`} />
         </button>
       </div>
-      <div className={`transition-all duration-200 overflow-hidden ${collapsed ? 'max-h-0 opacity-0 mt-0' : 'max-h-[2000px] opacity-100 mt-4'}`}>
+      {/* Collapsed content stays in the page for the animation, but is out of the Tab order and hidden from screen readers */}
+      <div
+        id={bodyId}
+        className={`transition-all duration-200 overflow-hidden ${collapsed ? 'max-h-0 opacity-0 mt-0' : 'max-h-[2000px] opacity-100 mt-4'}`}
+        {...(collapsed ? { inert: '', 'aria-hidden': true } : {})}
+      >
         {children}
       </div>
     </div>

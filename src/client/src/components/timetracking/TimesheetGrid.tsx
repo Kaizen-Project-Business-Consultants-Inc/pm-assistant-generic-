@@ -101,7 +101,8 @@ export function TimesheetGrid() {
       )}
       {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable (WCAG 2.1.1) */}
+      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800" tabIndex={0} role="region" aria-label="Timesheet">
         <div className="min-w-[1000px] text-sm">
           <div className="grid bg-gray-50 dark:bg-gray-900/40 text-xs font-semibold text-gray-700 dark:text-gray-300" style={grid}>
             <div className="px-4 py-2.5">Task</div>

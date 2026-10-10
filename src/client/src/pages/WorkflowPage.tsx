@@ -102,6 +102,7 @@ export function WorkflowPage() {
   });
 
   const definitions: WorkflowDef[] = defsData?.definitions || [];
+  const workflowNames = new Map(definitions.map((d) => [d.id, d.name]));
   const executions = execsData?.executions || [];
   const isSample: boolean = defsData?.sample || false;
 
@@ -306,15 +307,17 @@ export function WorkflowPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700" role="group" aria-label="Workflow views">
         <button
           onClick={() => setTab('definitions')}
+          aria-pressed={tab === 'definitions'}
           className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === 'definitions' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200'}`}
         >
           Definitions ({definitions.length})
         </button>
         <button
           onClick={() => setTab('executions')}
+          aria-pressed={tab === 'executions'}
           className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${tab === 'executions' ? 'border-primary-600 text-primary-600 dark:text-primary-400' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-200'}`}
         >
           Executions ({executions.length})
@@ -478,18 +481,24 @@ export function WorkflowPage() {
             {executions.length === 0 ? (
               <div className="text-center py-6 text-xs text-gray-500 dark:text-gray-400">No workflow executions yet.</div>
             ) : (
-              <div className="divide-y divide-gray-50">
+              // A list of runs; each is a button that opens its detail below (keyboard: Enter/Space)
+              <ul className="divide-y divide-gray-50 dark:divide-gray-700/50" aria-label="Workflow runs">
                 {executions.map((exec: any) => (
-                  <div key={exec.id} className="px-4 py-2 text-xs flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                  <li key={exec.id}>
+                  <button
+                    type="button"
+                    aria-expanded={viewExecId === exec.id}
+                    className="w-full text-left px-4 py-2 text-xs flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
                     onClick={() => setViewExecId(viewExecId === exec.id ? null : exec.id)}>
-                    <div className="flex-shrink-0">
+                    <span className="flex-shrink-0" aria-hidden="true">
                       {viewExecId === exec.id ? <ChevronDown className="w-3 h-3 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="w-3 h-3 text-gray-500 dark:text-gray-400" />}
-                    </div>
-                    <Zap className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                    <div className="flex-1">
-                      <span className="font-medium text-gray-700 dark:text-gray-200">{exec.workflowId}</span>
-                      <span className="text-gray-500 dark:text-gray-400"> — {exec.entityType}:{exec.entityId}</span>
-                    </div>
+                    </span>
+                    <Zap className="w-3 h-3 text-yellow-500 flex-shrink-0" aria-hidden="true" />
+                    <span className="flex-1">
+                      {/* The workflow's name where we have it (the raw id was all that showed) */}
+                      <span className="font-medium text-gray-700 dark:text-gray-200">{workflowNames.get(exec.workflowId) ?? exec.workflowId}</span>
+                      <span className="text-gray-500 dark:text-gray-400"> — {exec.entityType} {exec.entityId}</span>
+                    </span>
                     <span className={`px-1.5 py-0.5 rounded text-xs capitalize ${
                       exec.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
                       exec.status === 'failed' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
@@ -499,10 +508,11 @@ export function WorkflowPage() {
                     }`}>
                       {exec.status}
                     </span>
-                    <span className="text-gray-300 flex-shrink-0">{new Date(exec.startedAt).toLocaleString()}</span>
-                  </div>
+                    <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">{new Date(exec.startedAt).toLocaleString()}</span>
+                  </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
           </div>
 

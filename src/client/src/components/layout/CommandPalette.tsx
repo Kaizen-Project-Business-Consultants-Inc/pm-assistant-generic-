@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, FolderKanban, CheckSquare, ArrowRight, Plus, BarChart3, FileText,
@@ -198,6 +198,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  // One active-item model (ARIA combobox): focus stays in the input, the highlighted option is
+  // the input's aria-activedescendant, and Enter runs exactly that option.
+  const uid = useId();
+  const listboxId = `${uid}-listbox`;
+  const optionId = (idx: number) => `${uid}-option-${idx}`;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -338,7 +343,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
       e.preventDefault();
       setSelectedIndex((prev) => (prev - 1 + Math.max(totalItems, 1)) % Math.max(totalItems, 1));
     }
-    if (e.key === 'Enter') {
+    // Enter only from the input: options are not focusable, so the highlighted one is the one that runs
+    if (e.key === 'Enter' && e.target === inputRef.current) {
       e.preventDefault();
       if (showEntitySearch && results.length > 0) {
         selectResult(results[selectedIndex]);
@@ -392,8 +398,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     const startIdx = cumulativeIndex;
     cumulativeIndex += items.length;
     return (
-      <React.Fragment key={title}>
-        <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
+      <div key={title} role="group" aria-labelledby={`${uid}-group-${title}`}>
+        <div id={`${uid}-group-${title}`} className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
           {title}
         </div>
         {items.map((cmd, i) => {
@@ -401,11 +407,17 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           const idx = startIdx + i;
           const isSelected = selectedIndex === idx;
           return (
-            <button
+            // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard runs it from the combobox input (Enter on the active option)
+            <div
               key={cmd.id}
+              id={optionId(idx)}
+              role="option"
+              aria-selected={isSelected}
+              tabIndex={-1}
               data-selected={isSelected}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => executeCommand(cmd)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
                 isSelected ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
@@ -416,11 +428,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{cmd.description}</p>
                 )}
               </div>
-              <ArrowRight className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-primary-400' : 'text-gray-300 dark:text-gray-600'}`} />
-            </button>
+              <ArrowRight aria-hidden="true" className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-primary-400' : 'text-gray-300 dark:text-gray-600'}`} />
+            </div>
           );
         })}
-      </React.Fragment>
+      </div>
     );
   }
 
@@ -447,6 +459,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
             type="text"
             placeholder="Type a command or search..."
             aria-label="Type a command or search"
+            role="combobox"
+            aria-autocomplete="list"
+            aria-expanded={totalItems > 0 && !loading}
+            aria-controls={listboxId}
+            aria-activedescendant={totalItems > 0 && !loading ? optionId(selectedIndex) : undefined}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full h-12 pl-3 pr-4 text-sm bg-transparent border-0 focus-visible:ring-2 focus-visible:ring-primary-500 placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
@@ -454,6 +471,17 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-xs font-medium text-gray-500 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
             ESC
           </kbd>
+        </div>
+
+        {/* Screen readers hear the search state (the visible texts below are not live) */}
+        <div className="sr-only" aria-live="polite" aria-atomic="true">
+          {loading
+            ? 'Searching…'
+            : showEmpty
+              ? `No results found for "${query}"`
+              : hasResults
+                ? `${results.length} result${results.length === 1 ? '' : 's'}. Use the up and down arrows to choose, Enter to open.`
+                : ''}
         </div>
 
         {/* Results */}
@@ -466,9 +494,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           {/* Commands (default + filtered) */}
           {!showEntitySearch && !loading && (
             <div className="py-2">
-              {recentSection.length > 0 && renderCommandSection('Recent', recentSection)}
-              {renderCommandSection('Actions', actionSection)}
-              {renderCommandSection('Navigate', navSection)}
+              <div role="listbox" id={listboxId} aria-label="Commands">
+                {recentSection.length > 0 && renderCommandSection('Recent', recentSection)}
+                {renderCommandSection('Actions', actionSection)}
+                {renderCommandSection('Navigate', navSection)}
+              </div>
 
               {commandItems.length === 0 && query.length === 1 && (
                 <div className="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -486,12 +516,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
 
           {/* Entity Search Results */}
           {hasResults && !loading && (
-            <div className="py-2">
+            <div className="py-2" role="listbox" id={listboxId} aria-label="Search results">
               {groupedResults.map(({ config, items }) => {
                 const Icon = config.icon;
                 return (
-                  <React.Fragment key={config.type}>
-                    <div className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
+                  <div key={config.type} role="group" aria-labelledby={`${uid}-group-${config.type}`}>
+                    <div id={`${uid}-group-${config.type}`} className="px-4 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mt-1 first:mt-0">
                       {config.label}
                     </div>
                     {items.map((result) => {
@@ -499,11 +529,17 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                       const isSelected = selectedIndex === idx;
                       const subtitle = result.projectName || result.description;
                       return (
-                        <button
+                        // eslint-disable-next-line jsx-a11y/click-events-have-key-events -- keyboard runs it from the combobox input (Enter on the active option)
+                        <div
                           key={`${result.type}-${result.id}`}
+                          id={optionId(idx)}
+                          role="option"
+                          aria-selected={isSelected}
+                          tabIndex={-1}
                           data-selected={isSelected}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => selectResult(result)}
-                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
                             isSelected ? 'bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
                           }`}
                         >
@@ -515,10 +551,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                             )}
                           </div>
                           <ResultBadges result={result} />
-                        </button>
+                        </div>
                       );
                     })}
-                  </React.Fragment>
+                  </div>
                 );
               })}
             </div>
@@ -528,7 +564,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
           {showEmpty && (
             <div className="px-4 py-8 text-center">
               <p className="text-sm text-gray-500 dark:text-gray-400">No results found for "{query}"</p>
-              <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different search term</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Try a different search term</p>
             </div>
           )}
         </div>

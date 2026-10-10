@@ -276,7 +276,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
           {canEdit && !editing && !isEmpty && (
             <button
               onClick={enterEdit}
-              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100 transition-opacity p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
               title="Edit brief"
             >
               <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />

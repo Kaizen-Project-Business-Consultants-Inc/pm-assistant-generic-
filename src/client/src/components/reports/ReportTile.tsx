@@ -41,7 +41,7 @@ export const ReportTile: React.FC<ReportTileProps> = ({ report, disabled, loadin
           className={`absolute top-2 right-2 p-1 rounded-md transition-colors z-10
             ${isFavorite
               ? 'text-amber-400 hover:text-amber-500'
-              : 'text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 hover:text-amber-400 dark:hover:text-amber-400'
+              : 'text-gray-300 dark:text-gray-600 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-amber-400 dark:hover:text-amber-400'
             }`}
           title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
         >

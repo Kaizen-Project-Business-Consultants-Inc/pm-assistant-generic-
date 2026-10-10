@@ -114,7 +114,8 @@ export function ProjectTimesheetGrid({ projectId }: { projectId: string }) {
           <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto">
+        // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable (WCAG 2.1.1)
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-x-auto" tabIndex={0} role="region" aria-label="Project timesheet">
           <table className="w-full text-sm">
             <caption className="sr-only">Project timesheet by team member</caption>
             <thead>

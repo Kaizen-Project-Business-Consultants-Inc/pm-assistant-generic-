@@ -124,7 +124,7 @@ export function SavedViewsDropdown({ scheduleId, currentColumns, currentSortFiel
       >
         <BookmarkPlus className="w-3.5 h-3.5" />
         Views
-        {activeView && <span className="text-primary-600 ml-0.5 max-w-[80px] truncate">{activeView.name}</span>}
+        {activeView && <span className="text-primary-600 dark:text-primary-400 ml-0.5 max-w-[80px] truncate">{activeView.name}</span>}
         <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -153,7 +153,7 @@ export function SavedViewsDropdown({ scheduleId, currentColumns, currentSortFiel
                   <span className="text-xs text-gray-500 dark:text-gray-400">{view.columns.length} cols</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(view.id); }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-100 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0.5 rounded hover:bg-red-100 transition-opacity"
                     title="Delete saved view"
                     aria-label="Delete saved view"
                   >

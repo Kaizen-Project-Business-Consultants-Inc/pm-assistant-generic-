@@ -260,7 +260,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                     </span>
                     <button
                       onClick={() => deleteCommentMutation.mutate(comment.id)}
-                      className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-gray-300 hover:text-red-500"
+                      className="ml-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-0.5 text-gray-300 hover:text-red-500"
                       title="Delete comment"
                     >
                       <Trash2 className="w-3 h-3" />
@@ -306,7 +306,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                       {' from '}
                       <span className="line-through text-gray-500">{formatValue(entry.field, entry.oldValue)}</span>
                       {' to '}
-                      <span className="font-medium text-primary-600">{formatValue(entry.field, entry.newValue)}</span>
+                      <span className="font-medium text-primary-600 dark:text-primary-400">{formatValue(entry.field, entry.newValue)}</span>
                     </>
                   )}
                 </p>

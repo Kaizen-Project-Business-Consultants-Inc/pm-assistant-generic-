@@ -131,12 +131,13 @@ export function SprintsTab({ projectId }: { projectId: string }) {
               ))}
             </select>
           )}
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap" role="group" aria-label="Sprint view">
             {/* Epic views — always visible when a schedule is selected */}
             {selectedScheduleId && (['epics', 'epic-list'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setSprintView(v)}
+                aria-pressed={sprintView === v}
                 className={`px-3 py-1 text-xs rounded-md ${sprintView === v ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               >
                 {v === 'epics' ? 'Epics' : 'Epic List'}
@@ -147,6 +148,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
               <button
                 key={v}
                 onClick={() => setSprintView(v)}
+                aria-pressed={sprintView === v}
                 className={`px-3 py-1 text-xs rounded-md capitalize ${sprintView === v ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
               >
                 {v}

@@ -50,7 +50,7 @@ export function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, d
         <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
           {schedule?.name || 'Tasks'}
         </h3>
-        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5">
+        <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-0.5" role="group" aria-label="Task view">
           {([
             { mode: 'list' as const, label: 'List' },
             { mode: 'kanban' as const, label: 'Board' },
@@ -59,6 +59,7 @@ export function MobileScheduleView({ schedules, selectedIdx, onSelectSchedule, d
             <button
               key={mode}
               onClick={() => setMobileView(mode)}
+              aria-pressed={mobileView === mode}
               className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
                 mobileView === mode
                   ? 'bg-primary-600 text-white'

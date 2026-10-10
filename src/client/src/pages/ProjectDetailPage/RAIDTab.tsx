@@ -282,7 +282,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
 
   const scoreColor = (score: number) => {
     if (score >= 16) return 'text-red-600 dark:text-red-400';
-    if (score >= 10) return 'text-orange-600 dark:text-orange-400';
+    if (score >= 10) return 'text-orange-700 dark:text-orange-400';
     if (score >= 5) return 'text-yellow-600 dark:text-yellow-400';
     return 'text-green-600 dark:text-green-400';
   };
@@ -415,7 +415,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
           <button onClick={() => openAdd('risk')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
             <Plus className="w-3.5 h-3.5" /> Risk
           </button>
-          <button onClick={() => openAdd('issue')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors">
+          <button onClick={() => openAdd('issue')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-orange-700 hover:bg-orange-800 rounded-lg transition-colors">
             <Plus className="w-3.5 h-3.5" /> Issue
           </button>
           <button onClick={() => openAdd('action')} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">
@@ -705,10 +705,15 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                   {/* Title + type indicator + due warning */}
                   <div className="flex items-center gap-2 min-w-0" onClick={() => setSelectedRaidId(risk.id)}>
                     <div className={`w-1.5 h-6 rounded-full flex-shrink-0 ${typeIndicatorColor(risk.type)}`} />
-                    <p className={`text-sm font-medium text-gray-900 dark:text-white truncate ${isTerminal ? 'line-through' : ''}`}>
+                    {/* A real button, so the item opens by keyboard (Enter/Space) as well as by click */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setSelectedRaidId(risk.id); }}
+                      className={`text-left text-sm font-medium text-gray-900 dark:text-white truncate hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded ${isTerminal ? 'line-through' : ''}`}
+                    >
                       {risk.title}
-                    </p>
-                    {risk.triggered && <span className="text-amber-500 flex-shrink-0" title="Triggered">⚡</span>}
+                    </button>
+                    {risk.triggered && <span className="text-amber-500 dark:text-amber-400 flex-shrink-0" title="Triggered">⚡</span>}
                     {due && (
                       <span className={`flex items-center gap-0.5 text-xs font-medium flex-shrink-0 ${due.color}`}>
                         {due.icon && <AlertTriangle className="w-3 h-3" />}
@@ -786,7 +791,13 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                     <div className="flex items-center gap-2 min-w-0">
                       <div className={`w-1.5 h-5 rounded-full flex-shrink-0 ${typeIndicatorColor(risk.type)}`} />
                       <div className="min-w-0">
-                        <p className={`text-sm font-medium text-gray-900 dark:text-white truncate ${isTerminal ? 'line-through' : ''}`}>{risk.title}</p>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSelectedRaidId(risk.id); }}
+                          className={`block max-w-full text-left text-sm font-medium text-gray-900 dark:text-white truncate focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded ${isTerminal ? 'line-through' : ''}`}
+                        >
+                          {risk.title}
+                        </button>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-xs font-mono text-gray-500">{risk.recordId}</span>
                           <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full capitalize ${severityColor(risk.severity)}`}>{risk.severity}</span>
