@@ -8,6 +8,10 @@
  * pasted verbatim from f6793313). Every step records preventDefault, the focused cell, the
  * pasted-cell flash, every callback call with its payload, clipboard writes and the timers'
  * effects; the two traces must be identical. Plus a few direct checks of the rules.
+ * Since 2026-10-09 (audit K1/K2) a key is the grid's only while the user works in the grid: the
+ * driver clicks in a stand-in grid before every key (Escape now leaves the grid) and keeps its
+ * inputs inside it; the Table's Tab no longer takes the key when it has nothing to indent, so
+ * Tab's preventDefault is left out of the Table comparison (gridFocusScope.test.ts checks it).
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
@@ -97,13 +101,18 @@ function script(seed: number, length: number): Step[] {
   return steps;
 }
 
+/** A stand-in for the task grid; the driver's inputs live in it, and it is clicked before each key */
+const grid = document.createElement('div');
+grid.setAttribute('role', 'grid');
+document.body.appendChild(grid);
+
 const targets: Record<string, HTMLElement> = {};
 function targetEl(to: string): HTMLElement {
   if (to === 'body') return document.body;
   if (!targets[to]) {
     const el = to === 'checkbox' ? Object.assign(document.createElement('input'), { type: 'checkbox' })
       : document.createElement(to === 'input' ? 'input' : to);
-    document.body.appendChild(el);
+    grid.appendChild(el);
     targets[to] = el;
   }
   return targets[to];
@@ -131,7 +140,7 @@ interface Harness {
   apply: (step: Exclude<Step, { kind: 'key' }>) => void;
 }
 
-function run(steps: Step[], mount: (trace: Trace) => Harness & { unmount: () => void }): Trace {
+function run(steps: Step[], mount: (trace: Trace) => Harness & { unmount: () => void }, { ignoreTabPrevent = false } = {}): Trace {
   const trace: Trace = [];
   clipboardLog = [];
   const h = mount(trace);
@@ -142,8 +151,12 @@ function run(steps: Step[], mount: (trace: Trace) => Harness & { unmount: () => 
         key: step.key, ctrlKey: !!step.ctrl, metaKey: !!step.meta, shiftKey: !!step.shift, altKey: !!step.alt,
         bubbles: true, cancelable: true,
       });
-      act(() => { target.dispatchEvent(e); });
-      trace.push(['key', step, e.defaultPrevented, h.state(), clipboardLog.splice(0)]);
+      act(() => {
+        grid.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); // working in the grid
+        target.dispatchEvent(e);
+      });
+      const prevented = ignoreTabPrevent && step.key === 'Tab' ? 'not compared' : e.defaultPrevented;
+      trace.push(['key', step, prevented, h.state(), clipboardLog.splice(0)]);
     } else if (step.kind === 'target') {
       target = targetEl(step.to);
     } else if (step.kind === 'time') {
@@ -313,8 +326,8 @@ describe('Table keyboard: same results as before the share', () => {
       let updates = 0; let flashes = 0;
       for (let seed = 1; seed <= 12; seed++) {
         const steps = script(seed * 104729 + sc.name.length, 220);
-        const before = run(steps, mountTable(useTableKeyboardBefore as unknown as (p: TableKeyboardRefProps) => ReturnType<typeof useTableKeyboardAfter>, sc));
-        const after = run(steps, mountTable(useTableKeyboardAfter, sc));
+        const before = run(steps, mountTable(useTableKeyboardBefore as unknown as (p: TableKeyboardRefProps) => ReturnType<typeof useTableKeyboardAfter>, sc), { ignoreTabPrevent: true });
+        const after = run(steps, mountTable(useTableKeyboardAfter, sc), { ignoreTabPrevent: true });
         expect(after).toEqual(before);
         updates += before.filter(t => Array.isArray(t) && (t[0] === 'onTaskUpdate' || t[0] === 'onBulkUpdate')).length;
         flashes += before.filter(t => Array.isArray(t) && t[0] === 'key' && (t[3] as { p: unknown }).p).length;

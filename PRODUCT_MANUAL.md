@@ -4178,6 +4178,7 @@ The Table View supports spreadsheet-style keyboard navigation:
 - **Arrow keys** move focus between cells. The focused cell is highlighted with a blue ring.
 - **Enter** or **F2** enters edit mode on the focused cell. **Escape** clears the focus without editing.
 - **Click-to-select then click-to-edit**: the first click on a row selects it; a second click on a cell of the already-selected row enters edit mode. This matches the Gantt chart behavior and allows selection-dependent actions (like Tab indent) before editing.
+- **Grid keys act only inside the grid** (Table and Gantt, Oct 2026): Tab / Shift+Tab indent and outdent, and Delete, Ctrl+C / Ctrl+V / Ctrl+D, Alt+Up/Down, the arrows and Enter/F2 act on tasks only while the user is working in the task grid — from a click in it until **Escape**, a click elsewhere, or the focus moving outside it. Tab is taken only when a row is selected or a cell focused and the plan is editable. Everywhere else Tab moves the focus as usual and never changes the plan, and reaching the grid by Tab alone doesn't capture it (WCAG 2.1.2 No Keyboard Trap, 3.2.2 On Input).
 - **Cell-level Ctrl+C / Ctrl+V**: when a cell is focused, Ctrl+C copies its value to the clipboard and Ctrl+V pastes from the clipboard into the focused cell. Paste only applies when the field types match. A green flash confirms the paste.
 
 ### Copy/Paste Rows (Table View and Gantt Chart)

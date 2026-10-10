@@ -4,6 +4,8 @@
  * Enter/F2/Escape, cell and row copy/paste with the same update payloads as before (duration
  * and predecessors through the same planners as typing), Ctrl+D, Tab/Shift+Tab indent/outdent,
  * Alt+Up/Down reorder, and nothing while a cell is being edited or keys go to an input.
+ * Since 2026-10-09 the keys are the grid's only after a click in it (gridFocusScope.test.ts
+ * checks the outside / Escape cases); setup() clicks in a stand-in grid first.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
@@ -31,6 +33,12 @@ const getTaskFieldValue = (task: GanttTask, field: EditableField): string => {
 
 type Props = Parameters<typeof useGridKeyboard>[0];
 
+/** A stand-in for the task grid (role=grid); a mouse press in it starts "working in the grid" */
+const grid = document.createElement('div');
+grid.setAttribute('role', 'grid');
+document.body.appendChild(grid);
+const clickInGrid = () => act(() => { grid.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); });
+
 function setup(over: Partial<Props> = {}) {
   const tasks = over.tasks ?? TASKS;
   const rows = over.rows ?? buildFlatRows(tasks);
@@ -57,6 +65,7 @@ function setup(over: Partial<Props> = {}) {
     ...over,
   };
   const hook = renderHook((p: Props) => useGridKeyboard(p), { initialProps: props });
+  clickInGrid();
   return { ...hook, props, rows };
 }
 
@@ -70,7 +79,7 @@ const byId = (id: string) => TASKS.find(t => t.id === id)!;
 
 /** Focus a cell the way a user does: select a row, Enter (first visible field), then arrows */
 function focusCell(s: ReturnType<typeof setup>, taskId: string, field: EditableField) {
-  if (s.result.current.focusedCell) key('Escape');
+  if (s.result.current.focusedCell) { key('Escape'); clickInGrid(); } // Escape leaves the grid; click back in
   s.rerender({ ...s.props, activeTaskId: taskId });
   key('Enter');
   const order = visibleOrder(s.props.orderedColumns, s.props.isColVisible);
@@ -276,9 +285,13 @@ describe('useGridKeyboard — indent / outdent / reorder', () => {
     const s = setup({ activeTaskId: 'c' });
     const box = document.createElement('input');
     box.type = 'checkbox';
-    document.body.appendChild(box);
+    grid.appendChild(box);
     key('Tab', {}, box);
     expect(s.props.onTaskUpdate).toHaveBeenCalledWith('c', { parentTaskId: 'b' });
+    // and Escape on the checkbox leaves the grid: the next Tab moves on (no keyboard trap)
+    key('Escape', {}, box);
+    expect(key('Tab', {}, box).defaultPrevented).toBe(false);
+    expect(s.props.onTaskUpdate).toHaveBeenCalledTimes(1);
     box.remove();
   });
 
