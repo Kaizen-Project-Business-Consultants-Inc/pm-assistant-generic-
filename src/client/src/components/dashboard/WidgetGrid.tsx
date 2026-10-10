@@ -152,7 +152,7 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
         {onResize && (
           <button
             onClick={() => cycleSize(id)}
-            className="absolute right-1 top-1 z-10 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+            className="absolute right-1 top-1 z-10 p-1 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity bg-white/80 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             title={`${SIZE_LABELS[size]} — click to resize`}
           >
             <SizeIcon className="w-3.5 h-3.5" />

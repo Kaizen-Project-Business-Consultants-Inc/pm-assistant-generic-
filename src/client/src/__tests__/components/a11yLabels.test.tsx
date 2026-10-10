@@ -178,7 +178,10 @@ describe('Project page (source checks: the page needs the whole app to render)',
   const src = readFileSync(join(__dirname, '../../pages/ProjectDetailPage.tsx'), 'utf8');
 
   it('the status pill dropdown is named', () => {
-    expect(src).toMatch(/<select\s+value=\{project\.status\}\s+aria-label="Project status"/);
+    // The pill is its own component since audit 2 H9 (it no longer saves on an arrow key)
+    expect(src).toMatch(/<ProjectStatusSelect\s+value=\{project\.status\}/);
+    const select = readFileSync(join(__dirname, '../../components/project/ProjectStatusSelect.tsx'), 'utf8');
+    expect(select).toMatch(/<select\s+value=\{shown\}\s+aria-label="Project status"/);
   });
 
   it('the tablist holds only the tabs; the More menu sits outside it', () => {

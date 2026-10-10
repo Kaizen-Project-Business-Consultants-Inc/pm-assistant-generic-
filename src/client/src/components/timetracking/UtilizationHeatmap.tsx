@@ -89,23 +89,32 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
       {/* Heatmap grid */}
       <div className="overflow-x-auto">
         <div className="inline-block min-w-full">
-          <div className="grid gap-px" style={{ gridTemplateColumns: `120px repeat(${heatmap.dates.length}, minmax(32px, 1fr))` }}>
+          {/* A table to screen readers (person × day, with row and column headers); the rows use
+              display:contents so the visual grid is unchanged */}
+          <div
+            role="table"
+            aria-label="Utilization by person and day"
+            className="grid gap-px"
+            style={{ gridTemplateColumns: `120px repeat(${heatmap.dates.length}, minmax(32px, 1fr))` }}
+          >
             {/* Header row */}
-            <div className="text-xs font-medium text-gray-500 p-1" />
-            {heatmap.dates.map(date => {
-              const d = new Date(date);
-              const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-              return (
-                <div key={date} className={`text-center text-xs p-1 ${isWeekend ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </div>
-              );
-            })}
+            <div role="row" className="contents">
+              <div role="columnheader" className="text-xs font-medium text-gray-500 p-1"><span className="sr-only">Person</span></div>
+              {heatmap.dates.map(date => {
+                const d = new Date(date);
+                const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                return (
+                  <div key={date} role="columnheader" className={`text-center text-xs p-1 ${isWeekend ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </div>
+                );
+              })}
+            </div>
 
             {/* User rows */}
             {heatmap.users.map(user => (
-              <>
-                <div key={`name-${user.userId}`} className="text-xs text-gray-700 dark:text-gray-300 truncate p-1 flex items-center">
+              <div key={user.userId} role="row" className="contents">
+                <div role="rowheader" className="text-xs text-gray-700 dark:text-gray-300 truncate p-1 flex items-center">
                   {user.userName}
                 </div>
                 {heatmap.dates.map(date => {
@@ -116,20 +125,27 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
                   return (
                     <div
                       key={`${user.userId}-${date}`}
+                      role="cell"
                       className={`${level.bg} ${level.border ?? ''} rounded-sm aspect-square flex items-center justify-center cursor-default relative group`}
                       title={`${user.userName}: ${hours.toFixed(1)}h (${util}%)`}
                     >
+                      {/* The exact figures for screen readers (the visible number is rounded hours) */}
+                      <span className="sr-only">{hours.toFixed(1)} hours, {util}%</span>
                       {hours > 0 && (
-                        <span className={`text-[11px] font-medium ${level.text}`}>{hours.toFixed(0)}</span>
+                        <span aria-hidden="true" className={`text-[11px] font-medium ${level.text}`}>{hours.toFixed(0)}</span>
+                      )}
+                      {/* Over 100% is also marked by shape, not only by its (darker) red */}
+                      {util > 100 && (
+                        <span aria-hidden="true" className={`absolute top-0 right-0.5 text-[10px] leading-none ${level.text}`}>▲</span>
                       )}
                       {/* Tooltip */}
-                      <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-10 pointer-events-none">
+                      <div aria-hidden="true" className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-gray-900 text-white text-xs rounded whitespace-nowrap z-10 pointer-events-none">
                         {hours.toFixed(1)}h — {util}%
                       </div>
                     </div>
                   );
                 })}
-              </>
+              </div>
             ))}
           </div>
 
@@ -139,7 +155,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40" /> &lt;25%</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-200 dark:bg-amber-900/40" /> 25-74%</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-green-300 dark:bg-green-800/60" /> 75-100%</span>
-            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-400 dark:bg-red-700/60" /> &gt;100%</span>
+            <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-400 dark:bg-red-700/60 text-[10px] leading-3 text-center text-gray-900 dark:text-gray-200" aria-hidden="true">▲</span> &gt;100%</span>
           </div>
         </div>
       </div>

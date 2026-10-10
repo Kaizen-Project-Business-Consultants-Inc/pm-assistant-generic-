@@ -126,7 +126,7 @@ export function ClientRaidPage() {
                 ) : items.map(item => (
                   <tr key={`${item.projectId}-${item.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                     <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
-                      {item.projectCode && <span className="font-mono text-xs text-gray-500 dark:text-gray-400 mr-1.5">{item.projectCode}</span>}
+                      {item.projectCode && <><span className="font-mono text-xs text-gray-500 dark:text-gray-400 mr-1.5">{item.projectCode}</span><span className="sr-only"> – </span></>}
                       {item.projectName}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{capitalise(item.type || '')}</td>

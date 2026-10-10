@@ -162,7 +162,7 @@ export function ProjectLinksCard({ projectId, canEdit }: Props) {
           </a>
           <ExternalLink className="w-3.5 h-3.5 text-gray-500 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
           {canEdit && (
-            <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex-shrink-0 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
               <button
                 onClick={() => startEdit(link)}
                 className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"

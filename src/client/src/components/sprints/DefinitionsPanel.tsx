@@ -94,7 +94,7 @@ function DefinitionEditor({
             <span className="text-xs text-gray-500 w-5 text-right">{i + 1}.</span>
             <span className="flex-1 text-sm text-gray-700 dark:text-gray-300">{c.label}</span>
             {isManager && (
-              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 <button
                   onClick={() => moveCriterion(i, -1)}
                   disabled={i === 0}

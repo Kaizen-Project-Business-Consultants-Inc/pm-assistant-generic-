@@ -126,6 +126,10 @@ export function FullUserGuidePage() {
         <article
           ref={articleRef}
           id="guide-chapter"
+          // Wide tables scroll sideways on phones: focusable so the keyboard can scroll it
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable (WCAG 2.1.1)
+          tabIndex={0}
+          aria-label="Guide chapter"
           className="prose max-w-none min-w-0 overflow-x-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-5 md:p-8 scroll-mt-4 [&_h2]:scroll-mt-20 [&_h3]:scroll-mt-20 [&_h4]:scroll-mt-20"
           dangerouslySetInnerHTML={{ __html: html }}
         />

@@ -27,6 +27,8 @@ import { apiService } from '../../services/api';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 import { roleLabel } from '../../constants/branding';
 import { KovartiMark } from '../ui/KovartiMark';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
+import { SIDEBAR_ID, MOBILE_MENU_BUTTON_ID } from './mobileMenuIds';
 import { PM_NAV_SECTIONS, GUEST_HIDDEN_PATHS, canOpenPath } from '../../constants/roleRoutes';
 import type { NavSection } from '../../constants/roleRoutes';
 
@@ -153,6 +155,25 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
     try { localStorage.setItem(ADMIN_VIEW_KEY, String(next)); } catch {}
   };
 
+  // Phone width: the drawer is off-screen when closed, so it must also be out of the Tab order
+  // and hidden from screen readers (inert). When it opens, focus moves into it; Escape closes it
+  // and puts focus back on the menu button.
+  const isMobile = useBreakpoint() === 'mobile';
+  const drawerHidden = isMobile && !mobileOpen;
+  const asideRef = React.useRef<HTMLElement>(null);
+  React.useEffect(() => {
+    if (!isMobile || !mobileOpen) return;
+    asideRef.current?.querySelector<HTMLElement>('nav a[href], nav button')?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      onMobileClose?.();
+      document.getElementById(MOBILE_MENU_BUTTON_ID)?.focus();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isMobile, mobileOpen, onMobileClose]);
+
   // Close mobile sidebar on route change
   React.useEffect(() => {
     if (mobileOpen && onMobileClose) {
@@ -220,6 +241,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
           md:translate-x-0
         `}
         aria-label="Main navigation"
+        id={SIDEBAR_ID}
+        ref={asideRef}
+        data-modal-background=""
+        // React 18 has no typed `inert` prop; an empty string sets the attribute
+        {...(drawerHidden ? { inert: '' } : {})}
       >
       {/* Logo / Branding */}
       <div className="flex items-center h-16 px-4 flex-shrink-0 border-b border-white/10">
@@ -316,15 +342,16 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
             {collapsed && <div className="h-2" />}
             {pinnedProjects.map((proj) => {
               const active = location.pathname === `/project/${proj.id}`;
+              // The "Open schedule" button sits beside the link, not inside it (a button in a link is invalid)
               return (
+                <div key={proj.id} className="group relative">
                 <Link
-                  key={proj.id}
                   to={`/project/${proj.id}`}
                   title={collapsed ? proj.name : undefined}
                   className={`
                     group flex items-center rounded-lg
                     transition-all duration-200 ease-in-out
-                    ${collapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'}
+                    ${collapsed ? 'justify-center px-2 py-2.5' : 'pl-3 pr-8 py-2'}
                     ${
                       active
                         ? 'bg-sidebar-active text-sidebar-text-active shadow-lg shadow-primary-500/20'
@@ -348,17 +375,19 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
                   >
                     {proj.name}
                   </span>
-                  {!collapsed && (
-                    <button
-                      type="button"
-                      title="Open schedule"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); nav(`/project/${proj.id}?tab=schedule`); }}
-                      className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-white/10"
-                    >
-                      <Calendar className="w-3.5 h-3.5" />
-                    </button>
-                  )}
                 </Link>
+                {!collapsed && (
+                  <button
+                    type="button"
+                    title="Open schedule"
+                    aria-label={`Open schedule: ${proj.name}`}
+                    onClick={() => nav(`/project/${proj.id}?tab=schedule`)}
+                    className={`absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-0.5 rounded hover:bg-white/10 ${active ? 'text-sidebar-text-active' : 'text-sidebar-text hover:text-white'}`}
+                  >
+                    <Calendar className="w-3.5 h-3.5" aria-hidden="true" />
+                  </button>
+                )}
+                </div>
               );
             })}
           </div>

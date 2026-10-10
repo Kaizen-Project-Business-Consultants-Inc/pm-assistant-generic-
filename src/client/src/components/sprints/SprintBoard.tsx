@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Kanban, Settings, Users, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Kanban, Settings, Users, ShieldCheck, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { announce } from '../../utils/announce';
 import { groupByKey } from '../../utils/lookup';
@@ -72,6 +72,122 @@ function saveWipLimits(sprintId: string, limits: Record<string, number>) {
   localStorage.setItem(`${WIP_STORAGE_KEY}-${sprintId}`, JSON.stringify(limits));
 }
 
+/** Which column a card is in (blocked/cancelled cards sit in Todo with a badge). */
+function columnOf(status: string): string {
+  return status === 'blocked' || status === 'cancelled' ? 'pending' : status;
+}
+
+/** Focus a control on the card for this task after a re-render (the card may have moved column). */
+function focusCardControl(attr: 'data-move-for' | 'data-points-for', taskId: string) {
+  requestAnimationFrame(() => {
+    const target = Array.from(document.querySelectorAll<HTMLElement>(`[${attr}]`)).find((el) => el.getAttribute(attr) === taskId);
+    target?.focus();
+  });
+}
+
+/**
+ * Keyboard (and mouse) alternative to dragging a card: a "Move" button that opens a short
+ * menu of the other columns. Arrow keys move through the menu, Enter/Space picks, Escape
+ * closes it and returns focus to the button.
+ */
+function MoveCardMenu({ task, onMove }: { task: BoardTask; onMove: (taskId: string, columnId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const current = columnOf(task.status);
+  const targets = COLUMNS.filter((c) => c.id !== current);
+
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
+    // A click anywhere outside closes it (only one card's menu is open at a time)
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.parentElement?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  const close = (refocus: boolean) => {
+    setOpen(false);
+    if (refocus) buttonRef.current?.focus();
+  };
+
+  const onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+    const i = items.indexOf(document.activeElement as HTMLElement);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length]?.focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); items[0]?.focus(); }
+    else if (e.key === 'End') { e.preventDefault(); items[items.length - 1]?.focus(); }
+    else if (e.key === 'Tab') close(false);
+  };
+
+  return (
+    <div
+      className="relative"
+      onBlur={(e) => { if (open && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setOpen(false); }}
+    >
+      <button
+        ref={buttonRef}
+        type="button"
+        data-move-for={task.id}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`Move "${task.name}" to another column`}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-0.5 text-xs font-medium px-1.5 py-0.5 rounded-full text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+      >
+        <ArrowRightLeft className="w-3 h-3" aria-hidden="true" />
+        Move
+      </button>
+      {open && (
+        <div
+          ref={menuRef}
+          role="menu"
+          tabIndex={-1}
+          aria-label={`Move "${task.name}" to`}
+          onKeyDown={onMenuKeyDown}
+          className="absolute left-0 top-full mt-1 z-20 min-w-[9rem] py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg"
+        >
+          {targets.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              onClick={() => { setOpen(false); onMove(task.id, c.id); }}
+              className="block w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:bg-gray-100 dark:focus:bg-gray-700 focus:outline-none"
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Story / Bug / Epic and Blocked / Cancelled badges at the top of a card. */
+function CardTypeBadges({ task }: { task: BoardTask }) {
+  const type = task.taskType && task.taskType !== 'task' ? taskTypeBadge[task.taskType] : undefined;
+  return (
+    <>
+      {type && (
+        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${type.bg} ${type.text}`}>
+          {type.label}
+        </span>
+      )}
+      {(task.status === 'blocked' || task.status === 'cancelled') && (
+        <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
+          {task.status === 'blocked' ? 'Blocked' : 'Cancelled'}
+        </span>
+      )}
+    </>
+  );
+}
+
 interface SprintCardProps {
   task: BoardTask;
   dodReady?: { checked: number; total: number; ready: boolean };
@@ -82,12 +198,13 @@ interface SprintCardProps {
   onPointsSave: (taskId: string) => void;
   onPointsKeyDown: (e: React.KeyboardEvent, taskId: string) => void;
   onPointsValueChange: (value: string) => void;
+  onMove: (taskId: string, columnId: string) => void;
   canEdit: boolean;
 }
 
 const SprintCard = memo(function SprintCard({
   task, dodReady, editingPointsTaskId, editingPointsValue,
-  onDragStart, onPointsClick, onPointsSave, onPointsKeyDown, onPointsValueChange, canEdit,
+  onDragStart, onPointsClick, onPointsSave, onPointsKeyDown, onPointsValueChange, onMove, canEdit,
 }: SprintCardProps) {
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
   const points = getPoints(task);
@@ -101,16 +218,7 @@ const SprintCard = memo(function SprintCard({
       className={`bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 p-3 shadow-sm hover:shadow-md dark:hover:shadow-lg dark:hover:shadow-black/20 transition-shadow ${canEdit ? 'cursor-grab active:cursor-grabbing' : ''}`}
     >
       <div className="flex items-center gap-1.5 mb-2">
-        {task.taskType && task.taskType !== 'task' && taskTypeBadge[task.taskType] && (
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${taskTypeBadge[task.taskType].bg} ${taskTypeBadge[task.taskType].text}`}>
-            {taskTypeBadge[task.taskType].label}
-          </span>
-        )}
-        {(task.status === 'blocked' || task.status === 'cancelled') && (
-          <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${task.status === 'blocked' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-gray-200 text-gray-600 dark:bg-gray-600 dark:text-gray-300'}`}>
-            {task.status === 'blocked' ? 'Blocked' : 'Cancelled'}
-          </span>
-        )}
+        <CardTypeBadges task={task} />
         <span className="text-xs font-medium text-gray-900 dark:text-white line-clamp-2">
           {task.name}
         </span>
@@ -135,13 +243,16 @@ const SprintCard = memo(function SprintCard({
             onClick={(e) => e.stopPropagation()}
           />
         ) : canEdit ? (
-          <span
-            className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
+          <button
+            type="button"
+            data-points-for={task.id}
+            className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
             onClick={(e) => { e.stopPropagation(); onPointsClick(task.id, points); }}
-            title="Click to edit story points"
+            aria-label={`Story points for "${task.name}": ${points > 0 ? points : 'none'}. Edit`}
+            title="Edit story points"
           >
             {points > 0 ? `${points} pts` : '+ pts'}
-          </span>
+          </button>
         ) : points > 0 ? (
           <span className="text-xs font-bold text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/30 px-1.5 py-0.5 rounded-full">
             {points} pts
@@ -165,6 +276,7 @@ const SprintCard = memo(function SprintCard({
             {dodReady.checked}/{dodReady.total}
           </span>
         )}
+        {canEdit && <MoveCardMenu task={task} onMove={onMove} />}
       </div>
       {task.assignedTo && (
         <div className="mt-2 flex items-center gap-1.5">
@@ -257,8 +369,10 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
   const handlePointsKeyDown = useCallback((e: React.KeyboardEvent, taskId: string) => {
     if (e.key === 'Enter') {
       handlePointsSave(taskId);
+      focusCardControl('data-points-for', taskId);
     } else if (e.key === 'Escape') {
       setEditingPointsTaskId(null);
+      focusCardControl('data-points-for', taskId);
     }
   }, [handlePointsSave]);
 
@@ -281,7 +395,9 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
     // straight away, which puts the card back, and the message says so. Either way only if no
     // later move of the same card has replaced it.
     onSuccess: async (_data, variables) => {
-      announce(`Task moved to ${variables.status}`);
+      const name = rawTasks.find(t => t.id === variables.taskId)?.name;
+      const column = COLUMNS.find(c => c.id === variables.status)?.label ?? variables.status;
+      announce(`${name ? `"${name}"` : 'Task'} moved to ${column}`);
       await queryClient.invalidateQueries({ queryKey: ['sprintBoard', sprintId] });
       clearMoveMarker(variables.taskId, variables.status);
     },
@@ -310,20 +426,35 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
     setDragOverColumn(null);
   }, []);
 
+  /** Move a card to a column — by drag and drop or by the card's Move menu. */
+  // Latest tasks and mutation via refs, so the card callbacks stay the same and memo(SprintCard) holds
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const mutateStatusRef = useRef(updateStatusMutation.mutate);
+  mutateStatusRef.current = updateStatusMutation.mutate;
+  const moveTask = useCallback((taskId: string, columnId: string) => {
+    if (!canEdit) return;
+    const task = tasksRef.current.find((t) => t.id === taskId);
+    if (task && task.status !== columnId) {
+      setLocalTaskOverrides((prev) => ({ ...prev, [taskId]: columnId }));
+      mutateStatusRef.current({ taskId, status: columnId });
+    }
+  }, [canEdit]);
+
+  /** Keyboard move: the card re-renders in its new column, so focus follows it there. */
+  const moveTaskByMenu = useCallback((taskId: string, columnId: string) => {
+    moveTask(taskId, columnId);
+    focusCardControl('data-move-for', taskId);
+  }, [moveTask]);
+
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
       e.preventDefault();
       setDragOverColumn(null);
       const taskId = e.dataTransfer.getData('text/plain');
-      if (taskId && canEdit) {
-        const task = tasks.find((t) => t.id === taskId);
-        if (task && task.status !== columnId) {
-          setLocalTaskOverrides((prev) => ({ ...prev, [taskId]: columnId }));
-          updateStatusMutation.mutate({ taskId, status: columnId });
-        }
-      }
+      if (taskId) moveTask(taskId, columnId);
     },
-    [tasks, updateStatusMutation, canEdit],
+    [moveTask],
   );
 
   if (isLoading) {
@@ -396,9 +527,11 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
                 : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
             title="Toggle swimlanes by assignee"
+            aria-pressed={swimlane !== 'none'}
           >
-            <Users className="w-3 h-3" />
+            <Users className="w-3 h-3" aria-hidden="true" />
             <span className="hidden sm:inline">Swimlane</span>
+            <span className="sr-only sm:hidden">Swimlanes by assignee</span>
           </button>
         </div>
       </div>
@@ -485,6 +618,7 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
                         onPointsSave={handlePointsSave}
                         onPointsKeyDown={handlePointsKeyDown}
                         onPointsValueChange={setEditingPointsValue}
+                        onMove={moveTaskByMenu}
                         canEdit={canEdit}
                       />
                     ))}

@@ -13,6 +13,7 @@ import CommandPalette from './CommandPalette';
 import { FeedbackModal } from '../feedback/FeedbackModal';
 import { ROUTES, ROUTE_PATTERNS } from '../../routes';
 import { canOpenPath } from '../../constants/roleRoutes';
+import { SIDEBAR_ID, MOBILE_MENU_BUTTON_ID } from './mobileMenuIds';
 
 interface Breadcrumb {
   label: string;
@@ -112,9 +113,11 @@ export function buildBreadcrumbs(pathname: string, names: { project?: string; cl
 
 interface TopBarProps {
   onMobileMenuToggle?: () => void;
+  /** Whether the phone-width menu drawer is open (for the menu button's aria-expanded) */
+  mobileMenuOpen?: boolean;
 }
 
-const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
+const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle, mobileMenuOpen = false }) => {
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
@@ -124,6 +127,7 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const userMenuButtonRef = useRef<HTMLButtonElement>(null);
 
   // Extract project ID from URL like /project/:id
   const segments = location.pathname.split('/').filter(Boolean);
@@ -164,11 +168,20 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
       }
     }
 
+    // Escape closes the menu and puts focus back on its button
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      setDropdownOpen(false);
+      userMenuButtonRef.current?.focus();
+    }
+
     if (dropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, [dropdownOpen]);
 
@@ -198,13 +211,16 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
   const userInitials = user?.fullName ? getInitials(user.fullName) : '??';
 
   return (
-    <header className="sticky top-0 z-30 flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 sm:px-4 lg:px-6">
+    <header data-modal-background="" className="sticky top-0 z-30 flex items-center h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 sm:px-4 lg:px-6">
       {/* Mobile hamburger menu button */}
       {onMobileMenuToggle && (
         <button
+          id={MOBILE_MENU_BUTTON_ID}
           onClick={onMobileMenuToggle}
           className="md:hidden mr-2 p-2 -ml-1 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           aria-label="Open menu"
+          aria-expanded={mobileMenuOpen}
+          aria-controls={SIDEBAR_ID}
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -294,8 +310,14 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle }) => {
         <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-600" />
 
         {/* User Dropdown */}
-        <div className="relative" ref={dropdownRef}>
+        <div
+          className="relative"
+          ref={dropdownRef}
+          // Tabbing out of the open menu closes it
+          onBlur={(e) => { if (dropdownOpen && e.relatedTarget && !e.currentTarget.contains(e.relatedTarget as Node)) setDropdownOpen(false); }}
+        >
           <button
+            ref={userMenuButtonRef}
             onClick={() => setDropdownOpen((prev) => !prev)}
             className="
               flex items-center gap-2 p-1.5 rounded-lg

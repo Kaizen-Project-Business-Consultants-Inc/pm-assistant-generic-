@@ -97,7 +97,7 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
           >
             <span className="truncate">{getInitials(name)}</span>
             <button
-              className="opacity-0 group-hover:opacity-100 p-0 text-primary-400 hover:text-red-500 transition-opacity"
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 p-0 text-primary-400 hover:text-red-500 transition-opacity"
               onClick={(e) => { e.stopPropagation(); handleRemove(a.resourceId); }}
               title="Remove"
             >

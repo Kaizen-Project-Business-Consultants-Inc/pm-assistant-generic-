@@ -186,39 +186,45 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
       {/* Sub-tab navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <div className="flex gap-4 flex-wrap">
+          <div className="flex gap-4 flex-wrap" role="group" aria-label="Time views">
             <button
               onClick={() => setSubTab('timesheet')}
+              aria-pressed={subTab === 'timesheet'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'timesheet' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <CalendarDays className="w-4 h-4" /> Timesheet
             </button>
             <button
               onClick={() => setSubTab('entries')}
+              aria-pressed={subTab === 'entries'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'entries' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <Clock className="w-4 h-4" /> Entries
             </button>
             <button
               onClick={() => setSubTab('comparison')}
+              aria-pressed={subTab === 'comparison'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'comparison' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <BarChart3 className="w-4 h-4" /> Actual vs Est.
             </button>
             <button
               onClick={() => setSubTab('burndown')}
+              aria-pressed={subTab === 'burndown'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'burndown' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <TrendingDown className="w-4 h-4" /> Burndown
             </button>
             <button
               onClick={() => setSubTab('trends')}
+              aria-pressed={subTab === 'trends'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'trends' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <TrendingUp className="w-4 h-4" /> Trends
             </button>
             <button
               onClick={() => setSubTab('heatmap')}
+              aria-pressed={subTab === 'heatmap'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'heatmap' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <Grid3X3 className="w-4 h-4" /> Heatmap
@@ -426,7 +432,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
                     </td>
                     <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">{e.hours}h</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-gray-400 truncate max-w-[200px]">{e.description || '\u2014'}</td>
-                    <td className="px-4 py-3 text-center">{e.billable ? <span className="text-green-600 text-xs font-medium">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
+                    <td className="px-4 py-3 text-center">{e.billable ? <span className="text-green-600 dark:text-green-400 text-xs font-medium">Yes</span> : <span className="text-gray-500 text-xs">No</span>}</td>
                     <td className="px-4 py-3 text-right">
                       <button onClick={() => deleteMutation.mutate(e.id)} aria-label={`Delete time entry for ${e.taskName || e.taskId}`} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"><Trash2 className="w-3.5 h-3.5" /></button>
                     </td>
