@@ -13,7 +13,7 @@ const who = vi.hoisted(() => ({ user: { userId: 'u-a', role: 'pmo' } as any, org
 vi.mock('../../middleware/auth', () => ({
   authMiddleware: vi.fn(async (req: any) => { req.user = who.user; req.tenantOrg = { id: who.org }; }),
 }));
-vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}), keyChangesNeed: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRole: vi.fn(async () => ({ ok: true })) }));
 const cp = vi.hoisted(() => vi.fn());
 vi.mock('../../database/connection', () => ({ databaseService: { queryControlPlane: cp, query: vi.fn(async () => []) } }));

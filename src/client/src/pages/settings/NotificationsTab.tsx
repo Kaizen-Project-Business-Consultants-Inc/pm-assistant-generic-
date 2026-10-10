@@ -208,7 +208,7 @@ export const NotificationsTab: React.FC = () => {
           </div>
           {digestFrequency !== 'none' && (
             <div>
-              <label htmlFor={`${uid}-send-time`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Send Time (UTC)</label>
+              <label htmlFor={`${uid}-send-time`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Send time (your time zone)</label>
               <select
                 id={`${uid}-send-time`}
                 value={digestPreferredHour}

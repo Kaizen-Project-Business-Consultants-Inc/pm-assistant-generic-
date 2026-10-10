@@ -49,7 +49,8 @@ const MATRIX_COLORS: Record<number, string> = {
 };
 
 export function RAIDTab({ projectId, projectName }: { projectId: string; projectName: string }) {
-  const { canEdit } = useProjectRole(projectId);
+  // RAID Review is the Manager's read view (server: 'read' + Manager); Run/Apply inside it need canEdit
+  const { canEdit, isManager } = useProjectRole(projectId);
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editRisk, setEditRisk] = useState<any>(null);
@@ -80,7 +81,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
 
   // RAID Review — latest score for the health chip, and a flag per item from its findings
   // RAID Review is the project Manager/Owner's tool: hidden (not fetched) for everyone else
-  const { data: raidReview } = useRaidReview(projectId, canEdit);
+  const { data: raidReview } = useRaidReview(projectId, isManager);
   const flags = useMemo(() => itemFlags(raidReview), [raidReview]);
 
   const filters: Record<string, string> = {};
@@ -490,7 +491,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             <FileText className="w-3.5 h-3.5" />
             RAID Report
           </button>
-          {canEdit && (
+          {isManager && (
           <button
             onClick={() => setShowReview(true)}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700 dark:text-primary-300 bg-white dark:bg-gray-900 hover:bg-primary-50 dark:hover:bg-primary-900/30 border-2 border-primary-500 dark:border-primary-400 rounded-lg transition-colors"
@@ -499,7 +500,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
             Review
           </button>
           )}
-          {canEdit && raidReview && (
+          {isManager && raidReview && (
             <button
               onClick={() => setShowReview(true)}
               title="RAID health — open the review"
@@ -920,7 +921,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
       )}
 
       {/* RAID Review side panel */}
-      {showReview && canEdit && (
+      {showReview && isManager && (
         <RaidReviewPanel
           projectId={projectId}
           canEdit={canEdit}

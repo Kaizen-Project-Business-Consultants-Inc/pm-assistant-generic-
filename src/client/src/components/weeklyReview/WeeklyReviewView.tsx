@@ -16,6 +16,8 @@ interface Props {
   onBack: () => void;
   /** Go to the project tab where the problem is fixed */
   onNavigateToTab: (tab: string) => void;
+  /** Run, Dismiss and the status report need a role that may change data; without one the Manager only reads */
+  canEdit: boolean;
 }
 
 const decisions = (n: number) => `${n} decision${n === 1 ? '' : 's'}`;
@@ -35,8 +37,8 @@ const RAG_TEXT: Record<WeeklyReview['rag'], { label: string; cls: string }> = {
 };
 const REASON_LABEL = Object.fromEntries(DISMISS_REASONS.map(r => [r.value, r.label])) as Record<string, string>;
 
-function ItemCard({ item, index, review, projectId, onNavigateToTab }: {
-  item: WeeklyItem; index: number; review: WeeklyReview; projectId: string; onNavigateToTab: (tab: string) => void;
+function ItemCard({ item, index, review, projectId, onNavigateToTab, canEdit }: {
+  item: WeeklyItem; index: number; review: WeeklyReview; projectId: string; onNavigateToTab: (tab: string) => void; canEdit: boolean;
 }) {
   const [showWhy, setShowWhy] = useState(false);
   const [showDismiss, setShowDismiss] = useState(false);
@@ -118,7 +120,7 @@ function ItemCard({ item, index, review, projectId, onNavigateToTab }: {
           {showWhy ? <ChevronDown className="w-4 h-4" aria-hidden="true" /> : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
           Why?
         </button>
-        {!showDismiss && (
+        {canEdit && !showDismiss && (
           <button
             type="button"
             onClick={() => setShowDismiss(true)}
@@ -137,7 +139,7 @@ function ItemCard({ item, index, review, projectId, onNavigateToTab }: {
  * what makes the picture uncertain, and the status colour the facts point to.
  * PM-only — the project page renders it only for the project's Manager/Owner.
  */
-export function WeeklyReviewView({ projectId, onBack, onNavigateToTab }: Props) {
+export function WeeklyReviewView({ projectId, onBack, onNavigateToTab, canEdit }: Props) {
   const { data: review, isLoading, error } = useWeeklyReview(projectId);
   const run = useRunWeeklyReview(projectId);
   const [showReport, setShowReport] = useState(false);
@@ -186,7 +188,9 @@ export function WeeklyReviewView({ projectId, onBack, onNavigateToTab }: Props) 
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 space-y-3">
           <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Weekly PM review</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300">Kovarti checks the plan, people, hours, money and risks and lists what needs you — at most 5 decisions, most important first. Nothing changes until you act.</p>
-          {runButton('Run my weekly review', true)}
+          {canEdit
+            ? runButton('Run my weekly review', true)
+            : <p className="text-sm text-gray-700 dark:text-gray-200">No review yet. It runs every Friday.</p>}
           {runError}
         </div>
       </div>
@@ -205,16 +209,16 @@ export function WeeklyReviewView({ projectId, onBack, onNavigateToTab }: Props) 
           <h2 className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
             Your week on {review.projectName} — {open.length > 0 ? `${decisions(open.length)} needed` : 'all fine'}
           </h2>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Kovarti checked the plan, people, hours, money and risks. {review.items.length > 0 ? "Here's what needs you, most important first. Nothing changes until you act." : 'Nothing needs you this week.'}</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Kovarti checked the plan, people, hours, money and risks. {review.items.length > 0 ? `Here's what needs attention, most important first.${canEdit ? ' Nothing changes until you act.' : ''}` : 'Nothing needs you this week.'}</p>
         </div>
-        {runButton('Run again')}
+        {canEdit && runButton('Run again')}
       </div>
       {runError}
 
       {review.items.length > 0 && (
         <div className="flex flex-col gap-3">
           {review.items.map((item, i) => (
-            <ItemCard key={item.key} item={item} index={i} review={review} projectId={projectId} onNavigateToTab={onNavigateToTab} />
+            <ItemCard key={item.key} item={item} index={i} review={review} projectId={projectId} onNavigateToTab={onNavigateToTab} canEdit={canEdit} />
           ))}
         </div>
       )}
@@ -252,15 +256,15 @@ export function WeeklyReviewView({ projectId, onBack, onNavigateToTab }: Props) 
           <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
             Status this week: <span className={rag.cls}>{rag.label}</span>{review.ragReason && review.rag !== 'green' ? `, ${review.ragReason}` : ''}
           </p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">The colour comes from the facts above, including anything you dismissed. You write and send the status report — Kovarti never sends it.</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">The colour comes from the facts above, including anything you dismissed.{canEdit && ' You write and send the status report — Kovarti never sends it.'}</p>
         </div>
-        <button
+        {canEdit && <button
           type="button"
           onClick={() => setShowReport(true)}
           className="h-11 px-5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-bold whitespace-nowrap"
         >
           Write the status report
-        </button>
+        </button>}
       </section>
       {showReport && (
         <Suspense fallback={null}>

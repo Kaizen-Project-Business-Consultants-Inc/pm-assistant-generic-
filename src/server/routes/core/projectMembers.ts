@@ -10,6 +10,7 @@ import { requireProjectAccess, checkProjectRole } from '../../middleware/require
 import { notificationService } from '../../services/NotificationService';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
+import { effectiveScopes } from '../../constants/roleScopes';
 
 const ROLE_MESSAGE = 'Choose a role: Viewer, Manager or Owner. (Editor was removed.)';
 const roleSchema = z.enum(['owner', 'manager', 'viewer'], { message: ROLE_MESSAGE }); // Editor removed Sep 2026
@@ -53,7 +54,11 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
     const { projectId } = request.params as { projectId: string };
     const pm = await checkProjectRole(request, projectId, 'manager');
     const role = pm.ok ? (pm.membership?.role ?? 'manager') : (request.projectMembership?.role === 'editor' ? 'viewer' : request.projectMembership?.role ?? 'viewer');
-    return { role, canEdit: pm.ok, canManageOwners: canGrantOwner(request) || (pm.ok && pm.membership?.role === 'owner') };
+    // Changing project data also needs a role that may change data ('write'): a team member or
+    // viewer made the project's Manager is refused by the change routes, which also need 'write' (audit 2 review)
+    const roleMayChange = effectiveScopes(request.user?.role, request.apiKeyScopes).includes('write');
+    // isManager alone opens the Manager's read views (RAID Review, weekly review) and timesheet flags, which need only 'read'
+    return { role, isManager: pm.ok, canEdit: pm.ok && roleMayChange, canManageOwners: roleMayChange && (canGrantOwner(request) || (pm.ok && pm.membership?.role === 'owner')) };
   });
 
   // GET /api/v1/projects/:projectId/members

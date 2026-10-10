@@ -4,6 +4,8 @@ import { Plus, Copy, Check, Lock } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { useCanChangeData } from '../../hooks/useCanChangeData';
+import { useAuthStore } from '../../stores/authStore';
 
 export const ApiKeysTab: React.FC = () => {
   const uid = useId();
@@ -14,6 +16,12 @@ export const ApiKeysTab: React.FC = () => {
   const [createdKey, setCreatedKey] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+  // Creating a key needs a role that may change data (server: 'write'); read-only roles still
+  // see and revoke their own keys, e.g. the one a Claude connection made. Only the Kovarti
+  // platform admin may hold the 'admin' right, so only they are offered it.
+  const canCreate = useCanChangeData();
+  const isPlatformAdmin = useAuthStore(s => s.user?.role === 'admin');
+  const offeredScopes = isPlatformAdmin ? ['read', 'write', 'admin'] : ['read', 'write'];
 
   const { data, isLoading } = useQuery({
     queryKey: ['api-keys'],
@@ -75,8 +83,11 @@ export const ApiKeysTab: React.FC = () => {
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">API Keys</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create API keys to allow external AI agents and integrations to access your data.</p>
+            {!canCreate && (
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Your role can't create keys. Keys made for you, such as a Claude connection, are listed here and you can revoke them.</p>
+            )}
           </div>
-          {!isApiKeysSample && (
+          {!isApiKeysSample && canCreate && (
             <button
               onClick={() => { setShowCreate(true); setCreatedKey(null); }}
               className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors"
@@ -87,7 +98,7 @@ export const ApiKeysTab: React.FC = () => {
         </div>
 
         {/* Create Key Form */}
-        {showCreate && (
+        {showCreate && canCreate && (
           <div className="mb-6 p-4 rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20">
             {createdKey ? (
               <div className="space-y-3">
@@ -120,7 +131,7 @@ export const ApiKeysTab: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scopes</label>
                   <div className="flex gap-2">
-                    {['read', 'write', 'admin'].map((scope) => (
+                    {offeredScopes.map((scope) => (
                       <button
                         key={scope}
                         onClick={() => toggleScope(scope)}
@@ -148,7 +159,7 @@ export const ApiKeysTab: React.FC = () => {
         {isLoading ? (
           <p className="text-sm text-gray-500 dark:text-gray-400">Loading API keys…</p>
         ) : keys.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No API keys yet. Create one to get started.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{canCreate ? 'No API keys yet. Create one to get started.' : 'No API keys.'}</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {keys.map((key: any) => (

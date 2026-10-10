@@ -3,13 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Copy, Check, Send, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
-
-const WEBHOOK_EVENTS = [
-  'task.created', 'task.updated', 'task.deleted',
-  'project.created', 'project.updated',
-  'proposal.created', 'proposal.accepted',
-  'agent.scan_completed',
-];
+import { WEBHOOK_EVENTS } from '../../constants/webhookEvents';
 
 export const WebhooksTab: React.FC = () => {
   const uid = useId();

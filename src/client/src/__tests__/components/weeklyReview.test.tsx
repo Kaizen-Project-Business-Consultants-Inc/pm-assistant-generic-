@@ -58,7 +58,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 describe('Weekly PM review — full view', () => {
   it('shows the decisions first, then what is fine, the uncertainty and the status colour', async () => {
-    wrap(<WeeklyReviewView projectId="p1" onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    wrap(<WeeklyReviewView projectId="p1" canEdit onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
     expect(await screen.findByRole('heading', { name: /Your week on DBJ-Loans — 2 decisions needed/ })).toBeTruthy();
     expect(screen.getByText('1 · Finish date at risk')).toBeTruthy();
     expect(screen.getByText('2 · Someone is overloaded')).toBeTruthy();
@@ -69,7 +69,7 @@ describe('Weekly PM review — full view', () => {
   });
 
   it('"Why?" shows the facts and is a proper toggle for screen readers', async () => {
-    wrap(<WeeklyReviewView projectId="p1" onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    wrap(<WeeklyReviewView projectId="p1" canEdit onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
     const why = (await screen.findAllByRole('button', { name: 'Why?' }))[0];
     expect(why.getAttribute('aria-expanded')).toBe('false');
     expect(screen.queryByText(/40% done/)).toBeNull();
@@ -80,7 +80,7 @@ describe('Weekly PM review — full view', () => {
 
   it('the main button opens the tab where the problem is fixed', async () => {
     const onNavigateToTab = vi.fn();
-    wrap(<WeeklyReviewView projectId="p1" onBack={vi.fn()} onNavigateToTab={onNavigateToTab} />);
+    wrap(<WeeklyReviewView projectId="p1" canEdit onBack={vi.fn()} onNavigateToTab={onNavigateToTab} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Open the schedule' }));
     expect(onNavigateToTab).toHaveBeenCalledWith('schedule');
     fireEvent.click(screen.getByRole('button', { name: 'Open resources' }));
@@ -88,7 +88,7 @@ describe('Weekly PM review — full view', () => {
   });
 
   it('Dismiss asks why, saves the reason, and the item folds away', async () => {
-    wrap(<WeeklyReviewView projectId="p1" onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    wrap(<WeeklyReviewView projectId="p1" canEdit onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
     fireEvent.click((await screen.findAllByRole('button', { name: 'Dismiss' }))[1]);
     fireEvent.click(screen.getByRole('button', { name: 'Already handled' }));
     await waitFor(() => expect(api.dismissPmWeeklyReviewItem).toHaveBeenCalledWith('p1', 'rv1', 'overload:r1', 'already_handled'));
@@ -98,7 +98,7 @@ describe('Weekly PM review — full view', () => {
 
   it('never run: explains it and offers to run it now', async () => {
     api.getPmWeeklyReview.mockResolvedValue({ review: null });
-    wrap(<WeeklyReviewView projectId="p1" onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    wrap(<WeeklyReviewView projectId="p1" canEdit onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Run my weekly review' }));
     expect(await screen.findByRole('heading', { name: /all fine/ })).toBeTruthy();
     expect(api.runPmWeeklyReview).toHaveBeenCalledWith('p1');
@@ -106,7 +106,7 @@ describe('Weekly PM review — full view', () => {
 
   it('a failed run says so in plain words', async () => {
     api.runPmWeeklyReview.mockRejectedValue({ response: { data: { message: 'Failed to run the weekly review' } } });
-    wrap(<WeeklyReviewView projectId="p1" onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    wrap(<WeeklyReviewView projectId="p1" canEdit onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
     fireEvent.click(await screen.findByRole('button', { name: 'Run again' }));
     expect(await screen.findByRole('alert')).toBeTruthy();
   });
@@ -115,7 +115,7 @@ describe('Weekly PM review — full view', () => {
 describe('Weekly PM review — overview card', () => {
   it('says how many decisions are open and opens the review', async () => {
     const onOpen = vi.fn();
-    wrap(<WeeklyReviewCard projectId="p1" onOpen={onOpen} />);
+    wrap(<WeeklyReviewCard projectId="p1" canEdit onOpen={onOpen} />);
     expect(await screen.findByText(/2 decisions open/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Open review' }));
     expect(onOpen).toHaveBeenCalled();
@@ -124,7 +124,7 @@ describe('Weekly PM review — overview card', () => {
   it('never run: no Open button, Run opens the result', async () => {
     api.getPmWeeklyReview.mockResolvedValue({ review: null });
     const onOpen = vi.fn();
-    wrap(<WeeklyReviewCard projectId="p1" onOpen={onOpen} />);
+    wrap(<WeeklyReviewCard projectId="p1" canEdit onOpen={onOpen} />);
     await screen.findByText(/It runs every Friday, or now/);
     expect(screen.queryByRole('button', { name: 'Open review' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Run my weekly review' }));
@@ -135,5 +135,38 @@ describe('Weekly PM review — overview card', () => {
 describe('openDecisions', () => {
   it('leaves out items already dismissed or applied', () => {
     expect(openDecisions({ ...review, responses: [{ itemKey: 'delay:t1', response: 'applied', reason: null, createdAt: '' }] }).map(i => i.key)).toEqual(['overload:r1']);
+  });
+});
+
+/**
+ * A team member, viewer or executive made the project's Manager may read the review, but
+ * running it, dismissing items and writing the status report need a role that may change data
+ * (server: 'write') — those controls are hidden for them (audit 2 review, 2026-10-10).
+ */
+describe('Weekly PM review — the Manager without change rights only reads', () => {
+  it('full view: no Run again, Dismiss or Write the status report', async () => {
+    wrap(<WeeklyReviewView projectId="p1" canEdit={false} onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    expect(await screen.findByText(/Finish date at risk/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Run again/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Write the status report/ })).toBeNull();
+  });
+
+  it('no review yet: says so instead of offering Run', async () => {
+    api.getPmWeeklyReview.mockResolvedValue({ review: null });
+    wrap(<WeeklyReviewView projectId="p1" canEdit={false} onBack={vi.fn()} onNavigateToTab={vi.fn()} />);
+    expect(await screen.findByText(/No review yet/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Run my weekly review/ })).toBeNull();
+  });
+
+  it('card: Open review only; nothing at all when there is no review', async () => {
+    wrap(<WeeklyReviewCard projectId="p1" canEdit={false} onOpen={vi.fn()} />);
+    expect(await screen.findByRole('button', { name: 'Open review' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Run my weekly review/ })).toBeNull();
+    cleanup();
+    api.getPmWeeklyReview.mockResolvedValue({ review: null });
+    const { container } = wrap(<WeeklyReviewCard projectId="p1" canEdit={false} onOpen={vi.fn()} />);
+    await waitFor(() => expect(api.getPmWeeklyReview).toHaveBeenCalled());
+    await waitFor(() => expect(container.querySelector('section')).toBeNull());
   });
 });

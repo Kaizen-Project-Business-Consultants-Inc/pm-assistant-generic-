@@ -8,6 +8,8 @@ interface Props {
   projectId: string;
   /** Opens the full review (the project's hidden 'weekly-review' view) */
   onOpen: () => void;
+  /** Running a review needs a role that may change data; the project's Manager without one only reads it */
+  canEdit: boolean;
 }
 
 const decisions = (n: number) => `${n} decision${n === 1 ? '' : 's'}`;
@@ -22,7 +24,7 @@ function lastRun(iso: string): string {
  * Project Overview card (PM-only — the caller renders it only for the project's Manager/Owner):
  * the latest Weekly PM review in one line, and "Run my weekly review" for any day of the week.
  */
-export function WeeklyReviewCard({ projectId, onOpen }: Props) {
+export function WeeklyReviewCard({ projectId, onOpen, canEdit }: Props) {
   const { data: review, isLoading } = useWeeklyReview(projectId);
   const run = useRunWeeklyReview(projectId);
 
@@ -38,6 +40,8 @@ export function WeeklyReviewCard({ projectId, onOpen }: Props) {
       onOpen();
     },
   });
+
+  if (!canEdit && !isLoading && !review) return null; // nothing to read and they can't run one
 
   return (
     <section
@@ -67,7 +71,7 @@ export function WeeklyReviewCard({ projectId, onOpen }: Props) {
             Open review
           </button>
         )}
-        <button
+        {canEdit && <button
           type="button"
           onClick={runNow}
           disabled={run.isPending}
@@ -75,7 +79,7 @@ export function WeeklyReviewCard({ projectId, onOpen }: Props) {
         >
           {run.isPending && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
           {run.isPending ? 'Checking…' : 'Run my weekly review'}
-        </button>
+        </button>}
       </div>
     </section>
   );

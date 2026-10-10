@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { authMiddleware } from '../../middleware/auth';
-import { requireScope } from '../../middleware/requireScope';
+import { keyChangesNeed, requireScope } from '../../middleware/requireScope';
 import { z } from 'zod';
 import { contextConfigService, type ConfigScope, type ScopeRef, CONFIG_KEY_SCHEMAS, settingsCompanyKey } from '../../services/context/ContextConfigService';
 import { platformAdminOnly, isPlatformAdmin } from '../../utils/platformAdmin';
@@ -23,6 +23,19 @@ async function contextScopeGate(request: FastifyRequest, reply: FastifyReply) {
   } else if (scope === 'user') {
     if (scopeId !== user.userId) return reply.status(403).send({ error: 'Forbidden', message: 'You can only change your own AI settings.' });
   }
+}
+
+/**
+ * Your own AI preferences are a personal setting, like your time zone (99cee55e): anyone signed in
+ * saves their own — read-only roles (team member, viewer, executive) used to get 403 (audit 2,
+ * G16). Through an API key it still needs a key that may write. Organisation and project settings
+ * keep needing 'write'. contextScopeGate (after this) holds a user scope to the caller's own id.
+ */
+const ownUserOrWrite = keyChangesNeed('write');
+const needWrite = requireScope('write');
+async function contextWriteScope(request: FastifyRequest, reply: FastifyReply) {
+  const { scope } = request.params as { scope: string };
+  return scope === 'user' ? ownUserOrWrite(request, reply) : needWrite(request, reply);
 }
 
 /** Reading AI settings: a project's by its members; the organisation's by anyone in it; a user's by that user */
@@ -144,7 +157,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
   // PUT /api/v1/context/config/:scope/:scopeId — update config
   fastify.put('/config/:scope/:scopeId', {
-    preHandler: [requireScope('write'), contextScopeGate],
+    preHandler: [requireScope('read'), contextWriteScope, contextScopeGate],
     schema: { description: 'Update AI context config at a scope', tags: ['context'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

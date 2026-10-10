@@ -190,7 +190,7 @@ export function RaidReviewPanel({ projectId, canEdit, onClose, onOpenItem }: Pro
           )}
 
           {!busy && !review && !canEdit && (
-            <p className="text-sm text-gray-700 dark:text-gray-300">This project's RAID log hasn't been reviewed yet. The project manager can run a review.</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">This project's RAID log hasn't been reviewed yet. A project manager or PMO runs the first review.</p>
           )}
 
           {error && (

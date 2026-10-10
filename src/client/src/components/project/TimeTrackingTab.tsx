@@ -38,7 +38,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const uid = useId();
-  const { canEdit: canManageTime } = useProjectRole(projectId);
+  // Flagging a line needs the project's Manager/Owner, not a role that may change data (server: 'read')
+  const { isManager: canManageTime } = useProjectRole(projectId);
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuthStore();
   const [subTab, setSubTab] = useState<SubTab>('timesheet');

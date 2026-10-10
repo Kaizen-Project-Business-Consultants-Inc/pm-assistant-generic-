@@ -3,10 +3,13 @@ import { ChangeRequestList } from '../../components/approvals/ChangeRequestList'
 import { ChangeRequestForm } from '../../components/approvals/ChangeRequestForm';
 import { ChangeRequestDetail } from '../../components/approvals/ChangeRequestDetail';
 import { WorkflowEditor } from '../../components/approvals/WorkflowEditor';
+import { useProjectRole } from '../../hooks/useProjectRole';
 
 export function ChangeRequestsTab({ projectId }: { projectId: string }) {
   const [view, setView] = useState<'list' | 'form' | 'detail' | 'workflow'>('list');
   const [selectedCrId, setSelectedCrId] = useState<string | undefined>();
+  // Approval workflows are set up by the project's Manager/Owner (the server refuses anyone else)
+  const { canEdit } = useProjectRole(projectId);
 
   if (view === 'form') {
     return (
@@ -32,7 +35,7 @@ export function ChangeRequestsTab({ projectId }: { projectId: string }) {
     );
   }
 
-  if (view === 'workflow') {
+  if (view === 'workflow' && canEdit) {
     return (
       <div className="mt-6">
         <WorkflowEditor
@@ -48,12 +51,12 @@ export function ChangeRequestsTab({ projectId }: { projectId: string }) {
     <div className="mt-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-900 dark:text-white">Change Requests</h3>
-        <button
+        {canEdit && <button
           onClick={() => setView('workflow')}
           className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-800"
         >
           Manage Workflows
-        </button>
+        </button>}
       </div>
       <ChangeRequestList
         projectId={projectId}
