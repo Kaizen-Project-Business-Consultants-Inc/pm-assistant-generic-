@@ -12,6 +12,7 @@ import { slackEventDispatcher } from '../../services/integrations/SlackEventDisp
 import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { recurrenceService } from '../../services/RecurrenceService';
 import { scheduleRecomputeService, restoreTaskDates } from '../../services/ScheduleRecomputeService';
+import { moveSuccessorsAfter } from '../../services/followSuccessors';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
@@ -21,6 +22,7 @@ import { viewerWriteBypass } from '../../middleware/viewerWriteBypass';
 import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
+import { toDateString } from '../../utils/calendarDate';
 import { changeHistoryService } from '../../services/ChangeHistoryService';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 
@@ -295,12 +297,9 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const data = updateTaskSchema.parse(request.body);
       const userId = request.user!.userId;
 
-      // Capture old end date before update for cascade detection
+      // The task before the update: its old dates decide whether successors must follow
       const oldTask = await scheduleService.findTaskById(taskId);
       if (!oldTask) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
-
-      // Capture old end date string (YYYY-MM-DD) before update for cascade detection
-      const oldEndStr = oldTask.endDate ? new Date(oldTask.endDate).toISOString().slice(0, 10) : null;
 
       // Only include fields that were actually sent — avoid setting unsent fields to null
       const updatePayload: Record<string, unknown> = {};
@@ -309,31 +308,30 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
           updatePayload[key] = value;
         }
       }
-      const task = await scheduleService.updateTask(taskId, updatePayload as any);
+      let task = await scheduleService.updateTask(taskId, updatePayload as any);
       if (!task) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
-
-      // Auto-scheduling: cascade date changes to downstream tasks
-      let cascadedChanges = null;
-      const newEndStr = task.endDate ? new Date(task.endDate).toISOString().slice(0, 10) : null;
-      if (oldEndStr && newEndStr && oldEndStr !== newEndStr) {
-        const result = await scheduleService.cascadeReschedule(taskId, new Date(oldEndStr), new Date(newEndStr));
-        if (result.affectedTasks.length > 0) {
-          cascadedChanges = result;
-        }
-      }
 
       // A new or changed predecessor pushes this task (and what follows) later if it now
       // starts too early — same rule as bulk linking. Removing a link never pulls dates in.
+      const linkKey = (d: { dependencyId: string; dependencyType?: string | null; lagDays?: number | null }) =>
+        `${d.dependencyId}|${(d.dependencyType || 'FS').toUpperCase()}|${d.lagDays ?? 0}`;
+      const linksBefore = new Set((oldTask.dependencies || []).map(linkKey));
+      const linkGained = updatePayload.dependencies !== undefined && (task.dependencies || []).some(d => !linksBefore.has(linkKey(d)));
+
+      // New dates: the tasks that follow are pushed later where they now start too early (never
+      // pulled earlier; recorded in Schedule History). With a new predecessor in the same edit, it
+      // may push this task too — one re-flow, one History entry.
+      let cascadedChanges = null;
+      const datesChanged = toDateString(oldTask.startDate) !== toDateString(task.startDate) || toDateString(oldTask.endDate) !== toDateString(task.endDate);
+      const result = await moveSuccessorsAfter(oldTask, task, { followNewLinks: linkGained });
+      if (result.affectedTasks.length > 0) cascadedChanges = result;
+      // the new predecessor may have pushed this task too: answer (and broadcast) its dates as saved
+      if (linkGained && datesChanged) task = (await scheduleService.findTaskById(taskId)) ?? task;
+
       let rescheduled: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
-      if (updatePayload.dependencies !== undefined) {
-        const key = (d: { dependencyId: string; dependencyType?: string | null; lagDays?: number | null }) =>
-          `${d.dependencyId}|${(d.dependencyType || 'FS').toUpperCase()}|${d.lagDays ?? 0}`;
-        const before = new Set((oldTask.dependencies || []).map(key));
-        const gained = (task.dependencies || []).some(d => !before.has(key(d)));
-        if (gained) {
-          const { scheduleId } = request.params as { scheduleId: string };
-          rescheduled = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [taskId] })).deltas;
-        }
+      if (linkGained && !datesChanged) {
+        const { scheduleId } = request.params as { scheduleId: string };
+        rescheduled = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [taskId] })).deltas;
       }
 
       // Workflow automation runs from the task.changed notice updateTask emits

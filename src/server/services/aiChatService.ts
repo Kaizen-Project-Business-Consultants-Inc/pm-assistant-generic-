@@ -10,6 +10,7 @@ import { agentMemoryService } from './AgentMemoryService';
 import { InterAgentQueryService } from './agents/InterAgentQueryService';
 import { AIBudgetExceededError } from './AIBudgetService';
 import { contextConfigService } from './context/ContextConfigService';
+import { getRequestContext } from '../middleware/requestContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -344,9 +345,11 @@ export class AIChatService {
     // Resolve hierarchical context config (org -> project -> user)
     let customContextPrompt = '';
     try {
-      const user = { organizationId: null as string | null, ...(req as any) };
+      // The company this chat runs in: it picks the company's own settings, and which company's
+      // project settings apply (project ids repeat across companies — 2026-10-08). This read
+      // req.organizationId, which a chat request never has, so company settings never applied.
       const resolved = await contextConfigService.resolveContext(
-        user.organizationId || null,
+        getRequestContext()?.organizationId ?? null,
         req.context?.projectId || null,
         req.userId,
       );

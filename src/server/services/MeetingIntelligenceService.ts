@@ -1,10 +1,11 @@
 import { claudeService } from './claudeService';
 import { scheduleService, Task } from './ScheduleService';
+import { moveSuccessorsAfter } from './followSuccessors';
 import { resourceService, Resource } from './ResourceService';
 import { config } from '../config';
 import logger from '../utils/logger';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
-import { utcDay, weekdaysOnly } from '../utils/workingDays';
+import { weekdaysOnly } from '../utils/workingDays';
 import { projectMemberService } from './ProjectMemberService';
 import { resolveOwner, workingDue, buildScorecard } from './meetingCoach';
 import { meetingAnalysisRepository } from '../database/MeetingAnalysisRepository';
@@ -360,17 +361,13 @@ Analyze this meeting transcript and extract all actionable information.`;
             // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             const rescheduled = await scheduleService.updateTask(rescheduleTaskId, rescheduleData);
 
-            // The meeting's dates are kept as given; if the finish moved, successors
-            // follow in working days (the same cascade as a manual edit)
-            const oldEnd = taskToReschedule.endDate ? utcDay(taskToReschedule.endDate) : null;
-            const newEnd = rescheduled?.endDate ? utcDay(rescheduled.endDate) : null;
-            if (oldEnd && newEnd && !isNaN(oldEnd.getTime()) && !isNaN(newEnd.getTime()) && oldEnd.getTime() !== newEnd.getTime()) {
-              try {
-                // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
-                await scheduleService.cascadeReschedule(rescheduleTaskId, oldEnd, newEnd);
-              } catch (err: any) {
-                logger.warn('[MeetingIntelligence] successors could not follow the rescheduled task', { taskId: rescheduleTaskId, error: err?.message });
-              }
+            // The meeting's dates are kept as given; successors that now start too early are
+            // pushed later (the same rule as a manual edit)
+            try {
+              // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
+              await moveSuccessorsAfter(taskToReschedule, rescheduled);
+            } catch (err: any) {
+              logger.warn('[MeetingIntelligence] successors could not follow the rescheduled task', { taskId: rescheduleTaskId, error: err?.message });
             }
             applied++;
             analysis.appliedItems.push(index);

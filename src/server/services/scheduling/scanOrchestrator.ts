@@ -6,7 +6,7 @@ import { scheduleService } from '../ScheduleService';
 import { autoRescheduleService } from '../AutoRescheduleService';
 import { AgentActivityLogService } from '../AgentActivityLogService';
 import { webhookService } from '../WebhookService';
-import { killSwitchService } from '../agents/KillSwitchService';
+import { killSwitchService, KillSwitchService } from '../agents/KillSwitchService';
 import { agentMemoryService } from '../AgentMemoryService';
 import { deadLetterService } from '../DeadLetterService';
 import logger from '../../utils/logger';
@@ -119,11 +119,15 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
   try {
   logger.info(`[Agent] Starting scan...${projectId ? ` (project: ${projectId})` : ''}`);
 
-  const ksStatus = killSwitchService.getStatus();
-  if (!ksStatus.globalEnabled) {
-    logger.info('[Agent] Scan aborted — global kill switch is active');
+  // The emergency stop, as saved (2026-10-10: this process used to see only its own fresh copy,
+  // always "on"); an unreadable state stops the scan too
+  const ksStatus = await killSwitchService.load();
+  const stopped = KillSwitchService.decide(ksStatus, 'scan_orchestrator', null);
+  if (!stopped.allowed) {
+    logger.info(`[Agent] Scan aborted — ${stopped.reason}`);
     return emptyStats();
   }
+  const agentMayRun = (agentId: string, projectId: string) => KillSwitchService.decide(ksStatus, agentId, projectId).allowed;
 
   const stats = emptyStats();
   const projectAgentFlags = new Map<string, { name: string; flags: ScanFlags; details: Record<string, string> }>();
@@ -159,6 +163,8 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
       pStats.projectsDeferred = 1;
       return pStats;
     }
+    // a project switched off with the emergency stop is left alone
+    if (!KillSwitchService.decide(ksStatus, 'scan_orchestrator', project.id).allowed) return pStats;
     pStats.projectsScanned = 1;
     const runMonteCarlo = monteCarloDue(project.id);
 
@@ -171,7 +177,8 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
     const schedules = await scheduleService.findByProjectId(project.id);
 
     // --- 1. Delays (no AI: AI Reschedule proposes dates only when the PM asks) ---
-    for (const schedule of schedules) {
+    // Each check honours its own switch: auto-reschedule-v1, budget-burn-rate, monte-carlo-v1
+    if (agentMayRun('auto-reschedule-v1', project.id)) for (const schedule of schedules) {
       pStats.schedulesScanned++;
       try {
         // eslint-disable-next-line no-await-in-loop -- nightly scan: a project's few schedules go one by one; projects already run 3 at a time under a deadline
@@ -226,7 +233,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
     }
 
     // --- 2. Budget ---
-    try {
+    if (agentMayRun('budget-burn-rate', project.id)) try {
       const budgetAlerts = await runBudgetBurnRateAgent(project, activityLog);
       pStats.budgetAlertsCreated += budgetAlerts;
       if (budgetAlerts > 0) {
@@ -241,7 +248,7 @@ export async function runScanImpl(activityLog: AgentActivityLogService, projectI
     // --- 3. Schedule risk (Monte Carlo) ---
     // Monte Carlo is the slow step: past the time limit it waits for the next run (staging
     // 2026-10-07: projects already under way ran the job to 6 minutes)
-    const monteCarloNow = runMonteCarlo && !(opts.deadline && Date.now() > opts.deadline);
+    const monteCarloNow = runMonteCarlo && !(opts.deadline && Date.now() > opts.deadline) && agentMayRun('monte-carlo-v1', project.id);
     if (monteCarloNow) try {
       const mcAlerts = await runMonteCarloConfidenceAgent(project, schedules, activityLog);
       pStats.mcAlertsCreated += mcAlerts;

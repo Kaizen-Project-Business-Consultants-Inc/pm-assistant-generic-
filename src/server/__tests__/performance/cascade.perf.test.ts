@@ -1,76 +1,87 @@
-import { describe, it, expect, vi, afterAll } from 'vitest';
-import { makePlan, measure, MAX_GROWTH_PER_DOUBLING, report, isWorking, clonePlanTasks, type PerfTask } from './perfData';
-
-// no real database or settings: a clean checkout (as the release runs) has no .env (2026-10-08)
-vi.mock('../../database/connection', () => ({ databaseService: { query: async () => [], queryControlPlane: async () => [], queryOn: async () => [] } }));
-import { scheduleService } from '../../services/ScheduleService';
-import { taskRepository } from '../../database/TaskRepository';
+import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { makePlan, measure, MAX_GROWTH_PER_DOUBLING, report, isWorkingYmd, clonePlanTasks, type PerfTask } from './perfData';
 
 /**
- * SPEED TEST — date cascade when a task's finish moves (successors pushed along their links, on
- * the working-days calendar, written in one go), 2026-10-08.
- * ScheduleService.cascadeReschedule (services/ScheduleService.ts:1313). The database reads/writes
- * are stubbed; "downstream" is every leaf after the moved task, so the loop walks ~the whole plan.
+ * SPEED TEST — successors following a re-dated task (pushed later along their links where they now
+ * start too early, on the working-days calendar, written in one go).
+ * followSuccessors.ts `moveSuccessorsAfter` → ScheduleRecomputeService.recompute limited to what
+ * follows the task. (Until 2026-10-09 this timed ScheduleService.cascadeReschedule, a second
+ * algorithm that also pulled tasks earlier; it was replaced by the shared re-flow.) The database
+ * reads/writes are stubbed.
  *
- * Measured on the dev machine, 2026-10-08 (perfData.ts `measure`): six runs of this file, each the
- * median of 3–5 samples after a warm-up call; "measured" is the median of the six. Limit = 3×
- * that, rounded up to 10 ms, min 50 ms; the test compares the FASTEST sample with it, so a busy
- * machine doesn't fail it. "Growth" is how much the time grows per doubling of the plan, measured
- * from N/4 to N (range over those six runs and three check runs); it fails at 3.0 (linear ≈ 2,
- * O(n²) ≈ 4).
+ * Measured on the dev machine, 2026-10-09 (perfData.ts `measure`): three runs of this file, each the median of 3–5 samples after a
+ * warm-up call. Limit = 3× that, rounded up to 10 ms, min 50 ms; the test compares the FASTEST
+ * sample with it, so a busy machine doesn't fail it. "Growth" is how much the time grows per
+ * doubling of the plan, measured from N/4 to N; it fails at 3.0 (linear ≈ 2, O(n²) ≈ 4).
  *
- *   | case                                | N      | measured | limit  | growth per doubling |
- *   |-------------------------------------|--------|----------|--------|---------------------|
- *   | first task's finish +5 working days | 2,000  | 193 ms   | 580 ms | 1.79–2.33 (< 3.0)   |
+ *   | case                                    | N      | measured | limit  | growth per doubling |
+ *   |-----------------------------------------|--------|----------|--------|---------------------|
+ *   | busiest early task finish +12 weeks     | 2,000  | 127 ms   | 390 ms | 2.26–2.38 (< 3.0)   |
  */
 
 const N = 2000;
-const LIMIT_MS = 580;
+const LIMIT_MS = 390;
 
-const plans = new Map<number, { all: PerfTask[]; trigger: PerfTask; downstream: string[] }>();
+let current: PerfTask[] = [];
+const { writeDates } = vi.hoisted(() => ({ writeDates: vi.fn(async (_w: unknown[]) => undefined) }));
+vi.mock('../../database/TaskRepository', () => ({ taskRepository: { updateDatesMany: writeDates, updateDates: async () => undefined, logActivities: async () => undefined } }));
+vi.mock('../../services/ScheduleService', () => ({
+  scheduleService: {
+    findTasksByScheduleId: async () => current,
+    recomputeParentRollup: async () => undefined,
+    findById: async () => ({ id: 's1', projectId: 'p1' }),
+  },
+}));
+vi.mock('../../services/ChangeHistoryService', () => ({ changeHistoryService: { record: async () => 'c1' } }));
+vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: async () => ({}) } }));
+vi.mock('../../services/DeadLetterService', () => ({ deadLetterService: { capture: () => undefined } }));
+vi.mock('../../services/CalendarService', () => ({ calendarService: { workingDayChecker: async () => isWorkingYmd } }));
+vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getRequestContext: () => ({ userId: 'u-1' }), getActorSource: () => 'web' }));
+
+import { moveSuccessorsAfter } from '../../services/followSuccessors';
+
+const plans = new Map<number, { all: PerfTask[]; triggerId: string }>();
 function planOf(n: number) {
   if (!plans.has(n)) {
     const all = makePlan(n).tasks;
-    const leaves = all.filter(t => !t.isSummary).sort((a, b) => Number(a.id.slice(1)) - Number(b.id.slice(1)));
-    const trigger = leaves[20];
-    plans.set(n, { all, trigger, downstream: leaves.slice(21).map(t => t.id) });
+    // the open task with the most tasks after it, so the re-flow has the most to do
+    const succ = new Map<string, string[]>();
+    for (const t of all) for (const d of t.dependencies) succ.set(d.dependencyId, [...(succ.get(d.dependencyId) ?? []), t.id]);
+    const downstream = (id: string) => {
+      const seen = new Set([id]); const queue = [id];
+      while (queue.length) for (const s of succ.get(queue.shift()!) ?? []) if (!seen.has(s)) { seen.add(s); queue.push(s); }
+      return seen.size;
+    };
+    const open = all.filter(t => !t.isSummary && t.status !== 'completed' && !t.actualStartDate).slice(0, 200);
+    const trigger = open.reduce((best, t) => (downstream(t.id) > downstream(best.id) ? t : best));
+    plans.set(n, { all, triggerId: trigger.id });
   }
   return plans.get(n)!;
 }
 
-let current: PerfTask[] = [];
-vi.spyOn(scheduleService, 'workingDayTest').mockImplementation(async () => isWorking);
-vi.spyOn(scheduleService, 'findTaskById').mockImplementation(async (id: string) => current.find(t => t.id === id) as any);
-vi.spyOn(scheduleService, 'findTasksByScheduleId').mockImplementation(async () => current as any);
-let downstream: PerfTask[] = [];
-vi.spyOn(scheduleService, 'findAllDownstreamTasks').mockImplementation(async () => downstream as any);
-const writeDates = vi.spyOn(taskRepository, 'updateDatesMany').mockResolvedValue();
-vi.spyOn(taskRepository, 'logActivities').mockResolvedValue();
-afterAll(() => vi.restoreAllMocks());
-
 function run(n: number) {
   const p = planOf(n);
   return () => {
-    // the service updates the task objects it reads, so each run gets a fresh copy (copying is cheap
-    // next to the cascade and is the same at each size)
+    // a fresh copy each call; the trigger's finish is saved 12 weeks later before successors follow
     current = clonePlanTasks(p.all);
-    const byId = new Map(current.map(t => [t.id, t]));
-    downstream = p.downstream.map(id => byId.get(id)!);
-    const t = byId.get(p.trigger.id)!;
-    const oldEnd = new Date(`${t.endDate}T00:00:00Z`);
-    const newEnd = new Date(oldEnd.getTime() + 7 * 86_400_000); // a week later = 5 working days
-    return scheduleService.cascadeReschedule(t.id, oldEnd, newEnd);
+    const t = current.find(x => x.id === p.triggerId)!;
+    const before = { ...t } as any;
+    const newEnd = new Date(Date.parse(`${t.endDate}T00:00:00Z`) + 84 * 86_400_000).toISOString().slice(0, 10);
+    t.endDate = newEnd;
+    return moveSuccessorsAfter(before, { startDate: t.startDate, endDate: newEnd } as any);
   };
 }
 
 // a timing check that fails once on a busy machine is re-run once; a real slow-down fails both
-describe('speed: date cascade', { retry: 1 }, () => {
+describe('speed: successors follow a re-dated task', { retry: 1 }, () => {
+  beforeAll(() => { planOf(N / 4); planOf(N); });
+
   it(`${N.toLocaleString('en')} tasks within budget, successors really move, and 2× the plan is about 2× the time`, async () => {
     const res = await run(N)();
-    expect(res.affectedTasks.length).toBeGreaterThan(N / 2);
+    expect(res.affectedTasks.length).toBeGreaterThan(10);
     expect(writeDates).toHaveBeenCalled();
     const m = await measure(run, N);
-    report(`cascade N=${N}`, { ...m, moved: res.affectedTasks.length });
+    report(`follow successors N=${N}`, { ...m, moved: res.affectedTasks.length });
     expect(m.fastest).toBeLessThan(LIMIT_MS);
     expect(m.perDoubling).toBeLessThan(MAX_GROWTH_PER_DOUBLING);
   });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
+import { useProjectRole } from '../../hooks/useProjectRole';
 import {
   ListOrdered,
   Bot,
@@ -110,12 +111,22 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
   const [allApplied, setAllApplied] = useState(false);
   const queryClient = useQueryClient();
 
-  // Fetch prioritization data
+  // The ranking, worked out without AI — opening the panel never calls the AI (2026-10-10)
   const { data, isLoading, error } = useQuery<PrioritizationResult>({
     queryKey: ['taskPrioritization', projectId, scheduleId],
     queryFn: () => apiService.getTaskPrioritization(projectId, scheduleId),
     enabled: !!projectId && !!scheduleId,
   });
+
+  // The project's PM can ask the AI to refine it (needs the AI plan; reused for 30 minutes)
+  const { canEdit: isProjectPM } = useProjectRole(projectId);
+  const refine = useMutation({
+    mutationFn: () => apiService.refineTaskPrioritizationWithAI(projectId, scheduleId),
+    onSuccess: (result: PrioritizationResult) => {
+      queryClient.setQueryData(['taskPrioritization', projectId, scheduleId], result);
+    },
+  });
+  const refineError = (refine.error as any)?.response?.data?.message as string | undefined;
 
   // Apply single priority mutation
   const applyMutation = useMutation({
@@ -160,10 +171,25 @@ export function TaskPrioritizationPanel({ projectId, scheduleId }: TaskPrioritiz
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ListOrdered className="h-5 w-5 text-primary-500 dark:text-primary-400" />
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">AI Task Prioritization</h3>
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Task Prioritization</h3>
         </div>
         {aiPowered && <AIPoweredBadge />}
+        {!aiPowered && isProjectPM && tasks.length > 0 && (
+          <button
+            type="button"
+            onClick={() => refine.mutate()}
+            disabled={refine.isPending}
+            className="h-9 px-3 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+          >
+            {refine.isPending ? 'Thinking…' : 'Refine with AI'}
+          </button>
+        )}
       </div>
+      {refine.isError && (
+        <p role="alert" className="mb-3 text-sm text-red-700 dark:text-red-300">
+          {refineError || 'Could not refine the ranking right now. Try again later.'}
+        </p>
+      )}
 
       {/* Loading */}
       {isLoading && (

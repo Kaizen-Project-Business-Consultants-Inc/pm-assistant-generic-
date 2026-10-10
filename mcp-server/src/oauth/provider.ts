@@ -5,6 +5,7 @@ import type { OAuthClientInformationFull, OAuthTokens, OAuthTokenRevocationReque
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { RowDataPacket } from 'mysql2/promise';
 import crypto from 'node:crypto';
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { query } from '../db.js';
 import { DatabaseClientsStore } from './clientsStore.js';
 import { renderAuthorizePage } from './authorizePage.js';
@@ -31,6 +32,30 @@ interface TokenRow extends RowDataPacket {
   refresh_token_expires_at: string | null;
   scope: string | null;
   revoked: number;
+  organization_id: string | null;
+}
+
+/** A refresh token's row plus what renewal must re-check about the key and the person */
+interface RenewalRow extends TokenRow {
+  key_active: number | null;
+  user_active: number | null;
+  must_change_password: number | null;
+  user_org: string | null;
+}
+
+/**
+ * Why a renewal is refused (audit 2026-10-09 H1), or null when it may go ahead. Revoking the
+ * connection in Settings deactivates its key, so a renewal must not bring it back; the person
+ * must still be active, not blocked on a password change, and in the company they connected from.
+ */
+function renewalRefusal(row: RenewalRow): string | null {
+  if (!Number(row.key_active)) return 'This Claude connection was revoked. Connect Claude again.';
+  if (!Number(row.user_active)) return 'This account has been deactivated.';
+  if (Number(row.must_change_password)) return 'Change your password in Kovarti, then connect Claude again.';
+  if ((row.user_org ?? null) !== (row.organization_id ?? null)) {
+    return 'Your company has changed since Claude was connected. Connect Claude again.';
+  }
+  return null;
 }
 
 interface ApiKeyRow extends RowDataPacket {
@@ -137,9 +162,10 @@ export class PmOAuthProvider implements OAuthServerProvider {
     // Store the token mapping
     const tokenId = crypto.randomUUID();
     const accessTokenHash = keyHash; // same hash since the raw key IS the access token
+    // the company the person is in now: renewal refuses if it changes (audit 2026-10-09 H1)
     await query(
-      `INSERT INTO oauth_tokens (id, client_id, user_id, api_key_id, access_token_hash, refresh_token, refresh_token_expires_at, scope)
-       VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 DAY), ?)`,
+      `INSERT INTO oauth_tokens (id, client_id, user_id, api_key_id, access_token_hash, refresh_token, refresh_token_expires_at, scope, organization_id)
+       VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 DAY), ?, (SELECT organization_id FROM users WHERE id = ?))`,
       [
         tokenId,
         client.client_id,
@@ -148,6 +174,7 @@ export class PmOAuthProvider implements OAuthServerProvider {
         accessTokenHash,
         refreshToken,
         authCode.scope,
+        authCode.user_id,
       ],
     );
 
@@ -168,14 +195,18 @@ export class PmOAuthProvider implements OAuthServerProvider {
     client: OAuthClientInformationFull,
     refreshToken: string,
   ): Promise<OAuthTokens> {
-    const rows = await query<TokenRow>(
-      `SELECT * FROM oauth_tokens
-       WHERE refresh_token = ? AND client_id = ? AND revoked = 0
-       AND (refresh_token_expires_at IS NULL OR refresh_token_expires_at > NOW())`,
+    const rows = await query<RenewalRow>(
+      `SELECT t.*, ak.is_active AS key_active, u.is_active AS user_active,
+              u.must_change_password, u.organization_id AS user_org
+         FROM oauth_tokens t
+         LEFT JOIN api_keys ak ON ak.id = t.api_key_id
+         LEFT JOIN users u ON u.id = t.user_id
+        WHERE t.refresh_token = ? AND t.client_id = ? AND t.revoked = 0
+          AND (t.refresh_token_expires_at IS NULL OR t.refresh_token_expires_at > NOW())`,
       [refreshToken, client.client_id],
     );
     if (rows.length === 0) {
-      throw new Error('Invalid or expired refresh token');
+      throw new InvalidGrantError('Invalid or expired refresh token');
     }
     const tokenRow = rows[0];
 
@@ -184,6 +215,10 @@ export class PmOAuthProvider implements OAuthServerProvider {
 
     // Revoke old token record
     await query('UPDATE oauth_tokens SET revoked = 1 WHERE id = ?', [tokenRow.id]);
+
+    // Refused: the connection is now over for good — Claude must go through the login page again
+    const refusal = renewalRefusal(tokenRow);
+    if (refusal) throw new InvalidGrantError(refusal);
 
     // Create new API key
     const apiKeyId = crypto.randomUUID();
@@ -211,8 +246,8 @@ export class PmOAuthProvider implements OAuthServerProvider {
     const newTokenId = crypto.randomUUID();
 
     await query(
-      `INSERT INTO oauth_tokens (id, client_id, user_id, api_key_id, access_token_hash, refresh_token, refresh_token_expires_at, scope)
-       VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 DAY), ?)`,
+      `INSERT INTO oauth_tokens (id, client_id, user_id, api_key_id, access_token_hash, refresh_token, refresh_token_expires_at, scope, organization_id)
+       VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 DAY), ?, ?)`,
       [
         newTokenId,
         client.client_id,
@@ -221,6 +256,7 @@ export class PmOAuthProvider implements OAuthServerProvider {
         keyHash,
         newRefreshToken,
         tokenRow.scope,
+        tokenRow.organization_id ?? null,
       ],
     );
 

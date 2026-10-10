@@ -586,13 +586,26 @@ describe('TaskPrioritizationService', () => {
         },
       });
 
-      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+      const result = await service.prioritizeTasks('proj-1', 'sch-1', { withAI: true });
 
       expect(result.aiPowered).toBe(true);
       expect(mockCompleteWithJsonSchema).toHaveBeenCalledTimes(1);
       // AI results should be merged
       expect(result.tasks[0].explanation).toBe('AI-generated explanation');
       expect(result.tasks[0].factors[0].factor).toBe('AI Insight');
+    });
+
+    it('opening the panel never asks the AI, even with AI on (only "Refine with AI" does)', async () => {
+      (config as any).AI_ENABLED = true;
+      mockIsAvailable.mockReturnValue(true);
+      mockFindTasksByScheduleId.mockResolvedValue([makeTask('t1', 'T', { status: 'pending', startDate: '2026-06-01', endDate: '2026-12-31' })]);
+      mockCalculateCriticalPath.mockResolvedValue(makeCriticalPathResult());
+      mockDetectDelays.mockResolvedValue([]);
+
+      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+
+      expect(result.aiPowered).toBe(false);
+      expect(mockCompleteWithJsonSchema).not.toHaveBeenCalled();
     });
 
     it('falls back to algorithmic results when AI returns null', async () => {
@@ -606,7 +619,7 @@ describe('TaskPrioritizationService', () => {
 
       mockCompleteWithJsonSchema.mockResolvedValue({ data: null });
 
-      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+      const result = await service.prioritizeTasks('proj-1', 'sch-1', { withAI: true });
 
       expect(result.aiPowered).toBe(false);
     });
@@ -622,7 +635,7 @@ describe('TaskPrioritizationService', () => {
 
       mockCompleteWithJsonSchema.mockRejectedValue(new Error('AI unavailable'));
 
-      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+      const result = await service.prioritizeTasks('proj-1', 'sch-1', { withAI: true });
 
       expect(result.aiPowered).toBe(false);
       // Should still return valid algorithmic results
@@ -638,7 +651,7 @@ describe('TaskPrioritizationService', () => {
       mockCalculateCriticalPath.mockResolvedValue(makeCriticalPathResult());
       mockDetectDelays.mockResolvedValue([]);
 
-      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+      const result = await service.prioritizeTasks('proj-1', 'sch-1', { withAI: true });
 
       expect(result.aiPowered).toBe(false);
       expect(mockCompleteWithJsonSchema).not.toHaveBeenCalled();
@@ -679,7 +692,7 @@ describe('TaskPrioritizationService', () => {
         },
       });
 
-      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+      const result = await service.prioritizeTasks('proj-1', 'sch-1', { withAI: true });
 
       expect(result.aiPowered).toBe(true);
       // Scores should be clamped
@@ -720,7 +733,7 @@ describe('TaskPrioritizationService', () => {
         },
       });
 
-      const result = await service.prioritizeTasks('proj-1', 'sch-1');
+      const result = await service.prioritizeTasks('proj-1', 'sch-1', { withAI: true });
 
       expect(result.tasks).toHaveLength(2);
       // t2 should still be present with original algorithmic values

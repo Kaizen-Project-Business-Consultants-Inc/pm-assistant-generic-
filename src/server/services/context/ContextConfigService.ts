@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 import { databaseService } from '../../database/connection';
+import { config } from '../../config';
 import logger from '../../utils/logger';
 
 // ---------------------------------------------------------------------------
@@ -26,10 +27,35 @@ export interface ContextConfig {
   updatedAt: string;
 }
 
+/**
+ * Which setting: its scope, the scope's id, and the company it belongs to.
+ * The table is shared by every company. Org and user ids are unique everywhere, but project ids are
+ * only unique inside a company (every company's sample project is `demo-sample-webapp`), so a
+ * project's settings are also keyed by the company (found 2026-10-08: any company's PM could set
+ * the AI instructions used for every company's sample project).
+ */
+export interface ScopeRef {
+  scope: ConfigScope;
+  scopeId: string;
+  /** The company the request or job runs in (null: none) */
+  companyId: string | null;
+}
+
+/**
+ * The company part of a setting's key: '' for org and user settings and on single-company
+ * installs; for a project, the company id — or null when no company is selected on a
+ * multi-company server, which means "no project settings" (never a shared fallback).
+ */
+export function settingsCompanyKey(scope: ConfigScope, companyId: string | null): string | null {
+  if (scope !== 'project' || !config.MULTI_TENANT_ENABLED) return '';
+  return companyId || null;
+}
+
 interface ConfigRow {
   id: string;
   scope: ConfigScope;
   scope_id: string;
+  org_id: string;
   config_key: string;
   config_value: string;
   version: number;
@@ -108,10 +134,12 @@ export class ContextConfigService {
   /**
    * Get a single config at a specific scope.
    */
-  async getConfig(scope: ConfigScope, scopeId: string, configKey: string): Promise<ContextConfig | null> {
+  async getConfig({ scope, scopeId, companyId }: ScopeRef, configKey: string): Promise<ContextConfig | null> {
+    const orgKey = settingsCompanyKey(scope, companyId);
+    if (orgKey === null) return null;
     const rows = await databaseService.queryControlPlane<ConfigRow>(
-      `SELECT * FROM ai_context_configs WHERE scope = ? AND scope_id = ? AND config_key = ?`,
-      [scope, scopeId, configKey],
+      `SELECT * FROM ai_context_configs WHERE scope = ? AND scope_id = ? AND org_id = ? AND config_key = ?`,
+      [scope, scopeId, orgKey, configKey],
     );
     return rows.length > 0 ? rowToConfig(rows[0]) : null;
   }
@@ -119,10 +147,12 @@ export class ContextConfigService {
   /**
    * Get all configs at a specific scope.
    */
-  async getConfigsAtScope(scope: ConfigScope, scopeId: string): Promise<ContextConfig[]> {
+  async getConfigsAtScope({ scope, scopeId, companyId }: ScopeRef): Promise<ContextConfig[]> {
+    const orgKey = settingsCompanyKey(scope, companyId);
+    if (orgKey === null) return [];
     const rows = await databaseService.queryControlPlane<ConfigRow>(
-      `SELECT * FROM ai_context_configs WHERE scope = ? AND scope_id = ? ORDER BY config_key`,
-      [scope, scopeId],
+      `SELECT * FROM ai_context_configs WHERE scope = ? AND scope_id = ? AND org_id = ? ORDER BY config_key`,
+      [scope, scopeId, orgKey],
     );
     return rows.map(rowToConfig);
   }
@@ -131,8 +161,7 @@ export class ContextConfigService {
    * Create or update a config. Returns 409 data if version_hash mismatch.
    */
   async upsertConfig(
-    scope: ConfigScope,
-    scopeId: string,
+    ref: ScopeRef,
     configKey: string,
     configValue: unknown,
     userId: string,
@@ -144,12 +173,15 @@ export class ContextConfigService {
       schema.parse(configValue);
     }
 
-    const existing = await this.getConfig(scope, scopeId, configKey);
+    const { scope, scopeId, companyId } = ref;
+    const orgKey = settingsCompanyKey(scope, companyId);
+    if (orgKey === null) throw new Error('No company selected for a project setting');
+    const existing = await this.getConfig(ref, configKey);
 
     if (existing) {
       // Check lock: if locked at a higher scope, block override
       if (scope !== 'org') {
-        const locked = await this.isKeyLockedAbove(scope, scopeId, configKey);
+        const locked = await this.isKeyLockedAbove(companyId, configKey);
         if (locked) {
           throw new Error(`Config key "${configKey}" is locked at a higher scope and cannot be overridden`);
         }
@@ -173,7 +205,7 @@ export class ContextConfigService {
       // Record history
       await this.recordHistory(existing.id, newVersion, configValue, newHash, userId, 'update');
 
-      const updated = await this.getConfig(scope, scopeId, configKey);
+      const updated = await this.getConfig(ref, configKey);
       return { config: updated!, conflict: false };
     }
 
@@ -183,53 +215,59 @@ export class ContextConfigService {
     const hash = computeHash(configValue, version);
 
     await databaseService.queryControlPlane(
-      `INSERT INTO ai_context_configs (id, scope, scope_id, config_key, config_value, version, version_hash, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, scope, scopeId, configKey, JSON.stringify(configValue), version, hash, userId, userId],
+      `INSERT INTO ai_context_configs (id, scope, scope_id, org_id, config_key, config_value, version, version_hash, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, scope, scopeId, orgKey, configKey, JSON.stringify(configValue), version, hash, userId, userId],
     );
 
     await this.recordHistory(id, version, configValue, hash, userId, 'create');
 
-    const created = await this.getConfig(scope, scopeId, configKey);
+    const created = await this.getConfig(ref, configKey);
     return { config: created!, conflict: false };
   }
 
   /**
    * Lock a config key at org level so lower scopes can't override.
    */
-  async lockKey(scope: ConfigScope, scopeId: string, configKey: string, userId: string): Promise<void> {
+  async lockKey({ scope, scopeId, companyId }: ScopeRef, configKey: string, userId: string): Promise<void> {
+    const orgKey = settingsCompanyKey(scope, companyId);
+    if (orgKey === null) return;
     await databaseService.queryControlPlane(
-      `UPDATE ai_context_configs SET is_locked = 1, locked_by = ? WHERE scope = ? AND scope_id = ? AND config_key = ?`,
-      [userId, scope, scopeId, configKey],
+      `UPDATE ai_context_configs SET is_locked = 1, locked_by = ? WHERE scope = ? AND scope_id = ? AND org_id = ? AND config_key = ?`,
+      [userId, scope, scopeId, orgKey, configKey],
     );
   }
 
   /**
    * Unlock a config key.
    */
-  async unlockKey(scope: ConfigScope, scopeId: string, configKey: string): Promise<void> {
+  async unlockKey({ scope, scopeId, companyId }: ScopeRef, configKey: string): Promise<void> {
+    const orgKey = settingsCompanyKey(scope, companyId);
+    if (orgKey === null) return;
     await databaseService.queryControlPlane(
-      `UPDATE ai_context_configs SET is_locked = 0, locked_by = NULL WHERE scope = ? AND scope_id = ? AND config_key = ?`,
-      [scope, scopeId, configKey],
+      `UPDATE ai_context_configs SET is_locked = 0, locked_by = NULL WHERE scope = ? AND scope_id = ? AND org_id = ? AND config_key = ?`,
+      [scope, scopeId, orgKey, configKey],
     );
   }
 
   /**
-   * Check if a key is locked at a higher scope (org locks block project/user overrides).
+   * Check if a key is locked at the company level (org locks block project/user overrides).
+   * Only the caller's own company's lock counts (it used to be any company's lock); with no
+   * company known (single-company installs), any organisation lock.
    */
-  private async isKeyLockedAbove(scope: ConfigScope, scopeId: string, configKey: string): Promise<boolean> {
-    // For user scope, check both org and project locks
-    // For project scope, check org locks
-    // We need the org_id. For simplicity, check all locked configs with this key at org scope.
+  private async isKeyLockedAbove(companyId: string | null, configKey: string): Promise<boolean> {
     const rows = await databaseService.queryControlPlane<{ cnt: number }>(
-      `SELECT COUNT(*) as cnt FROM ai_context_configs WHERE scope = 'org' AND config_key = ? AND is_locked = 1`,
-      [configKey],
+      companyId
+        ? `SELECT COUNT(*) as cnt FROM ai_context_configs WHERE scope = 'org' AND scope_id = ? AND config_key = ? AND is_locked = 1`
+        : `SELECT COUNT(*) as cnt FROM ai_context_configs WHERE scope = 'org' AND config_key = ? AND is_locked = 1`,
+      companyId ? [companyId, configKey] : [configKey],
     );
     return rows[0]?.cnt > 0;
   }
 
   /**
    * Resolve the effective context for a user by merging org -> project -> user layers.
+   * `orgId` is the company the request or job runs in; it also picks which company's project settings apply.
    * User overrides project overrides org.
    */
   async resolveContext(
@@ -241,7 +279,7 @@ export class ContextConfigService {
 
     // Layer 1: Org-level configs
     if (orgId) {
-      const orgConfigs = await this.getConfigsAtScope('org', orgId);
+      const orgConfigs = await this.getConfigsAtScope({ scope: 'org', scopeId: orgId, companyId: orgId });
       for (const c of orgConfigs) {
         result[c.configKey] = { value: c.configValue, source: 'org', isLocked: c.isLocked };
       }
@@ -249,7 +287,7 @@ export class ContextConfigService {
 
     // Layer 2: Project-level configs (override org unless locked)
     if (projectId) {
-      const projectConfigs = await this.getConfigsAtScope('project', projectId);
+      const projectConfigs = await this.getConfigsAtScope({ scope: 'project', scopeId: projectId, companyId: orgId }); // this company's project only
       for (const c of projectConfigs) {
         const existing = result[c.configKey];
         if (!existing || !existing.isLocked) {
@@ -259,7 +297,7 @@ export class ContextConfigService {
     }
 
     // Layer 3: User-level configs (override project/org unless locked)
-    const userConfigs = await this.getConfigsAtScope('user', userId);
+    const userConfigs = await this.getConfigsAtScope({ scope: 'user', scopeId: userId, companyId: orgId });
     for (const c of userConfigs) {
       const existing = result[c.configKey];
       if (!existing || !existing.isLocked) {

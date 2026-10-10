@@ -12,12 +12,13 @@ const server = (...p: string[]) => read('src', 'server', ...p);
 const client = (...p: string[]) => read('src', 'client', 'src', ...p);
 
 describe('speed guards', () => {
-  it('moving a task writes its successors in one go', () => {
-    const svc = server('services', 'ScheduleService.ts');
-    const cascade = svc.slice(svc.indexOf('async cascadeReschedule('), svc.indexOf('What-If Scenarios'));
-    expect(cascade).toMatch(/taskRepository\.updateDatesMany\(writes\)/);
-    expect(cascade).toMatch(/taskRepository\.logActivities\(/);
-    expect(cascade).not.toMatch(/taskRepository\.updateDates\(|this\.logActivity\(/);
+  it('moving a task writes its successors in one go (through the shared re-flow, no second algorithm)', () => {
+    const follow = server('services', 'followSuccessors.ts');
+    expect(follow).toMatch(/scheduleRecomputeService\.recompute\(/);
+    expect(follow).toMatch(/taskRepository\.logActivities\(/);
+    expect(follow).not.toMatch(/taskRepository\.updateDates\(|logActivity\(/);
+    expect(server('services', 'ScheduleRecomputeService.ts')).toMatch(/taskRepository\.updateDatesMany\(writes\)/);
+    expect(server('services', 'ScheduleService.ts')).not.toMatch(/async cascadeReschedule\(/);
   });
 
   it('task costs are written 100 at a time, not one UPDATE per task', () => {

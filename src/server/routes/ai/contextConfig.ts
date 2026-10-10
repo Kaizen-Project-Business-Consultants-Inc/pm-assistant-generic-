@@ -3,7 +3,7 @@ import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { z } from 'zod';
-import { contextConfigService, type ConfigScope, CONFIG_KEY_SCHEMAS } from '../../services/context/ContextConfigService';
+import { contextConfigService, type ConfigScope, type ScopeRef, CONFIG_KEY_SCHEMAS, settingsCompanyKey } from '../../services/context/ContextConfigService';
 import { platformAdminOnly, isPlatformAdmin } from '../../utils/platformAdmin';
 import { databaseService } from '../../database/connection';
 
@@ -14,6 +14,7 @@ async function contextScopeGate(request: FastifyRequest, reply: FastifyReply) {
   const { scope, scopeId } = request.params as { scope: string; scopeId: string };
   const user = request.user!;
   if (scope === 'project') {
+    if (settingsCompanyKey('project', settingsCompany(request)) === null) return reply.status(404).send(NOT_FOUND);
     const d = await checkProjectRole(request, scopeId, 'manager');
     if (!d.ok) return reply.status(d.status).send(d.body);
   } else if (scope === 'org') {
@@ -38,6 +39,17 @@ async function contextScopeReadGate(request: FastifyRequest, reply: FastifyReply
  * or a user of it; the Kovarti admin keeps platform-wide access.
  */
 const NOT_FOUND = { error: 'Not found', message: 'The requested resource was not found' };
+/**
+ * The company whose settings this request reads and writes: the one it runs in. Project ids repeat
+ * across companies (every sample project is `demo-sample-webapp`), so project settings are keyed
+ * by it as well (found 2026-10-08).
+ */
+function settingsCompany(request: FastifyRequest): string | null {
+  return request.tenantOrg?.id ?? null;
+}
+function scopeRef(request: FastifyRequest, scope: ConfigScope, scopeId: string): ScopeRef {
+  return { scope, scopeId, companyId: settingsCompany(request) };
+}
 /** The caller's company: the one this request runs in (multi-company), else their account's (single-company installs) */
 async function callerCompanyId(request: FastifyRequest): Promise<string | null> {
   if (request.tenantOrg?.id) return request.tenantOrg.id;
@@ -53,6 +65,7 @@ type ReadDecision = { ok: true } | { ok: false; status: number; body: Record<str
 async function canReadScope(request: FastifyRequest, scope: string, scopeId: string): Promise<ReadDecision> {
   const user = request.user!;
   if (scope === 'project') {
+    if (settingsCompanyKey('project', settingsCompany(request)) === null) return { ok: false, status: 404, body: NOT_FOUND };
     const d = await checkProjectRole(request, scopeId, 'viewer');
     return d.ok ? { ok: true } : { ok: false, status: d.status, body: d.body };
   }
@@ -76,8 +89,10 @@ const historyAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
   if (!['admin', 'pmo'].includes(request.user!.role)) return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see settings history.' });
   // …and only for a setting that belongs to their own company (or project / user in it)
   const { configId } = request.params as { configId: string };
-  const rows = await databaseService.queryControlPlane<{ scope: string; scope_id: string }>('SELECT scope, scope_id FROM ai_context_configs WHERE id = ? LIMIT 1', [configId]);
+  const rows = await databaseService.queryControlPlane<{ scope: string; scope_id: string; org_id: string }>('SELECT scope, scope_id, org_id FROM ai_context_configs WHERE id = ? LIMIT 1', [configId]);
   if (!rows[0]) return reply.status(404).send(NOT_FOUND);
+  // a project's setting must be this company's own (the same project id exists in every company)
+  if (rows[0].scope === 'project' && rows[0].org_id !== settingsCompanyKey('project', settingsCompany(request))) return reply.status(404).send(NOT_FOUND);
   const d = await canReadScope(request, rows[0].scope, rows[0].scope_id);
   if (!d.ok) return reply.status(d.status === 403 ? 404 : d.status).send(d.status === 403 ? NOT_FOUND : d.body);
 };
@@ -95,7 +110,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
       const { projectId } = request.query as { projectId?: string };
 
       const resolved = await contextConfigService.resolveContext(
-        request.tenantOrg?.id ?? null, // the request's company (was user.organizationId — never set)
+        settingsCompany(request), // the request's company (was user.organizationId — never set)
         projectId || null,
         userId,
       );
@@ -119,7 +134,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'scope must be org, project, or user' });
       }
 
-      const configs = await contextConfigService.getConfigsAtScope(parsed.data, scopeId);
+      const configs = await contextConfigService.getConfigsAtScope(scopeRef(request, parsed.data, scopeId));
       return { configs };
     } catch (err) {
       fastify.log.error({ err }, 'Failed to get scope config');
@@ -147,8 +162,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
 
       const userId = request.user!.userId; // was read as user.id, which is never set, so personal settings never applied
       const result = await contextConfigService.upsertConfig(
-        parsed.data,
-        scopeId,
+        scopeRef(request, parsed.data, scopeId),
         body.configKey,
         body.configValue,
         userId,
@@ -189,7 +203,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: 'configKey is required' });
       }
 
-      await contextConfigService.lockKey(scope as ConfigScope, scopeId, configKey, userId);
+      await contextConfigService.lockKey(scopeRef(request, scope as ConfigScope, scopeId), configKey, userId);
       return { success: true };
     } catch (err) {
       fastify.log.error({ err }, 'Failed to lock config key');
@@ -222,7 +236,7 @@ export async function contextConfigRoutes(fastify: FastifyInstance) {
       const { projectId } = request.query as { projectId?: string };
 
       const resolved = await contextConfigService.resolveContext(
-        request.tenantOrg?.id ?? null, // the request's company (was user.organizationId — never set)
+        settingsCompany(request), // the request's company (was user.organizationId — never set)
         projectId || null,
         userId,
       );

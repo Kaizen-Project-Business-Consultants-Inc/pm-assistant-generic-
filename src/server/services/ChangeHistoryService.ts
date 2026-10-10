@@ -16,11 +16,14 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  *
  * Covered kinds and how each is undone:
  *  - link          remove the links added, put re-flowed dates back
- *  - bulk_update   write back the previous values of the fields that changed
+ *  - bulk_update   write back the previous values of the fields that changed; a predecessor set
+ *                  by the edit: the task's old links back, and tasks the new link pushed back
  *  - bulk_status   write back each task's previous status
  *  - bulk_create   delete the tasks that were created
  *  - review_fix    the Schedule Review proposal's own undo (ref = proposal id)
  *  - ai_reschedule put the dates back
+ *  - successors_moved  a task re-dated by hand pushed the tasks after it later: all of their
+ *                  dates back, the edited task's too (followSuccessors.ts)
  *  - group         tasks back to their old parent, the new summary removed
  *  - calendar      put the dates back (a working-calendar change, or the days-off clean-up;
  *                  the calendar itself stays as it is)
@@ -39,7 +42,7 @@ import { TASK_STATUS_LABEL } from '../constants/taskStatus';
  * built on it stays. There is no "undo anyway".
  */
 
-export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign' | 'planner_move' | 'bulk_delete' | 'import';
+export type ChangeKind = 'link' | 'bulk_update' | 'bulk_status' | 'bulk_create' | 'review_fix' | 'ai_reschedule' | 'group' | 'calendar' | 'reassign' | 'planner_move' | 'bulk_delete' | 'import' | 'successors_moved';
 
 /** Above this, the copy needed to undo is not kept: the change is recorded, but can't be undone */
 export const MAX_UNDO_BYTES = 5 * 1024 * 1024;
@@ -588,6 +591,9 @@ class ChangeHistoryService {
         // Summary tasks above the tasks put back (old and new parents) roll up afterwards
         const rollupIds = prev.filter(p => Object.keys(p.values).some(c => ROLLUP_COLUMNS.has(c))).map(p => p.id);
         const parents: string[] = [];
+        // tasks a new predecessor pushed later go back first; the edited fields are then put back on top
+        const pushed = (p.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
+        if (pushed.length) await restoreTaskDates(scheduleId, pushed);
         await databaseService.transaction(async (conn) => {
           const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
           parents.push(...await parentIdsOf(run, scheduleId, rollupIds));
@@ -604,6 +610,7 @@ class ChangeHistoryService {
           }
           // booked hours move back with their tasks
           await moveBookingsWithTasks(run, datesBefore);
+          await putLinksBack(run, scheduleId, (p.links ?? []) as LinksBefore);
           parents.push(...await parentIdsOf(run, scheduleId, rollupIds));
         });
         await rollUpSummaries(parents);
@@ -627,7 +634,8 @@ class ChangeHistoryService {
         break;
       }
       case 'calendar':
-      case 'ai_reschedule': {
+      case 'ai_reschedule':
+      case 'successors_moved': {
         const dates = (p.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
         restored = await restoreTaskDates(scheduleId, dates);
         break;
@@ -664,6 +672,25 @@ class ChangeHistoryService {
       source: getActorSource(),
     }).catch(err => logger.warn('[ChangeHistory] audit append failed', { changeId, error: err?.message }));
     return { summary: row.summary, restored };
+  }
+}
+
+/** A task's links before a bulk edit set its predecessor (routes/core/bulk.ts keeps them) */
+export type LinksBefore = Array<{ taskId: string; deps: Array<{ dependencyId: string; dependencyType: string; lagDays: number }> }>;
+
+/** Undo of a bulk edit's predecessor: each task's links exactly as they were (tasks of this plan only) */
+async function putLinksBack(run: Run, scheduleId: string, links: LinksBefore): Promise<void> {
+  if (links.length === 0) return;
+  const ids = links.map(l => l.taskId);
+  const inPlan = new Set(((await run(
+    `SELECT id FROM tasks WHERE schedule_id = ? AND id IN (${ids.map(() => '?').join(',')})`, [scheduleId, ...ids])) as Array<{ id: string }>)
+    .map(r => r.id));
+  const mine = links.filter(l => inPlan.has(l.taskId));
+  if (mine.length === 0) return;
+  await run(`DELETE FROM task_dependencies WHERE task_id IN (${mine.map(() => '?').join(',')})`, mine.map(l => l.taskId));
+  const rows = mine.flatMap(l => l.deps.map(d => [uuidv4(), l.taskId, d.dependencyId, d.dependencyType || 'FS', d.lagDays ?? 0]));
+  if (rows.length) {
+    await run(`INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${rows.map(() => '(?, ?, ?, ?, ?)').join(', ')}`, rows.flat());
   }
 }
 
@@ -727,19 +754,25 @@ async function describeChange(input: RecordInput): Promise<string[]> {
       break;
     case 'calendar':
     case 'ai_reschedule':
+    case 'successors_moved':
       moved(undo.moved ?? []);
       break;
     case 'bulk_update':
-    case 'bulk_status':
+    case 'bulk_status': {
+      const datesShown = new Set<string>();
       for (const prev of (undo.previous ?? []) as PreviousValues[]) {
         const now = byId.get(prev.id); if (!now) continue;
+        if ('start_date' in prev.values || 'end_date' in prev.values) datesShown.add(prev.id);
         // eslint-disable-next-line no-restricted-syntax -- small: one changed task's own columns
         const parts = Object.entries(prev.values)
           .filter(([c, v]) => String(v ?? '') !== String(now[c] ?? ''))
           .map(([c, v]) => `${FIELD_LABELS[c] ?? c} ${show(c, v)} → ${show(c, now[c])}`);
         if (parts.length) lines.push(`${now.name}: ${parts.join(', ')}`);
       }
+      // tasks a new predecessor pushed later (their edited dates are already shown above)
+      moved(((undo.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>).filter(m => !datesShown.has(m.taskId)));
       break;
+    }
     case 'bulk_create':
       for (const id of (undo.createdIds ?? ids) as string[]) lines.push(`Added ${nameOf(id)}`);
       break;

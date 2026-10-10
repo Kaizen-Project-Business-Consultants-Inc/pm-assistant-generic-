@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 649,
+  "count": 650,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -496,6 +496,7 @@
     "quickAssignResource",
     "recallWeek",
     "reconcileSubscription",
+    "refineTaskPrioritizationWithAI",
     "register",
     "rejectAgentProposal",
     "rejectDreamingProposal",

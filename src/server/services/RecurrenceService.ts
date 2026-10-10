@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
-import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, finishFor, utcDay, ymdOf } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, finishFor, utcDay, ymdOf, mondayOf, calendarDaysBetween } from '../utils/workingDays';
 import { chunksOf } from '../utils/chunksOf';
 
 interface ParsedRule {
@@ -34,13 +34,25 @@ function addCalendarDays(d: Date, n: number): Date {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n));
 }
 
+/** Whole weeks (Monday to Sunday) from the week holding `from` to the week holding `to` */
+function weeksBetween(from: Date, to: Date): number {
+  return calendarDaysBetween(mondayOf(ymdOf(from)), mondayOf(ymdOf(to))) / 7;
+}
+
 /**
  * The next date the rule's pattern falls on after `lastDate` (a UTC-midnight day).
  * DAILY steps to the next WORKING day when `isWorking` is given; the other patterns
  * return the pattern's own date, which may be a day off — `instanceDate` moves it.
+ *
+ * `anchor` is where the pattern started (the template's start; defaults to `lastDate`):
+ * BIWEEKLY with chosen days repeats in the anchor's week and every other week after it, and
+ * MONTHLY keeps the anchor's day of the month — 31 Jan gives 28 Feb, then 31 Mar (the clamp
+ * to a short month is never carried forward). Audit 2026-10-09: biweekly repeated every week,
+ * and monthly drifted to the 28th after February.
  */
-export function getNextOccurrence(rule: ParsedRule, lastDate: Date, isWorking?: IsWorking): Date {
+export function getNextOccurrence(rule: ParsedRule, lastDate: Date, isWorking?: IsWorking, anchor: Date = lastDate): Date {
   const last = utcDay(lastDate);
+  const start = utcDay(anchor);
 
   switch (rule.freq) {
     case 'DAILY':
@@ -48,12 +60,16 @@ export function getNextOccurrence(rule: ParsedRule, lastDate: Date, isWorking?: 
 
     case 'WEEKLY':
     case 'BIWEEKLY': {
-      const increment = rule.freq === 'BIWEEKLY' ? 14 : 7;
+      const biweekly = rule.freq === 'BIWEEKLY';
+      const increment = biweekly ? 14 : 7;
       if (rule.byDay && rule.byDay.length > 0) {
-        // Find the next matching day (UTC throughout: dates are calendar days)
-        for (let i = 1; i <= increment; i++) {
+        // The next chosen weekday — for biweekly, only in the anchor's week or every other week
+        // after it (UTC throughout: dates are calendar days). 20 days reach any day of the next "on" week.
+        for (let i = 1; i <= 20; i++) {
           const candidate = addCalendarDays(last, i);
-          if (rule.byDay.includes(DAY_NAMES[candidate.getUTCDay()])) return candidate;
+          if (!rule.byDay.includes(DAY_NAMES[candidate.getUTCDay()])) continue;
+          if (biweekly && weeksBetween(start, candidate) % 2 !== 0) continue;
+          return candidate;
         }
       }
       return addCalendarDays(last, increment);
@@ -63,7 +79,7 @@ export function getNextOccurrence(rule: ParsedRule, lastDate: Date, isWorking?: 
       const y = last.getUTCFullYear();
       const m = last.getUTCMonth() + 1;
       const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-      const day = Math.min(rule.byMonthDay ?? last.getUTCDate(), daysInMonth);
+      const day = Math.min(rule.byMonthDay ?? start.getUTCDate(), daysInMonth);
       return new Date(Date.UTC(y, m, day));
     }
   }
@@ -145,7 +161,7 @@ export class RecurrenceService {
     // next free position, one INSERT per 200 — it was a read and an INSERT per date (2026-10-09)
     const due: Array<{ day: Date; ymd: string }> = [];
     const used = new Set<string>();
-    let next = getNextOccurrence(rule, anchor, isWorking);
+    let next = getNextOccurrence(rule, anchor, isWorking, anchor);
     for (let guard = 0; next <= horizon && due.length < max && guard < 20000; guard++) {
       const day = instanceDate(next, isWorking);
       const ymd = formatDate(day);
@@ -153,7 +169,7 @@ export class RecurrenceService {
         used.add(ymd);
         due.push({ day, ymd });
       }
-      next = getNextOccurrence(rule, next, isWorking);
+      next = getNextOccurrence(rule, next, isWorking, anchor);
     }
     if (due.length === 0) return 0;
 

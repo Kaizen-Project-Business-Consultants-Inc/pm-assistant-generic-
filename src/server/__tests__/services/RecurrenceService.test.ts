@@ -202,6 +202,38 @@ describe('getNextOccurrence', () => {
     const result = getNextOccurrence({ freq: 'MONTHLY' }, lastDate);
     expect(formatDate(result)).toBe('2026-01-15');
   });
+
+  // Audit 2026-10-09 (H2): the pattern is walked from where it started (the anchor)
+  const walk = (rule: Parameters<typeof getNextOccurrence>[0], start: string, n: number) => {
+    const anchor = new Date(`${start}T00:00:00Z`);
+    const out: string[] = [];
+    for (let d = anchor, i = 0; i < n; i++) { d = getNextOccurrence(rule, d, undefined, anchor); out.push(formatDate(d)); }
+    return out;
+  };
+
+  it('BIWEEKLY with a chosen day repeats every OTHER week (it used to repeat every week)', () => {
+    // the task form builds exactly this rule: "Biweekly" + Mon
+    expect(walk(parseRecurrenceRule('FREQ=BIWEEKLY;BYDAY=MO')!, '2026-10-12', 4))
+      .toEqual(['2026-10-26', '2026-11-09', '2026-11-23', '2026-12-07']);
+  });
+
+  it('BIWEEKLY with several days: the rest of the start week, then every other week', () => {
+    // starts Wed 14 Oct, Mon + Fri: Fri 16 (same week), then the week of 26 Oct, then 9 Nov
+    expect(walk(parseRecurrenceRule('FREQ=BIWEEKLY;BYDAY=MO,FR')!, '2026-10-14', 5))
+      .toEqual(['2026-10-16', '2026-10-26', '2026-10-30', '2026-11-09', '2026-11-13']);
+  });
+
+  it('WEEKLY with a chosen day still repeats every week', () => {
+    expect(walk(parseRecurrenceRule('FREQ=WEEKLY;BYDAY=MO')!, '2026-10-12', 3))
+      .toEqual(['2026-10-19', '2026-10-26', '2026-11-02']);
+  });
+
+  it("MONTHLY keeps the start's day of the month after a short month (it drifted to the 28th)", () => {
+    expect(walk({ freq: 'MONTHLY' }, '2026-01-31', 5))
+      .toEqual(['2026-02-28', '2026-03-31', '2026-04-30', '2026-05-31', '2026-06-30']);
+    // a leap year February
+    expect(walk({ freq: 'MONTHLY' }, '2028-01-30', 2)).toEqual(['2028-02-29', '2028-03-30']);
+  });
 });
 
 describe('RecurrenceService', () => {
@@ -527,6 +559,27 @@ describe('RecurrenceService', () => {
         .mockResolvedValue([]);
       await service.expandTemplate('tpl-1', 30);
       expect(inserts().map(i => i.start)).toEqual(['2026-10-19']); // 17 Oct 2026 is a Saturday
+    });
+
+    it("BIWEEKLY on Mondays creates an instance every other Monday from the template's week", async () => {
+      mockWorkingDayTest.mockImplementation(async () => weekdaysOnly);
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-10-05', recurrence_rule: 'FREQ=BIWEEKLY;BYDAY=MO' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 50); // horizon Fri 20 Nov
+      expect(inserts().map(i => i.start)).toEqual(['2026-10-19', '2026-11-02', '2026-11-16']);
+    });
+
+    it("MONTHLY from the 31st lands on each month's last day, not the 30th forever after", async () => {
+      mockWorkingDayTest.mockImplementation(async () => weekdaysOnly);
+      mockQuery
+        .mockResolvedValueOnce([makeTemplate({ start_date: '2026-08-31', recurrence_rule: 'FREQ=MONTHLY' })])
+        .mockResolvedValueOnce([])
+        .mockResolvedValue([]);
+      await service.expandTemplate('tpl-1', 90); // horizon 30 Dec
+      // 30 Sep; 31 Oct is a Saturday → Mon 2 Nov; 30 Nov
+      expect(inserts().map(i => i.start)).toEqual(['2026-09-30', '2026-11-02', '2026-11-30']);
     });
 
     it('an instance finishes after its duration in working days, the start day counted', async () => {

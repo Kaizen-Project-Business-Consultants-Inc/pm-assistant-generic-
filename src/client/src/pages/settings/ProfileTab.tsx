@@ -9,6 +9,9 @@ export const ProfileTab: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  // A new email needs the current password (the server refuses without it)
+  const [emailPassword, setEmailPassword] = useState('');
+  const emailChanged = email.trim() !== (user?.email ?? '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -23,11 +26,13 @@ export const ProfileTab: React.FC = () => {
 
   const handleSave = async () => {
     if (nameInvalid) { setError('Full name is required.'); return; }
+    if (emailChanged && !emailPassword) { setError('Enter your current password to change your email.'); return; }
     setSaving(true);
     setError('');
     try {
-      const result = await apiService.updateProfile({ fullName, email });
+      const result = await apiService.updateProfile({ fullName, email: email.trim(), currentPassword: emailChanged ? emailPassword : undefined });
       if (user) setUser({ ...user, fullName: result.fullName ?? fullName, email: result.email ?? email });
+      setEmailPassword('');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } catch (err: unknown) {
@@ -63,7 +68,14 @@ export const ProfileTab: React.FC = () => {
           <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
           <input id="profile-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
         </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {emailChanged && (
+          <div>
+            <label htmlFor="profile-email-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Password *</label>
+            <input id="profile-email-password" type="password" autoComplete="current-password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} required aria-describedby="profile-email-password-hint" className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+            <p id="profile-email-password-hint" className="text-xs text-gray-500 dark:text-gray-400 mt-1">Needed to change your email.</p>
+          </div>
+        )}
+        {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         <div className="flex items-center gap-3 pt-2">
           <button onClick={handleSave} disabled={saving || nameInvalid} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
             <Save className="w-4 h-4" />

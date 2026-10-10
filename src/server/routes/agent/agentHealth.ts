@@ -23,7 +23,9 @@ export async function agentHealthRoutes(fastify: FastifyInstance) {
         degradationHandler.getHealthStatus(),
       ]);
 
-      const killSwitch = killSwitchService.getStatus();
+      // on/off and which agents are stopped; the stopped projects (other companies') are the admin's
+      const { globalEnabled, disabledAgents } = await killSwitchService.getStatus();
+      const killSwitch = { globalEnabled, disabledAgents };
 
       return {
         status: healthStatus.claudeAvailable && healthStatus.databaseHealthy && killSwitch.globalEnabled

@@ -1,11 +1,12 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
-import { organizationService } from '../../services/OrganizationService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import logger from '../../utils/logger';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const SELF_ASSIGNABLE_ROLES = ['project_manager', 'team_member', 'executive', 'scrum_master'] as const;
 
@@ -15,6 +16,8 @@ const profileUpdateSchema = z.object({
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/, 'Username may only contain letters, numbers, and underscores').optional(),
   organizationName: z.string().min(2).max(255).optional(),
   role: z.enum(SELF_ASSIGNABLE_ROLES).optional(),
+  // needed to change your email or username (audit 2026-10-09 H2)
+  currentPassword: z.string().max(200).optional(),
 });
 
 const categoryPrefSchema = z.object({
@@ -57,6 +60,45 @@ const userPrefsSchema = z.object({
  */
 const ownSettings = [requireScope('read')];
 
+/** Changing your profile through a key needs a key that may write; a signed-in person passes */
+const keyMayWrite = requireScope('write');
+async function keyNeedsWrite(request: FastifyRequest, reply: FastifyReply) {
+  if (request.apiKeyScopes) return keyMayWrite(request, reply);
+}
+
+type ProfileInput = z.infer<typeof profileUpdateSchema>;
+
+/** Why a profile save is refused — checked before anything is written — or null */
+async function profileRefusal(
+  userId: string,
+  parsed: ProfileInput,
+  current: { passwordHash: string },
+  c: { emailChanges: boolean; usernameChanges: boolean; onboarding: boolean; orgOwner?: string },
+): Promise<{ status: number; body: { error: string; message: string } } | null> {
+  if (c.emailChanges || (c.usernameChanges && !c.onboarding)) {
+    const what = c.emailChanges ? 'email' : 'username';
+    if (!parsed.currentPassword) {
+      return { status: 400, body: { error: 'Password required', message: `Enter your current password to change your ${what}.` } };
+    }
+    if (!(await bcrypt.compare(parsed.currentPassword, current.passwordHash))) {
+      return { status: 400, body: { error: 'Invalid password', message: `Your current password isn't right, so your ${what} wasn't changed.` } };
+    }
+  }
+  if (c.orgOwner !== undefined && c.orgOwner !== userId) {
+    return { status: 403, body: { error: 'Forbidden', message: 'Only the company owner can rename the company.' } };
+  }
+  if (c.usernameChanges) {
+    const existing = await userService.findByUsername(parsed.username!);
+    if (existing && existing.id !== userId) return { status: 409, body: { error: 'Username taken', message: 'That username is already in use' } };
+  }
+  if (c.emailChanges) {
+    // a plain answer, not "Internal server error" from the unique key (2026-10-10 review)
+    const existing = await userService.findByEmail(parsed.email!);
+    if (existing && existing.id !== userId) return { status: 409, body: { error: 'Email taken', message: 'That email is already used by another account.' } };
+  }
+  return null;
+}
+
 export async function userRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -90,53 +132,52 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
+  /**
+   * Your own profile (audit 2026-10-09 H2). A key needs 'write' — a read-only key could change
+   * the account email — while a signed-in person always edits their own (a viewer's role is
+   * read-only). A new email or username needs the current password (except picking a username
+   * during onboarding), and only the company owner renames the company. Everything is checked
+   * before anything is saved, so a refused save changes nothing.
+   */
   fastify.put('/me/profile', {
-    preHandler: [requireScope('read')],
+    // the email/username change checks the current password: at most 20 saves per 10 minutes, so
+    // the save can't be used to guess passwords (2026-10-10)
+    preHandler: [keyNeedsWrite, heavyActionLimit('profile-save', 20)],
     schema: { description: 'Update profile (full name, email, username, organization)', tags: ['users'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
       const parsed = profileUpdateSchema.parse(request.body);
-      const updateData: Record<string, any> = {};
-      if (parsed.fullName !== undefined) updateData.fullName = parsed.fullName;
-      if (parsed.email !== undefined) updateData.email = parsed.email;
-
-      // Role self-assignment — only allowed during onboarding (when fullName is null)
-      if (parsed.role !== undefined) {
-        const currentUser = await userService.findById(userId);
-        if (currentUser && !currentUser.fullName) {
-          updateData.role = parsed.role;
-        }
-      }
-
-      // Username change — check uniqueness
-      if (parsed.username !== undefined) {
-        const existing = await userService.findByUsername(parsed.username);
-        if (existing && existing.id !== userId) {
-          return reply.status(409).send({ error: 'Username taken', message: 'That username is already in use' });
-        }
-        updateData.username = parsed.username;
-      }
-
-      if (Object.keys(updateData).length === 0 && !parsed.organizationName) {
+      if (Object.entries(parsed).every(([k, v]) => k === 'currentPassword' || v === undefined)) {
         return reply.status(400).send({ error: 'No fields to update' });
       }
+      const current = await userService.findById(userId);
+      if (!current) return reply.status(404).send({ error: 'User not found' });
+      const onboarding = !current.fullName;
+      const emailChanges = parsed.email !== undefined && parsed.email !== current.email;
+      const usernameChanges = parsed.username !== undefined && parsed.username !== current.username;
+      const org = parsed.organizationName ? await organizationRepository.findByUserId(userId) : null;
+      const refusal = await profileRefusal(userId, parsed, current, { emailChanges, usernameChanges, onboarding, orgOwner: org?.ownerUserId });
+      if (refusal) return reply.status(refusal.status).send(refusal.body);
 
-      let updated;
+      const updateData: Record<string, any> = {};
+      if (parsed.fullName !== undefined) updateData.fullName = parsed.fullName;
+      if (emailChanges) updateData.email = parsed.email;
+      if (usernameChanges) updateData.username = parsed.username;
+      // Role self-assignment — only allowed during onboarding (when fullName is null)
+      if (parsed.role !== undefined && onboarding) updateData.role = parsed.role;
+
+      let updated = current;
       if (Object.keys(updateData).length > 0) {
-        updated = await userService.update(userId, updateData);
-        if (!updated) return reply.status(404).send({ error: 'User not found' });
-      } else {
-        updated = await userService.findById(userId);
+        const saved = await userService.update(userId, updateData);
+        if (!saved) return reply.status(404).send({ error: 'User not found' });
+        updated = saved;
       }
 
-      // Update organization name if provided
-      if (parsed.organizationName) {
+      // Rename the company (the owner only — checked above)
+      if (org && parsed.organizationName) {
         try {
-          const org = await organizationService.findByUserId(userId);
-          if (org) {
-            await organizationRepository.update(org.id, { name: parsed.organizationName });
-          }
+          await organizationRepository.update(org.id, { name: parsed.organizationName });
         } catch (orgErr) {
           logger.error('Failed to update organization name', { userId, error: orgErr });
         }

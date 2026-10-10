@@ -60,6 +60,16 @@ An OAuth 2.1 authorization code flow is implemented in the MCP server (`mcp-serv
 
 This enables per-user scoped access when the PM Assistant is used as a remote MCP tool.
 
+**Revoking a Claude connection lasts (audit 2026-10-09 H1).** Revoking the "OAuth: Claude" key in
+Settings switches the key off **and** revokes its refresh token (`ApiKeyRepository.revoke`). Renewal
+(`exchangeRefreshToken`) also re-checks, before minting anything, that the connection's key is still
+active, the person is still active and not blocked on a forced password change, and is still in the
+company they connected from (`oauth_tokens.organization_id`, migration 131). If any fails, the
+connection ends for good (`invalid_grant` with a plain reason) and the person must connect Claude again.
+Until then a revoked connection came back on Claude's next renewal with a fresh 90-day key. Normal
+renewals still rotate the key and the refresh token. Tests: `__tests__/mcp/oauthRenewal.test.ts`,
+`__tests__/routes/apiKeyRevoke.test.ts`.
+
 ---
 
 ## 3. API Keys
@@ -112,7 +122,22 @@ fastify.post('/projects', { preHandler: [authMiddleware, requireScope('write')] 
 
 ### Your Own Settings — Intentional Read Scope (October 2026)
 
-`PUT /users/me/profile`, `/me/view-preferences`, `/me/notification-preferences`, `/me/preferences` (time zone, language), `/me/accessibility` and `/me/dashboard-preferences` need only `requireScope('read')`: every signed-in person — team member, viewer and executive included — saves their **own** settings. Each handler writes only `request.user.userId`'s row; there is no user id in the path, and the request body is validated field by field, so an id in it is ignored. Until 2026-10-08 five of them needed `write`, so read-only roles got a 403 (on every page load for screen settings). Guard: `__tests__/routes/ownSettingsSave.test.ts`.
+`/me/view-preferences`, `/me/notification-preferences`, `/me/preferences` (time zone, language), `/me/accessibility` and `/me/dashboard-preferences` need only `requireScope('read')`: every signed-in person — team member, viewer and executive included — saves their **own** settings. Each handler writes only `request.user.userId`'s row; there is no user id in the path, and the request body is validated field by field, so an id in it is ignored. Until 2026-10-08 five of them needed `write`, so read-only roles got a 403 (on every page load for screen settings). Guard: `__tests__/routes/ownSettingsSave.test.ts`.
+
+### Your own profile — stricter (audit 2026-10-09 H2)
+
+`PUT /users/me/profile` used to share that `read` gate, so a read-only key could change the account
+email (then a password reset takes the account), and any member, viewer or guest could rename the
+company. Now:
+- **Through an API key or Claude connection** the key needs `write` (`keyNeedsWrite`). A signed-in person
+  always edits their own profile, whatever their role.
+- **A new email or username needs the current password** (`currentPassword`; 400 "Enter your current
+  password to change your email."). Saving the same email again needs none; picking a username during
+  onboarding (no name yet) needs none.
+- **Only the company owner renames the company** (`organizations.owner_user_id`); anyone else gets 403
+  "Only the company owner can rename the company."
+- Everything is checked before anything is written, so a refused save changes nothing.
+Tests: `__tests__/routes/profileUpdate.test.ts`.
 
 ---
 
@@ -193,6 +218,16 @@ bulk-delete and import all call the checks. The same `request.user` mistake also
 button (people in your own company were told they belonged to "another company") and the inviter's
 name in invite emails — fixed; guard: no code reads `request.user.fullName/email/organizationId`.
 Tests: `__tests__/routes/peopleRights.test.ts`.
+
+**Linking a login (audit 2026-10-09 H3).** The checks looked only at email and line manager, so a PM
+could send `userId`: unlink someone who signs in (after which delete and email change passed), link a
+coworker's login to an older record they manage (timesheet approval follows the oldest record linked to
+a login, so the PM became that coworker's approver), or link a login from another company. Now linking
+or unlinking a person's login, on create or edit, is the owner's or a PMO's (403 "Only the company owner
+or a PMO can link or unlink someone's login."), a linked login must belong to the caller's company,
+and nobody but the owner links a record to the owner or unlinks the owner's. Because a PM can no longer
+unlink, a person who signs in keeps their login link and the delete and email rules keep applying.
+Tests: `__tests__/routes/resourceLoginLink.test.ts`.
 
 ### Platform admin = admin role AND no company (Oct 2026)
 "Admin owns nothing." The only platform admin is the account with role `admin` and no company
@@ -464,6 +499,7 @@ Found by the 2026-10-08 efficiency check and fixed the same day:
 
 - **Mjuzi memory** (`agent_memory`, `/api/v1/memory`, `/api/v1/agent/memory`) is one table for every company with no company column. The routes allowed admin **or PMO**; since the company owner works as PMO, any owner could list, change or delete other companies' memories. Now the Kovarti platform admin only (`platformAdminOnly`: role admin and no company — these two paths are exempt from the company check so that account can reach them); the Memory Browser tab is hidden for everyone else. A guard now also refuses new bare `role === 'admin'` checks in `routes/ai` and `routes/agent`. **Since 2026-10-09 the agents' memory — their per-project notes, Mjuzi's per-project memories and the reflections written after each action — lives in each company's own database.** With no company selected it is neither read nor written (`AgentMemoryNoCompanyError`), so it can never fall back to the shared database; the platform admin sees a company's agent memory only inside a Support view. Reflections are deleted after 90 days (`RETENTION_AGENT_REFLECTION_DAYS`). The shared table keeps only Mjuzi's curated, platform-admin memory (Memory Browser, `VersionedMemoryService`).
 - **AI settings** (`ai_context_configs`, `/api/v1/context/config/:scope/:scopeId`, history) are shared too, keyed by scope id. A PMO/owner could read or change another company's organisation settings, or read any user's, by passing its id. Now the id must be the caller's own company (`request.tenantOrg`, or the account's company on a single-company install), a user of it, or a project they can open (other ids answer 404).
+  **Project settings are per company (audit 2026-10-09 H4).** Project ids are only unique inside a company — every company's sample project is `demo-sample-webapp` — so a PM/owner/PMO in any company could set `system_instructions` on the sample that Mjuzi then injected for every company chatting about its sample, and read the other companies' entries and history. Project rows now carry the company (`ai_context_configs.org_id`, migration 132; unique key `scope, scope_id, org_id, config_key`). Every read, write, lock and history check uses the request's company (`request.tenantOrg`; chat uses the request context's company). On a multi-company server a project setting with no company selected is not found (404) and never written; organisation and personal settings keep `org_id = ''` (their ids are unique). Migration 132 deleted the existing settings on the shared sample id (they can't be traced to one company); other older project rows stay with `org_id = ''`, which no company matches, so they are no longer shown or used on a multi-company server. An organisation lock now only blocks overrides in its own company (it used to block every company). Test: `services/contextConfigPerCompany.test.ts`.
 - **Audit verify** (`GET /api/v1/audit/verify`): any signed-in user could check the whole chain, which loaded every entry into memory. Now one project's count needs access to that project; the whole chain needs PMO/owner, is read 1,000 entries at a time, and it and the compliance export are rate-limited (10 per 10 minutes).
 
 Tests: `routes/crossCompanyAiSettings.test.ts`, `routes/auditVerifyAccess.test.ts`.
@@ -475,6 +511,10 @@ Tests: `routes/crossCompanyAiSettings.test.ts`, `routes/auditVerifyAccess.test.t
 **Same answer whether an id exists or not** (2026-10-08): the automation routes check the project before checking that the automation belongs to it, and resuming a workflow run checks that the caller can see the run (404) before the PM rule (403) — so an outsider can no longer tell which automations or runs exist. Tests: `routes/idProbing.test.ts`.
 
 **Heavy actions are rate-limited per person** (2026-10-08): imports, exports, downloads, Word reports, Monte Carlo, AI risk scan, bulk links, knowledge-base rebuild, waitlist and log downloads use `heavyActionLimit(action, limit)` (`middleware/rateLimiter.ts`; in-memory per server, per user, else per IP; 429 with `Retry-After`). Limits per 10 minutes: 5 admin actions, 10 simulate/scan/AI import, 20 imports and bulk changes, 30 Word/exports, 60 bulk link/unlink (Undo uses them) and file downloads, 120 sprint readiness, 300 single-project export (Export my data fetches every project one at a time and stops with a message rather than a file with gaps). The app does not retry a 429. The efficiency guard fails a new heavy route without a gate and a limit.
+
+## 14c-3. A call with no company runs in the shared database (audit 2026-10-09 H5)
+
+`USE <company db>` outlives `release()`: a pooled connection stays in whichever company database it last served. `databaseService.query()` with no company selected used `pool.execute`, which took a pooled connection as it was — so it read or wrote a random company's database, while the code and `sharedDbWatch` assumed the shared one (staging logs of 2026-10-05 showed an access check on `project_members` run this way). Now, on a multi-company server, `query()`, `getConnection()`, `transaction()` and `queryOn()` with no company switch the connection to the shared database (`USE` the configured `DB_NAME`, then the non-prepared `conn.query`, as the company path does — see the tenant-isolation rule) before running anything. The `[shared-db-watch]` warning for company tables used that way is kept. A failed switch hands the connection back to the pool. Single-company installs (one database, never switched) are unchanged. Test: `database/noCompanyQuery.test.ts` (a no-company query right after a company query on the same connection runs in the shared database).
 
 ## 14c-2. A refusal stops the route (Oct 2026)
 

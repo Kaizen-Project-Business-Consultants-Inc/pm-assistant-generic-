@@ -136,7 +136,6 @@ function deriveTitle(text: string): string {
 function canPerformRaidAction(role: string, itemType: string, action: string): boolean {
   if (role === 'admin') return true;
   if (action === 'comment') return true;
-  if (action === 'reverse') return false; // admin only
   if (role === 'viewer') return action === 'update'; // ownership checked at endpoint level
   if (role === 'team_member') return action === 'create' && ['issue', 'action', 'assumption', 'dependency'].includes(itemType);
   if (role === 'risk_manager') return ['risk', 'issue', 'assumption', 'dependency'].includes(itemType);
@@ -289,12 +288,8 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const { riskId } = request.params as { projectId: string; riskId: string };
       const { reason } = cancelSchema.parse(request.body);
       const userId = request.user!.userId;
-      const userRole = request.user!.role || 'team_member';
-
-      if (!canPerformRaidAction(userRole, 'decision', 'reverse')) {
-        return reply.status(403).send({ error: 'Only admins can reverse decisions' });
-      }
-
+      // Who may reverse: the project's Manager or Owner, and PMOs (the 'manager' gate above;
+      // user 2026-10-10). It was "admin only", and since admin is Kovarti staff, no customer could.
       const risk = await riskService.reverse(riskId, reason, userId);
       if (!risk) return reply.status(404).send({ error: 'RAID item not found' });
       return reply.send({ data: risk });

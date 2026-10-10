@@ -2,6 +2,8 @@ import mysql from 'mysql2/promise';
 import { config } from '../config';
 import logger from '../utils/logger';
 import { noteSharedDbUse } from './sharedDbWatch';
+// requestContext imports nothing of ours, so this is no cycle (it was a lazy require(), which tests can't load)
+import { getRequestContext } from '../middleware/requestContext';
 
 export interface DatabaseConfig {
   host: string;
@@ -79,8 +81,6 @@ class DatabaseService {
 
   private getTenantDbName(): string | undefined {
     if (!config.MULTI_TENANT_ENABLED) return undefined;
-    // Lazy import to avoid circular dependency at module load time
-    const { getRequestContext } = require('../middleware/requestContext');
     const ctx = getRequestContext();
     return ctx?.tenantDbName;
   }
@@ -91,11 +91,17 @@ class DatabaseService {
     }
     const conn = await this.pool.getConnection();
     const tenantDb = this.getTenantDbName();
-    if (tenantDb) {
-      await conn.query(`USE \`${tenantDb}\``);
-      sharedConnections.delete(conn);
-    } else if (config.MULTI_TENANT_ENABLED) {
-      sharedConnections.add(conn); // no company selected: statements on it run in the SHARED database
+    if (tenantDb || config.MULTI_TENANT_ENABLED) {
+      // The company's database — or, with no company selected, the SHARED one explicitly: a pooled
+      // connection is still in whichever company database it last served (see query below).
+      try {
+        await conn.query(`USE \`${tenantDb ?? config.DB_NAME}\``);
+      } catch (err) {
+        conn.release();
+        throw err;
+      }
+      if (tenantDb) sharedConnections.delete(conn);
+      else sharedConnections.add(conn);
     }
     return conn;
   }
@@ -132,19 +138,28 @@ class DatabaseService {
         logger.warn(`[DB] Control plane table "${table}" queried via tenant-routed query(). Use queryControlPlane() instead. SQL: ${sql.substring(0, 120)}`);
       }
     }
-    if (tenantDb) {
-      const conn = await this.pool.getConnection();
-      try {
-        await conn.query(`USE \`${tenantDb}\``);
-        return this.runOnConnection<T>(conn, sql, params);
-      } finally {
-        conn.release();
-      }
+    if (tenantDb) return this.runIn<T>(tenantDb, sql, params);
+    if (config.MULTI_TENANT_ENABLED) {
+      // No company selected: this runs in the SHARED database — explicitly. A pooled connection
+      // stays in whichever company database it last served (USE outlives release), so the old
+      // `pool.execute` here ran in a random company's database (found 2026-10-08). Name any
+      // company table it uses.
+      noteSharedDbUse(sql, 'query');
+      return this.runIn<T>(config.DB_NAME, sql, params);
     }
-    // No company selected: this runs in the SHARED database. Name any company table it uses.
-    if (config.MULTI_TENANT_ENABLED) noteSharedDbUse(sql, 'query');
-    const [rows] = await this.pool.execute(sql, params);
+    const [rows] = await this.pool.execute(sql, params); // single-company install: one database, nothing ever switches it
     return rows as T[];
+  }
+
+  /** One statement in the named database, on a pooled connection switched to it first (USE + query, never execute) */
+  private async runIn<T>(dbName: string, sql: string, params: any[]): Promise<T[]> {
+    const conn = await this.pool!.getConnection();
+    try {
+      await conn.query(`USE \`${dbName}\``);
+      return await this.runOnConnection<T>(conn, sql, params);
+    } finally {
+      conn.release();
+    }
   }
 
   /**
@@ -169,13 +184,7 @@ class DatabaseService {
     }
     if (config.MULTI_TENANT_ENABLED) {
       noteSharedDbUse(sql, 'queryControlPlane');
-      const conn = await this.pool.getConnection();
-      try {
-        await conn.query(`USE \`${config.DB_NAME}\``);
-        return this.runOnConnection<T>(conn, sql, params);
-      } finally {
-        conn.release();
-      }
+      return this.runIn<T>(config.DB_NAME, sql, params);
     }
     const [rows] = await this.pool.execute(sql, params);
     return rows as T[];

@@ -24,7 +24,10 @@ const queryOn = vi.hoisted(() => vi.fn(async (_c: any, sql: string, params: any[
   return { affectedRows: 1 };
 }));
 vi.mock('../../database/connection', () => ({
-  databaseService: { query: vi.fn(async () => []), queryOn, queryControlPlane: vi.fn(async () => []), transaction: async (fn: any) => fn('conn') },
+  databaseService: {
+    // each edited task's own plan (checked before the transaction): every task here is in plan s1
+    query: vi.fn(async (sql: string, params: any[] = []) => (sql.startsWith('SELECT id, schedule_id FROM tasks WHERE id IN') ? params.map((id: string) => ({ id, schedule_id: 's1' })) : [])),
+    queryOn, queryControlPlane: vi.fn(async () => []), transaction: async (fn: any) => fn('conn') },
 }));
 vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {

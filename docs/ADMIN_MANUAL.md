@@ -160,7 +160,7 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 
 ### People, line managers, the month lock and sponsors (October 2026)
 These are company settings the owner looks after; Kovarti support never changes them.
-- **Who manages the people list.** Project managers keep adding and editing ordinary people on **Resources → Team** (**Add person**, skills, rates, availability, import). Only the **company owner or a PMO** may: choose or change someone's **line manager**; change the email of someone who signs in (or add a person whose email belongs to a login); delete someone who signs in, or remove their login. Nobody but the owner can change the owner's own record. Rule: `services/peopleRights.ts`.
+- **Who manages the people list.** Project managers keep adding and editing ordinary people on **Resources → Team** (**Add person**, skills, rates, availability, import). Only the **company owner or a PMO** may: choose or change someone's **line manager**; change the email of someone who signs in (or add a person whose email belongs to a login); delete someone who signs in, or remove their login; link or unlink a person's login (only to a login of the same company). Nobody but the owner can change the owner's own record. Rule: `services/peopleRights.ts`.
 - **Line manager.** Every person has one: the person who approves their weekly timesheet. If none is chosen it is the company owner. It can be changed but not removed. The owner also sees, in their approvals queue, any sheet that has no approver.
 - **Month lock.** Hours lock month by month: a month closes on the **5th of the following month** (in the company's time zone). After that nobody can add, change, move or delete hours on a day in that month. Submitting and approving hours already entered still works. The day is fixed in the code (`MONTH_LOCK_DAY` in `WeeklyTimesheetService.ts`); there is no setting and no unlock screen.
 - **Sponsor.** Each project can name a sponsor (Edit project → Sponsor, by the project's Manager/Owner): a company user, who is added to the project as a Viewer, or a person with an email but no login. Nothing reaches the sponsor automatically — the PM escalates a RAID item with **Send to sponsor**.
@@ -479,12 +479,14 @@ The efficiency guard (`src/server/__tests__/utils/efficiencyGuard.test.ts`) fail
 
 ### Kill Switch (Emergency Stop)
 
-The kill switch provides runtime control over agent execution without restarting the server. State is in-memory and resets to "enabled" on restart (safe default).
+The kill switch stops agent work without restarting anything. **Since 2026-10-10 it is saved in the shared database** (`agent_kill_switch`, migration 133), so it reaches the nightly agent run (a separate scheduled job) as well as work started from the app, and it **stays as you left it across restarts**. Before that it lived in the web app's memory: the nightly run never saw it, and every restart turned it back on.
+
+It is checked at the start of every nightly scan, for each project and each check in it, and before every agent capability runs. If the saved state can't be read, agents don't run (an emergency stop fails safe). Agent ids for the nightly checks: `auto-reschedule-v1` (slipping tasks), `budget-burn-rate` (budget), `monte-carlo-v1` (schedule risk); the whole scan is `scan_orchestrator`.
 
 **API Endpoints:**
 
 ```bash
-# View current state
+# View current state (platform admin only — it lists stopped projects of every company)
 GET /api/v1/agent/kill-switch
 
 # Disable all agents globally (admin scope required)
@@ -493,11 +495,13 @@ POST /api/v1/agent/kill-switch  {"action": "disable"}
 # Re-enable all agents
 POST /api/v1/agent/kill-switch  {"action": "enable"}
 
-# Disable a specific agent
+# Disable a specific agent — one of: scan_orchestrator (the whole nightly scan),
+# auto-reschedule-v1 (delays), budget-burn-rate (budget), monte-carlo-v1 (forecast)
 PUT /api/v1/agent/kill-switch/agent/:agentId  {"disabled": true}
 
-# Disable agents for a specific project
-PUT /api/v1/agent/kill-switch/project/:projectId  {"disabled": true}
+# Disable agents for a specific project — give its company: project ids repeat across
+# companies (every sample project is demo-sample-webapp), so the stop is saved per company
+PUT /api/v1/agent/kill-switch/project/:projectId  {"disabled": true, "companyId": "<company id>"}
 ```
 
 All kill switch changes are recorded in the audit ledger with the admin's user ID.
@@ -509,7 +513,7 @@ All kill switch changes are recorded in the audit ledger with the admin's user I
 - `claudeApiStatus` — `available` or `unavailable`
 - `databaseStatus` — `{ healthy, latencyMs }`
 - `circuitBreakers` — per-agent breaker state and failure count
-- `killSwitch` — global enabled state, disabled agents list, disabled projects list
+- `killSwitch` — global enabled state and disabled agents list (the stopped projects are only in the admin's `GET /agent/kill-switch`)
 - `recommendedScanScope` — `full`, `reduced`, `critical_only`, or `none`
 - `costs.today` — tokens used, estimated USD, invocation count
 - `pendingProposals` — count of proposals awaiting review
@@ -698,6 +702,7 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 
 ### What a Claude connection may do (October 2026)
 - A Claude connection acts as the person who connected it, **with exactly their role's rights**: a viewer or team member can read; a project manager can read and change their projects; nobody gets admin rights through Claude except the Kovarti platform admin. When a person's role changes, their existing connection follows the new role straight away (every key is limited to its owner's role on each request), and the connection's key is re-issued with the new rights at its next renewal.
+- Revoking the connection's key (Settings → API Keys) ends it for good: its refresh token is revoked too, and a renewal is refused if the key was revoked, the person was deactivated or must change their password, or is no longer in the company they connected from (2026-10-09). Claude then has to be connected again. Needs control-plane migration 131 (`oauth_tokens.organization_id`) before the MCP server is deployed.
 - Deploying: the MCP server is separate — `bash deploy.sh <env> --mcp` deploys it (the app needs its own deploy).
 
 ---
@@ -842,7 +847,7 @@ This restores into a throwaway database and reports what came back. Until
 | Users cannot log in          | Check credentials, token expiry, cookie domain, HTTPS config. If a user is stuck with an expired login token, use the **Unlock** button on Admin > Users or call `POST /api/v1/admin/users/:id/clear-login-token`. |
 | API returns 503              | Verify Fastify is running: `sudo systemctl status pm-app`; logs with `journalctl -u pm-app`. |
 | AI features not working      | Confirm `AI_ENABLED=true` and valid `ANTHROPIC_API_KEY`.      |
-| Agents not running           | Check `AGENT_ENABLED=true`; check kill switch state via `GET /api/v1/agent/kill-switch`. |
+| Agents not running           | Check `AGENT_ENABLED=true`; check the kill switch via `GET /api/v1/agent/kill-switch` (it is saved, so it stays off after a restart until someone turns it back on). |
 | Kill switch left on          | Re-enable via `POST /api/v1/agent/kill-switch {"action":"enable"}`. |
 | Agent circuit breaker open   | Check error rate at `GET /api/v1/agent/health`; breaker auto-retries after 1h/24h. |
 | Stripe webhooks failing      | Verify `STRIPE_WEBHOOK_SECRET`; check Stripe event logs.      |

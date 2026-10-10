@@ -31,12 +31,14 @@ vi.mock('../../services/ScheduleService', () => ({
     findTaskById: vi.fn().mockResolvedValue(null),
     createTask: vi.fn().mockResolvedValue({}),
     updateTask: vi.fn().mockResolvedValue({}),
-    cascadeReschedule: vi.fn().mockResolvedValue({ affectedTasks: [] }),
     logActivity: vi.fn().mockResolvedValue(undefined),
     workingDayTest: vi.fn().mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6),
   },
   Task: {},
 }));
+
+const moveSuccessorsAfter = vi.fn().mockResolvedValue({ affectedTasks: [] });
+vi.mock('../../services/followSuccessors', () => ({ moveSuccessorsAfter: (...a: unknown[]) => moveSuccessorsAfter(...a) }));
 
 vi.mock('../../services/ProjectMemberService', () => ({
   projectMemberService: {
@@ -513,26 +515,22 @@ describe('MeetingIntelligenceService', () => {
       );
     });
 
-    it('pushes successors in working days when the meeting moved the finish', async () => {
-      mockSchedule.findTaskById.mockResolvedValue({ id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-09-30' });
-      mockSchedule.updateTask.mockResolvedValue({ id: 'task-2', startDate: '2026-10-01', endDate: '2026-10-15' });
+    it('successors that now start too early follow the task the meeting moved', async () => {
+      const before = { id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-09-30' };
+      const after = { id: 'task-2', startDate: '2026-10-01', endDate: '2026-10-15' };
+      mockSchedule.findTaskById.mockResolvedValue(before);
+      mockSchedule.updateTask.mockResolvedValue(after);
 
       const result = await service.applyChanges('ma-abc123', [2]);
 
       expect(result.applied).toBe(1);
-      expect(mockSchedule.cascadeReschedule).toHaveBeenCalledWith(
-        'task-2', new Date('2026-09-30T00:00:00Z'), new Date('2026-10-15T00:00:00Z'),
-      );
+      expect(moveSuccessorsAfter).toHaveBeenCalledWith(before, after);
     });
 
-    it('does not cascade when the finish did not move, and still applies if the cascade fails', async () => {
-      mockSchedule.findTaskById.mockResolvedValue({ id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-10-15' });
-      mockSchedule.updateTask.mockResolvedValue({ id: 'task-2', startDate: '2026-10-01', endDate: '2026-10-15' });
-      expect((await service.applyChanges('ma-abc123', [2])).applied).toBe(1);
-      expect(mockSchedule.cascadeReschedule).not.toHaveBeenCalled();
-
+    it('still applies the meeting change if moving the successors fails', async () => {
       mockSchedule.findTaskById.mockResolvedValue({ id: 'task-2', name: 'Design landing page', startDate: '2026-09-15', endDate: '2026-09-30' });
-      mockSchedule.cascadeReschedule.mockRejectedValueOnce(new Error('db down'));
+      mockSchedule.updateTask.mockResolvedValue({ id: 'task-2', startDate: '2026-10-01', endDate: '2026-10-15' });
+      moveSuccessorsAfter.mockRejectedValueOnce(new Error('db down'));
       mockAnalysisRepo.findById.mockResolvedValue(makeSampleDbRow());
       const again = await service.applyChanges('ma-abc123', [2]);
       expect(again.applied).toBe(1);

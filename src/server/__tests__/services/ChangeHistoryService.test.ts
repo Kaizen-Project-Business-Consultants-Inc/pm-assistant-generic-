@@ -204,6 +204,38 @@ describe('ChangeHistoryService', () => {
       expect(restoreTaskDates).toHaveBeenCalledWith('s-1', [{ taskId: 't1', startDate: '2026-09-01', endDate: '2026-09-03' }]);
     });
 
+    it('a task re-dated by hand that pushed its successors: all of their dates back, the edited task too (2026-10-09)', async () => {
+      const moved = [{ taskId: 'a', startDate: '2026-10-12', endDate: '2026-10-14' }, { taskId: 'b', startDate: '2026-10-15', endDate: '2026-10-16' }];
+      withChange(row({ kind: 'successors_moved', undo_payload: JSON.stringify({ moved }) }));
+      await changeHistoryService.undo('s-1', 'c-1');
+      expect(restoreTaskDates).toHaveBeenCalledWith('s-1', moved);
+    });
+
+    it('bulk edit that set a predecessor: the old links back (this plan only), and the tasks it pushed back first (2026-10-09)', async () => {
+      const pushed = [{ taskId: 'c', startDate: '2026-10-19', endDate: '2026-10-20' }];
+      withChange(row({ kind: 'bulk_update', undo_payload: JSON.stringify({
+        previous: [{ id: 'b', values: { dependency: 'x' } }],
+        links: [{ taskId: 'b', deps: [{ dependencyId: 'x', dependencyType: 'SS', lagDays: 2 }] }, { taskId: 'gone', deps: [] }],
+        moved: pushed,
+      }) }));
+      const order: string[] = [];
+      restoreTaskDates.mockImplementationOnce(async () => { order.push('dates'); return 1; });
+      queryOn.mockImplementation(async (_c: any, sql: string) => {
+        if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND id IN')) return [{ id: 'b' }];
+        if (sql.startsWith('UPDATE tasks')) order.push('fields');
+        return [];
+      });
+      await changeHistoryService.undo('s-1', 'c-1');
+      expect(restoreTaskDates).toHaveBeenCalledWith('s-1', pushed);
+      expect(order).toEqual(['dates', 'fields']);
+      const del = queryOn.mock.calls.find(([, sql]) => String(sql).startsWith('DELETE FROM task_dependencies'))!;
+      expect(del[2]).toEqual(['b']);
+      const ins = queryOn.mock.calls.find(([, sql]) => String(sql).startsWith('INSERT INTO task_dependencies'))!;
+      expect(ins[2].slice(1)).toEqual(['b', 'x', 'SS', 2]);
+      queryOn.mockReset();
+      queryOn.mockResolvedValue([]);
+    });
+
     it('refuses once anything in the plan has changed since — there is no "undo anyway"', async () => {
       withChange(row({ undo_payload: JSON.stringify({ links: [{ taskId: 't2', dependencyId: 't1' }] }) }), 1);
       await expect(changeHistoryService.undo('s-1', 'c-1')).rejects.toBeInstanceOf(NotLatestChangeError);

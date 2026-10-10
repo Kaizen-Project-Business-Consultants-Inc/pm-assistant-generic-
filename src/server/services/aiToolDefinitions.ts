@@ -137,7 +137,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'cascade_reschedule',
-    description: 'Reschedule a task AND push its downstream dependent tasks later so they still follow it. Dates count working days from the project calendar (weekends and holidays are skipped). Use this instead of reschedule_task when a delay should ripple through the schedule. For example, if Phase 2 slips by 10 working days, Phase 3 and Phase 4 move after it.',
+    description: 'Reschedule a task AND push its downstream dependent tasks later so they still follow it (only tasks that would now start too early move; gaps are kept, nothing is pulled earlier, finished or started tasks stay). Dates count working days from the project calendar (weekends and holidays are skipped). Use this instead of reschedule_task when a delay should ripple through the schedule. For example, if Phase 2 slips by 10 working days, Phase 3 and Phase 4 move after it.',
     input_schema: {
       type: 'object' as const,
       properties: {

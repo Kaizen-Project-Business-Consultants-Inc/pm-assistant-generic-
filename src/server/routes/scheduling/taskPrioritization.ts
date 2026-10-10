@@ -5,6 +5,8 @@ import { taskPrioritizationService } from '../../services/TaskPrioritizationServ
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import logger from '../../utils/logger';
+import { requireFeature } from '../../middleware/requireTier';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const applyBodySchema = z.object({
   taskId: z.string(),
@@ -33,7 +35,23 @@ const projectAndSchedule = requireProjectAccess('manager', {
 export async function taskPrioritizationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  // GET /:projectId/:scheduleId/prioritize — get AI-prioritized task list
+  // POST /:projectId/:scheduleId/prioritize/ai — the project's PM asks the AI to refine the ranking
+  // (2026-10-10 audit: opening the panel asked the AI every time, for viewers too, with no plan
+  // check or limit). Needs the AI plan; the answer is reused for 30 minutes.
+  fastify.post('/:projectId/:scheduleId/prioritize/ai', {
+    preHandler: [requireScope('write'), projectAndSchedule, requireFeature('ai_assistant'), heavyActionLimit('ai-prioritize', 20)],
+    schema: { description: 'Refine the task ranking with AI (project PM)', tags: ['task-prioritization'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId, scheduleId } = request.params as { projectId: string; scheduleId: string };
+      return await taskPrioritizationService.prioritizeTasks(projectId, scheduleId, { withAI: true });
+    } catch (error) {
+      logger.error('AI task prioritization error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Could not refine the ranking right now. Try again later.' });
+    }
+  });
+
+  // GET /:projectId/:scheduleId/prioritize — the task ranking, worked out without AI
   fastify.get('/:projectId/:scheduleId/prioritize', {
     preHandler: [requireScope('read'), requireProjectAccess('viewer', {
       resolve: async (req) => {

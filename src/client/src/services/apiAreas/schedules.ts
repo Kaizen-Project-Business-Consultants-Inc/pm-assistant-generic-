@@ -226,6 +226,12 @@ export class SchedulesApi extends ApiBase {
     return response.data;
   }
 
+  /** The project's PM asks the AI to refine the ranking (the panel itself never calls the AI) */
+  async refineTaskPrioritizationWithAI(projectId: string, scheduleId: string) {
+    const response = await this.api.post(`/task-prioritization/${projectId}/${scheduleId}/prioritize/ai`, {});
+    return response.data;
+  }
+
   async applyTaskPriority(projectId: string, scheduleId: string, taskId: string, priority: string) {
     const response = await this.api.post(`/task-prioritization/${projectId}/${scheduleId}/apply`, { taskId, priority });
     return response.data;

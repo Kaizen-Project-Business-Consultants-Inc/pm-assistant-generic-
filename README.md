@@ -629,7 +629,7 @@ All API endpoints are versioned under `/api/v1/`. Endpoint groups (50+ route mod
 | NL Query | `/api/v1/nl-query` | Natural language queries |
 | AI Scheduling | `/api/v1/ai-scheduling` | AI task breakdown |
 | Mjuzi Chat | `/api/v1/ai-chat` | Persistent conversational AI assistant |
-| Task Prioritization | `/api/v1/task-prioritization` | AI task ranking |
+| Task Prioritization | `/api/v1/task-prioritization` | Task ranking (AI refinement on request) |
 | Meeting Intelligence | `/api/v1/meeting-intelligence` | Transcript analysis |
 | Lessons Learned | `/api/v1/lessons-learned` | Retrospective knowledge base |
 | Learning | `/api/v1/learning` | AI learning feedback |

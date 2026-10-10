@@ -6,6 +6,7 @@ import { agentRepository } from '../database/AgentRepository';
 import logger from '../utils/logger';
 import { deadLetterService } from './DeadLetterService';
 import { MS_PER_MINUTE } from '../utils/constants';
+import { killSwitchService } from './agents/KillSwitchService';
 
 export interface AgentCapability {
   id: string;
@@ -78,7 +79,14 @@ export class AgentRegistry {
       return { success: false, error: `Unknown capability: ${capabilityId}`, durationMs: 0, capabilityId };
     }
 
-    // 0. Check if agent is enabled in the database
+    // 0. The emergency stop (global, this agent, this project) — saved, so it reaches every
+    //    process; an unreadable state counts as stopped (2026-10-10)
+    const stop = await killSwitchService.canRun(capabilityId, context.projectId);
+    if (!stop.allowed) {
+      return { success: false, error: stop.reason ?? 'Stopped by the kill switch', durationMs: 0, capabilityId };
+    }
+
+    // 0b. Check if agent is enabled in the database
     try {
       const agentRecord = await agentRepository.findById(capabilityId);
       if (agentRecord && !agentRecord.isEnabled) {

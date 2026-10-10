@@ -49,9 +49,17 @@ class ApiKeyRepository {
     );
   }
 
-  revoke(keyId: string, userId: string): Promise<any> {
-    return databaseService.queryControlPlane(
+  /**
+   * Revoking a Claude connection's key also ends its refresh token, so Claude can't renew it
+   * into a fresh key (audit 2026-10-09 H1). The renewal also re-checks that the key is active.
+   */
+  async revoke(keyId: string, userId: string): Promise<void> {
+    await databaseService.queryControlPlane(
       'UPDATE api_keys SET is_active = 0 WHERE id = ? AND user_id = ?',
+      [keyId, userId],
+    );
+    await databaseService.queryControlPlane(
+      'UPDATE oauth_tokens SET revoked = 1 WHERE api_key_id = ? AND user_id = ?',
       [keyId, userId],
     );
   }

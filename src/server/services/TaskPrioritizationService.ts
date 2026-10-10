@@ -5,6 +5,7 @@ import { claudeService } from './claudeService';
 import { config } from '../config';
 import logger from '../utils/logger';
 import { utcDay } from '../utils/workingDays';
+import { cachedAIResult } from '../utils/aiResultCache';
 import {
   PrioritizedTask,
   PrioritizationResult,
@@ -70,12 +71,25 @@ function countFrom(rootId: string, successors: Map<string, string[]>, rows: Map<
   }
 }
 
+/** How many of the top-ranked tasks the AI refines (the rest keep the worked-out ranking) */
+const AI_REFINE_LIMIT = 40;
+
 export class TaskPrioritizationService {
   // ---------------------------------------------------------------------------
   // Prioritize Tasks
   // ---------------------------------------------------------------------------
 
-  async prioritizeTasks(projectId: string, scheduleId: string): Promise<PrioritizationResult> {
+  /**
+   * The ranking. Worked out without AI by default (opening the panel never calls the AI); with
+   * `withAI` (the project's PM pressed "Refine with AI") the AI refines the top tasks, and that
+   * answer is reused for 30 minutes (2026-10-10 audit: every open asked the AI, uncapped).
+   */
+  async prioritizeTasks(projectId: string, scheduleId: string, opts: { withAI?: boolean } = {}): Promise<PrioritizationResult> {
+    if (opts.withAI) return cachedAIResult(`prioritize:${scheduleId}`, () => this.computePrioritization(projectId, scheduleId, true));
+    return this.computePrioritization(projectId, scheduleId, false);
+  }
+
+  private async computePrioritization(projectId: string, scheduleId: string, withAI: boolean): Promise<PrioritizationResult> {
     // Gather data from existing services
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
     const criticalPathResult = await criticalPathService.calculateCriticalPath(scheduleId);
@@ -237,7 +251,7 @@ export class TaskPrioritizationService {
     // Try AI enhancement
     let aiPowered = false;
 
-    if (config.AI_ENABLED && claudeService.isAvailable()) {
+    if (withAI && config.AI_ENABLED && claudeService.isAvailable()) {
       try {
         const aiResult = await this.enhanceWithAI(activeTasks, prioritizedTasks, criticalPathResult.criticalPathTaskIds);
         if (aiResult) {
@@ -307,26 +321,28 @@ export class TaskPrioritizationService {
     algorithmicResults: PrioritizedTask[],
     criticalPathIds: string[],
   ): Promise<PrioritizationAIResponse | null> {
-    const taskSummary = tasks.map((t) => ({
-      id: t.id,
-      name: t.name,
-      status: t.status,
-      priority: t.priority,
-      startDate: t.startDate ? new Date(t.startDate).toISOString().split('T')[0] : null,
-      endDate: t.endDate ? new Date(t.endDate).toISOString().split('T')[0] : null,
-      progressPercentage: t.progressPercentage ?? 0,
-      dependency: t.dependency ?? null,
-      dependencies: t.dependencies.map(d => ({ id: d.dependencyId, type: d.dependencyType, lag: d.lagDays })),
-      estimatedDays: t.estimatedDays ?? null,
-    }));
-
-    const preComputedScores = algorithmicResults.map((r) => ({
-      taskId: r.taskId,
-      taskName: r.taskName,
-      algorithmicScore: r.priorityScore,
-      algorithmicRank: r.rank,
-      factors: r.factors,
-    }));
+    // The AI refines the top AI_REFINE_LIMIT tasks only, sent once and compactly: the whole plan,
+    // twice and pretty-printed, cut the answer off past ~40 tasks and the retry paid for it again
+    const top = algorithmicResults.slice(0, AI_REFINE_LIMIT);
+    const byId = new Map(tasks.map(t => [t.id, t] as [string, Task]));
+    const onCriticalPath = new Set(criticalPathIds);
+    const taskSummary = top.map((r) => {
+      const t = byId.get(r.taskId);
+      return {
+        id: r.taskId,
+        name: r.taskName,
+        status: t?.status,
+        priority: t?.priority,
+        start: t?.startDate ? new Date(t.startDate).toISOString().split('T')[0] : null,
+        end: t?.endDate ? new Date(t.endDate).toISOString().split('T')[0] : null,
+        progress: t?.progressPercentage ?? 0,
+        predecessors: (t?.dependencies ?? []).map(d => d.dependencyId),
+        critical: onCriticalPath.has(r.taskId),
+        score: r.priorityScore,
+        rank: r.rank,
+        factors: r.factors,
+      };
+    });
 
     const systemPrompt = `You are an expert project management AI specializing in task prioritization. You are given pre-computed algorithmic priority scores for project tasks along with their details. Your job is to refine the ranking, adjust scores where appropriate based on holistic project understanding, and provide clear natural-language explanations for each task's priority.
 
@@ -338,17 +354,11 @@ Rules:
 - explanation should be 1–2 sentences summarizing why this task has its priority level.
 - You may adjust scores ±15 from the algorithmic baseline if you have good reason, but preserve the general ordering unless project context strongly justifies a change.`;
 
-    const userMessage = `Here are the tasks and their pre-computed priority data:
+    const userMessage = `Here are the ${taskSummary.length} highest-ranked tasks with their pre-computed priority data (score, rank, factors; "critical" = on the critical path):
 
-Tasks:
-${JSON.stringify(taskSummary, null, 2)}
+${JSON.stringify(taskSummary)}
 
-Critical Path Task IDs: ${JSON.stringify(criticalPathIds)}
-
-Algorithmic Priority Scores:
-${JSON.stringify(preComputedScores, null, 2)}
-
-Please refine the prioritization ranking with explanations.`;
+Please refine the prioritization ranking of these tasks with explanations.`;
 
     const aiResult = await claudeService.completeWithJsonSchema<PrioritizationAIResponse>({
       systemPrompt,

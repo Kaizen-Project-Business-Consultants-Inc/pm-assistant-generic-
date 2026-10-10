@@ -14,10 +14,13 @@ import { planChanged } from '../../services/domainEvents';
 import { groupBy } from '../../utils/groupBy';
 import {
   changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary,
-  ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries,
+  ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries, type LinksBefore,
 } from '../../services/ChangeHistoryService';
 
 import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
+import { taskRepository } from '../../database/TaskRepository';
+import { isUnderItself, PARENT_LOOP_MESSAGE } from '../../utils/parentLoop';
+import { findDependencyCycle } from '../../utils/dependencyCycle';
 const FIELD_LABEL: Record<string, string> = {
   name: 'name', startDate: 'start', endDate: 'finish', estimatedDays: 'duration', progressPercentage: 'progress',
   status: 'status', priority: 'priority', assignedTo: 'owner', dependency: 'predecessor', dependencyType: 'link type',
@@ -65,6 +68,99 @@ async function setColumnByCase(run: (sql: string, params: any[]) => Promise<any>
     `UPDATE tasks SET ${column} = CASE id ${pairs.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE id IN (${pairs.map(() => '?').join(',')})`,
     [...pairs.flat(), ...pairs.map(([id]) => id)],
   );
+}
+
+const LINK_LOOP_MESSAGE = 'These predecessors would make a loop (a task would end up waiting for itself). Nothing was saved.';
+type Run = (sql: string, params: any[]) => Promise<any>;
+type BulkUpdate = { id: string; scheduleId: string; dependency?: string | null; dependencyType?: string; parentTaskId?: string | null };
+
+/**
+ * A bulk edit's parents and predecessors, checked against the whole plan BEFORE anything is saved
+ * (audit 2026-10-09): a task can't go under one of its own sub-tasks, and the links can't make a
+ * loop — counting every change in the batch together, since two harmless-looking edits can close
+ * a loop between them. Returns the refusal, or null. A reference to the task itself or to another
+ * plan is left to the per-task check (it fails that task only, as before).
+ */
+async function bulkStructureRefusal(updates: BulkUpdate[]): Promise<string | null> {
+  const reparented = updates.filter(u => u.parentTaskId !== undefined && u.parentTaskId !== u.id);
+  const relinked = updates.filter(u => u.dependency !== undefined);
+  if (reparented.length === 0 && relinked.length === 0) return null;
+  const plans = [...new Set([...reparented, ...relinked].map(u => u.scheduleId))];
+
+  if (reparented.length > 0) {
+    const parentOf = await taskRepository.parentLinks(plans);
+    for (const u of reparented) {
+      if (isUnderItself(u.id, u.parentTaskId, parentOf)) return PARENT_LOOP_MESSAGE;
+      parentOf.set(u.id, u.parentTaskId ?? null); // later edits in the batch see this one
+    }
+  }
+
+  if (relinked.length > 0) {
+    const replaced = new Set(relinked.map(u => u.id));
+    const existing = await databaseService.query<{ task_id: string; dependency_id: string }>(
+      `SELECT td.task_id, td.dependency_id FROM task_dependencies td JOIN tasks t ON t.id = td.task_id
+        WHERE t.schedule_id IN (${plans.map(() => '?').join(',')})`, plans);
+    const edges = [
+      ...existing.filter(e => !replaced.has(e.task_id)).map(e => ({ from: e.dependency_id, to: e.task_id })),
+      ...relinked.filter(u => u.dependency && u.dependency !== u.id).map(u => ({ from: u.dependency!, to: u.id })),
+    ];
+    if (findDependencyCycle(edges)) return LINK_LOOP_MESSAGE;
+  }
+  return null;
+}
+
+/**
+ * Bulk create: the tasks of one batch naming each other as parent or predecessor (by name or
+ * position) can't make a loop either — new tasks have nothing under or after them otherwise.
+ */
+function batchLoopRefusal(tasks: Array<{ name: string; dependency?: string; parentTaskId?: string }>): string | null {
+  const ref = (r: string | undefined, i: number) => {
+    const at = r ? batchDependencyIndex(r, i, tasks) : undefined;
+    return at === undefined ? null : `#${at}`;
+  };
+  const parentOf = new Map(tasks.map((t, i) => [`#${i}`, ref(t.parentTaskId, i)]));
+  for (const [id, parent] of parentOf) if (isUnderItself(id, parent, parentOf)) return PARENT_LOOP_MESSAGE;
+  const edges = tasks.flatMap((t, i) => {
+    const from = ref(t.dependency, i);
+    return from ? [{ from, to: `#${i}` }] : [];
+  });
+  return findDependencyCycle(edges) ? LINK_LOOP_MESSAGE : null;
+}
+
+/** The current links of the tasks whose predecessor or link type this bulk edit sets (for Undo) */
+async function linksBefore(updates: BulkUpdate[]): Promise<LinksBefore> {
+  const ids = updates.filter(u => u.dependency !== undefined || u.dependencyType !== undefined).map(u => u.id);
+  if (ids.length === 0) return [];
+  const map = await taskRepository.loadDependenciesForTasks(ids);
+  return ids.map(taskId => ({
+    taskId,
+    deps: (map.get(taskId) ?? []).map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType || 'FS', lagDays: d.lagDays ?? 0 })),
+  }));
+}
+
+/**
+ * Bulk edit writes a predecessor where the schedule reads it — task_dependencies — the same way a
+ * single edit does: the task's links are replaced by the one given (an empty value removes them).
+ * Until 2026-10-09 only the legacy `dependency` column was written, so the link was invisible to
+ * the Gantt, critical path, re-flow and Schedule Review. Two statements for the whole batch.
+ */
+async function replaceLinks(run: Run, saved: BulkUpdate[]): Promise<void> {
+  if (saved.length === 0) return;
+  await run(`DELETE FROM task_dependencies WHERE task_id IN (${saved.map(() => '?').join(',')})`, saved.map(u => u.id));
+  const rows = saved.filter(u => u.dependency && u.dependency !== u.id);
+  if (rows.length === 0) return;
+  await run(
+    `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${rows.map(() => '(?, ?, ?, ?, 0)').join(', ')}`,
+    rows.flatMap(u => [uuidv4(), u.id, u.dependency, u.dependencyType || 'FS']),
+  );
+}
+
+/** A bulk edit that changes only the link type: ALL the task's predecessor links take the new type (one type per task, as the bulk field shows) */
+async function setLinkTypes(run: Run, saved: BulkUpdate[]): Promise<void> {
+  for (const [type, ups] of groupBy(saved, u => u.dependencyType as string)) {
+    // eslint-disable-next-line no-await-in-loop -- one statement per link type (at most four)
+    await run(`UPDATE task_dependencies SET dependency_type = ? WHERE task_id IN (${ups.map(() => '?').join(',')})`, [type, ...ups.map(u => u.id)]);
+  }
 }
 
 // Field names deliberately match the single-task route (schedules.ts createTaskSchema)
@@ -138,10 +234,11 @@ export const bulkUpdateItemSchema = z.object({
   progressPercentage: z.number().min(0).max(100).optional(),
   status: z.string().optional(),
   priority: z.string().optional(),
-  assignedTo: z.string().optional(),
-  dependency: z.string().optional(),
+  // null clears it (an undo sends back the empty value the task had)
+  assignedTo: z.string().nullable().optional(),
+  dependency: z.string().nullable().optional(),
   dependencyType: z.enum(['FS', 'SS', 'FF', 'SF']).optional(),
-  comments: z.string().optional(),
+  comments: z.string().nullable().optional(),
   isMilestone: z.boolean().optional(),
   sortOrder: z.number().optional(),
   parentTaskId: z.string().nullable().optional(),
@@ -195,6 +292,19 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
       const body = bulkCreateSchema.parse(request.body);
+      const loop = batchLoopRefusal(body.tasks);
+      if (loop) return reply.status(400).send({ error: 'Validation error', message: loop });
+      // A parent given by id must be a task in this same plan (2026-10-10 audit: any id was written)
+      const outsideParents = [...new Set(body.tasks
+        .filter((t, i) => t.parentTaskId && batchDependencyIndex(t.parentTaskId, i, body.tasks) === undefined)
+        .map(t => t.parentTaskId as string))];
+      if (outsideParents.length) {
+        const found = await databaseService.query<{ id: string }>(
+          `SELECT id FROM tasks WHERE schedule_id = ? AND id IN (${outsideParents.map(() => '?').join(',')})`, [body.scheduleId, ...outsideParents]);
+        if (found.length < outsideParents.length) {
+          return reply.status(400).send({ error: 'Validation error', message: 'A parent task was not found in this schedule. Pick a parent from the same plan.' });
+        }
+      }
 
       const succeeded: Array<{ id: string; name: string }> = [];
       const failed: Array<{ index: number; name: string; error: string }> = [];
@@ -399,9 +509,26 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
       const body = bulkUpdateSchema.parse(request.body);
-
       const succeeded: Array<{ id: string }> = [];
       const failed: Array<{ id: string; error: string }> = [];
+      // Each task must be in the plan it was sent with — the access check covers the plans named,
+      // not the task ids (2026-10-10 review: a task of another project lost its links). One look-up;
+      // the others fail on their own, before anything of theirs is read or written.
+      const ids = body.updates.map(u => u.id).filter(Boolean);
+      const planOfTask = new Map(ids.length
+        ? (await databaseService.query<{ id: string; schedule_id: string }>(
+          `SELECT id, schedule_id FROM tasks WHERE id IN (${ids.map(() => '?').join(',')})`, ids)).map(r => [r.id, r.schedule_id])
+        : []);
+      body.updates = body.updates.filter(u => {
+        if (!u.id || planOfTask.get(u.id) === u.scheduleId) return true;
+        failed.push({ id: u.id, error: 'Task not found in this schedule' });
+        return false;
+      });
+      if (body.updates.length === 0) return { succeeded, failed };
+      const refusal = await bulkStructureRefusal(body.updates);
+      if (refusal) return reply.status(400).send({ error: 'Validation error', message: refusal });
+
+      const oldLinks = await linksBefore(body.updates);
 
       // For Schedule History's Undo: the current values of exactly the fields being changed
       const changedColumns = [...new Set(body.updates.flatMap(u =>
@@ -518,6 +645,10 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             }
           }
         }
+        // the predecessors go where the schedule reads them, for the tasks that were saved
+        await replaceLinks(run, body.updates.filter(u => u.dependency !== undefined && saved.has(u.id)));
+        // a new link type on its own changes the task's existing links (it only changed the old column)
+        await setLinkTypes(run, body.updates.filter(u => u.dependency === undefined && u.dependencyType && saved.has(u.id)));
         // both lists in the order they were asked for
         for (const u of body.updates) if (u.id && saved.has(u.id)) succeeded.push({ id: u.id });
         const askedAt = new Map(body.updates.map((u, i) => [u.id || 'unknown', i]));
@@ -536,6 +667,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         planChanged(sid);
         const ids = doneUpdates.map(u => u.id);
         const idSet = new Set(ids);
+        // A new predecessor pushes the task (and what follows) later if it now starts too early —
+        // the same rule as a single edit; never pulled earlier. Awaited before History records.
+        // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one)
+        const linked = doneUpdates.filter(u => u.dependency || u.dependencyType).map(u => u.id);
+        // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one); History entries in order
+        const moved = linked.length ? (await scheduleRecomputeService.recompute(sid, { onlyFrom: linked, reason: 'link_added' })
+          .catch((err: any) => { logger.error('[bulk update] re-plan after links failed', { error: err?.message }); return { deltas: [] }; })).deltas : [];
         // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one); History entries in order
         const projectId = await projectOfSchedule(sid);
         if (projectId) {
@@ -550,8 +688,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             kind: 'bulk_update',
             summary: `Edited ${ids.length} task${ids.length === 1 ? '' : 's'} (${describeFields(fields)})`,
             taskIds: ids,
-            // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
-            undo: { previous: previous.filter(p => idSet.has(p.id)) },
+            undo: {
+              // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
+              previous: previous.filter(p => idSet.has(p.id)),
+              // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
+              links: oldLinks.filter(l => idSet.has(l.taskId)),
+              moved: moved.map(d => ({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd })),
+            },
           });
         }
       }

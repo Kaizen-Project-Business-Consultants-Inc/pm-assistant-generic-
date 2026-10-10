@@ -63,6 +63,9 @@ export const OnboardingPage: React.FC = () => {
 
   // SME team setup state
   const isSme = user?.subscriptionTier === 'sme';
+  // Only the company owner names the company (the server refuses anyone else); no company yet = theirs to name
+  const canNameCompany = !user?.organization || user.organization.isOwner === true;
+  const companyNameRequired = isSme && canNameCompany;
   const totalSteps = isSme ? 4 : 3;
   const STEP_TEAM = 2; // only used when isSme
   const STEP_PROJECT = isSme ? 3 : 2;
@@ -117,7 +120,7 @@ export const OnboardingPage: React.FC = () => {
       await apiService.updateProfile({
         fullName,
         username: username !== user?.username ? username : undefined,
-        organizationName: organizationName || undefined,
+        organizationName: (canNameCompany && organizationName) || undefined,
         role: roleToSubmit,
       });
 
@@ -349,14 +352,14 @@ export const OnboardingPage: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-1">Letters, numbers, and underscores only</p>
                 </div>
 
-                <div>
+                {canNameCompany && <div>
                   <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                    Organization Name {!isSme && <span className="text-gray-500 font-normal">(optional)</span>}
+                    Organization Name {!companyNameRequired && <span className="text-gray-500 font-normal">(optional)</span>}
                   </label>
-                  <input id="organizationName" type="text" required={isSme} autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
+                  <input id="organizationName" type="text" required={companyNameRequired} autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
                     className="input" placeholder="Your company name" />
-                  {isSme && <p className="text-xs text-primary-400 mt-1">Required for SME team accounts</p>}
-                </div>
+                  {companyNameRequired && <p className="text-xs text-primary-400 mt-1">Required for SME team accounts</p>}
+                </div>}
 
                 {/* Role selector */}
                 <div>
@@ -409,7 +412,7 @@ export const OnboardingPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button type="submit" disabled={isLoading || !fullName.trim() || !username.trim() || (isSme && !organizationName.trim())}
+                <button type="submit" disabled={isLoading || !fullName.trim() || !username.trim() || (companyNameRequired && !organizationName.trim())}
                   className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   {isLoading ? (
                     <div className="flex items-center">

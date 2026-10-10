@@ -538,8 +538,8 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, c
             </div>
           </div>
 
-          {/* Cancel / Reverse buttons */}
-          {!isTerminal && (
+          {/* Cancel / Reverse buttons: the project's Manager or Owner (and PMO), as the server allows */}
+          {!isTerminal && canEdit && (
             <div className="flex gap-2">
               {!cancelMode && !reverseMode && (
                 <>

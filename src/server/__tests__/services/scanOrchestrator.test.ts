@@ -23,7 +23,10 @@ vi.mock('../../services/AutoRescheduleService', () => ({
   autoRescheduleService: { detectDelays: (...a: any[]) => h.detectDelays(...a), generateProposal: (...a: any[]) => h.generateProposal(...a) },
 }));
 vi.mock('../../services/WebhookService', () => ({ webhookService: { dispatch: vi.fn() } }));
-vi.mock('../../services/agents/KillSwitchService', () => ({ killSwitchService: { getStatus: () => ({ globalEnabled: true }) } }));
+vi.mock('../../services/agents/KillSwitchService', async (importOriginal) => ({
+  ...(await importOriginal<any>()), // the real decide() rules
+  killSwitchService: { load: vi.fn(async () => ({ readable: true, globalEnabled: true, disabledAgents: [], disabledProjects: [] })) },
+}));
 vi.mock('../../services/AgentMemoryService', () => ({ agentMemoryService: { store: vi.fn(async () => undefined) } }));
 vi.mock('../../services/DeadLetterService', () => ({ deadLetterService: { capture: vi.fn() } }));
 vi.mock('../../services/scheduling/registryAgentRunners', () => ({
@@ -81,6 +84,37 @@ describe('nightly scan — three checks, no AI', () => {
     expect((h.budget.mock.calls[0] as any[])[0].id).toBe('p1');
     expect(stats).toMatchObject({ budgetAlertsCreated: 1, mcAlertsCreated: 1 });
     expect(Object.keys(stats).sort()).toEqual(['budgetAlertsCreated', 'delaysDetected', 'mcAlertsCreated', 'notificationsSent', 'projectsDeferred', 'projectsScanned', 'schedulesScanned']);
+  });
+});
+
+describe('nightly scan — the emergency stop (2026-10-10)', () => {
+  it('a stopped project is skipped, and a stopped check is skipped on every project', async () => {
+    const { killSwitchService } = await import('../../services/agents/KillSwitchService');
+    vi.mocked(killSwitchService.load).mockResolvedValueOnce({ readable: true, globalEnabled: true, disabledAgents: ['monte-carlo-v1'], disabledProjects: [] } as any);
+    h.detectDelays.mockResolvedValue([]);
+    h.budget.mockResolvedValue(0);
+    h.mc.mockResolvedValue(0);
+    h.mc.mockClear(); h.budget.mockClear();
+    await runScanImpl(log);
+    expect(h.mc).not.toHaveBeenCalled();
+    expect(h.budget).toHaveBeenCalled();
+
+    vi.mocked(killSwitchService.load).mockResolvedValueOnce({ readable: true, globalEnabled: true, disabledAgents: [], disabledProjects: ['o:p1'] } as any); // saved with its company
+    h.budget.mockClear();
+    const stats = await runScanImpl(log);
+    expect(h.budget).not.toHaveBeenCalled();
+    expect(stats.projectsScanned).toBe(0);
+  });
+
+  it('a global stop, or a state that cannot be read, scans nothing', async () => {
+    const { killSwitchService } = await import('../../services/agents/KillSwitchService');
+    for (const state of [{ readable: true, globalEnabled: false, disabledAgents: [], disabledProjects: [] }, { readable: false, globalEnabled: false, disabledAgents: [], disabledProjects: [] }]) {
+      vi.mocked(killSwitchService.load).mockResolvedValueOnce(state as any);
+      h.budget.mockClear();
+      const stats = await runScanImpl(log);
+      expect(stats.projectsScanned).toBe(0);
+      expect(h.budget).not.toHaveBeenCalled();
+    }
   });
 });
 

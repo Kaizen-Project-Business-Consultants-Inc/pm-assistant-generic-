@@ -188,6 +188,15 @@ export class TaskRepository {
     return new Map(rows.map(r => [r.id, r.schedule_id]));
   }
 
+  /** Each task's parent (summary) in these plans, in one read — for the "not under itself" check */
+  async parentLinks(scheduleIds: string[]): Promise<Map<string, string | null>> {
+    const unique = [...new Set(scheduleIds.filter(Boolean))];
+    if (unique.length === 0) return new Map();
+    const rows = await databaseService.query<{ id: string; parent_task_id: string | null }>(
+      `SELECT id, parent_task_id FROM tasks WHERE schedule_id IN (${unique.map(() => '?').join(',')})`, unique);
+    return new Map(rows.map(r => [r.id, r.parent_task_id ?? null]));
+  }
+
   /** Several tasks by id in one query (same shape as findById; order not guaranteed, missing ids skipped) */
   async findByIds(ids: string[]): Promise<Task[]> {
     const unique = [...new Set(ids.filter(Boolean))];

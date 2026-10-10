@@ -12,6 +12,7 @@ vi.mock('uuid', () => ({ v4: () => 'test-config-id' }));
 import { ContextConfigService } from '../../../services/context/ContextConfigService';
 import { databaseService } from '../../../database/connection';
 
+const USERREF = { scope: 'user' as const, scopeId: 'user-1', companyId: 'org-1' };
 const mockQuery = databaseService.queryControlPlane as ReturnType<typeof vi.fn>;
 
 const sampleConfigRow = {
@@ -41,13 +42,13 @@ describe('ContextConfigService', () => {
   describe('getConfig', () => {
     it('returns null when no config exists', async () => {
       mockQuery.mockResolvedValueOnce([]);
-      const result = await service.getConfig('user', 'user-1', 'system_instructions');
+      const result = await service.getConfig(USERREF, 'system_instructions');
       expect(result).toBeNull();
     });
 
     it('returns config when it exists', async () => {
       mockQuery.mockResolvedValueOnce([sampleConfigRow]);
-      const result = await service.getConfig('user', 'user-1', 'system_instructions');
+      const result = await service.getConfig(USERREF, 'system_instructions');
       expect(result).not.toBeNull();
       expect(result!.configKey).toBe('system_instructions');
       expect(result!.configValue).toBe('Always be concise');
@@ -58,7 +59,7 @@ describe('ContextConfigService', () => {
   describe('getConfigsAtScope', () => {
     it('returns all configs at a scope', async () => {
       mockQuery.mockResolvedValueOnce([sampleConfigRow, { ...sampleConfigRow, id: 'cfg-2', config_key: 'ai_temperature', config_value: '0.7' }]);
-      const results = await service.getConfigsAtScope('user', 'user-1');
+      const results = await service.getConfigsAtScope(USERREF);
       expect(results).toHaveLength(2);
     });
   });
@@ -71,7 +72,7 @@ describe('ContextConfigService', () => {
         .mockResolvedValueOnce([]) // recordHistory INSERT
         .mockResolvedValueOnce([sampleConfigRow]); // getConfig after create
 
-      const result = await service.upsertConfig('user', 'user-1', 'system_instructions', 'Always be concise', 'user-1');
+      const result = await service.upsertConfig(USERREF, 'system_instructions', 'Always be concise', 'user-1');
       expect(result.conflict).toBeFalsy();
       if (!result.conflict) {
         expect(result.config.configKey).toBe('system_instructions');
@@ -83,7 +84,7 @@ describe('ContextConfigService', () => {
       mockQuery.mockResolvedValueOnce([{ cnt: 0 }]); // isKeyLockedAbove
 
       const result = await service.upsertConfig(
-        'user', 'user-1', 'system_instructions', 'New value', 'user-1', 'wrong-hash',
+        USERREF, 'system_instructions', 'New value', 'user-1', 'wrong-hash',
       );
       expect(result.conflict).toBe(true);
     });
@@ -96,7 +97,7 @@ describe('ContextConfigService', () => {
       mockQuery.mockResolvedValueOnce([{ ...sampleConfigRow, version: 2 }]); // getConfig after update
 
       const result = await service.upsertConfig(
-        'user', 'user-1', 'system_instructions', 'Updated instructions', 'user-1', 'abc123',
+        USERREF, 'system_instructions', 'Updated instructions', 'user-1', 'abc123',
       );
       expect(result.conflict).toBeFalsy();
     });
@@ -106,13 +107,13 @@ describe('ContextConfigService', () => {
       mockQuery.mockResolvedValueOnce([{ cnt: 1 }]); // isKeyLockedAbove returns locked
 
       await expect(
-        service.upsertConfig('user', 'user-1', 'system_instructions', 'Override', 'user-1'),
+        service.upsertConfig(USERREF, 'system_instructions', 'Override', 'user-1'),
       ).rejects.toThrow(/locked/);
     });
 
     it('validates config value against schema', async () => {
       await expect(
-        service.upsertConfig('user', 'user-1', 'ai_temperature', 5, 'user-1'),
+        service.upsertConfig(USERREF, 'ai_temperature', 5, 'user-1'),
       ).rejects.toThrow();
     });
   });

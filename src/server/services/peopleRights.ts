@@ -11,6 +11,10 @@ import type { Resource } from './ResourceService';
  *   - choose or change someone's line manager (the person who approves their timesheets)
  *   - change the email of someone who signs in, or add someone whose email belongs to a login
  *   - delete a person who signs in, or remove their login
+ *   - link or unlink a person's login (userId) — always a login of this company (audit
+ *     2026-10-09 H3: a PM could unlink a login and then delete or re-email the person, link a
+ *     coworker's login to an older record they manage and become that coworker's timesheet
+ *     approver, or link a login from another company)
  * and nobody may do these to the company owner's own record (only the owner, to themselves).
  *
  * Found by the 2026-10-04 audit: these needed only a 'write' role, so a PM could make themselves
@@ -31,6 +35,8 @@ export const MSG = {
   deleteLogin: 'This person signs in to Kovarti. Only the company owner or a PMO can remove them.',
   removeAccess: "Only the company owner or a PMO can remove someone's login.",
   owner: "The company owner's record can't be changed this way by anyone else.",
+  linkLogin: "Only the company owner or a PMO can link or unlink someone's login.",
+  otherCompanyLogin: "That login isn't in your company, so it can't be linked to this person.",
 };
 
 async function companyOwnerId(): Promise<string | null> {
@@ -57,24 +63,42 @@ async function companyLoginFor(email: string | undefined | null): Promise<string
   return u?.id ?? null;
 }
 
+/** Is this user id a login of THIS company? */
+async function isCompanyLogin(userId: string): Promise<boolean> {
+  const orgId = getRequestContext()?.organizationId;
+  if (!orgId) return false;
+  const [u] = await databaseService.queryControlPlane<{ id: string }>(
+    'SELECT id FROM users WHERE id = ? AND organization_id = ? LIMIT 1', [userId, orgId]);
+  return !!u;
+}
+
 type Caller = { userId: string; role: string } | undefined;
 
 /** Adding a person (form or import row) */
-export async function checkCreate(caller: Caller, data: { email?: string | null; lineManagerUserId?: string | null; isGeneric?: boolean }): Promise<void> {
-  if (await canManageLogins(caller)) return;
+export async function checkCreate(caller: Caller, data: { email?: string | null; lineManagerUserId?: string | null; isGeneric?: boolean; userId?: string | null }): Promise<void> {
+  const manager = await canManageLogins(caller);
+  if (data.userId) {
+    if (!manager) throw new PeopleRightsError(MSG.linkLogin);
+    if (data.userId === await companyOwnerId() && caller?.userId !== data.userId) throw new PeopleRightsError(MSG.owner);
+    if (!(await isCompanyLogin(data.userId))) throw new PeopleRightsError(MSG.otherCompanyLogin);
+  }
+  if (manager) return;
   if (data.lineManagerUserId) throw new PeopleRightsError(MSG.lineManager);
   if (!data.isGeneric && await companyLoginFor(data.email)) throw new PeopleRightsError(MSG.addLogin);
 }
 
 /** Editing a person */
-export async function checkUpdate(caller: Caller, existing: Resource, data: { email?: string | null; lineManagerUserId?: string | null }): Promise<void> {
+export async function checkUpdate(caller: Caller, existing: Resource, data: { email?: string | null; lineManagerUserId?: string | null; userId?: string | null }): Promise<void> {
   const owner = await companyOwnerId();
   const emailChanges = 'email' in data && (data.email ?? '').trim().toLowerCase() !== (existing.email ?? '').trim().toLowerCase();
   const managerChanges = 'lineManagerUserId' in data && (data.lineManagerUserId ?? null) !== (existing.lineManagerUserId ?? null);
-  if (!emailChanges && !managerChanges) return;
-  // the owner's own record: only the owner
-  if (owner && existing.userId === owner && caller?.userId !== owner) throw new PeopleRightsError(MSG.owner);
+  const linkChanges = 'userId' in data && (data.userId ?? null) !== (existing.userId ?? null);
+  if (!emailChanges && !managerChanges && !linkChanges) return;
+  // the owner's own record (or making a record theirs): only the owner
+  if (owner && (existing.userId === owner || (linkChanges && data.userId === owner)) && caller?.userId !== owner) throw new PeopleRightsError(MSG.owner);
+  if (linkChanges && data.userId && !(await isCompanyLogin(data.userId))) throw new PeopleRightsError(MSG.otherCompanyLogin);
   if (await canManageLogins(caller)) return;
+  if (linkChanges) throw new PeopleRightsError(MSG.linkLogin);
   if (managerChanges) throw new PeopleRightsError(MSG.lineManager);
   if (emailChanges && (existing.userId || await companyLoginFor(data.email))) throw new PeopleRightsError(MSG.loginEmail);
 }

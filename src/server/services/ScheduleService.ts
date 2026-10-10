@@ -14,11 +14,12 @@ import { approvedProgressProvider } from './approvedProgress';
 import { userService } from './UserService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { findDependencyCycle } from '../utils/dependencyCycle';
+import { PARENT_LOOP_MESSAGE } from '../utils/parentLoop';
 import { planChanged, taskChanged } from './domainEvents';
 import { loginForAssignee } from '../utils/assigneeLogins';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { inclusiveDaySpan } from '../utils/calendarDate';
-import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
 
@@ -572,7 +573,8 @@ export class ScheduleService {
 
   /**
    * A parent (summary) or epic must be a task in the SAME plan. Nothing checked this, so a parent
-   * or epic id could point into another plan — even another project (2026-10-05 audit).
+   * or epic id could point into another plan — even another project (2026-10-05 audit). A task
+   * can't go under one of its own sub-tasks either (2026-10-09 audit: that made a parent loop).
    */
   async validateSameScheduleRef(taskId: string | null, refId: string, scheduleId: string, what: 'parent task' | 'epic'): Promise<void> {
     if (taskId && refId === taskId) {
@@ -582,6 +584,24 @@ export class ScheduleService {
     if (!ref || ref.scheduleId !== scheduleId) {
       throw new DependencyValidationError(`The ${what} must be a task in the same schedule`);
     }
+    if (taskId && what === 'parent task' && await this.isAncestor(taskId, ref.parentTaskId)) {
+      throw new DependencyValidationError(PARENT_LOOP_MESSAGE);
+    }
+  }
+
+  /**
+   * Whether `taskId` is `startId` or above it in the outline — walked up one task at a time (an
+   * outline is a few levels deep), not by reading the whole plan: grouping N tasks checks N times.
+   */
+  private async isAncestor(taskId: string, startId: string | null | undefined): Promise<boolean> {
+    const seen = new Set<string>();
+    for (let cur = startId ?? null; cur && !seen.has(cur);) {
+      if (cur === taskId) return true;
+      seen.add(cur);
+      // eslint-disable-next-line no-await-in-loop -- one step up the outline per read; depth is small
+      cur = (await this.findTaskById(cur))?.parentTaskId ?? null;
+    }
+    return false;
   }
 
   // -------------------------------------------------------------------------
@@ -910,7 +930,7 @@ export class ScheduleService {
 
     // Parent and epic: not itself, and in the same plan
     if (data.epicId) await this.validateSameScheduleRef(id, data.epicId, oldTask.scheduleId, 'epic');
-    if (data.parentTaskId) await this.validateSameScheduleRef(id, data.parentTaskId, oldTask.scheduleId, 'parent task');
+    if (data.parentTaskId && data.parentTaskId !== oldTask.parentTaskId) await this.validateSameScheduleRef(id, data.parentTaskId, oldTask.scheduleId, 'parent task');
 
     // Auto-set is_summary when task_type changes to epic
     if (data.taskType === 'epic') {
@@ -1311,7 +1331,7 @@ export class ScheduleService {
   }
 
   // -------------------------------------------------------------------------
-  // Auto-Scheduling: Cascade Reschedule (business logic — stays in service)
+  // Working days (successors follow a moved task in followSuccessors.ts)
   // -------------------------------------------------------------------------
 
   /** The project calendar's working-day test for a schedule; Mon–Fri if it can't be read */
@@ -1326,99 +1346,6 @@ export class ScheduleService {
       logger.warn('[ScheduleService] project calendar unavailable, using Mon–Fri', { scheduleId, error: err?.message });
     }
     return weekdaysOnly;
-  }
-
-  async cascadeReschedule(taskId: string, oldEndDate: Date, newEndDate: Date): Promise<CascadeResult> {
-    const deltaDays = Math.round((newEndDate.getTime() - oldEndDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (deltaDays === 0) {
-      return { triggeredByTaskId: taskId, deltaDays: 0, affectedTasks: [] };
-    }
-
-    const triggerTask = await this.findTaskById(taskId);
-    if (!triggerTask) return { triggeredByTaskId: taskId, deltaDays: 0, affectedTasks: [] };
-
-    // Moves count WORKING days from the project calendar (weekends/holidays skipped,
-    // days marked working counted).
-    const day = utcDay;
-    const isWorking = await this.workingDayTest(triggerTask.scheduleId);
-    const workingDelta = workingDaysAfter(day(oldEndDate), day(newEndDate), isWorking);
-
-    const allTasks = await this.findTasksByScheduleId(triggerTask.scheduleId);
-    const taskMap = new Map(allTasks.map(t => [t.id, t]));
-    const downstream = await this.findAllDownstreamTasks(taskId);
-    const affectedTasks: CascadeChange[] = [];
-    // worked out in memory, then written in one go (it was ~6 queries per moved task)
-    const writes: Array<{ id: string; startDate: string | null; endDate: string | null }> = [];
-
-    for (const task of downstream) {
-      let computedStart: Date | null = null;
-      let allFS = true;
-      for (const dep of task.dependencies) {
-        if (dep.dependencyType !== 'FS') { allFS = false; continue; }
-        const predTask = taskMap.get(dep.dependencyId);
-        if (!predTask?.endDate) continue;
-        const start = onOrAfterWorking(shiftWorking(day(predTask.endDate), (dep.lagDays || 0) + 1, isWorking), isWorking);
-        if (!computedStart || start > computedStart) computedStart = start;
-      }
-
-      if (!allFS && !computedStart) continue;
-
-      const oldStart = task.startDate ? day(task.startDate) : null;
-      const oldEnd = task.endDate ? day(task.endDate) : null;
-      if (!oldStart && !oldEnd) continue;
-
-      let newStart: Date | null = null;
-      let newEnd: Date | null = null;
-
-      if (computedStart && oldStart && oldEnd) {
-        // Keep the task's length in working days
-        const duration = Math.max(0, workingDaysAfter(oldStart, oldEnd, isWorking));
-        newStart = computedStart;
-        newEnd = shiftWorking(computedStart, duration, isWorking);
-      } else if (oldStart && oldEnd) {
-        const duration = Math.max(0, workingDaysAfter(oldStart, oldEnd, isWorking));
-        newStart = onOrAfterWorking(shiftWorking(oldStart, workingDelta, isWorking), isWorking);
-        newEnd = shiftWorking(newStart, duration, isWorking);
-      }
-
-      if (!newStart && !newEnd) continue;
-      if (newStart && oldStart && newStart.getTime() === oldStart.getTime()) continue;
-
-      const change: CascadeChange = {
-        taskId: task.id,
-        taskName: task.name,
-        oldStartDate: oldStart?.toISOString().split('T')[0] || '',
-        newStartDate: newStart?.toISOString().split('T')[0] || '',
-        oldEndDate: oldEnd?.toISOString().split('T')[0] || '',
-        newEndDate: newEnd?.toISOString().split('T')[0] || '',
-        deltaDays: newStart && oldStart ? Math.round((newStart.getTime() - oldStart.getTime()) / 86_400_000) : deltaDays,
-      };
-
-      writes.push({
-        id: task.id,
-        startDate: newStart?.toISOString().split('T')[0] ?? null,
-        endDate: newEnd?.toISOString().split('T')[0] ?? null,
-      });
-
-      // Update in-memory taskMap so subsequent tasks see new dates
-      const updated = taskMap.get(task.id);
-      if (updated) {
-        if (newStart) updated.startDate = newStart.toISOString().split('T')[0];
-        if (newEnd) updated.endDate = newEnd.toISOString().split('T')[0];
-      }
-
-      affectedTasks.push(change);
-    }
-
-    await taskRepository.updateDatesMany(writes);
-    await taskRepository.logActivities(affectedTasks.map(change => ({
-      taskId: change.taskId, userId: '1', userName: 'System', action: 'auto-rescheduled', field: 'dates',
-      oldValue: `${change.oldStartDate} - ${change.oldEndDate}`,
-      newValue: `${change.newStartDate} - ${change.newEndDate}`,
-    })));
-
-    return { triggeredByTaskId: taskId, deltaDays, affectedTasks };
   }
 
   // -------------------------------------------------------------------------

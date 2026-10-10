@@ -462,14 +462,15 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   }, [tasks]);
 
   const getDepHealth = useCallback((depTaskId: string): 'satisfied' | 'in_progress' | 'at_risk' => {
-    const depTask = tasks.find(t => t.id === depTaskId);
+    // the lookup built once above (it searched the whole plan for every predecessor shown; 2026-10-10)
+    const depTask = taskById.get(depTaskId);
     if (!depTask) return 'at_risk';
     if (depTask.status === 'completed') return 'satisfied';
     if (depTask.status === 'in_progress') return 'in_progress';
     // Calendar-day comparison: a dependency due today is not yet at risk.
     if (depTask.endDate && isCalendarOverdue(depTask.endDate)) return 'at_risk';
     return 'in_progress';
-  }, [tasks]);
+  }, [taskById]);
 
   // Column auto-fit
   const getCellText = useCallback((task: GanttTask, colKey: ColumnKey): string => {

@@ -47,7 +47,7 @@ const BASELINE: Record<string, number> = {
   "services/ResourceService.ts": 7,
   "services/ScheduleRecomputeService.ts": 1,
   "services/scheduleReview/rules.ts": 1,
-  "services/ScheduleService.ts": 2,
+  "services/ScheduleService.ts": 1,
   "services/ClientService.ts": 1, // the client report's 14-day reporting period label, not a task date
   "services/scheduling/scanOrchestrator.ts": 1, // Monte Carlo at most weekly: elapsed time since the last run, not a task date
   "services/scheduling/utilizationCoachingJob.ts": 3,

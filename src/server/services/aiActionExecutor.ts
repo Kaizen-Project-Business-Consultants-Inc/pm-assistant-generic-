@@ -4,6 +4,7 @@ import { projectService, type CreateProjectData, type Project } from './ProjectS
 import { changeHistoryService } from './ChangeHistoryService';
 import { checkProjectRoleFor } from '../middleware/requireProjectAccess';
 import { scheduleService, type CreateTaskData, type Task, DependencyValidationError } from './ScheduleService';
+import { moveSuccessorsAfter } from './followSuccessors';
 import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
 import { policyEngineService } from './PolicyEngineService';
@@ -322,15 +323,10 @@ export class AIActionExecutor {
     if (endDate) dateChanges.push(`end: ${endDate}`);
     if (dueDate) dateChanges.push(`due: ${dueDate}`);
 
-    // The given dates are kept; when the finish moved, successors follow it in working
-    // days (the same cascade as a manual edit)
-    const oldEnd = existing.endDate ? utcDay(existing.endDate) : null;
-    const newEnd = task?.endDate ? utcDay(task.endDate) : null;
-    let pushed: Array<{ id: string; name: string; newStart: string; newEnd: string }> = [];
-    if (oldEnd && newEnd && !isNaN(oldEnd.getTime()) && !isNaN(newEnd.getTime()) && oldEnd.getTime() !== newEnd.getTime()) {
-      const cascade = await scheduleService.cascadeReschedule(taskId, oldEnd, newEnd);
-      pushed = cascade.affectedTasks.map(c => ({ id: c.taskId, name: c.taskName, newStart: c.newStartDate, newEnd: c.newEndDate }));
-    }
+    // The given dates are kept; successors that now start too early are pushed later
+    // (the same rule as a manual edit)
+    const cascade = await moveSuccessorsAfter(existing, task);
+    const pushed = cascade.affectedTasks.map(c => ({ id: c.taskId, name: c.taskName, newStart: c.newStartDate, newEnd: c.newEndDate }));
 
     return {
       success: true,
@@ -480,18 +476,15 @@ export class AIActionExecutor {
       const back = Math.max(0, isWorking(end) ? length - 1 : length);
       targetUpdate.startDate = ymdOf(shiftWorking(end, -back, isWorking));
     }
-    await scheduleService.updateTask(taskId, targetUpdate);
+    const updated = await scheduleService.updateTask(taskId, targetUpdate);
 
-    // Successors follow the new finish in working days (lag in working days; a
-    // successor never lands on a day off) — the same cascade as a manual edit.
+    // Successors that now start too early are pushed later, in working days (never pulled
+    // earlier) — the same rule as a manual edit.
     const newEnd = targetUpdate.endDate ? utcDay(targetUpdate.endDate) : null;
-    const affected: Array<{ id: string; name: string; newStart?: string; newEnd?: string }> = [];
-    if (oldEnd && newEnd && newEnd.getTime() !== oldEnd.getTime()) {
-      const cascade = await scheduleService.cascadeReschedule(taskId, oldEnd, newEnd);
-      for (const c of cascade.affectedTasks) {
-        affected.push({ id: c.taskId, name: c.taskName, newStart: c.newStartDate || undefined, newEnd: c.newEndDate || undefined });
-      }
-    }
+    const cascade = await moveSuccessorsAfter(target, updated);
+    const affected = cascade.affectedTasks.map(c => ({
+      id: c.taskId, name: c.taskName, newStart: c.newStartDate || undefined, newEnd: c.newEndDate || undefined,
+    }));
 
     // How far the task moved, in working days (by its finish, else its start)
     let deltaDays = 0;

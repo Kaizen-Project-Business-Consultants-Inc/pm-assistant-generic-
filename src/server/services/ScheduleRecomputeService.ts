@@ -8,7 +8,7 @@ import { calendarService } from './CalendarService';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, finishFor } from '../utils/workingDays';
 
 /** Why dates moved — recorded on every task.reschedule audit entry */
-export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo' | 'calendar_change' | 'days_off_cleanup' | 'ai_reschedule' | 'team_planner';
+export type RescheduleReason = 'link_added' | 'schedule_review_fix' | 'undo' | 'calendar_change' | 'days_off_cleanup' | 'ai_reschedule' | 'team_planner' | 'task_moved';
 
 /**
  * One audit entry per moved task (action `task.reschedule`), with before/after dates.
@@ -55,6 +55,11 @@ function auditMoves(
  * are pinned and never moved; other tasks move only later, to satisfy a
  * predecessor they violate (never pulled earlier). A task that doesn't move keeps
  * its dates exactly.
+ *
+ * Date constraints: pushing only later can never break "start/finish no earlier than".
+ * "Must start/finish on" is a fixed date, so that task is pinned like a finished one; "start/finish
+ * no later than" caps how far it is pushed (the date wins over the link, as in MS Project — the
+ * Schedule Review flags hard constraints, R14).
  */
 
 const DAY_MS = 86_400_000;
@@ -93,6 +98,11 @@ export interface RecomputeOptions {
    * successors follow. Use with `onlyFrom` = these tasks.
    */
   moves?: Record<string, { startDate: string; endDate: string }>;
+  /**
+   * Tasks whose dates were just set by hand (an edit, an AI or meeting action): they keep those
+   * dates, and only what follows them may move. Use with `onlyFrom` = these tasks.
+   */
+  keep?: string[];
 }
 
 export interface RecomputeResult {
@@ -111,6 +121,8 @@ interface Node {
   isSummary: boolean;
   isMilestone: boolean;
   pinned: boolean;
+  /** "Start / finish no later than": the latest start or finish allowed */
+  latest: { kind: 'start' | 'finish'; date: Date } | null;
   estimatedDays: number | null;
   start: Date | null;
   end: Date | null;
@@ -133,6 +145,15 @@ function diffDays(a: Date, b: Date): number { return Math.round((a.getTime() - b
  * a defaulted estimatedDays of 1, so trusting the span keeps each task's real length
  * and the re-flow only shifts its start.
  */
+const FIXED_DATE = new Set(['MSO', 'MFO']);
+const NO_LATER_THAN: Record<string, 'start' | 'finish'> = { SNLT: 'start', FNLT: 'finish' };
+
+/** Latest start a "no later than" constraint allows for a task this long (on or before a working day) */
+function latestStart(latest: NonNullable<Node['latest']>, dur: number, isWorking: IsWorking): Date {
+  const onOrBefore = isWorking(latest.date) ? latest.date : shiftWorking(latest.date, -1, isWorking);
+  return latest.kind === 'start' ? onOrBefore : shiftWorking(onOrBefore, -Math.max(0, dur - 1), isWorking);
+}
+
 function durationOf(n: Node, isWorking: IsWorking): number {
   if (n.isMilestone) return 0;
   if (n.start && n.end) {
@@ -165,14 +186,19 @@ export class ScheduleRecomputeService {
     // Task lengths are measured on the calendar they were planned with
     const lengthCalendar: IsWorking = opts.calendar?.wasWorking ?? isWorking;
     const respan = !!opts.respan;
+    const keep = new Set(opts.keep ?? []);
     const nodes = new Map<string, Node>();
     for (const t of tasks) {
+      const constraint = String(t.constraintType || 'ASAP').toUpperCase();
+      const constraintDate = parse(t.constraintDate as string | null | undefined);
       nodes.set(t.id, {
         id: t.id,
         name: t.name,
         isSummary: !!t.isSummary,
         isMilestone: !!t.isMilestone,
-        pinned: t.status === 'completed' || !!t.actualStartDate || !!t.actualEndDate,
+        pinned: t.status === 'completed' || !!t.actualStartDate || !!t.actualEndDate || keep.has(t.id)
+          || (FIXED_DATE.has(constraint) && !!constraintDate),
+        latest: NO_LATER_THAN[constraint] && constraintDate ? { kind: NO_LATER_THAN[constraint], date: constraintDate } : null,
         estimatedDays: t.estimatedDays ?? null,
         start: parse(t.startDate),
         end: parse(t.endDate),
@@ -239,6 +265,11 @@ export class ScheduleRecomputeService {
       else if (required) ns = required;
       else ns = cur;
       if (!ns) continue; // nothing to anchor from
+      // "No later than": pushed at most to the latest start allowed (never pulled before where it is)
+      if (n.latest) {
+        const cap = latestStart(n.latest, dur, isWorking);
+        if (ns > cap) ns = cur && cur > cap ? cur : cap;
+      }
       // Not pushed: keep its dates exactly as they are (unless re-spanning to a new calendar)
       if (!respan && cur && n.end && ns.getTime() === cur.getTime()) {
         if (mv) { newStart.set(id, mv.start); newEnd.set(id, mv.end); }

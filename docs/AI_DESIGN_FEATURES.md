@@ -139,14 +139,14 @@ AI-driven pattern recognition across projects with mitigation suggestions.
 ## 6. Task Prioritization
 
 **Service:** `TaskPrioritizationService` (`TaskPrioritizationService.ts`)
-**Endpoint:** `POST /api/task-prioritization/:projectId/:scheduleId`
+**Endpoints:** `GET /api/v1/task-prioritization/:projectId/:scheduleId/prioritize` (the worked-out ranking — no AI, for anyone who can see the plan); `POST /api/v1/task-prioritization/:projectId/:scheduleId/prioritize/ai` (the project's PM presses "Refine with AI": write access, AI plan, 20 per 10 minutes)
 
-AI-ranked task importance combining algorithmic scoring with Claude analysis.
+Task importance from algorithmic scoring; Claude refines it only on request (since 2026-10-10 — opening the panel used to call the AI every time, for viewers too). The AI sees the top 40 tasks, sent once in compact form, and its answer is reused for 30 minutes.
 
 **Capabilities:**
 - Gathers task data, critical path results, and delay detection
 - Algorithmic scoring based on: critical path membership, delay severity, dependency count, float/slack
-- Claude provides qualitative AI reasoning for each priority assignment
+- On request, Claude provides qualitative reasoning for the top 40 tasks (the rest keep the worked-out ranking)
 - Priority tiers: urgent (76-100), high (51-75), medium (26-50), low (0-25)
 - Output: prioritized task list with scores, factors, and AI explanations
 - Validated against `PrioritizationAIResponseSchema`
@@ -606,7 +606,7 @@ Agent detects issue
 
 ### Governance Controls
 
-- **KillSwitchService:** In-memory global/agent/project kill switches. All changes audit-logged. Resets to enabled on restart (safe default). API: `POST /api/v1/agent/kill-switch`, `PUT /api/v1/agent/kill-switch/agent/:agentId`, `PUT /api/v1/agent/kill-switch/project/:projectId`
+- **KillSwitchService:** Global/agent/project kill switches saved in the shared table `agent_kill_switch` (migration 133), so the nightly agent run sees them and they survive restarts; if the state can't be read, agents don't run. Project stops are saved per company. Platform admin only. All changes audit-logged. API: `POST /api/v1/agent/kill-switch`, `PUT /api/v1/agent/kill-switch/agent/:agentId`, `PUT /api/v1/agent/kill-switch/project/:projectId`
 - **ProposalRateLimiter:** 4-tier rate limiting prevents alert fatigue. Queries `agent_proposals` table (no new tables needed).
 - **DegradationHandler:** Circuit breakers open after 3 consecutive failures, retry after 1h then 24h. DB latency check via `SELECT 1`. Recommended scan scope: full/reduced/critical_only/none based on infrastructure health.
 - **ConflictResolver:** Expires pending proposals when humans edit targeted entities. Prevents two agents from targeting the same entity in one scan. Batch staleness sweep.

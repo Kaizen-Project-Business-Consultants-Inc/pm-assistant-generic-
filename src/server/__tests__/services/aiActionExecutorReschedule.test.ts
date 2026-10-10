@@ -9,12 +9,12 @@ vi.mock('../../services/ScheduleService', () => ({
   scheduleService: {
     findTaskById: vi.fn(),
     updateTask: vi.fn(),
-    cascadeReschedule: vi.fn(),
     workingDayTest: vi.fn(),
     findAllDownstreamTasks: vi.fn(),
   },
   DependencyValidationError: class extends Error {},
 }));
+vi.mock('../../services/followSuccessors', () => ({ moveSuccessorsAfter: vi.fn() }));
 vi.mock('../../services/UserService', () => ({ userService: {} }));
 vi.mock('../../services/AuditLedgerService', () => ({ auditLedgerService: { append: vi.fn().mockResolvedValue(undefined) } }));
 vi.mock('../../services/PolicyEngineService', () => ({ policyEngineService: { evaluate: vi.fn() } }));
@@ -24,11 +24,13 @@ vi.mock('../../services/KnowledgeBaseService', () => ({ knowledgeBaseService: {}
 
 import { AIActionExecutor } from '../../services/aiActionExecutor';
 import { scheduleService } from '../../services/ScheduleService';
+import { moveSuccessorsAfter } from '../../services/followSuccessors';
 import { weekdaysOnly } from '../../utils/workingDays';
 
 const ss = scheduleService as unknown as Record<string, ReturnType<typeof vi.fn>>;
 const CTX = { userId: 'u1', userRole: 'admin' };
-const day = (s: string) => new Date(`${s}T00:00:00Z`);
+const follow = moveSuccessorsAfter as unknown as ReturnType<typeof vi.fn>;
+const BUILD = { id: 't1', name: 'Build', scheduleId: 's1', startDate: '2026-10-05', endDate: '2026-10-09' };
 
 describe('Mjuzi reschedule tools — working days', () => {
   const executor = new AIActionExecutor() as any;
@@ -36,20 +38,22 @@ describe('Mjuzi reschedule tools — working days', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     ss.workingDayTest.mockResolvedValue(weekdaysOnly);
-    ss.cascadeReschedule.mockResolvedValue({ affectedTasks: [] });
+    follow.mockResolvedValue({ affectedTasks: [] });
     // Mon 5 Oct – Fri 9 Oct 2026: five working days
-    ss.findTaskById.mockResolvedValue({ id: 't1', name: 'Build', scheduleId: 's1', startDate: '2026-10-05', endDate: '2026-10-09' });
+    ss.findTaskById.mockResolvedValue(BUILD);
   });
 
   describe('cascade_reschedule', () => {
-    it('keeps the given start, derives the finish in working days, and cascades through the service', async () => {
-      ss.cascadeReschedule.mockResolvedValue({ affectedTasks: [
+    it('keeps the given start, derives the finish in working days, and successors follow through the shared re-flow', async () => {
+      const saved = { ...BUILD, startDate: '2026-10-08', endDate: '2026-10-14' };
+      ss.updateTask.mockResolvedValue(saved);
+      follow.mockResolvedValue({ affectedTasks: [
         { taskId: 't2', taskName: 'Test', newStartDate: '2026-10-19', newEndDate: '2026-10-20' },
       ] });
       // Start moved to Thu 8 Oct: five working days → Wed 14 Oct (over the weekend)
       const r = await executor.cascadeReschedule({ taskId: 't1', newStartDate: '2026-10-08' }, CTX);
       expect(ss.updateTask).toHaveBeenCalledWith('t1', { startDate: '2026-10-08', endDate: '2026-10-14' });
-      expect(ss.cascadeReschedule).toHaveBeenCalledWith('t1', day('2026-10-09'), day('2026-10-14'));
+      expect(follow).toHaveBeenCalledWith(BUILD, saved);
       expect(ss.findAllDownstreamTasks).not.toHaveBeenCalled(); // no calendar-day shifting of its own
       expect(r.success).toBe(true);
       expect(r.data.affectedTasks).toEqual([{ id: 't2', name: 'Test', newStart: '2026-10-19', newEnd: '2026-10-20' }]);
@@ -72,37 +76,33 @@ describe('Mjuzi reschedule tools — working days', () => {
     it('keeps both given dates as they are', async () => {
       await executor.cascadeReschedule({ taskId: 't1', newStartDate: '2026-10-12', newEndDate: '2026-10-30' }, CTX);
       expect(ss.updateTask).toHaveBeenCalledWith('t1', { startDate: '2026-10-12', endDate: '2026-10-30' });
-      expect(ss.cascadeReschedule).toHaveBeenCalledWith('t1', day('2026-10-09'), day('2026-10-30'));
-    });
-
-    it('does not cascade when the finish is unchanged', async () => {
-      await executor.cascadeReschedule({ taskId: 't1', newStartDate: '2026-10-06', newEndDate: '2026-10-09' }, CTX);
-      expect(ss.cascadeReschedule).not.toHaveBeenCalled();
     });
 
     it('refuses with no dates', async () => {
       const r = await executor.cascadeReschedule({ taskId: 't1' }, CTX);
       expect(r.success).toBe(false);
       expect(ss.updateTask).not.toHaveBeenCalled();
+      expect(follow).not.toHaveBeenCalled();
     });
   });
 
   describe('reschedule_task', () => {
-    it('writes the dates as given, then pushes successors when the finish moved', async () => {
-      ss.updateTask.mockResolvedValue({ id: 't1', name: 'Build', startDate: '2026-10-05', endDate: '2026-10-16' });
-      ss.cascadeReschedule.mockResolvedValue({ affectedTasks: [
+    it('writes the dates as given, then successors that now start too early are pushed', async () => {
+      const saved = { id: 't1', name: 'Build', startDate: '2026-10-05', endDate: '2026-10-16' };
+      ss.updateTask.mockResolvedValue(saved);
+      follow.mockResolvedValue({ affectedTasks: [
         { taskId: 't2', taskName: 'Test', newStartDate: '2026-10-19', newEndDate: '2026-10-20' },
       ] });
       const r = await executor.rescheduleTask({ taskId: 't1', endDate: '2026-10-16' }, CTX);
       expect(ss.updateTask).toHaveBeenCalledWith('t1', { endDate: new Date('2026-10-16') });
-      expect(ss.cascadeReschedule).toHaveBeenCalledWith('t1', day('2026-10-09'), day('2026-10-16'));
+      expect(follow).toHaveBeenCalledWith(BUILD, saved);
       expect(r.summary).toContain('1 downstream task moved');
     });
 
-    it('does not cascade when only the start moved', async () => {
+    it('says nothing about downstream tasks when none had to move', async () => {
       ss.updateTask.mockResolvedValue({ id: 't1', name: 'Build', startDate: '2026-10-06', endDate: '2026-10-09' });
-      await executor.rescheduleTask({ taskId: 't1', startDate: '2026-10-06' }, CTX);
-      expect(ss.cascadeReschedule).not.toHaveBeenCalled();
+      const r = await executor.rescheduleTask({ taskId: 't1', startDate: '2026-10-06' }, CTX);
+      expect(r.summary).not.toContain('downstream');
     });
   });
 });

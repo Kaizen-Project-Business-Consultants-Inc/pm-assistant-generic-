@@ -66,9 +66,15 @@ describe('PUT /bulk/tasks — summaries above the edited tasks roll up', () => {
       return { affectedRows: 1 };
     });
     query.mockImplementation(async (sql: string, params: any[] = []) => {
+      // each edited task's own plan: every task here is in plan s1
+      if (sql.startsWith('SELECT id, schedule_id FROM tasks WHERE id IN')) return params.map((id: string) => ({ id, schedule_id: 's1' }));
       if (sql.startsWith('SELECT DISTINCT parent_task_id')) {
         const ids = params.slice(0, -1);
         return [...new Set(ids.map(id => parentOf[id]).filter(Boolean))].map(p => ({ parent_task_id: p }));
+      }
+      // the outline, read once before a move to refuse "under its own sub-task" (2026-10-09)
+      if (sql.startsWith('SELECT id, parent_task_id FROM tasks WHERE schedule_id IN')) {
+        return Object.entries(parentOf).map(([id, p]) => ({ id, parent_task_id: p }));
       }
       return { affectedRows: params.length - 2 };
     });

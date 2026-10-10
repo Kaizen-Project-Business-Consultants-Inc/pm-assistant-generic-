@@ -10,6 +10,12 @@ vi.mock('../../database/connection', () => ({
   },
 }));
 
+// the emergency stop (saved since 2026-10-10): on unless a test switches it off
+const stop = vi.hoisted(() => ({ allowed: true }));
+vi.mock('../../services/agents/KillSwitchService', () => ({
+  killSwitchService: { canRun: vi.fn(async () => (stop.allowed ? { allowed: true } : { allowed: false, reason: 'Global kill switch is active — all agents disabled' })) },
+}));
+
 vi.mock('../../services/AuditLedgerService', () => ({
   auditLedgerService: {
     append: vi.fn().mockResolvedValue({}),
@@ -159,6 +165,19 @@ describe('AgentRegistry', () => {
       expect(result.output).toEqual({ result: 'done' });
       expect(result.durationMs).toBeGreaterThanOrEqual(0);
       expect(handler).toHaveBeenCalledWith({ value: 'hello' }, expect.objectContaining({ projectId: expect.anything() }));
+    });
+  });
+
+  describe('invoke — emergency stop (saved, reaches every process; 2026-10-10)', () => {
+    it('a stopped switch refuses the run and the handler never starts', async () => {
+      const handler = vi.fn().mockResolvedValue({ result: 'done' });
+      agentRegistry.register(makeCapability({ handler }));
+      stop.allowed = false;
+      const result = await agentRegistry.invoke('test-agent-v1', { value: 'hello' }, ctx);
+      stop.allowed = true;
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/kill switch/i);
+      expect(handler).not.toHaveBeenCalled();
     });
   });
 
