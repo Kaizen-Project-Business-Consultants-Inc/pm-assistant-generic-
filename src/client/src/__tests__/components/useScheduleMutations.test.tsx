@@ -22,10 +22,8 @@ const api = vi.hoisted(() => ({
   createBaseline: vi.fn(),
   expandRecurrence: vi.fn(),
   undoScheduleChange: vi.fn(),
-  restoreTaskDates: vi.fn(),
   bulkUpdateTasks: vi.fn(),
   bulkLinkTasks: vi.fn(),
-  bulkUnlinkTasks: vi.fn(),
   groupTasks: vi.fn(),
   bulkDeleteTasks: vi.fn(),
   checkResourceLoad: vi.fn(),
@@ -69,9 +67,7 @@ beforeEach(() => {
   api.createBaseline.mockResolvedValue({});
   api.expandRecurrence.mockResolvedValue({});
   api.undoScheduleChange.mockResolvedValue({});
-  api.restoreTaskDates.mockResolvedValue({});
   api.bulkUpdateTasks.mockResolvedValue({});
-  api.bulkUnlinkTasks.mockResolvedValue({});
   api.checkResourceLoad.mockResolvedValue({ resourceId: 'r2', resourceName: 'Sam Builder', overWeeks: [] });
 });
 afterEach(() => { vi.restoreAllMocks(); });
@@ -201,19 +197,55 @@ describe('edits with undo', () => {
     expect(result.current.canUndo).toBe(false);
   });
 
-  it('a new predecessor that moved tasks: the toast says so, Undo restores the moved dates', async () => {
-    api.updateTask.mockResolvedValue({ rescheduled: [{ taskId: 'c', oldStart: '2026-03-16', oldEnd: '2026-03-20', newStart: '2026-03-23', newEnd: '2026-03-27' }] });
+  it('a new predecessor that moved tasks: the toast says so, Undo goes through Schedule History (audit M7)', async () => {
+    api.updateTask.mockResolvedValue({ changeId: 'h1', rescheduled: [{ taskId: 'c', oldStart: '2026-03-16', oldEnd: '2026-03-20', newStart: '2026-03-23', newEnd: '2026-03-27' }] });
     const { result } = setup();
     act(() => { result.current.updateTaskWithUndo('c', { dependencies: [{ dependencyId: 'b', dependencyType: 'FS', lagDays: 0 }] }); });
     await flush();
     expect(result.current.undoToast).toBe('Edit Gamma (predecessors) · 1 task moved later');
     expect(result.current.undoDescription).toBe('Edit Gamma (dependencies)');
     invalidated = [];
+    api.updateTask.mockClear();
     await act(async () => { result.current.undo(); });
     await flush();
+    expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'h1');
+    expect(api.updateTask).not.toHaveBeenCalled(); // History puts the old links back with the dates
+    expect(invalidated).toContainEqual(['tasks', 's1']);
+  });
+
+  it('predecessors AND another field in one edit: Undo is an ordinary edit back, not the History entry (review)', async () => {
+    api.updateTask.mockResolvedValue({ changeId: 'h1', rescheduled: [{ taskId: 'c', oldStart: '2026-03-16', oldEnd: '2026-03-20', newStart: '2026-03-23', newEnd: '2026-03-27' }] });
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('c', { dependencies: [{ dependencyId: 'b', dependencyType: 'FS', lagDays: 0 }], name: 'Gamma 2' }); });
+    await flush();
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(api.undoScheduleChange).not.toHaveBeenCalled();
+    expect(api.updateTask).toHaveBeenLastCalledWith('s1', 'c', { dependencies: null, name: 'Gamma' });
+  });
+
+  it('History refuses the undo (plan changed since): the reason is shown, not swallowed', async () => {
+    api.updateTask.mockResolvedValue({ changeId: 'h1', rescheduled: [] });
+    api.undoScheduleChange.mockRejectedValue({ response: { data: { message: 'Only the most recent change can be undone.' } } });
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('c', { dependencies: [{ dependencyId: 'b', dependencyType: 'FS', lagDays: 0 }] }); });
+    await flush();
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(result.current.saveError).toMatch(/^Undo was not done: Only the most recent change can be undone\. Open History/);
+    // nothing was undone, so there is nothing to redo
+    expect(result.current.canRedo).toBe(false);
+  });
+
+  it('a new predecessor that moved nothing: Undo is an ordinary edit back to the old predecessors', async () => {
+    api.updateTask.mockResolvedValue({ changeId: null, rescheduled: [] });
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('c', { dependencies: [{ dependencyId: 'b', dependencyType: 'FS', lagDays: 0 }] }); });
+    await flush();
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(api.undoScheduleChange).not.toHaveBeenCalled();
     expect(api.updateTask).toHaveBeenLastCalledWith('s1', 'c', { dependencies: null });
-    expect(api.restoreTaskDates).toHaveBeenCalledWith('s1', [{ taskId: 'c', startDate: '2026-03-16', endDate: '2026-03-20' }]);
-    expect(invalidated).toEqual([['tasks', 's1'], ['tasks', 's1']]);
   });
 
   it('a new assignee who would be over 100% gets a warning', async () => {
@@ -272,8 +304,8 @@ describe('edits with undo', () => {
     expect(invalidated).toEqual([['tasks', 's1'], ['tasks', 's1']]);
   });
 
-  it('bulk link: chain by row number; Undo unlinks and restores moved dates; errors are the same', async () => {
-    api.bulkLinkTasks.mockResolvedValue({ added: [{ taskId: 'b', dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }], moved: [{ taskId: 'b', oldStart: '2026-03-09', oldEnd: '2026-03-13' }] });
+  it('bulk link: chain by row number; Undo goes through Schedule History; errors are the same', async () => {
+    api.bulkLinkTasks.mockResolvedValue({ added: [{ taskId: 'b', dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }], moved: [{ taskId: 'b', oldStart: '2026-03-09', oldEnd: '2026-03-13' }], changeId: 'L1' });
     const { result } = setup();
     expect(result.current.rowNumbers.get('a')).toBe(1);
     let msg = '';
@@ -282,14 +314,24 @@ describe('edits with undo', () => {
     expect(msg).toBe('Linked rows 1 → 2 in order · 1 task moved later');
     await act(async () => { result.current.undo(); });
     await flush();
-    expect(api.bulkUnlinkTasks).toHaveBeenCalledWith('s1', [{ taskId: 'b', dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }]);
-    expect(api.restoreTaskDates).toHaveBeenCalledWith('s1', [{ taskId: 'b', startDate: '2026-03-09', endDate: '2026-03-13' }]);
+    expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'L1');
     api.bulkLinkTasks.mockResolvedValue({ added: [], moved: [] });
     await expect(result.current.handleBulkLink('chain', ['a', 'b'])).rejects.toThrow('Those tasks are already linked — nothing was added');
     api.bulkLinkTasks.mockRejectedValue({ response: { data: { message: 'Loop' } } });
     await expect(result.current.handleBulkLink('chain', ['a', 'b'])).rejects.toThrow('Loop');
     api.bulkLinkTasks.mockRejectedValue(new Error('net'));
     await expect(result.current.handleBulkLink('chain', ['a', 'b'])).rejects.toThrow('Linking failed. Nothing was changed.');
+  });
+
+  it('bulk link that History could not record: Ctrl+Z says so instead of doing nothing (review)', async () => {
+    api.bulkLinkTasks.mockResolvedValue({ added: [{ taskId: 'b', dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }], moved: [], changeId: null });
+    const { result } = setup();
+    await act(async () => { await result.current.handleBulkLink('chain', ['a', 'b']); });
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(api.undoScheduleChange).not.toHaveBeenCalled();
+    expect(result.current.saveError).toMatch(/could not be undone/);
+    expect(result.current.canRedo).toBe(false);
   });
 
   it('group: Undo goes through Schedule History', async () => {

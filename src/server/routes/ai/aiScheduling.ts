@@ -9,6 +9,11 @@ import {
 } from '../../services/aiSchedulingClaude';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
+
+// No screen or MCP tool calls these four (API keys only). Each is an AI call on project data, so
+// each person gets at most 10 of them per 10 minutes, shared (audit 2026-10-10 M3).
+const aiSchedulingLimit = heavyActionLimit('ai-scheduling', 10);
 
 const analyzeProjectSchema = z.object({
   projectDescription: z.string().min(1),
@@ -34,7 +39,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Analyze project and generate AI task breakdown
   fastify.post('/analyze-project', {
-    preHandler: [requireScope('write'), async (req: FastifyRequest, reply: FastifyReply) => {
+    preHandler: [requireScope('write'), aiSchedulingLimit, async (req: FastifyRequest, reply: FastifyReply) => {
       // Only when it's about an existing project (describing a new one needs no project)
       const projectId = (req.body as { projectId?: string } | undefined)?.projectId;
       if (!projectId) return;
@@ -69,7 +74,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Suggest task dependencies
   fastify.post('/suggest-dependencies', {
-    preHandler: [requireScope('write')],
+    preHandler: [requireScope('write'), aiSchedulingLimit],
     schema: {
       description: 'Suggest task dependencies',
       tags: ['ai-scheduling'],
@@ -98,7 +103,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
   // Optimize schedule
   fastify.post('/optimize-schedule', {
     // AI suggestions on project data are for the project's PM only (user rule, 2026-09-30)
-    preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]) })],
+    preHandler: [requireScope('write'), requireProjectAccess('manager', { resolve: async (req) => projectsOfSchedules([(req.body as { scheduleId?: string } | undefined)?.scheduleId]) }), aiSchedulingLimit],
     schema: {
       description: 'Optimize existing schedule using AI',
       tags: ['ai-scheduling'],
@@ -127,7 +132,7 @@ export async function aiSchedulingRoutes(fastify: FastifyInstance) {
 
   // Get AI insights for project
   fastify.get('/insights/:projectId', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer'), aiSchedulingLimit],
     schema: {
       description: 'Get AI insights for project',
       tags: ['ai-scheduling'],

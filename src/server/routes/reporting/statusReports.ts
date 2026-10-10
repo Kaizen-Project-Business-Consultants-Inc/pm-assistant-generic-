@@ -17,6 +17,7 @@ import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 import crypto from 'crypto';
 import { clientReportContext } from '../../utils/clientReportContext';
+import { projectService } from '../../services/ProjectService';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const generateSchema = z.object({
@@ -165,31 +166,29 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // Email a pre-rendered report (allows editing before sending)
+  // Email a pre-rendered report (allows editing before sending). Always a project's report, sent by
+  // that project's Manager/Owner, to at most 20 people, a few times an hour, under the project's
+  // real name. It used to take any HTML with no project, no recipient cap and no limit, from the
+  // Kovarti address: a mail relay for anyone with write rights (2026-10-09 audit M10).
   fastify.post('/email', {
-    preHandler: [requireScope('write'), requirePaidTier],
+    preHandler: [requireScope('write'), requirePaidTier, heavyActionLimit('status-report-email', 20, 60 * 60_000)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const schema = z.object({
-        html: z.string().min(1),
-        projectName: z.string().min(1),
-        recipients: z.array(z.string().email()).min(1),
-        // Optional so existing callers keep working; when present it lets the
-        // mail carry a portal link the recipient can actually open.
-        projectId: z.string().optional(),
+        html: z.string().min(1).max(2_000_000, 'The report is too large to email.'),
+        projectName: z.string().min(1).max(200),
+        recipients: z.array(z.string().email()).min(1).max(20, 'Send the report to at most 20 people at a time.'),
+        projectId: z.string({ message: 'Say which project this report is for (projectId).' }).min(1),
       });
       const body = schema.parse(request.body);
-      // Emailing a project's status report to its stakeholders: that project's Manager/Owner
-      if (body.projectId) {
-        const access = await checkProjectRole(request, body.projectId, 'manager');
-        if (!access.ok) return reply.status(access.status).send(access.body);
-      }
+      const access = await checkProjectRole(request, body.projectId, 'manager');
+      if (!access.ok) return reply.status(access.status).send(access.body);
+      const project = await projectService.findById(body.projectId);
+      if (!project) return reply.status(404).send({ error: 'Not found', message: 'That project was not found.' });
       // These recipients are typed in by hand, so they are routinely the
       // consultant's client rather than a colleague. Address them as such.
-      const clientContext = body.projectId
-        ? await clientReportContext(body.projectId, request.user?.userId)
-        : {};
-      await emailService.sendStatusReportEmail(body.recipients, body.projectName, body.html, clientContext);
+      const clientContext = await clientReportContext(body.projectId, request.user?.userId);
+      await emailService.sendStatusReportEmail(body.recipients, project.name, body.html, clientContext);
       return { success: true };
     } catch (error: any) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });

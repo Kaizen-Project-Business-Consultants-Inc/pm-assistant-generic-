@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
-import { requireScope } from '../../middleware/requireScope';
+import { keyChangesNeed, requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import logger from '../../utils/logger';
@@ -61,10 +61,7 @@ const userPrefsSchema = z.object({
 const ownSettings = [requireScope('read')];
 
 /** Changing your profile through a key needs a key that may write; a signed-in person passes */
-const keyMayWrite = requireScope('write');
-async function keyNeedsWrite(request: FastifyRequest, reply: FastifyReply) {
-  if (request.apiKeyScopes) return keyMayWrite(request, reply);
-}
+const keyNeedsWrite = keyChangesNeed('write');
 
 type ProfileInput = z.infer<typeof profileUpdateSchema>;
 

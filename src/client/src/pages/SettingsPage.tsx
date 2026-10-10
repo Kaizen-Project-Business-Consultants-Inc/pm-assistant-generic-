@@ -60,7 +60,7 @@ export const SettingsPage: React.FC = () => {
   // Rates are pay information: the same people who manage the team manage the rate card
   // Support visits: the company owner (or PMO) sees every time Kovarti support looked in
   const canSeeSupportVisits = !!user && (user.organization?.isOwner === true || user.role === 'pmo');
-  // Sample project: the company owner or an admin/PMO loads and removes it (same rule as the server)
+  // Sample project: the company owner or a PMO loads and removes it (same rule as the server)
   const canManageSample = !!user && !user.isGuest && (user.organization?.isOwner === true || ['admin', 'pmo'].includes(user.role));
   const tabs = ALL_TABS.filter(t =>
     t.id === 'support-visits' ? canSeeSupportVisits

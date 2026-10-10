@@ -20,7 +20,8 @@ import type { CostTimeline } from './costTimeline';
  *  - % complete = approved ÷ planned hours, stopping at 99% until the PM marks it done (tasks
  *    with no planned hours keep the PM's %); a task not started moves to in progress; the actual
  *    start is the first day worked;
- * and each project's money spent = its tasks' labour + its other costs + its expenses (2026-10-03:
+ * and each project's money spent = its approved labour (by the entries' own project, so a deleted task's
+ * hours still count) + its other costs + its expenses (2026-10-03:
  * expenses used to be left out of "spent" everywhere but Financials, so EVM, the dashboard and the
  * portfolio understated spend). Recomputed from the approved hours each time (not added on), so
  * running it twice changes nothing.
@@ -78,7 +79,8 @@ export class ApprovedTimeService {
     const entriesOf = groupBy(entries, (e: any) => e.task_id);
     const bookingsOf = groupBy(bookings, b => b.taskId);
 
-    const parents = new Set<string>();
+    /** summary id → its plan, and did a task under it get a plan edit (a new % or status)? */
+    const parents = new Map<string, { scheduleId: string; planEdit: boolean }>();
     const projects = new Set<string>();
     for (const t of tasks) {
       const mine = entriesOf.get(t.id) ?? [];
@@ -96,6 +98,10 @@ export class ApprovedTimeService {
       const progress = !done && planned > 0 ? Math.min(99, Math.round((hours / planned) * 100)) : null;
       const status = !done && hours > 0 && (t.status === 'pending' || t.status === 'not_started') ? 'in_progress' : null;
 
+      // Costs and hours alone are not a plan edit: they keep the task's stamp (audit 2026-10-09: every
+      // approval made the newest Schedule History change "not undoable"). A new % or status is a plan
+      // change and stamps it as usual.
+      const planEdit = (progress != null && progress !== Number(t.progress_percentage)) || (status != null && status !== t.status);
       // SET runs left to right: other_cost is fixed from the old figures before labour changes
       // eslint-disable-next-line no-await-in-loop -- the tasks of one approval (a person's week: a handful), each with figures of its own
       await databaseService.query(
@@ -105,16 +111,20 @@ export class ApprovedTimeService {
            actual_cost = CASE WHEN ? = 0 THEN NULL ELSE ROUND(?, 2) END,
            progress_percentage = COALESCE(?, progress_percentage),
            status = COALESCE(?, status),
-           actual_start_date = COALESCE(actual_start_date, ?)
+           actual_start_date = COALESCE(actual_start_date, ?)${planEdit ? '' : ', updated_at = updated_at'}
          WHERE id = ?`,
         [Math.round(hours * 100) / 100, money(cost), cost, money(cost), progress, status, firstDay, t.id]);
-      if (t.parent_task_id) parents.add(t.parent_task_id);
+      if (t.parent_task_id) parents.set(t.parent_task_id, { scheduleId: t.schedule_id, planEdit: (parents.get(t.parent_task_id)?.planEdit ?? false) || planEdit });
       projects.add(t.project_id);
     }
 
-    for (const pid of parents) {
+    for (const [pid, p] of parents) {
+      // Quiet (the summary keeps its stamp) unless a task under it got a new % or status: hours and
+      // cost alone are not a plan edit, so they must not make History's newest change "not
+      // undoable" through the summary either (review 2026-10-10). The plan's calendar is passed in.
       // eslint-disable-next-line no-await-in-loop -- roll-ups walk up to shared parent rows; running them together would race on the same summary rows
-      await scheduleService.recomputeParentRollup(pid).catch(err => logger.warn('[ApprovedTime] roll-up failed', { pid, error: err?.message }));
+      await scheduleService.recomputeParentRollup(pid, 0, { quiet: !p.planEdit, isWorking: calOf(p.scheduleId) })
+        .catch(err => logger.warn('[ApprovedTime] roll-up failed', { pid, error: err?.message }));
     }
     // eslint-disable-next-line no-await-in-loop -- one approved timesheet touches a handful of projects
     for (const projectId of projects) await this.applyToProject(projectId);
@@ -134,33 +144,44 @@ export class ApprovedTimeService {
     return planned > 0 ? Math.min(99, Math.round((Number(row?.total ?? 0) / planned) * 100)) : null;
   }
 
-  /** A project's money spent = its tasks' labour + its other costs + its expenses. Run after
+  /** A project's money spent = its approved labour + its other costs + its expenses. Run after
    *  approvals and whenever an expense is added, changed or removed (ExpenseService). */
   async applyToProject(projectId: string): Promise<void> {
+    // Labour = every approved hour of the project at its rate, read by the entry's own project
+    // (audit 2026-10-09, M3): it was the sum of the tasks' labour, so deleting a task with approved
+    // hours dropped real spend at the next approval — and EVM's actual cost dropped at once.
+    const labour = [...(await this.labourByDay(projectId)).values()].reduce((s, n) => s + n, 0);
     // SET runs left to right: other costs are fixed (once) from the old figures first
     await databaseService.query(
       `UPDATE projects p SET
          p.other_costs = COALESCE(p.other_costs, GREATEST(COALESCE(p.budget_spent, 0) - p.labour_cost
                            - (SELECT COALESCE(SUM(e.amount), 0) FROM project_expenses e WHERE e.project_id = p.id), 0)),
-         p.labour_cost = (SELECT COALESCE(SUM(t.labour_cost), 0) FROM tasks t JOIN schedules s ON s.id = t.schedule_id
-                           WHERE s.project_id = p.id AND COALESCE(t.is_summary, 0) = 0),
+         p.labour_cost = ?,
          p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost
                            + (SELECT COALESCE(SUM(e.amount), 0) FROM project_expenses e WHERE e.project_id = p.id), 2)
-       WHERE p.id = ?`, [projectId]);
+       WHERE p.id = ?`, [money(labour), projectId]);
     // The project is cached for a few minutes; without this, screens showed the old spend
     await projectService.invalidateCache(projectId);
   }
 
-  /** The project's actual cost by day: approved labour on the day worked, expenses on their date, other costs from the start */
-  async costTimeline(projectId: string): Promise<CostTimeline> {
+  /**
+   * The project's approved labour by day worked (hours at the rate on that day). By the entry's own
+   * project, so hours on a task that was later deleted still count — the money was spent.
+   */
+  private async labourByDay(projectId: string): Promise<Map<string, number>> {
     const entries = await databaseService.query<any>(
-      `SELECT te.user_id, DATE_FORMAT(te.date, '%Y-%m-%d') AS date, te.hours, te.rate_type
-         FROM time_entries te JOIN tasks t ON t.id = te.task_id JOIN schedules s ON s.id = t.schedule_id
-        WHERE te.status = 'approved' AND s.project_id = ?`, [projectId]);
+      `SELECT user_id, DATE_FORMAT(date, '%Y-%m-%d') AS date, hours, rate_type
+         FROM time_entries WHERE project_id = ? AND status = 'approved'`, [projectId]);
     const personOf = await ratedPeople([...new Set(entries.map((e: any) => e.user_id as string))]);
     const rateCard = await rateCardService.listSafe();
     const byDay = new Map<string, number>();
     for (const e of entries) byDay.set(e.date, (byDay.get(e.date) ?? 0) + entryCost(e, personOf.get(e.user_id), rateCard));
+    return byDay;
+  }
+
+  /** The project's actual cost by day: approved labour on the day worked, expenses on their date, other costs from the start */
+  async costTimeline(projectId: string): Promise<CostTimeline> {
+    const byDay = await this.labourByDay(projectId);
     const expenses = await databaseService.query<any>(
       `SELECT DATE_FORMAT(date, '%Y-%m-%d') AS date, SUM(amount) AS amount FROM project_expenses WHERE project_id = ? GROUP BY date`, [projectId]);
     for (const x of expenses) byDay.set(x.date, (byDay.get(x.date) ?? 0) + Number(x.amount));

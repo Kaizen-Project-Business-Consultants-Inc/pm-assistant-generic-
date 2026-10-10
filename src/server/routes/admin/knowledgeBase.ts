@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { knowledgeBaseService } from '../../services/KnowledgeBaseService';
 import { knowledgeBaseRepository } from '../../database/KnowledgeBaseRepository';
 
@@ -16,6 +17,8 @@ function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
 
 export async function knowledgeBaseRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // POST /reindex — Rebuild knowledge base embeddings from doc files
   fastify.post('/reindex', { preHandler: [heavyActionLimit('kb-reindex', 5)] }, async (request: FastifyRequest, reply: FastifyReply) => {

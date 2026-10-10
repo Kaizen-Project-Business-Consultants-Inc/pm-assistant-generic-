@@ -66,6 +66,15 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
     expect(budgetOf('t-gen')).toBe(2800);
   });
 
+  it('a booking that covers only a weekend prices nothing: the budget stays empty, not 0 (audit 2026-10-09)', async () => {
+    findEffectiveAssignments.mockResolvedValue([
+      { resourceId: 'r-peter', taskId: 't-gen', scheduleId: 's1', hoursPerWeek: 40, startDate: '2026-10-17', endDate: '2026-10-18' },
+    ]);
+    await taskBudgetService.recalcSchedule('s1');
+    expect(budgetOf('t-gen')).toBeUndefined(); // was null and stays null: nothing written
+    expect(budgetOf('t-api')).toBeNull();
+  });
+
   it('a task with nobody booked has no budget (a typed one is cleared)', async () => {
     await taskBudgetService.recalcSchedule('s1');
     expect(budgetOf('t-none')).toBeNull();
@@ -73,7 +82,7 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
 
   it('rolls up the summary task when a budget changed; leaves unchanged tasks alone', async () => {
     await taskBudgetService.recalcSchedule('s1');
-    expect(recomputeParentRollup).toHaveBeenCalledWith('phase', 0, { quiet: true });
+    expect(recomputeParentRollup).toHaveBeenCalledWith('phase', 0, expect.objectContaining({ quiet: true }));
     vi.clearAllMocks(); db();
     query.mockImplementation((sql: string) => sql.includes('FROM tasks WHERE schedule_id')
       ? Promise.resolve([{ id: 't-api', parent_task_id: 'phase', budget_allocated: 2000 }])

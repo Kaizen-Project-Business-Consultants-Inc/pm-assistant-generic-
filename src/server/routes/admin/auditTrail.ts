@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { auditLedgerService } from '../../services/AuditLedgerService';
 import { authMiddleware } from '../../middleware/auth';
-import { requireScope } from '../../middleware/requireScope';
+import { requireScope, keyChangesNeed } from '../../middleware/requireScope';
 import { requireProjectAccess, checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
@@ -12,6 +12,8 @@ const VERIFY_ALL_ROLES = ['pmo'];
 
 export async function auditTrailRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/audit/verify — chain integrity check
   fastify.get('/verify', {

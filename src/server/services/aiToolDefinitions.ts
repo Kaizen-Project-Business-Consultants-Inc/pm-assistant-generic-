@@ -2,6 +2,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { PROJECT_TYPES } from '../constants/projectTypes';
+import { TASK_FILTER_PROPERTIES } from './aiToolLimits';
 
 // Claude tool definitions for AI action execution
 // These define what the AI can do in the PM system
@@ -115,7 +116,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_project_details',
-    description: 'Get detailed information about a specific project including its schedules and tasks.',
+    description: 'Get detailed information about a specific project including its schedules and tasks (at most 200 tasks across its plans; each plan gives its task count).',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -126,11 +127,12 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'list_tasks',
-    description: 'List all tasks in a project schedule. Use this to find task IDs when the user refers to tasks by name.',
+    description: 'List the tasks in a project schedule. Use this to find task IDs when the user refers to tasks by name — pass nameContains to find a task by name. Returns at most 200 tasks (the summary says how many matched); in a big plan, narrow it with nameContains, status or assignedTo.',
     input_schema: {
       type: 'object' as const,
       properties: {
         scheduleId: { type: 'string', description: 'The schedule ID to list tasks for' },
+        ...TASK_FILTER_PROPERTIES,
       },
       required: ['scheduleId'],
     },
@@ -231,7 +233,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_overdue_tasks',
-    description: 'Get all tasks across all projects that are past their due date and not yet completed. Use for questions like "what tasks are overdue?" or "what is past due?"',
+    description: 'Get all tasks across all projects that are past their due date and not yet completed. Use for questions like "what tasks are overdue?" or "what is past due?" Returns the 200 most overdue at most.',
     input_schema: {
       type: 'object' as const,
       properties: {},

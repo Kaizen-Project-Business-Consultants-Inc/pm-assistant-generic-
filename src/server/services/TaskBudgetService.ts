@@ -3,7 +3,7 @@ import { resourceService } from './ResourceService';
 import { scheduleService } from './ScheduleService';
 import { rateCardService, ratesOn } from './RateCardService';
 import { calendarsFor } from './weeklyLoad';
-import { workingDaysBetween } from '../utils/workingDays';
+import { workingDaysBetween, onOrAfterWorking, utcDay, ymdOf } from '../utils/workingDays';
 import logger from '../utils/logger';
 import { planChanged } from './domainEvents';
 import { chunksOf } from '../utils/chunksOf';
@@ -43,18 +43,24 @@ export class TaskBudgetService {
     const writes: Array<{ id: string; budget: number | null }> = [];
     const bookingsByTask = new Map<string, typeof bookings>();
     for (const b of bookings) bookingsByTask.set(b.taskId, [...(bookingsByTask.get(b.taskId) ?? []), b]);
-    for (const t of tasks) {
+    /** A task's bookings priced: hours on its working days × the person's rate; null when none could be priced */
+    const priceOf = (list: typeof bookings): number | null => {
       let cost = 0;
       let priced = false;
-      for (const b of bookingsByTask.get(t.id) ?? []) {
+      for (const b of list) {
         const person = byId.get(b.resourceId);
-        if (!person) continue;
-        const rate = ratesOn(person, b.startDate.slice(0, 10), rateCard).standard;
+        // A booking with no working day in it plans no hours: it prices nothing and does not make
+        // the budget "0" instead of empty; the rate is the one on its first WORKING day (audit 2026-10-09)
+        const days = person ? workingDaysBetween(b.startDate, b.endDate, isWorking) : 0;
+        const rate = days > 0 ? ratesOn(person!, ymdOf(onOrAfterWorking(utcDay(b.startDate), isWorking)), rateCard).standard : null;
         if (!rate) continue;
-        cost += (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, isWorking) * rate;
+        cost += (b.hoursPerWeek / 5) * days * rate;
         priced = true;
       }
-      const budget = priced ? Math.round(cost * 100) / 100 : null;
+      return priced ? Math.round(cost * 100) / 100 : null;
+    };
+    for (const t of tasks) {
+      const budget = priceOf(bookingsByTask.get(t.id) ?? []);
       const before = t.budget_allocated != null ? Number(t.budget_allocated) : null;
       if (budget !== before) {
         writes.push({ id: t.id, budget });
@@ -75,7 +81,7 @@ export class TaskBudgetService {
     const changed = writes.length;
     for (const pid of parents) {
       // eslint-disable-next-line no-await-in-loop -- roll-ups walk up to shared parent rows; running them together would race on the same summary rows
-      await scheduleService.recomputeParentRollup(pid, 0, { quiet: true }).catch(err => logger.warn('[TaskBudget] roll-up failed', { pid, error: err?.message }));
+      await scheduleService.recomputeParentRollup(pid, 0, { quiet: true, isWorking }).catch(err => logger.warn('[TaskBudget] roll-up failed', { pid, error: err?.message }));
     }
     return changed;
   }

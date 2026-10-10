@@ -12,6 +12,43 @@ import type { ChangeRequest } from './ApprovalWorkflowService';
 // today is no longer 'late' from the previous evening.
 import { isOverdue } from '../utils/calendarDate';
 
+/**
+ * Most task lines one project prompt carries (audit 2026-10-10 H1). A 5,000-task plan listed in
+ * full is about 100k tokens on every call; above this the prompt lists open tasks only, in plan
+ * order, up to the limit, and says how many there are.
+ */
+export const PROMPT_TASK_LIMIT = 300;
+/** Mjuzi's chat resends its system prompt on every turn of a tool loop, so it carries fewer */
+export const CHAT_PROMPT_TASK_LIMIT = 100;
+const CLOSED_TASK_STATUSES = new Set(['completed', 'cancelled']);
+
+/** The plans and their task lines for a prompt, at most `maxTasks` lines (see PROMPT_TASK_LIMIT) */
+function taskListing(schedules: ProjectContext['schedules'], maxTasks: number): string {
+  const total = schedules.reduce((n, sched) => n + sched.tasks.length, 0);
+  const capped = total > maxTasks;
+  let room = maxTasks;
+  let s = `\nSchedules (${schedules.length}):\n`;
+  for (const sched of schedules) {
+    // Over the limit only open tasks are listed, so each plan says how many of its tasks are open
+    // eslint-disable-next-line no-restricted-syntax -- each plan's own tasks, each looked at once
+    const shown = capped ? sched.tasks.filter((t) => !CLOSED_TASK_STATUSES.has(t.status)) : sched.tasks;
+    s += `  - ${sched.name} (${sched.startDate} to ${sched.endDate})\n`;
+    s += `    Tasks (${sched.tasks.length}${capped ? `, ${shown.length} open` : ''}):\n`;
+    const take = Math.min(shown.length, Math.max(0, room));
+    for (const task of shown.slice(0, take)) s += taskLine(task);
+    room -= take;
+  }
+  if (capped) s += `\n(Only ${maxTasks - room} of ${total} tasks are listed: open tasks in plan order. The others are not shown.)\n`;
+  return s;
+}
+
+function taskLine(task: ProjectContext['schedules'][number]['tasks'][number]): string {
+  let line = `      * ${task.name} [${task.status}] priority=${task.priority}`;
+  if (task.estimatedDays) line += ` est=${task.estimatedDays}d`;
+  if (task.progressPercentage) line += ` progress=${task.progressPercentage}%`;
+  return `${line}\n`;
+}
+
 export interface ProjectContext {
   project: {
     id: string;
@@ -185,7 +222,11 @@ export class AIContextBuilder {
     };
   }
 
-  toPromptString(ctx: ProjectContext): string {
+  /**
+   * The project with its tasks, one line each — at most `maxTasks` lines. Over the limit only
+   * open tasks are listed (plan order) and the prompt says how many were left out.
+   */
+  toPromptString(ctx: ProjectContext, maxTasks = PROMPT_TASK_LIMIT): string {
     let s = `Project: ${sanitizeForPrompt(ctx.project.name)}\n`;
     s += `Type: ${ctx.project.projectType}`;
     if (ctx.project.methodology) s += ` | Methodology: ${ctx.project.methodology}`;
@@ -196,19 +237,7 @@ export class AIContextBuilder {
     if (ctx.project.completionPercentage !== undefined) s += `Completion: ${ctx.project.completionPercentage}%\n`;
     if (ctx.project.location) s += `Location: ${ctx.project.location}\n`;
 
-    if (ctx.schedules.length > 0) {
-      s += `\nSchedules (${ctx.schedules.length}):\n`;
-      for (const sched of ctx.schedules) {
-        s += `  - ${sched.name} (${sched.startDate} to ${sched.endDate})\n`;
-        s += `    Tasks (${sched.tasks.length}):\n`;
-        for (const task of sched.tasks) {
-          s += `      * ${task.name} [${task.status}] priority=${task.priority}`;
-          if (task.estimatedDays) s += ` est=${task.estimatedDays}d`;
-          if (task.progressPercentage) s += ` progress=${task.progressPercentage}%`;
-          s += '\n';
-        }
-      }
-    }
+    if (ctx.schedules.length > 0) s += taskListing(ctx.schedules, maxTasks);
 
     return s;
   }

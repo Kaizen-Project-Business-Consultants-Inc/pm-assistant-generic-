@@ -17,7 +17,7 @@ async function canManageSample(request: FastifyRequest): Promise<boolean> {
 
 async function ownerOnly(request: FastifyRequest, reply: FastifyReply) {
   if (await canManageSample(request)) return;
-  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner or an admin can load or remove the sample project.' });
+  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner or a PMO can load or remove the sample project.' });
 }
 
 /**

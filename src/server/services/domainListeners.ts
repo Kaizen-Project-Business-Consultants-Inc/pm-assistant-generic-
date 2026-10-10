@@ -10,6 +10,8 @@ import { dagWorkflowService } from './DagWorkflowService';
 import { scheduleService } from './ScheduleService';
 import { approvedTimeService } from './ApprovedTimeService';
 import { registerApprovedProgress } from './approvedProgress';
+import { calendarService } from './CalendarService';
+import { setProjectCalendarProvider } from '../database/bookingDates';
 import logger from '../utils/logger';
 
 /**
@@ -60,6 +62,9 @@ export function registerDomainListeners(): void {
 
   // A reopened task's % from its approved hours: ScheduleService asks, ApprovedTimeService answers (step 1F)
   registerApprovedProgress(taskId => approvedTimeService.progressFor(taskId));
+
+  // Hours bookings that follow a moved task step over the project's days off (audit 2026-10-09 M1)
+  setProjectCalendarProvider(projectId => calendarService.workingDayChecker(projectId));
 }
 
 /** Test hook */

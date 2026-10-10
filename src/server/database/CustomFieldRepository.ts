@@ -120,11 +120,26 @@ export class CustomFieldRepository extends BaseRepository<CustomField> {
     return rows.map(valueRowToDTO);
   }
 
-  /** Which of these fields exist */
-  async existingFieldIds(fieldIds: string[]): Promise<Set<string>> {
-    if (fieldIds.length === 0) return new Set();
-    const rows = await this.queryRaw(`SELECT id FROM custom_fields WHERE id IN (${fieldIds.map(() => '?').join(',')})`, fieldIds);
-    return new Set(rows.map((r: any) => r.id));
+  /** These fields' project and kind of item, by id (a missing field is simply absent) */
+  async fieldOwners(fieldIds: string[]): Promise<Map<string, { projectId: string; entityType: string }>> {
+    if (fieldIds.length === 0) return new Map();
+    const rows = await this.queryRaw(
+      `SELECT id, project_id, entity_type FROM custom_fields WHERE id IN (${fieldIds.map(() => '?').join(',')})`, fieldIds);
+    return new Map(rows.map((r: any) => [r.id, { projectId: r.project_id, entityType: r.entity_type }]));
+  }
+
+  /** The project a task or project item belongs to, or null (unknown kind, or not found) */
+  async itemProjectId(entityType: string, entityId: string): Promise<string | null> {
+    if (entityType === 'project') {
+      const rows = await this.queryRaw('SELECT id FROM projects WHERE id = ? LIMIT 1', [entityId]);
+      return rows[0]?.id ?? null;
+    }
+    if (entityType === 'task') {
+      const rows = await this.queryRaw(
+        'SELECT s.project_id FROM tasks t JOIN schedules s ON s.id = t.schedule_id WHERE t.id = ? LIMIT 1', [entityId]);
+      return rows[0]?.project_id ?? null;
+    }
+    return null;
   }
 
   /**

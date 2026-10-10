@@ -6,6 +6,7 @@ import { supportSessionService, SUPPORT_COOKIE } from '../../services/SupportSes
 import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { authMiddleware } from '../../middleware/auth';
+import { signedInOnly } from '../../middleware/requireScope';
 import { guestExpired, GUEST_EXPIRED_MESSAGE } from '../../middleware/guestGuard';
 import { permissionRole } from '../../utils/companyOwner';
 import { userService } from '../../services/UserService';
@@ -929,7 +930,7 @@ export async function authRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post('/change-password', {
-    preHandler: [authMiddleware],
+    preHandler: [authMiddleware, signedInOnly],
     schema: { description: 'Change password', tags: ['auth'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -977,7 +978,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
   // DELETE /delete-account — permanently delete own account
   fastify.delete('/delete-account', {
-    preHandler: [authMiddleware],
+    preHandler: [authMiddleware, signedInOnly],
     schema: { description: 'Delete own account', tags: ['auth'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

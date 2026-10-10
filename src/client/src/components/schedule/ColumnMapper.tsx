@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useId } from 'react';
+import { useEffect, useCallback, useState, useId, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
 import { fuzzyMatchColumn } from '../../utils/fuzzyMatch';
 import { apiService } from '../../services/api';
@@ -184,10 +184,54 @@ function fuzzyMap(
 // Component
 // ---------------------------------------------------------------------------
 
+/** Columns nothing mapped get `fillUnmapped` (RAID import keeps them in notes); without it, left as is */
+function withFill(headers: string[], m: Record<number, string>, fillUnmapped?: string): Record<number, string> {
+  return fillUnmapped
+    ? Object.fromEntries(headers.map((_, i) => [i, m[i] || fillUnmapped])) as Record<number, string>
+    : m;
+}
+
+/**
+ * The AI's suggestions merged into the mappings as they are NOW (the person may have changed some
+ * while waiting): only columns the rules left unmapped and nobody has set since are filled, and a
+ * target already in use is never given twice.
+ */
+export function mergeAiSuggestions(
+  headers: string[],
+  current: Record<number, string>,
+  rulesMap: Record<number, string>,
+  suggestions: Record<string, string>,
+  targets: string[],
+  fillUnmapped?: string,
+): { map: Record<number, string>; fromAI: Set<number> } {
+  const map = { ...current };
+  const used = new Set(Object.values(map).filter((v) => v && v !== fillUnmapped));
+  const fromAI = new Set<number>();
+  headers.forEach((h, i) => {
+    if (rulesMap[i] || (map[i] && map[i] !== fillUnmapped)) return;
+    const suggested = suggestions[h];
+    if (suggested && targets.includes(suggested) && !used.has(suggested) && acceptAiSuggestion(h, suggested)) {
+      map[i] = suggested;
+      used.add(suggested);
+      fromAI.add(i);
+    }
+  });
+  return { map: withFill(headers, map, fillUnmapped), fromAI };
+}
+
 export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = true, targetColumns: customTargetColumns, aliases: customAliases, targetLabels: customTargetLabels, sampleRows, fillUnmapped }: ColumnMapperProps) {
   const mapperId = useId();
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSource, setAiSource] = useState<Set<number>>(new Set()); // indices that came from AI
+  // What the rules mapped, and the headers they left for the AI. The AI is asked only when the
+  // person presses "Suggest with AI" (it ran by itself on every import — audit 2026-10-10 M1).
+  const [rulesMap, setRulesMap] = useState<Record<number, string>>({});
+  const [unmappedHeaders, setUnmappedHeaders] = useState<string[]>([]);
+  const [aiAsked, setAiAsked] = useState(false);
+  const [aiFailed, setAiFailed] = useState(false);
+  // The mappings as they are when the AI answers, not when it was asked
+  const mappingsRef = useRef(mappings);
+  useEffect(() => { mappingsRef.current = mappings; }, [mappings]);
 
   // Resolve effective columns/aliases/labels (custom or default)
   const effectiveTargetColumns = customTargetColumns ?? TARGET_COLUMNS;
@@ -205,42 +249,34 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
       fuzzyMap(headers, step1, effectiveTargetValues, effectiveTargetLabels),
       effectiveTargetValues,
     );
-    const fill = (m: Record<number, string>) => (fillUnmapped
-      ? Object.fromEntries(headers.map((_, i) => [i, m[i] || fillUnmapped])) as Record<number, string>
-      : m);
-    onMappingsChange(fill(step2));
-
-    // Layer 3: AI suggestions for remaining unmapped headers (async)
-    if (enableAI) {
-      const unmapped = headers.filter((_, i) => !step2[i]);
-      if (unmapped.length > 0) {
-        setAiLoading(true);
-        apiService.suggestColumns(headers, unmapped, effectiveTargetValues as string[], sampleValues(headers, unmapped, (sampleRows ?? []).slice(0, 10)))
-          .then(suggestions => {
-            // Apply AI suggestions to currently unmapped columns
-            const newMap = { ...step2 };
-            const used = new Set(Object.values(newMap));
-            const newAiSource = new Set<number>();
-            headers.forEach((h, i) => {
-              if (newMap[i]) return;
-              const suggested = suggestions[h];
-              if (suggested && effectiveTargetValues.includes(suggested) && !used.has(suggested) && acceptAiSuggestion(h, suggested)) {
-                newMap[i] = suggested;
-                used.add(suggested);
-                newAiSource.add(i);
-              }
-            });
-            setAiSource(newAiSource);
-            onMappingsChange(fill(newMap));
-          })
-          .catch(() => {
-            // AI unavailable — no problem, manual mapping still works
-          })
-          .finally(() => setAiLoading(false));
-      }
-    }
+    onMappingsChange(withFill(headers, step2, fillUnmapped));
+    setRulesMap(step2);
+    setUnmappedHeaders(headers.filter((_, i) => !step2[i]));
+    setAiSource(new Set());
+    setAiAsked(false);
+    setAiFailed(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [headers.join(',')]);
+
+  // Layer 3, on request: AI suggestions for the columns the rules left unmapped
+  const suggestWithAI = () => {
+    if (unmappedHeaders.length === 0) return;
+    setAiAsked(true);
+    setAiFailed(false);
+    setAiLoading(true);
+    apiService.suggestColumns(headers, unmappedHeaders, effectiveTargetValues as string[], sampleValues(headers, unmappedHeaders, (sampleRows ?? []).slice(0, 10)))
+      .then(suggestions => {
+        const { map, fromAI } = mergeAiSuggestions(headers, mappingsRef.current, rulesMap, suggestions, effectiveTargetValues as string[], fillUnmapped);
+        setAiSource(fromAI);
+        onMappingsChange(map);
+      })
+      .catch(() => {
+        // Say so, and let them press the button again; manual mapping still works
+        setAiFailed(true);
+        setAiAsked(false);
+      })
+      .finally(() => setAiLoading(false));
+  };
 
   const mappedCount = Object.values(mappings).filter(Boolean).length;
 
@@ -266,7 +302,22 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
             AI analyzing columns...
           </span>
         )}
+        {enableAI && !aiAsked && unmappedHeaders.length > 0 && (
+          <button
+            type="button"
+            onClick={suggestWithAI}
+            className="inline-flex items-center gap-1 rounded-md bg-purple-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-purple-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+          >
+            <Sparkles size={12} aria-hidden="true" />
+            Suggest {unmappedHeaders.length === 1 ? 'the unmapped column' : `the ${unmappedHeaders.length} unmapped columns`} with AI
+          </button>
+        )}
       </div>
+      {aiFailed && (
+        <p role="alert" className="mb-2 text-xs text-red-700 dark:text-red-400">
+          The AI couldn&apos;t suggest mappings just now. Map the columns yourself, or try the button again.
+        </p>
+      )}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
         {headers.map((h, i) => (
           <div key={i} className="flex flex-col gap-1">

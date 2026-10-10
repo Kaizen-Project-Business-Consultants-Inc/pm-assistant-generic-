@@ -38,6 +38,9 @@ const DASHBOARD_AI_FAILURE_PAUSE_S = 10 * 60;
 // once editing has been quiet for 2 minutes, so moving 20 tasks in a row costs one AI call, not 20.
 const DASHBOARD_NUMBERS_TTL = 24 * 60 * 60; // kept until a change (a day at most)
 const DASHBOARD_AI_QUIET_S = 2 * 60;
+/** Highlights younger than this are kept even after the numbers change; Refresh still asks (audit 2026-10-10 M1:
+ * with edits spaced just over the quiet time, each open dashboard re-asked about 20 times an hour) */
+const DASHBOARD_AI_MIN_AGE_S = 60 * 60;
 
 /** What the AI highlights were based on — if this hasn't changed, the old highlights still apply */
 function dashboardFingerprint(p: AIDashboardPredictions): string {
@@ -453,6 +456,7 @@ export class PredictiveIntelligenceService {
   async assessProjectRisks(
     projectId: string,
     userId?: string,
+    opts: { ai?: boolean } = {},
   ): Promise<{ assessment: AIRiskAssessment; aiPowered: boolean }> {
     const context = await this.contextBuilder.buildProjectContext(projectId);
     const budgetSpent = await this.getProjectBudgetSpent(projectId);
@@ -462,7 +466,7 @@ export class PredictiveIntelligenceService {
       metrics.budgetUtilization,
     );
 
-    if (!claudeService.isAvailable()) {
+    if (opts.ai === false || !claudeService.isAvailable()) {
       return {
         assessment: this.buildFallbackRiskAssessment(context, metrics, score, severity, healthScore),
         aiPowered: false,
@@ -539,6 +543,7 @@ export class PredictiveIntelligenceService {
   async analyzeWeatherImpact(
     projectId: string,
     userId?: string,
+    opts: { ai?: boolean } = {},
   ): Promise<{ impact: AIWeatherImpact; aiPowered: boolean }> {
     const context = await this.contextBuilder.buildProjectContext(projectId);
     const coords = await this.getProjectCoordinates(projectId);
@@ -559,7 +564,8 @@ export class PredictiveIntelligenceService {
       (t) => isOutdoorTask(t.name) && t.status !== 'completed',
     );
 
-    if (!claudeService.isAvailable()) {
+    // No outdoor work left: nothing for the AI to weigh up (it was asked anyway — audit 2026-10-10 M1)
+    if (opts.ai === false || outdoorTasks.length === 0 || !claudeService.isAvailable()) {
       return {
         impact: this.buildFallbackWeatherImpact(weather, outdoorTasks),
         aiPowered: false,
@@ -627,6 +633,7 @@ export class PredictiveIntelligenceService {
   async forecastBudget(
     projectId: string,
     userId?: string,
+    opts: { ai?: boolean } = {},
   ): Promise<{ forecast: AIBudgetForecast; aiPowered: boolean }> {
     const context = await this.contextBuilder.buildProjectContext(projectId);
     const budgetSpent = await this.getProjectBudgetSpent(projectId);
@@ -661,7 +668,7 @@ export class PredictiveIntelligenceService {
       summary: this.buildBudgetSummary(evm, budgetAllocated),
     };
 
-    if (!claudeService.isAvailable()) {
+    if (opts.ai === false || !claudeService.isAvailable()) {
       return { forecast: fallbackForecast, aiPowered: false };
     }
 
@@ -746,6 +753,7 @@ export class PredictiveIntelligenceService {
     const unchanged = !!ai && ai.fingerprint === fingerprint;
     // Still editing? Wait until it's been quiet for 2 minutes, then ask once
     const settling = Date.now() - changedAt < DASHBOARD_AI_QUIET_S * 1000;
+    const recent = !!ai && Date.now() - Date.parse(ai.generatedAt) < DASHBOARD_AI_MIN_AGE_S * 1000;
     let forced = false;
     if (opts.refresh && userId) {
       // "Refresh" asks now, but not more than once every 10 minutes
@@ -759,7 +767,7 @@ export class PredictiveIntelligenceService {
     // the panel asked again every minute for as long as the AI was down (2026-10-04 audit)
     const failedKey = `${cacheKey}:failed`;
     const pausedAfterFailure = !forced && !!(await redisService.get(failedKey).catch(() => null));
-    if (!pausedAfterFailure && (forced || (!unchanged && !settling))) {
+    if (!pausedAfterFailure && (forced || (!unchanged && !settling && !recent))) {
       // One AI call per person at a time (the panel and the page can ask together)
       const inflightKey = `${cacheKey}:inflight`;
       const busy = await redisService.get(inflightKey).catch(() => null);

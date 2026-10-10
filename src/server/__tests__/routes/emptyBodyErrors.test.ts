@@ -244,10 +244,22 @@ describe('more routes answer an empty, partial or non-upload body with a clear 4
     expect4xx(await send('POST', `/api/v1/sprints/${ID}/tasks`, {}));
     expect(sprints.addTask).not.toHaveBeenCalled();
 
+    // a task of the sprint's own project (2026-10-09 audit M9: the task's project is checked)
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { projectsOfSchedules } = await import('../../middleware/requireProjectAccess');
+    sprints.getById.mockResolvedValue({ id: ID, projectId: 'p1' });
+    vi.mocked(scheduleService.findTaskById).mockResolvedValue({ id: 't1', scheduleId: 's1' } as any);
+    vi.mocked(projectsOfSchedules).mockResolvedValue(['p1']);
     sprints.addTask.mockRejectedValue(Object.assign(new Error('Duplicate entry'), { code: 'ER_DUP_ENTRY' }));
     const dup = await send('POST', `/api/v1/sprints/${ID}/tasks`, { taskId: 't1' });
     expect4xx(dup, 409);
     expect(dup.json().message).toBe('That task is already in this sprint.');
+
+    // a task of another project: refused, nothing added (2026-10-09 audit M9)
+    sprints.addTask.mockClear();
+    vi.mocked(projectsOfSchedules).mockResolvedValue(['p-other']);
+    expect4xx(await send('POST', `/api/v1/sprints/${ID}/tasks`, { taskId: 't-of-B' }), 404);
+    expect(sprints.addTask).not.toHaveBeenCalled();
 
     expect4xx(await send('PATCH', `/api/v1/sprints/${ID}/tasks/t1/points`, { storyPoints: 'five' }));
     expect4xx(await send('PATCH', `/api/v1/sprints/${ID}/tasks/t1/points`, {}));

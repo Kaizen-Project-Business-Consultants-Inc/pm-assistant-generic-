@@ -48,9 +48,9 @@ describe('Settings → Sample project', () => {
 
   it('a refusal shows the server message', async () => {
     api.getSampleProject.mockResolvedValue({ loaded: false, canManage: true });
-    api.loadSampleProject.mockRejectedValue({ response: { data: { message: 'Only the company owner or an admin can load or remove the sample project.' } } });
+    api.loadSampleProject.mockRejectedValue({ response: { data: { message: 'Only the company owner or a PMO can load or remove the sample project.' } } });
     show();
     fireEvent.click(await screen.findByRole('button', { name: 'Load' }));
-    expect((await screen.findByRole('alert')).textContent).toMatch(/company owner or an admin/);
+    expect((await screen.findByRole('alert')).textContent).toMatch(/company owner or a PMO/);
   });
 });

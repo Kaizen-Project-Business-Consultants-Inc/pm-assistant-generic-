@@ -24,6 +24,7 @@ vi.mock('../../database/connection', () => ({
 const svc = vi.hoisted(() => ({
   findById: vi.fn(async () => ({ id: 's1', projectId: 'p1' })),
   recomputeParentRollup: vi.fn(async () => {}),
+  workingDayTest: vi.fn(async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6),
 }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: svc }));
 vi.mock('../../services/ScheduleRecomputeService', () => ({ scheduleRecomputeService: {}, restoreTaskDates: vi.fn() }));
@@ -77,7 +78,7 @@ describe('DELETE /bulk/tasks — copies, deletes, records for Undo', () => {
     expect(input.undo.bookings).toHaveLength(1);
 
     // the summary task above them rolls up BEFORE History records the change
-    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('phase');
+    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('phase', 0, expect.anything());
     expect(svc.recomputeParentRollup.mock.invocationCallOrder[0]).toBeLessThan(record.mock.invocationCallOrder[0]);
   });
 

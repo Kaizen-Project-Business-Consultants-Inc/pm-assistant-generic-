@@ -181,8 +181,9 @@ export class AgileApi extends ApiBase {
     return response.data;
   }
 
-  async seedRetroFromAI(sprintId: string, projectId: string) {
-    const response = await this.api.post(`/sprints/${sprintId}/retro/seed`, { projectId });
+  /** The server uses the sprint's own project */
+  async seedRetroFromAI(sprintId: string) {
+    const response = await this.api.post(`/sprints/${sprintId}/retro/seed`, {});
     return response.data;
   }
 

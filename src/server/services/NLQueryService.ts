@@ -7,6 +7,7 @@ import { resourceService } from '../services/ResourceService';
 import { criticalPathService } from '../services/CriticalPathService';
 import { sCurveService } from '../services/SCurveService';
 import { config } from '../config';
+import { limitRows, limitGrouped, MAX_TOOL_ROWS, filterTasks, TASK_FILTER_HINT, TASK_FILTER_PROPERTIES } from './aiToolLimits';
 import {
   NLQueryAIResponseSchema,
   type NLQueryResult,
@@ -86,7 +87,7 @@ function buildToolDefinitions(): Anthropic.Tool[] {
     {
       name: 'list_tasks',
       description:
-        'List all tasks for a given schedule, including status, progress, dates, and dependencies.',
+        'List the tasks of a schedule, including status, progress, dates, and dependencies. Returns at most 200 (with the total); narrow a big plan with nameContains, status or assignedTo.',
       input_schema: {
         type: 'object' as const,
         properties: {
@@ -94,6 +95,7 @@ function buildToolDefinitions(): Anthropic.Tool[] {
             type: 'string',
             description: 'The schedule ID whose tasks to list',
           },
+          ...TASK_FILTER_PROPERTIES,
         },
         required: ['scheduleId'],
       },
@@ -209,7 +211,8 @@ async function executeToolFn(
         startDate: p.startDate ?? null,
         endDate: p.endDate ?? null,
       }));
-      return JSON.stringify(summary, null, 2);
+      const limited = limitRows(summary);
+      return JSON.stringify({ projects: limited.rows, total: limited.total, note: limited.note });
     }
 
     // ----- get_project_details -----
@@ -226,25 +229,32 @@ async function executeToolFn(
         list.push(t);
         tasksBySchedule.set(t.scheduleId, list);
       }
-      const schedulesWithTasks = schedules.map(sch => ({
-        id: sch.id,
-        name: sch.name,
-        status: sch.status,
-        startDate: sch.startDate ?? null,
-        endDate: sch.endDate ?? null,
-        tasks: (tasksBySchedule.get(sch.id) ?? []).map((t) => ({
-          id: t.id,
-          name: t.name,
-          status: t.status,
-          priority: t.priority,
-          progressPercentage: t.progressPercentage ?? 0,
-          startDate: t.startDate ?? null,
-          endDate: t.endDate ?? null,
-          dependency: t.dependency ?? null,
-          dependencies: t.dependencies.map(d => ({ id: d.dependencyId, type: d.dependencyType, lag: d.lagDays })),
-          assignedTo: t.assignedTo ?? null,
-        })),
-      }));
+      // At most MAX_TOOL_ROWS tasks across all plans; each plan gives its task count
+      const shownPerPlan = limitGrouped(schedules.map((sch) => tasksBySchedule.get(sch.id) ?? []));
+      const schedulesWithTasks = schedules.map((sch, i) => {
+        const own = tasksBySchedule.get(sch.id) ?? [];
+        const shown = shownPerPlan[i];
+        return {
+          id: sch.id,
+          name: sch.name,
+          status: sch.status,
+          startDate: sch.startDate ?? null,
+          endDate: sch.endDate ?? null,
+          taskCount: own.length,
+          tasks: shown.map((t) => ({
+            id: t.id,
+            name: t.name,
+            status: t.status,
+            priority: t.priority,
+            progressPercentage: t.progressPercentage ?? 0,
+            startDate: t.startDate ?? null,
+            endDate: t.endDate ?? null,
+            dependency: t.dependency ?? null,
+            dependencies: t.dependencies.map(d => ({ id: d.dependencyId, type: d.dependencyType, lag: d.lagDays })),
+            assignedTo: t.assignedTo ?? null,
+          })),
+        };
+      });
 
       return JSON.stringify(
         {
@@ -261,16 +271,17 @@ async function executeToolFn(
           startDate: project.startDate ?? null,
           endDate: project.endDate ?? null,
           schedules: schedulesWithTasks,
-        },
-        null,
-        2,
-      );
+          note: allTasks.length > MAX_TOOL_ROWS
+            ? `Showing ${MAX_TOOL_ROWS} of ${allTasks.length} tasks. Use list_tasks on one plan for its tasks.`
+            : undefined,
+        });
     }
 
     // ----- list_tasks -----
     case 'list_tasks': {
       const scheduleId = toolInput.scheduleId as string;
-      const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
+      // Filters first, then the row limit: any task can be reached however big the plan
+      const tasks = await filterTasks(await scheduleService.findTasksByScheduleId(scheduleId), toolInput);
       const summary = tasks.map((t) => ({
         id: t.id,
         name: t.name,
@@ -284,14 +295,15 @@ async function executeToolFn(
         parentTaskId: t.parentTaskId ?? null,
         assignedTo: t.assignedTo ?? null,
       }));
-      return JSON.stringify(summary, null, 2);
+      const limited = limitRows(summary, MAX_TOOL_ROWS, TASK_FILTER_HINT);
+      return JSON.stringify({ tasks: limited.rows, total: limited.total, note: limited.note });
     }
 
     // ----- get_resource_workload -----
     case 'get_resource_workload': {
       const projectId = toolInput.projectId as string;
       const workloads = await resourceService.computeWorkload(projectId);
-      return JSON.stringify(workloads, null, 2);
+      return JSON.stringify(workloads);
     }
 
     // ----- get_evm_metrics -----
@@ -332,17 +344,14 @@ async function executeToolFn(
                 eac,
               }
             : null,
-        },
-        null,
-        2,
-      );
+        });
     }
 
     // ----- get_critical_path -----
     case 'get_critical_path': {
       const scheduleId = toolInput.scheduleId as string;
       const result = await criticalPathService.calculateCriticalPath(scheduleId);
-      return JSON.stringify(result, null, 2);
+      return JSON.stringify(result);
     }
 
     // ----- aggregate_portfolio_stats -----
@@ -398,10 +407,7 @@ async function executeToolFn(
           projectTypeBreakdown: typeBreakdown,
           taskStatusBreakdown,
           averageTaskProgress: totalProgress,
-        },
-        null,
-        2,
-      );
+        });
     }
 
     default:

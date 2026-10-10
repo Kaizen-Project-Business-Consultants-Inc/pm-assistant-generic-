@@ -8,9 +8,13 @@ vi.mock('../../database/connection', () => ({
   },
 }));
 
+const ctx = vi.hoisted(() => ({ value: undefined as { organizationId?: string } | undefined }));
+vi.mock('../../middleware/requestContext', () => ({ getRequestContext: () => ctx.value }));
+
 // Mock config
 vi.mock('../../config', () => ({
   config: {
+    MULTI_TENANT_ENABLED: false,
     OPENAI_API_KEY: 'sk-test-key',
     EMBEDDING_ENABLED: true,
     EMBEDDING_MODEL: 'text-embedding-3-small',
@@ -191,7 +195,7 @@ describe('EmbeddingService', () => {
       await service.searchSimilar('test', 'meeting', 3, 0.5);
 
       const sqlCall = vi.mocked(databaseService.queryControlPlane).mock.calls[0];
-      expect(sqlCall[0]).toContain('WHERE document_type = ?');
+      expect(sqlCall[0]).toContain('AND document_type = ?');
       expect(sqlCall[1]).toContain('meeting');
     });
   });
@@ -202,9 +206,66 @@ describe('EmbeddingService', () => {
       vi.mocked(databaseService.queryControlPlane).mockResolvedValueOnce([] as any);
       await service.deleteEmbedding('lesson', 'doc-1');
       expect(databaseService.queryControlPlane).toHaveBeenCalledWith(
-        'DELETE FROM embeddings WHERE document_type = ? AND document_id = ?',
-        ['lesson', 'doc-1'],
+        'DELETE FROM embeddings WHERE org_id = ? AND document_type = ? AND document_id = ?',
+        ['', 'lesson', 'doc-1'],
       );
     });
+  });
+});
+
+/**
+ * 2026-10-09 audit M5: every company's lessons, meeting notes and documents were ranked together
+ * in the shared table. Each row now has an owner, and search sees only the caller's company plus
+ * the shared knowledge base — in SQL, before the top K is taken.
+ */
+describe('embeddings belong to a company', () => {
+  let service: EmbeddingService;
+  const sqlOf = () => vi.mocked(databaseService.queryControlPlane).mock.calls[0];
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    (await import('../../config')).config.MULTI_TENANT_ENABLED = true;
+    service = new EmbeddingService();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ data: [{ embedding: [1, 0] }] }) } as any);
+  });
+
+  it('a lesson search sees only the caller’s company', async () => {
+    ctx.value = { organizationId: 'org-a' };
+    vi.mocked(databaseService.queryControlPlane).mockResolvedValueOnce([] as any);
+    await service.searchSimilar('late vendor', 'lesson', 5, 0.3);
+    const [sql, params] = sqlOf();
+    expect(sql).toContain('WHERE org_id IN (?)');
+    expect(params).toEqual([expect.any(String), 'org-a', 'lesson', 0.3, 5]);
+  });
+
+  it('with no type: the caller’s company plus the shared knowledge base only', async () => {
+    ctx.value = { organizationId: 'org-a' };
+    vi.mocked(databaseService.queryControlPlane).mockResolvedValueOnce([] as any);
+    await service.searchSimilar('anything');
+    const [sql, params] = sqlOf();
+    expect(sql).toContain("AND (org_id <> '' OR document_type = 'knowledge_base')");
+    expect(params.slice(1, 3)).toEqual(['', 'org-a']);
+  });
+
+  it('a company search with no company in context finds nothing (no query at all)', async () => {
+    ctx.value = undefined;
+    expect(await service.searchSimilar('x', 'meeting')).toEqual([]);
+    expect(databaseService.queryControlPlane).not.toHaveBeenCalled();
+  });
+
+  it('a lesson is stored under the caller’s company; with no company it is refused', async () => {
+    ctx.value = { organizationId: 'org-b' };
+    vi.mocked(databaseService.queryControlPlane).mockResolvedValue([] as any);
+    await service.upsertEmbedding('lesson', 'l1', 'text');
+    const insert = vi.mocked(databaseService.queryControlPlane).mock.calls.find(c => /INSERT INTO embeddings/.test(c[0] as string))!;
+    expect((insert[1] as unknown[])[1]).toBe('org-b');
+    ctx.value = undefined;
+    await expect(service.upsertEmbedding('lesson', 'l2', 'text')).rejects.toThrow(/belongs to a company/);
+  });
+
+  it('the knowledge base stays shared, with or without a company', async () => {
+    ctx.value = undefined;
+    await service.deleteEmbedding('knowledge_base', 'kb1');
+    expect(databaseService.queryControlPlane).toHaveBeenCalledWith(expect.stringContaining('DELETE FROM embeddings'), ['', 'knowledge_base', 'kb1']);
   });
 });

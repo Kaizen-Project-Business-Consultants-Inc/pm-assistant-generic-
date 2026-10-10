@@ -204,7 +204,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
       const lesson = await lessonsLearnedService.addLesson({
         ...body,
         sourceType: 'manual',
-        createdBy: parseInt(String(request.user!.userId), 10),
+        createdBy: request.user!.userId,
       });
       return reply.status(201).send({ lesson });
     } catch (err) {
@@ -329,7 +329,7 @@ export async function lessonsLearnedRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const { action, comment, context } = feedbackSchema.parse(request.body);
-      const userId = parseInt(String(request.user!.userId), 10);
+      const userId = request.user!.userId;
       await lessonsLearnedService.submitFeedback(id, userId, action, comment, context);
       return reply.status(204).send();
     } catch (err) {

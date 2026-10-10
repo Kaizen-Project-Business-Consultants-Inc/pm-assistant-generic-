@@ -64,6 +64,12 @@ vi.mock('../../services/claudeService', () => ({
   promptTemplates: {
     conversational: { render: mockRender },
   },
+  AIPromptTooLargeError: class AIPromptTooLargeError extends Error {
+    constructor(public estimatedTokens: number) {
+      super('This needs more of your project data than the assistant can read at once. Ask about one plan, or a narrower question.');
+      this.name = 'AIPromptTooLargeError';
+    }
+  },
 }));
 
 vi.mock('../../services/aiContextBuilder', () => ({
@@ -73,6 +79,7 @@ vi.mock('../../services/aiContextBuilder', () => ({
     toPromptString = mockToPromptString;
     portfolioToPromptString = mockPortfolioToPromptString;
   },
+  CHAT_PROMPT_TASK_LIMIT: 100,
 }));
 
 vi.mock('../../services/aiUsageLogger', () => ({
@@ -124,18 +131,28 @@ vi.mock('../../services/context/ContextConfigService', () => ({
   },
 }));
 
-vi.mock('../../services/AIBudgetService', () => ({
-  AIBudgetExceededError: class AIBudgetExceededError extends Error {
+vi.mock('../../services/AIBudgetService', () => {
+  class AIBudgetExceededError extends Error {
     public statusCode = 429;
     public code = 'AI_BUDGET_EXCEEDED';
     public resetDate: string;
-    constructor(public used: number, public budget: number) {
+    constructor(public used: number, public budget: number, public needed = 0) {
       super(`AI token budget exceeded`);
       this.name = 'AIBudgetExceededError';
       this.resetDate = '2026-11-01';
     }
-  },
-}));
+  }
+  class AIPlanRequiredError extends AIBudgetExceededError {
+    public statusCode = 403;
+    public code = 'UPGRADE_REQUIRED';
+    constructor() {
+      super(0, 0);
+      this.message = "This is part of Kovarti's paid plans. Choose a plan to use it — everything you've set up stays as it is.";
+      this.name = 'AIPlanRequiredError';
+    }
+  }
+  return { AIBudgetExceededError, AIPlanRequiredError };
+});
 
 // ── Import SUT after mocks ─────────────────────────────────────────────
 
@@ -339,6 +356,40 @@ describe('AIChatService', () => {
       );
     });
 
+    it("a plan without AI gets the plan's message, not a token-limit one (audit 2026-10-10 M2)", async () => {
+      const { AIPlanRequiredError } = await import('../../services/AIBudgetService');
+      mockCompleteToolLoop.mockRejectedValue(new AIPlanRequiredError());
+      const result = await service.sendMessage(makeRequest());
+      expect(result.aiPowered).toBe(false);
+      expect(result.reply).toMatch(/paid plans/);
+      expect(result.reply).not.toMatch(/token limit/);
+    });
+
+    it("the account's monthly cap gets a neutral message, never Kovarti's spend", async () => {
+      const capErr = Object.assign(new AIBudgetExceededError(0, 0), {
+        code: 'AI_UNAVAILABLE', name: 'AIAccountCapError',
+        message: 'AI is temporarily unavailable for your account. Please try again later, or contact support.',
+      });
+      mockCompleteToolLoop.mockRejectedValue(capErr);
+      const result = await service.sendMessage(makeRequest());
+      expect(result.reply).toMatch(/temporarily unavailable for your account/);
+      expect(result.reply).not.toMatch(/token limit|\$/);
+    });
+
+    it('a question needing more than the remaining budget says how much it needs', async () => {
+      const err = Object.assign(new AIBudgetExceededError(150_000, 200_000), { needed: 80_000 });
+      mockCompleteToolLoop.mockRejectedValue(err);
+      const result = await service.sendMessage(makeRequest());
+      expect(result.reply).toMatch(/needs about 80,000 AI tokens and you have 50,000 left/);
+    });
+
+    it('a question too big for one call is told to narrow it', async () => {
+      const { AIPromptTooLargeError } = await import('../../services/claudeService');
+      mockCompleteToolLoop.mockRejectedValue(new AIPromptTooLargeError(200_000));
+      const result = await service.sendMessage(makeRequest());
+      expect(result.reply).toMatch(/narrower question/);
+    });
+
     it('handles generic errors with fallback message', async () => {
       mockCompleteToolLoop.mockRejectedValue(new Error('Network error'));
 
@@ -390,7 +441,8 @@ describe('AIChatService', () => {
       );
 
       expect(mockBuildProjectContext).toHaveBeenCalledWith('proj-1');
-      expect(mockToPromptString).toHaveBeenCalled();
+      // at most 100 task lines: the system prompt is resent on every tool-loop turn (audit 2026-10-10 H1)
+      expect(mockToPromptString).toHaveBeenCalledWith(expect.anything(), 100);
     });
 
     it('builds portfolio context when no projectId', async () => {

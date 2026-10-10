@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { taskDatesOf, moveBookingsWithTasks } from '../../database/bookingDates';
+import { syncDependencyMirror } from '../../database/dependencyMirror';
 import { scheduleRecomputeService } from '../../services/ScheduleRecomputeService';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
@@ -62,7 +63,7 @@ const TRANSACTION_ENDED = new Set([1213, 1205]);
  * Set one column on many tasks in ONE statement: `UPDATE tasks SET col = CASE id WHEN … END
  * WHERE id IN (…)`. `column` is a fixed name from this file, never user input (2026-10-08).
  */
-async function setColumnByCase(run: (sql: string, params: any[]) => Promise<any>, column: 'dependency' | 'parent_task_id', pairs: Array<[string, string]>): Promise<void> {
+async function setColumnByCase(run: (sql: string, params: any[]) => Promise<any>, column: 'parent_task_id', pairs: Array<[string, string]>): Promise<void> {
   if (pairs.length === 0) return;
   await run(
     `UPDATE tasks SET ${column} = CASE id ${pairs.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE id IN (${pairs.map(() => '?').join(',')})`,
@@ -148,11 +149,13 @@ async function replaceLinks(run: Run, saved: BulkUpdate[]): Promise<void> {
   if (saved.length === 0) return;
   await run(`DELETE FROM task_dependencies WHERE task_id IN (${saved.map(() => '?').join(',')})`, saved.map(u => u.id));
   const rows = saved.filter(u => u.dependency && u.dependency !== u.id);
-  if (rows.length === 0) return;
-  await run(
-    `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${rows.map(() => '(?, ?, ?, ?, 0)').join(', ')}`,
-    rows.flatMap(u => [uuidv4(), u.id, u.dependency, u.dependencyType || 'FS']),
-  );
+  if (rows.length) {
+    await run(
+      `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${rows.map(() => '(?, ?, ?, ?, 0)').join(', ')}`,
+      rows.flatMap(u => [uuidv4(), u.id, u.dependency, u.dependencyType || 'FS']),
+    );
+  }
+  await syncDependencyMirror(run, saved.map(u => u.id));
 }
 
 /** A bulk edit that changes only the link type: ALL the task's predecessor links take the new type (one type per task, as the bulk field shows) */
@@ -161,6 +164,7 @@ async function setLinkTypes(run: Run, saved: BulkUpdate[]): Promise<void> {
     // eslint-disable-next-line no-await-in-loop -- one statement per link type (at most four)
     await run(`UPDATE task_dependencies SET dependency_type = ? WHERE task_id IN (${ups.map(() => '?').join(',')})`, [type, ...ups.map(u => u.id)]);
   }
+  await syncDependencyMirror(run, saved.map(u => u.id));
 }
 
 // Field names deliberately match the single-task route (schedules.ts createTaskSchema)
@@ -402,7 +406,6 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         // dependency/parentTaskId that referred to another task in this same
         // batch by name or position, and write the actual foreign key — collected
         // here and written in a few statements (it was several per task, 2026-10-08).
-        const depColumn: Array<[string, string]> = [];      // [taskId, dependency id] for the legacy column
         const parentColumn: Array<[string, string]> = [];   // [taskId, parent id]
         const links: Array<{ taskId: string; ref: string; resolved?: string; type: string }> = [];
         for (let i = 0; i < body.tasks.length; i++) {
@@ -413,7 +416,6 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           if (t.dependency) {
             const depIndex = batchDependencyIndex(t.dependency, i, body.tasks);
             const resolvedId = depIndex !== undefined ? createdIds[depIndex] : undefined;
-            if (resolvedId) depColumn.push([selfId, resolvedId]);
             // The link itself lives in task_dependencies — that is what the schedule, critical
             // path, review and re-flow read. Until 2026-09-25 bulk create only wrote the legacy
             // `dependency` column, so every link made this way (e.g. by the MCP connector) was
@@ -432,7 +434,6 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             }
           }
         }
-        await setColumnByCase(run, 'dependency', depColumn);
         await setColumnByCase(run, 'parent_task_id', parentColumn);
         // external ids: one look-up for all of them, limited to this schedule
         const external = [...new Set(links.filter(l => !l.resolved).map(l => l.ref))];
@@ -448,14 +449,10 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             linkRows.flatMap(l => [uuidv4(), l.taskId, l.depId, l.type]),
           );
         }
+        // the task's shown predecessor matches the links actually made: a predecessor that wasn't
+        // a task in this plan made no link, so it mustn't linger in the old column (2026-10-10 review)
+        await syncDependencyMirror(run, [...new Set(links.map(l => l.taskId))]);
       });
-
-      // A parent only renders as a summary task once its rollup is recomputed —
-      // writing parent_task_id on the child alone doesn't flip is_summary.
-      for (const parentId of parentsToRecompute) {
-        scheduleService.recomputeParentRollup(parentId).catch(err =>
-          logger.error('[Rollup] recomputeParentRollup error on bulk create:', err));
-      }
 
       // New tasks given a predecessor start after it, like adding a link (2026-10-01)
       const newIds = createdIds.filter(Boolean) as string[];
@@ -467,6 +464,12 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             .catch(err => logger.error('[bulk create] re-plan after links failed', { error: (err as Error).message }));
         }
       }
+
+      // A parent only renders as a summary task once its rollup is recomputed — writing
+      // parent_task_id on the child alone doesn't flip is_summary. After the re-flow (so the
+      // summaries take the final dates), one after another (a grandparent was rolled up from a
+      // half-done parent when they ran together), and before History is recorded (audit 2026-10-09).
+      await rollUpSummaries(parentsToRecompute, body.scheduleId);
 
       planChanged(body.scheduleId);
       if (succeeded.length > 0) {
@@ -722,6 +725,12 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
 
       const body = bulkStatusSchema.parse(request.body);
+      // Only this plan's tasks: the UPDATE was already limited to it, but History's "previous
+      // values" were read for every id sent, so another plan's task statuses went into this
+      // project's History (2026-10-09 audit, low). One look-up.
+      const planOf = await taskRepository.scheduleIdsOf(body.taskIds);
+      body.taskIds = body.taskIds.filter(id => planOf.get(id) === body.scheduleId);
+      if (body.taskIds.length === 0) return { updated: 0 };
 
       const previous = await changeHistoryService.readPrevious(body.taskIds, ['status']).catch(() => [] as PreviousValues[]);
       const placeholders = body.taskIds.map(() => '?').join(',');
@@ -740,7 +749,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const updated = header?.affectedRows ?? body.taskIds.length;
 
       // A summary's status and % follow its tasks — roll up before History records
-      if (updated > 0) await rollUpSummaries(await parentIdsOf((sql, params) => databaseService.query(sql, params), body.scheduleId, body.taskIds));
+      if (updated > 0) await rollUpSummaries(await parentIdsOf((sql, params) => databaseService.query(sql, params), body.scheduleId, body.taskIds), body.scheduleId);
 
       planChanged(body.scheduleId);
       const projectId = updated > 0 ? await projectOfSchedule(body.scheduleId) : null;
@@ -788,8 +797,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       for (const row of snapshot.tasks as any[]) {
         if (row.parent_task_id && !deletedIds.has(row.parent_task_id)) parentIds.add(row.parent_task_id);
       }
-      await Promise.all([...parentIds].map(pid => scheduleService.recomputeParentRollup(pid).catch(err =>
-        logger.error('[Rollup] recomputeParentRollup error on bulk delete:', err))));
+      // one after another: summaries sharing an ancestor raced on the same rows (audit 2026-10-09)
+      await rollUpSummaries(parentIds, body.scheduleId);
 
       planChanged(body.scheduleId);
       let changeId: string | null = null;

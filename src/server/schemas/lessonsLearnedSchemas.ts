@@ -38,7 +38,7 @@ export const LessonLearnedSchema = z.object({
   sourceArtifacts: z.array(SourceArtifactSchema).nullable().optional(),
   confidence: z.number().min(0).max(100),
   status: z.enum(LESSON_STATUSES).default('approved'),
-  createdBy: z.number().nullable().optional(),
+  createdBy: z.string().nullable().optional(), // the person's id (T089: was a number, so it never named anyone)
   sourceType: z.enum(LESSON_SOURCE_TYPES).default('manual'),
   tags: z.array(z.string()).nullable().optional(),
   appliedCount: z.number().default(0),

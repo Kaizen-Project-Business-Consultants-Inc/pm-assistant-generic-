@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { organizationService } from '../../services/OrganizationService';
+import { maySeePayRates } from '../../utils/payRates';
 import { rateCardService, RateCardError } from '../../services/RateCardService';
 import { sendValidationError } from '../../utils/validationError';
 
@@ -16,20 +16,11 @@ const rateSchema = z.object({
 });
 
 /**
- * Rates are pay information: only the people who manage costs see or change the card —
- * admins, PMO, project managers, and the company owner (a consultant is a PM and owns
- * their company). Team members and viewers don't see it at all.
+ * Rates are pay information: only the people who manage costs see or change the card
+ * (utils/payRates.ts — the same rule hides each person's rate in the people lists).
  */
-async function isRateCardManager(request: FastifyRequest): Promise<boolean> {
-  const user = request.user!;
-  if (user.isGuest) return false;
-  if (['admin', 'pmo', 'project_manager'].includes(user.role)) return true;
-  const org = await organizationService.findByUserId(user.userId).catch(() => null);
-  return !!org && org.ownerUserId === user.userId;
-}
-
 async function rateCardManagerOnly(request: FastifyRequest, reply: FastifyReply) {
-  if (await isRateCardManager(request)) return;
+  if (await maySeePayRates(request)) return;
   return reply.status(403).send({ error: 'Forbidden', message: 'Only an admin or a project manager can see or change the rate card.' });
 }
 

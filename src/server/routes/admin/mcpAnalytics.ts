@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
@@ -20,6 +21,8 @@ interface AnalyticsQuery {
 
 export async function mcpAnalyticsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/admin/mcp-analytics
   fastify.get('/', async (request: FastifyRequest<{ Querystring: AnalyticsQuery }>, reply: FastifyReply) => {

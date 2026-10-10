@@ -712,4 +712,37 @@ describe('SCurveService', () => {
       expect(result[result.length - 1].pv).toBe(100000);
     });
   });
+
+  // ── audit 2026-10-09 M2: leaf tasks only, weighted by their own budgets ──
+  describe('computeSCurveData — task budgets, summaries not counted twice', () => {
+    const phaseRepro = () => [
+      { ...makeTask('ph', { startDate: '2026-10-05', endDate: '2026-10-30', progressPercentage: 40 }), isSummary: true, budgetAllocated: 10000 },
+      { ...makeTask('d', { startDate: '2026-10-05', endDate: '2026-10-09', progressPercentage: 100 }), parentTaskId: 'ph', budgetAllocated: 4000 },
+      { ...makeTask('b', { startDate: '2026-10-12', endDate: '2026-10-30', progressPercentage: 0 }), parentTaskId: 'ph', budgetAllocated: 6000 },
+    ];
+    beforeEach(() => {
+      mockFindById.mockResolvedValue(makeProject({ budgetAllocated: 10000, budgetSpent: 0 }));
+      mockFindByProjectId.mockResolvedValue([makeSchedule('sch-1')]);
+      mockStatusDate.mockResolvedValue('2026-10-16');
+    });
+
+    it('the repro: PV 6,000 and EV 4,000 on 16 Oct, from the task budgets; the summary row adds nothing', async () => {
+      mockFindTasksByScheduleIds.mockResolvedValue(phaseRepro());
+      const at = (await service.computeSCurveData('proj-1')).find(p => p.date === '2026-10-16')!;
+      // Design 4,000 done; Build 6,000 over 15 working days, 5 of them by Fri 16 Oct
+      expect(at.pv).toBe(6000);
+      expect(at.ev).toBe(4000);
+    });
+
+    it('a task without a budget is weighted at the plan average per working day', async () => {
+      mockFindTasksByScheduleIds.mockResolvedValue([
+        { ...makeTask('a', { startDate: '2026-10-05', endDate: '2026-10-09', progressPercentage: 0 }), budgetAllocated: 1000 },
+        makeTask('n', { startDate: '2026-10-12', endDate: '2026-10-16', progressPercentage: 0 }),
+      ]);
+      const points = await service.computeSCurveData('proj-1');
+      // both 5 working days at 200/day: each half of the 10,000 project budget; Mon 12 Oct = a done + 1 of 5 of n
+      expect(points.find(p => p.date === '2026-10-12')!.pv).toBe(6000);
+      expect(points[points.length - 1].pv).toBe(10000);
+    });
+  });
 });

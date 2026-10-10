@@ -317,6 +317,21 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     return { taskId, before, after: data };
   }, [queryClient, schedule.id, patchTaskInCache]);
 
+  /** Ctrl+Z through Schedule History; a refusal (not the newest change, or the plan changed since) is shown, not swallowed */
+  // Resolves false when History refused (something changed since): the caller then takes the
+  // action off the stacks, so Ctrl+Y can't "redo" something that was never undone
+  const undoThroughHistory = useCallback(async (changeId: string): Promise<boolean> => {
+    try {
+      await apiService.undoScheduleChange(schedule.id, changeId);
+      return true;
+    } catch (error) {
+      showSaveError(saveFailedMessage('Undo was not done', error, 'Open History to see what changed since.'));
+      return false;
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    }
+  }, [schedule.id, queryClient, showSaveError]);
+
   // Update task with undo support. Resolves true when saved (the Table/Gantt cell flashes "saved"
   // only then), false when not.
   const updateTaskWithUndo = useCallback((taskId: string, data: Record<string, unknown>): Promise<boolean> => {
@@ -331,12 +346,17 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     const optimistic = applyOptimisticPatch(taskId, data);
     const fieldNames = Object.keys(data).join(', ');
     if ('dependencies' in data) {
-      // A new predecessor can push this task and its successors later (server re-flow).
-      // Undo must put those dates back as well as the old links.
-      let moved: RescheduledTask[] = [];
+      // A new predecessor can push this task and its successors later (server re-flow). The server
+      // records that as one Schedule History entry (changeId); Undo goes through History, which puts
+      // the old links AND the old dates back — and refuses if the plan changed since (audit M7: it
+      // used to send the old dates straight back, over anyone's later edits).
+      let changeId: string | null = null;
+      // History's entry covers links and dates only: an edit of other fields too is undone as an ordinary edit back
+      const onlyLinks = Object.keys(data).length === 1;
       const run = async (patch?: OptimisticPatch) => {
         const res: any = await updateMutation.mutateAsync({ taskId, data, optimistic: patch });
-        moved = res?.rescheduled ?? [];
+        const moved: RescheduledTask[] = res?.rescheduled ?? [];
+        changeId = res?.changeId ?? null;
         if (moved.length) {
           const msg = `Edit ${task.name} (predecessors)${movedSuffix(moved.length)}`;
           setUndoToast(msg);
@@ -348,10 +368,11 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       const depAction = {
         description: `Edit ${task.name} (${fieldNames})`,
         undo: async () => {
-          await updateMutation.mutateAsync({ taskId, data: oldValues });
-          if (moved.length) {
-            await apiService.restoreTaskDates(schedule.id, moved.map(m => ({ taskId: m.taskId, startDate: m.oldStart, endDate: m.oldEnd })));
-            queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+          if (changeId && onlyLinks) {
+            if (!(await undoThroughHistory(changeId))) dropFailedAction(depAction);
+          } else {
+            // nothing moved: putting the old predecessors back is an ordinary edit
+            await updateMutation.mutateAsync({ taskId, data: oldValues });
           }
         },
         redo: () => { run().catch(() => {}); },
@@ -373,7 +394,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       }
       return true;
     });
-  }, [tasks, updateMutation, saveTask, pushAction, dropFailedAction, applyOptimisticPatch, schedule.id, queryClient, warnIfOverloaded]);
+  }, [tasks, updateMutation, saveTask, pushAction, dropFailedAction, applyOptimisticPatch, warnIfOverloaded, undoThroughHistory]);
 
   // Drag-end with undo (bar drag for dates)
   const handleTaskDragEndWithUndo = useCallback((taskId: string, newStart: string, newEnd: string) => {
@@ -478,22 +499,30 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     if (result.added.length === 0) throw new Error('Those tasks are already linked — nothing was added');
     queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
     const added = result.added;
-    let moved = result.moved ?? [];
+    let changeId = result.changeId;
     const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-    const description = built.description + movedSuffix(moved.length);
-    pushAction({
+    const description = built.description + movedSuffix((result.moved ?? []).length);
+    const linkAction = {
       description,
-      // Undo removes the links, then puts every task the re-flow moved back on its old dates
+      // Undo goes through Schedule History: the links come off and every task the re-flow moved goes
+      // back to its old dates — only while nothing in the plan changed since (audit M7)
       undo: async () => {
-        await apiService.bulkUnlinkTasks(schedule.id, added);
-        if (moved.length) await apiService.restoreTaskDates(schedule.id, moved.map(m => ({ taskId: m.taskId, startDate: m.oldStart, endDate: m.oldEnd })));
-        refresh();
+        if (!changeId) {
+          // History couldn't record it (rare): say so rather than doing nothing
+          showSaveError('These links could not be undone: they were not recorded in Schedule History. Remove them by hand.');
+          // after the undo stack has moved it to "redo" (it does so once this returns), take it off
+          await Promise.resolve();
+          dropFailedAction(linkAction);
+          return;
+        }
+        if (!(await undoThroughHistory(changeId))) dropFailedAction(linkAction);
       },
-      redo: async () => { moved = (await apiService.bulkLinkTasks(schedule.id, added)).moved ?? []; refresh(); },
-    });
+      redo: async () => { changeId = (await apiService.bulkLinkTasks(schedule.id, added)).changeId; refresh(); },
+    };
+    pushAction(linkAction);
     announce(description);
     return description;
-  }, [rowNumbers, schedule.id, queryClient, pushAction]);
+  }, [rowNumbers, schedule.id, queryClient, pushAction, showSaveError, undoThroughHistory, dropFailedAction]);
 
   // Group the selected tasks under a new summary task; undo goes through Schedule History
   const handleGroupTasks = useCallback(async (taskIds: string[], name: string): Promise<string> => {

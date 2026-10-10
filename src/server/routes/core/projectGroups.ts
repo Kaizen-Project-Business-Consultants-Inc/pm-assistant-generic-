@@ -10,6 +10,8 @@ import { renderClientReportHtml } from '../../utils/clientReportRenderer';
 import { buildClientReportDocx } from '../../utils/clientReportDocx';
 import { emailService, EmailRejectedError } from '../../services/EmailService';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { readableProjectIds } from '../../utils/readableProjects';
+import { databaseService } from '../../database/connection';
 
 /**
  * Project groups are shown as CLIENTS (2026-10-07): a consultant's customers. Clients never sign
@@ -72,10 +74,19 @@ function handleGroupError(reply: FastifyReply, err: unknown) {
 export async function projectGroupRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  // GET / — list all groups
+  // GET / — list all groups. A guest is an outsider: only the clients of projects they are on
+  // (the whole client list went to everyone, guests included — 2026-10-09 audit, low).
   fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest) => {
     const groups = await projectGroupService.getGroups();
-    return { groups };
+    if (!request.user!.isGuest) return { groups };
+    const readable = await readableProjectIds(request.user!);
+    if (readable === 'all') return { groups };
+    const ids = [...readable];
+    if (ids.length === 0) return { groups: [] };
+    const rows = await databaseService.query<{ group_id: string }>(
+      `SELECT DISTINCT group_id FROM projects WHERE id IN (${ids.map(() => '?').join(',')}) AND group_id IS NOT NULL`, ids);
+    const theirs = new Set(rows.map((r) => r.group_id));
+    return { groups: groups.filter((g) => theirs.has(g.id)) };
   });
 
   // POST / — create group
@@ -195,7 +206,7 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/report/email — send the report to the client (owner, PMO or a project manager)
-  fastify.post('/:id/report/email', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/report/email', { preHandler: [requireScope('write'), heavyActionLimit('client-report-email', 20, 60 * 60_000)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (!canManageClients(request.user!.role)) return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner, PMO and project managers send client reports.' });
       const { id } = request.params as { id: string };

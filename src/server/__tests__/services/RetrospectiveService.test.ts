@@ -121,11 +121,18 @@ describe('RetrospectiveService', () => {
       (sprintService.getSprintBoard as any).mockResolvedValueOnce({ tasks });
       (sprintService.actualVelocity as any).mockReturnValueOnce(13);
 
-      await retrospectiveService.seedFromAI('s1', 'p1', 'u1');
+      await retrospectiveService.seedFromAI('s1', 'u1');
 
       expect(sprintService.actualVelocity).toHaveBeenCalledWith(expect.objectContaining({ id: 's1', status: 'completed' }), tasks);
       const prompt: string = mockComplete.mock.calls[0][0].userMessage;
       expect(prompt).toContain('Velocity: 13/13 pts');
+    });
+
+    it('items go to the sprint own project, whatever the caller claims (2026-10-09 audit M8)', async () => {
+      mockComplete.mockResolvedValueOnce({ content: '{"went_well":["Shipped"],"to_improve":[],"action_items":[]}' });
+      mockRepo.create.mockResolvedValueOnce({ id: 'r1' });
+      await retrospectiveService.seedFromAI('s1', 'u1');
+      expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({ sprintId: 's1', projectId: 'p1' }));
     });
   });
 });

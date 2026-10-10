@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { organizationService } from '../../services/OrganizationService';
@@ -29,6 +30,8 @@ const updateSchema = z.object({
 
 export async function tenantAdminRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/admin/tenants
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {

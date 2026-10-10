@@ -70,6 +70,8 @@ describe('a duplicate name answers one plain 409', () => {
     expect(await duplicateProjectNameReply(err, notAllowed, async () => false)).toBe(true);
     expect(notAllowed.code).toBe(409);
     expect(notAllowed.body.existingProjectId).toBeUndefined();
+    // and no "Open it" for a project they can't open (2026-10-09 audit, low)
+    expect(notAllowed.body.message).toBe('Another project in your company already uses that name. Choose a different name.');
   });
 
   it('other errors are left alone', async () => {

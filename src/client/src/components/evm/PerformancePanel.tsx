@@ -11,6 +11,7 @@ import {
   BarChart3,
   Calendar,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { SCurveChart } from './SCurveChart';
@@ -576,6 +577,9 @@ export function PerformancePanel({ projectId, onNavigate }: {
   onNavigate?: (tab: string) => void;
 }) {
   const [forecastMethod, setForecastMethod] = useState<ForecastMethod>('cumulative');
+  // The AI forecast is asked for only on the button (it ran on every opening of this default
+  // sub-tab — audit 2026-10-10 M1). A forecast already worked out comes with the metrics.
+  const [askAI, setAskAI] = useState(false);
 
   // Stage 1: metrics (fast — no AI wait)
   const { data: evmData, isLoading: evmLoading, error: evmError } = useQuery({
@@ -585,11 +589,11 @@ export function PerformancePanel({ projectId, onNavigate }: {
     staleTime: 5 * 60 * 1000, // 5 min client cache
   });
 
-  // Stage 2: AI predictions (deferred — may take 3-8s on cache miss)
+  // Stage 2: AI predictions, on request (may take 3-8s on cache miss)
   const { data: aiData, isLoading: aiLoading } = useQuery({
     queryKey: ['evmForecastAI', projectId],
     queryFn: () => apiService.getEVMAIPredictions(projectId),
-    enabled: !!projectId && !!evmData?.result,
+    enabled: askAI && !!projectId && !!evmData?.result,
     staleTime: 5 * 60 * 1000,
     // Each try is an AI call — never repeat it automatically
     retry: false,
@@ -899,6 +903,21 @@ export function PerformancePanel({ projectId, onNavigate }: {
             <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded animate-pulse w-full" />
             <div className="h-4 bg-gray-100 dark:bg-gray-700 rounded animate-pulse w-2/3" />
           </div>
+        </div>
+      ) : !aiPredictions && !askAI && !evmData?.sample ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-5 py-3">
+          <p className="text-sm text-gray-700 dark:text-gray-200">
+            <Bot className="inline h-4 w-4 mr-1.5 align-text-bottom text-primary-500" aria-hidden="true" />
+            Want the AI's reading of these figures — likely finish cost and date, and what to watch?
+          </p>
+          <button
+            type="button"
+            onClick={() => setAskAI(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Ask AI
+          </button>
         </div>
       ) : !aiPredictions && aiData?.unavailable ? (
         <p className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-3 text-sm text-gray-600 dark:text-gray-300">

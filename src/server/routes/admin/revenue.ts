@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { subscriptionRepository } from '../../database/SubscriptionRepository';
 import { subscriptionEventRepository } from '../../database/SubscriptionEventRepository';
 import { databaseService } from '../../database/connection';
@@ -16,6 +17,8 @@ function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
 
 export async function revenueRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/admin/revenue
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {

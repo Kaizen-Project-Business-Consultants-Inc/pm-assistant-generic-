@@ -111,6 +111,8 @@ export class ChatRepository extends BaseRepository<ChatConversation> {
     return (result.affectedRows ?? 0) > 0;
   }
 
+  /** Only each action's outcome line is kept: the chat shows those, and a tool's data (a whole
+   *  task list) would add megabytes to a row kept forever (audit 2026-10-10 H1) */
   async addMessage(conversationId: string, message: {
     role: 'user' | 'assistant';
     content: string;
@@ -120,7 +122,7 @@ export class ChatRepository extends BaseRepository<ChatConversation> {
     await this.queryRaw(
       `INSERT INTO chat_messages (id, conversation_id, role, content, actions)
        VALUES (?, ?, ?, ?, ?)`,
-      [id, conversationId, message.role, message.content, message.actions ? JSON.stringify(message.actions) : null],
+      [id, conversationId, message.role, message.content, message.actions ? JSON.stringify(message.actions.map(storedAction)) : null],
     );
     // Touch the conversation's updated_at
     await this.queryRaw(
@@ -175,3 +177,8 @@ export class ChatRepository extends BaseRepository<ChatConversation> {
 }
 
 export const chatRepository = new ChatRepository();
+
+/** What a stored chat message keeps of one Mjuzi action: the line the chat panel shows */
+function storedAction(a: { success?: boolean; toolName?: string; summary?: string; error?: string }) {
+  return { success: a.success, toolName: a.toolName, summary: a.summary, error: a.error };
+}

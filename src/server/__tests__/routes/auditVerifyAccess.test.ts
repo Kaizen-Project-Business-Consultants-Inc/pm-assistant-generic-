@@ -9,7 +9,7 @@ import Fastify from 'fastify';
  */
 const user = vi.hoisted(() => ({ current: { userId: 'u1', role: 'project_manager' } as any }));
 vi.mock('../../middleware/auth', () => ({ authMiddleware: vi.fn(async (req: any) => { req.user = user.current; }) }));
-vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}), keyChangesNeed: () => vi.fn(async () => {}) }));
 const checkProjectRoleFor = vi.hoisted(() => vi.fn());
 vi.mock('../../middleware/requireProjectAccess', () => ({ requireProjectAccess: () => vi.fn(async () => {}), checkProjectRoleFor }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));

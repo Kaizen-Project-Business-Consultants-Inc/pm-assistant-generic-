@@ -2,12 +2,16 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { textSimplificationService } from '../../services/TextSimplificationService';
 import { analyzeReadingLevel } from '../../utils/readingLevel';
 import logger from '../../utils/logger';
 
+/** Longest text the AI rewrites: its reply is about as long, and must fit one bounded answer (audit 2026-10-10 M3) */
+const SIMPLIFY_MAX_CHARS = 10_000;
+
 const simplifySchema = z.object({
-  text: z.string().min(1).max(50000),
+  text: z.string().min(1).max(SIMPLIFY_MAX_CHARS),
   level: z.enum(['mild', 'strong']),
 });
 
@@ -18,8 +22,9 @@ const readingLevelSchema = z.object({
 export async function accessibilityRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
+  // No screen calls this (API keys only); limited until the user decides whether to keep it (audit 2026-10-10 M3)
   fastify.post('/simplify', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), heavyActionLimit('ai-simplify', 10)],
     schema: { description: 'Simplify text using AI', tags: ['accessibility'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

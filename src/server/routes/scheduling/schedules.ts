@@ -11,7 +11,7 @@ import { automationEventBus } from '../../services/automation/AutomationEventBus
 import { slackEventDispatcher } from '../../services/integrations/SlackEventDispatcher';
 import { teamsEventDispatcher } from '../../services/integrations/TeamsEventDispatcher';
 import { recurrenceService } from '../../services/RecurrenceService';
-import { scheduleRecomputeService, restoreTaskDates } from '../../services/ScheduleRecomputeService';
+import { scheduleRecomputeService } from '../../services/ScheduleRecomputeService';
 import { moveSuccessorsAfter } from '../../services/followSuccessors';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -323,8 +323,13 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       // may push this task too — one re-flow, one History entry.
       let cascadedChanges = null;
       const datesChanged = toDateString(oldTask.startDate) !== toDateString(task.startDate) || toDateString(oldTask.endDate) !== toDateString(task.endDate);
-      const result = await moveSuccessorsAfter(oldTask, task, { followNewLinks: linkGained });
+      // the task's links before the edit, so Schedule History's Undo can put them back (audit M7)
+      const oldLinks = linkGained
+        ? [{ taskId, deps: (oldTask.dependencies || []).map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType || 'FS', lagDays: d.lagDays ?? 0 })) }]
+        : undefined;
+      const result = await moveSuccessorsAfter(oldTask, task, { followNewLinks: linkGained, linksBefore: oldLinks });
       if (result.affectedTasks.length > 0) cascadedChanges = result;
+      let changeId = result.changeId ?? null;
       // the new predecessor may have pushed this task too: answer (and broadcast) its dates as saved
       if (linkGained && datesChanged) task = (await scheduleService.findTaskById(taskId)) ?? task;
 
@@ -332,6 +337,24 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (linkGained && !datesChanged) {
         const { scheduleId } = request.params as { scheduleId: string };
         rescheduled = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [taskId] })).deltas;
+        // The new predecessor moved tasks: one Schedule History entry, so Undo (History, or Ctrl+Z
+        // through it) puts the old links AND the old dates back — it used to be a client-side
+        // "restore these dates" call that skipped History (audit 2026-10-09 M7)
+        const projectId = (await scheduleService.findById(scheduleId))?.projectId;
+        if (rescheduled.length && projectId) {
+          changeId = await changeHistoryService.record({
+            projectId,
+            scheduleId,
+            kind: 'bulk_update',
+            summary: `Changed ${task.name}'s predecessors · ${rescheduled.length} task${rescheduled.length === 1 ? '' : 's'} moved later`,
+            taskIds: [taskId, ...rescheduled.map(m => m.taskId)],
+            undo: {
+              previous: [],
+              links: oldLinks,
+              moved: rescheduled.map(m => ({ taskId: m.taskId, startDate: m.oldStart, endDate: m.oldEnd })),
+            },
+          });
+        }
       }
 
       // Workflow automation runs from the task.changed notice updateTask emits
@@ -369,7 +392,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const notice = ignored.length
         ? `${ignored.join(' and ')} ${ignored.length > 1 ? 'are' : 'is'} calculated (budget = planned hours × rate, actual cost = approved hours × rate + other costs) and ${ignored.length > 1 ? 'were' : 'was'} not changed.`
         : undefined;
-      return { task, cascadedChanges, rescheduled, ...(notice ? { notice } : {}) };
+      return { task, cascadedChanges, rescheduled, changeId, ...(notice ? { notice } : {}) };
     } catch (error) {
       // Bad input is the caller's mistake: the app's error handler answers 400 with the field
       if (error instanceof z.ZodError) throw error;
@@ -392,7 +415,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (!deleted) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
       const { scheduleId } = request.params as { scheduleId: string };
       const schedule = await scheduleService.findById(scheduleId);
-      WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId } }, schedule?.projectId);
+      // with the plan, so open screens reload only that plan (2026-10-10 audit: every plan reloaded)
+      WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId, scheduleId } }, schedule?.projectId);
       const user = request.user!;
       webhookService.dispatch('task.deleted', { taskId }, user?.userId);
       automationEventBus.emit({ type: 'task.deleted', entityType: 'task', entityId: taskId, projectId: schedule?.projectId || '', userId: user.userId, payload: { taskId }, timestamp: new Date().toISOString() }).catch(() => {});
@@ -417,7 +441,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (!removed) return reply.status(404).send({ error: 'Not found', message: 'Dependency not found' });
       const { scheduleId } = request.params as { scheduleId: string };
       const schedule = await scheduleService.findById(scheduleId);
-      WebSocketService.broadcast({ type: 'task_updated', payload: { taskId } }, schedule?.projectId);
+      WebSocketService.broadcast({ type: 'task_updated', payload: { taskId, scheduleId } }, schedule?.projectId);
       return { message: 'Dependency removed' };
     } catch (error) {
       logger.error('Remove dependency error', { error });
@@ -489,6 +513,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
       const result = await scheduleService.bulkAddDependencies(scheduleId, parsed.data.links);
       let moved: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
+      let changeId: string | null = null;
       if (result.added.length > 0) {
         // Like MS Project: a task that now starts before its new predecessor allows is pushed
         // later, and so is everything after it. Only the newly linked tasks and their
@@ -496,7 +521,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         moved = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [...new Set(result.added.map(a => a.taskId))] })).deltas;
         WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
         const n = result.added.length;
-        await changeHistoryService.record({
+        changeId = await changeHistoryService.record({
           projectId: schedule.projectId,
           scheduleId,
           kind: 'link',
@@ -508,63 +533,14 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
           },
         });
       }
-      return { ...result, moved };
+      // Undo goes through Schedule History (changeId): latest change only, nothing edited since
+      return { ...result, moved, changeId };
     } catch (error) {
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });
       }
       logger.error('Bulk add dependencies error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to link tasks' });
-    }
-  });
-
-  fastify.post('/:scheduleId/dependencies/bulk-remove', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('dependency-bulk-remove', 60)],
-    schema: { description: 'Remove specific dependencies (undo of a bulk link)', tags: ['schedules'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { scheduleId } = request.params as { scheduleId: string };
-      const parsed = z.object({
-        links: z.array(z.object({ taskId: z.string().min(1), dependencyId: z.string().min(1) })).min(1).max(500),
-      }).safeParse(request.body);
-      if (!parsed.success) {
-        return reply.status(400).send({ error: 'Validation error', message: 'Send a list of 1–500 links, each with taskId and dependencyId' });
-      }
-      const schedule = await scheduleService.findById(scheduleId);
-      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
-      const removed = await scheduleService.bulkRemoveDependencies(scheduleId, parsed.data.links);
-      if (removed > 0) {
-        WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
-      }
-      return { removed };
-    } catch (error) {
-      logger.error('Bulk remove dependencies error', { error });
-      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to remove links' });
-    }
-  });
-
-  // Undo of a re-flow: put tasks back on their previous dates
-  fastify.post('/:scheduleId/tasks/restore-dates', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
-    schema: { description: 'Restore task dates (undo of a link re-flow)', tags: ['schedules'] },
-  }, async (request: FastifyRequest, reply: FastifyReply) => {
-    try {
-      const { scheduleId } = request.params as { scheduleId: string };
-      const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable();
-      const parsed = z.object({
-        dates: z.array(z.object({ taskId: z.string().min(1), startDate: day, endDate: day })).min(1).max(2000),
-      }).safeParse(request.body);
-      if (!parsed.success) {
-        return reply.status(400).send({ error: 'Validation error', message: 'Send a list of { taskId, startDate, endDate } with dates as YYYY-MM-DD' });
-      }
-      const schedule = await scheduleService.findById(scheduleId);
-      if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
-      const restored = await restoreTaskDates(scheduleId, parsed.data.dates);
-      if (restored > 0) WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
-      return { restored };
-    } catch (error) {
-      logger.error('Restore task dates error', { error });
-      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to restore dates' });
     }
   });
 
@@ -939,10 +915,25 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     schema: { description: 'Promote a scenario to replace the base schedule', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const { scenarioId } = request.params as { scheduleId: string; scenarioId: string };
-      await scheduleService.promoteScenario(scenarioId);
-      return { message: 'Scenario promoted successfully' };
+      const { scheduleId, scenarioId } = request.params as { scheduleId: string; scenarioId: string };
+      // only a scenario of THIS plan (the one the caller's access was checked on)
+      const r = await scheduleService.promoteScenario(scenarioId, scheduleId);
+      // One Schedule History entry: Undo puts the plan's old dates, durations and % back (audit M8)
+      const n = r.previous.length;
+      const changeId = n ? await changeHistoryService.record({
+        projectId: r.projectId,
+        scheduleId: r.baseScheduleId,
+        kind: 'bulk_update',
+        summary: `Promoted scenario '${r.label}': ${n} task${n === 1 ? '' : 's'} changed`,
+        taskIds: r.previous.map(p => p.id),
+        undo: { previous: r.previous },
+      }) : null;
+      WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId: r.baseScheduleId } }, r.projectId);
+      return { message: 'Scenario promoted successfully', changeId };
     } catch (error) {
+      if (error instanceof Error && error.message === 'Not a scenario schedule') {
+        return reply.status(404).send({ error: 'Not found', message: 'That scenario does not belong to this plan.' });
+      }
       logger.error('Promote scenario error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to promote scenario' });
     }

@@ -81,6 +81,6 @@ describe('PUT /schedules/:id/tasks/:taskId — outdent to the top level (parentT
     expect(upd[2]).toEqual([null, 'design']);
     expect(parentNow).toBeNull();
     // the old summary works its dates out again (and drops its summary flag if it has no tasks left)
-    expect(rollup).toHaveBeenCalledWith('phase');
+    expect(rollup).toHaveBeenCalledWith('phase', 0, expect.anything()); // with the plan's calendar
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isToolAllowed, getAllowedRoles, type Role } from '../../../../mcp-server/src/permissions';
+import { isToolAllowed, getAllowedRoles, mcpRole, type Role } from '../../../../mcp-server/src/permissions';
 
 const ALL_ROLES: Role[] = [
   'admin', 'executive', 'project_manager', 'team_member', 'scrum_master', 'finance_officer',
@@ -295,5 +295,17 @@ describe('MCP Permission Matrix', () => {
     it('allows unknown tools for admin', () => {
       expect(isToolAllowed('nonexistent-tool', 'admin')).toBe(true);
     });
+  });
+});
+
+/** 2026-10-09 audit (low): the MCP server used the raw role, so an owner's Claude got fewer tools */
+describe('mcpRole: the same role rule as the app', () => {
+  it('the company owner works as PMO', () => {
+    expect(mcpRole({ role: 'project_manager', is_owner: 1, is_guest: 0 })).toBe('pmo');
+  });
+  it('a member, a guest owner-flag and the platform admin keep their own role', () => {
+    expect(mcpRole({ role: 'team_member', is_owner: 0, is_guest: 0 })).toBe('team_member');
+    expect(mcpRole({ role: 'viewer', is_owner: 1, is_guest: 1 })).toBe('viewer');
+    expect(mcpRole({ role: 'admin', is_owner: null, is_guest: null })).toBe('admin');
   });
 });

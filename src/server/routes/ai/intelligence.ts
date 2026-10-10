@@ -11,6 +11,7 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import { cachedAIResult } from '../../utils/aiResultCache';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 /** Saving or deleting a what-if scenario for a project: its Manager/Owner */
 const scenarioPM = requireProjectAccess('manager', {
@@ -54,8 +55,9 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // No screen calls this (API keys only): limited until the user decides whether to keep it (audit 2026-10-10 M3)
   fastify.get('/anomalies/project/:projectId', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer'), heavyActionLimit('ai-anomalies-project', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (await isTrialUser(request)) {
@@ -89,8 +91,9 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // No screen calls this (API keys only): limited until the user decides whether to keep it (audit 2026-10-10 M3)
   fastify.get('/cross-project/similar/:projectId', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    preHandler: [requireScope('read'), requireProjectAccess('viewer'), heavyActionLimit('ai-similar-projects', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (await isTrialUser(request)) {

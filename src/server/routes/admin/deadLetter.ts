@@ -1,11 +1,14 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { deadLetterService } from '../../services/DeadLetterService';
 
 import { isPlatformAdmin } from '../../utils/platformAdmin';
 import { clampPagination } from '../../schemas/paginationSchema';
 export async function deadLetterRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/admin/dlq — stats
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {

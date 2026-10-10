@@ -81,7 +81,7 @@ describe('PUT /schedules/:id/tasks/:taskId — Work (estimatedDurationHours)', (
     expect(upd).toHaveLength(1);
     expect(String(upd[0][1])).toContain('estimated_duration_hours = ?');
     expect(upd[0][2]).toEqual([24, 'build']);
-    expect(rollup).toHaveBeenCalledWith('phase');
+    expect(rollup).toHaveBeenCalledWith('phase', 0, expect.anything()); // with the plan's calendar
   });
 
   it('a negative is refused with a 400, nothing written', async () => {

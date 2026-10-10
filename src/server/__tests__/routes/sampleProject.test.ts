@@ -169,7 +169,7 @@ describe('sample project routes', () => {
     for (const action of ['remove', 'load']) {
       const res = await app.inject({ method: 'POST', url: `/api/v1/sample-project/${action}` });
       expect(res.statusCode).toBe(403);
-      expect(res.json().message).toMatch(/company owner or an admin/);
+      expect(res.json().message).toMatch(/company owner or a PMO/);
     }
     expect(conn.sql).toEqual([]);
     expect((await app.inject({ method: 'GET', url: '/api/v1/sample-project' })).json().canManage).toBe(false);

@@ -41,9 +41,11 @@ export async function duplicateProjectNameReply(
 ): Promise<boolean> {
   if (!(err instanceof DuplicateProjectNameError)) return false;
   const id = err.existingProjectId && (await canOpen(err.existingProjectId).catch(() => false)) ? err.existingProjectId : null;
+  // Names are unique in the company, so the clash itself can't be hidden; for a project this person
+  // can't open, say no more than that (no "Open it", no id — 2026-10-09 audit, low)
   reply.status(409).send({
     error: 'Duplicate project name',
-    message: err.message,
+    message: id ? err.message : 'Another project in your company already uses that name. Choose a different name.',
     field: 'name',
     ...(id ? { existingProjectId: id } : {}),
   });

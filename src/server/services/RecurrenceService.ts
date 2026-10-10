@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, finishFor, utcDay, ymdOf, mondayOf, calendarDaysBetween } from '../utils/workingDays';
 import { chunksOf } from '../utils/chunksOf';
+import { planChanged } from './domainEvents';
+import logger from '../utils/logger';
 
 interface ParsedRule {
   freq: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
@@ -207,8 +209,21 @@ export class RecurrenceService {
       );
     }
     const created = toMake.length;
+    // The new instances sit under the template's summary task: it rolls up (dates, %, totals), and
+    // open screens and plan watchers hear the plan changed (audit 2026-10-09: neither happened)
+    await this.afterInstancesChanged(tpl.schedule_id, tpl.parent_task_id, isWorking);
 
     return created;
+  }
+
+  /** The summary task above a template's instances rolls up; the plan-changed notice goes out */
+  private async afterInstancesChanged(scheduleId: string, parentTaskId: string | null | undefined, isWorking?: IsWorking): Promise<void> {
+    if (parentTaskId) {
+      const { scheduleService } = await import('./ScheduleService');
+      await scheduleService.recomputeParentRollup(parentTaskId, 0, { isWorking }).catch((err: any) =>
+        logger.warn('[Recurrence] roll-up after instances changed failed', { parentTaskId, error: err?.message }));
+    }
+    planChanged(scheduleId);
   }
 
   /** The schedule's project calendar; Mon–Fri when it cannot be read */
@@ -225,11 +240,14 @@ export class RecurrenceService {
    * Delete all instances created from a template.
    */
   async deleteChildren(templateTaskId: string): Promise<number> {
+    const [tpl] = await databaseService.query(`SELECT schedule_id, parent_task_id FROM tasks WHERE id = ?`, [templateTaskId]);
     const result: any = await databaseService.query(
       `DELETE FROM tasks WHERE recurrence_parent_id = ?`,
       [templateTaskId]
     );
-    return result?.affectedRows ?? 0;
+    const removed = result?.affectedRows ?? 0;
+    if (removed > 0 && tpl) await this.afterInstancesChanged(tpl.schedule_id, tpl.parent_task_id);
+    return removed;
   }
 }
 

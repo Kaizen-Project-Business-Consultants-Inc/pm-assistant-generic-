@@ -10,6 +10,7 @@ import { ResourceRequestApprovalPanel } from '../components/resources/ResourceRe
 import { TeamPlanner } from '../components/resources/TeamPlanner';
 import { useCanManagePeople } from '../hooks/useCanManagePeople';
 import { useAuthStore } from '../stores/authStore';
+import { canSeePayRates } from '../utils/rateCard';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -127,6 +128,8 @@ export function ResourceManagementPage() {
   // Owner or PMO: line managers, emails of people who sign in, removing people who sign in
   const canManagePeople = useCanManagePeople();
   const me = useAuthStore((s) => s.user);
+  // pay rates: only those who may see them get the fields (the server ignores them from others)
+  const seesPay = canSeePayRates(me);
   const queryClient = useQueryClient();
   // ?tab=workload (from the Gantt's Conflicts link) opens the Heatmap on all projects
   const tabFromUrl = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
@@ -366,8 +369,7 @@ export function ResourceManagementPage() {
       email: formEmail,
       lineManagerUserId: formLineManager,
       capacityHoursPerWeek: parseInt(formCapacity) || 40,
-      costRateHourly: costRate,
-      useRateCard: formUseRateCard,
+      ...(seesPay ? { costRateHourly: costRate, useRateCard: formUseRateCard } : {}),
       resourceGroup: formGroup || null,
       skills: formSkills,
     };
@@ -631,12 +633,14 @@ export function ResourceManagementPage() {
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Hours/Week</label>
                   <input type="number" aria-label="Hours per week" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="1" max="80" />
                 </div>
+                {seesPay && (
                 <RateSourceField role={formRole} useRateCard={formUseRateCard} onChange={setFormUseRateCard}>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cost Rate ($/hr)</label>
                   <input type="number" aria-label="Cost rate ($/hr)" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
                 </div>
                 </RateSourceField>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Department</label>
                   <select aria-label="Department" value={formGroup} onChange={(e) => setFormGroup(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100">

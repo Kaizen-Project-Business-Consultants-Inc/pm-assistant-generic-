@@ -121,7 +121,7 @@ describe('DELETE /schedules/:id/tasks/:taskId — recorded in History, undone li
     expect(rollup.mock.invocationCallOrder[0]).toBeLessThan(query.mock.invocationCallOrder[insertCall]);
 
     // the route's own events are kept
-    expect(broadcast).toHaveBeenCalledWith({ type: 'task_deleted', payload: { taskId: 't2' } }, 'p1');
+    expect(broadcast).toHaveBeenCalledWith({ type: 'task_deleted', payload: { taskId: 't2', scheduleId: 's1' } }, 'p1');
     expect(dispatch).toHaveBeenCalledWith('task.deleted', { taskId: 't2' }, 'u1');
     expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'task.deleted', entityId: 't2', projectId: 'p1' }));
     expect(append).toHaveBeenCalledWith(expect.objectContaining({ action: 'task.delete', entityId: 't2' }));
@@ -138,7 +138,7 @@ describe('DELETE /schedules/:id/tasks/:taskId — recorded in History, undone li
     expect(into('task_dependencies')).toHaveLength(1);
     expect(into('resource_assignments')).toHaveLength(1);
     expect(into('task_comments')).toHaveLength(1);
-    expect(rollup).toHaveBeenCalledWith('phase');
+    expect(rollup).toHaveBeenCalledWith('phase', 0, expect.anything()); // with the plan's calendar
     expect(query.mock.calls.some(c => String(c[0]).startsWith("UPDATE change_batches SET status = 'undone'"))).toBe(true);
   });
 

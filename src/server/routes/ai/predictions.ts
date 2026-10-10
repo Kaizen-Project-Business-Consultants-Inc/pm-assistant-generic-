@@ -9,7 +9,23 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { runHealthSnapshot } from '../../services/scheduling/healthSnapshotJob';
 import { platformAdminOnly } from '../../utils/platformAdmin';
-import { cachedAIResult } from '../../utils/aiResultCache';
+import { cachedAIResult, peekAIResult, type WithAITime } from '../../utils/aiResultCache';
+
+/**
+ * `?ai=0` (the AI Predictions tab opening): the AI answer already kept for this project if there
+ * is one, else the rules-based answer — no AI call. The tab's "Ask AI" button, and API/MCP callers
+ * (who ask on purpose), leave it off and get the AI's answer (audit 2026-10-10 M1).
+ */
+async function predictionFor<T extends { aiPowered: boolean }>(
+  request: FastifyRequest,
+  key: string,
+  compute: (opts: { ai: boolean }) => Promise<T>,
+): Promise<WithAITime<T>> {
+  if ((request.query as { ai?: string } | undefined)?.ai === '0') {
+    return (await peekAIResult<T>(key)) ?? compute({ ai: false });
+  }
+  return cachedAIResult(key, () => compute({ ai: true }));
+}
 
 export async function predictionRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -41,8 +57,8 @@ export async function predictionRoutes(fastify: FastifyInstance) {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
       // the project's answer, reused for 30 minutes (it asked the AI on every visit)
-      const { assessment, aiPowered } = await cachedAIResult(`risks:${projectId}`, () => service.assessProjectRisks(projectId, userId));
-      return reply.send({ data: assessment, aiPowered });
+      const { assessment, aiPowered, aiGeneratedAt } = await predictionFor(request, `risks:${projectId}`, (o) => service.assessProjectRisks(projectId, userId, o));
+      return reply.send({ data: assessment, aiPowered, aiGeneratedAt });
     } catch (err) {
       fastify.log.error({ err }, 'Risk assessment failed');
       return reply.status(500).send({ error: 'Failed to generate risk assessment' });
@@ -56,8 +72,8 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
-      const { impact, aiPowered } = await cachedAIResult(`weather:${projectId}`, () => service.analyzeWeatherImpact(projectId, userId));
-      return reply.send({ data: impact, aiPowered });
+      const { impact, aiPowered, aiGeneratedAt } = await predictionFor(request, `weather:${projectId}`, (o) => service.analyzeWeatherImpact(projectId, userId, o));
+      return reply.send({ data: impact, aiPowered, aiGeneratedAt });
     } catch (err) {
       fastify.log.error({ err }, 'Weather impact analysis failed');
       return reply.status(500).send({ error: 'Failed to analyze weather impact' });
@@ -71,8 +87,8 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
-      const { forecast, aiPowered } = await cachedAIResult(`budget:${projectId}`, () => service.forecastBudget(projectId, userId));
-      return reply.send({ data: forecast, aiPowered });
+      const { forecast, aiPowered, aiGeneratedAt } = await predictionFor(request, `budget:${projectId}`, (o) => service.forecastBudget(projectId, userId, o));
+      return reply.send({ data: forecast, aiPowered, aiGeneratedAt });
     } catch (err) {
       fastify.log.error({ err }, 'Budget forecast failed');
       return reply.status(500).send({ error: 'Failed to generate budget forecast' });

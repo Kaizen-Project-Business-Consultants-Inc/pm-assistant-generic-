@@ -70,7 +70,7 @@ describe('imports are recorded in Schedule History', () => {
     expect(review.run.mock.invocationCallOrder[0]).toBeLessThan(record.mock.invocationCallOrder[0]);
     // the phase is recalculated ONCE after its rows exist, not once per row; the calendar is read once (2026-10-08)
     expect(svc.recomputeParentRollup).toHaveBeenCalledTimes(1);
-    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1');
+    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1', 0, expect.anything()); // with the plan's calendar
     expect(svc.workingDayTest).toHaveBeenCalledTimes(1);
     const rows = svc.createTask.mock.calls.map(c => c[0]).filter((d: any) => d.parentTaskId);
     expect(rows.every((d: any) => d.deferParentRollup === true)).toBe(true);
@@ -89,7 +89,7 @@ describe('imports are recorded in Schedule History', () => {
 
     // the outline parent is recalculated once, after its rows; the calendar read once (2026-10-08)
     expect(svc.recomputeParentRollup).toHaveBeenCalledTimes(1);
-    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1');
+    expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1', 0, expect.anything()); // with the plan's calendar
     expect(svc.workingDayTest).toHaveBeenCalledTimes(1);
     expect(svc.createTask.mock.calls[1][0]).toMatchObject({ parentTaskId: 't1', deferParentRollup: true });
   });

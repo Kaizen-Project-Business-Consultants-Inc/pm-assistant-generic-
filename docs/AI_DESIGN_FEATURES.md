@@ -167,6 +167,8 @@ Multi-factor risk forecasting and health scoring.
 - **Dashboard predictions:** Aggregated portfolio-level health predictions across all active projects
 - All outputs validated against Zod schemas (`AIRiskAssessmentSchema`, `AIWeatherImpactSchema`, `AIBudgetForecastSchema`, `AIDashboardPredictionsSchema`)
 
+**AI only when asked (audit 2026-10-10):** a kept AI answer carries `aiGeneratedAt` (`cachedAIResult`), and the tab's banner says which source each prediction shows ("Risk: AI answer from 14:32 … Weather: worked out by rules"). The tab opens with `?ai=0` — risk, weather and budget show the AI answer already kept for the project (30 minutes) or else the rules' answer, with no AI call. Its **Ask AI** button (and API / MCP callers, who leave `ai` off) asks the AI. Weather never asks the AI when no outdoor work is left. The Portfolio Intelligence panel re-asks by itself at most once an hour (Refresh still asks, at most every 10 minutes).
+
 **Deterministic helpers (no AI required):**
 - `computeEVMMetrics()` -- Pure math EVM calculations
 - `computeDeterministicRiskScore()` -- Algorithmic risk scoring as baseline
@@ -475,6 +477,16 @@ The core integration layer for all AI features:
 - Per-tier budget enforcement: budget resolution chain (per-user override → tier default → global fallback + top-up tokens). Returns HTTP 429 with `AI_BUDGET_EXCEEDED` code when exhausted.
 - Graceful degradation: `isAvailable()` check guards all AI features; budget exhaustion blocks AI but preserves all non-AI functionality
 
+**Before every call (`preflight`, audit 2026-10-10):**
+- **Plan gate for every AI call:** `aiBudgetService.checkBudget` first checks the person's plan includes `ai_assistant` (a plan without it answers 403 `UPGRADE_REQUIRED`, which opens the upgrade window). A **viewer** is judged by their company's plan, not the trial plan left on their own record. Calls billed to someone else (an automation's owner, a scheduled report's creator) are checked against that person. Background jobs with no person are covered by the account's monthly cap only.
+- **Prompt estimate counts:** the prompt is estimated at ~4 characters per token; the budget check refuses when this month's use plus the estimate would go over (before, only "already over?" was checked). A prompt over `MAX_PROMPT_TOKENS` (150k) is refused with a plain 422 `AI_PROMPT_TOO_LARGE` before anything is paid for.
+- **Tool loops check every turn:** `completeToolLoop` reads the plan and the month's usage once, before the first turn (`checkBudget` returns a snapshot), then checks each later turn locally with `assertFits(used at start + this loop's spend, budget, this turn's estimate)` — earlier turns are counted once, and the turn that would not fit is never sent. A tool result longer than `MAX_TOOL_RESULT_CHARS` (40k) is cut with a note. Every turn's failure counts toward the circuit breaker.
+- **Fewer paid retries:** the fallback model gets no extra SDK retry; a JSON reply cut off at the output limit is not asked for again (it would be cut off again).
+
+**Refusals answer as what they are:** routes reply through `aiRefusalReply(err)` (AIBudgetService): plan without AI → 403 `UPGRADE_REQUIRED` (`AIPlanRequiredError`, its own name), budget used up → 429, the account's monthly cap → 503 `AI_UNAVAILABLE` with a neutral message (`AIAccountCapError`; Kovarti's spend is logged, never shown).
+
+**Bounded tool results (`aiToolLimits.ts`):** `list_tasks` (Mjuzi and NL query) takes optional `nameContains`, `status` and `assignedTo` filters, applied before the row limit, so any task in a big plan can be found; the cut-off note points to them. Mjuzi's and NL query's list tools return at most 200 rows (`list_tasks`, `get_project_details` across plans with each plan's task count, `get_overdue_tasks` — the most overdue first, project lists) and say "Showing 200 of N". NL query results are compact JSON. A stored chat message keeps only each action's outcome line (`chat_messages.actions` is kept forever), not the tool's data.
+
 **Configuration:**
 ```
 ANTHROPIC_API_KEY=
@@ -490,7 +502,7 @@ Assembles rich context for every AI call:
 
 - `buildProjectContext(projectId)` -- Pulls project metadata, schedules, tasks, team, budget into a `ProjectContext` object
 - `buildPortfolioContext()` -- Aggregates all projects into a `PortfolioContext` for cross-project features
-- `toPromptString(context)` -- Serializes context into a compact string for prompt injection
+- `toPromptString(context, maxTasks = 300)` -- Serializes context into a compact string for prompt injection. Over the limit it lists open tasks only, in plan order, and says how many there are (Mjuzi's chat uses 100: its system prompt is resent on every tool-loop turn)
 - Keeps token usage efficient by structuring data compactly
 
 ### AI Action Executor (`aiActionExecutor.ts`)

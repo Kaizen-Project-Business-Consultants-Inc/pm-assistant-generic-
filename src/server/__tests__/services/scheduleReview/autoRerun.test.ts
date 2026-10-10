@@ -8,7 +8,8 @@ vi.mock('../../../services/ScheduleService', () => ({ scheduleService: { findByI
 vi.mock('../../../services/WebSocketService', () => ({ WebSocketService: { broadcast } }));
 const recalcSchedule = vi.fn().mockResolvedValue(0);
 vi.mock('../../../services/TaskBudgetService', () => ({ taskBudgetService: { recalcSchedule } }));
-vi.mock('../../../middleware/requestContext', () => ({ getRequestContext: () => ({ userId: 'u-1' }), getRequestId: () => 'r-1' }));
+const ctxNow = vi.hoisted(() => ({ value: { userId: 'u-1' } as Record<string, string> }));
+vi.mock('../../../middleware/requestContext', () => ({ getRequestContext: () => ctxNow.value, getRequestId: () => 'r-1' }));
 vi.mock('../../../utils/logger', () => ({ default: { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
 import { AsyncLocalStorage } from 'async_hooks';
@@ -35,6 +36,17 @@ describe('queueReviewRerun', () => {
   it('keeps schedules separate', async () => {
     queueReviewRerun('s1');
     queueReviewRerun('s2');
+    vi.advanceTimersByTime(QUIET_MS);
+    await flush();
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
+  it('the same schedule id in two companies gets two reviews (one company never cancels the other)', async () => {
+    ctxNow.value = { userId: 'u-1', tenantDbName: 'pmassist_t_one' };
+    queueReviewRerun('s1');
+    ctxNow.value = { userId: 'u-1', tenantDbName: 'pmassist_t_two' };
+    queueReviewRerun('s1');
+    ctxNow.value = { userId: 'u-1' };
     vi.advanceTimersByTime(QUIET_MS);
     await flush();
     expect(run).toHaveBeenCalledTimes(2);

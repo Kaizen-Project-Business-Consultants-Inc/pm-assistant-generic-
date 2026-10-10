@@ -382,10 +382,11 @@ describe('NLQueryService', () => {
 
       const result = JSON.parse(await executeToolFn('list_projects', {}));
 
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('p1');
-      expect(result[0].name).toBe('Alpha');
-      expect(result[0].budgetAllocated).toBe(100000);
+      expect(result.total).toBe(1);
+      expect(result.note).toBeUndefined();
+      expect(result.projects[0].id).toBe('p1');
+      expect(result.projects[0].name).toBe('Alpha');
+      expect(result.projects[0].budgetAllocated).toBe(100000);
     });
 
     it('get_project_details — returns project with schedules and tasks', async () => {
@@ -434,9 +435,47 @@ describe('NLQueryService', () => {
 
       const result = JSON.parse(await executeToolFn('list_tasks', { scheduleId: 's1' }));
 
-      expect(result).toHaveLength(1);
-      expect(result[0].dependencies).toHaveLength(1);
-      expect(result[0].dependencies[0].type).toBe('FS');
+      expect(result.total).toBe(1);
+      expect(result.tasks[0].dependencies).toHaveLength(1);
+      expect(result.tasks[0].dependencies[0].type).toBe('FS');
+    });
+
+    // audit 2026-10-10 H1: a tool result is resent on every later turn, so it is bounded
+    const manyTasks = (n: number) => Array.from({ length: n }, (_, i) => ({
+      id: `t${i}`, scheduleId: 's1', name: `Task ${i}`, status: 'pending', priority: 'medium',
+      progressPercentage: 0, startDate: null, endDate: null, dependency: null, dependencies: [], parentTaskId: null, assignedTo: null,
+    }));
+
+    it('list_tasks on a 5,000-task plan returns the first 200 and says how many there are', async () => {
+      mockFindTasksByScheduleId.mockResolvedValue(manyTasks(5000));
+      const raw = await executeToolFn('list_tasks', { scheduleId: 's1' });
+      const result = JSON.parse(raw);
+      expect(result.tasks).toHaveLength(200);
+      expect(result.total).toBe(5000);
+      expect(result.note).toMatch(/Showing 200 of 5000/);
+      expect(raw).not.toContain('\n'); // compact JSON, not pretty-printed
+    });
+
+    it('list_tasks nameContains finds task #250 of 300 (filters run before the cap)', async () => {
+      mockFindTasksByScheduleId.mockResolvedValue(manyTasks(300));
+      const all = JSON.parse(await executeToolFn('list_tasks', { scheduleId: 's1' }));
+      expect(all.note).toMatch(/Use nameContains, status or assignedTo/);
+      const result = JSON.parse(await executeToolFn('list_tasks', { scheduleId: 's1', nameContains: 'Task 250' }));
+      expect(result.total).toBe(1);
+      expect(result.tasks[0].id).toBe('t250');
+    });
+
+    it('get_project_details caps tasks across plans at 200 and gives each plan its count', async () => {
+      mockFindById.mockResolvedValue({ id: 'p1', name: 'Alpha', status: 'active', priority: 'high', projectType: 'software' });
+      mockFindByProjectId.mockResolvedValue([
+        { id: 's1', name: 'Plan 1', status: 'active' },
+        { id: 's2', name: 'Plan 2', status: 'active' },
+      ]);
+      mockFindTasksByScheduleIds.mockResolvedValue([...manyTasks(150), ...manyTasks(150).map((t) => ({ ...t, id: `u${t.id}`, scheduleId: 's2' }))]);
+      const result = JSON.parse(await executeToolFn('get_project_details', { projectId: 'p1' }));
+      expect(result.schedules.map((sc: any) => sc.taskCount)).toEqual([150, 150]);
+      expect(result.schedules.map((sc: any) => sc.tasks.length)).toEqual([150, 50]);
+      expect(result.note).toMatch(/Showing 200 of 300 tasks/);
     });
 
     it('get_resource_workload — delegates to resourceService', async () => {

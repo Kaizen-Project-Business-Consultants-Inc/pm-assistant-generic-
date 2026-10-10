@@ -703,7 +703,15 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 ### What a Claude connection may do (October 2026)
 - A Claude connection acts as the person who connected it, **with exactly their role's rights**: a viewer or team member can read; a project manager can read and change their projects; nobody gets admin rights through Claude except the Kovarti platform admin. When a person's role changes, their existing connection follows the new role straight away (every key is limited to its owner's role on each request), and the connection's key is re-issued with the new rights at its next renewal.
 - Revoking the connection's key (Settings → API Keys) ends it for good: its refresh token is revoked too, and a renewal is refused if the key was revoked, the person was deactivated or must change their password, or is no longer in the company they connected from (2026-10-09). Claude then has to be connected again. Needs control-plane migration 131 (`oauth_tokens.organization_id`) before the MCP server is deployed.
+- The sign-in page Claude opens (2026-10-09): only a registered Claude client and its own registered return address get a code; 10 tries a minute per address and a 15-minute lock after 5 wrong passwords for one name; people who must change their password, haven't verified their email, or whose guest access ended are refused, as in the app. The company owner's Claude is offered a PMO's tools, as the owner has in the app.
+- **The MCP journal no longer holds secrets** (2026-10-09): it logs method and path only. Before, every request's headers (bearer keys `kpm_…`), query and body (the sign-in password, token-exchange codes and refresh tokens) went to `journalctl`. After deploying, consider rotating keys that were in use, and trimming old MCP journal entries on both servers (`sudo journalctl --vacuum-time=…`).
 - Deploying: the MCP server is separate — `bash deploy.sh <env> --mcp` deploys it (the app needs its own deploy).
+
+### API keys and admin screens (October 2026)
+- A request made with an API key or Claude connection that changes something on an admin screen (`/api/v1/admin/*`, the waitlist launch email) needs a key with the `admin` right; changing company members or guests needs `write`. A key can never change a password or delete an account. Signed-in use is unchanged.
+
+### Embeddings (Mjuzi search) — migration 134
+- Control-plane migration **134** adds `embeddings.org_id` (whose row it is: `''` = the shared knowledge base). On a multi-company server it deletes company rows written before it (lessons, meeting notes, documents — derived data that can't be attributed to a company); prod had none on 2026-10-10 (only 849 knowledge-base rows), staging 4 meeting rows. Each is embedded again when it is next saved, or run `npx tsx src/server/scripts/backfillEmbeddings.ts` (it goes company by company and writes each row under its company). Search now only ever sees the caller's company plus the shared knowledge base. The knowledge base rows are kept as they are.
 
 ---
 

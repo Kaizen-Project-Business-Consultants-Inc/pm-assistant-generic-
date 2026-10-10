@@ -14,7 +14,9 @@ export class TextSimplificationService {
       const result = await claudeService.complete({
         systemPrompt: `You are a plain-language writing assistant. ${instruction} Return only the rewritten text, no commentary.`,
         userMessage: text,
-        maxTokens: Math.max(500, Math.ceil(text.length * 1.5)),
+        // About one token per 4 characters, with room to spare; never more than one bounded answer
+        // (it was 1.5 per character: up to 75k tokens, past the model's limit — audit 2026-10-10 M3)
+        maxTokens: Math.min(4096, Math.max(500, Math.ceil(text.length / 2))),
         temperature: 0.3,
       });
       return result.content.trim();

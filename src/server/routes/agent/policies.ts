@@ -3,8 +3,18 @@ import { z } from 'zod';
 import { policyEngineService } from '../../services/PolicyEngineService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import logger from '../../utils/logger';
+import logger from '../../utils/logger';
+
 import { platformAdminOnly } from '../../utils/platformAdmin';
+import { checkProjectRole } from '../../middleware/requireProjectAccess';
+
+/** A `?projectId=` filter is that project's data: anyone on the project (2026-10-09 audit, low) */
+async function queryProjectViewer(request: FastifyRequest, reply: FastifyReply) {
+  const { projectId } = (request.query ?? {}) as { projectId?: string };
+  if (!projectId) return;
+  const d = await checkProjectRole(request, projectId, 'viewer');
+  if (!d.ok) return reply.status(d.status).send(d.body);
+}
 
 const createPolicySchema = z.object({
   projectId: z.string().optional().nullable(),
@@ -37,7 +47,7 @@ export async function policyRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/policies
   fastify.get('/', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), queryProjectViewer],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.query as { projectId?: string };
@@ -127,7 +137,7 @@ export async function policyRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/policies/stats
   fastify.get('/evaluations/stats', {
-    preHandler: [requireScope('read')],
+    preHandler: [requireScope('read'), queryProjectViewer],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId, since } = request.query as { projectId?: string; since?: string };

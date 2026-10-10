@@ -10,15 +10,15 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
+import { aiRefusalReply } from '../../services/AIBudgetService';
 
 const applySchema = z.object({ fixIds: z.array(z.string()).min(1).max(200) });
 const rejectSchema = z.object({ feedback: z.string().max(2000).optional() });
 
 /** Map AI infra errors to their conventional status codes. */
 function handleAiError(error: any, reply: FastifyReply): FastifyReply | null {
-  if (error?.name === 'AIBudgetExceededError') {
-    return reply.status(429).send({ error: 'AI token budget exceeded. Rules-based fixes are still available.' });
-  }
+  const refusal = aiRefusalReply(error, 'AI token budget exceeded. Rules-based fixes are still available.');
+  if (refusal) return reply.status(refusal.status).send(refusal.body);
   if (error?.constructor?.name === 'AICircuitBreakerError') {
     return reply.status(503).send({ error: 'AI service temporarily unavailable. Please try again in a moment.' });
   }

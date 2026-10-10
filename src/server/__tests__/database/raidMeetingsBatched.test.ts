@@ -48,8 +48,9 @@ describe('knowledge base clean-up', () => {
   it('1,200 old sections: 3 deletes on the shared database, 500 ids each at most', async () => {
     await embeddingRepository.deleteMany('knowledge_base', Array.from({ length: 1200 }, (_, i) => `kb${i}`));
     const dels = stmts(/^DELETE FROM embeddings/);
-    expect(dels.map(d => d.params.length - 1)).toEqual([500, 500, 200]);
-    expect(dels.every(d => d.plane === 'control' && d.params[0] === 'knowledge_base')).toBe(true);
+    expect(dels.map(d => d.params.length - 2)).toEqual([500, 500, 200]);
+    // the knowledge base is the shared rows (owner '')
+    expect(dels.every(d => d.plane === 'control' && d.params[0] === '' && d.params[1] === 'knowledge_base')).toBe(true);
   });
 });
 

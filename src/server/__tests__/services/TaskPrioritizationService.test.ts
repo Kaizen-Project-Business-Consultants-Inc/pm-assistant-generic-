@@ -48,7 +48,7 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
-import { TaskPrioritizationService, downstreamRowCounts } from '../../services/TaskPrioritizationService';
+import { TaskPrioritizationService, downstreamTaskCounts } from '../../services/TaskPrioritizationService';
 import { config } from '../../config';
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -793,25 +793,25 @@ describe('TaskPrioritizationService', () => {
   });
 
   // ── downstream counts (in memory) ───────────────────────────────────
-  describe('downstreamRowCounts', () => {
+  describe('downstreamTaskCounts', () => {
     const dep = (id: string) => ({ dependencyId: id, dependencyType: 'FS', lagDays: 0 });
     const t = (id: string, ...preds: string[]) => ({ id, dependencies: preds.map(dep) }) as any;
 
-    it('counts every task after it, along every path, like the recursive query did (UNION ALL)', () => {
-      // a -> b -> d, a -> c -> d, d -> e : rows(a) = b, c, d (via b), d (via c), e, e = 6
-      const counts = downstreamRowCounts([t('a'), t('b', 'a'), t('c', 'a'), t('d', 'b', 'c'), t('e', 'd')]);
-      expect(Object.fromEntries(counts)).toEqual({ a: 6, b: 2, c: 2, d: 1, e: 0 });
+    it('counts each task after it once, however many paths lead there (audit 2026-10-09: a diamond counted paths)', () => {
+      // a -> b -> d, a -> c -> d, d -> e : after a come b, c, d, e = 4 (it was 6: d and e counted twice)
+      const counts = downstreamTaskCounts([t('a'), t('b', 'a'), t('c', 'a'), t('d', 'b', 'c'), t('e', 'd')]);
+      expect(Object.fromEntries(counts)).toEqual({ a: 4, b: 2, c: 2, d: 1, e: 0 });
     });
 
     it('handles a long chain without running out of stack', () => {
       const chain = Array.from({ length: 20000 }, (_, i) => (i === 0 ? t('n0') : t(`n${i}`, `n${i - 1}`)));
-      const counts = downstreamRowCounts(chain);
+      const counts = downstreamTaskCounts(chain);
       expect(counts.get('n0')).toBe(19999);
       expect(counts.get('n19999')).toBe(0);
     });
 
     it('ends on a link loop (which saving refuses) instead of walking forever', () => {
-      const counts = downstreamRowCounts([t('a', 'b'), t('b', 'a')]);
+      const counts = downstreamTaskCounts([t('a', 'b'), t('b', 'a')]);
       expect(counts.get('a')).toBeGreaterThan(0);
       expect(counts.get('b')).toBeGreaterThan(0);
     });

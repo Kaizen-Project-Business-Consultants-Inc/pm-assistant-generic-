@@ -103,20 +103,20 @@ describe('TextSimplificationService', () => {
       expect(result).toBe(input);
     });
 
-    it('calculates maxTokens as max(500, ceil(text.length * 1.5))', async () => {
+    it('asks for a bounded answer: max(500, length / 2), never more than 4096 tokens (audit 2026-10-10 M3)', async () => {
       mockIsAvailable.mockReturnValue(true);
       mockComplete.mockResolvedValue({ content: 'Short.' });
 
-      // Short text: length 5 * 1.5 = 7.5, ceil = 8, max(500, 8) = 500
       await service.simplify('Hello', 'mild');
       expect(mockComplete.mock.calls[0][0].maxTokens).toBe(500);
 
       mockComplete.mockClear();
+      await service.simplify('A'.repeat(4000), 'strong'); // about 1,000 tokens of text: room for 2,000
+      expect(mockComplete.mock.calls[0][0].maxTokens).toBe(2000);
 
-      // Long text: 400 chars * 1.5 = 600, max(500, 600) = 600
-      const longText = 'A'.repeat(400);
-      await service.simplify(longText, 'strong');
-      expect(mockComplete.mock.calls[0][0].maxTokens).toBe(600);
+      mockComplete.mockClear();
+      await service.simplify('A'.repeat(50_000), 'strong'); // was 75,000 — past the model's limit
+      expect(mockComplete.mock.calls[0][0].maxTokens).toBe(4096);
     });
 
     it('handles empty string input', async () => {

@@ -97,9 +97,9 @@ export class ReportsApi extends ApiBase {
     return response.data;
   }
 
-  async emailStatusReport(html: string, projectName: string, recipients: string[], projectId?: string) {
-    // projectId lets the server attach a portal link — the only link a client
-    // without a login can actually open.
+  async emailStatusReport(html: string, projectName: string, recipients: string[], projectId: string) {
+    // projectId is required: the server sends only a project's own report, by its manager, and
+    // attaches a portal link — the only link a client without a login can actually open.
     const response = await this.api.post('/status-reports/email', { html, projectName, recipients, projectId });
     return response.data;
   }

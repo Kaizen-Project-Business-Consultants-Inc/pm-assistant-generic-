@@ -69,6 +69,23 @@ function rowToProposal(row: RescheduleProposalRow): RescheduleProposal {
   };
 }
 
+/**
+ * The proposal no longer fits the plan (a task in it, or the plan itself, was deleted after it was
+ * made): the PM asks for a new proposal. The message says whether anything was saved.
+ */
+export class StaleProposalError extends Error {
+  static tasksGone(missing: number): StaleProposalError {
+    return new StaleProposalError(`${missing === 1 ? 'A task' : `${missing} tasks`} in this proposal ${missing === 1 ? 'was' : 'were'} deleted after it was made. Nothing was changed — ask for a new proposal.`);
+  }
+  /** a task went in the moment between the check and its save, after others were saved */
+  static partlySaved(): StaleProposalError {
+    return new StaleProposalError('A task in this proposal was deleted while it was being applied. Some changes were saved and can be undone in History; ask for a new proposal for the rest.');
+  }
+  static planGone(): StaleProposalError {
+    return new StaleProposalError('The plan this proposal was made for no longer exists. Nothing was changed.');
+  }
+}
+
 export class AutoRescheduleService {
   private scheduleService = new ScheduleService();
   private criticalPathService = new CriticalPathService();
@@ -457,26 +474,39 @@ Please propose date changes to reschedule affected tasks with minimal disruption
     const proposal = await this.getProposalById(proposalId);
     if (!proposal || proposal.status !== 'pending') return false;
 
-    // The dates as they are now (the proposal's "current" dates may be stale) — for History's Undo
-    const before: Array<{ taskId: string; startDate: string | null; endDate: string | null }> = [];
-    try {
-      // One read for every task in the proposal (it used to be one per task)
-      const found = await taskRepository.findByIds(proposal.proposedChanges.map(c => c.taskId));
-      const byId = new Map(found.map(t => [t.id, t]));
-      for (const change of proposal.proposedChanges) {
-        const t = byId.get(change.taskId);
-        if (t) before.push({ taskId: t.id, startDate: t.startDate ? String(t.startDate).slice(0, 10) : null, endDate: t.endDate ? String(t.endDate).slice(0, 10) : null });
-      }
-    } catch (err: any) {
-      logger.warn('[AutoReschedule] could not read dates for History; this change will not be undoable', { proposalId, error: err?.message });
-      before.length = 0;
-    }
+    // The dates as they are now (the proposal's "current" dates may be stale) — for History's Undo.
+    // One read for every task in the proposal. If it fails, or a task in the proposal has been
+    // deleted since, NOTHING is changed (audit 2026-10-09 M6: the tasks before the deleted one were
+    // saved, then the accept stopped with no History entry to undo them and the proposal still open).
+    const found = await taskRepository.findByIds(proposal.proposedChanges.map(c => c.taskId));
+    const byId = new Map(found.map(t => [t.id, t]));
+    const missing = proposal.proposedChanges.filter(c => !byId.has(c.taskId));
+    if (missing.length) throw StaleProposalError.tasksGone(missing.length);
+    const before: Array<{ taskId: string; startDate: string | null; endDate: string | null }> = proposal.proposedChanges.map(c => {
+      const t = byId.get(c.taskId)!;
+      return { taskId: t.id, startDate: t.startDate ? String(t.startDate).slice(0, 10) : null, endDate: t.endDate ? String(t.endDate).slice(0, 10) : null };
+    });
+    // No plan, no History entry to undo with: refuse before anything is saved
+    const schedule = await this.scheduleService.findById(proposal.scheduleId);
+    if (!schedule) throw StaleProposalError.planGone();
+    /** One History entry for what was saved, so Undo can put it back — also when the accept stops part-way */
+    const recordHistory = async (moved: typeof before) => {
+      if (moved.length === 0) return;
+      await changeHistoryService.record({
+        projectId: schedule.projectId,
+        scheduleId: proposal.scheduleId,
+        kind: 'ai_reschedule',
+        ref: proposalId,
+        summary: `Accepted AI Reschedule: ${moved.length} task${moved.length === 1 ? '' : 's'} re-dated`,
+        taskIds: moved.map(b => b.taskId),
+        undo: { moved },
+      });
+    };
 
     // Apply all proposed changes. updateTask stays one task at a time: each save also records
     // the field changes, re-rolls the parent summary, writes the task.update audit and fires the
     // task-changed event, none of which a plain bulk date write does. The 'auto-rescheduled'
-    // activity lines are written together (one INSERT) after the saves, and also for the tasks
-    // saved before a failure.
+    // activity lines are written together (one INSERT) after the saves.
     type Change = (typeof proposal.proposedChanges)[number];
     const activityFor = (change: Change) => ({
       taskId: change.taskId,
@@ -487,30 +517,17 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       oldValue: `${change.currentStartDate} - ${change.currentEndDate}`,
       newValue: `${change.proposedStartDate} - ${change.proposedEndDate}`,
     });
-    let pendingActivity: Change[] = [];
-    const writeActivity = async () => {
-      const rows = pendingActivity;
-      pendingActivity = [];
-      await taskRepository.logActivities(rows.map(activityFor));
-    };
+    const saved: Change[] = [];
     try {
       for (const change of proposal.proposedChanges) {
         // eslint-disable-next-line no-await-in-loop -- each task's save has its own rollup, audit and change event (see above)
-        const saved = await this.scheduleService.updateTask(change.taskId, {
+        const ok = await this.scheduleService.updateTask(change.taskId, {
           startDate: change.proposedStartDate,
           endDate: change.proposedEndDate,
         });
-        if (saved) {
-          pendingActivity.push(change);
-        } else {
-          // A task deleted since the proposal: write its line on its own, exactly as before
-          // batching (the database refuses it, which stops the accept at this task)
-          // eslint-disable-next-line no-await-in-loop -- rare path; keeps the old outcome for a deleted task
-          await writeActivity();
-          const a = activityFor(change);
-          // eslint-disable-next-line no-await-in-loop -- rare path (see above)
-          await this.scheduleService.logActivity(a.taskId, a.userId, a.userName, a.action, a.field, a.oldValue, a.newValue);
-        }
+        // deleted in the moment between the check above and its save
+        if (!ok) throw saved.length ? StaleProposalError.partlySaved() : StaleProposalError.tasksGone(1);
+        saved.push(change);
 
         auditLedgerService.append({
           actorId: 'system',
@@ -529,11 +546,14 @@ Please propose date changes to reschedule affected tasks with minimal disruption
         }).catch(err => deadLetterService.capture('audit.reschedule', { proposalId, taskId: change.taskId }, err));
       }
     } catch (err) {
-      // the lines for tasks already saved are still written; a failure here must not hide `err`
-      await writeActivity().catch(e => logger.warn('[AutoReschedule] activity lines not written', { proposalId, error: e?.message }));
+      // What was saved is written down and can be undone from History; a failure here must not hide `err`
+      await taskRepository.logActivities(saved.map(activityFor)).catch(e => logger.warn('[AutoReschedule] activity lines not written', { proposalId, error: e?.message }));
+      const savedIds = new Set(saved.map(c => c.taskId));
+      await recordHistory(before.filter(b => savedIds.has(b.taskId)))
+        .catch(e => logger.warn('[AutoReschedule] History entry for the saved part not recorded', { proposalId, error: e?.message }));
       throw err;
     }
-    await writeActivity();
+    await taskRepository.logActivities(saved.map(activityFor));
 
     // Successors follow the new dates: anything now starting before its predecessor
     // allows is pushed later, in working days (never pulled earlier; audited).
@@ -543,10 +563,8 @@ Please propose date changes to reschedule affected tasks with minimal disruption
         const { deltas } = await scheduleRecomputeService.recompute(proposal.scheduleId, { onlyFrom: movedIds, reason: 'ai_reschedule' });
         // Tasks the re-flow moved are part of this change, so Undo restores them too
         const known = new Set(before.map(b => b.taskId));
-        if (before.length) {
-          for (const d of deltas) {
-            if (!known.has(d.taskId)) before.push({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd });
-          }
+        for (const d of deltas) {
+          if (!known.has(d.taskId)) before.push({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd });
         }
       } catch (err: any) {
         logger.warn('[AutoReschedule] successors could not be re-flowed after accepting', { proposalId, error: err?.message });
@@ -559,19 +577,9 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       logger.warn('[AutoReschedule] Could not update proposal status in DB');
     }
 
-    const schedule = before.length ? await Promise.resolve().then(() => this.scheduleService.findById(proposal.scheduleId)).catch(() => null) : null;
-    if (schedule && before.length) {
-      await changeHistoryService.record({
-        projectId: schedule.projectId,
-        scheduleId: proposal.scheduleId,
-        kind: 'ai_reschedule',
-        ref: proposalId,
-        summary: `Accepted AI Reschedule: ${before.length} task${before.length === 1 ? '' : 's'} re-dated`,
-        taskIds: before.map(b => b.taskId),
-        undo: { moved: before },
-      });
-    }
-
+    // every task is saved: a History hiccup must not turn a done change into an error
+    await recordHistory(before).catch((err: any) =>
+      logger.warn('[AutoReschedule] accepted, but the History entry could not be written', { proposalId, error: err?.message }));
     return true;
   }
 

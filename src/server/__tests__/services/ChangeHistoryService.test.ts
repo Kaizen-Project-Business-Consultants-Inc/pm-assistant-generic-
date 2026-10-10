@@ -23,6 +23,7 @@ vi.mock('../../services/ScheduleService', () => ({ scheduleService: {
   bulkRemoveDependencies: (...a: any[]) => bulkRemoveDependencies(...a),
   deleteTask: (...a: any[]) => deleteTask(...a),
   recomputeParentRollup: (...a: any[]) => recomputeParentRollup(...a),
+  workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6,
 } }));
 const restoreTaskDates = vi.fn().mockResolvedValue(3);
 vi.mock('../../services/ScheduleRecomputeService', () => ({ restoreTaskDates: (...a: any[]) => restoreTaskDates(...a) }));
@@ -211,6 +212,52 @@ describe('ChangeHistoryService', () => {
       expect(restoreTaskDates).toHaveBeenCalledWith('s-1', moved);
     });
 
+    it('a re-date that also changed predecessors: dates back, then the old links back, in one transaction (audit M7)', async () => {
+      const moved = [{ taskId: 'a', startDate: '2026-10-12', endDate: '2026-10-14' }];
+      const links = [{ taskId: 'a', deps: [{ dependencyId: 'w', dependencyType: 'FS', lagDays: 0 }] }];
+      withChange(row({ kind: 'successors_moved', undo_payload: JSON.stringify({ moved, links }) }));
+      queryOn.mockImplementation(async (_c: any, sql: string) => (sql.startsWith('SELECT id FROM tasks') ? [{ id: 'a' }] : []));
+      await changeHistoryService.undo('s-1', 'c-1');
+      expect(restoreTaskDates).toHaveBeenCalledWith('s-1', moved);
+      const sqls = queryOn.mock.calls.map(c => String(c[1]));
+      expect(sqls.some(q => q.startsWith('DELETE FROM task_dependencies'))).toBe(true);
+      const ins = queryOn.mock.calls.find(c => String(c[1]).startsWith('INSERT INTO task_dependencies'))!;
+      expect(ins[2].slice(1)).toEqual(['a', 'w', 'FS', 0]);
+      // the copy of the first link on the task follows (review 2026-10-10)
+      expect(sqls.some(q => q.startsWith('UPDATE tasks SET dependency = CASE'))).toBe(true);
+      queryOn.mockReset(); queryOn.mockResolvedValue([]);
+    });
+
+    it('hours bookings the change moved go back to their exact old dates — only those nobody changed since (audit M1)', async () => {
+      const bookingMoves = [
+        // cut from Wed–Fri to Mon–Tue when its task was shortened: re-following on Undo would grow it to Mon–Fri
+        { id: 'ra1', taskId: 't1', start: '2026-10-14', end: '2026-10-16', newStart: '2026-10-12', newEnd: '2026-10-13' },
+        // edited by hand after the change: left alone
+        { id: 'ra2', taskId: 't1', start: '2026-10-14', end: '2026-10-14', newStart: '2026-10-13', newEnd: '2026-10-13' },
+      ];
+      const r = row({ kind: 'successors_moved', undo_payload: JSON.stringify({ moved: [{ taskId: 't1', startDate: '2026-10-12', endDate: '2026-10-16' }], bookingMoves }) });
+      withChange(r);
+      const base = query.getMockImplementation()!;
+      query.mockImplementation((sql: string, params: any[]) => sql.includes('FROM resource_assignments WHERE id IN')
+        ? Promise.resolve([{ id: 'ra1', s: '2026-10-12', e: '2026-10-13' }, { id: 'ra2', s: '2026-10-15', e: '2026-10-15' }])
+        : base(sql, params));
+      await changeHistoryService.undo('s-1', 'c-1');
+      const write = query.mock.calls.find(([q]) => String(q).startsWith('UPDATE resource_assignments'))!;
+      expect(write[1]).toEqual(['ra1', '2026-10-14', 'ra1', '2026-10-16', 'ra1']);
+    });
+
+    it('record keeps the booking moves of the tasks of the change (taken once) in the undo data', async () => {
+      (ctx as any).bookingMoves = new Map([
+        ['ra1', { id: 'ra1', taskId: 'a', start: '2026-10-16', end: '2026-10-16', newStart: '2026-10-19', newEnd: '2026-10-19' }],
+        ['ra9', { id: 'ra9', taskId: 'other', start: '2026-10-16', end: '2026-10-16', newStart: '2026-10-19', newEnd: '2026-10-19' }],
+      ]);
+      await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'successors_moved', summary: 'x', taskIds: ['a'], undo: { moved: [] } });
+      const [, params] = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
+      expect(JSON.parse(params[9]).bookingMoves.map((m: any) => m.id)).toEqual(['ra1']);
+      expect([...(ctx as any).bookingMoves.keys()]).toEqual(['ra9']);
+      delete (ctx as any).bookingMoves;
+    });
+
     it('bulk edit that set a predecessor: the old links back (this plan only), and the tasks it pushed back first (2026-10-09)', async () => {
       const pushed = [{ taskId: 'c', startDate: '2026-10-19', endDate: '2026-10-20' }];
       withChange(row({ kind: 'bulk_update', undo_payload: JSON.stringify({
@@ -222,12 +269,14 @@ describe('ChangeHistoryService', () => {
       restoreTaskDates.mockImplementationOnce(async () => { order.push('dates'); return 1; });
       queryOn.mockImplementation(async (_c: any, sql: string) => {
         if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND id IN')) return [{ id: 'b' }];
-        if (sql.startsWith('UPDATE tasks')) order.push('fields');
+        if (sql.startsWith('UPDATE tasks SET dependency = CASE')) order.push('link copy');
+        else if (sql.startsWith('UPDATE tasks')) order.push('fields');
         return [];
       });
       await changeHistoryService.undo('s-1', 'c-1');
       expect(restoreTaskDates).toHaveBeenCalledWith('s-1', pushed);
-      expect(order).toEqual(['dates', 'fields']);
+      // the copy of the first link on the task is set from the links put back, last
+      expect(order).toEqual(['dates', 'fields', 'link copy']);
       const del = queryOn.mock.calls.find(([, sql]) => String(sql).startsWith('DELETE FROM task_dependencies'))!;
       expect(del[2]).toEqual(['b']);
       const ins = queryOn.mock.calls.find(([, sql]) => String(sql).startsWith('INSERT INTO task_dependencies'))!;
@@ -401,7 +450,7 @@ describe('ChangeHistoryService — bulk delete and import', () => {
       const succ = queryOn.mock.calls.find(c => String(c[1]).startsWith('UPDATE tasks SET dependency = ?'))!;
       expect(succ[2]).toEqual(['kid', 'FS', 2, 'after', 's-1']);
       // the summary above the deleted ones (not itself deleted) rolls up again
-      expect(recomputeParentRollup).toHaveBeenCalledWith('top');
+      expect(recomputeParentRollup).toHaveBeenCalledWith('top', 0, expect.anything());
       expect(recomputeParentRollup).toHaveBeenCalledTimes(1);
       expect(query.mock.calls.some(([sql]) => String(sql).includes("SET status = 'undone'"))).toBe(true);
     });

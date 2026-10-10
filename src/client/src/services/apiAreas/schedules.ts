@@ -266,8 +266,10 @@ export class SchedulesApi extends ApiBase {
     return response.data as {
       added: Array<{ taskId: string; dependencyId: string; dependencyType: string; lagDays: number }>;
       skipped: number;
-      /** Tasks pushed later because of the new links (with their previous dates, for undo) */
+      /** Tasks pushed later because of the new links (with their previous dates) */
       moved: RescheduledTask[];
+      /** The Schedule History entry; Undo goes through it */
+      changeId: string | null;
     };
   }
 
@@ -275,17 +277,6 @@ export class SchedulesApi extends ApiBase {
   async groupTasks(scheduleId: string, taskIds: string[], name: string) {
     const response = await this.api.post(`/schedules/${scheduleId}/tasks/group`, { taskIds, name });
     return response.data as { summaryId: string; grouped: number; changeId: string | null };
-  }
-
-  /** Undo of a link re-flow: put tasks back on their previous dates */
-  async restoreTaskDates(scheduleId: string, dates: Array<{ taskId: string; startDate: string | null; endDate: string | null }>) {
-    const response = await this.api.post(`/schedules/${scheduleId}/tasks/restore-dates`, { dates });
-    return response.data as { restored: number };
-  }
-
-  async bulkUnlinkTasks(scheduleId: string, links: Array<{ taskId: string; dependencyId: string }>) {
-    const response = await this.api.post(`/schedules/${scheduleId}/dependencies/bulk-remove`, { links });
-    return response.data as { removed: number };
   }
 
   async bulkUpdateTasks(updates: Array<{ id: string; scheduleId: string; [key: string]: any }>) {

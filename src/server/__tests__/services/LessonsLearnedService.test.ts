@@ -195,4 +195,16 @@ describe('LessonsLearnedService', () => {
       );
     });
   });
+
+  describe('feedback names the person by their real id (T089)', () => {
+    it('two people whose ids start with the same digits get separate votes', async () => {
+      mockQuery.mockReset().mockResolvedValue([]);
+      await service.submitFeedback('lesson-1', '3c75aaaa-0000-4000-8000-000000000001', 'helpful');
+      await service.submitFeedback('lesson-1', '3d99bbbb-0000-4000-8000-000000000002', 'outdated');
+      const lookups = mockQuery.mock.calls.filter(c => String(c[0]).startsWith('SELECT id FROM lesson_feedback'));
+      expect(lookups.map(c => c[1][1])).toEqual(['3c75aaaa-0000-4000-8000-000000000001', '3d99bbbb-0000-4000-8000-000000000002']);
+      const inserts = mockQuery.mock.calls.filter(c => String(c[0]).startsWith('INSERT INTO lesson_feedback'));
+      expect(inserts.map(c => c[1][2])).toEqual(['3c75aaaa-0000-4000-8000-000000000001', '3d99bbbb-0000-4000-8000-000000000002']);
+    });
+  });
 });

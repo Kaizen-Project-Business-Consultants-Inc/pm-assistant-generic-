@@ -34,10 +34,15 @@ vi.mock('../../database/OrganizationRepository', () => ({
 }));
 
 vi.mock('../../services/PricingConfigService', () => ({
-  pricingConfigService: { getAIBudget: vi.fn().mockResolvedValue(500000) },
+  pricingConfigService: {
+    getAIBudget: vi.fn().mockResolvedValue(500000),
+    // the AI plan check: only consultant_basic lacks 'ai_assistant' in these tests
+    isFeatureEnabled: vi.fn(async (tier: string, key: string) => key === 'ai_assistant' && tier !== 'consultant_basic'),
+  },
 }));
 
-import { aiBudgetService, AIBudgetExceededError } from '../../services/AIBudgetService';
+import { aiBudgetService, AIBudgetExceededError, AIPlanRequiredError, aiRefusalReply } from '../../services/AIBudgetService';
+import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { notificationService } from '../../services/NotificationService';
 
@@ -122,26 +127,35 @@ describe('AIBudgetService', () => {
   });
 
   describe('checkBudget', () => {
-    it('does not throw when under budget', async () => {
-      mockUsageFlow({ total_input: 100000, total_output: 50000, total_cost: 0.5, request_count: 10 });
+    // checkBudget reads who is asking (role + plan) once — the plan check and the budget both use
+    // it, so there is no separate plan query — then the usage and the person's own budget
+    function mockCheckFlow(usage: Record<string, number>, budget: number | null = null, tier = 'consultant_pro') {
+      mockQueryCP
+        .mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: tier }])
+        .mockResolvedValueOnce([usage])
+        .mockResolvedValueOnce([{ ai_monthly_token_budget: budget }]);
+    }
 
-      await expect(aiBudgetService.checkBudget('user-1')).resolves.toBeUndefined();
+    it('does not throw when under budget', async () => {
+      mockCheckFlow({ total_input: 100000, total_output: 50000, total_cost: 0.5, request_count: 10 });
+
+      await expect(aiBudgetService.checkBudget('user-1')).resolves.toMatchObject({ budget: expect.any(Number) });
     });
 
     it('throws AIBudgetExceededError when at budget', async () => {
-      mockUsageFlow({ total_input: 300000, total_output: 200000, total_cost: 2.0, request_count: 50 });
+      mockCheckFlow({ total_input: 300000, total_output: 200000, total_cost: 2.0, request_count: 50 });
 
       await expect(aiBudgetService.checkBudget('user-1')).rejects.toThrow(AIBudgetExceededError);
     });
 
     it('throws AIBudgetExceededError when over budget', async () => {
-      mockUsageFlow({ total_input: 400000, total_output: 200000, total_cost: 3.0, request_count: 100 });
+      mockCheckFlow({ total_input: 400000, total_output: 200000, total_cost: 3.0, request_count: 100 });
 
       await expect(aiBudgetService.checkBudget('user-1')).rejects.toThrow(AIBudgetExceededError);
     });
 
     it('AIBudgetExceededError contains usage details', async () => {
-      mockUsageFlow({ total_input: 400000, total_output: 200000, total_cost: 3.0, request_count: 100 });
+      mockCheckFlow({ total_input: 400000, total_output: 200000, total_cost: 3.0, request_count: 100 });
 
       try {
         await aiBudgetService.checkBudget('user-1');
@@ -155,20 +169,20 @@ describe('AIBudgetService', () => {
     });
 
     it('respects custom user budget for enforcement', async () => {
-      mockUsageFlow({ total_input: 50000, total_output: 50000, total_cost: 0.5, request_count: 10 }, 100000);
+      mockCheckFlow({ total_input: 50000, total_output: 50000, total_cost: 0.5, request_count: 10 }, 100000);
 
       await expect(aiBudgetService.checkBudget('user-1')).rejects.toThrow(AIBudgetExceededError);
     });
 
     it('passes with custom budget when under limit', async () => {
-      mockUsageFlow({ total_input: 30000, total_output: 20000, total_cost: 0.25, request_count: 5 }, 100000);
+      mockCheckFlow({ total_input: 30000, total_output: 20000, total_cost: 0.25, request_count: 5 }, 100000);
 
-      await expect(aiBudgetService.checkBudget('user-1')).resolves.toBeUndefined();
+      await expect(aiBudgetService.checkBudget('user-1')).resolves.toMatchObject({ budget: expect.any(Number) });
     });
 
     it('sends budget warning at 80% usage if no notification today', async () => {
       // 400k of 500k = 80%
-      mockUsageFlow({ total_input: 250000, total_output: 150000, total_cost: 2.0, request_count: 50 });
+      mockCheckFlow({ total_input: 250000, total_output: 150000, total_cost: 2.0, request_count: 50 });
       // notification dedup query: no existing notification
       mockQueryCP.mockResolvedValueOnce([]);
 
@@ -186,7 +200,7 @@ describe('AIBudgetService', () => {
 
     it('does not send duplicate budget warning if one exists today', async () => {
       // 450k of 500k = 90%
-      mockUsageFlow({ total_input: 300000, total_output: 150000, total_cost: 2.5, request_count: 60 });
+      mockCheckFlow({ total_input: 300000, total_output: 150000, total_cost: 2.5, request_count: 60 });
       // notification dedup query: already exists
       mockQueryCP.mockResolvedValueOnce([{ id: 'existing-notif' }]);
 
@@ -198,13 +212,73 @@ describe('AIBudgetService', () => {
     });
 
     it('does not send warning below 80%', async () => {
-      mockUsageFlow({ total_input: 100000, total_output: 50000, total_cost: 0.5, request_count: 10 });
+      mockCheckFlow({ total_input: 100000, total_output: 50000, total_cost: 0.5, request_count: 10 });
 
       await aiBudgetService.checkBudget('user-1');
 
       await new Promise(r => setTimeout(r, 10));
 
       expect(mockCreate).not.toHaveBeenCalled();
+    });
+  });
+
+  // audit 2026-10-10 M2: the AI plan gate applies to every AI call, viewers included, and the
+  // request's own size counts against what is left
+  describe('AI plan and request size', () => {
+    const under = { total_input: 100000, total_output: 50000, total_cost: 0.5, request_count: 10 };
+    const queue = (role: string, tier: string, usage = under) => mockQueryCP
+      .mockResolvedValueOnce([{ role, subscription_tier: tier }])
+      .mockResolvedValueOnce([usage])
+      .mockResolvedValueOnce([{ ai_monthly_token_budget: null }]);
+
+    it('refuses a plan without AI before reading any usage', async () => {
+      mockQueryCP.mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: 'consultant_basic' }]);
+      const err = await aiBudgetService.checkBudget('user-1').catch((e) => e);
+      expect(err).toBeInstanceOf(AIPlanRequiredError);
+      expect(err).toBeInstanceOf(AIBudgetExceededError); // every "AI not available to you" handler catches it
+      expect(err.statusCode).toBe(403);
+      expect(err.code).toBe('UPGRADE_REQUIRED');
+      expect(mockQueryCP).toHaveBeenCalledTimes(1);
+    });
+
+    it("judges a viewer by the company's plan, not the trial plan on their own record", async () => {
+      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'consultant_basic', billingModel: 'flat' });
+      mockQueryCP.mockResolvedValueOnce([{ role: 'viewer', subscription_tier: 'trial' }]);
+      await expect(aiBudgetService.checkBudget('viewer-1')).rejects.toBeInstanceOf(AIPlanRequiredError);
+    });
+
+    it("lets a viewer use AI when the company's plan has it", async () => {
+      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'enterprise', billingModel: 'flat' });
+      queue('viewer', 'trial');
+      await expect(aiBudgetService.checkBudget('viewer-1')).resolves.toMatchObject({ used: 150000 });
+    });
+
+    it('refuses a request whose prompt would go past what is left', async () => {
+      // 150k used of 500k: 350k left; a 400k-token request does not fit
+      queue('project_manager', 'consultant_pro');
+      const err = await aiBudgetService.checkBudget('user-1', 400_000).catch((e) => e);
+      expect(err).toBeInstanceOf(AIBudgetExceededError);
+      expect(err.needed).toBe(400_000);
+      expect(err.message).toMatch(/needs about 400000 and 350000 are left/);
+    });
+
+    it('lets a request that fits through', async () => {
+      queue('project_manager', 'consultant_pro');
+      await expect(aiBudgetService.checkBudget('user-1', 2_000)).resolves.toEqual({ used: 150000, budget: 500000 });
+      // review 2026-10-10: one read each of the person, usage and budget override — no second tier lookup
+      expect(mockQueryCP).toHaveBeenCalledTimes(3);
+    });
+
+    it('assertFits: what was used (counted once) plus the next prompt must fit', () => {
+      expect(() => aiBudgetService.assertFits(90_000, 100_000, 5_000)).not.toThrow();
+      expect(() => aiBudgetService.assertFits(96_000, 100_000, 5_000)).toThrow(AIBudgetExceededError);
+      expect(() => aiBudgetService.assertFits(100_000, 100_000)).toThrow(AIBudgetExceededError);
+    });
+
+    it("aiRefusalReply: a plan refusal is answered 403 UPGRADE_REQUIRED, never as 'budget reached'", () => {
+      expect(aiRefusalReply(new AIPlanRequiredError(), 'budget reached')).toMatchObject({ status: 403, body: { code: 'UPGRADE_REQUIRED', message: expect.stringMatching(/paid plans/) } });
+      expect(aiRefusalReply(new AIBudgetExceededError(10, 10), 'budget reached')).toMatchObject({ status: 429, body: { code: 'AI_BUDGET_EXCEEDED', message: 'budget reached' } });
+      expect(aiRefusalReply(new Error('other'))).toBeNull();
     });
   });
 });

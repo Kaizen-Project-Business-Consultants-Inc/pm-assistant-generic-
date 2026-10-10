@@ -306,7 +306,7 @@ export class ScheduleRecomputeService {
     if (!opts.dryRun) {
       for (const parentId of affectedParents) {
         // eslint-disable-next-line no-await-in-loop -- each rollup walks up to shared ancestor summaries; run in parallel they would race on the same rows
-        await scheduleService.recomputeParentRollup(parentId).catch((err: any) =>
+        await scheduleService.recomputeParentRollup(parentId, 0, { isWorking }).catch((err: any) =>
           logger.warn('[ScheduleRecompute] rollup failed', { parentId, error: err?.message }));
       }
       auditMoves(scheduleId, deltas, opts.reason ?? (opts.onlyFrom ? 'link_added' : 'schedule_review_fix'));
@@ -422,9 +422,10 @@ export async function restoreTaskDates(
   await taskRepository.updateDatesMany(writes);
   const restored = moves.length;
   auditMoves(scheduleId, moves, 'undo');
+  const isWorking = parents.size ? await scheduleService.workingDayTest(scheduleId) : undefined;
   for (const p of parents) {
     // eslint-disable-next-line no-await-in-loop -- each rollup walks up to shared ancestor summaries; run in parallel they would race on the same rows
-    await scheduleService.recomputeParentRollup(p).catch((err: any) =>
+    await scheduleService.recomputeParentRollup(p, 0, { isWorking }).catch((err: any) =>
       logger.warn('[ScheduleRecompute] rollup failed', { parentId: p, error: err?.message }));
   }
   return restored;

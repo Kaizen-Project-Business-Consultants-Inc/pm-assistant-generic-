@@ -100,5 +100,18 @@ describe('ResourceAvailabilityService', () => {
     it("one day off mid-week counts (2026-10-09: the profile's history used to ignore any time off not covering the whole week)", async () => {
       expect(await one([{ dateFrom: '2026-01-07', dateTo: '2026-01-07', type: 'vacation', hoursAvailable: null }])).toBe(32);
     });
+
+    it('time off over a weekend counts only the working days (audit 2026-10-09 M5: Fri–Mon off showed 16 h, not 32)', async () => {
+      const blocks = [{ dateFrom: '2026-10-16', dateTo: '2026-10-19', type: 'vacation', hoursAvailable: null }];
+      mockRepo.findOverlappingBatch.mockResolvedValueOnce(blocks.map(b => ({ resourceId: 'r1', ...b })));
+      const cap = (await service.getEffectiveCapacityBatch([{ id: 'r1', capacityHoursPerWeek: 40 }], [new Date('2026-10-12'), new Date('2026-10-19')])).get('r1')!;
+      expect(cap.get('2026-10-12')).toBe(32);
+      expect(cap.get('2026-10-19')).toBe(32);
+    });
+
+    it('a reduced-hours block over a weekend adds no weekend hours', async () => {
+      // Fri 9 Jan – Sun 11 Jan at 4 h: only Friday counts → 40 - 8 + 4
+      expect(await one([{ dateFrom: '2026-01-09', dateTo: '2026-01-11', type: 'reduced', hoursAvailable: 4 }])).toBe(36);
+    });
   });
 });

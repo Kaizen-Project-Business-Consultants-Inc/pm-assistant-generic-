@@ -5,6 +5,7 @@ import { utcDay, workingSpread } from '../utils/workingDays';
 import { approvedTimeService } from './ApprovedTimeService';
 import { costUpTo } from './costTimeline';
 import { statusDateFor } from './StatusDateService';
+import { leafTasks } from '../utils/leafTasks';
 
 /** One week, the S-curve's sampling step (a chart interval, not a task date) */
 const WEEK_MS = 604_800_000;
@@ -27,6 +28,26 @@ function sampleTimes(start: number, end: number, step: number, asOf: string): nu
   const at = utcDay(asOf).getTime();
   if (at > start && at < end && !times.includes(at)) times.push(at);
   return times.sort((a, b) => a - b);
+}
+
+interface WeightedTask { task: Task; weight: number; start: number; end: number; shareBy: (at: number) => number }
+
+/** The plan's leaf tasks with dates, each with its weight (own budget, else the average per working day × its days) */
+function weightedTasks(allTasks: Task[], isWorking: (d: Date) => boolean): WeightedTask[] {
+  const spans = leafTasks(allTasks).filter(t => t.startDate && t.endDate).map(t => {
+    const startDay = utcDay(t.startDate);
+    const endDay = utcDay(t.endDate);
+    const spread = workingSpread(startDay, endDay, isWorking);
+    return { task: t, duration: Math.max(1, spread.workingDays), start: startDay.getTime(), end: endDay.getTime(), shareBy: spread.shareBy };
+  });
+  const budgeted = spans.filter(x => (x.task.budgetAllocated ?? 0) > 0);
+  const perDay = budgeted.length
+    ? budgeted.reduce((s, x) => s + (x.task.budgetAllocated ?? 0), 0) / budgeted.reduce((s, x) => s + x.duration, 0)
+    : 1;
+  return spans.map(({ duration, ...x }) => {
+    const own = x.task.budgetAllocated ?? 0;
+    return { ...x, weight: own > 0 ? own : duration * perDay };
+  });
 }
 
 export class SCurveService {
@@ -67,24 +88,16 @@ export class SCurveService {
 
     if (projectStart === Infinity || projectEnd === -Infinity) return [];
 
-    // Each task's budget share is proportional to its duration in WORKING days (as the
-    // Duration column counts them), and its value is earned only on working days of the
-    // project calendar — weekends and holidays stay flat.
+    // Each task's share of the budget (audit 2026-10-09, M2): only LEAF tasks count — a summary's
+    // figures are its children's, so counting it too spread the money twice. A task's weight is its
+    // own budget (booked hours × rates) when the plan has task budgets; a task without one is given
+    // the plan's average budget per working day × its working days. A plan with no task budgets at
+    // all is spread by working-day duration, as before. Value is earned only on working days of the
+    // project calendar — weekends and holidays stay flat. The shares always add up to the project budget.
     const isWorking = await scheduleService.workingDayTest(schedules[0].id);
-    let totalDuration = 0;
-    const taskDurations: { task: Task; duration: number; start: number; end: number; shareBy: (at: number) => number }[] = [];
-
-    for (const t of allTasks) {
-      if (!t.startDate || !t.endDate) continue;
-      const startDay = utcDay(t.startDate);
-      const endDay = utcDay(t.endDate);
-      const spread = workingSpread(startDay, endDay, isWorking);
-      const dur = Math.max(1, spread.workingDays);
-      totalDuration += dur;
-      taskDurations.push({ task: t, duration: dur, start: startDay.getTime(), end: endDay.getTime(), shareBy: spread.shareBy });
-    }
-
-    if (totalDuration === 0) return [];
+    const taskDurations = weightedTasks(allTasks, isWorking);
+    const totalWeight = taskDurations.reduce((s, x) => s + x.weight, 0);
+    if (totalWeight <= 0) return [];
 
     // Generate weekly data points
     const weekMs = WEEK_MS;
@@ -95,8 +108,8 @@ export class SCurveService {
       let pv = 0; // Planned Value: cumulative planned spend by this date
       let ev = 0; // Earned Value: cumulative progress-weighted planned spend
 
-      for (const { task, duration, start, end, shareBy } of taskDurations) {
-        const taskBudget = (duration / totalDuration) * budgetAllocated;
+      for (const { task, weight, start, end, shareBy } of taskDurations) {
+        const taskBudget = (weight / totalWeight) * budgetAllocated;
 
         // PV: share of the task's working days planned by the end of this date
         pv += taskBudget * shareBy(weekEnd);

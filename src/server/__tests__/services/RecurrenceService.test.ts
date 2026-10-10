@@ -10,9 +10,12 @@ vi.mock('../../database/connection', () => ({
 // independent of today's weekday; the working-day tests set a real calendar.
 const everyDay = () => true;
 const mockWorkingDayTest = vi.fn(async (_scheduleId: string): Promise<(d: Date) => boolean> => everyDay);
+const mockRollup = vi.fn(async (_id: string) => undefined);
 vi.mock('../../services/ScheduleService', () => ({
-  scheduleService: { workingDayTest: (id: string) => mockWorkingDayTest(id) },
+  scheduleService: { workingDayTest: (id: string) => mockWorkingDayTest(id), recomputeParentRollup: (id: string) => mockRollup(id) },
 }));
+const mockPlanChanged = vi.fn();
+vi.mock('../../services/domainEvents', () => ({ planChanged: (id: string) => mockPlanChanged(id) }));
 
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'mock-uuid-1234'),
@@ -391,6 +394,15 @@ describe('RecurrenceService', () => {
       expect(result).toBe(3);
     });
 
+    it('new instances roll up the summary task they sit under and post the plan-changed notice (audit 2026-10-09)', async () => {
+      const today = new Date();
+      const tpl = makeTemplate({ recurrence_rule: 'FREQ=DAILY', start_date: formatDate(today), parent_task_id: 'phase' });
+      mockQuery.mockResolvedValueOnce([tpl]).mockResolvedValueOnce([]).mockResolvedValue([]);
+      expect(await service.expandTemplate('tpl-1', 3)).toBe(3);
+      expect(mockRollup).toHaveBeenCalledWith('phase');
+      expect(mockPlanChanged).toHaveBeenCalledWith(tpl.schedule_id);
+    });
+
     it('should cap at 100 instances', async () => {
       // Use a start date far in the past so many instances could be generated
       const pastDate = new Date();
@@ -615,36 +627,43 @@ describe('RecurrenceService', () => {
   // ── deleteChildren ─────────────────────────────────────────────────
   describe('deleteChildren', () => {
     it('should return affectedRows from query result', async () => {
-      mockQuery.mockResolvedValueOnce({ affectedRows: 5 });
+      mockQuery.mockResolvedValueOnce([{ schedule_id: 'sch-1', parent_task_id: null }]).mockResolvedValueOnce({ affectedRows: 5 });
       const result = await service.deleteChildren('tpl-1');
       expect(result).toBe(5);
     });
 
     it('should return 0 when no rows affected', async () => {
-      mockQuery.mockResolvedValueOnce({ affectedRows: 0 });
+      mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce({ affectedRows: 0 });
       const result = await service.deleteChildren('tpl-1');
       expect(result).toBe(0);
     });
 
     it('should return 0 when result has no affectedRows property', async () => {
-      mockQuery.mockResolvedValueOnce({});
+      mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce({});
       const result = await service.deleteChildren('tpl-1');
       expect(result).toBe(0);
     });
 
     it('should return 0 when result is null/undefined', async () => {
-      mockQuery.mockResolvedValueOnce(null);
+      mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce(null);
       const result = await service.deleteChildren('tpl-1');
       expect(result).toBe(0);
     });
 
     it('should pass the correct templateTaskId in DELETE query', async () => {
-      mockQuery.mockResolvedValueOnce({ affectedRows: 0 });
+      mockQuery.mockResolvedValueOnce([]).mockResolvedValueOnce({ affectedRows: 0 });
       await service.deleteChildren('my-template-id');
       expect(mockQuery).toHaveBeenCalledWith(
         'DELETE FROM tasks WHERE recurrence_parent_id = ?',
         ['my-template-id']
       );
+    });
+
+    it('the summary task above the removed instances rolls up (audit 2026-10-09)', async () => {
+      mockQuery.mockResolvedValueOnce([{ schedule_id: 'sch-1', parent_task_id: 'phase' }]).mockResolvedValueOnce({ affectedRows: 3 });
+      await service.deleteChildren('tpl-1');
+      expect(mockRollup).toHaveBeenCalledWith('phase');
+      expect(mockPlanChanged).toHaveBeenCalledWith('sch-1');
     });
   });
 });

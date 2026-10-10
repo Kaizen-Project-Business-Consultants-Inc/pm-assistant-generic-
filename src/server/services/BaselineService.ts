@@ -129,7 +129,9 @@ export class BaselineService {
       const cases = chunk.map(() => 'WHEN ? THEN ?').join(' ');
       // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks keeps each UPDATE's size bounded
       await databaseService.query(
-        `UPDATE tasks SET ${columns.map((c) => `${c} = CASE id ${cases} END`).join(', ')}
+        // updated_at kept: saving a baseline is not a plan edit, so it must not make the newest
+        // Schedule History change "not undoable" (audit 2026-10-09)
+        `UPDATE tasks SET ${columns.map((c) => `${c} = CASE id ${cases} END`).join(', ')}, updated_at = updated_at
          WHERE id IN (${chunk.map(() => '?').join(',')})`,
         [
           ...columns.flatMap((_, col) => chunk.flatMap((st) => [st.id, st.values[col]])),

@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
-import { taskDatesOf, moveBookingsWithTasks } from '../database/bookingDates';
+import { taskDatesOf, moveBookingsWithTasks, takeBookingMoves, writeBookingDates, type BookingMove } from '../database/bookingDates';
 import { databaseService } from '../database/connection';
+import { syncDependencyMirror } from '../database/dependencyMirror';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { scheduleService } from './ScheduleService';
 import { restoreTaskDates } from './ScheduleRecomputeService';
@@ -74,10 +75,13 @@ export async function parentIdsOf(run: Run, scheduleId: string, taskIds: string[
  * caller records Schedule History AFTER these writes (else "the plan changed since" would trip).
  * A parent left with no tasks stops being a summary (recomputeParentRollup does that).
  */
-export async function rollUpSummaries(parentIds: Iterable<string>): Promise<void> {
-  for (const pid of new Set(parentIds)) {
+export async function rollUpSummaries(parentIds: Iterable<string>, scheduleId?: string): Promise<void> {
+  const ids = new Set(parentIds);
+  // the plan's calendar once for all of them (each roll-up read it again — review 2026-10-10)
+  const isWorking = ids.size && scheduleId ? await scheduleService.workingDayTest(scheduleId) : undefined;
+  for (const pid of ids) {
     // eslint-disable-next-line no-await-in-loop -- roll-ups run one after another and finish before the caller records Schedule History
-    await scheduleService.recomputeParentRollup(pid).catch((err: any) =>
+    await scheduleService.recomputeParentRollup(pid, 0, { isWorking }).catch((err: any) =>
       logger.error('[Rollup] recomputeParentRollup error after a bulk change', { pid, error: err?.message }));
   }
 }
@@ -349,11 +353,7 @@ async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Pr
   }
   // Summary tasks the deleted tasks sat under get their dates and totals back
   const parents = new Set(tasks.map(t => t.parent_task_id as string | null).filter((p): p is string => !!p && !ids.includes(p)));
-  for (const pid of parents) {
-    // eslint-disable-next-line no-await-in-loop -- summary roll-ups after an undo run one by one so nested summaries settle in order
-    await scheduleService.recomputeParentRollup(pid).catch((err: any) =>
-      logger.warn('[ChangeHistory] roll-up after restore failed', { pid, error: err?.message }));
-  }
+  await rollUpSummaries(parents, scheduleId);
   return tasks.length;
 }
 
@@ -439,9 +439,15 @@ class ChangeHistoryService {
       const ctx = getRequestContext();
       const id = uuidv4();
       const details = await describeChange(input).catch(() => [] as string[]);
+      // Hours bookings the change moved: their exact old dates, so Undo puts them back as they were
+      // (audit 2026-10-09 M1: re-following the task on Undo grew a booking that had been cut to fit)
+      const bookingMoves = takeBookingMoves(input.taskIds);
+      const payload = bookingMoves.length && input.undo && typeof input.undo === 'object' && !Array.isArray(input.undo)
+        ? { ...(input.undo as Record<string, unknown>), bookingMoves }
+        : input.undo;
       // A very large copy (a bulk delete of tasks with long notes and history) is not kept:
       // the change is still recorded, and says it can't be undone
-      let undo = JSON.stringify(input.undo ?? null);
+      let undo = JSON.stringify(payload ?? null);
       let summary = input.summary;
       if (undo.length > MAX_UNDO_BYTES) {
         undo = 'null';
@@ -575,6 +581,8 @@ class ChangeHistoryService {
       throw new ChangeStateError('This change was too large to keep a copy of, so it can\'t be undone from History.');
     }
     const p = payload ?? {};
+    // Bookings this change moved that nobody has changed since: put back exactly after the undo
+    const bookingsBack = await untouchedBookingMoves((p.bookingMoves ?? []) as BookingMove[]);
     let restored = 0;
     switch (row.kind as ChangeKind) {
       case 'link': {
@@ -613,7 +621,7 @@ class ChangeHistoryService {
           await putLinksBack(run, scheduleId, (p.links ?? []) as LinksBefore);
           parents.push(...await parentIdsOf(run, scheduleId, rollupIds));
         });
-        await rollUpSummaries(parents);
+        await rollUpSummaries(parents, scheduleId);
         break;
       }
       case 'bulk_create': {
@@ -638,6 +646,8 @@ class ChangeHistoryService {
       case 'successors_moved': {
         const dates = (p.moved ?? []) as Array<{ taskId: string; startDate: string | null; endDate: string | null }>;
         restored = await restoreTaskDates(scheduleId, dates);
+        // a re-date that also changed the task's predecessors: its old links back
+        await putLinksBackNow(scheduleId, (p.links ?? []) as LinksBefore);
         break;
       }
       case 'group': {
@@ -655,6 +665,8 @@ class ChangeHistoryService {
       default:
         throw new ChangeStateError(`Cannot undo a "${row.kind}" change`);
     }
+
+    await putBookingsBack(bookingsBack, taskIds);
 
     const userId = getRequestContext()?.userId ?? null;
     await databaseService.query(
@@ -675,6 +687,33 @@ class ChangeHistoryService {
   }
 }
 
+/** Undo's last step: the bookings back on their exact old dates (the undo's own re-follow is not a new change to remember) */
+async function putBookingsBack(moves: BookingMove[], taskIds: string[]): Promise<void> {
+  if (moves.length) {
+    await writeBookingDates((sql, params) => databaseService.query(sql, params), moves.map(m => ({ id: m.id, start: m.start, end: m.end })));
+  }
+  takeBookingMoves(taskIds);
+}
+
+/** putLinksBack in a transaction of its own (nothing to do for no links) */
+async function putLinksBackNow(scheduleId: string, links: LinksBefore): Promise<void> {
+  if (links.length === 0) return;
+  await databaseService.transaction(conn => putLinksBack((sql, params) => databaseService.queryOn(conn, sql, params), scheduleId, links));
+}
+
+/** The recorded booking moves whose bookings still have the dates the change gave them (none edited or removed since) */
+async function untouchedBookingMoves(moves: BookingMove[]): Promise<BookingMove[]> {
+  if (moves.length === 0) return [];
+  const rows = await databaseService.query<any>(
+    `SELECT id, DATE_FORMAT(start_date, '%Y-%m-%d') AS s, DATE_FORMAT(end_date, '%Y-%m-%d') AS e
+       FROM resource_assignments WHERE id IN (${ph(moves.length)})`, moves.map(m => m.id));
+  const now = new Map((Array.isArray(rows) ? rows : []).map((r: any) => [String(r.id), r]));
+  return moves.filter(m => {
+    const r = now.get(m.id);
+    return !!r && r.s === m.newStart && r.e === m.newEnd;
+  });
+}
+
 /** A task's links before a bulk edit set its predecessor (routes/core/bulk.ts keeps them) */
 export type LinksBefore = Array<{ taskId: string; deps: Array<{ dependencyId: string; dependencyType: string; lagDays: number }> }>;
 
@@ -692,6 +731,8 @@ async function putLinksBack(run: Run, scheduleId: string, links: LinksBefore): P
   if (rows.length) {
     await run(`INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${rows.map(() => '(?, ?, ?, ?, ?)').join(', ')}`, rows.flat());
   }
+  // the first link's copy on the task too (or none), so no screen still shows a removed predecessor
+  await syncDependencyMirror(run, mine.map(l => l.taskId));
 }
 
 /** "12 Oct" from 'YYYY-MM-DD' */

@@ -9,15 +9,18 @@ import { organizationRepository } from '../../database/OrganizationRepository';
 import { tokenTopUpRepository } from '../../database/TokenTopUpRepository';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
+import { isPlatformAdmin } from '../../utils/platformAdmin';
 
 /**
  * Buying a plan or credits, opening the billing portal, re-checking the subscription: the company
  * owner only (2026-10-08). A member could start a company-plan checkout, and once paid it rewrote
  * the whole company's plan, billing account and seat count. Someone with no company buys for
- * themselves; the Kovarti admin has no billing.
+ * themselves; the Kovarti admin has no billing — refused here, not left to fail later for want of a
+ * Stripe customer (2026-10-09 audit, low).
  */
 async function billingOwnerOnly(request: FastifyRequest, reply: FastifyReply) {
   const u = request.user;
+  if (isPlatformAdmin(u)) return reply.status(403).send({ error: 'Forbidden', message: 'The Kovarti admin account has no plan or billing.' });
   if (u && (u.isOwner || u.hasCompany === false)) return;
   return reply.status(403).send({ error: 'Forbidden', message: "Only the company's owner can change the plan or buy credits. Ask them to do it from Account." });
 }

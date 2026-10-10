@@ -20,6 +20,14 @@ const queryOn = vi.hoisted(() => vi.fn(async (_c: any, sql: string, params: any[
   if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND id IN')) return params.slice(1).filter((id: string) => !db.otherPlanIds.has(id)).map((id: string) => ({ id }));
   if (sql.startsWith('SELECT id, schedule_id FROM tasks WHERE id IN')) return params.map((id: string) => ({ id, schedule_id: db.otherPlanIds.has(id) ? 's2' : 's1' }));
   if (sql.startsWith('UPDATE tasks SET') && sql.includes('id IN') && db.failUpdateFor && params.includes(db.failUpdateFor)) throw new Error('row rejected');
+  // the links written in this run, read back by the shown-predecessor sync
+  if (sql.startsWith('SELECT task_id, dependency_id, dependency_type, lag_days FROM task_dependencies')) {
+    const rows: any[] = [];
+    for (const w of db.sql.filter(x => x.sql.startsWith('INSERT INTO task_dependencies'))) {
+      for (let i = 0; i < w.params.length; i += 4) rows.push({ task_id: w.params[i + 1], dependency_id: w.params[i + 2], dependency_type: w.params[i + 3], lag_days: 0 });
+    }
+    return rows.filter(r => params.includes(r.task_id));
+  }
   if (sql.startsWith('SELECT')) return [];
   return { affectedRows: 1 };
 }));
@@ -45,6 +53,7 @@ vi.mock('../../services/ChangeHistoryService', async (importOriginal) => ({
 }));
 
 import { bulkRoutes } from '../../routes/core/bulk';
+import { databaseService } from '../../database/connection';
 
 const count = (re: RegExp) => db.sql.filter(s => re.test(s.sql)).length;
 
@@ -73,6 +82,34 @@ describe('bulk create — a fixed number of statements, same results', () => {
     const ins = db.sql.find(s => s.sql.startsWith('INSERT INTO tasks'))!;
     expect(ins.params[15]).toBe(5);
     expect(ins.params[17 + 15]).toBe(6);
+  });
+
+  it('summaries roll up one at a time, after the re-flow and before History is recorded (audit 2026-10-09)', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleRecomputeService } = await import('../../services/ScheduleRecomputeService');
+    const { changeHistoryService } = await import('../../services/ChangeHistoryService');
+    const rollup = vi.mocked(scheduleService.recomputeParentRollup);
+    rollup.mockClear();
+    let running = 0; let most = 0;
+    rollup.mockImplementation(async () => { running++; most = Math.max(most, running); await new Promise(r => { setTimeout(r, 5); }); running--; });
+    vi.mocked(scheduleRecomputeService.recompute).mockClear();
+    const tasks = [{ name: 'P1' }, { name: 'P2' }, { name: 'A', parentTaskId: 'P1', dependency: 'P2' }, { name: 'B', parentTaskId: 'P2' }];
+    vi.mocked(databaseService.query).mockImplementation(async (sql: string, params: any[] = []) =>
+      (sql.startsWith('SELECT DISTINCT task_id FROM task_dependencies') ? [{ task_id: params[2] }] : []) as any);
+    try {
+      const res = await app.inject({ method: 'POST', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', tasks } });
+      expect(res.statusCode).toBe(200);
+    } finally {
+      vi.mocked(databaseService.query).mockImplementation(async (sql: string, params: any[] = []) => (sql.startsWith('SELECT id, schedule_id FROM tasks WHERE id IN') ? params.map((id: string) => ({ id, schedule_id: 's1' })) : []) as any);
+      rollup.mockImplementation(async () => {});
+    }
+    expect(rollup).toHaveBeenCalledTimes(2);
+    expect(most).toBe(1);
+    expect(scheduleRecomputeService.recompute).toHaveBeenCalledTimes(1);
+    const reflow = vi.mocked(scheduleRecomputeService.recompute).mock.invocationCallOrder[0];
+    expect(rollup.mock.invocationCallOrder[0]).toBeGreaterThan(reflow);
+    const recorded = vi.mocked(changeHistoryService.record).mock.invocationCallOrder.at(-1)!;
+    expect(rollup.mock.invocationCallOrder[1]).toBeLessThan(recorded);
   });
 
   it('a bad row is still reported on its own (the batch is retried row by row)', async () => {
@@ -142,8 +179,9 @@ describe('bulk create — the right link and parent for each task', () => {
       { name: 'Phase' }, { name: 'A', parentTaskId: 'Phase' }, { name: 'B', parentTaskId: 'Phase', dependency: 'A' },
     ] } });
     const id = Object.fromEntries(res.json().succeeded.map((t: any) => [t.name, t.id]));
+    // the shown predecessor is set from the link made: B → A, Finish-to-Start, no lag
     const depCase = db.sql.find(x => x.sql.startsWith('UPDATE tasks SET dependency = CASE'))!;
-    expect(depCase.params).toEqual([id.B, id.A, id.B]);            // WHEN B THEN A … IN (B)
+    expect(depCase.params).toEqual([id.B, id.A, id.B, 'FS', id.B, 0, id.B]);
     const parentCase = db.sql.find(x => x.sql.startsWith('UPDATE tasks SET parent_task_id = CASE'))!;
     expect(parentCase.params).toEqual([id.A, id.Phase, id.B, id.Phase, id.A, id.B]);
     const link = db.sql.find(x => x.sql.startsWith('INSERT INTO task_dependencies'))!;

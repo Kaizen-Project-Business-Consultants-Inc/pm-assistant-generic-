@@ -24,7 +24,7 @@ import { registerTemplateTools } from './tools/templates.js';
 import { registerRaidTools } from './tools/raid.js';
 import { registerLessonsLearnedTools } from './tools/lessons-learned.js';
 import { registerResourceOptimizerTools } from './tools/resource-optimizer.js';
-import { type Role, isToolAllowed } from './permissions.js';
+import { type Role, isToolAllowed, mcpRole, MCP_ROLE_COLUMNS, MCP_ROLE_JOIN } from './permissions.js';
 import { registerResources } from './resources/index.js';
 
 export interface McpUserContext {
@@ -168,17 +168,18 @@ async function resolveRoleFromApiKey(apiKey: string): Promise<Role> {
     const crypto = await import('node:crypto');
     const keyHash = crypto.createHash('sha256').update(apiKey).digest('hex');
 
-    interface KeyRow { user_role: string }
+    interface KeyRow { role: string; is_guest: number | null; is_owner: number | null }
     const rows = await query<KeyRow & import('mysql2/promise').RowDataPacket>(
-      `SELECT u.role AS user_role
+      `SELECT ${MCP_ROLE_COLUMNS}
        FROM api_keys ak
        JOIN users u ON u.id = ak.user_id
+       ${MCP_ROLE_JOIN}
        WHERE ak.key_hash = ? AND ak.is_active = 1 AND (ak.expires_at IS NULL OR ak.expires_at > NOW())`,
       [keyHash],
     );
 
     if (rows.length > 0) {
-      return rows[0].user_role as Role;
+      return mcpRole(rows[0]);
     }
   } catch (err) {
     console.error('[MCP] Failed to resolve role from API key:', err);
@@ -207,8 +208,6 @@ async function startHttp() {
   const express = (await import('express')).default;
   const { mcpAuthRouter } = await import('@modelcontextprotocol/sdk/server/auth/router.js');
   const { requireBearerAuth } = await import('@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js');
-  const bcryptModule = await import('bcryptjs');
-  const bcrypt = bcryptModule.default ?? bcryptModule;
   const { PmOAuthProvider } = await import('./oauth/provider.js');
   const { query } = await import('./db.js');
 
@@ -236,83 +235,19 @@ async function startHttp() {
   // Trust reverse proxy (LiteSpeed) for X-Forwarded-For
   app.set('trust proxy', 1);
 
-  // Request logging
+  // Request logging: the method and path only. Headers, query and body used to be written to the
+  // journal — that is every bearer key (Authorization), the sign-in password and the token
+  // exchange's codes and refresh tokens (2026-10-09 audit M4).
   app.use((req, _res, next) => {
-    console.error(`[MCP HTTP] ${req.method} ${req.url} from ${req.headers.origin || 'no-origin'}`);
-    console.error(`[MCP HTTP] Full URL: ${req.protocol}://${req.get('host')}${req.originalUrl}`);
-    if (req.url.includes('/authorize') || req.url.includes('/register') || req.url.includes('/token') || req.url.includes('/mcp')) {
-      console.error(`[MCP HTTP] Headers: ${JSON.stringify(req.headers)}`);
-      console.error(`[MCP HTTP] Query: ${JSON.stringify(req.query)}`);
-      if (req.body) console.error(`[MCP HTTP] Body: ${JSON.stringify(req.body)}`);
-    }
+    console.error(`[MCP HTTP] ${req.method} ${req.path} from ${req.headers.origin || 'no-origin'}`);
     next();
   });
 
   // POST /authorize/submit — MUST be mounted BEFORE mcpAuthRouter
   // so the SDK's /authorize handler doesn't capture /authorize/submit
-  app.post('/authorize/submit', express.urlencoded({ extended: false }), async (req, res) => {
-    try {
-      const { username, password, client_id, redirect_uri, code_challenge, state, scope } = req.body;
-
-      if (!username || !password || !client_id || !redirect_uri || !code_challenge) {
-        res.status(400).type('html').send('<h1>Missing required fields</h1>');
-        return;
-      }
-
-      // Validate credentials against users table (accept username or email)
-      interface UserRow { id: string; username: string; password_hash: string; role: string }
-      const users = await query<UserRow & import('mysql2/promise').RowDataPacket>(
-        'SELECT id, username, password_hash, role FROM users WHERE (username = ? OR email = ?) AND is_active = 1',
-        [username, username],
-      );
-
-      if (users.length === 0) {
-        // Re-render login with error
-        const { renderAuthorizePage } = await import('./oauth/authorizePage.js');
-        res.status(401).type('html').send(renderAuthorizePage({
-          clientId: client_id,
-          redirectUri: redirect_uri,
-          state,
-          codeChallenge: code_challenge,
-          scope,
-          error: 'Invalid username or password.',
-        }));
-        return;
-      }
-
-      const user = users[0];
-      const passwordValid = await bcrypt.compare(password, user.password_hash);
-      if (!passwordValid) {
-        const { renderAuthorizePage } = await import('./oauth/authorizePage.js');
-        res.status(401).type('html').send(renderAuthorizePage({
-          clientId: client_id,
-          redirectUri: redirect_uri,
-          state,
-          codeChallenge: code_challenge,
-          scope,
-          error: 'Invalid username or password.',
-        }));
-        return;
-      }
-
-      // Issue authorization code
-      const code = randomUUID();
-      await query(
-        `INSERT INTO oauth_auth_codes (code, client_id, user_id, redirect_uri, code_challenge, scope, state, expires_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
-        [code, client_id, user.id, redirect_uri, code_challenge, scope || null, state || null],
-      );
-
-      // Redirect back to Claude's callback
-      const redirectUrl = new URL(redirect_uri);
-      redirectUrl.searchParams.set('code', code);
-      if (state) redirectUrl.searchParams.set('state', state);
-      res.redirect(302, redirectUrl.toString());
-    } catch (err) {
-      console.error('[OAuth] /authorize/submit error:', err);
-      res.status(500).type('html').send('<h1>Internal server error</h1>');
-    }
-  });
+  const { handleAuthorizeSubmit } = await import('./oauth/authorizeSubmit.js');
+  app.post('/authorize/submit', express.urlencoded({ extended: false }), (req, res) =>
+    handleAuthorizeSubmit(req, res, provider.clientsStore));
 
   // Mount OAuth auth router (handles /.well-known/*, /authorize, /token, /register, /revoke)
   app.use(mcpAuthRouter({
@@ -335,12 +270,12 @@ async function startHttp() {
     if (!userId) return 'team_member';
 
     try {
-      interface RoleRow { role: string }
+      interface RoleRow { role: string; is_guest: number | null; is_owner: number | null }
       const rows = await query<RoleRow & import('mysql2/promise').RowDataPacket>(
-        'SELECT role FROM users WHERE id = ?',
+        `SELECT ${MCP_ROLE_COLUMNS} FROM users u ${MCP_ROLE_JOIN} WHERE u.id = ?`,
         [userId],
       );
-      if (rows.length > 0) return rows[0].role as Role;
+      if (rows.length > 0) return mcpRole(rows[0]);
     } catch (err) {
       console.error('[MCP] Failed to resolve role from auth:', err);
     }

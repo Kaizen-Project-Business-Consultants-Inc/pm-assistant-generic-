@@ -42,6 +42,13 @@ describe('billing actions — company owner only', () => {
     who.user = undefined;
     expect((await app.inject({ method: 'POST', url: '/api/v1/stripe/reconcile', payload: {} })).statusCode).toBe(403);
   });
+
+  it('the Kovarti platform admin (no company, no billing) is refused up front (2026-10-09 audit, low)', async () => {
+    who.user = { userId: 'a1', role: 'admin', hasCompany: false, isOwner: false };
+    const res = await app.inject({ method: 'POST', url: '/api/v1/stripe/create-checkout-session', payload: {} });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().message).toMatch(/no plan or billing/);
+  });
 });
 
 describe('authMiddleware sets the owner flag — never during a support visit', () => {

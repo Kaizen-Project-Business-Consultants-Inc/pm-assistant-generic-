@@ -112,18 +112,19 @@ export class AiApi extends ApiBase {
     return response.data;
   }
 
-  async getProjectRisks(projectId: string) {
-    const response = await this.api.get(`/predictions/project/${projectId}/risks`);
+  /** `ai`: false = no AI call (a kept AI answer, else the rules' answer); true = ask the AI */
+  async getProjectRisks(projectId: string, ai: boolean) {
+    const response = await this.api.get(`/predictions/project/${projectId}/risks`, { params: ai ? {} : { ai: '0' } });
     return response.data;
   }
 
-  async getProjectWeather(projectId: string) {
-    const response = await this.api.get(`/predictions/project/${projectId}/weather`);
+  async getProjectWeather(projectId: string, ai: boolean) {
+    const response = await this.api.get(`/predictions/project/${projectId}/weather`, { params: ai ? {} : { ai: '0' } });
     return response.data;
   }
 
-  async getProjectBudget(projectId: string) {
-    const response = await this.api.get(`/predictions/project/${projectId}/budget`);
+  async getProjectBudget(projectId: string, ai: boolean) {
+    const response = await this.api.get(`/predictions/project/${projectId}/budget`, { params: ai ? {} : { ai: '0' } });
     return response.data;
   }
 

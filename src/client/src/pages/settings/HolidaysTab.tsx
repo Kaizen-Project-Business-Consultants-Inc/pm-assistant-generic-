@@ -8,7 +8,7 @@ import { CalendarChangePreview, fmtDay } from '../../components/schedule/calenda
 
 /**
  * Company holidays: one list every project's working calendar picks up. The company
- * owner or an admin changes it; everyone else sees it. Each change shows which tasks
+ * owner or a PMO changes it; everyone else sees it. Each change shows which tasks
  * move, across all projects, before it is saved (same flow as a project's calendar).
  */
 interface Pending { change: CompanyHolidayChange; label: string; preview: Preview | null }
@@ -76,7 +76,7 @@ export function HolidaysTab() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Company holidays</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 max-w-prose">
             Every project treats these as days off. A project can still add its own days off, or work through a company holiday, in its Working calendar.
-            {!canEdit && ' Only the company owner or an admin can change this list.'}
+            {!canEdit && ' Only the company owner or a PMO can change this list.'}
           </p>
         </div>
 

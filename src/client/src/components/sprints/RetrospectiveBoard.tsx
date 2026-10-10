@@ -63,7 +63,7 @@ export function RetrospectiveBoard({ sprintId, projectId, scheduleId, canEdit = 
   });
 
   const seedMutation = useMutation({
-    mutationFn: () => apiService.seedRetroFromAI(sprintId, projectId),
+    mutationFn: () => apiService.seedRetroFromAI(sprintId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['retroBoard', sprintId] }),
   });
 

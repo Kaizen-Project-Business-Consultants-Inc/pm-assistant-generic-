@@ -26,18 +26,60 @@ function scoreToPriority(score: number): Priority {
 }
 
 /**
- * For every task, the number of rows `TaskRepository.findAllDownstream` returns for it: its
- * recursive query walks the links with UNION ALL, so a task reachable along two paths is counted
- * twice. Same count here, from the plan's own links (links never cross plans), with no queries:
- * rows(t) = sum over t's successors s of (1 + rows(s)). Iterative, so a long chain can't overflow
- * the stack; a link loop (which saving refuses) counts its back link once instead of never ending.
+ * For every task, how many DIFFERENT tasks come after it (directly or further down the links).
+ * Audit 2026-10-09: this used to count paths, like the old recursive query (UNION ALL) — a task
+ * reachable along two paths counted twice, so a diamond-shaped network inflated the score.
+ * From the plan's own links (links never cross plans), with no queries: tasks are finished in
+ * depth-first post-order and each one's set is its successors plus their sets, kept as bit sets
+ * (n × n / 32 words; 5,000 tasks ≈ 3 MB). Iterative, so a long chain can't overflow the stack; a
+ * link loop (which saving refuses) ends instead of walking for ever.
  */
-export function downstreamRowCounts(tasks: Array<Pick<Task, 'id' | 'dependencies'>>): Map<string, number> {
+export function downstreamTaskCounts(tasks: Array<Pick<Task, 'id' | 'dependencies'>>): Map<string, number> {
   const successors = successorsByTask(tasks);
-  const rows = new Map<string, number>();
-  const open = new Set<string>(); // on the current walk, children not all counted yet
-  for (const root of tasks) countFrom(root.id, successors, rows, open);
-  return rows;
+  const index = new Map(tasks.map((t, i) => [t.id, i]));
+  const words = Math.ceil(tasks.length / 32);
+  const bits = new Map<string, Uint32Array>();
+  /** A task's set: its successors and everything after them (theirs are finished first) */
+  const finish = (id: string) => {
+    const set = new Uint32Array(words);
+    for (const s of successors.get(id) ?? []) {
+      const i = index.get(s);
+      if (i === undefined) continue;
+      set[i >>> 5] |= 1 << (i & 31);
+      const theirs = bits.get(s);
+      if (theirs) for (let w = 0; w < words; w++) set[w] |= theirs[w];
+    }
+    const me = index.get(id);
+    if (me !== undefined) set[me >>> 5] &= ~(1 << (me & 31)); // a loop never counts the task itself
+    bits.set(id, set);
+  };
+  for (const id of postOrder(tasks, successors)) finish(id);
+  return new Map([...bits].map(([id, set]) => [id, bitCount(set)]));
+}
+
+/** Every task once, each after all the tasks that follow it (depth-first, explicit stack; a loop ends) */
+function postOrder(tasks: Array<Pick<Task, 'id'>>, successors: Map<string, string[]>): string[] {
+  const order: string[] = [];
+  const done = new Set<string>();
+  const open = new Set<string>(); // on the current walk, successors not all finished yet
+  for (const root of tasks) {
+    const stack = [root.id];
+    while (stack.length > 0) {
+      const id = stack[stack.length - 1];
+      if (done.has(id)) { stack.pop(); continue; }
+      if (open.has(id)) { open.delete(id); done.add(id); order.push(id); stack.pop(); continue; }
+      open.add(id);
+      for (const s of successors.get(id) ?? []) if (!done.has(s) && !open.has(s)) stack.push(s);
+    }
+  }
+  return order;
+}
+
+/** How many bits are set */
+function bitCount(set: Uint32Array): number {
+  let n = 0;
+  for (let w = 0; w < set.length; w++) { let v = set[w]; while (v) { v &= v - 1; n++; } }
+  return n;
 }
 
 /** Task id -> the tasks that depend on it */
@@ -50,25 +92,6 @@ function successorsByTask(tasks: Array<Pick<Task, 'id' | 'dependencies'>>): Map<
     }
   }
   return successors;
-}
-
-/** Depth-first from one task with an explicit stack; fills `rows` for it and everything after it */
-function countFrom(rootId: string, successors: Map<string, string[]>, rows: Map<string, number>, open: Set<string>): void {
-  const stack = [rootId];
-  while (stack.length > 0) {
-    const id = stack[stack.length - 1];
-    const next = successors.get(id) ?? [];
-    if (rows.has(id)) {
-      stack.pop();
-    } else if (!open.has(id)) {
-      open.add(id);
-      for (const s of next) if (!rows.has(s) && !open.has(s)) stack.push(s);
-    } else {
-      rows.set(id, next.reduce((n, s) => n + 1 + (rows.get(s) ?? 0), 0));
-      open.delete(id);
-      stack.pop();
-    }
-  }
 }
 
 /** How many of the top-ranked tasks the AI refines (the rest keep the worked-out ranking) */
@@ -128,7 +151,7 @@ export class TaskPrioritizationService {
 
     // Count downstream tasks for each task (for downstream impact factor), walked in memory over
     // the links the plan's tasks already carry (it used to be one recursive query per task)
-    const downstreamCounts = downstreamRowCounts(tasks);
+    const downstreamCounts = downstreamTaskCounts(tasks);
 
     // Calculate algorithmic scores
     const now = utcDay(new Date());

@@ -13,11 +13,17 @@ import { lessonsExtractionPrompt } from './prompts';
 // (services/StatusDateService.ts). Still correct in the way that mattered: something due
 // today is no longer 'late' from the previous evening.
 import { isOverdue } from '../../utils/calendarDate';
+import { limitGrouped } from '../aiToolLimits';
+
+/** Most tasks put in the extraction prompt (it was every task, pretty-printed — audit 2026-10-10 L3) */
+const LESSON_PROMPT_TASK_LIMIT = 300;
 
 export async function extractLessons(
   projectId: string,
   persistLessons: (lessons: LessonLearned[]) => Promise<void>,
-  createdBy?: number,
+  createdBy?: string,
+  /** Whose AI budget pays; null = no one to bill, so rules only. Undefined = the request's user. */
+  billTo?: string | null,
 ): Promise<LessonLearned[]> {
   const project = await projectService.findById(projectId);
   if (!project) {
@@ -32,7 +38,7 @@ export async function extractLessons(
     list.push(t);
     tasksBySchedule.set(t.scheduleId, list);
   }
-  const scheduleData: Array<{ scheduleName: string; tasks: any[] }> = schedules.map(schedule => ({
+  const scheduleData: Array<{ scheduleName: string; tasks: any[] }> = schedules.map((schedule) => ({
     scheduleName: schedule.name,
     tasks: (tasksBySchedule.get(schedule.id) ?? []).map((t) => ({
       name: t.name,
@@ -46,6 +52,9 @@ export async function extractLessons(
       dependencies: t.dependencies.map(d => ({ id: d.dependencyId, type: d.dependencyType, lag: d.lagDays })),
     })),
   }));
+  // The AI sees at most LESSON_PROMPT_TASK_LIMIT of them; the rules-based fallback uses all
+  const shownPerPlan = limitGrouped(scheduleData.map((sd) => sd.tasks), LESSON_PROMPT_TASK_LIMIT);
+  const promptScheduleData = scheduleData.map((sd, i) => ({ scheduleName: sd.scheduleName, taskCount: sd.tasks.length, tasks: shownPerPlan[i] }));
 
   // Fetch RAID items (risks + issues) for richer extraction
   let raidData: any[] = [];
@@ -79,14 +88,13 @@ export async function extractLessons(
       startDate: project.startDate ?? null,
       endDate: project.endDate ?? null,
     },
-    null,
-    2,
   );
 
-  const scheduleDataStr = JSON.stringify(scheduleData, null, 2);
-  const raidDataStr = raidData.length > 0 ? `Risks & issues (RAID log):\n${JSON.stringify(raidData, null, 2)}` : '';
+  const scheduleDataStr = JSON.stringify(promptScheduleData)
+    + (allTasks.length > LESSON_PROMPT_TASK_LIMIT ? `\n(${LESSON_PROMPT_TASK_LIMIT} of ${allTasks.length} tasks shown; taskCount gives each plan's total)` : '');
+  const raidDataStr = raidData.length > 0 ? `Risks & issues (RAID log):\n${JSON.stringify(raidData)}` : '';
 
-  if (config.AI_ENABLED && claudeService.isAvailable()) {
+  if (billTo !== null && config.AI_ENABLED && claudeService.isAvailable()) {
     try {
       const systemPrompt = lessonsExtractionPrompt.render({
         projectData: projectDataStr,
@@ -99,6 +107,7 @@ export async function extractLessons(
         userMessage: 'Extract lessons learned from this project data and return the JSON.',
         schema: LessonsExtractionAISchema,
         maxTokens: 4096,
+        ...(billTo ? { userId: billTo } : {}),
       });
 
       // Build source artifacts from the extraction context
@@ -153,7 +162,7 @@ export async function extractLessons(
 /** Creates a deterministic lesson with new fields pre-filled */
 function makeDeterministicLesson(
   base: { id: string; projectId: string; projectName: string; projectType: string; category: LessonLearned['category']; title: string; description: string; impact: LessonLearned['impact']; recommendation: string; confidence: number },
-  createdBy?: number,
+  createdBy?: string,
 ): LessonLearned {
   return {
     ...base,
@@ -178,7 +187,7 @@ async function extractLessonsDeterministic(
   project: { id: string; name: string; projectType: string; budgetAllocated?: number; budgetSpent: number; startDate?: string; endDate?: string; status: string },
   scheduleData: Array<{ scheduleName: string; tasks: any[] }>,
   persistLessons: (lessons: LessonLearned[]) => Promise<void>,
-  createdBy?: number,
+  createdBy?: string,
 ): Promise<LessonLearned[]> {
   const newLessons: LessonLearned[] = [];
   const allTasks = scheduleData.flatMap((s) => s.tasks);

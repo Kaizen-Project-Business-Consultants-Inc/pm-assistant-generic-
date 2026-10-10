@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Target,
@@ -13,6 +14,7 @@ import {
   MapPin,
   Lightbulb,
   XCircle,
+  Sparkles,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { SCurveChart } from '../../components/evm/SCurveChart';
@@ -127,6 +129,41 @@ const severityDotColors: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// Risk / weather / budget predictions: one query per kind, shared by its section and the banner
+// ---------------------------------------------------------------------------
+
+type PredictionKind = 'risk' | 'weather' | 'budget';
+const PREDICTION_LABEL: Record<PredictionKind, string> = { risk: 'Risk', weather: 'Weather', budget: 'Budget' };
+const PREDICTION_QUERY: Record<PredictionKind, { key: string; fetch: (projectId: string, ai: boolean) => Promise<any> }> = {
+  risk: { key: 'riskPrediction', fetch: (p, ai) => apiService.getProjectRisks(p, ai) },
+  weather: { key: 'projectWeather', fetch: (p, ai) => apiService.getProjectWeather(p, ai) },
+  budget: { key: 'projectBudget', fetch: (p, ai) => apiService.getProjectBudget(p, ai) },
+};
+
+/** `ai` false: no AI call (an AI answer kept for the project, else the rules'); true: ask the AI */
+function usePrediction(kind: PredictionKind, projectId: string, ai: boolean) {
+  const q = PREDICTION_QUERY[kind];
+  return useQuery({
+    queryKey: [q.key, projectId, ai],
+    queryFn: () => q.fetch(projectId, ai),
+    enabled: !!projectId,
+  });
+}
+
+const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+/** Which source each prediction shows: "AI answer from 14:32" or the rules */
+export function sourceSentence(aiTimes: Partial<Record<PredictionKind, string>>, loaded: boolean): string {
+  const kinds = Object.keys(PREDICTION_LABEL) as PredictionKind[];
+  const fromAI = kinds.filter((k) => aiTimes[k]);
+  if (!loaded) return 'Working out risk, weather and budget from your plan…';
+  if (fromAI.length === 0) return 'Risk, weather and budget below are worked out from your plan by rules.';
+  const aiPart = fromAI.map((k) => `${PREDICTION_LABEL[k]}: AI answer from ${timeOf(aiTimes[k]!)}`).join('; ');
+  const rules = kinds.filter((k) => !aiTimes[k]).map((k) => PREDICTION_LABEL[k]);
+  return rules.length ? `${aiPart}. ${rules.join(' and ')}: worked out by rules.` : `${aiPart}.`;
+}
+
+// ---------------------------------------------------------------------------
 // Main AIInsightsTab
 // ---------------------------------------------------------------------------
 
@@ -139,9 +176,38 @@ export function AIInsightsTab({ projectId }: { projectId: string }) {
 
   const schedules: any[] = schedulesData?.schedules || [];
   const firstScheduleId = schedules.length > 0 ? schedules[0].id : null;
+  // Opening the tab asks no AI: risk, weather and budget show the rules' answer (or an AI answer
+  // already worked out for this project). The AI is asked only when the person presses the button.
+  const [askAI, setAskAI] = useState(false);
+  // The same queries as the sections (shared by key): the banner says which source each shows
+  const risk = usePrediction('risk', projectId, askAI);
+  const weather = usePrediction('weather', projectId, askAI);
+  const budget = usePrediction('budget', projectId, askAI);
+  const aiTimes: Partial<Record<PredictionKind, string>> = {
+    risk: risk.data?.aiPowered ? risk.data.aiGeneratedAt : undefined,
+    weather: weather.data?.aiPowered ? weather.data.aiGeneratedAt : undefined,
+    budget: budget.data?.aiPowered ? budget.data.aiGeneratedAt : undefined,
+  };
+  const loaded = !risk.isLoading && !weather.isLoading && !budget.isLoading;
+  const allFromAI = !!(aiTimes.risk && aiTimes.weather && aiTimes.budget);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3">
+        <p className="text-sm text-gray-700 dark:text-gray-200" aria-live="polite">
+          {sourceSentence(aiTimes, loaded)}
+        </p>
+        {!askAI && !allFromAI && (
+          <button
+            type="button"
+            onClick={() => setAskAI(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+          >
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Ask AI
+          </button>
+        )}
+      </div>
       {firstScheduleId && (
         <div className="lg:col-span-2">
           <TaskPrioritizationPanel projectId={projectId} scheduleId={firstScheduleId} />
@@ -149,10 +215,10 @@ export function AIInsightsTab({ projectId }: { projectId: string }) {
       )}
       <TaskSlipPredictionSection projectId={projectId} />
       <ScopeCreepSection projectId={projectId} />
-      <RiskAssessmentSection projectId={projectId} />
-      <WeatherImpactSection projectId={projectId} />
+      <RiskAssessmentSection projectId={projectId} ai={askAI} />
+      <WeatherImpactSection projectId={projectId} ai={askAI} />
       <div className="lg:col-span-2">
-        <BudgetForecastSection projectId={projectId} />
+        <BudgetForecastSection projectId={projectId} ai={askAI} />
       </div>
       <div className="lg:col-span-2">
         <EVMSCurveSection projectId={projectId} />
@@ -289,11 +355,8 @@ function EVMSCurveSection({ projectId }: { projectId: string }) {
     enabled: !!projectId,
   });
 
-  const { data: budgetData } = useQuery({
-    queryKey: ['projectBudget', projectId],
-    queryFn: () => apiService.getProjectBudget(projectId),
-    enabled: !!projectId,
-  });
+  // EVM figures only: the rules' answer, never an AI call
+  const { data: budgetData } = usePrediction('budget', projectId, false);
 
   const evm = budgetData?.data?.evmMetrics;
   const sCurve = sCurveData?.data || [];
@@ -363,12 +426,8 @@ function EVMSCurveSection({ projectId }: { projectId: string }) {
   );
 }
 
-function RiskAssessmentSection({ projectId }: { projectId: string }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['project-risks', projectId],
-    queryFn: () => apiService.getProjectRisks(projectId),
-    enabled: !!projectId,
-  });
+function RiskAssessmentSection({ projectId, ai }: { projectId: string; ai: boolean }) {
+  const { data, isLoading, error } = usePrediction('risk', projectId, ai);
 
   const riskData = data?.data;
 
@@ -468,12 +527,8 @@ function RiskAssessmentSection({ projectId }: { projectId: string }) {
   );
 }
 
-function WeatherImpactSection({ projectId }: { projectId: string }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['projectWeather', projectId],
-    queryFn: () => apiService.getProjectWeather(projectId),
-    enabled: !!projectId,
-  });
+function WeatherImpactSection({ projectId, ai }: { projectId: string; ai: boolean }) {
+  const { data, isLoading, error } = usePrediction('weather', projectId, ai);
 
   const weather = data?.data;
 
@@ -573,12 +628,8 @@ function WeatherImpactSection({ projectId }: { projectId: string }) {
   );
 }
 
-function BudgetForecastSection({ projectId }: { projectId: string }) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['projectBudget', projectId],
-    queryFn: () => apiService.getProjectBudget(projectId),
-    enabled: !!projectId,
-  });
+function BudgetForecastSection({ projectId, ai }: { projectId: string; ai: boolean }) {
+  const { data, isLoading, error } = usePrediction('budget', projectId, ai);
 
   const budget = data?.data;
   const evm = budget?.evmMetrics;

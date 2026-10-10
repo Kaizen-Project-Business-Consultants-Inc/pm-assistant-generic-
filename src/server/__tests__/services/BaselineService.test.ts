@@ -142,6 +142,8 @@ describe('BaselineService', () => {
         expect.stringContaining('UPDATE tasks SET baseline_start_date = CASE id WHEN ? THEN ? END'),
         ['t1', '2026-03-01', 't1', '2026-03-10', 't1', 10, 't1', 5000, 't1'],
       );
+      // not a plan edit: the tasks keep their stamp, so History Undo stays available (audit 2026-10-09)
+      expect(String(mockQuery.mock.calls[0][0])).toContain('updated_at = updated_at');
     });
 
     it('stamps every task with the same values as before in one UPDATE per 200 tasks', async () => {

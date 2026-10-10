@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
@@ -9,6 +10,8 @@ import { clampPagination } from '../../schemas/paginationSchema';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 export async function logsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/admin/logs — query structured logs
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {

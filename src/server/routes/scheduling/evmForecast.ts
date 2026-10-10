@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
+import { aiRefusalReply } from '../../services/AIBudgetService';
 
 export async function evmForecastRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -56,9 +57,8 @@ export async function evmForecastRoutes(fastify: FastifyInstance) {
       if (err.message?.includes('Project not found')) {
         return reply.status(404).send({ error: 'Project not found' });
       }
-      if (err.code === 'AI_BUDGET_EXCEEDED' || err.name === 'AIBudgetExceededError') {
-        return reply.status(429).send({ error: 'AI budget exceeded', message: 'AI token budget has been reached for this month. AI predictions are temporarily unavailable.' });
-      }
+      const refusal = aiRefusalReply(err, 'AI token budget has been reached for this month. AI predictions are temporarily unavailable.');
+      if (refusal) return reply.status(refusal.status).send(refusal.body);
       // No credit / overloaded / AI unreachable: say so quietly (the service already logged one
       // warning and pauses asking for 10 minutes). A normal answer, not a 5xx: a 5xx would be
       // retried by the page and counted by the server-error alert on every project view.

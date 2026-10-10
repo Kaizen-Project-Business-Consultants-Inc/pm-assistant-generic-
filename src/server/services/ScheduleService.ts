@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { taskDatesOf, moveBookingsWithTasks } from '../database/bookingDates';
 import { databaseService } from '../database/connection';
+import { syncDependencyMirror } from '../database/dependencyMirror';
 import { scheduleRepository } from '../database/ScheduleRepository';
 import { taskRepository, TaskRepository } from '../database/TaskRepository';
 import { auditLedgerService } from './AuditLedgerService';
@@ -18,7 +19,6 @@ import { PARENT_LOOP_MESSAGE } from '../utils/parentLoop';
 import { planChanged, taskChanged } from './domainEvents';
 import { loginForAssignee } from '../utils/assigneeLogins';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
-import { inclusiveDaySpan } from '../utils/calendarDate';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
@@ -26,6 +26,28 @@ import { chunksOf } from '../utils/chunksOf';
 
 /** Rows per statement when copying a plan */
 const CLONE_CHUNK = 200;
+
+/**
+ * A summary's % (weighted by duration, or by Work when the plan's progress mode is 'work') and
+ * status, from its children. A cancelled child is no longer part of the work: it counts in neither
+ * the % nor "all done" (audit 2026-10-09 M4: [done, cancelled] left the summary "in progress" at
+ * 50% for ever); every child cancelled → the summary is cancelled too.
+ */
+function rollupProgressAndStatus(children: Task[], useWorkMode: boolean): { rollupProgress: number; rollupStatus: Task['status'] } {
+  const active = children.filter(c => c.status !== 'cancelled');
+  let totalWeight = 0;
+  let weightedProgress = 0;
+  for (const c of active) {
+    const w = useWorkMode ? (c.estimatedDurationHours ?? c.estimatedDays ?? 1) : (c.estimatedDays ?? 1);
+    totalWeight += w;
+    weightedProgress += (c.progressPercentage ?? 0) * w;
+  }
+  const rollupProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
+  if (active.length === 0) return { rollupProgress, rollupStatus: 'cancelled' };
+  if (active.every(c => c.status === 'completed')) return { rollupProgress, rollupStatus: 'completed' };
+  const started = active.some(c => c.status === 'in_progress' || c.status === 'completed');
+  return { rollupProgress, rollupStatus: started ? 'in_progress' : 'pending' };
+}
 export interface Schedule {
   id: string;
   projectId: string;
@@ -202,6 +224,8 @@ export interface CascadeResult {
   triggeredByTaskId: string;
   deltaDays: number;
   affectedTasks: CascadeChange[];
+  /** The Schedule History entry for the change (Undo goes through it), when one was recorded */
+  changeId?: string | null;
 }
 
 export interface TaskActivityEntry {
@@ -395,6 +419,8 @@ export class ScheduleService {
       `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES (?, ?, ?, ?, ?)`,
       [id, taskId, dependencyId, depType, lagDays],
     );
+    // a task's first link is copied onto the task too (database/dependencyMirror.ts)
+    if ((task.dependencies ?? []).length === 0) await syncDependencyMirror((sql, params) => databaseService.query(sql, params), [taskId]);
   }
 
   /**
@@ -616,7 +642,7 @@ export class ScheduleService {
    * `quiet`: the roll-up follows a background re-calculation (task budgets), not an edit — the
    * summary's updated_at is kept so Schedule History doesn't see "the plan changed since".
    */
-  async recomputeParentRollup(parentTaskId: string, depth = 0, opts: { quiet?: boolean } = {}): Promise<void> {
+  async recomputeParentRollup(parentTaskId: string, depth = 0, opts: { quiet?: boolean; isWorking?: IsWorking } = {}): Promise<void> {
     if (depth >= 10) return;
     const keepStamp = opts.quiet ? ', updated_at = updated_at' : '';
     const parent = await this.findTaskById(parentTaskId);
@@ -649,31 +675,25 @@ export class ScheduleService {
     const rollupStart = starts.length > 0 ? starts.sort()[0] : null;
     const rollupEnd = ends.length > 0 ? ends.sort().reverse()[0] : null;
 
-    // Progress — weighted average by estimatedDays or estimatedDurationHours depending on schedule progressMode
+    // Progress and status (cancelled children left out — rollupProgressAndStatus)
     const schedule = await this.findById(parent.scheduleId);
-    const useWorkMode = schedule?.progressMode === 'work';
-    let totalWeight = 0;
-    let weightedProgress = 0;
-    for (const c of childTasks) {
-      const w = useWorkMode ? (c.estimatedDurationHours ?? c.estimatedDays ?? 1) : (c.estimatedDays ?? 1);
-      totalWeight += w;
-      weightedProgress += (c.progressPercentage ?? 0) * w;
-    }
-    const rollupProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
-
-    // Status
-    const allCompleted = childTasks.every(c => c.status === 'completed');
-    const anyInProgress = childTasks.some(c => c.status === 'in_progress' || c.status === 'completed');
-    const rollupStatus = allCompleted ? 'completed' : anyInProgress ? 'in_progress' : 'pending';
+    const { rollupProgress, rollupStatus } = rollupProgressAndStatus(childTasks, schedule?.progressMode === 'work');
 
     // Budget
     const rollupBudget = childTasks.reduce((s, c) => s + (c.budgetAllocated ?? 0), 0) || null;
     const rollupCost = childTasks.reduce((s, c) => s + (c.actualCost ?? 0), 0) || null;
 
-    // EstimatedDays — the phase's span, first start to last finish (calendar days,
-    // inclusive, like task durations). Summing children counted parallel work twice:
-    // DBJ's T2 showed 263 days for a 3½-month phase.
-    const rollupEstDays = inclusiveDaySpan(rollupStart, rollupEnd);
+    // EstimatedDays — the phase's span, first start to last finish, in WORKING days of the project
+    // calendar, as leaf tasks count their duration (audit 2026-10-09 M4: calendar days gave 12 for two
+    // back-to-back 5-day tasks, and that number weights the summary in a higher summary's %).
+    // Summing children counted parallel work twice: DBJ's T2 showed 263 days for a 3½-month phase.
+    // the plan's calendar: passed in by callers that roll up several summaries, else read once here
+    // (from the schedule already loaded) and handed up the chain
+    const isWorking = opts.isWorking ?? await this.calendarOf(schedule);
+    const rollupEstDays = rollupStart && rollupEnd && rollupEnd >= rollupStart
+      ? workingDaysAfter(utcDay(rollupStart), utcDay(rollupEnd), isWorking) + (isWorking(utcDay(rollupStart)) ? 1 : 0)
+      : null;
+    const upOpts = { ...opts, isWorking };
 
     await databaseService.query(
       `UPDATE tasks SET
@@ -683,9 +703,9 @@ export class ScheduleService {
       [rollupStart, rollupEnd, rollupProgress, rollupStatus, rollupBudget, rollupCost, rollupEstDays, parentTaskId],
     );
 
-    // Recurse up
+    // Recurse up (same plan, same calendar)
     if (parent.parentTaskId) {
-      await this.recomputeParentRollup(parent.parentTaskId, depth + 1, opts);
+      await this.recomputeParentRollup(parent.parentTaskId, depth + 1, upOpts);
     }
   }
 
@@ -853,7 +873,7 @@ export class ScheduleService {
 
     // Recompute parent rollup if this task has a parent (an import does it once per parent at the end)
     if (data.parentTaskId && !data.deferParentRollup) {
-      await this.recomputeParentRollup(data.parentTaskId).catch(err =>
+      await this.recomputeParentRollup(data.parentTaskId, 0, { isWorking }).catch(err =>
         logger.error('[Rollup] recomputeParentRollup error on create:', err)
       );
     }
@@ -1111,18 +1131,19 @@ export class ScheduleService {
     const rollupFields = ['startDate', 'endDate', 'progressPercentage', 'status', 'estimatedDays', 'estimatedDurationHours', 'budgetAllocated', 'actualCost', 'parentTaskId'];
     const rollupChanged = rollupFields.some(f => f in data);
     if (rollupChanged) {
-      // If parentTaskId changed, recompute both old and new parents
+      // If parentTaskId changed, recompute both old and new parents (the plan's calendar read once)
+      const rollOpts = { isWorking: await this.workingDayTest(oldTask.scheduleId) };
       if (data.parentTaskId !== undefined && data.parentTaskId !== oldTask.parentTaskId) {
         if (oldTask.parentTaskId) {
-          await this.recomputeParentRollup(oldTask.parentTaskId).catch(err =>
+          await this.recomputeParentRollup(oldTask.parentTaskId, 0, rollOpts).catch(err =>
             logger.error('[Rollup] recomputeParentRollup error (old parent):', err));
         }
         if (data.parentTaskId) {
-          await this.recomputeParentRollup(data.parentTaskId).catch(err =>
+          await this.recomputeParentRollup(data.parentTaskId, 0, rollOpts).catch(err =>
             logger.error('[Rollup] recomputeParentRollup error (new parent):', err));
         }
       } else if (updated.parentTaskId) {
-        await this.recomputeParentRollup(updated.parentTaskId).catch(err =>
+        await this.recomputeParentRollup(updated.parentTaskId, 0, rollOpts).catch(err =>
           logger.error('[Rollup] recomputeParentRollup error:', err));
       }
     }
@@ -1336,8 +1357,12 @@ export class ScheduleService {
 
   /** The project calendar's working-day test for a schedule; Mon–Fri if it can't be read */
   async workingDayTest(scheduleId: string): Promise<IsWorking> {
+    return this.calendarOf(await this.findById(scheduleId).catch(() => null), scheduleId);
+  }
+
+  /** The working-day test of a schedule already read (Mon–Fri when its calendar can't be read) */
+  private async calendarOf(schedule: Schedule | null, scheduleId = schedule?.id): Promise<IsWorking> {
     try {
-      const schedule = await this.findById(scheduleId);
       if (schedule?.projectId) {
         const check = await calendarService.workingDayChecker(schedule.projectId);
         return d => check(ymdOf(d));
@@ -1368,7 +1393,9 @@ export class ScheduleService {
     // (it was one INSERT per task, one UPDATE per child and one INSERT per link; 2026-10-08)
     const tasks = await this.findTasksByScheduleId(scheduleId);
     const oldToNew = new Map(tasks.map(t => [t.id, uuidv4()] as [string, string]));
-    const COLS = 34;
+    // Summary flag, hours and costs, actual dates and baseline fields come too (audit 2026-10-09 M8:
+    // without them summaries acted like leaves and the copy's costs and baseline were empty)
+    const COLS = 44;
     const taskRows = tasks.map(t => [
       oldToNew.get(t.id), newId, t.name, t.description || null, t.status, t.priority, t.assignedTo || null,
       t.dueDate || null, t.estimatedDays ?? null, t.estimatedDurationHours ?? null, t.actualDurationHours ?? null,
@@ -1381,6 +1408,9 @@ export class ScheduleService {
       t.budgetAllocated ?? null, t.actualCost ?? null,
       t.constraintType || 'ASAP', t.constraintDate || null,
       t.workHours ?? null, t.effortDriven ? 1 : 0, t.id,
+      t.isSummary ? 1 : 0, t.labourHours ?? 0, t.labourCost ?? 0, t.otherCost ?? null,
+      t.actualStartDate || null, t.actualEndDate || null,
+      t.baselineStartDate || null, t.baselineFinishDate || null, t.baselineDurationDays ?? null, t.baselineCost ?? null,
     ]);
     const row = `(${new Array(COLS).fill('?').join(', ')})`;
     for (const chunk of chunksOf(taskRows, CLONE_CHUNK)) {
@@ -1391,7 +1421,9 @@ export class ScheduleService {
           start_date, end_date, progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
-          constraint_type, constraint_date, work_hours, effort_driven, original_task_id)
+          constraint_type, constraint_date, work_hours, effort_driven, original_task_id,
+          is_summary, labour_hours, labour_cost, other_cost, actual_start_date, actual_end_date,
+          baseline_start_date, baseline_finish_date, baseline_duration_days, baseline_cost)
          VALUES ${chunk.map(() => row).join(', ')}`,
         chunk.flat(),
       );
@@ -1422,6 +1454,29 @@ export class ScheduleService {
       // eslint-disable-next-line no-await-in-loop -- one statement per 200 links
       await databaseService.query(
         `INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flat(),
+      );
+    }
+
+    // Hours bookings and people on tasks come too: task budgets are priced from the bookings, so a
+    // copy without them re-priced every task budget to nothing (audit 2026-10-09 M8)
+    const bookings: any[] = await databaseService.query(
+      `SELECT resource_id, task_id, hours_per_week, DATE_FORMAT(start_date, '%Y-%m-%d') AS s, DATE_FORMAT(end_date, '%Y-%m-%d') AS e
+         FROM resource_assignments WHERE schedule_id = ?`, [scheduleId]);
+    const bookingRows = (Array.isArray(bookings) ? bookings : []).filter(b => oldToNew.has(b.task_id))
+      .map(b => [uuidv4(), b.resource_id, oldToNew.get(b.task_id), newId, b.hours_per_week, b.s, b.e]);
+    for (const chunk of chunksOf(bookingRows, CLONE_CHUNK)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 bookings
+      await databaseService.query(
+        `INSERT INTO resource_assignments (id, resource_id, task_id, schedule_id, hours_per_week, start_date, end_date) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
+        chunk.flat(),
+      );
+    }
+    const people = tasks.flatMap(t => (t.assignments ?? []).map(a => [uuidv4(), oldToNew.get(t.id), a.resourceId, a.allocationPct, a.roleOnTask ?? null, a.hoursPlanned ?? null]));
+    for (const chunk of chunksOf(people, CLONE_CHUNK)) {
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 people on tasks
+      await databaseService.query(
+        `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
         chunk.flat(),
       );
     }
@@ -1513,15 +1568,26 @@ export class ScheduleService {
     return { diffs, summary: { totalModified, totalAdded, totalRemoved, netDurationChange } };
   }
 
-  async promoteScenario(scenarioId: string): Promise<void> {
+  /**
+   * Put a scenario's dates and durations on the plan it was copied from, then delete the scenario.
+   * Audit 2026-10-09 M8: now one transaction (all of it or none); a task whose % comes from
+   * approved hours keeps its own %; the summary tasks above the changed tasks roll up; and it
+   * returns each task's previous values so the caller records ONE Schedule History entry (Undo).
+   * `baseScheduleId`: the plan the caller was allowed into — a scenario of another plan is refused.
+   */
+  async promoteScenario(scenarioId: string, baseScheduleId?: string): Promise<{
+    baseScheduleId: string; projectId: string; label: string;
+    previous: Array<{ id: string; values: Record<string, unknown> }>;
+  }> {
     const scenario = await this.findById(scenarioId);
-    if (!scenario || !scenario.isScenario || !scenario.sourceScheduleId) {
+    if (!scenario || !scenario.isScenario || !scenario.sourceScheduleId || (baseScheduleId && scenario.sourceScheduleId !== baseScheduleId)) {
       throw new Error('Not a scenario schedule');
     }
 
     const baseId = scenario.sourceScheduleId;
     const baseTasks = await this.findTasksByScheduleId(baseId);
     const scenarioTasks = await this.findTasksByScheduleId(scenarioId);
+    const fromHours = await this.progressFromHoursTaskIds(baseTasks.map(t => t.id));
 
     // Build mapping from original_task_id → scenario task
     const scenarioByOriginal = new Map<string, Task>();
@@ -1530,29 +1596,56 @@ export class ScheduleService {
       if (origId) scenarioByOriginal.set(origId, st);
     }
 
-    // Update base tasks with scenario dates/durations (booked hours move with them)
-    const run = (sql: string, params: any[]) => databaseService.query(sql, params);
-    const before = await taskDatesOf(run, baseTasks.map(t => t.id));
-    // 200 tasks per statement (it was one UPDATE per task; 2026-10-08)
+    const day = (v: unknown) => (v ? String(v).slice(0, 10) : null);
     const moves = baseTasks.flatMap(bt => {
       const st = scenarioByOriginal.get(bt.id);
-      return st ? [{ id: bt.id, start: st.startDate || null, end: st.endDate || null, days: st.estimatedDays ?? null, pct: st.progressPercentage ?? 0 }] : [];
+      // a summary's dates and % come from its tasks: it is rolled up below, not copied
+      if (!st || bt.isSummary) return [];
+      const m = {
+        id: bt.id, start: day(st.startDate), end: day(st.endDate), days: st.estimatedDays ?? null,
+        // % from approved hours is the timesheets' to set, not a copy's
+        pct: fromHours.has(bt.id) ? (bt.progressPercentage ?? 0) : (st.progressPercentage ?? 0),
+        parent: bt.parentTaskId ?? null,
+        old: { start_date: day(bt.startDate), end_date: day(bt.endDate), estimated_days: bt.estimatedDays ?? null, progress_percentage: bt.progressPercentage ?? 0 },
+      };
+      const same = m.start === m.old.start_date && m.end === m.old.end_date && m.days === m.old.estimated_days && m.pct === m.old.progress_percentage;
+      return same ? [] : [m];
     });
-    for (const chunk of chunksOf(moves, CLONE_CHUNK)) {
-      const when = chunk.map(() => 'WHEN ? THEN ?').join(' ');
-      const by = (pick: (m: typeof moves[number]) => any) => chunk.flatMap(m => [m.id, pick(m)]);
-      // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks
-      await databaseService.query(
-        `UPDATE tasks SET start_date = CASE id ${when} END, end_date = CASE id ${when} END,
-           estimated_days = CASE id ${when} END, progress_percentage = CASE id ${when} END
-         WHERE id IN (${chunk.map(() => '?').join(',')})`,
-        [...by(m => m.start), ...by(m => m.end), ...by(m => m.days), ...by(m => m.pct), ...chunk.map(m => m.id)],
-      );
+
+    // Update base tasks with scenario dates/durations (booked hours move with them) — one transaction
+    await databaseService.transaction(async (conn) => {
+      const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
+      const before = await taskDatesOf(run, moves.map(m => m.id));
+      // 200 tasks per statement (it was one UPDATE per task; 2026-10-08)
+      for (const chunk of chunksOf(moves, CLONE_CHUNK)) {
+        const when = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+        const by = (pick: (m: typeof moves[number]) => any) => chunk.flatMap(m => [m.id, pick(m)]);
+        // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks, inside the transaction
+        await run(
+          `UPDATE tasks SET start_date = CASE id ${when} END, end_date = CASE id ${when} END,
+             estimated_days = CASE id ${when} END, progress_percentage = CASE id ${when} END
+           WHERE id IN (${chunk.map(() => '?').join(',')}) AND schedule_id = ?`,
+          [...by(m => m.start), ...by(m => m.end), ...by(m => m.days), ...by(m => m.pct), ...chunk.map(m => m.id), baseId],
+        );
+      }
+      await moveBookingsWithTasks(run, before);
+    });
+
+    // Summary tasks above the changed tasks, one after another (nested summaries settle in order)
+    const parentIds = new Set(moves.map(m => m.parent).filter((p): p is string => !!p));
+    const isWorking = parentIds.size ? await this.workingDayTest(baseId) : weekdaysOnly;
+    for (const pid of parentIds) {
+      // eslint-disable-next-line no-await-in-loop -- each roll-up walks up to shared ancestor summaries; in parallel they would race on the same rows
+      await this.recomputeParentRollup(pid, 0, { isWorking }).catch(err => logger.warn('[Scenario] roll-up after promote failed', { pid, error: err?.message }));
     }
-    await moveBookingsWithTasks(run, before);
+    if (moves.length) planChanged(baseId);
 
     // Delete the scenario schedule
     await this.delete(scenarioId);
+    return {
+      baseScheduleId: baseId, projectId: scenario.projectId, label: scenario.scenarioLabel || scenario.name,
+      previous: moves.map(m => ({ id: m.id, values: m.old })),
+    };
   }
 
   /**

@@ -7,13 +7,19 @@ import { sanitizeForPrompt } from '../utils/promptSanitizer';
 
 type UserRole = 'admin' | 'executive' | 'project_manager' | 'team_member' | 'scrum_master' | 'finance_officer' | 'risk_manager' | 'pmo' | 'ba' | 'qa' | 'tester' | 'devops' | 'claude_sme' | 'viewer';
 
+/** `aiPowered`: the AI wrote it (false = the rules' sentence) — only AI answers are cached */
+export interface Narrative {
+  narrative: string;
+  aiPowered: boolean;
+}
+
 export class NarrativeService {
-  async generateProjectNarrative(projectId: string, role: UserRole): Promise<string> {
+  async generateProjectNarrative(projectId: string, role: UserRole): Promise<Narrative> {
     const project = await projectService.findById(projectId);
-    if (!project) return 'Project not found.';
+    if (!project) return { narrative: 'Project not found.', aiPowered: false };
 
     if (!claudeService.isAvailable()) {
-      return this.generateFallbackProjectNarrative(project, role);
+      return { narrative: this.generateFallbackProjectNarrative(project, role), aiPowered: false };
     }
 
     const insights = await insightAssemblyService.assembleForProject(projectId);
@@ -58,20 +64,20 @@ Write in plain language, no markdown. Be concise and actionable.`;
         maxTokens: 300,
         temperature: 0.4,
       });
-      return result.content.trim();
+      return { narrative: result.content.trim(), aiPowered: true };
     } catch {
-      return this.generateFallbackProjectNarrative(project, role);
+      return { narrative: this.generateFallbackProjectNarrative(project, role), aiPowered: false };
     }
   }
 
-  async generatePortfolioNarrative(role: UserRole, asker?: { userId: string; role: string }): Promise<string> {
+  async generatePortfolioNarrative(role: UserRole, asker?: { userId: string; role: string }): Promise<Narrative> {
     // The asker's projects only (all of them for admin/PMO/executive) — it used every project
     const allProjects = asker ? await projectService.findAccessible(asker) : await projectService.findAll();
     // The sample project never counts in the portfolio
     const activeProjects = allProjects.filter(p => !p.isDemo && (p.status === 'active' || p.status === 'planning'));
 
     if (!claudeService.isAvailable()) {
-      return this.generateFallbackPortfolioNarrative(activeProjects, role);
+      return { narrative: this.generateFallbackPortfolioNarrative(activeProjects, role), aiPowered: false };
     }
 
     const roleFocus = this.getRoleFocus(role);
@@ -97,9 +103,9 @@ Write in plain language, no markdown. Be concise and actionable.`;
         maxTokens: 300,
         temperature: 0.4,
       });
-      return result.content.trim();
+      return { narrative: result.content.trim(), aiPowered: true };
     } catch {
-      return this.generateFallbackPortfolioNarrative(activeProjects, role);
+      return { narrative: this.generateFallbackPortfolioNarrative(activeProjects, role), aiPowered: false };
     }
   }
 

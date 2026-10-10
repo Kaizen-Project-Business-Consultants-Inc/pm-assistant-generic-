@@ -293,9 +293,12 @@ const executors: Record<ActionType, ActionExecutorFn> = {
     logger.info(`[AutomationAction] apply_lesson: sent ${lessons.length} lessons to ${resolved.length} recipients`);
   },
 
-  async extract_lesson(_params, _context, event) {
+  async extract_lesson(_params, context, event) {
     const { lessonsLearnedService } = await import('../lessonsLearned');
-    await lessonsLearnedService.extractLessons(event.projectId, event.userId);
+    // The AI part is billed to the automation's owner, like ai_generate (it was billed to whoever
+    // triggered the event, and to no one on a scheduled run — audit 2026-10-10 L3). With nobody
+    // to bill, the rules-based extraction runs instead.
+    await lessonsLearnedService.extractLessons(event.projectId, event.userId, context._aiBillTo || event.userId || null);
     logger.info(`[AutomationAction] extract_lesson: triggered extraction for project ${event.projectId}`);
   },
 

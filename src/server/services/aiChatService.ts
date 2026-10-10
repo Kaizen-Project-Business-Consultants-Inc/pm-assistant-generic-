@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { randomUUID } from 'crypto';
-import { claudeService, promptTemplates, type StreamChunk, type CompletionResult } from './claudeService';
-import { AIContextBuilder } from './aiContextBuilder';
+import { claudeService, promptTemplates, AIPromptTooLargeError, type StreamChunk, type CompletionResult } from './claudeService';
+import { AIContextBuilder, CHAT_PROMPT_TASK_LIMIT } from './aiContextBuilder';
 import { logAIUsage } from './aiUsageLogger';
 import { AI_TOOLS, MUTATING_TOOLS } from './aiToolDefinitions';
 import { AIActionExecutor, type ActionResult } from './aiActionExecutor';
@@ -165,7 +165,15 @@ export class AIChatService {
       });
 
       let reply: string;
-      if (error instanceof AIBudgetExceededError) {
+      // The plan has no AI, the account's AI is paused (neutral message), or the question needs
+      // more data than one call can read: the error's own message says so
+      const ownMessage = error instanceof AIPromptTooLargeError
+        || (error instanceof AIBudgetExceededError && error.code !== 'AI_BUDGET_EXCEEDED');
+      if (ownMessage) {
+        reply = (error as Error).message;
+      } else if (error instanceof AIBudgetExceededError && error.needed > 0 && error.used < error.budget) {
+        reply = `This question needs about ${error.needed.toLocaleString()} AI tokens and you have ${(error.budget - error.used).toLocaleString()} left this month. Try a narrower question, or [purchase additional tokens](/pricing).`;
+      } else if (error instanceof AIBudgetExceededError) {
         reply = `You've reached your monthly AI token limit (${error.used.toLocaleString()} / ${error.budget.toLocaleString()} tokens used). Your budget resets on **${error.resetDate}**.\n\nYou can [purchase additional tokens](/pricing) to continue using AI features, or wait for your budget to reset. All non-AI features remain fully available.`;
       } else {
         reply = 'I encountered an error processing your request. Please try again in a moment.';
@@ -249,9 +257,11 @@ export class AIChatService {
         errorMessage: error instanceof Error ? error.message : String(error),
       });
 
+      // A refusal before any call (no AI on the plan, budget, question too big) says why
+      const refusal = error instanceof AIBudgetExceededError || error instanceof AIPromptTooLargeError;
       yield {
         type: 'text_delta' as const,
-        content: '\n\n[An error occurred while generating the response. Please try again.]',
+        content: refusal ? `\n\n${error.message}` : '\n\n[An error occurred while generating the response. Please try again.]',
       };
       yield { type: 'done' as const, conversationId };
     }
@@ -300,7 +310,11 @@ export class AIChatService {
           userMemoriesP,
         ]);
 
-        projectContext = ctx ? this.contextBuilder.toPromptString(ctx) : `Project ID: ${req.context.projectId} (context unavailable)`;
+        // Up to CHAT_PROMPT_TASK_LIMIT task lines: this prompt is resent on every turn of the tool
+        // loop, and Mjuzi can look up the rest with list_tasks (audit 2026-10-10 H1)
+        projectContext = ctx
+          ? `${this.contextBuilder.toPromptString(ctx, CHAT_PROMPT_TASK_LIMIT)}A task not listed here can be found with list_tasks and nameContains (or status / assignedTo).\n`
+          : `Project ID: ${req.context.projectId} (context unavailable)`;
 
         const parts: string[] = [];
 

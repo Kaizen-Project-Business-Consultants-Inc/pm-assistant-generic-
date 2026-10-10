@@ -101,14 +101,45 @@ describe('ApprovedTimeService — what approved hours do to the plan', () => {
   it('rolls up the summary task, and sets project spend = labour + other costs + expenses', async () => {
     db();
     await approvedTimeService.applyToTasks(['t1']);
-    expect(recomputeParentRollup).toHaveBeenCalledWith('phase');
+    // pending → in progress is a plan edit: a normal roll-up (the summary is stamped)
+    expect(recomputeParentRollup).toHaveBeenCalledWith('phase', 0, expect.objectContaining({ quiet: false }));
     const proj = query.mock.calls.find(([sql]) => String(sql).includes('UPDATE projects p SET'))!;
     // spent = labour + other costs + expenses (2026-10-03: expenses used to be left out)
     expect(proj[0]).toContain('p.budget_spent = ROUND(COALESCE(p.other_costs, 0) + p.labour_cost');
     expect(proj[0]).toMatch(/budget_spent = ROUND\([\s\S]*FROM project_expenses e WHERE e.project_id = p.id/);
-    expect(proj[0]).toContain('COALESCE(t.is_summary, 0) = 0'); // summary tasks aren't counted twice
-    expect(proj[1]).toEqual(['p1']);
+    expect(proj[0]).toContain('p.labour_cost = ?'); // approved labour, from the entries (not the tasks: a deleted task's hours count)
+    expect(proj[1].at(-1)).toEqual('p1');
     expect(invalidateCache).toHaveBeenCalledWith('p1'); // screens must not show the cached old spend
+  });
+
+  it('hours and cost alone keep the task stamp (History Undo stays available); a new % stamps it (audit 2026-10-09)', async () => {
+    findEffectiveAssignments.mockResolvedValue([]);
+    db();
+    await approvedTimeService.applyToTasks(['t1']);
+    expect(taskUpdate()[0]).not.toContain('updated_at = updated_at'); // pending → in progress is a plan change
+    vi.clearAllMocks(); listSafe.mockResolvedValue([]); findEffectiveAssignments.mockResolvedValue([]);
+    db({ tasks: [{ id: 't1', schedule_id: 's1', parent_task_id: null, status: 'in_progress', progress_percentage: 30, project_id: 'p1' }] });
+    await approvedTimeService.applyToTasks(['t1']);
+    expect(taskUpdate()[0]).toContain('updated_at = updated_at');
+  });
+
+  it('cost-only approval: the summary above rolls up quietly too, so History Undo stays available (review 2026-10-10)', async () => {
+    findEffectiveAssignments.mockResolvedValue([]);
+    db({ tasks: [{ id: 't1', schedule_id: 's1', parent_task_id: 'phase', status: 'in_progress', progress_percentage: 30, project_id: 'p1' }] });
+    await approvedTimeService.applyToTasks(['t1']);
+    expect(taskUpdate()[0]).toContain('updated_at = updated_at');
+    const [pid, depth, opts] = recomputeParentRollup.mock.calls[0];
+    expect([pid, depth, opts.quiet]).toEqual(['phase', 0, true]);
+    expect(typeof opts.isWorking).toBe('function'); // the plan's calendar, worked out once
+  });
+
+  it('project labour = approved hours read by the entry project, so a deleted task still counts (audit M3)', async () => {
+    db();
+    await approvedTimeService.applyToProject('p1');
+    const read = query.mock.calls.find(([sql]) => String(sql).includes('FROM time_entries WHERE project_id = ?'))!;
+    expect(read[0]).not.toContain('JOIN tasks');
+    const proj = query.mock.calls.find(([sql]) => String(sql).includes('UPDATE projects p SET'))!;
+    expect(proj[1]).toEqual([0, 'p1']); // the default fake has no entries under that read
   });
 
   it('nothing to do for no tasks', async () => {
@@ -120,7 +151,7 @@ describe('ApprovedTimeService — what approved hours do to the plan', () => {
 describe('ApprovedTimeService.costTimeline — actual cost by day, for earned value', () => {
   it("approved labour on the day worked (at that day's rate) + expenses on their date + undated other costs", async () => {
     query.mockImplementation(async (sql: string) => {
-      if (sql.includes('FROM time_entries te')) return [
+      if (sql.includes('FROM time_entries WHERE project_id')) return [
         { user_id: 'u1', date: '2026-01-05', hours: 8, rate_type: 'standard' },
         { user_id: 'u1', date: '2026-01-06', hours: 2, rate_type: 'overtime' },
       ];

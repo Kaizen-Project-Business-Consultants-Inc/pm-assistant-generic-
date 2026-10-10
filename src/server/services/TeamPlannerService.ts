@@ -360,10 +360,10 @@ export class TeamPlannerService {
       let b = a;
       const m = movedById.get(a.taskId);
       if (m) {
-        // A task-based booking takes the task's new dates; an hours booking moves by the same days
+        // A task-based booking takes the task's new dates; an hours booking moves by the same working days (as the real write does)
         const t = { start: m.oldStart, end: m.oldEnd };
         b = a.source === 'manual'
-          ? (() => { const f = followTask({ start: a.startDate.slice(0, 10), end: a.endDate.slice(0, 10) }, t, { start: m.newStart, end: m.newEnd }); return { ...b, startDate: f.start, endDate: f.end }; })()
+          ? (() => { const f = followTask({ start: a.startDate.slice(0, 10), end: a.endDate.slice(0, 10) }, t, { start: m.newStart, end: m.newEnd }, ymd => isWorking(utcDay(ymd))); return { ...b, startDate: f.start, endDate: f.end }; })()
           : { ...b, startDate: m.newStart, endDate: m.newEnd };
       }
       if (reassign && a.taskId === task.id && a.resourceId === fromId) b = { ...b, resourceId: toId! };

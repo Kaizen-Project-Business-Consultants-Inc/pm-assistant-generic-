@@ -165,7 +165,8 @@ export function useWebSocket() {
               case 'task_updated':
               case 'task_created':
               case 'task_deleted': {
-                const scheduleId = message.payload?.task?.scheduleId;
+                // the task's plan, or the plan the server names (task removed, link removed)
+                const scheduleId = message.payload?.task?.scheduleId ?? message.payload?.scheduleId;
                 if (scheduleId) {
                   queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
                   queryClient.invalidateQueries({ queryKey: ['criticalPath', scheduleId] });

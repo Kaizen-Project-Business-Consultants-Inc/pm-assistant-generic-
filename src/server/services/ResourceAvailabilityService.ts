@@ -1,8 +1,10 @@
 import { resourceAvailabilityRepository, ResourceAvailability } from '../database/ResourceAvailabilityRepository';
 import { calendarTemplateRepository } from '../database/CalendarTemplateRepository';
-import { MS_PER_DAY } from '../utils/constants';
+import { addCalendarDays, utcDay } from '../utils/workingDays';
 
 export type { ResourceAvailability } from '../database/ResourceAvailabilityRepository';
+
+const DAY_NAMES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 export class ResourceAvailabilityService {
   async findByResource(resourceId: string, dateFrom?: string, dateTo?: string): Promise<ResourceAvailability[]> {
@@ -78,28 +80,28 @@ export class ResourceAvailabilityService {
       const weekMap = new Map<string, number>();
       let baseCapacity = resource.capacityHoursPerWeek;
       let hoursPerDay = baseCapacity / 5;
+      // The days this person works (their calendar template, else Monday–Friday)
+      let worksOn = new Set(['mon', 'tue', 'wed', 'thu', 'fri']);
 
       if (resource.calendarTemplateId) {
         const template = templateMap.get(resource.calendarTemplateId);
         if (template) {
           hoursPerDay = template.hoursPerDay;
           baseCapacity = template.workingDays.length * hoursPerDay;
+          worksOn = new Set(template.workingDays.map(d => String(d).slice(0, 3).toLowerCase()));
         }
       }
+      const isWorkday = (ymd: string) => worksOn.has(DAY_NAMES[utcDay(ymd).getUTCDay()]);
 
       const resBlocks = blocksByResource.get(resource.id) || [];
 
       for (const weekStart of weeks) {
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekEnd.getDate() + 6);
+        // calendar days as 'YYYY-MM-DD' strings, compared as text (never turned into local moments)
         const weekKey = weekStart.toISOString().slice(0, 10);
+        const weekEnd = addCalendarDays(weekKey, 6);
 
-        // Filter blocks overlapping this specific week
         // eslint-disable-next-line no-restricted-syntax -- small: one person's own time-off blocks
-        const weekBlocks = resBlocks.filter(b =>
-          new Date(b.dateFrom).getTime() <= weekEnd.getTime() &&
-          new Date(b.dateTo).getTime() >= weekStart.getTime()
-        );
+        const weekBlocks = resBlocks.filter(b => b.dateFrom.slice(0, 10) <= weekEnd && b.dateTo.slice(0, 10) >= weekKey);
 
         if (weekBlocks.length === 0) {
           weekMap.set(weekKey, baseCapacity);
@@ -111,9 +113,12 @@ export class ResourceAvailabilityService {
         let reducedDays = 0;
 
         for (const block of weekBlocks) {
-          const blockStart = new Date(Math.max(new Date(block.dateFrom).getTime(), weekStart.getTime()));
-          const blockEnd = new Date(Math.min(new Date(block.dateTo).getTime(), weekEnd.getTime()));
-          const overlapDays = Math.max(0, Math.ceil((blockEnd.getTime() - blockStart.getTime()) / MS_PER_DAY) + 1);
+          // Only the person's WORKING days of the block count (audit 2026-10-09 M5: Fri–Mon off took 4
+          // days out of a 5-day week, so the week showed 16 h instead of 32)
+          const from = block.dateFrom.slice(0, 10) > weekKey ? block.dateFrom.slice(0, 10) : weekKey;
+          const to = block.dateTo.slice(0, 10) < weekEnd ? block.dateTo.slice(0, 10) : weekEnd;
+          let overlapDays = 0;
+          for (let d = from; d <= to; d = addCalendarDays(d, 1)) if (isWorkday(d)) overlapDays++;
 
           if (block.type === 'reduced' && block.hoursAvailable != null) {
             reducedDays += overlapDays;

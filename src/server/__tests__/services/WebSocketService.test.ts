@@ -425,7 +425,7 @@ describe('WebSocketService', () => {
       const info2 = (WebSocketService as any).clientInfo.get(ws2);
       info2.projectId = 'p1';
 
-      WebSocketService.broadcastPresence('p1');
+      WebSocketService.broadcastPresence('p1', 'pmassist_t_one');
 
       expect(ws1.send).toHaveBeenCalled();
       const sent = JSON.parse(ws1.send.mock.calls[0][0]);
@@ -444,7 +444,7 @@ describe('WebSocketService', () => {
       WebSocketService.addClient(ws2, { userId: 'u2', username: 'bob', role: 'admin' });
       (WebSocketService as any).clientInfo.get(ws2).projectId = 'p2';
 
-      WebSocketService.broadcastPresence('p1');
+      WebSocketService.broadcastPresence('p1', 'pmassist_t_one');
 
       expect(ws1.send).toHaveBeenCalled();
       expect(ws2.send).not.toHaveBeenCalled();
@@ -460,7 +460,7 @@ describe('WebSocketService', () => {
       WebSocketService.addClient(ws2, { userId: 'u1', username: 'alice', role: 'admin' });
       (WebSocketService as any).clientInfo.get(ws2).projectId = 'p1';
 
-      WebSocketService.broadcastPresence('p1');
+      WebSocketService.broadcastPresence('p1', 'pmassist_t_one');
 
       const sent = JSON.parse(ws1.send.mock.calls[0][0]);
       expect(sent.payload.viewers).toHaveLength(1);
@@ -471,7 +471,7 @@ describe('WebSocketService', () => {
       WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'admin' });
       (WebSocketService as any).clientInfo.get(ws).projectId = 'p1';
 
-      WebSocketService.broadcastPresence('p1');
+      WebSocketService.broadcastPresence('p1', 'pmassist_t_one');
       expect(ws.send).not.toHaveBeenCalled();
     });
 
@@ -481,7 +481,7 @@ describe('WebSocketService', () => {
       WebSocketService.addClient(ws, { userId: 'u1', username: 'alice', role: 'admin' });
       (WebSocketService as any).clientInfo.get(ws).projectId = 'p1';
 
-      WebSocketService.broadcastPresence('p1');
+      WebSocketService.broadcastPresence('p1', 'pmassist_t_one');
       expect(logger.warn).toHaveBeenCalledWith('WebSocket send failed', { error: 'write failed' });
     });
   });
@@ -529,6 +529,76 @@ describe('WebSocketService', () => {
 
       WebSocketService.broadcast(testMessage, 'p1');
       expect(logger.warn).toHaveBeenCalledWith('WebSocket broadcast send failed', { error: 'broken pipe' });
+    });
+  });
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Company isolation (2026-10-09 audit M1): every sample project has the same id
+  // ────────────────────────────────────────────────────────────────────────
+
+  describe('company isolation', () => {
+    const msg: WSMessage = { type: 'task_updated', payload: { id: 't1' } };
+    function clientIn(company: string, userId: string) {
+      ctx.value = { organizationId: `org-${company}`, tenantDbName: company };
+      const ws = createMockWs();
+      WebSocketService.addClient(ws, { userId, username: userId, role: 'project_manager' });
+      (WebSocketService as any).clientInfo.get(ws).projectId = 'demo-sample-webapp';
+      return ws;
+    }
+
+    it('a task update reaches the same project in the same company only', () => {
+      const mine = clientIn('pmassist_t_one', 'u1');
+      const theirs = clientIn('pmassist_t_two', 'u2');
+      ctx.value = { organizationId: 'org-one', tenantDbName: 'pmassist_t_one' };
+      WebSocketService.broadcast(msg, 'demo-sample-webapp');
+      expect(mine.send).toHaveBeenCalledWith(JSON.stringify(msg));
+      expect(theirs.send).not.toHaveBeenCalled();
+    });
+
+    it('presence lists and reaches only viewers of the same company', () => {
+      const mine = clientIn('pmassist_t_one', 'u1');
+      const theirs = clientIn('pmassist_t_two', 'u2');
+      WebSocketService.broadcastPresence('demo-sample-webapp', 'pmassist_t_one');
+      const sent = JSON.parse(mine.send.mock.calls[0][0]);
+      expect(sent.payload.viewers).toEqual([{ userId: 'u1', username: 'u1' }]);
+      expect(theirs.send).not.toHaveBeenCalled();
+    });
+
+    it('an update with no company in context goes to nobody', () => {
+      const mine = clientIn('pmassist_t_one', 'u1');
+      ctx.value = undefined;
+      WebSocketService.broadcast(msg, 'demo-sample-webapp');
+      expect(mine.send).not.toHaveBeenCalled();
+      expect(logger.warn).toHaveBeenCalledWith('WebSocket broadcast without a company — not sent', { type: 'task_updated' });
+    });
+
+    it('single-company installs match on the project alone', () => {
+      tenant.multi = false;
+      ctx.value = undefined;
+      const ws = createMockWs();
+      WebSocketService.addClient(ws, { userId: 'u1', username: 'u1', role: 'project_manager' });
+      (WebSocketService as any).clientInfo.get(ws).projectId = 'p1';
+      WebSocketService.broadcast(msg, 'p1');
+      expect(ws.send).toHaveBeenCalled();
+    });
+
+    it('removed from a project: their open connection leaves its room straight away', async () => {
+      const stays = clientIn('pmassist_t_one', 'u1');
+      const goes = clientIn('pmassist_t_one', 'u2');
+      mockHasAccess.mockImplementation(async (_p: string, userId: string) => userId === 'u1');
+      ctx.value = { organizationId: 'org-one', tenantDbName: 'pmassist_t_one' };
+      await WebSocketService.recheckProject('demo-sample-webapp');
+      expect((WebSocketService as any).clientInfo.get(goes).projectId).toBeNull();
+      expect((WebSocketService as any).clientInfo.get(stays).projectId).toBe('demo-sample-webapp');
+      WebSocketService.broadcast(msg, 'demo-sample-webapp');
+      expect(goes.send).not.toHaveBeenCalledWith(JSON.stringify(msg));
+      expect(stays.send).toHaveBeenCalledWith(JSON.stringify(msg));
+    });
+
+    it('the editing label is cut to 100 characters', () => {
+      const ws = clientIn('pmassist_t_one', 'u1');
+      ws.emit('message', JSON.stringify({ type: 'presence:editing', field: 'x'.repeat(5000) }));
+      expect((WebSocketService as any).clientInfo.get(ws).editingField).toHaveLength(100);
     });
   });
 

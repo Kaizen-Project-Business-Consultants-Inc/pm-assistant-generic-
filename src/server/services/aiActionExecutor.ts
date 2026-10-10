@@ -12,6 +12,7 @@ import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
 import { knowledgeBaseService } from './KnowledgeBaseService';
 import { utcDay, ymdOf, finishFor, shiftWorking, workingDaysAfter } from '../utils/workingDays';
+import { limitRows, limitGrouped, MAX_TOOL_ROWS, filterTasks, describeTaskFilter, TASK_FILTER_HINT } from './aiToolLimits';
 
 export interface ActionResult {
   success: boolean;
@@ -34,6 +35,16 @@ const AI_WRITE_TOOLS = new Set([
 
 /** Tools that read one project's data: the user must be able to see that project */
 const AI_READ_TOOLS = new Set(['get_project_details', 'list_tasks', 'get_dependency_chain']);
+
+/**
+ * A list goes back to the model and is resent on every later turn of the chat's tool loop: first
+ * rows only, with the count in the summary (audit 2026-10-10 H1)
+ */
+function limitListResult(result: ActionResult): ActionResult {
+  if (!Array.isArray(result.data)) return result;
+  const limited = limitRows(result.data);
+  return limited.note ? { ...result, data: limited.rows, summary: `${result.summary}. ${limited.note}` } : result;
+}
 
 export class AIActionExecutor {
   /** Which project a tool call touches: projectId, else via scheduleId, else via taskId */
@@ -153,6 +164,8 @@ export class AIActionExecutor {
         default:
           return { success: false, toolName, summary: `Unknown tool: ${toolName}`, error: `Tool '${toolName}' is not recognized` };
       }
+
+      result = limitListResult(result);
 
       // Audit log every AI action
       auditLedgerService.append({
@@ -373,28 +386,38 @@ export class AIActionExecutor {
       list.push(t);
       tasksBySchedule.set(t.scheduleId, list);
     }
-    const schedulesWithTasks = schedules.map(s => ({
-      id: s.id,
-      name: s.name,
-      status: s.status,
-      startDate: s.startDate,
-      endDate: s.endDate,
-      tasks: (tasksBySchedule.get(s.id) ?? []).map(t => ({
-        id: t.id,
-        name: t.name,
-        status: t.status,
-        priority: t.priority,
-        assignedTo: t.assignedTo,
-        dueDate: t.dueDate,
-        progressPercentage: t.progressPercentage,
-        parentTaskId: t.parentTaskId,
-      })),
-    }));
+    // At most MAX_TOOL_ROWS tasks across all plans; each plan says how many it has (audit 2026-10-10 H1)
+    const shownPerPlan = limitGrouped(schedules.map((s) => tasksBySchedule.get(s.id) ?? []));
+    const schedulesWithTasks = schedules.map((s, i) => {
+      const own = tasksBySchedule.get(s.id) ?? [];
+      const shown = shownPerPlan[i];
+      return {
+        id: s.id,
+        name: s.name,
+        status: s.status,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        taskCount: own.length,
+        tasks: shown.map(t => ({
+          id: t.id,
+          name: t.name,
+          status: t.status,
+          priority: t.priority,
+          assignedTo: t.assignedTo,
+          dueDate: t.dueDate,
+          progressPercentage: t.progressPercentage,
+          parentTaskId: t.parentTaskId,
+        })),
+      };
+    });
+    const cut = allTasks.length > MAX_TOOL_ROWS
+      ? `. Showing ${MAX_TOOL_ROWS} of ${allTasks.length} tasks; use list_tasks on one plan, or ask a narrower question`
+      : '';
 
     return {
       success: true,
       toolName: 'get_project_details',
-      summary: `Project "${project.name}": ${project.status}, ${schedules.length} schedule(s)`,
+      summary: `Project "${project.name}": ${project.status}, ${schedules.length} schedule(s)${cut}`,
       data: {
         id: project.id,
         name: project.name,
@@ -419,8 +442,11 @@ export class AIActionExecutor {
       return { success: false, toolName: 'list_tasks', summary: `Schedule '${scheduleId}' not found`, error: 'Schedule not found' };
     }
 
-    const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
-    const taskList = tasks.map(t => ({
+    const all = await scheduleService.findTasksByScheduleId(scheduleId);
+    // Filters first, then the row limit: any task can be reached however big the plan
+    const tasks = await filterTasks(all, input);
+    const limited = limitRows(tasks, MAX_TOOL_ROWS, TASK_FILTER_HINT);
+    const taskList = limited.rows.map(t => ({
       id: t.id,
       name: t.name,
       status: t.status,
@@ -439,7 +465,9 @@ export class AIActionExecutor {
     return {
       success: true,
       toolName: 'list_tasks',
-      summary: `Found ${tasks.length} tasks in schedule "${schedule.name}"`,
+      summary: `Found ${tasks.length} tasks in schedule "${schedule.name}"`
+        + (tasks.length < all.length ? ` matching ${describeTaskFilter(input)} (of ${all.length})` : '')
+        + (limited.note ? `. ${limited.note}` : ''),
       data: taskList,
     };
   }
@@ -721,6 +749,8 @@ export class AIActionExecutor {
       }
     }
 
+    overdueTasks.sort((a, b) => Number(b.daysOverdue) - Number(a.daysOverdue)); // most overdue first: the row cap keeps the worst
+
     return {
       success: true,
       toolName: 'get_overdue_tasks',
@@ -822,10 +852,22 @@ export class AIActionExecutor {
   }
 
   private async rememberCorrection(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
-    const { correctionKey, wrongValue, correctValue, projectId } = input;
+    const { correctionKey, wrongValue, correctValue } = input;
 
+    // A project correction is shown to everyone who asks Mjuzi about that project, so only the
+    // project's Manager/Owner may set one — the same rule as changing the project. Anyone else's
+    // correction is kept as their own (audit 2026-10-10 access M6: a viewer, or someone not on the
+    // project at all, could put words in the PM's assistant).
+    let projectId: string | undefined = input.projectId ? String(input.projectId) : undefined;
+    if (projectId) {
+      const d = await checkProjectRoleFor({ userId: context.userId, role: context.userRole }, projectId, 'manager');
+      if (!d.ok) projectId = undefined;
+    }
     const entityId = projectId || context.userId;
     const memoryType = projectId ? 'project' : 'role';
+    let scopeNote = '';
+    if (projectId) scopeNote = ' for this project';
+    else if (input.projectId) scopeNote = " for you (only the project's Manager can set one for everyone on it)";
 
     await agentMemoryService.store(
       'mjuzi-chat',
@@ -838,7 +880,7 @@ export class AIActionExecutor {
     return {
       success: true,
       toolName: 'remember_correction',
-      summary: `Noted correction: ${correctionKey} — was "${wrongValue}", should be "${correctValue}"`,
+      summary: `Noted correction${scopeNote}: ${correctionKey} — was "${wrongValue}", should be "${correctValue}"`,
       data: { correctionKey, wrongValue, correctValue, projectId },
     };
   }
@@ -846,7 +888,7 @@ export class AIActionExecutor {
   private async searchKnowledgeBase(input: Record<string, any>): Promise<ActionResult> {
     const { query, topK } = input;
 
-    const results = await knowledgeBaseService.search(query, topK || 5);
+    const results = await knowledgeBaseService.search(query, Math.min(Math.max(Number(topK) || 5, 1), 10));
 
     if (results.length === 0) {
       return {

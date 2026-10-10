@@ -54,6 +54,15 @@ class AIBudgetRepository {
     return rows.length > 0 ? (rows[0].subscription_tier || 'trial') : 'trial';
   }
 
+  /** Who is asking, for the AI plan check: their app role and their own plan */
+  async getUserRoleAndTier(userId: string): Promise<{ role: string; tier: string } | null> {
+    const rows = await databaseService.queryControlPlane<{ role: string; subscription_tier: string | null }>(
+      'SELECT role, subscription_tier FROM users WHERE id = ?',
+      [userId],
+    );
+    return rows.length > 0 ? { role: rows[0].role, tier: rows[0].subscription_tier || 'trial' } : null;
+  }
+
   async findBudgetWarningToday(userId: string, today: string): Promise<boolean> {
     const rows = await databaseService.queryControlPlane<{ id: string }>(
       `SELECT id FROM notifications

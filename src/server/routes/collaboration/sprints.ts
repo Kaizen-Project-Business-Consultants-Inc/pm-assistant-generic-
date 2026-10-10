@@ -19,6 +19,12 @@ import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { cachedAIResult, peekAIResult } from '../../utils/aiResultCache';
+
+/** A finished sprint's AI retrospective is kept a day: its facts no longer change (audit 2026-10-10 L10) */
+const RETROSPECTIVE_CACHE_SECONDS = 24 * 3600;
+/** Incomplete task names listed in the retrospective prompt */
+const RETRO_PROMPT_TASK_NAMES = 50;
 
 const createSprintSchema = z.object({
   projectId: z.string().uuid(),
@@ -38,9 +44,16 @@ const updateSprintSchema = createSprintSchema.omit({ projectId: true, scheduleId
  * checklists. Any project member posts their OWN standups, retro notes and votes (the
  * services refuse editing or deleting someone else's).
  */
-const sprintProject = async (req: FastifyRequest) => {
-  const { id } = req.params as { id: string };
-  return (await sprintService.getById(id))?.projectId ?? null;
+/** The sprint's project, looked up once per request (the gate and the handler both use it) */
+const sprintProjectOf = new WeakMap<FastifyRequest, Promise<string | null>>();
+const sprintProject = (req: FastifyRequest): Promise<string | null> => {
+  let found = sprintProjectOf.get(req);
+  if (!found) {
+    const { id } = req.params as { id: string };
+    found = sprintService.getById(id).then(s => s?.projectId ?? null);
+    sprintProjectOf.set(req, found);
+  }
+  return found;
 };
 const sprintPM = requireProjectAccess('manager', { resolve: sprintProject });
 const sprintMember = requireProjectAccess('viewer', { resolve: sprintProject });
@@ -183,6 +196,13 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       if (storyPoints != null && (typeof storyPoints !== 'number' || !Number.isFinite(storyPoints) || storyPoints < 0)) {
         return reply.status(400).send({ error: 'Validation error', message: 'Story points must be a number (0 or more).' });
       }
+      // The task must be in the sprint's own project: a task of another project used to be added,
+      // and the board then showed its name, assignee and criteria (2026-10-09 audit M9)
+      const [sprintProjectId, task] = await Promise.all([sprintProject(request), scheduleService.findTaskById(taskId)]);
+      const taskProjects = task ? await projectsOfSchedules([task.scheduleId]) : null;
+      if (!sprintProjectId || !taskProjects || taskProjects[0] !== sprintProjectId) {
+        return reply.status(404).send({ error: 'Not found', message: "That task was not found in this sprint's project." });
+      }
       const result = await sprintService.addTask(id, taskId, (storyPoints ?? undefined) as number | undefined);
       return reply.status(201).send({ result });
     } catch (error: any) {
@@ -296,12 +316,17 @@ export async function sprintRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/retrospective — AI-generated sprint retrospective
-  fastify.post('/:id/retrospective', { preHandler: [requireScope('read'), sprintMember] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // Any sprint member may ask; the answer is reused, and each person may ask 10 times per 10 minutes (audit 2026-10-10 L10)
+  fastify.post('/:id/retrospective', { preHandler: [requireScope('read'), sprintMember, heavyActionLimit('ai-retrospective', 10)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const sprint = await sprintService.getById(id);
       if (!sprint) return reply.status(404).send({ error: 'Not found', message: 'Sprint not found' });
       if (sprint.status !== 'completed') return reply.status(400).send({ error: 'Sprint must be completed to generate retrospective' });
+
+      // A retrospective already written is answered before reading the board, burndown and velocity
+      const kept = await peekAIResult<{ retrospective: string }>(`retrospective:${id}`);
+      if (kept) return { retrospective: kept.retrospective, sprint: { id, name: sprint.name, status: sprint.status } };
 
       const board = await sprintService.getSprintBoard(id);
       const burndown = await sprintService.getSprintBurndown(id);
@@ -324,7 +349,7 @@ Goal: ${sprint.goal || 'No goal set'}
 Dates: ${sprint.startDate} to ${sprint.endDate}
 Velocity Commitment: ${sprint.velocityCommitment || 'Not set'} pts
 Actual Velocity: ${completedPoints} pts (${completed.length}/${tasks.length} tasks completed)
-Incomplete Tasks: ${incomplete.map((t: any) => t.name).join(', ') || 'None'}
+Incomplete Tasks: ${incomplete.slice(0, RETRO_PROMPT_TASK_NAMES).map((t: any) => t.name).join(', ') || 'None'}${incomplete.length > RETRO_PROMPT_TASK_NAMES ? ` (and ${incomplete.length - RETRO_PROMPT_TASK_NAMES} more)` : ''}
 Historical Avg Velocity: ${avgVelocity} pts/sprint (over ${velocities.length} sprints)
 Burndown: ${burndown.totalPoints} total points, final actual: ${burndown.actual?.[burndown.actual.length - 1] ?? 'N/A'}
 
@@ -339,13 +364,17 @@ Keep it concise and actionable. Use markdown formatting.`;
 
       try {
         const { claudeService } = await import('../../services/claudeService');
-        const result = await claudeService.complete({
-          systemPrompt: 'You are an agile coach helping a team reflect on their sprint. Be constructive and specific.',
-          userMessage: prompt,
-          temperature: 0.5,
-          maxTokens: 1000,
-        });
-        return { retrospective: result.content, sprint: { id, name: sprint.name, status: sprint.status } };
+        const { retrospective } = await cachedAIResult(`retrospective:${id}`, async () => {
+          const result = await claudeService.complete({
+            systemPrompt: 'You are an agile coach helping a team reflect on their sprint. Be constructive and specific.',
+            userMessage: prompt,
+            temperature: 0.5,
+            maxTokens: 1000,
+          });
+          return { retrospective: result.content, aiPowered: true };
+          // kept a day: only a completed sprint gets here (above), and its facts no longer change
+        }, RETROSPECTIVE_CACHE_SECONDS);
+        return { retrospective, sprint: { id, name: sprint.name, status: sprint.status } };
       } catch (aiError: any) {
         logger.warn('AI retrospective generation failed, returning data only', { error: aiError.message });
         return {
@@ -582,13 +611,13 @@ Keep it concise and actionable. Use markdown formatting.`;
     }
   });
 
-  // POST /:id/retro/seed — AI-seed retro items
-  fastify.post('/:id/retro/seed', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /:id/retro/seed — AI-seed retro items. The project is the sprint's own: it used to come
+  // from the body, so a PM of project A could seed (and read into the AI) a sprint of B (2026-10-09 audit M8)
+  fastify.post('/:id/retro/seed', { preHandler: [requireScope('write'), sprintPM] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const user = request.user!;
-      const { projectId } = request.body as { projectId: string };
-      const items = await retrospectiveService.seedFromAI(id, projectId, user.userId);
+      const items = await retrospectiveService.seedFromAI(id, user.userId);
       return { items };
     } catch (error: any) {
       logger.error('AI seed retro error', { error });

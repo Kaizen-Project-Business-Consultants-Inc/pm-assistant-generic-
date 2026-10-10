@@ -144,22 +144,19 @@ export async function customFieldRoutes(fastify: FastifyInstance) {
   fastify.post('/values/:entityType/:entityId', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
-      const { entityId } = request.params as { entityType: string; entityId: string };
+      const { entityType, entityId } = request.params as { entityType: string; entityId: string };
       const body = bulkValuesSchema.parse(request.body ?? {}) as {
         projectId?: string;
         values: Array<{ fieldId: string; text?: string; number?: number; date?: string; boolean?: boolean }>;
       };
+      if (body.values.length === 0) return { message: 'Values saved' };
 
-      // Resolve projectId: prefer body, fall back to first field's project
-      let projectId = body.projectId;
-      if (!projectId && body.values.length > 0) {
-        const field = await customFieldRepository.findById(body.values[0].fieldId);
-        projectId = field?.projectId;
-      }
-      if (projectId) {
-        const allowed = await checkEntityProjectAccess(projectId, user.userId, user.role, 'manager', reply);
-        if (!allowed) return reply;
-      }
+      // The item, every field and the named project must all be one project, and the caller its
+      // manager (2026-10-09 audit M7: only the named / first field's project used to be checked)
+      const where = await customFieldService.projectForValues(entityType, entityId, body.values.map(v => v.fieldId), body.projectId);
+      if (!('projectId' in where)) return reply.status(where.status).send({ error: where.status === 404 ? 'Not found' : 'Bad request', message: where.message });
+      const allowed = await checkEntityProjectAccess(where.projectId, user.userId, user.role, 'manager', reply);
+      if (!allowed) return reply;
 
       await customFieldService.bulkSetValues(entityId, body.values);
       return { message: 'Values saved' };

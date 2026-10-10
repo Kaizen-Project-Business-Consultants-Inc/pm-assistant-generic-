@@ -5,6 +5,39 @@ import { auditLedgerService } from '../AuditLedgerService';
 import { notificationService } from '../NotificationService';
 import { deadLetterService } from '../DeadLetterService';
 import logger from '../../utils/logger';
+import { databaseService } from '../../database/connection';
+
+/** The action types that change a task (targetEntityId is the task) */
+const TASK_ACTIONS = new Set(['update_task_dates', 'reassign_resource', 'update_progress', 'update_dependency']);
+const OUTSIDE_PROJECT = "This proposal changes tasks outside its own project, so nothing was done.";
+
+/**
+ * Does any task these actions change lie outside the proposal's project? The route checks the
+ * caller manages the PROPOSAL's project; its actions' tasks were never checked against it
+ * (2026-10-09 audit, low). One read for all of them.
+ *   - 'execute': every task must exist in the project (a missing one would fail anyway).
+ *   - 'rollback': only a task that EXISTS in another project refuses; a task deleted since must not
+ *     make the proposal impossible to undo (2026-10-10 review) — its own rollback step skips it.
+ */
+async function touchesOtherProjects(actions: ProposalAction[], projectId: string, mode: 'execute' | 'rollback'): Promise<boolean> {
+  const taskIds = [...new Set(actions.filter(a => TASK_ACTIONS.has(a.actionType)).map(a => a.targetEntityId))];
+  if (taskIds.length === 0) return false;
+  const inList = taskIds.map(() => '?').join(',');
+  if (mode === 'rollback') {
+    const rows = await databaseService.query<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM tasks t JOIN schedules s ON s.id = t.schedule_id
+        WHERE t.id IN (${inList}) AND s.project_id <> ?`,
+      [...taskIds, projectId],
+    );
+    return Number(rows[0]?.n ?? 0) > 0;
+  }
+  const rows = await databaseService.query<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM tasks t JOIN schedules s ON s.id = t.schedule_id
+      WHERE t.id IN (${inList}) AND s.project_id = ?`,
+    [...taskIds, projectId],
+  );
+  return Number(rows[0]?.n ?? 0) !== taskIds.length;
+}
 
 export interface ExecutionResult {
   success: boolean;
@@ -30,6 +63,9 @@ export class ActionExecutor {
     }
 
     const actions = proposal.actions ?? await actionProposalService.getActions(proposalId);
+    if (await touchesOtherProjects(actions, proposal.projectId, 'execute')) {
+      return { success: false, actionsExecuted: 0, actionsFailed: 0, actionsRolledBack: 0, error: OUTSIDE_PROJECT };
+    }
     if (actions.length === 0) {
       await actionProposalService.updateStatus(proposalId, 'executed');
       return { success: true, actionsExecuted: 0, actionsFailed: 0, actionsRolledBack: 0 };
@@ -318,6 +354,9 @@ export class ActionExecutor {
 
     const actions = (proposal.actions ?? await actionProposalService.getActions(proposalId))
       .filter(a => a.status === 'executed');
+    if (await touchesOtherProjects(actions, proposal.projectId, 'rollback')) {
+      return { success: false, actionsExecuted: 0, actionsFailed: 0, actionsRolledBack: 0, error: OUTSIDE_PROJECT };
+    }
 
     const rolledBack = await this.rollback(actions, proposal);
     await actionProposalService.updateStatus(proposalId, 'rolled_back');

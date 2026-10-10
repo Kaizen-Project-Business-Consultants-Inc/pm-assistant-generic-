@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
 import { rateLimiter, heavyActionLimit } from '../../middleware/rateLimiter';
 import { emailService } from '../../services/EmailService';
@@ -94,7 +95,7 @@ export async function waitlistRoutes(fastify: FastifyInstance) {
     return reply.send(csv);
   });
 
-  fastify.post('/admin/send-launch-email', { preHandler: authMiddleware }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/admin/send-launch-email', { preHandler: [authMiddleware, keyChangesNeed('admin')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return reply;
 
     const rows = await databaseService.query<any>(

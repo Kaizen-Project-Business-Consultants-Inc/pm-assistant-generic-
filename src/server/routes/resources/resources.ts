@@ -7,6 +7,7 @@ import { parse as csvParse } from 'csv-parse/sync';
 import { resourceService, normalizeSkills, ResourceValidationError } from '../../services/ResourceService';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { authMiddleware } from '../../middleware/auth';
+import { maySeePayRates, peopleFor, withoutPay, withoutPayInput } from '../../utils/payRates';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
@@ -206,7 +207,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       clampPagination({ limit, offset }).offset,
       group || undefined,
     );
-    return result;
+    // pay rates for cost managers only; emails not for guests (2026-10-09 audit M11)
+    return { ...result, resources: await peopleFor(request, result.resources) };
   });
 
   // GET /resources/skills — Distinct skill names for autocomplete
@@ -220,14 +222,18 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const { skill, minLevel } = request.query as { skill?: string; minLevel?: string };
     if (!skill || !skill.trim()) return reply.status(400).send({ error: 'skill query parameter is required' });
     const min = minLevel ? Math.min(Math.max(parseInt(minLevel) || 1, 1), 5) : undefined;
-    const resources = await resourceService.findBySkill(skill.trim(), min);
+    const resources = await peopleFor(request, await resourceService.findBySkill(skill.trim(), min));
     return { resources };
   });
 
   // POST /resources - Create a resource
   fastify.post('/', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const raw = createResourceSchema.parse(request.body);
+      const parsed = createResourceSchema.parse(request.body);
+      // pay fields only from those who may see pay; others get the defaults (no rate)
+      const raw = (await maySeePayRates(request))
+        ? parsed
+        : { ...parsed, costRateHourly: null, overtimeRateHourly: null, useRateCard: false };
       await checkCreate(request.user, raw as any);
       const resource = await resourceService.createResource({
         ...raw,
@@ -258,7 +264,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.put('/:id', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const raw = updateResourceSchema.parse(request.body);
+      const parsed = updateResourceSchema.parse(request.body);
+      // a rate the caller can't see is never changed by them (it reaches them blank)
+      const raw = (await maySeePayRates(request)) ? parsed : withoutPayInput(parsed);
       const data = raw.skills ? { ...raw, skills: normalizeSkills(raw.skills) } : raw;
       const existing = await resourceService.findResourceById(id);
       if (!existing) return reply.status(404).send({ error: 'Resource not found' });
@@ -489,10 +497,11 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     // …unless the viewer is on every project anyway (then it's all their own business)
     const readable = await readableProjectIds(request.user!);
     const seesAll = readable === 'all' || (await projectService.findAll()).every((p) => readable.has(p.id));
+    const shown = (await maySeePayRates(request)) ? workload : withoutPay(workload);
     if (!seesAll) {
-      return { workload: workload.map((w) => ({ ...w, totalCost: null })), costSummary: { totalProjectCost: null } };
+      return { workload: shown.map((w) => ({ ...w, totalCost: null })), costSummary: { totalProjectCost: null } };
     }
-    return { workload, costSummary: { totalProjectCost } };
+    return { workload: shown, costSummary: { totalProjectCost } };
   });
 
   // GET /resources/on-project/:projectId — the people doing work on this project (any of its
@@ -513,7 +522,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     return {
       people: resources
         .map((r) => ({
-          resourceId: r.id, name: r.name, role: r.role, email: r.email, userId: r.userId,
+          // a guest is an outsider: names only (2026-10-09 audit M11)
+          resourceId: r.id, name: r.name, role: r.role, email: request.user!.isGuest ? null : r.email, userId: r.userId,
           placeholderEmail: isPlaceholderEmail(r.email), taskCount: tasksBy.get(r.id)?.size ?? 0,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -528,7 +538,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       resourceService.computeUnfilledDemand(projectId),
     ]);
     const totalProjectCost = Math.round(workload.reduce((sum, w) => sum + w.totalCost, 0) * 100) / 100;
-    return { workload, demand, costSummary: { totalProjectCost } };
+    // a person's hourly rate is pay information: cost managers only (2026-10-09 audit M11)
+    const shown = (await maySeePayRates(request)) ? workload : withoutPay(workload);
+    return { workload: shown, demand, costSummary: { totalProjectCost } };
   });
 
   // GET /resources/:id/utilization-history (#6)
@@ -617,6 +629,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       if (records.length > 200) return reply.status(400).send({ error: 'Maximum 200 resources per import' });
 
       const results: { created: number; errors: Array<{ row: number; error: string }> } = { created: 0, errors: [] };
+      // a cost-rate column counts only for those who may see pay
+      const ratesAllowed = await maySeePayRates(request);
 
       for (let i = 0; i < records.length; i++) {
         const row = records[i];
@@ -638,7 +652,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
         const capacityRaw = row.capacityHoursPerWeek || row.capacity || row['Hours/Week'] || '40';
         const capacity = parseInt(capacityRaw) || 40;
         const costRaw = row.costRateHourly || row.costRate || row['Cost Rate'] || '';
-        const costRate = costRaw ? parseFloat(costRaw) : null;
+        const costRate = costRaw && ratesAllowed ? parseFloat(costRaw) : null;
         const skillsRaw = row.skills || row.Skills || '';
         // eslint-disable-next-line no-restricted-syntax -- small: one CSV row's own skills
         const skills = skillsRaw ? skillsRaw.split(';').map((s: string) => s.trim()).filter(Boolean).map((s: string) => ({ name: s, level: 3 })) : [];
@@ -728,8 +742,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       ? Math.round((totalAllocatedHours / resource.capacityHoursPerWeek) * 100)
       : 0;
 
+    const [shown] = await peopleFor(request, [resource]);
     return {
-      resource,
+      resource: shown,
       assignments: taskDetails,
       summary: {
         totalAllocatedHours,

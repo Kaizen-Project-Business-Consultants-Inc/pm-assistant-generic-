@@ -33,6 +33,7 @@ import {
 import { nameSaysMilestone } from '../../services/scheduleReview/rules';
 import { type IsWorking, finishFor, utcDay, ymdOf } from '../../utils/workingDays';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { aiRefusalReply } from '../../services/AIBudgetService';
 
 /** Truthy string test for boolean-ish import columns (yes/y/true/1/x). */
 function isTruthyFlag(v: string | undefined | null): boolean {
@@ -583,7 +584,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       // Each summary recalculated ONCE now that all its rows exist (it was once per row, 2026-10-08)
       for (const pid of parentsToRoll) {
         // eslint-disable-next-line no-await-in-loop -- one parent at a time: each walks up to its own summaries, which parents share
-        await scheduleService.recomputeParentRollup(pid).catch(err => logger.error('[import] summary roll-up failed', { pid, error: (err as Error).message }));
+        await scheduleService.recomputeParentRollup(pid, 0, { isWorking: planIsWorking }).catch(err => logger.error('[import] summary roll-up failed', { pid, error: (err as Error).message }));
       }
 
       // ---- Pass 3: resolve predecessors into dependencies ----
@@ -849,7 +850,7 @@ Return a JSON object mapping unmapped headers to target fields.`;
       // Each summary recalculated ONCE now that all its rows exist (it was once per row, 2026-10-08)
       for (const pid of parentsToRoll) {
         // eslint-disable-next-line no-await-in-loop -- one parent at a time: each walks up to its own summaries, which parents share
-        await scheduleService.recomputeParentRollup(pid).catch(err => logger.error('[import] summary roll-up failed', { pid, error: (err as Error).message }));
+        await scheduleService.recomputeParentRollup(pid, 0, { isWorking }).catch(err => logger.error('[import] summary roll-up failed', { pid, error: (err as Error).message }));
       }
 
       // Second pass: resolve predecessors (uid, WBS, or name) into dependencies
@@ -1035,9 +1036,8 @@ Rules:
         tokensUsed: result.usage.inputTokens + result.usage.outputTokens,
       };
     } catch (error: any) {
-      if (error.name === 'AIBudgetExceededError') {
-        return reply.status(429).send({ error: 'AI token budget exceeded. Please try again next month or purchase a top-up.' });
-      }
+      const refusal = aiRefusalReply(error, 'AI token budget exceeded. Please try again next month or purchase a top-up.');
+      if (refusal) return reply.status(refusal.status).send(refusal.body);
       if (error.constructor?.name === 'AICircuitBreakerError') {
         return reply.status(503).send({ error: 'AI service temporarily unavailable. Please try again in a moment.' });
       }

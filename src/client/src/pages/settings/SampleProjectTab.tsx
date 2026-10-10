@@ -7,7 +7,7 @@ import { announce } from '../../utils/announce';
 
 /**
  * Settings → Sample project (Oct 2026): the read-only "Sample Web App Development" is optional.
- * New companies start without it. The company owner or an admin loads it to explore every
+ * New companies start without it. The company owner or a PMO loads it to explore every
  * feature filled in, and removes it again — with an in-page confirmation, never a browser dialog.
  */
 export function SampleProjectTab() {

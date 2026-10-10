@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { requireScope } from '../../middleware/requireScope';
+import { keyChangesNeed, requireScope, signedInOnly } from '../../middleware/requireScope';
 
 function makeRequest(overrides: any = {}) {
   return {
@@ -187,5 +187,55 @@ describe('requireScope', () => {
       const r1 = makeReply(); await requireScope('write')(req, r1); expect(r1.status).not.toHaveBeenCalled();
       const r2 = makeReply(); await requireScope('admin')(req, r2); expect(r2.status).toHaveBeenCalledWith(403);
     });
+  });
+});
+
+/** 2026-10-09 audit M2: a read-only key could change members' roles (org routes had no scope check) */
+describe('keyChangesNeed — whole route files a read-only key must not change', () => {
+  const owner = { userId: 'o1', username: 'owner', role: 'pmo' };
+
+  it("an owner's read-only key cannot change a member's role", async () => {
+    const reply = makeReply();
+    await keyChangesNeed('write')(makeRequest({ user: owner, apiKeyScopes: ['read'], method: 'PATCH' }), reply);
+    expect(reply.statusCode).toBe(403);
+  });
+
+  it("an owner's read-only key can still read the member list", async () => {
+    const reply = makeReply();
+    await keyChangesNeed('write')(makeRequest({ user: owner, apiKeyScopes: ['read'], method: 'GET' }), reply);
+    expect(reply.status).not.toHaveBeenCalled();
+  });
+
+  it("an owner's write key goes through", async () => {
+    const reply = makeReply();
+    await keyChangesNeed('write')(makeRequest({ user: owner, apiKeyScopes: ['read', 'write'], method: 'POST' }), reply);
+    expect(reply.status).not.toHaveBeenCalled();
+  });
+
+  it('a signed-in person (no key) is left to the route checks', async () => {
+    const reply = makeReply();
+    await keyChangesNeed('admin')(makeRequest({ user: owner, method: 'DELETE' }), reply);
+    expect(reply.status).not.toHaveBeenCalled();
+  });
+
+  it('admin screens: a platform admin key with write but not admin cannot change them', async () => {
+    const reply = makeReply();
+    await keyChangesNeed('admin')(makeRequest({ user: { userId: 'a', username: 'a', role: 'admin' }, apiKeyScopes: ['write'], method: 'POST' }), reply);
+    expect(reply.statusCode).toBe(403);
+  });
+});
+
+describe('signedInOnly — password and account changes', () => {
+  it('refuses any API key, even one with every right', async () => {
+    const reply = makeReply();
+    await signedInOnly(makeRequest({ apiKeyId: 'k1', apiKeyScopes: ['*'] }), reply);
+    expect(reply.statusCode).toBe(403);
+    expect(reply.body.message).toMatch(/Sign in/);
+  });
+
+  it('lets a signed-in person through', async () => {
+    const reply = makeReply();
+    await signedInOnly(makeRequest({}), reply);
+    expect(reply.status).not.toHaveBeenCalled();
   });
 });

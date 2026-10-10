@@ -16,7 +16,7 @@ const findTasksByScheduleId = vi.fn();
 const recomputeParentRollup = vi.fn().mockResolvedValue(undefined);
 const findById = vi.fn().mockResolvedValue({ id: 's1', projectId: 'p1' });
 vi.mock('../../services/ScheduleService', () => ({
-  scheduleService: { findTasksByScheduleId, recomputeParentRollup, findById },
+  scheduleService: { findTasksByScheduleId, recomputeParentRollup, findById, workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 },
 }));
 
 const append = vi.fn().mockResolvedValue({});
@@ -144,7 +144,7 @@ describe('ScheduleRecomputeService', () => {
     expect(updateDates).toHaveBeenCalledTimes(1);
     expect(updateDates).toHaveBeenCalledWith('B', '2026-10-05', '2026-10-07');
     expect(updateDatesMany).toHaveBeenCalledTimes(1); // one batched save
-    expect(recomputeParentRollup).toHaveBeenCalledWith('P');
+    expect(recomputeParentRollup).toHaveBeenCalledWith('P', 0, expect.anything());
     await vi.waitFor(() => expect(append).toHaveBeenCalledTimes(1));
     expect(append.mock.calls[0][0]).toMatchObject({ action: 'task.reschedule', entityId: 'B', payload: { reason: 'undo', after: { startDate: '2026-10-05', endDate: '2026-10-07' } } });
   });

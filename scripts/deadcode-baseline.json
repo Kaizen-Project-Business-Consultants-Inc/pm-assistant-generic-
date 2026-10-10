@@ -233,7 +233,6 @@
     "server|exports|src/server/services/automation/AutomationService.ts|AutomationService",
     "server|exports|src/server/services/automation/automationAiService.ts|AutomationAiService",
     "server|exports|src/server/services/automation/automationSuggestionService.ts|AutomationSuggestionService",
-    "server|exports|src/server/services/claudeService.ts|AIAccountCapError",
     "server|exports|src/server/services/context/DreamingService.ts|DreamingSwitchedOffError",
     "server|exports|src/server/services/dataProviders/index.ts|DataProviderManager",
     "server|exports|src/server/services/dataProviders/index.ts|MockWeatherProvider",

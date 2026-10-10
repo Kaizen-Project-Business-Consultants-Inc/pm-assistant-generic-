@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import fs from 'fs';
 import os from 'os';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
 import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 import { metricsService } from '../../services/MetricsService';
@@ -418,6 +419,8 @@ async function getWebhookStats(): Promise<{
 
 export async function operationsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!requireAdmin(request, reply)) return reply;

@@ -36,6 +36,19 @@ vi.mock('../../../services/DeadLetterService', () => ({
   },
 }));
 
+// Which tasks are in which project (the proposal's tasks must all be in its own project)
+// outside: tasks in another project; gone: tasks deleted since (neither in this project nor another)
+const taskProject = vi.hoisted(() => ({ outside: new Set<string>(), gone: new Set<string>() }));
+vi.mock('../../../database/connection', () => ({
+  databaseService: {
+    query: vi.fn(async (sql: string, params: string[]) => {
+      const ids = params.slice(0, -1).filter(id => !taskProject.gone.has(id));
+      const other = sql.includes('project_id <> ?');
+      return [{ n: ids.filter(id => taskProject.outside.has(id) === other).length }];
+    }),
+  },
+}));
+
 describe('ActionExecutor', () => {
   let executor: ActionExecutor;
 
@@ -179,5 +192,54 @@ describe('ActionExecutor', () => {
     const result = await executor.execute('p1');
     expect(result.success).toBe(true);
     expect(result.actionsExecuted).toBe(0);
+  });
+
+  it('refuses a proposal whose actions change a task of another project; nothing runs (2026-10-09 audit)', async () => {
+    const { actionProposalService } = await import('../../../services/agents/ActionProposalService');
+    const { scheduleService } = await import('../../../services/ScheduleService');
+    taskProject.outside = new Set(['task-of-B']);
+    vi.mocked(actionProposalService.getById).mockResolvedValue({
+      id: 'p1', projectId: 'proj-A', status: 'approved', title: 'T', createdBy: 'u1',
+      actions: [
+        { id: 'a1', actionType: 'update_progress', targetEntityType: 'task', targetEntityId: 'task-of-A', newValue: { progressPercentage: 50 }, executionOrder: 1, status: 'pending' },
+        { id: 'a2', actionType: 'update_progress', targetEntityType: 'task', targetEntityId: 'task-of-B', newValue: { progressPercentage: 50 }, executionOrder: 2, status: 'pending' },
+      ],
+    } as any);
+    const result = await executor.execute('p1');
+    taskProject.outside = new Set();
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/outside its own project/);
+    expect(scheduleService.updateTask).not.toHaveBeenCalled();
+    expect(actionProposalService.updateStatus).not.toHaveBeenCalled();
+  });
+
+  describe('undoing a proposal (2026-10-10 review)', () => {
+    const executed = (taskId: string) => ({
+      id: 'p2', projectId: 'proj-A', status: 'executed', title: 'T', createdBy: 'u1',
+      actions: [{ id: 'a1', actionType: 'update_progress', targetEntityType: 'task', targetEntityId: taskId, oldValue: { progressPercentage: 10 }, newValue: { progressPercentage: 50 }, executionOrder: 1, status: 'executed' }],
+    });
+
+    it('a task deleted since does not block the undo', async () => {
+      const { actionProposalService } = await import('../../../services/agents/ActionProposalService');
+      vi.mocked(actionProposalService.getById).mockResolvedValue(executed('task-deleted') as any);
+      taskProject.gone = new Set(['task-deleted']);
+      const result = await executor.rollbackProposal('p2');
+      taskProject.gone = new Set();
+      expect(result.error).toBeUndefined();
+      expect(actionProposalService.updateStatus).toHaveBeenCalledWith('p2', 'rolled_back');
+    });
+
+    it('a task that now lies in another project refuses the undo; nothing is changed', async () => {
+      const { actionProposalService } = await import('../../../services/agents/ActionProposalService');
+      const { scheduleService } = await import('../../../services/ScheduleService');
+      vi.mocked(actionProposalService.getById).mockResolvedValue(executed('task-of-B') as any);
+      taskProject.outside = new Set(['task-of-B']);
+      const result = await executor.rollbackProposal('p2');
+      taskProject.outside = new Set();
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/outside its own project/);
+      expect(scheduleService.updateTask).not.toHaveBeenCalled();
+      expect(actionProposalService.updateStatus).not.toHaveBeenCalled();
+    });
   });
 });

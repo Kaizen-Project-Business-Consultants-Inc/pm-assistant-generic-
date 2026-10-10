@@ -87,6 +87,19 @@ describe('moveSuccessorsAfter — successors follow a re-dated task', () => {
     ]);
   });
 
+  it('the History entry keeps the task links from before the edit, and its id is returned for Undo (audit M7)', async () => {
+    const before = task('A', '2026-10-05', '2026-10-06');
+    findTasksByScheduleId.mockResolvedValue([
+      task('X', '2026-10-12', '2026-10-14'),
+      task('A', '2026-10-12', '2026-10-13', ['X']),
+      task('B', '2026-10-14', '2026-10-14', ['A']),
+    ]);
+    const linksBefore = [{ taskId: 'A', deps: [{ dependencyId: 'W', dependencyType: 'FS', lagDays: 0 }] }];
+    const r = await moveSuccessorsAfter(before, { startDate: '2026-10-12', endDate: '2026-10-13' }, { followNewLinks: true, linksBefore });
+    expect(r.changeId).toBe('change-1');
+    expect((record.mock.calls[0][0] as any).undo.links).toEqual(linksBefore);
+  });
+
   it('pushes successors that now start too early, keeps their working-day length, and follows the chain', async () => {
     // A Mon 12 – Wed 14 now ends Fri 16; B (Thu 15 – Fri 16, 2 days) → Mon 19 – Tue 20; C (Mon 19 – Tue 20) → Wed 21 – Thu 22
     const before = task('A', '2026-10-12', '2026-10-14');
@@ -109,7 +122,7 @@ describe('moveSuccessorsAfter — successors follow a re-dated task', () => {
       oldEndDate: '2026-10-16', newEndDate: '2026-10-20', deltaDays: 4,
     });
     // B's summary rolls up; each move is audited; the task's activity says so
-    expect(recomputeParentRollup).toHaveBeenCalledWith('P');
+    expect(recomputeParentRollup).toHaveBeenCalledWith('P', 0, expect.anything());
     await vi.waitFor(() => expect(append).toHaveBeenCalledTimes(2));
     expect(append.mock.calls[0][0]).toMatchObject({ action: 'task.reschedule', payload: { reason: 'task_moved' } });
     expect(logActivities.mock.calls[0][0]).toHaveLength(2);

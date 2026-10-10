@@ -144,8 +144,9 @@ export class LessonsLearnedService {
     return seedFromProjects(this.persistLessons.bind(this));
   }
 
-  async extractLessons(projectId: string, userId?: string): Promise<LessonLearned[]> {
-    return extractLessons(projectId, this.persistLessons.bind(this), userId ? parseInt(userId, 10) : undefined);
+  /** `billTo`: whose AI budget pays (default: the person asking); null = no AI, rules only */
+  async extractLessons(projectId: string, userId?: string, billTo: string | null | undefined = userId): Promise<LessonLearned[]> {
+    return extractLessons(projectId, this.persistLessons.bind(this), userId || undefined, billTo);
   }
 
   async getKnowledgeBase(): Promise<KnowledgeBaseOverview> {
@@ -238,7 +239,7 @@ export class LessonsLearnedService {
     severity?: LessonLearned['severity'];
     confidence?: number;
     sourceType?: LessonLearned['sourceType'];
-    createdBy?: number;
+    createdBy?: string;
     tags?: string[];
     status?: LessonLearned['status'];
   }): Promise<LessonLearned> {
@@ -450,7 +451,7 @@ export class LessonsLearnedService {
 
   // ── Feedback ─────────────────────────────────────────────────────────────
 
-  async submitFeedback(lessonId: string, userId: number, action: 'helpful' | 'dismissed' | 'outdated', comment?: string, context?: string): Promise<void> {
+  async submitFeedback(lessonId: string, userId: string, action: 'helpful' | 'dismissed' | 'outdated', comment?: string, context?: string): Promise<void> {
     // Upsert: one feedback per user per lesson (last action wins)
     const existing = await databaseService.query<any>(
       'SELECT id FROM lesson_feedback WHERE lesson_id = ? AND user_id = ?',
@@ -481,7 +482,7 @@ export class LessonsLearnedService {
     return counts;
   }
 
-  async getUserFeedback(lessonId: string, userId: number): Promise<string | null> {
+  async getUserFeedback(lessonId: string, userId: string): Promise<string | null> {
     const rows = await databaseService.query<{ action: string }>(
       'SELECT action FROM lesson_feedback WHERE lesson_id = ? AND user_id = ?',
       [lessonId, userId],

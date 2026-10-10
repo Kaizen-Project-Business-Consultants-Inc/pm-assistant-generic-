@@ -7,6 +7,7 @@ import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
 import { userService } from '../../services/UserService';
 import { rateLimiter } from '../../middleware/rateLimiter';
+import { aiRefusalReply } from '../../services/AIBudgetService';
 
 export async function nlQueryRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -82,6 +83,15 @@ export async function nlQueryRoutes(fastify: FastifyInstance) {
           { err: error instanceof Error ? error : new Error(String(error)) },
           'NL query processing failed',
         );
+
+        // A refusal (plan without AI 403, AI budget 429, account's AI paused 503, question too
+        // big 422) says why, with its code: it is not a failure (it was a 500 "Failed to process query")
+        const aiRefusal = aiRefusalReply(error);
+        if (aiRefusal) return reply.code(aiRefusal.status).send(aiRefusal.body);
+        const refusal = error as { statusCode?: number; code?: string; message?: string };
+        if (refusal?.statusCode && refusal.statusCode < 500) {
+          return reply.code(refusal.statusCode).send({ error: refusal.message, message: refusal.message, code: refusal.code });
+        }
 
         // Distinguish AI-unavailable errors from unexpected errors
         const message = error instanceof Error ? error.message : 'Unknown error';

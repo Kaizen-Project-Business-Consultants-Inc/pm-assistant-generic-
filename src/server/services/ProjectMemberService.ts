@@ -84,7 +84,11 @@ export class ProjectMemberService {
       if (ownerCount <= 1) return false;
     }
 
-    return projectMemberRepository.deleteMember(memberId);
+    const deleted = await projectMemberRepository.deleteMember(memberId);
+    // Their open screens stop getting the project's live updates now, not at their next reconnect
+    // (lazy: the live-update service loads the project repository, which loads this file's peers)
+    if (deleted) void import('./WebSocketService').then(({ WebSocketService }) => WebSocketService.recheckProject(member.projectId)).catch(() => {});
+    return deleted;
   }
 
   async findByEmail(projectId: string, email: string): Promise<ProjectMember | undefined> {

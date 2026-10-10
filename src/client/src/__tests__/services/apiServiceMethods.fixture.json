@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 650,
+  "count": 648,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -44,7 +44,6 @@
     "bulkDeleteResources",
     "bulkDeleteTasks",
     "bulkLinkTasks",
-    "bulkUnlinkTasks",
     "bulkUpdateTaskStatus",
     "bulkUpdateTasks",
     "cancelMeeting",
@@ -518,7 +517,6 @@
     "resendInvite",
     "resendVerificationEmail",
     "resetPassword",
-    "restoreTaskDates",
     "resumeWorkflowExecution",
     "reverseRaidItem",
     "reviewIntakeSubmission",

@@ -48,15 +48,24 @@ vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(awai
   getRequestContext: vi.fn(() => null),
 }));
 
-vi.mock('../../services/AIBudgetService', () => ({
-  aiBudgetService: { checkBudget: vi.fn().mockResolvedValue(undefined) },
-  AIBudgetExceededError: class AIBudgetExceededError extends Error {
-    constructor(msg: string) {
-      super(msg);
+vi.mock('../../services/AIBudgetService', () => {
+  class AIBudgetExceededError extends Error {
+    constructor(public used = 0, public budget = 0, public needed = 0) {
+      super('AI token budget exceeded');
       this.name = 'AIBudgetExceededError';
     }
-  },
-}));
+  }
+  return {
+    aiBudgetService: {
+      checkBudget: vi.fn().mockResolvedValue({ used: 0, budget: 1_000_000 }),
+      // the same rule as AIBudgetService.assertFits (tested there)
+      assertFits: vi.fn((used: number, budget: number, estimate = 0) => {
+        if (used >= budget || used + estimate > budget) throw new AIBudgetExceededError(used, budget, estimate);
+      }),
+    },
+    AIBudgetExceededError,
+  };
+});
 
 // Mock the Anthropic SDK
 // Use vi.hoisted() so mock fns are available in the hoisted vi.mock factory
@@ -101,7 +110,7 @@ vi.mock('@anthropic-ai/sdk', () => {
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { ClaudeService, PromptTemplate, promptTemplates, AICircuitBreakerError, isAIUnavailableError } from '../../services/claudeService';
+import { ClaudeService, PromptTemplate, promptTemplates, AICircuitBreakerError, isAIUnavailableError, AIPromptTooLargeError, MAX_PROMPT_TOKENS, MAX_TOOL_RESULT_CHARS } from '../../services/claudeService';
 import type { CompletionOptions } from '../../services/claudeService';
 import { config } from '../../config';
 import { getRequestContext } from '../../middleware/requestContext';
@@ -319,7 +328,7 @@ describe('ClaudeService', () => {
       const service = makeService();
       await service.complete(defaultOptions({ userId: 'user-123' }));
 
-      expect(mockCheckBudget).toHaveBeenCalledWith('user-123');
+      expect(mockCheckBudget).toHaveBeenCalledWith('user-123', expect.any(Number)); // + the prompt's estimated tokens
     });
 
     it('checks budget from request context when no explicit userId', async () => {
@@ -328,7 +337,7 @@ describe('ClaudeService', () => {
       const service = makeService();
       await service.complete(defaultOptions());
 
-      expect(mockCheckBudget).toHaveBeenCalledWith('ctx-user');
+      expect(mockCheckBudget).toHaveBeenCalledWith('ctx-user', expect.any(Number)); // + the prompt's estimated tokens
     });
 
     it('skips budget check when no userId and no request context', async () => {
@@ -820,7 +829,7 @@ describe('ClaudeService', () => {
         executeToolFn: vi.fn(),
       });
 
-      expect(mockCheckBudget).toHaveBeenCalledWith('u1');
+      expect(mockCheckBudget).toHaveBeenCalledWith('u1', expect.any(Number)); // + the prompt's estimated tokens
     });
   });
 
@@ -977,9 +986,12 @@ describe('cost control (Sep 2026)', () => {
     expect(mockCreate.mock.calls[0][0].model).toBe('claude-haiku-4-5-20251001');
   });
 
-  it("stops all AI once the month's account limit is reached", async () => {
+  it("stops all AI once the month's account limit is reached, without telling customers Kovarti's spend", async () => {
     redisState.connected = true; redisState.spent = '100.5';
-    await expect(makeService().complete(defaultOptions())).rejects.toMatchObject({ name: 'AIBudgetExceededError' });
+    const err = await makeService().complete(defaultOptions()).catch((e) => e);
+    expect(err).toMatchObject({ name: 'AIAccountCapError', statusCode: 503, code: 'AI_UNAVAILABLE' });
+    expect(err.message).toMatch(/temporarily unavailable for your account/);
+    expect(err.message).not.toMatch(/\$|100/);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
@@ -1007,5 +1019,111 @@ describe('isAIUnavailableError (Oct 2026)', () => {
     expect(isAIUnavailableError(new Error('[ClaudeService.complete] Bad request sent to Anthropic API. Details: 400 max_tokens too large'))).toBe(false);
     expect(isAIUnavailableError(new Error('Project not found'))).toBe(false);
     expect(isAIUnavailableError(undefined)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Audit 2026-10-10: prompt size, per-turn budget, retries (H1, M2, M4)
+// ---------------------------------------------------------------------------
+
+describe('prompt size and budget before every call (audit 2026-10-10)', () => {
+  const toolDef: Anthropic.Tool = { name: 'lookup', description: 'Look up', input_schema: { type: 'object' as const, properties: {} } };
+  const toolTurn = (id: string) => ({
+    content: [{ type: 'tool_use', id, name: 'lookup', input: {} }],
+    usage: { input_tokens: 1000, output_tokens: 100 },
+    stop_reason: 'tool_use',
+    model: 'claude-sonnet-4-5-20250929',
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCheckBudget.mockResolvedValue({ used: 0, budget: 1_000_000 });
+    Object.assign(config, { AI_ENABLED: true, ANTHROPIC_API_KEY: 'test-api-key', AI_FALLBACK_ENABLED: false });
+  });
+
+  it("counts the prompt's estimated size in the budget check", async () => {
+    mockCreate.mockResolvedValueOnce(mockApiResponse());
+    await makeService().complete(defaultOptions({ userId: 'u1', userMessage: 'x'.repeat(40_000) }));
+    const [, estimate] = mockCheckBudget.mock.calls[0];
+    expect(estimate).toBeGreaterThanOrEqual(10_000); // 40k characters is about 10k tokens
+  });
+
+  it('refuses a prompt too big for the model before calling it (nothing paid)', async () => {
+    const err = await makeService()
+      .complete(defaultOptions({ userId: 'u1', userMessage: 'x'.repeat((MAX_PROMPT_TOKENS + 1000) * 4) }))
+      .catch((e) => e);
+    expect(err).toBeInstanceOf(AIPromptTooLargeError);
+    expect(err.statusCode).toBe(422);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  // review 2026-10-10 must-fix 1: earlier turns are counted once — not again on top of the usage
+  // log that already holds them — and the plan/usage is read once per loop, not per turn
+  const threeTurns = () => mockCreate
+    .mockResolvedValueOnce(toolTurn('a'))
+    .mockResolvedValueOnce(toolTurn('b'))
+    .mockResolvedValueOnce(mockApiResponse({ stop_reason: 'end_turn' }));
+  const loop = () => makeService().completeToolLoop({ ...defaultOptions({ userId: 'u1' }), tools: [toolDef], executeToolFn: vi.fn().mockResolvedValue('ok') });
+
+  it('a 3-turn question completes when the person has budget left for it', async () => {
+    // 95,000 used of 100,000: the three turns (~1,100 each plus small prompts) fit in what is left
+    mockCheckBudget.mockResolvedValue({ used: 95_000, budget: 100_000 });
+    threeTurns();
+    const result = await loop();
+    expect(result.finalText).toBe('Response text');
+    expect(mockCreate).toHaveBeenCalledTimes(3);
+    expect(mockCheckBudget).toHaveBeenCalledTimes(1); // plan and usage read once, before the first turn
+    const used = (aiBudgetService.assertFits as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0]);
+    expect(used).toEqual([96_100, 97_200]); // the start's usage + this loop's turns, each counted once
+  });
+
+  it("a 3-turn question stops before a turn that won't fit (that turn is never sent)", async () => {
+    // 98,000 used of 99,300: turn 1 is sent; turn 2 needs 98,000 + turn 1's 1,100 + its own prompt (a few hundred) — too much
+    mockCheckBudget.mockResolvedValue({ used: 98_000, budget: 99_300 });
+    threeTurns();
+    await expect(loop()).rejects.toMatchObject({ name: 'AIBudgetExceededError' });
+    expect(mockCreate).toHaveBeenCalledTimes(1);    mockCreate.mockReset(); // drop the turns never sent
+  });
+
+  it('with no budget left the question is refused before any call', async () => {
+    mockCheckBudget.mockRejectedValue(Object.assign(new Error('over'), { name: 'AIBudgetExceededError' }));
+    threeTurns();
+    await expect(loop()).rejects.toMatchObject({ name: 'AIBudgetExceededError' });
+    expect(mockCreate).not.toHaveBeenCalled();    mockCreate.mockReset(); // drop the turns never sent
+  });
+
+  it('a long tool result is cut before it goes back to the model, with a note', async () => {
+    mockCreate.mockResolvedValueOnce(toolTurn('a')).mockResolvedValueOnce(mockApiResponse({ stop_reason: 'end_turn' }));
+    const result = await makeService().completeToolLoop({
+      ...defaultOptions(), tools: [toolDef], executeToolFn: vi.fn().mockResolvedValue('y'.repeat(MAX_TOOL_RESULT_CHARS * 3)),
+    });
+    expect(result.toolResults[0].result.length).toBeLessThan(MAX_TOOL_RESULT_CHARS + 300);
+    expect(result.toolResults[0].result).toMatch(/Result cut off/);
+    const sent = mockCreate.mock.calls[1][0].messages.at(-1).content[0].content as string;
+    expect(sent).toMatch(/Result cut off/);
+  });
+
+  it('a failed tool-loop turn counts toward the circuit breaker and is reported plainly', async () => {
+    const service = makeService();
+    mockCreate.mockRejectedValue(new Anthropic.APIError(529, 'overloaded'));
+    for (let i = 0; i < 5; i++) {
+      await expect(service.completeToolLoop({ ...defaultOptions(), tools: [toolDef], executeToolFn: vi.fn() }))
+        .rejects.toThrow(/temporarily overloaded/);
+    }
+    expect(service.getCircuitBreakerStatus().state).toBe('open');
+  });
+
+  it('a JSON reply cut off at the output limit is not asked for again', async () => {
+    mockCreate.mockResolvedValueOnce(mockApiResponse({ content: [{ type: 'text', text: '{"name":"x","count":1,"items":[{"a":' }], stop_reason: 'max_tokens' }));
+    await expect(makeService().completeWithJsonSchema({ ...defaultOptions(), schema: z.object({ name: z.string(), items: z.array(z.object({ a: z.number() })) }) }))
+      .rejects.toThrow(/cut off at the output limit; not retried/);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('the fallback model gets no extra SDK retry', async () => {
+    Object.assign(config, { AI_FALLBACK_ENABLED: true });
+    mockCreate.mockRejectedValueOnce(new Anthropic.APIError(529, 'overloaded')).mockResolvedValueOnce(mockApiResponse());
+    await makeService().complete(defaultOptions());
+    expect(mockCreate.mock.calls[1][1]).toEqual({ maxRetries: 0 });
   });
 });

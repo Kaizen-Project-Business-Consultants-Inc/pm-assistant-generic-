@@ -168,7 +168,7 @@ async function orgAdminOnly(request: FastifyRequest, reply: FastifyReply) {
   if (['admin', 'pmo'].includes(user.role)) return;
   const org = await organizationService.findByUserId(user.userId).catch(() => null);
   if (org && org.ownerUserId === user.userId) return;
-  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner or an admin can change the company holidays.' });
+  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner or a PMO can change the company holidays.' });
 }
 
 async function canEditCompanyHolidays(request: FastifyRequest): Promise<boolean> {

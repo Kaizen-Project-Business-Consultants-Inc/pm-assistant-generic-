@@ -13,6 +13,8 @@ export interface RequestContext {
   workflowDepth?: number;
   /** Projects each user may read, worked out once per request (utils/readableProjects) */
   readableProjects?: Map<string, Promise<string[]>>;
+  /** Hours bookings this request's date writes moved, by booking id (database/bookingDates — Schedule History keeps them for Undo) */
+  bookingMoves?: Map<string, { id: string; taskId: string; start: string; end: string; newStart: string; newEnd: string }>;
 }
 
 const asyncLocalStorage = new AsyncLocalStorage<RequestContext>();

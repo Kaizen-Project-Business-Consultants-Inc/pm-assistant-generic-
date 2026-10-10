@@ -279,9 +279,10 @@ export class TaskRepository {
 
   async findAllDownstream(taskId: string): Promise<Task[]> {
     const rows = await databaseService.query(
+      // UNION, not UNION ALL: each task once, however many paths lead to it (audit 2026-10-09)
       `WITH RECURSIVE downstream AS (
         SELECT task_id FROM task_dependencies WHERE dependency_id = ?
-        UNION ALL
+        UNION
         SELECT td.task_id FROM task_dependencies td
         JOIN downstream d ON td.dependency_id = d.task_id
       )

@@ -9,6 +9,7 @@ import { meetingIntelligenceService } from '../../services/MeetingIntelligenceSe
 import { riskService } from '../../services/RiskService';
 import { meetingRepository } from '../../database/MeetingRepository';
 import { emailService, EmailRejectedError } from '../../services/EmailService';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const agendaItemSchema = z.object({
   title: z.string().min(1).max(255),
@@ -225,7 +226,8 @@ export async function meetingRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/send-minutes — email formatted meeting minutes (editor)
-  fastify.post('/:id/send-minutes', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // a few sends an hour per person: it mails people outside the company (2026-10-09 audit M10)
+  fastify.post('/:id/send-minutes', { preHandler: [requireScope('write'), heavyActionLimit('meeting-minutes-email', 20, 60 * 60_000)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const body = (request.body ?? {}) as { analysisId?: string; recipientEmails?: string[] };

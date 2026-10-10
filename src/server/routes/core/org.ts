@@ -4,6 +4,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { organizationService } from '../../services/OrganizationService';
 import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
@@ -34,7 +35,7 @@ const inviteSchema = z.object({
 });
 
 /**
- * Changing or revoking a guest is for the company owner or an admin, and only for a guest of
+ * Changing or revoking a guest is for the company owner, and only for a guest of
  * their own company. (Found 2026-09-29 by the permission matrix: both routes had no check,
  * so any signed-in user of any company could extend, cut off or revoke any company's guests.)
  * Sends the refusal itself and returns null when the caller may not; otherwise their company.
@@ -45,7 +46,7 @@ async function guestAdminCheck(request: FastifyRequest, reply: FastifyReply, gue
   if (!org) { reply.status(403).send({ error: 'Forbidden', message: 'You are not part of an organization.' }); return null; }
   const requester = await userService.findById(requesterId);
   if (org.ownerUserId !== requesterId && requester?.role !== 'admin') {
-    reply.status(403).send({ error: 'Forbidden', message: 'Only the organization owner or an admin can change guest access.' });
+    reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner can change guest access.' });
     return null;
   }
   const guest = await userService.findById(guestId);
@@ -60,6 +61,8 @@ async function guestAdminCheck(request: FastifyRequest, reply: FastifyReply, gue
 export async function orgRoutes(fastify: FastifyInstance) {
   // All org routes require authentication
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change company members and guests (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('write'));
 
   fastify.post('/invite', {
     schema: { description: 'Invite a user to your organization', tags: ['org'] },
@@ -89,7 +92,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({ error: 'User not found' });
       }
       if (org.ownerUserId !== inviterId && inviter.role !== 'admin') {
-        return reply.status(403).send({ error: 'Forbidden', message: 'Only the organization owner or an admin can invite users.' });
+        return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner can invite people.' });
       }
 
       // Consultant tiers can only invite viewers
@@ -306,7 +309,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
       // Only org owner or admin can change roles
       const requester = await userService.findById(requesterId);
       if (org.ownerUserId !== requesterId && requester?.role !== 'admin') {
-        return reply.status(403).send({ error: 'Forbidden', message: 'Only the organization owner or an admin can change roles.' });
+        return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner can change roles.' });
       }
 
       // Verify target user is in same org
@@ -605,7 +608,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
 
       const requester = await userService.findById(requesterId);
       if (org.ownerUserId !== requesterId && requester?.role !== 'admin') {
-        return reply.status(403).send({ error: 'Forbidden', message: 'Only the organization owner or an admin can remove members.' });
+        return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner can remove members.' });
       }
 
       // Cannot remove yourself

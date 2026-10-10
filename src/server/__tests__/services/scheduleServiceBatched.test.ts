@@ -49,15 +49,17 @@ describe('copying a plan', () => {
     await svc.cloneSchedule('s1', 'What if', 'u1');
 
     const inserts = stmts(/^INSERT INTO tasks/);
-    expect(inserts.map(s => s.params.length / 34)).toEqual([200, 200, 50]);
+    expect(inserts.map(s => s.params.length / 44)).toEqual([200, 200, 50]);
     // new ids: new-1 is the plan, then one per task in order
     const newId = (i: number) => `new-${i + 2}`;
-    const row = (i: number) => { const n = Math.floor(i / 200); const k = i % 200; return inserts[n].params.slice(k * 34, k * 34 + 34); };
+    const row = (i: number) => { const n = Math.floor(i / 200); const k = i % 200; return inserts[n].params.slice(k * 44, k * 44 + 44); };
     expect(row(321)).toEqual([
       newId(321), 'new-1', 'Task 321', null, 'pending', 'medium', null,
       null, 3, null, null, '2026-11-02', '2026-11-04', 10,
       null, null, null, null, null, null,
       0, 0, 321, 'u1', null, null, 0, null, null, 'ASAP', null, null, 0, 't321',
+      // summary flag, hours, costs, actual dates, baseline (audit M8)
+      0, 0, 0, null, null, null, null, null, null, null,
     ]);
 
     const parents = stmts(/^UPDATE tasks SET parent_task_id = CASE/);
@@ -95,7 +97,7 @@ describe('applying a scenario', () => {
     // decode: 4 CASE lists of (id, value) then the ids
     const decode = (p: any[], n: number) => {
       const col = (c: number) => new Map(Array.from({ length: n }, (_, k) => [p[c * 2 * n + 2 * k], p[c * 2 * n + 2 * k + 1]]));
-      return { start: col(0), end: col(1), days: col(2), pct: col(3), ids: p.slice(8 * n) };
+      return { start: col(0), end: col(1), days: col(2), pct: col(3), ids: p.slice(8 * n, 9 * n), plan: p[9 * n] };
     };
     const first = decode(ups[0].params, 200);
     expect(first.ids).toHaveLength(200);
@@ -103,6 +105,70 @@ describe('applying a scenario', () => {
     expect([first.start.get('t3'), first.end.get('t3'), first.days.get('t3'), first.pct.get('t3')]).toEqual(['2026-12-01', '2026-12-03', 3, 50]);
     const second = decode(ups[1].params, 50);
     expect(second.ids).toEqual(base.slice(200, 250).map(t => t.id)); // t250 has no scenario copy: untouched
+    expect(second.plan).toBe('s1'); // only tasks of the base plan are written
+  });
+
+  // audit 2026-10-09 M8
+  const promoteSetup = (base: any[], scen: any[], fromHours: string[] = []) => {
+    const svc = new ScheduleService();
+    vi.spyOn(svc, 'findById').mockResolvedValue({ id: 'sc', projectId: 'p1', isScenario: true, sourceScheduleId: 's1', scenarioLabel: 'Faster' } as any);
+    vi.spyOn(svc, 'findTasksByScheduleId').mockImplementation(async (id: string) => (id === 's1' ? base : scen) as any);
+    vi.spyOn(svc, 'progressFromHoursTaskIds').mockResolvedValue(new Set(fromHours));
+    vi.spyOn(svc, 'delete').mockResolvedValue(true);
+    const rollup = vi.spyOn(svc, 'recomputeParentRollup').mockResolvedValue(undefined);
+    return { svc, rollup };
+  };
+
+  it('a task whose % comes from approved hours keeps its %; summaries are rolled up, not copied; the old values come back for History', async () => {
+    const base = [task(0, { isSummary: true }), task(1, { parentTaskId: 't0', progressPercentage: 30 }), task(2, { parentTaskId: 't0', progressPercentage: 20 })];
+    const scen = base.map(t => ({ ...t, id: `c-${t.id}`, originalTaskId: t.id, startDate: '2026-12-01', endDate: '2026-12-03', progressPercentage: 90 }));
+    const { svc, rollup } = promoteSetup(base, scen, ['t1']);
+    const r = await svc.promoteScenario('sc', 's1');
+    const [up] = stmts(/^UPDATE tasks SET start_date = CASE/);
+    const n = 2;
+    const pct = new Map(Array.from({ length: n }, (_, k) => [up.params[3 * 2 * n + 2 * k], up.params[3 * 2 * n + 2 * k + 1]]));
+    expect(pct.get('t1')).toBe(30); // from approved hours: kept
+    expect(pct.get('t2')).toBe(90);
+    expect(pct.has('t0')).toBe(false); // the summary is not written…
+    expect(rollup).toHaveBeenCalledWith('t0', 0, expect.anything()); // …it is rolled up
+    expect(r.previous.map(p => p.id)).toEqual(['t1', 't2']);
+    expect(r.previous[1].values).toEqual({ start_date: '2026-11-02', end_date: '2026-11-04', estimated_days: 3, progress_percentage: 20 });
+    expect(r).toMatchObject({ baseScheduleId: 's1', projectId: 'p1', label: 'Faster' });
+  });
+
+  it('a scenario of another plan is refused, and nothing is written', async () => {
+    const { svc } = promoteSetup([task(1)], []);
+    await expect(svc.promoteScenario('sc', 'other-plan')).rejects.toThrow('Not a scenario schedule');
+    expect(stmts(/^UPDATE tasks/)).toHaveLength(0);
+  });
+});
+
+describe('copying a plan keeps its bookings and people (audit M8)', () => {
+  beforeEach(() => { db.sql = []; uid = 0; });
+
+  it('hours bookings and people on tasks are copied onto the copies', async () => {
+    const svc = new ScheduleService();
+    vi.spyOn(svc, 'findById').mockResolvedValue({ id: 's1', projectId: 'p1', name: 'Plan' } as any);
+    vi.spyOn(svc, 'findTasksByScheduleId').mockResolvedValue([
+      task(0, { isSummary: true }),
+      task(1, { parentTaskId: 't0', assignments: [{ resourceId: 'r9', allocationPct: 50, roleOnTask: 'Dev', hoursPlanned: 16 }] }),
+    ] as any);
+    record.mockImplementation(async (sql: string, params: any[] = []) => {
+      db.sql.push({ sql, params });
+      return sql.includes('FROM resource_assignments') ? [{ resource_id: 'r9', task_id: 't1', hours_per_week: 20, s: '2026-11-02', e: '2026-11-04' }] : [];
+    });
+    try {
+      await svc.cloneSchedule('s1', 'What if', 'u1');
+    } finally {
+      record.mockImplementation(async (sql: string, params: any[] = []) => { db.sql.push({ sql, params }); return []; });
+    }
+    const [bk] = stmts(/^INSERT INTO resource_assignments/);
+    // new-1 the plan, new-2/new-3 the tasks
+    expect(bk.params.slice(1)).toEqual(['r9', 'new-3', 'new-1', 20, '2026-11-02', '2026-11-04']);
+    const [ta] = stmts(/^INSERT INTO task_assignments/);
+    expect(ta.params.slice(1)).toEqual(['new-3', 'r9', 50, 'Dev', 16]);
+    const [ins] = stmts(/^INSERT INTO tasks/);
+    expect(ins.params[34]).toBe(1); // the summary stays a summary
   });
 });
 

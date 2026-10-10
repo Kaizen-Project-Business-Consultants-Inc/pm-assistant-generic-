@@ -878,24 +878,37 @@ describe('EVMForecastService', () => {
       mockFindTasksByScheduleIds.mockResolvedValue([
         makeTask('t1', 'Task 1', { budgetAllocated: 4000, actualCost: 0, progressPercentage: 0, startDate: '2026-01-01', endDate: '2026-01-07' }),
       ]);
-      vi.useFakeTimers();
+      // planned value is read at the project status date (audit 2026-10-09: it was the clock time)
       try {
         // Sunday: Thu + Fri planned, nothing over the weekend
-        vi.setSystemTime(new Date('2026-01-04T15:00:00Z'));
+        mockStatusDateFor.mockResolvedValue('2026-01-04');
         expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(2000);
         // Holiday Monday: still flat
-        vi.setSystemTime(new Date('2026-01-05T15:00:00Z'));
+        mockStatusDateFor.mockResolvedValue('2026-01-05');
         expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(2000);
         // Tuesday: 3 of 4
-        vi.setSystemTime(new Date('2026-01-06T15:00:00Z'));
+        mockStatusDateFor.mockResolvedValue('2026-01-06');
         expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(3000);
         // After the finish: the whole budget
-        vi.setSystemTime(new Date('2026-01-20T15:00:00Z'));
+        mockStatusDateFor.mockResolvedValue('2026-01-20');
         expect((await service.getTaskVariances('proj-1'))[0].pv).toBe(4000);
       } finally {
-        vi.useRealTimers();
+        mockStatusDateFor.mockResolvedValue('2099-12-31');
         mockWorkingDayTest.mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6);
       }
+    });
+
+    it('lists leaf tasks only: a summary is not shown beside its own children (audit M2)', async () => {
+      mockFindById.mockResolvedValue(makeProject());
+      mockFindByProjectId.mockResolvedValue([{ id: 'sch-1' }]);
+      mockFindTasksByScheduleIds.mockResolvedValue([
+        { ...makeTask('ph', 'Phase 1', { budgetAllocated: 10000, actualCost: 5000, progressPercentage: 40 }), isSummary: true },
+        { ...makeTask('d', 'Design', { budgetAllocated: 4000, actualCost: 5000, progressPercentage: 100 }), parentTaskId: 'ph' },
+        { ...makeTask('b', 'Build', { budgetAllocated: 6000, actualCost: 0, progressPercentage: 0 }), parentTaskId: 'ph' },
+      ]);
+      const result = await service.getTaskVariances('proj-1');
+      expect(result.map(r => r.taskId).sort()).toEqual(['b', 'd']);
+      expect(result.find(r => r.taskId === 'd')!.cv).toBe(-1000);
     });
 
     it('should exclude tasks with no budget and no actual cost', async () => {

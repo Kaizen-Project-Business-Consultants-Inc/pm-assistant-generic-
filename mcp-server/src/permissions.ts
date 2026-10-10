@@ -298,3 +298,19 @@ export function isToolAllowed(toolName: string, role: Role): boolean {
 export function getAllowedRoles(toolName: string): Role[] {
   return ALL_ROLES.filter(role => isToolAllowed(toolName, role));
 }
+
+/**
+ * The role the MCP tool list uses — the same rule as the app (src/server/utils/companyOwner.ts
+ * permissionRole): the company owner works with a PMO's permissions; guests and the platform admin
+ * are never raised. The MCP server used the account's raw role, so an owner's Claude was offered
+ * fewer tools than the owner may use (2026-10-09 audit, low). The API still decides every call.
+ */
+export function mcpRole(row: { role: string; is_owner?: number | string | null; is_guest?: number | string | null }): Role {
+  const role = row.role as Role;
+  if (Number(row.is_owner) && !Number(row.is_guest) && role !== 'admin') return 'pmo';
+  return role;
+}
+
+/** SELECT for mcpRole: the person's role, and whether they own their company / are a guest */
+export const MCP_ROLE_COLUMNS = `u.role AS role, u.is_guest AS is_guest, (o.owner_user_id = u.id) AS is_owner`;
+export const MCP_ROLE_JOIN = `LEFT JOIN organizations o ON o.id = u.organization_id`;

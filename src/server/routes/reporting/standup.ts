@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { rateLimiter } from '../../middleware/rateLimiter';
 import { standupSummaryService } from '../../services/StandupSummaryService';
 import { emailService } from '../../services/EmailService';
 import { databaseService } from '../../database/connection';
@@ -18,7 +19,10 @@ export async function standupRoutes(fastify: FastifyInstance) {
 
       const { projectId } = request.params as { projectId: string };
       const { refresh } = request.query as { refresh?: string };
-      const forceRefresh = refresh === 'true';
+      // Refresh writes a new AI summary: at most once every 10 minutes per person and project;
+      // a quicker press gets today's summary (it was unthrottled — audit 2026-10-10 M1)
+      const forceRefresh = refresh === 'true'
+        && rateLimiter.check(`standup-refresh:${user.userId}:${projectId}`, 1, 10 * 60_000).allowed;
 
       const summary = await standupSummaryService.getStandupSummary(projectId, user.userId, forceRefresh);
       return { data: summary };

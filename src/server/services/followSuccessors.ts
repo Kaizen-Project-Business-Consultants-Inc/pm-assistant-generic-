@@ -1,6 +1,6 @@
 import { scheduleService, type Task, type CascadeResult, type CascadeChange } from './ScheduleService';
 import { scheduleRecomputeService } from './ScheduleRecomputeService';
-import { changeHistoryService } from './ChangeHistoryService';
+import { changeHistoryService, type LinksBefore } from './ChangeHistoryService';
 import { taskRepository } from '../database/TaskRepository';
 import { toDateString } from '../utils/calendarDate';
 import { calendarDaysBetween } from '../utils/workingDays';
@@ -26,7 +26,7 @@ type Dated = Pick<Task, 'id' | 'name' | 'scheduleId' | 'startDate' | 'endDate'>;
 export async function moveSuccessorsAfter(
   before: Dated,
   after: Pick<Task, 'startDate' | 'endDate'> | null,
-  opts: { followNewLinks?: boolean } = {},
+  opts: { followNewLinks?: boolean; linksBefore?: LinksBefore } = {},
 ): Promise<CascadeResult> {
   const oldStart = toDateString(before.startDate); const oldEnd = toDateString(before.endDate);
   const newStart = toDateString(after?.startDate); const newEnd = toDateString(after?.endDate);
@@ -59,8 +59,9 @@ export async function moveSuccessorsAfter(
   })));
 
   const schedule = await scheduleService.findById(before.scheduleId);
+  let changeId: string | null = null;
   if (schedule?.projectId) {
-    await changeHistoryService.record({
+    changeId = await changeHistoryService.record({
       projectId: schedule.projectId,
       scheduleId: before.scheduleId,
       kind: 'successors_moved',
@@ -73,9 +74,11 @@ export async function moveSuccessorsAfter(
           { taskId: before.id, startDate: oldStart, endDate: oldEnd },
           ...others.map(d => ({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd })),
         ],
+        // the same edit changed the task's predecessors: Undo puts its old links back too (audit M7)
+        ...(opts.linksBefore?.length ? { links: opts.linksBefore } : {}),
       },
     });
   }
 
-  return { triggeredByTaskId: before.id, deltaDays, affectedTasks };
+  return { triggeredByTaskId: before.id, deltaDays, affectedTasks, changeId };
 }

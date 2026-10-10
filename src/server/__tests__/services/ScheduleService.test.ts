@@ -264,5 +264,46 @@ describe('ScheduleService', () => {
       mockQuery.mockReset();
       mockQuery.mockResolvedValue([]);
     });
+
+    describe('audit 2026-10-09 M4', () => {
+      const weekdays = (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6;
+      const rollup = async (children: any[]) => {
+        mockQuery.mockReset();
+        mockQuery.mockImplementation(async (sql: string) => {
+          if (sql.includes('parent_task_id = ?')) return children.map(c => ({ ...sampleTaskRow, parent_task_id: 'phase', ...c }));
+          if (sql.includes('FROM schedules')) return [sampleScheduleRow];
+          if (sql.includes('FROM tasks')) return [{ ...sampleTaskRow, id: 'phase' }];
+          return [];
+        });
+        vi.spyOn(service, 'workingDayTest').mockResolvedValue(weekdays);
+        await service.recomputeParentRollup('phase');
+        const upd = mockQuery.mock.calls.find(([sql]) => String(sql).includes('is_summary = 1'))!;
+        mockQuery.mockReset();
+        mockQuery.mockResolvedValue([]);
+        const [start, end, progress, status, , , days] = upd[1] as unknown[];
+        return { start, end, progress, status, days };
+      };
+
+      it('a cancelled child counts in neither the % nor "all done": [done, cancelled] is a done summary', async () => {
+        const r = await rollup([
+          { id: 'a', status: 'completed', progress_percentage: 100 },
+          { id: 'b', status: 'cancelled', progress_percentage: 0 },
+        ]);
+        expect(r).toMatchObject({ status: 'completed', progress: 100 });
+      });
+
+      it('every child cancelled: the summary is cancelled', async () => {
+        const r = await rollup([{ id: 'a', status: 'cancelled' }, { id: 'b', status: 'cancelled' }]);
+        expect(r.status).toBe('cancelled');
+      });
+
+      it('the summary duration is in working days: two back-to-back 5-day tasks (12–23 Oct) give 10, not 12', async () => {
+        const r = await rollup([
+          { id: 'a', start_date: '2026-10-12', end_date: '2026-10-16', estimated_days: 5 },
+          { id: 'b', start_date: '2026-10-19', end_date: '2026-10-23', estimated_days: 5 },
+        ]);
+        expect(r).toMatchObject({ start: '2026-10-12', end: '2026-10-23', days: 10 });
+      });
+    });
   });
 });

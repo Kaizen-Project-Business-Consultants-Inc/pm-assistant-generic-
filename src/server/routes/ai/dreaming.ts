@@ -6,12 +6,11 @@ import { dreamingService, DREAMING_SWITCHED_OFF, DREAMING_OFF_MESSAGE } from '..
 import { platformAdminOnly } from '../../utils/platformAdmin';
 import { clampPagination } from '../../schemas/paginationSchema';
 
-/** Mjuzi's internal memory spans every project: admin/PMO only (the app only shows it to admins) */
-const adminOrPmo = async (request: FastifyRequest, reply: FastifyReply) => {
-  if (!['admin', 'pmo'].includes(request.user!.role)) {
-    return reply.status(403).send({ error: 'Insufficient role', message: 'Only an admin or PMO can see this.' });
-  }
-};
+/*
+ * Mjuzi's internal memory is in the SHARED database and spans every company: the Kovarti platform
+ * admin only. It used to be "admin or PMO", so any company's owner/PMO could list, approve or
+ * reject shared proposals (2026-10-09 audit M12; dormant while dreaming is switched off).
+ */
 
 export async function dreamingRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -22,7 +21,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/dreaming/runs — list dreaming runs
   fastify.get('/runs', {
-    preHandler: [requireScope('read'), adminOrPmo],
+    preHandler: [requireScope('read'), platformAdminOnly],
     schema: { description: 'List dreaming batch runs', tags: ['dreaming'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -38,7 +37,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
 
   // GET /api/v1/dreaming/proposals — list pending proposals
   fastify.get('/proposals', {
-    preHandler: [requireScope('read'), adminOrPmo],
+    preHandler: [requireScope('read'), platformAdminOnly],
     schema: { description: 'List dreaming proposals', tags: ['dreaming'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -53,7 +52,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/dreaming/proposals/:id/approve — approve a proposal
   fastify.post('/proposals/:id/approve', {
-    preHandler: [requireScope('write'), adminOrPmo],
+    preHandler: [requireScope('write'), platformAdminOnly],
     schema: { description: 'Approve a dreaming proposal', tags: ['dreaming'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -73,7 +72,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/dreaming/proposals/:id/reject — reject a proposal
   fastify.post('/proposals/:id/reject', {
-    preHandler: [requireScope('write'), adminOrPmo],
+    preHandler: [requireScope('write'), platformAdminOnly],
     schema: { description: 'Reject a dreaming proposal', tags: ['dreaming'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -93,7 +92,7 @@ export async function dreamingRoutes(fastify: FastifyInstance) {
 
   // POST /api/v1/dreaming/trigger — manually trigger a dreaming run (admin)
   fastify.post('/trigger', {
-    preHandler: [requireScope('admin'), platformAdminOnly, adminOrPmo],
+    preHandler: [requireScope('admin'), platformAdminOnly],
     schema: { description: 'Manually trigger a dreaming run', tags: ['dreaming'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {

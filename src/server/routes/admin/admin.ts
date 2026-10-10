@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import os from 'os';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
 import { userService } from '../../services/UserService';
 import { auditLedgerService } from '../../services/AuditLedgerService';
@@ -71,6 +72,8 @@ const tierFeaturesUpdateSchema = z.record(z.string(), z.boolean({ message: 'Each
 
 export async function adminRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   // GET /api/v1/admin/users
   fastify.get('/users', async (request: FastifyRequest, reply: FastifyReply) => {

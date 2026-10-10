@@ -39,9 +39,10 @@ class RetrospectiveService {
     await retrospectiveRepository.removeVote(itemId, userId);
   }
 
-  async seedFromAI(sprintId: string, projectId: string, userId: string): Promise<RetrospectiveItem[]> {
+  async seedFromAI(sprintId: string, userId: string): Promise<RetrospectiveItem[]> {
     const sprint = await sprintService.getById(sprintId);
     if (!sprint) throw new Error('Sprint not found');
+    const projectId = sprint.projectId; // the sprint's own project, never the caller's say-so
 
     const board = await sprintService.getSprintBoard(sprintId);
     const burndown = await sprintService.getSprintBurndown(sprintId);

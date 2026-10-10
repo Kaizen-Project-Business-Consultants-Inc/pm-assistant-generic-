@@ -25,6 +25,19 @@ const MAX_CONNECTIONS = 2000;
 const MAX_CONNECTIONS_PER_USER = 5;
 const PING_INTERVAL_MS = 30_000;
 const PONG_TIMEOUT_MS = 10_000;
+/** The "which field am I editing" label is shown to others; keep it short (2026-10-09 audit). */
+const MAX_EDITING_FIELD_LENGTH = 100;
+
+/**
+ * Is this connection in this project's room? A room is a project INSIDE ONE COMPANY: project ids
+ * repeat across companies (every sample project is `demo-sample-webapp`), so matching the id alone
+ * sent one company's viewer names and task edits to another (2026-10-09 audit M1).
+ * Single-company installs have no company database, so only the id counts there.
+ */
+function inRoom(info: ClientInfo, projectId: string, dbName: string | null): boolean {
+  if (info.projectId !== projectId) return false;
+  return !config.MULTI_TENANT_ENABLED || (dbName !== null && info.dbName === dbName);
+}
 
 export class WebSocketService {
   private static clients: Set<WebSocket> = new Set();
@@ -112,19 +125,19 @@ export class WebSocketService {
             const projectId = info.projectId;
             info.projectId = null;
             info.editingField = null;
-            WebSocketService.broadcastPresence(projectId);
+            WebSocketService.broadcastPresence(projectId, info.dbName);
           }
         } else if (msg.type === 'presence:editing' && typeof msg.field === 'string') {
           const info = WebSocketService.clientInfo.get(ws);
           if (info && info.projectId) {
-            info.editingField = msg.field;
-            WebSocketService.broadcastPresence(info.projectId);
+            info.editingField = msg.field.slice(0, MAX_EDITING_FIELD_LENGTH);
+            WebSocketService.broadcastPresence(info.projectId, info.dbName);
           }
         } else if (msg.type === 'presence:stop_editing') {
           const info = WebSocketService.clientInfo.get(ws);
           if (info && info.projectId && info.editingField) {
             info.editingField = null;
-            WebSocketService.broadcastPresence(info.projectId);
+            WebSocketService.broadcastPresence(info.projectId, info.dbName);
           }
         }
       } catch { /* ignore non-JSON messages */ }
@@ -136,7 +149,7 @@ export class WebSocketService {
       WebSocketService.clients.delete(ws);
       WebSocketService.clientInfo.delete(ws);
       if (projectId) {
-        WebSocketService.broadcastPresence(projectId);
+        WebSocketService.broadcastPresence(projectId, info?.dbName ?? null);
       }
     });
 
@@ -147,7 +160,7 @@ export class WebSocketService {
       WebSocketService.clients.delete(ws);
       WebSocketService.clientInfo.delete(ws);
       if (projectId) {
-        WebSocketService.broadcastPresence(projectId);
+        WebSocketService.broadcastPresence(projectId, info?.dbName ?? null);
       }
     });
   }
@@ -171,22 +184,43 @@ export class WebSocketService {
     return runWithTenantContext(info.dbName, info.orgId, check);
   }
 
+  /**
+   * Someone's access to a project was taken away: connections in that project's room (this
+   * company) are checked again, and anyone who may no longer watch it leaves the room at once.
+   * Until 2026-10-09 (audit, low) they kept receiving its updates until they reconnected.
+   */
+  static async recheckProject(projectId: string): Promise<void> {
+    const dbName = getRequestContext()?.tenantDbName ?? null;
+    const inIt = [...WebSocketService.clientInfo].filter(([, info]) => inRoom(info, projectId, dbName));
+    const allowed = await Promise.all(inIt.map(([, info]) => WebSocketService.canJoin(info, projectId).catch(() => false)));
+    let removed = false;
+    inIt.forEach(([ws, info], i) => {
+      if (allowed[i]) return;
+      info.projectId = null;
+      info.editingField = null;
+      removed = true;
+      try { ws.send(JSON.stringify({ type: 'presence:error', message: 'Not authorized for this project' })); } catch { /* closed */ }
+    });
+    if (removed) WebSocketService.broadcastPresence(projectId, dbName);
+  }
+
   private static applyJoin(ws: WebSocket, info: ClientInfo, projectId: string) {
     const oldProjectId = info.projectId;
     info.projectId = projectId;
     if (oldProjectId && oldProjectId !== projectId) {
-      WebSocketService.broadcastPresence(oldProjectId);
+      WebSocketService.broadcastPresence(oldProjectId, info.dbName);
     }
-    WebSocketService.broadcastPresence(projectId);
+    WebSocketService.broadcastPresence(projectId, info.dbName);
   }
 
-  static broadcastPresence(projectId: string) {
+  /** Who is viewing / editing a project — sent only to the same project in the same company. */
+  static broadcastPresence(projectId: string, dbName: string | null) {
     // Collect unique viewers for this project
     const viewers: { userId: string; username: string }[] = [];
     const editors: { userId: string; username: string; field: string }[] = [];
     const seen = new Set<string>();
     for (const [, info] of WebSocketService.clientInfo) {
-      if (info.projectId === projectId && !seen.has(info.userId)) {
+      if (inRoom(info, projectId, dbName) && !seen.has(info.userId)) {
         seen.add(info.userId);
         viewers.push({ userId: info.userId, username: info.username });
         if (info.editingField) {
@@ -200,20 +234,28 @@ export class WebSocketService {
       payload: { projectId, viewers, editors },
     });
 
-    // Send only to clients viewing this project
+    // Send only to clients viewing this project in this company
     for (const [ws, info] of WebSocketService.clientInfo) {
-      if (info.projectId === projectId && ws.readyState === WebSocket.OPEN) {
+      if (inRoom(info, projectId, dbName) && ws.readyState === WebSocket.OPEN) {
         try { ws.send(message); } catch (err) { logger.warn('WebSocket send failed', { error: (err as Error).message }); }
       }
     }
   }
 
+  /**
+   * Send a project's update to the people viewing that project. The company is the one the
+   * change was made in (the request / job context); with multi-company on and no company in
+   * context, nobody gets it — a bare project id could belong to any company.
+   */
   static broadcast(message: WSMessage, projectId?: string) {
     const data = JSON.stringify(message);
-    if (projectId) {
-      // Scoped: send only to clients viewing this project
+    const dbName = getRequestContext()?.tenantDbName ?? null;
+    if (projectId && config.MULTI_TENANT_ENABLED && !dbName) {
+      logger.warn('WebSocket broadcast without a company — not sent', { type: message.type });
+    } else if (projectId) {
+      // Scoped: send only to clients viewing this project in this company
       for (const [ws, info] of WebSocketService.clientInfo) {
-        if (info.projectId === projectId && ws.readyState === WebSocket.OPEN) {
+        if (inRoom(info, projectId, dbName) && ws.readyState === WebSocket.OPEN) {
           try { ws.send(data); } catch (err) { logger.warn('WebSocket broadcast send failed', { error: (err as Error).message }); }
         }
       }

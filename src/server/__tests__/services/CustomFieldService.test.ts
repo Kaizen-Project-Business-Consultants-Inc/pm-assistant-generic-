@@ -100,24 +100,52 @@ describe('CustomFieldService', () => {
   });
 
   describe('bulkSetValues', () => {
-    it('checks the fields once and saves every value in one go (2026-10-09)', async () => {
-      mockRepo.existingFieldIds = vi.fn().mockResolvedValue(new Set(['cf1', 'cf2']));
+    it('saves every value in one go (2026-10-09)', async () => {
       mockRepo.upsertValues = vi.fn().mockResolvedValue(undefined);
       const values = [{ fieldId: 'cf1', number: 10 }, { fieldId: 'cf2', text: 'hello' }];
-
       await service.bulkSetValues('t1', values);
-
-      expect(mockRepo.existingFieldIds).toHaveBeenCalledWith(['cf1', 'cf2']);
       expect(mockRepo.upsertValues).toHaveBeenCalledTimes(1);
       expect(mockRepo.upsertValues).toHaveBeenCalledWith('t1', values);
       expect(mockRepo.upsertValue).not.toHaveBeenCalled();
     });
+  });
 
-    it('an unknown field: refused before anything is saved (it used to save the values before it)', async () => {
-      mockRepo.existingFieldIds = vi.fn().mockResolvedValue(new Set(['cf1']));
-      mockRepo.upsertValues = vi.fn();
-      await expect(service.bulkSetValues('t1', [{ fieldId: 'cf1', number: 1 }, { fieldId: 'gone', text: 'x' }])).rejects.toThrow('Field not found');
-      expect(mockRepo.upsertValues).not.toHaveBeenCalled();
+  /** 2026-10-09 audit M7: a PM of project A could write values onto a task of project B */
+  describe('projectForValues', () => {
+    const owners = (entries: Array<[string, string, string]>) =>
+      new Map(entries.map(([id, projectId, entityType]) => [id, { projectId, entityType }]));
+
+    it('fields and task of one project: that project (one read for all the fields)', async () => {
+      mockRepo.fieldOwners = vi.fn().mockResolvedValue(owners([['cf1', 'A', 'task'], ['cf2', 'A', 'task']]));
+      mockRepo.itemProjectId = vi.fn().mockResolvedValue('A');
+      expect(await service.projectForValues('task', 't1', ['cf1', 'cf2', 'cf1'], 'A')).toEqual({ projectId: 'A' });
+      expect(mockRepo.fieldOwners).toHaveBeenCalledWith(['cf1', 'cf2']);
+    });
+
+    it('a task of project B with project A named and A fields: refused like a missing task', async () => {
+      mockRepo.fieldOwners = vi.fn().mockResolvedValue(owners([['cfA', 'A', 'task']]));
+      mockRepo.itemProjectId = vi.fn().mockResolvedValue('B');
+      expect(await service.projectForValues('task', 'taskOfB', ['cfA'], 'A')).toMatchObject({ status: 404 });
+    });
+
+    it('a task of B with a field of B but project A named: refused (the named project was all that was checked)', async () => {
+      mockRepo.fieldOwners = vi.fn().mockResolvedValue(owners([['cfB', 'B', 'task']]));
+      mockRepo.itemProjectId = vi.fn().mockResolvedValue('B');
+      expect(await service.projectForValues('task', 'taskOfB', ['cfB'], 'A')).toMatchObject({ status: 404 });
+    });
+
+    it('fields of two projects in one save: refused', async () => {
+      mockRepo.fieldOwners = vi.fn().mockResolvedValue(owners([['cfA', 'A', 'task'], ['cfB', 'B', 'task']]));
+      mockRepo.itemProjectId = vi.fn().mockResolvedValue('A');
+      expect(await service.projectForValues('task', 't1', ['cfA', 'cfB'])).toMatchObject({ status: 400 });
+    });
+
+    it('an unknown field, or a project field on a task: refused before anything is saved', async () => {
+      mockRepo.fieldOwners = vi.fn().mockResolvedValue(owners([['cf1', 'A', 'task']]));
+      mockRepo.itemProjectId = vi.fn().mockResolvedValue('A');
+      expect(await service.projectForValues('task', 't1', ['cf1', 'gone'])).toMatchObject({ status: 404 });
+      mockRepo.fieldOwners = vi.fn().mockResolvedValue(owners([['cfP', 'A', 'project']]));
+      expect(await service.projectForValues('task', 't1', ['cfP'])).toMatchObject({ status: 400 });
     });
   });
 });

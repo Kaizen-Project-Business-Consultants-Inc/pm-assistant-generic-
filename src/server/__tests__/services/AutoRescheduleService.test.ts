@@ -132,7 +132,7 @@ vi.mock('../../utils/promptSanitizer', () => ({
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { AutoRescheduleService, snapToWorking } from '../../services/AutoRescheduleService';
+import { AutoRescheduleService, snapToWorking, StaleProposalError } from '../../services/AutoRescheduleService';
 import { weekdaysOnly, workingDaysAfter, onOrAfterWorking, utcDay } from '../../utils/workingDays';
 import { config } from '../../config';
 import type { Task } from '../../services/ScheduleService';
@@ -236,7 +236,7 @@ describe('AutoRescheduleService', () => {
     // updateTask returns the saved task (null only when the task no longer exists)
     mockUpdateTask.mockImplementation(async (id: string) => ({ id }));
     mockLogActivity.mockResolvedValue(undefined);
-    mockFindTasksByIds.mockResolvedValue([]);
+    mockFindTasksByIds.mockImplementation(async (ids: string[]) => ids.map(id => ({ id, startDate: '2026-01-01', endDate: '2026-01-10' })));
     mockLogActivities.mockResolvedValue(undefined);
     mockRepoInsert.mockResolvedValue(undefined);
     mockRepoUpdateStatus.mockResolvedValue(undefined);
@@ -1020,6 +1020,9 @@ describe('AutoRescheduleService', () => {
   // =========================================================================
 
   describe('acceptProposal', () => {
+    // the plan exists (an accept with no plan is refused — no History entry could be made)
+    beforeEach(() => { mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' }); });
+
     it('returns false when proposal is not found', async () => {
       mockRepoFindById.mockResolvedValue(null);
       const result = await service.acceptProposal('nonexistent');
@@ -1165,7 +1168,6 @@ describe('AutoRescheduleService', () => {
         expect(mockFindTaskById).not.toHaveBeenCalled();
         expect(mockLogActivities).toHaveBeenCalledTimes(1);
         expect(mockLogActivities.mock.calls[0][0]).toHaveLength(n);
-        expect(mockLogActivity).not.toHaveBeenCalled();
         // kept per task: the save (rollup, task.update audit, change event) and the reschedule audit line
         expect(mockUpdateTask).toHaveBeenCalledTimes(n);
         expect(mockAuditAppend).toHaveBeenCalledTimes(n);
@@ -1174,26 +1176,60 @@ describe('AutoRescheduleService', () => {
       }
     });
 
-    it('a task deleted since the proposal stops the accept there, after logging the tasks saved before it', async () => {
+    it('a task deleted since the proposal: nothing is changed and the PM is told (audit 2026-10-09 M6)', async () => {
       mockRepoFindById.mockResolvedValue(bigProposal(4));
-      mockUpdateTask.mockImplementation(async (id: string) => (id === 't2' ? null : { id }));
-      mockLogActivity.mockRejectedValue(new Error('foreign key'));
+      mockFindTasksByIds.mockResolvedValue(['t0', 't1', 't3'].map(id => ({ id, startDate: '2026-01-01', endDate: '2026-01-10' })));
 
-      await expect(service.acceptProposal('prop-1')).rejects.toThrow('foreign key');
+      await expect(service.acceptProposal('prop-1')).rejects.toBeInstanceOf(StaleProposalError);
 
-      expect(mockUpdateTask.mock.calls.map(c => c[0])).toEqual(['t0', 't1', 't2']);
-      expect(mockLogActivities.mock.calls.flatMap(c => c[0]).map((r: any) => r.taskId)).toEqual(['t0', 't1']);
-      expect(mockLogActivity).toHaveBeenCalledWith('t2', '1', 'System', 'auto-rescheduled', 'dates', '2026-01-01 - 2026-01-10', '2026-01-05 - 2026-01-14');
+      expect(mockUpdateTask).not.toHaveBeenCalled();
+      expect(mockHistoryRecord).not.toHaveBeenCalled();
       expect(mockRepoUpdateStatus).not.toHaveBeenCalled();
     });
 
-    it('when a save fails, the activity lines for the tasks already saved are still written', async () => {
+    it('a save that fails part-way: what was saved is logged AND recorded in History, so it can be undone', async () => {
       mockRepoFindById.mockResolvedValue(bigProposal(3));
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' });
       mockUpdateTask.mockImplementation(async (id: string) => { if (id === 't1') throw new Error('save failed'); return { id }; });
 
       await expect(service.acceptProposal('prop-1')).rejects.toThrow('save failed');
 
       expect(mockLogActivities.mock.calls.flatMap(c => c[0]).map((r: any) => r.taskId)).toEqual(['t0']);
+      expect(mockHistoryRecord).toHaveBeenCalledTimes(1);
+      expect(mockHistoryRecord.mock.calls[0][0].undo.moved.map((m: any) => m.taskId)).toEqual(['t0']);
+      expect(mockRepoUpdateStatus).not.toHaveBeenCalled();
+    });
+
+    it('a task deleted while the proposal is applied, after others were saved: says some changes were saved (review 2026-10-10)', async () => {
+      mockRepoFindById.mockResolvedValue(bigProposal(3));
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' });
+      mockUpdateTask.mockImplementation(async (id: string) => (id === 't1' ? null : { id }));
+      const err = await service.acceptProposal('prop-1').catch(e => e);
+      expect(err).toBeInstanceOf(StaleProposalError);
+      expect(err.message).toContain('Some changes were saved and can be undone in History');
+      expect(mockHistoryRecord.mock.calls[0][0].undo.moved.map((m: any) => m.taskId)).toEqual(['t0']);
+    });
+
+    it('a History write that fails after a part-way stop does not hide the real error', async () => {
+      mockRepoFindById.mockResolvedValue(bigProposal(3));
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1' });
+      mockUpdateTask.mockImplementation(async (id: string) => { if (id === 't1') throw new Error('save failed'); return { id }; });
+      mockHistoryRecord.mockRejectedValueOnce(new Error('history down'));
+      await expect(service.acceptProposal('prop-1')).rejects.toThrow('save failed');
+    });
+
+    it('the plan is gone: refused before anything is saved (no History entry could be made)', async () => {
+      mockRepoFindById.mockResolvedValue(bigProposal(2));
+      mockFindScheduleById.mockResolvedValue(null);
+      await expect(service.acceptProposal('prop-1')).rejects.toThrow('no longer exists');
+      expect(mockUpdateTask).not.toHaveBeenCalled();
+    });
+
+    it('a failed read of the current dates changes nothing', async () => {
+      mockRepoFindById.mockResolvedValue(bigProposal(2));
+      mockFindTasksByIds.mockRejectedValue(new Error('db down'));
+      await expect(service.acceptProposal('prop-1')).rejects.toThrow('db down');
+      expect(mockUpdateTask).not.toHaveBeenCalled();
     });
   });
 

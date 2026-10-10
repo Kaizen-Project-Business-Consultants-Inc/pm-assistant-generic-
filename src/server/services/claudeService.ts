@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { config } from '../config';
-import { aiBudgetService, AIBudgetExceededError } from './AIBudgetService';
+import { aiBudgetService, AIBudgetExceededError, type BudgetSnapshot } from './AIBudgetService';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
 import logger from '../utils/logger';
 import { getRequestContext } from '../middleware/requestContext';
@@ -36,6 +36,8 @@ export interface CompletionResult {
   usage: TokenUsage;
   latencyMs: number;
   model: string;
+  /** 'max_tokens' = the reply was cut off */
+  stopReason?: string;
 }
 
 export interface StreamChunk {
@@ -52,6 +54,36 @@ interface UsageStats {
 }
 
 const REQUEST_TIMEOUT_MS = 90_000;
+
+/**
+ * Prompt-size limits (audit 2026-10-10 H1). A prompt is estimated at about 4 characters per
+ * token before it is sent: the estimate is checked against the person's remaining budget, and a
+ * prompt that can't fit the model's context is refused up front instead of failing with a 400
+ * after the earlier calls of a tool loop were already paid for.
+ */
+export const MAX_PROMPT_TOKENS = 150_000;
+/** One tool result fed back to the model (about 10k tokens); the tools themselves cap rows first */
+export const MAX_TOOL_RESULT_CHARS = 40_000;
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/** The question needs more data than one AI call can read: a plain message, no call made */
+export class AIPromptTooLargeError extends Error {
+  public statusCode = 422;
+  public code = 'AI_PROMPT_TOO_LARGE';
+  constructor(public estimatedTokens: number) {
+    super('This needs more of your project data than the assistant can read at once. Ask about one plan, or a narrower question.');
+    this.name = 'AIPromptTooLargeError';
+  }
+}
+
+/** A tool result too long to send back to the model whole: cut, with a note saying so */
+function capToolResult(result: string): string {
+  if (result.length <= MAX_TOOL_RESULT_CHARS) return result;
+  return `${result.slice(0, MAX_TOOL_RESULT_CHARS)}\n[Result cut off: ${result.length} characters, only the first ${MAX_TOOL_RESULT_CHARS} shown. Ask a narrower question for the rest.]`;
+}
 
 // ---------------------------------------------------------------------------
 // Circuit Breaker for user-facing AI calls
@@ -74,12 +106,21 @@ function callerFeature(): string {
   return 'untagged';
 }
 
-/** The whole-account monthly limit: handled everywhere the per-user "budget exceeded" error is */
+/** Shown to customers when Kovarti's own monthly AI limit is reached: says nothing about our spend */
+const AI_ACCOUNT_CAP_MESSAGE = 'AI is temporarily unavailable for your account. Please try again later, or contact support.';
+
+/**
+ * The whole-account monthly limit (Kovarti's own spend). A subclass of the budget error so every
+ * "no AI for you" path stops on it, but its message is neutral: the dollar figures are logged,
+ * never sent to a customer (audit 2026-10-10: they reached chat and NL query).
+ */
 export class AIAccountCapError extends AIBudgetExceededError {
+  public statusCode = 503;
+  public code = 'AI_UNAVAILABLE';
   constructor(public spentUsd: number, public capUsd: number) {
     super(0, 0);
-    this.message = `This month's AI spending limit has been reached ($${spentUsd.toFixed(2)} of $${capUsd}). AI features resume next month, or an admin can raise the limit.`;
-    this.name = 'AIBudgetExceededError';
+    this.message = AI_ACCOUNT_CAP_MESSAGE;
+    this.name = 'AIAccountCapError';
   }
 }
 
@@ -560,15 +601,13 @@ export class ClaudeService {
   async complete(options: CompletionOptions): Promise<CompletionResult> {
     this.assertAvailable();
     this.circuitBreaker.assertClosed();
-    const budgetUserId = this.resolveUserId(options);
-    if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
-    await this.assertAccountCap();
+    const systemPrompt = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
+    const messages = this.buildMessages(options);
+    await this.preflight(options, systemPrompt, messages);
 
     const startMs = Date.now();
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
     const effectiveTemperature = options.temperature ?? this.temperature;
-    const systemPrompt = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
-    const messages = this.buildMessages(options);
 
     try {
       const response = await this.client!.messages.create({
@@ -590,12 +629,14 @@ export class ClaudeService {
       this.recordUsage(usage, options, response.model, latencyMs);
       this.circuitBreaker.recordSuccess();
 
-      return { content, usage, latencyMs, model: response.model };
+      return { content, usage, latencyMs, model: response.model, stopReason: response.stop_reason ?? undefined };
     } catch (error: unknown) {
       // Fallback: retry once with fallback model on transient errors
       if (this.fallbackEnabled && this.circuitBreaker.isTransientError(error)) {
         logger.warn(`[ClaudeService] Primary model failed (${(error as any)?.status ?? 'timeout'}), retrying with fallback model ${this.fallbackModel}`);
         try {
+          // No SDK retry on the fallback: the primary already had its retry, and each attempt
+          // is a paid request (audit 2026-10-10 M4: up to 8 requests per structured call)
           const fallbackResponse = await this.client!.messages.create({
             model: this.fallbackModel,
             max_tokens: effectiveMaxTokens,
@@ -603,7 +644,7 @@ export class ClaudeService {
             system: systemPrompt,
             messages,
             stream: false,
-          });
+          }, { maxRetries: 0 });
 
           const latencyMs = Date.now() - startMs;
           const content = this.extractTextContent(fallbackResponse);
@@ -615,7 +656,7 @@ export class ClaudeService {
           this.recordUsage(usage, options, this.fallbackModel);
           this.circuitBreaker.recordSuccess();
 
-          return { content, usage, latencyMs, model: fallbackResponse.model };
+          return { content, usage, latencyMs, model: fallbackResponse.model, stopReason: fallbackResponse.stop_reason ?? undefined };
         } catch (fallbackError: unknown) {
           this.circuitBreaker.noteError(fallbackError);
           throw this.wrapError(fallbackError, 'complete(fallback)');
@@ -630,14 +671,12 @@ export class ClaudeService {
   async *stream(options: CompletionOptions): AsyncGenerator<StreamChunk> {
     this.assertAvailable();
     this.circuitBreaker.assertClosed();
-    const budgetUserId = this.resolveUserId(options);
-    if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
-    await this.assertAccountCap();
+    const systemPrompt = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
+    const messages = this.buildMessages(options);
+    await this.preflight(options, systemPrompt, messages);
 
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
     const effectiveTemperature = options.temperature ?? this.temperature;
-    const systemPrompt = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
-    const messages = this.buildMessages(options);
 
     try {
       const messageStream = this.client!.messages.stream({
@@ -712,6 +751,13 @@ export class ClaudeService {
       };
     }
 
+    // A reply cut off at the output limit would be cut off again: asking twice only pays twice
+    if (firstResult.stopReason === 'max_tokens') {
+      throw new Error(
+        `[ClaudeService] The AI's JSON reply was cut off at the output limit; not retried. Validation error: ${firstParseResult.error}`,
+      );
+    }
+
     const correctionHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [
       ...(completionOptions.conversationHistory ?? []),
       { role: 'user', content: completionOptions.userMessage },
@@ -757,15 +803,13 @@ export class ClaudeService {
   }> {
     this.assertAvailable();
     this.circuitBreaker.assertClosed();
-    // per-user budget, like every other entry point (it was missing here — 2026-10-04 audit)
-    const budgetUserId = this.resolveUserId(options);
-    if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
-    await this.assertAccountCap();
+    const systemPrompt = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
+    const messages = this.buildMessages(options);
+    // per-user plan and budget, like every other entry point (budget was missing here — 2026-10-04 audit)
+    await this.preflight(options, systemPrompt, messages, options.tools);
     const startMs = Date.now();
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
     const effectiveTemperature = options.temperature ?? this.temperature;
-    const systemPrompt = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
-    const messages = this.buildMessages(options);
 
     try {
       const response = await this.client!.messages.create({
@@ -812,30 +856,34 @@ export class ClaudeService {
   }> {
     this.assertAvailable();
     this.circuitBreaker.assertClosed();
-    const budgetUserId = this.resolveUserId(options);
-    if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId);
-    await this.assertAccountCap();
 
     const maxIter = options.maxIterations ?? 5;
     const toolResults: Array<{ toolName: string; result: string }> = [];
     let totalUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
     let totalLatencyMs = 0;
+    const system = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
 
     // Build initial messages
     let messages: Anthropic.MessageParam[] = this.buildMessages(options) as Anthropic.MessageParam[];
+    // one check for the whole loop: the budget is read once, before the first turn
+    const check = this.loopPreflight(options, system);
 
     for (let i = 0; i < maxIter; i++) {
+      // Every turn resends the conversation so far, tool results included: each turn is checked
+      // against what is left before it is sent (audit 2026-10-10 H1)
+      // eslint-disable-next-line no-await-in-loop -- tool-use loop: each turn's size is known only after the previous turn
+      await check(messages, totalUsage.inputTokens + totalUsage.outputTokens, options.tools);
       const startMs = Date.now();
       // eslint-disable-next-line no-await-in-loop -- tool-use loop: each Claude turn needs the previous turn's tool results
-      const response = await this.client!.messages.create({
+      const response = await this.createLoggedMessage({
         model: this.pickModel(options),
         max_tokens: options.maxTokens ?? this.maxTokens,
         temperature: options.temperature ?? this.temperature,
-        system: this.buildSystemPrompt(options.systemPrompt, options.responseFormat),
+        system,
         messages,
         tools: options.tools,
         stream: false,
-      });
+      }, 'completeToolLoop');
 
       const latencyMs = Date.now() - startMs;
       totalLatencyMs += latencyMs;
@@ -845,12 +893,7 @@ export class ClaudeService {
 
       // If no tool use, extract text and return
       if (response.stop_reason !== 'tool_use') {
-        // eslint-disable-next-line no-restricted-syntax -- small: one AI reply's content blocks (a handful)
-        const textBlocks = response.content.filter(
-          (block): block is Anthropic.TextBlock => block.type === 'text',
-        );
-        const finalText = textBlocks.map(b => b.text).join('');
-        return { finalText, toolResults, totalUsage, totalLatencyMs };
+        return { finalText: this.textOf(response), toolResults, totalUsage, totalLatencyMs };
       }
 
       // Process tool use blocks
@@ -867,7 +910,7 @@ export class ClaudeService {
       for (const toolUse of toolUseBlocks) {
         try {
           // eslint-disable-next-line no-await-in-loop -- tools run in the order Claude asked; some change data, so they must not overlap
-          const result = await options.executeToolFn(toolUse.name, toolUse.input as Record<string, any>);
+          const result = capToolResult(await options.executeToolFn(toolUse.name, toolUse.input as Record<string, any>));
           toolResults.push({ toolName: toolUse.name, result });
           toolResultContents.push({
             type: 'tool_result',
@@ -891,23 +934,82 @@ export class ClaudeService {
     }
 
     // Max iterations reached — get final text response
-    const finalResponse = await this.client!.messages.create({
+    await check(messages, totalUsage.inputTokens + totalUsage.outputTokens);
+    const finalResponse = await this.createLoggedMessage({
       model: this.pickModel(options),
       max_tokens: options.maxTokens ?? this.maxTokens,
       temperature: options.temperature ?? this.temperature,
-      system: this.buildSystemPrompt(options.systemPrompt, options.responseFormat),
+      system,
       messages,
       stream: false,
-    });
+    }, 'completeToolLoop(final)');
 
     totalUsage.inputTokens += finalResponse.usage.input_tokens;
     totalUsage.outputTokens += finalResponse.usage.output_tokens;
     this.recordUsage({ inputTokens: finalResponse.usage.input_tokens, outputTokens: finalResponse.usage.output_tokens }, options, finalResponse.model);
 
-    const textBlocks = finalResponse.content.filter(
+    return { finalText: this.textOf(finalResponse), toolResults, totalUsage, totalLatencyMs };
+  }
+
+  /** One tool-loop turn. Failures count toward the circuit breaker like every other call (they didn't: audit 2026-10-10 M4) */
+  private async createLoggedMessage(params: Anthropic.MessageCreateParamsNonStreaming, method: string): Promise<Anthropic.Message> {
+    try {
+      const response = await this.client!.messages.create(params);
+      this.circuitBreaker.recordSuccess();
+      return response;
+    } catch (error: unknown) {
+      this.circuitBreaker.noteError(error);
+      throw this.wrapError(error, method);
+    }
+  }
+
+  private textOf(response: Anthropic.Message): string {
+    const textBlocks = response.content.filter(
       (block): block is Anthropic.TextBlock => block.type === 'text',
     );
-    return { finalText: textBlocks.map(b => b.text).join(''), toolResults, totalUsage, totalLatencyMs };
+    return textBlocks.map(b => b.text).join('');
+  }
+
+  /** The prompt's estimated size; one too big for the model is refused before anything is paid */
+  private estimatePrompt(system: string, messages: unknown, tools?: Anthropic.Tool[]): number {
+    const estimate = estimateTokens(system) + estimateTokens(JSON.stringify(messages))
+      + (tools ? estimateTokens(JSON.stringify(tools)) : 0);
+    if (estimate > MAX_PROMPT_TOKENS) throw new AIPromptTooLargeError(estimate);
+    return estimate;
+  }
+
+  /**
+   * Before a single call: refuse a prompt too big for the model, then the person's plan and
+   * budget (with this prompt's estimate counted) and the whole-account monthly cap.
+   */
+  private async preflight(
+    options: { userId?: string },
+    system: string,
+    messages: unknown,
+    tools?: Anthropic.Tool[],
+  ): Promise<void> {
+    const estimate = this.estimatePrompt(system, messages, tools);
+    const budgetUserId = this.resolveUserId(options);
+    if (budgetUserId) await aiBudgetService.checkBudget(budgetUserId, estimate);
+    await this.assertAccountCap();
+  }
+
+  /**
+   * The same for each turn of a tool loop. The plan and the month's usage are read once, before
+   * the first turn; later turns add what this loop has spent (counted once — the usage read at
+   * the start doesn't include it, and each turn's estimate already covers the resent conversation).
+   */
+  private loopPreflight(options: { userId?: string }, system: string) {
+    const budgetUserId = this.resolveUserId(options);
+    let snapshot: BudgetSnapshot | null = null;
+    return async (messages: unknown, spentInLoop: number, tools?: Anthropic.Tool[]): Promise<void> => {
+      const estimate = this.estimatePrompt(system, messages, tools);
+      if (budgetUserId) {
+        if (!snapshot) snapshot = await aiBudgetService.checkBudget(budgetUserId, estimate);
+        else aiBudgetService.assertFits(snapshot.used + spentInLoop, snapshot.budget, estimate);
+      }
+      await this.assertAccountCap();
+    };
   }
 
   /**
@@ -1089,6 +1191,7 @@ export class ClaudeService {
     if (!cap || !redisService.isConnected()) return;
     const spent = Number(await redisService.get(this.monthKey())) || 0;
     if (spent >= cap) {
+      logger.warn(`[ClaudeService] Monthly AI cap reached: $${spent.toFixed(2)} of $${cap}`);
       throw new AIAccountCapError(spent, cap);
     }
   }

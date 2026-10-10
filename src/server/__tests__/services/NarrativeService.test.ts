@@ -88,7 +88,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('missing-id', 'project_manager');
 
-      expect(result).toBe('Project not found.');
+      expect(result).toEqual({ narrative: 'Project not found.', aiPowered: false });
       expect(mockProjectFindById).toHaveBeenCalledWith('missing-id');
     });
 
@@ -98,7 +98,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('Test Project is currently active. Budget utilization is at 50%.');
+      expect(result).toEqual({ narrative: 'Test Project is currently active. Budget utilization is at 50%.', aiPowered: false });
       expect(mockClaudeComplete).not.toHaveBeenCalled();
     });
 
@@ -117,7 +117,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('AI generated summary.');
+      expect(result).toEqual({ narrative: 'AI generated summary.', aiPowered: true });
       expect(mockClaudeComplete).toHaveBeenCalledTimes(1);
       const callArgs = mockClaudeComplete.mock.calls[0][0];
       expect(callArgs.maxTokens).toBe(300);
@@ -141,7 +141,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('Summary with resources.');
+      expect(result).toEqual({ narrative: 'Summary with resources.', aiPowered: true });
       const prompt = mockClaudeComplete.mock.calls[0][0].userMessage;
       expect(prompt).toContain('Resources: 2 assigned, 1 over-allocated, 100% avg utilization');
     });
@@ -157,7 +157,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('Summary without resources.');
+      expect(result).toEqual({ narrative: 'Summary without resources.', aiPowered: true });
       // Prompt should NOT contain resource summary
       const prompt = mockClaudeComplete.mock.calls[0][0].userMessage;
       expect(prompt).not.toContain('Resources:');
@@ -174,7 +174,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('Test Project is currently active. Budget utilization is at 50%.');
+      expect(result).toEqual({ narrative: 'Test Project is currently active. Budget utilization is at 50%.', aiPowered: false });
     });
 
     it('includes agent findings in the prompt', async () => {
@@ -203,7 +203,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('Test Project is currently active. Budget utilization is at 0%.');
+      expect(result).toEqual({ narrative: 'Test Project is currently active. Budget utilization is at 0%.', aiPowered: false });
     });
 
     it('handles null budget values in fallback', async () => {
@@ -212,7 +212,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generateProjectNarrative('proj-1', 'project_manager');
 
-      expect(result).toBe('Test Project is currently active. Budget utilization is at 0%.');
+      expect(result).toEqual({ narrative: 'Test Project is currently active. Budget utilization is at 0%.', aiPowered: false });
     });
 
     it('passes correct role focus for different roles', async () => {
@@ -271,7 +271,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generatePortfolioNarrative('executive');
 
-      expect(result).toBe('You have 2 active project(s) in your portfolio.');
+      expect(result).toEqual({ narrative: 'You have 2 active project(s) in your portfolio.', aiPowered: false });
       expect(mockClaudeComplete).not.toHaveBeenCalled();
     });
 
@@ -286,7 +286,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generatePortfolioNarrative('executive');
 
-      expect(result).toBe('Portfolio looks healthy.');
+      expect(result).toEqual({ narrative: 'Portfolio looks healthy.', aiPowered: true });
       const callArgs = mockClaudeComplete.mock.calls[0][0];
       expect(callArgs.userMessage).toContain('Active projects (2)');
       expect(callArgs.userMessage).toContain('Alpha');
@@ -304,7 +304,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generatePortfolioNarrative('project_manager');
 
-      expect(result).toBe('You have 1 active project(s) in your portfolio.');
+      expect(result).toEqual({ narrative: 'You have 1 active project(s) in your portfolio.', aiPowered: false });
     });
 
     it('limits project summaries to 10 in prompt', async () => {
@@ -337,7 +337,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generatePortfolioNarrative('executive');
 
-      expect(result).toBe('You have 2 active project(s) in your portfolio.');
+      expect(result).toEqual({ narrative: 'You have 2 active project(s) in your portfolio.', aiPowered: false });
     });
 
     it('handles empty portfolio', async () => {
@@ -346,7 +346,7 @@ describe('NarrativeService', () => {
 
       const result = await service.generatePortfolioNarrative('executive');
 
-      expect(result).toBe('You have 0 active project(s) in your portfolio.');
+      expect(result).toEqual({ narrative: 'You have 0 active project(s) in your portfolio.', aiPowered: false });
     });
 
     it('computes budget percentage correctly in prompt', async () => {

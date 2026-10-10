@@ -210,6 +210,16 @@ describe('a task can\'t go under one of its own sub-tasks (H3)', () => {
     expect(res.json().succeeded).toHaveLength(3);
   });
 
+  it("bulk create: a predecessor that isn't a task in this plan makes no link and doesn't linger as the shown predecessor", async () => {
+    const res = await post([{ name: 'A', dependency: 'task-in-another-plan' }]);
+    expect(res.statusCode).toBe(200);
+    expect(sent(/^INSERT INTO task_dependencies/)).toHaveLength(0);
+    const mirror = sent(/^UPDATE tasks SET dependency = CASE id/);
+    expect(mirror).toHaveLength(1);
+    const newId = res.json().succeeded[0].id;
+    expect(mirror[0].params.slice(0, 2)).toEqual([newId, null]); // the shown predecessor is cleared
+  });
+
   it('bulk create: a parent given by id must be a task in this plan', async () => {
     const outside = await post([{ name: 'A', parentTaskId: 'task-in-another-plan' }]);
     expect(outside.statusCode).toBe(400);

@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
-import { autoRescheduleService } from '../../services/AutoRescheduleService';
+import { autoRescheduleService, StaleProposalError } from '../../services/AutoRescheduleService';
 import { ProposedChangeSchema } from '../../schemas/autoRescheduleSchemas';
 import { webhookService } from '../../services/WebhookService';
 import { automationEventBus } from '../../services/automation/AutomationEventBus';
@@ -127,6 +127,9 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       automationEventBus.emit({ type: 'proposal.accepted', entityType: 'proposal', entityId: id, projectId: '', userId: user.userId, payload: { proposalId: id }, timestamp: new Date().toISOString() }).catch(() => {});
       return { message: 'Proposal accepted and changes applied successfully' };
     } catch (error) {
+      if (error instanceof StaleProposalError) {
+        return reply.status(409).send({ error: 'Proposal out of date', message: error.message });
+      }
       logger.error('Accept proposal error', { error });
       return reply.status(500).send({
         error: 'Internal server error',

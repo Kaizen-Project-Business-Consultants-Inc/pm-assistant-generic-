@@ -1462,10 +1462,10 @@
   },
   "src/client/src/pages/ProjectDetailPage/schedule-tab/useScheduleMutations.ts": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 22
+      "count": 21
     },
     "@typescript-eslint/no-misused-promises": {
-      "count": 8
+      "count": 6
     }
   },
   "src/client/src/pages/ProjectsPM.tsx": {
@@ -2074,11 +2074,6 @@
       "count": 2
     }
   },
-  "src/server/routes/core/projectGroups.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/server/routes/core/projects.ts": {
     "@typescript-eslint/no-floating-promises": {
       "count": 7
@@ -2184,7 +2179,7 @@
   },
   "src/server/services/AutoRescheduleService.ts": {
     "sonarjs/cognitive-complexity": {
-      "count": 3
+      "count": 2
     }
   },
   "src/server/services/BurndownService.ts": {

@@ -1,5 +1,6 @@
 import { claudeService, PromptTemplate, isAIUnavailableError } from './claudeService';
 import { sCurveService, SCurveDataPoint } from './SCurveService';
+import { leafTasks } from '../utils/leafTasks';
 import { projectService, Project } from './ProjectService';
 import { scheduleService } from './ScheduleService';
 import { sprintRepository } from '../database/SprintRepository';
@@ -851,10 +852,12 @@ export class EVMForecastService {
     if (schedules.length === 0) return [];
 
     const allTasks = await scheduleService.findTasksByScheduleIds(schedules.map(s => s.id));
-    const now = Date.now();
+    // planned value at the status date, like the S-curve (it was the clock time)
+    const now = utcDay(await statusDateFor(projectId)).getTime();
     const isWorking = await scheduleService.workingDayTest(schedules[0].id);
 
-    const variances: TaskVariance[] = allTasks
+    // leaf tasks only: a summary's budget and cost are its children's, so listing it counted them twice (audit M2)
+    const variances: TaskVariance[] = leafTasks(allTasks)
       .filter(t => (t.budgetAllocated && t.budgetAllocated > 0) || (t.actualCost && t.actualCost > 0))
       .map(t => {
         const budget = t.budgetAllocated ?? 0;

@@ -15,16 +15,19 @@ const pending = new Map<string, ReturnType<typeof setTimeout>>();
 
 export function queueRaidReviewRerun(projectId: string | null | undefined): void {
   if (!projectId) return;
-  const existing = pending.get(projectId);
+  // Keyed per company: ids repeat across companies (every sample project is the same id), and one
+  // company's edit must not cancel another's pending review (2026-10-09 audit).
+  const key = `${getRequestContext()?.tenantDbName ?? ''}:${projectId}`;
+  const existing = pending.get(key);
   if (existing) clearTimeout(existing);
   const userId = getRequestContext()?.userId ?? null;
   const timer = setTimeout(() => {
-    pending.delete(projectId);
+    pending.delete(key);
     void runNow(projectId, userId);
   }, QUIET_MS);
   // Never keep the process alive just for a pending review
   (timer as { unref?: () => void }).unref?.();
-  pending.set(projectId, timer);
+  pending.set(key, timer);
 }
 
 // Loaded lazily: RaidReviewService depends on RiskService, which calls us

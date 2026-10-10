@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { config } from '../../config';
 import { authMiddleware } from '../../middleware/auth';
+import { keyChangesNeed } from '../../middleware/requireScope';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { userService } from '../../services/UserService';
 import { sendValidationError } from '../../utils/validationError';
@@ -31,6 +32,8 @@ function requireAdmin(request: FastifyRequest, reply: FastifyReply): boolean {
  */
 export async function supportSessionRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
+  // A key that only reads can't change admin screens (2026-10-09 audit M2)
+  fastify.addHook('preHandler', keyChangesNeed('admin'));
 
   fastify.get('/current', async (request, reply) => {
     if (!requireAdmin(request, reply)) return reply;
