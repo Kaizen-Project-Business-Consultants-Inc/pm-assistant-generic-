@@ -54,7 +54,9 @@ export default {
           300: '#5eead4',
           400: '#2dd4bf',
           500: '#14b8a6',
-          600: '#0d9488',
+          // Teal-600 (#0d9488) was 3.7:1 with white text and 3.6:1 as text on the page (audit 2 H2).
+          // One step darker on the same hue: white on it 4.9:1, it on stone-50 4.7:1, on gray-100 4.5:1.
+          600: '#0e7e74',
           700: '#0f766e',
           800: '#115e59',
           900: '#134e4a',

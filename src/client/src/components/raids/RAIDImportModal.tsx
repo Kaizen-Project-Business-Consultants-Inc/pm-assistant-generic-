@@ -601,7 +601,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                               <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
                                 {h}
                                 {/* eslint-disable-next-line no-restricted-syntax -- small: the file's column headers × the 40 RAID import fields */}
-                                {columnMap[i] && <span className="ml-1 text-blue-500">({RAID_TARGET_COLUMNS.find((c) => c.value === columnMap[i])?.label})</span>}
+                                {columnMap[i] && <span className="ml-1 text-blue-500 dark:text-blue-400">({RAID_TARGET_COLUMNS.find((c) => c.value === columnMap[i])?.label})</span>}
                               </th>
                             ))}
                           </tr>

@@ -96,20 +96,7 @@ import { RateSourceField } from '../components/resources/RateSourceField';
 import { useCanChangeData } from '../hooks/useCanChangeData';
 import { PlaceholderEmailBadge, GenericBadge } from '../components/resources/ResourceBadges';
 import { isPlaceholderEmail } from '../utils/placeholderEmail';
-
-const UTIL_COLORS = {
-  low: '#22c55e',      // green — under 80%
-  optimal: '#3b82f6',  // blue — 80-100%
-  over: '#f59e0b',     // amber — 100-120%
-  critical: '#ef4444', // red — 120%+
-};
-
-function utilColor(pct: number): string {
-  if (pct <= 80) return UTIL_COLORS.low;
-  if (pct <= 100) return UTIL_COLORS.optimal;
-  if (pct <= 120) return UTIL_COLORS.over;
-  return UTIL_COLORS.critical;
-}
+import { ALLOCATION_LEVELS, allocationCell, getAllocationLevel } from '../components/resources/workloadHeatColors';
 
 /** "12 Oct"-style label for a week-start calendar day — never shifted by the viewer's time zone */
 function formatWeek(dateStr: string): string {
@@ -475,7 +462,8 @@ export function ResourceManagementPage() {
 
       {/* Top-level tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-        <div className="flex gap-4 sm:gap-6 min-w-max">
+        {/* Wraps on wide screens (the last tab used to be cut off at 1440 px); scrolls on phones */}
+        <div className="flex gap-4 sm:gap-6 min-w-max lg:min-w-0 lg:flex-wrap" role="group" aria-label="Resources views">
           {([
             { key: 'team' as const, label: 'Team', icon: Users },
             // Team Planner moves work, so it's only for people who can change things (hide, don't disable)
@@ -490,6 +478,7 @@ export function ResourceManagementPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
+              aria-pressed={activeTab === tab.key}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === tab.key ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
               <tab.icon className="w-4 h-4" />
@@ -1037,7 +1026,9 @@ export function ResourceManagementPage() {
                   <p>No workload data available{isGlobalWorkload ? '.' : ' for this project.'}</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                // Scrolls sideways on narrow screens: focusable so the keyboard can scroll it
+                // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable (WCAG 2.1.1)
+                <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Workload by week">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-700">
@@ -1058,8 +1049,8 @@ export function ResourceManagementPage() {
                           </td>
                           <td className="px-3 py-3">
                             <span
-                              className="inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white"
-                              style={{ backgroundColor: utilColor(entry.averageUtilization) }}
+                              className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${getAllocationLevel(entry.averageUtilization).pillText}`}
+                              style={{ backgroundColor: getAllocationLevel(entry.averageUtilization).fill }}
                             >
                               {Math.round(entry.averageUtilization)}%
                             </span>
@@ -1074,8 +1065,8 @@ export function ResourceManagementPage() {
                             return (
                               <td key={i} className="px-1 py-3 text-center">
                                 <div
-                                  className="mx-auto w-10 h-8 rounded flex items-center justify-center text-xs font-bold text-white"
-                                  style={{ backgroundColor: utilColor(pct), opacity: pct === 0 ? 0.15 : 0.85 }}
+                                  className={`mx-auto w-10 h-8 rounded flex items-center justify-center text-xs font-bold ${allocationCell(pct).className}`}
+                                  style={allocationCell(pct).style}
                                   title={`${w.allocated}h / ${w.capacity}h (${pct}%)${w.cost > 0 ? ` — $${w.cost.toLocaleString()}` : ''}${w.actual > 0 ? ` | Actual: ${w.actual}h` : ''}`}
                                 >
                                   {pct > 0 ? `${pct}%` : ''}
@@ -1094,10 +1085,10 @@ export function ResourceManagementPage() {
                 <div className="px-4 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center gap-4 text-xs text-gray-500">
                   <span className="font-medium">Utilization:</span>
                   {[
-                    { label: '< 80% Under', color: UTIL_COLORS.low },
-                    { label: '80-100% Optimal', color: UTIL_COLORS.optimal },
-                    { label: '100-120% Warning', color: UTIL_COLORS.over },
-                    { label: '> 120% Critical', color: UTIL_COLORS.critical },
+                    { label: '< 80% Under', color: ALLOCATION_LEVELS.low.fill },
+                    { label: '80-100% Optimal', color: ALLOCATION_LEVELS.optimal.fill },
+                    { label: '100-120% Warning', color: ALLOCATION_LEVELS.over.fill },
+                    { label: '> 120% Critical', color: ALLOCATION_LEVELS.critical.fill },
                   ].map(l => (
                     <span key={l.label} className="flex items-center gap-1">
                       <span className="w-3 h-3 rounded" style={{ backgroundColor: l.color }} />

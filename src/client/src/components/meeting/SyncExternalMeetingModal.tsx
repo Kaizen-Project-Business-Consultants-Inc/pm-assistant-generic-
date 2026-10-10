@@ -126,7 +126,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
           {/* Title */}
           <div>
             <label htmlFor="sync-title" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Meeting Title <span className="text-red-500">*</span>
+              Meeting Title <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <input
               id="sync-title"
@@ -143,7 +143,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label htmlFor="sync-date" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-                Date <span className="text-red-500">*</span>
+                Date <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <input
                 id="sync-date"
@@ -218,7 +218,7 @@ export const SyncExternalMeetingModal: React.FC<SyncExternalMeetingModalProps> =
           {/* Summary */}
           <div>
             <label htmlFor="sync-summary" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Meeting Summary <span className="text-red-500">*</span>
+              Meeting Summary <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <textarea
               id="sync-summary"

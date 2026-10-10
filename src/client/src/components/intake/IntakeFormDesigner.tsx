@@ -351,7 +351,7 @@ export const IntakeFormDesigner: React.FC<Props> = ({ formId, onClose, onSaved }
                   <div key={field.id}>
                     <label htmlFor={`${uid}-${field.id}-preview`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {field.label || 'Untitled Field'}
-                      {field.required && <span className="text-red-500 ml-0.5">*</span>}
+                      {field.required && <span className="text-red-500 dark:text-red-400 ml-0.5">*</span>}
                     </label>
                     {field.type === 'text' && (
                       <input

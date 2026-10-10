@@ -50,7 +50,7 @@ export function ResourcePickList<T extends PickableResource>({ resources, curren
         </div>
         {r.isGeneric && <GenericBadge className="shrink-0" />}
         {extra?.(r)}
-        {selected && <span className="text-primary-600 text-xs font-medium">Current</span>}
+        {selected && <span className="text-primary-600 dark:text-primary-400 text-xs font-medium">Current</span>}
       </button>
     );
   };

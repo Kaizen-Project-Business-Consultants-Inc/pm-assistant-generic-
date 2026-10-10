@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import DOMPurify from 'dompurify';
@@ -8,6 +8,7 @@ import { ClientBreadcrumb } from './ClientBreadcrumb';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { useCanManageClients } from '../../hooks/useCanManageClients';
 import { AccessibleModal } from '../../components/ui/AccessibleModal';
+import { structureClientReport } from '../../utils/clientReportStructure';
 
 interface ClientReportResponse {
   report: { client: { id: string; name: string }; period?: string; today?: string };
@@ -38,6 +39,8 @@ export function ClientReportPage() {
 
   const name = data?.report?.client?.name || 'Client';
   const html = data?.html || '';
+  // Sanitised, then given real headings (the server sends styled paragraphs — fine for email)
+  const reportHtml = useMemo(() => structureClientReport(DOMPurify.sanitize(html)), [html]);
   const fileBaseName = `client-report-${name.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().slice(0, 10)}`;
 
   const handlePdf = async () => {
@@ -142,8 +145,10 @@ export function ClientReportPage() {
           {getApiErrorMessage(error, 'Could not make this client report. Please try again.')}
         </div>
       ) : html ? (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white p-4 overflow-x-auto">
-          <div ref={reportRef} className="client-report-container" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html) }} />
+        // The report is a light document (as emailed and printed): a sealed light surface keeps
+        // the dark-mode page rules from recolouring it (they made it unreadable — audit 2 H5)
+        <div className="report-light-surface rounded-xl border border-gray-200 dark:border-gray-700 p-4 overflow-x-auto">
+          <div ref={reportRef} className="client-report-container" dangerouslySetInnerHTML={{ __html: reportHtml }} />
         </div>
       ) : null}
 

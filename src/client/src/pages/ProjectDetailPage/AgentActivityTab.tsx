@@ -58,10 +58,10 @@ export function AgentActivityTab({ projectId }: { projectId: string }) {
             </button>
           )}
           {scanMutation.isError && (
-            <span className="text-xs text-red-600">Scan failed</span>
+            <span className="text-xs text-red-600 dark:text-red-400">Scan failed</span>
           )}
           {scanMutation.isSuccess && !scanMutation.isPending && (
-            <span className="text-xs text-green-600">Scan complete</span>
+            <span className="text-xs text-green-600 dark:text-green-400">Scan complete</span>
           )}
           <select
             aria-label="Filter by agent"

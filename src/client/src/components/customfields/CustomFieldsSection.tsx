@@ -67,7 +67,7 @@ export function CustomFieldsSection({ entityType, entityId, projectId }: CustomF
         <div key={field.id}>
           <label htmlFor={`${uid}-${field.id}`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
             {field.fieldLabel}
-            {field.isRequired && <span className="text-red-500 ml-0.5">*</span>}
+            {field.isRequired && <span className="text-red-500 dark:text-red-400 ml-0.5">*</span>}
           </label>
           {field.fieldType === 'text' && (
             <input

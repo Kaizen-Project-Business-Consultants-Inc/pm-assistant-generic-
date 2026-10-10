@@ -376,7 +376,7 @@ export const AccountBillingPage: React.FC = () => {
               <button
                 onClick={handleBuyTopUp}
                 disabled={topUpLoading}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-lg hover:bg-cyan-700 transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-700 text-white text-sm font-medium rounded-lg hover:bg-cyan-800 transition-colors disabled:opacity-50"
               >
                 {topUpLoading ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />

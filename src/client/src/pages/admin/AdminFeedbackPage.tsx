@@ -197,7 +197,7 @@ export function AdminFeedbackPage() {
                   {item.status}
                 </span>
                 {item.hasScreenshot && <span title="Has screenshot"><Camera className="w-4 h-4 text-gray-500" /></span>}
-                {item.adminReply && <span title="Replied"><Send className="w-3.5 h-3.5 text-green-500" /></span>}
+                {item.adminReply && <span title="Replied"><Send className="w-3.5 h-3.5 text-green-500 dark:text-green-400" /></span>}
                 <span className="text-xs text-gray-500 whitespace-nowrap">{fmt(item.createdAt)}</span>
                 <span className="px-2 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
                   {CATEGORY_LABELS[item.category] || item.category}

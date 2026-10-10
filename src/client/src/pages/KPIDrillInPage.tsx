@@ -450,7 +450,7 @@ export function KPIDrillInPage() {
           { key: 'dueDate', label: 'Due Date', sortable: true, render: (r: any) => r.dueDate ? formatCalendarDate(r.dueDate) : '-' },
           {
             key: 'daysOverdue', label: 'Days Overdue', sortable: true,
-            render: (r: any) => <span className="text-red-600 font-medium">{r.daysOverdue}</span>,
+            render: (r: any) => <span className="text-red-600 dark:text-red-400 font-medium">{r.daysOverdue}</span>,
           },
         ];
         return { rows: withDays, columns: cols };

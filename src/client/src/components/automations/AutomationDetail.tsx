@@ -330,7 +330,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit, canE
                 {analytics.errorPatterns.map((e: any, i: number) => (
                   <div key={i} className="flex items-center justify-between text-xs bg-red-50 dark:bg-red-900/20 rounded px-2 py-1">
                     <span className="text-red-700 dark:text-red-300 truncate mr-2 font-mono">{e.message}</span>
-                    <span className="text-red-500 shrink-0">{e.count}x</span>
+                    <span className="text-red-500 dark:text-red-400 shrink-0">{e.count}x</span>
                   </div>
                 ))}
               </div>
@@ -415,7 +415,7 @@ export function AutomationDetail({ projectId, automationId, onBack, onEdit, canE
                       </td>
                       <td className="py-2 text-right text-xs">
                         {exec.actionsExecuted}/{exec.actionsExecuted + exec.actionsFailed}
-                        {exec.actionsFailed > 0 && <span className="text-red-500 ml-1">({exec.actionsFailed} failed)</span>}
+                        {exec.actionsFailed > 0 && <span className="text-red-500 dark:text-red-400 ml-1">({exec.actionsFailed} failed)</span>}
                       </td>
                       <td className="py-2 text-right text-xs text-gray-500">
                         {exec.durationMs != null ? `${exec.durationMs}ms` : '-'}

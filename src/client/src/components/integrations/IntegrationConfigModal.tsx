@@ -423,7 +423,7 @@ export const IntegrationConfigModal: React.FC<IntegrationConfigModalProps> = ({
               <label htmlFor={`${uid}-${field.key}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 {field.label}
                 {field.required && (
-                  <span className="text-red-500 ml-0.5">*</span>
+                  <span className="text-red-500 dark:text-red-400 ml-0.5">*</span>
                 )}
               </label>
               <input

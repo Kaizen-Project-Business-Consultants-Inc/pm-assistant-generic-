@@ -262,7 +262,7 @@ export const AIContextTab: React.FC = () => {
               >
                 {saving ? 'Saving...' : 'Save Preferences'}
               </button>
-              {saved && <span className="text-sm text-green-600">Saved successfully</span>}
+              {saved && <span className="text-sm text-green-600 dark:text-green-400">Saved successfully</span>}
             </div>
           </div>
         </div>

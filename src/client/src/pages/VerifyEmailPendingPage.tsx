@@ -75,7 +75,7 @@ export function VerifyEmailPendingPage() {
         )}
 
         <p className="mt-6 text-xs text-gray-500">
-          Wrong email? <a href="/register" className="text-primary-600 hover:underline">Register again</a>
+          Wrong email? <a href="/register" className="text-primary-600 dark:text-primary-400 hover:underline">Register again</a>
         </p>
       </div>
     </div>

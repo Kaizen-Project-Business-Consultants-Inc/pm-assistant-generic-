@@ -582,7 +582,7 @@ const AIAccuracy: React.FC = () => {
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-gray-600 dark:text-gray-300">Accepted</span>
-                <span className="font-medium text-green-700">{feedback.accepted}</span>
+                <span className="font-medium text-green-700 dark:text-green-400">{feedback.accepted}</span>
               </div>
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
@@ -598,7 +598,7 @@ const AIAccuracy: React.FC = () => {
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-gray-600 dark:text-gray-300">Modified</span>
-                <span className="font-medium text-yellow-700">{feedback.modified}</span>
+                <span className="font-medium text-yellow-700 dark:text-yellow-400">{feedback.modified}</span>
               </div>
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div
@@ -614,7 +614,7 @@ const AIAccuracy: React.FC = () => {
             <div>
               <div className="flex items-center justify-between text-xs mb-1">
                 <span className="text-gray-600 dark:text-gray-300">Rejected</span>
-                <span className="font-medium text-red-700">{feedback.rejected}</span>
+                <span className="font-medium text-red-700 dark:text-red-400">{feedback.rejected}</span>
               </div>
               <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                 <div

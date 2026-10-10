@@ -336,7 +336,7 @@ export function MorningBriefingWidget({ scope }: Props) {
           aria-pressed={view === v}
           onClick={() => chooseView(v)}
           className={`px-3 py-1.5 text-xs font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500 ${
-            view === v ? 'bg-primary-600 text-white dark:bg-primary-500' : 'text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/30'
+            view === v ? 'bg-primary-600 text-white dark:bg-primary-700' : 'text-primary-700 dark:text-primary-300 hover:bg-primary-50 dark:hover:bg-primary-900/30'
           }`}
         >
           {label}

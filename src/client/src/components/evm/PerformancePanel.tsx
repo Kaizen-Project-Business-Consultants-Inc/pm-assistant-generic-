@@ -74,8 +74,8 @@ function computeTrend(values: number[]): 'up' | 'flat' | 'down' {
 }
 
 function TrendArrow({ direction }: { direction: 'up' | 'flat' | 'down' }) {
-  if (direction === 'up') return <span className="text-green-500 text-sm" title="Improving">↑</span>;
-  if (direction === 'down') return <span className="text-red-500 text-sm" title="Declining">↓</span>;
+  if (direction === 'up') return <span className="text-green-500 dark:text-green-400 text-sm" title="Improving">↑</span>;
+  if (direction === 'down') return <span className="text-red-500 dark:text-red-400 text-sm" title="Declining">↓</span>;
   return <span className="text-gray-500 text-sm" title="Stable">→</span>;
 }
 

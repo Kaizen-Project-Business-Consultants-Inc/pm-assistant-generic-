@@ -139,9 +139,9 @@ export function ComplianceReport({ projectId }: { projectId: string }) {
             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Blocked / Pending</span>
           </div>
           <p className="text-lg font-bold text-gray-900 dark:text-white">
-            <span className="text-red-600">{policyStats.blocked}</span>
+            <span className="text-red-600 dark:text-red-400">{policyStats.blocked}</span>
             {' / '}
-            <span className="text-amber-600">{policyStats.pendingApproval}</span>
+            <span className="text-amber-600 dark:text-amber-400">{policyStats.pendingApproval}</span>
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">Enforcement actions</p>
         </div>

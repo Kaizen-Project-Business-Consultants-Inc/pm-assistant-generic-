@@ -114,7 +114,7 @@ export const IntakeSubmissionForm: React.FC<Props> = ({ formId, onClose, onSubmi
               <div key={field.id}>
                 <label htmlFor={`${uid}-${field.id}`} className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   {field.label}
-                  {field.required && <span className="text-red-500 ml-0.5">*</span>}
+                  {field.required && <span className="text-red-500 dark:text-red-400 ml-0.5">*</span>}
                 </label>
 
                 {field.type === 'text' && (

@@ -794,7 +794,7 @@ export function AdminOperationsPage() {
                 <p className="text-xl font-bold text-gray-900 dark:text-white">{data.webhookStats.totalDeliveries}</p>
                 <div className="flex gap-2 mt-1 text-xs">
                   <span className="text-emerald-600 dark:text-emerald-400">{data.webhookStats.successDeliveries} ok</span>
-                  <span className="text-red-500">{data.webhookStats.failedDeliveries} failed</span>
+                  <span className="text-red-500 dark:text-red-400">{data.webhookStats.failedDeliveries} failed</span>
                 </div>
               </div>
               <div className={`bg-white dark:bg-gray-800 rounded-xl border-l-4 ${data.webhookStats.dlqPending > 0 ? 'border-l-amber-500' : 'border-l-gray-300'} border border-gray-200 dark:border-gray-700 p-3 shadow-sm`}>
@@ -804,7 +804,7 @@ export function AdminOperationsPage() {
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">DLQ Status</p>
                 <div className="flex gap-2 text-xs mt-1">
-                  <span className="text-red-500">{data.webhookStats.dlqFailed} failed</span>
+                  <span className="text-red-500 dark:text-red-400">{data.webhookStats.dlqFailed} failed</span>
                   <span className="text-emerald-600 dark:text-emerald-400">{data.webhookStats.dlqResolved} resolved</span>
                 </div>
               </div>

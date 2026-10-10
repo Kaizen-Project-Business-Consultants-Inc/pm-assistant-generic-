@@ -156,7 +156,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Blockers
-              {blockers.length > 0 && <span className="ml-1 text-red-500">({blockers.length})</span>}
+              {blockers.length > 0 && <span className="ml-1 text-red-500 dark:text-red-400">({blockers.length})</span>}
             </label>
             {blockers.map((b, i) => (
               <div key={i} className="flex items-center gap-2 mb-1.5">
@@ -279,7 +279,7 @@ export function StandupLogPanel({ sprintId, projectId }: StandupLogPanelProps) {
               )}
               {entry.blockers && entry.blockers.length > 0 && (
                 <div>
-                  <span className="text-xs font-bold text-red-500 uppercase tracking-wide">Blockers</span>
+                  <span className="text-xs font-bold text-red-500 dark:text-red-400 uppercase tracking-wide">Blockers</span>
                   <ul className="mt-0.5 space-y-0.5">
                     {entry.blockers.map((b, i) => (
                       <li key={i} className="flex items-start gap-1.5 text-sm text-red-600 dark:text-red-400">

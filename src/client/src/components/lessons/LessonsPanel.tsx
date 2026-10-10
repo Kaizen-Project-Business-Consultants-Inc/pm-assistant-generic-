@@ -81,7 +81,7 @@ export function LessonsPanel({ projectId, category }: LessonsPanelProps) {
             >
               <div className="flex items-center gap-1.5 mb-1">
                 {lesson.isElevated && (
-                  <span title="Elevated to org-wide"><ArrowUpCircle className="w-3 h-3 text-amber-500 flex-shrink-0" /></span>
+                  <span title="Elevated to org-wide"><ArrowUpCircle className="w-3 h-3 text-amber-500 dark:text-amber-400 flex-shrink-0" /></span>
                 )}
                 <span className="text-xs font-medium text-gray-900 dark:text-white truncate flex-1">
                   {lesson.title}

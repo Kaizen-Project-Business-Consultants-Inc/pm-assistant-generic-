@@ -80,21 +80,6 @@ interface Resource {
 // Helpers
 // ---------------------------------------------------------------------------
 
-
-const UTIL_COLORS = {
-  low: '#22c55e',
-  optimal: '#3b82f6',
-  over: '#f59e0b',
-  critical: '#ef4444',
-};
-
-function utilColor(pct: number): string {
-  if (pct <= 80) return UTIL_COLORS.low;
-  if (pct <= 100) return UTIL_COLORS.optimal;
-  if (pct <= 120) return UTIL_COLORS.over;
-  return UTIL_COLORS.critical;
-}
-
 /** "12 Oct"-style label for a week-start calendar day — never shifted by the viewer's time zone */
 function formatWeek(dateStr: string): string {
   return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' });
@@ -120,6 +105,7 @@ import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { RESOURCE_ROLES } from '../../constants/resourceRoles';
 import { RateSourceField } from '../resources/RateSourceField';
+import { ALLOCATION_LEVELS, allocationCell, getAllocationLevel } from '../resources/workloadHeatColors';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -672,8 +658,8 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                         </td>
                         <td className="px-3 py-3">
                           <span
-                            className="inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white"
-                            style={{ backgroundColor: utilColor(entry.averageUtilization) }}
+                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${getAllocationLevel(entry.averageUtilization).pillText}`}
+                            style={{ backgroundColor: getAllocationLevel(entry.averageUtilization).fill }}
                           >
                             {Math.round(entry.averageUtilization)}%
                           </span>
@@ -689,14 +675,14 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                           return (
                             <td key={i} className="px-1 py-3 text-center">
                               <div
-                                className="mx-auto w-14 h-10 rounded flex flex-col items-center justify-center text-white"
-                                style={{ backgroundColor: utilColor(pct), opacity: pct === 0 ? 0.15 : 0.85 }}
+                                className={`mx-auto w-14 h-10 rounded flex flex-col items-center justify-center ${allocationCell(pct).className}`}
+                                style={allocationCell(pct).style}
                                 title={`Allocated: ${w.allocated}h${w.otherProjects ? ` (this project ${w.thisProject ?? 0}h, other projects ${w.otherProjects}h)` : ''}\nActual: ${actual}h\nCapacity: ${w.capacity}h\nUtilization: ${pct}%${w.cost > 0 ? `\nCost: $${w.cost.toLocaleString()}` : ''}`}
                               >
                                 {pct > 0 ? (
                                   <>
                                     <span className="text-[11px] font-bold leading-tight">{actual > 0 ? actual : '-'}/{w.allocated}h</span>
-                                    <span className="text-[10px] opacity-80">{pct}%</span>
+                                    <span className="text-[10px]">{pct}%</span>
                                   </>
                                 ) : ''}
                               </div>
@@ -714,10 +700,10 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                 <span className="font-medium">Cells show actual/allocated hours.</span>
                 <span className="border-l border-gray-300 dark:border-gray-600 pl-3 font-medium">Utilization:</span>
                 {[
-                  { label: '< 80% Under', color: UTIL_COLORS.low },
-                  { label: '80-100% Optimal', color: UTIL_COLORS.optimal },
-                  { label: '100-120% Warning', color: UTIL_COLORS.over },
-                  { label: '> 120% Critical', color: UTIL_COLORS.critical },
+                  { label: '< 80% Under', color: ALLOCATION_LEVELS.low.fill },
+                  { label: '80-100% Optimal', color: ALLOCATION_LEVELS.optimal.fill },
+                  { label: '100-120% Warning', color: ALLOCATION_LEVELS.over.fill },
+                  { label: '> 120% Critical', color: ALLOCATION_LEVELS.critical.fill },
                 ].map(l => (
                   <span key={l.label} className="flex items-center gap-1">
                     <span className="w-3 h-3 rounded" style={{ backgroundColor: l.color }} />

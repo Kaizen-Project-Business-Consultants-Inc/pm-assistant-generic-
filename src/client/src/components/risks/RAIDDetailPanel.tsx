@@ -345,7 +345,7 @@ export function RAIDDetailPanel({ projectId, raidId, onClose, onEdit, members, c
             {item.type === 'risk' && item.triggerCondition && (
               <div>
                 <p className={labelClass}>
-                  Trigger Condition {item.triggered && <span className="text-amber-500 ml-1">Triggered {formatDate(item.triggeredAt)}</span>}
+                  Trigger Condition {item.triggered && <span className="text-amber-500 dark:text-amber-400 ml-1">Triggered {formatDate(item.triggeredAt)}</span>}
                 </p>
                 <p className={`${valueClass} whitespace-pre-wrap mt-1`}>{item.triggerCondition}</p>
               </div>

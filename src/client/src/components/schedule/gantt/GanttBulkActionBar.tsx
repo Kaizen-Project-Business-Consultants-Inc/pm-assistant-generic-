@@ -115,7 +115,7 @@ export const GanttBulkActionBar = React.memo(function GanttBulkActionBar({
         Clear
       </button>
       {bulkMessage && (
-        <span className={`text-xs font-medium ${bulkMessage.includes('fail') ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`text-xs font-medium ${bulkMessage.includes('fail') ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
           {bulkMessage}
         </span>
       )}

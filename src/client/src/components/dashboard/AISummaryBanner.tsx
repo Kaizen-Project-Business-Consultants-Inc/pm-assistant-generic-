@@ -203,7 +203,7 @@ export function AISummaryBanner() {
             <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {budget.onTrack || 0} on track
               {budget.overBudget > 0 && (
-                <span className="text-red-500 ml-2">
+                <span className="text-red-500 dark:text-red-400 ml-2">
                   {budget.overBudget} over budget
                 </span>
               )}
