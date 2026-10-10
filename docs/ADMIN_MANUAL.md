@@ -281,7 +281,7 @@ Map Stripe price IDs to app tiers via env vars:
 
 ### Token Top-Ups
 
-Users can purchase additional AI token packs at any time: **500,000 tokens for $5** per pack (1-20 packs per purchase). Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. Configure via `STRIPE_TOPUP_PRICE_ID`.
+Users can purchase additional AI token packs at any time: **500,000 tokens for $10** per pack (1-20 packs per purchase). Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. Configure via `STRIPE_TOPUP_PRICE_ID`.
 
 **Endpoints:**
 - `POST /api/v1/stripe/create-topup-session` — creates Stripe checkout for token purchase
