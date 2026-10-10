@@ -4,7 +4,7 @@ import type { EditableField } from '../types';
 import type { WorkCalendar } from '../../../../utils/workingDays';
 import {
   useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell, handleGridNavKey,
-  TABLE_KEYBOARD_RULES, useGridFocusScope, type GridCell,
+  TABLE_KEYBOARD_RULES, useGridFocusScope, indentDirection, keyboardEntryCell, type GridCell,
 } from '../../shared/hooks/useGridKeyboardPaste';
 import { firstByKey, firstIndexByKey } from '../../../../utils/lookup';
 
@@ -19,7 +19,9 @@ import { firstByKey, firstIndexByKey } from '../../../../utils/lookup';
  * from Escape closing the context menu, every key is left alone while the user isn't working in
  * the grid (useGridFocusScope: a click in the grid starts it, Escape or anything outside ends
  * it), and Tab is only taken when it indents / outdents something — so Tab elsewhere moves focus
- * and changes nothing, as in the Gantt (2026-10-09, audit K2).
+ * and changes nothing, as in the Gantt (2026-10-09, audit K2). Tabbing onto the table starts it
+ * too, on the active or first row; then Tab leaves the table and Alt+Shift+Right / Left indent /
+ * outdent (as they do after a click).
  * The steps it does the same way as the Gantt grid are shared (shared/hooks/useGridKeyboardPaste.ts
  * with TABLE_KEYBOARD_RULES). Moved out of TableView.tsx unchanged (2026-10-05, code-health item 4).
  */
@@ -78,8 +80,16 @@ export function useTableKeyboard({
   workCalendar?: WorkCalendar | null;
   rowNumToTaskId: Map<number, string>;
 }) {
-  // Whether a key is the grid's (a click in the grid, until Escape or a click / focus elsewhere)
-  const grid = useGridFocusScope();
+  // Whether a key is the grid's (a click in the grid or tabbing onto it, until Escape or a click /
+  // focus elsewhere). Tabbing onto the table puts the focused cell on the active or first row.
+  // With no task selected, the entry row is selected too, so Delete / Ctrl+C / Ctrl+D act on it.
+  const grid = useGridFocusScope(() => {
+    if (focusedCell) return;
+    const cell = keyboardEntryCell(visibleSorted, visibleFieldOrder, activeTaskId);
+    setFocusedCell(cell);
+    const entryTask = cell && !activeTaskId ? visibleSorted.find(t => t.id === cell.taskId) : undefined;
+    if (entryTask) onTaskSelect?.(entryTask);
+  });
   // Keyboard shortcuts
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -142,17 +152,18 @@ export function useTableKeyboard({
         return;
       }
 
-      // Tab / Shift+Tab indent / outdent the selection, else the focused cell's row, else the active
-      // row — only when there is something to move and a way to save it; otherwise Tab moves the
-      // focus on as usual
-      const tabIds = e.key === 'Tab' && !isInput && (onBulkUpdate || onTaskUpdate)
+      // Tab / Shift+Tab (after a click in the grid) or Alt+Shift+Right / Left indent / outdent the
+      // selection, else the focused cell's row, else the active row — only when there is something
+      // to move and a way to save it; otherwise Tab moves the focus on as usual
+      const indent = indentDirection(e);
+      const tabIds = indent && !isInput && (onBulkUpdate || onTaskUpdate)
         ? (selectedIds.size > 0 ? Array.from(selectedIds)
           : focusedCell?.taskId ? [focusedCell.taskId]
           : activeTaskId ? [activeTaskId] : [])
         : [];
       if (tabIds.length > 0) {
         e.preventDefault();
-        if (e.shiftKey) {
+        if (indent === 'outdent') {
           const taskById = firstByKey(tasks, t => t.id);
           for (const id of tabIds) {
             const task = taskById.get(id);
@@ -183,7 +194,10 @@ export function useTableKeyboard({
             }
           }
         }
+        return;
       }
+      // Alt+Shift+arrows with nothing to move (or read-only) don't move the focused cell either
+      if (indent && e.key !== 'Tab') return;
 
       // Escape (no context menu open) clears the focused cell (claim above has left the grid)
       if (e.key === 'Escape' && !isInput && focusedCell) setFocusedCell(null);
@@ -201,5 +215,5 @@ export function useTableKeyboard({
   }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar, rowNumToTaskId, grid]);
 
   // Restore focusedCell when editing ends
-  useRestoreFocusAfterEdit(editingCell, setFocusedCell);
+  useRestoreFocusAfterEdit(editingCell, setFocusedCell, grid.refocusAfterEdit);
 }

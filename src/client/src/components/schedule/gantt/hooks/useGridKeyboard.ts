@@ -5,18 +5,20 @@ import { useUnmountSafeTimeouts } from '../../shared/hooks/useUnmountSafeTimeout
 import { firstByKey } from '../../../../utils/lookup';
 import {
   useGridCellState, useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell,
-  handleGridNavKey, GANTT_KEYBOARD_RULES, useGridFocusScope,
+  handleGridNavKey, GANTT_KEYBOARD_RULES, useGridFocusScope, indentDirection, keyboardEntryCell,
 } from '../../shared/hooks/useGridKeyboardPaste';
 
 /**
  * The Gantt grid's keyboard: the focused cell (moved with the arrow keys, Enter/F2 to edit,
  * Escape to leave), cell and row copy/paste (Ctrl+C / Ctrl+V), Ctrl+D duplicate, Tab /
- * Shift+Tab indent / outdent (one task or the selection), Alt+Up/Down to move the active row,
+ * Shift+Tab (after a click in the grid) and Alt+Shift+Right / Left indent / outdent (one task or
+ * the selection), Alt+Up/Down to move the active row,
  * and putting the focus back on a cell when its inline edit ends. One document keydown
  * listener, off while a cell is being edited or the plan is read-only; keys typed in an
  * input, textarea or select are left alone, and so is every key while the user isn't working
  * in the grid (useGridFocusScope: a click in the grid starts it, Escape or anything outside
- * ends it — so Tab elsewhere moves focus and changes nothing; 2026-10-09, audit K1). Editing state, selection, columns and the bulk
+ * ends it — so Tab elsewhere moves focus and changes nothing; 2026-10-09, audit K1; tabbing onto
+ * the grid starts it too, on the active or first row, and then Tab leaves the grid). Editing state, selection, columns and the bulk
  * message stay owned by GanttChart / other hooks and are passed in.
  * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4). The steps it does
  * the same way as the Table view (cell state, copy, paste, row pick, arrows / Enter / F2 /
@@ -70,9 +72,6 @@ export function useGridKeyboard({
   } = useGridCellState<EditableField>();
   // The "Copied N tasks" message timer is cleared if the Gantt goes away first
   const later = useUnmountSafeTimeouts();
-  // Whether a key is the grid's (a click in the grid, until Escape or a click / focus elsewhere)
-  const grid = useGridFocusScope();
-
   const rowTasks = useMemo(() => rows.map(r => r.task), [rows]);
 
   /** Get visible FIELD_ORDER (only fields whose columns are visible) */
@@ -87,6 +86,17 @@ export function useGridKeyboard({
       .map(c => colKeyToField[c.key]);
   }, [isColVisible, orderedColumns]);
 
+  // Whether a key is the grid's (a click in the grid or tabbing onto it, until Escape or a click /
+  // focus elsewhere). Tabbing onto an editable grid puts the focused cell on the active or first row.
+  // With no task selected, the entry row is selected too, so Delete / Ctrl+C / Ctrl+D act on it.
+  const grid = useGridFocusScope(() => {
+    if (!onTaskUpdate || focusedCell) return;
+    const cell = keyboardEntryCell(rowTasks, visibleFieldOrder, activeTaskId);
+    setFocusedCell(cell);
+    const entryTask = cell && !activeTaskId ? rowTasks.find(t => t.id === cell.taskId) : undefined;
+    if (entryTask) onTaskSelect?.(entryTask);
+  });
+
   // Arrow key navigation + copy/paste + indent/outdent
   useEffect(() => {
     if (!onTaskUpdate || editingCell) return;
@@ -94,9 +104,11 @@ export function useGridKeyboard({
       // Is this key the grid's? (Escape, even on a row checkbox, also leaves the grid: the next Tab moves on)
       const inGrid = grid.claim(e);
       const target = e.target as HTMLElement;
-      // Allow Tab through for indent/outdent even when a checkbox is focused
+      // Tab / Alt+Shift+arrows (indent / outdent) — or null for any other key
+      const indent = indentDirection(e);
+      // Allow indent/outdent through even when a checkbox is focused
       const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
-      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && e.key === 'Tab')) return;
+      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && indent)) return;
       // Not working in the grid: the key does what it does anywhere else (Tab moves focus)
       if (!inGrid) return;
 
@@ -163,8 +175,8 @@ export function useGridKeyboard({
         return;
       }
 
-      // Indent/outdent with Tab/Shift+Tab (works with multi-select, focusedCell, or activeTaskId)
-      if (e.key === 'Tab' && (someSelected || focusedCell || activeTaskId)) {
+      // Indent/outdent with Tab/Shift+Tab or Alt+Shift+Right/Left (works with multi-select, focusedCell, or activeTaskId)
+      if (indent && (someSelected || focusedCell || activeTaskId)) {
         e.preventDefault();
 
         // Determine which task IDs to indent/outdent
@@ -177,7 +189,7 @@ export function useGridKeyboard({
           const rowIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
           if (rowIdx === -1) return;
           const task = rows[rowIdx].task;
-          if (e.shiftKey) {
+          if (indent === 'outdent') {
             if (task.parentTaskId) {
               const parent = tasks.find(t => t.id === task.parentTaskId);
               onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
@@ -190,7 +202,7 @@ export function useGridKeyboard({
           }
         } else if (onBulkUpdate) {
           // Multi-task indent/outdent via bulk API
-          if (e.shiftKey) {
+          if (indent === 'outdent') {
             // Outdent: all selected tasks that share the same parent get promoted
             // Group by parent and outdent each group
             const grouped = new Map<string, string[]>();
@@ -239,10 +251,12 @@ export function useGridKeyboard({
   }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId, later, grid]);
 
   // When editing ends, restore focus to that cell
-  useRestoreFocusAfterEdit(editingCell, setFocusedCell);
+  useRestoreFocusAfterEdit(editingCell, setFocusedCell, grid.refocusAfterEdit);
 
   return {
     focusedCell,
     pasteFlash,
+    /** The list-mode rule, for GanttChart's Delete key */
+    grid,
   };
 }

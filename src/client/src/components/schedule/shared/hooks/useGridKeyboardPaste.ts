@@ -13,7 +13,8 @@ import { isLockedCell } from '../../summaryRollup';
  * edit ends, copying a cell, pasting into a cell (summary cells refused; Duration and
  * Predecessors through the same planners as typing; % clamped 0-100), picking the rows to
  * copy / duplicate, moving the focused cell (arrows, Enter/F2 to edit, Enter on a row to
- * focus its first field), and whether a key is the grid's at all (useGridFocusScope).
+ * focus its first field), whether a key is the grid's at all (useGridFocusScope), which keys
+ * indent / outdent (indentDirection) and where keyboard entry puts the focused cell.
  *
  * Each view keeps its own keydown listener, because the order of the keys and the guards
  * around them differ (Delete, Escape, Alt+Up/Down, Tab indent, when the listener is on, what
@@ -77,65 +78,127 @@ const GRID_SELECTOR = '[role="grid"]';
 /** Controls with their own Tab / Enter (sort headers, the collapse chevron, row Edit / Delete buttons, links) */
 const OWN_KEYS_SELECTOR = 'button, a[href], [role="button"], [tabindex]:not([tabindex="-1"])';
 const insideGrid = (target: EventTarget | null) => target instanceof Element && target.closest(GRID_SELECTOR) !== null;
+/** The grid root itself (one Tab stop, tabIndex 0) — not a cell, button or field inside it */
+const isGridRoot = (target: EventTarget | null) => target instanceof Element && target.matches(GRID_SELECTOR);
 /** A key pressed with nothing particular focused (after a click on a row, the browser focuses <body>). */
 const isNowhere = (target: EventTarget | null) =>
   target === document || target === document.body || target === document.documentElement;
+/** A plain part of the grid: the root or a cell, not a button / link / sort header with keys of its own */
+const isPlainGridPart = (target: EventTarget | null) => {
+  if (!(target instanceof Element) || !insideGrid(target)) return false;
+  const own = target.closest(OWN_KEYS_SELECTOR);
+  return own === null || isGridRoot(own);
+};
 /** Where Escape belongs to the field (cancel an edit, close a picker): text inputs, textareas, selects */
 const isTextEntry = (target: EventTarget | null) =>
   target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement
   || (target instanceof HTMLInputElement && target.type !== 'checkbox' && target.type !== 'radio');
 
 /**
- * Whether a key belongs to the task grid (WCAG 2.1.2 / 3.2.2, audit K1/K2, 2026-10-09). The grid
- * keys (Tab indent, Delete, Ctrl+C/V/D, Alt+Up/Down, arrows, Enter/F2) used to act on the whole
+ * Whether a key belongs to the task grid (WCAG 2.1.1 / 2.1.2 / 3.2.2, audit K1/K2, 2026-10-09). The
+ * grid keys (indent, Delete, Ctrl+C/V/D, Alt+Up/Down, arrows, Enter/F2) used to act on the whole
  * page: Tab on a toolbar button indented the clicked task and focus could never leave.
- * Now a key is the grid's only while the user is working in the grid:
- * - a mouse press inside the grid starts it (rows and cells aren't focusable, so after the click
- *   the browser's focus is on <body>; the key then counts as the grid's);
+ * Now a key is the grid's only while the user is working in the grid ("list mode"):
+ * - a mouse press inside the grid starts it (by mouse);
+ * - the grid root is one Tab stop: focus landing on it by keyboard starts it (by keyboard) and
+ *   calls `onEnterByKeyboard` (the view puts the focused cell on the active or first row); a key
+ *   other than Tab / Escape on the focused root after leaving starts it again;
  * - a press outside the grid, focus moving to anything outside it, or Escape ends it (Escape
  *   in a text field only cancels that field);
- * - the key must come from <body> or from a plain part of the grid (a row checkbox counts; the
- *   callers decide about inputs) — never from a toolbar, filter or dialog, nor from a button,
- *   link or sort header inside the grid, which keep their own Tab and Enter.
- * Focus arriving in the grid by Tab doesn't start it, so Tab always walks through. Both views
- * use this one rule: call `claim(e)` first thing in the keydown listener.
+ * - the key must come from <body>, the grid root or a plain part of the grid (a row checkbox
+ *   counts; the callers decide about inputs) — never from a toolbar, filter or dialog, nor from a
+ *   button, link or sort header inside the grid, which keep their own Tab and Enter;
+ * - Tab is the grid's (indent) only when list mode started with the mouse. Started by keyboard,
+ *   Tab and Shift+Tab leave the grid as usual (no trap); Alt+Shift+Right / Left indent instead.
+ * Both views use this one rule: call `claim(e)` first thing in the keydown listener.
  */
-export function useGridFocusScope() {
+export function useGridFocusScope(onEnterByKeyboard?: () => void) {
   const working = useRef(false);
-  useEffect(() => {
-    const onMouseDown = (e: MouseEvent) => { working.current = insideGrid(e.target); };
-    const onFocusIn = (e: FocusEvent) => { if (!insideGrid(e.target)) working.current = false; };
-    document.addEventListener('mousedown', onMouseDown, true);
-    document.addEventListener('focusin', onFocusIn, true);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown, true);
-      document.removeEventListener('focusin', onFocusIn, true);
+  const byKeyboard = useRef(false);
+  // The grid root a keyboard user is on (focus goes back to it when an inline edit closes)
+  const root = useRef<HTMLElement | null>(null);
+  // The latest callback (it reads the view's current rows and focused cell)
+  const onEnter = useRef(onEnterByKeyboard);
+  useEffect(() => { onEnter.current = onEnterByKeyboard; });
+  const scope = useMemo(() => {
+    const enterByKeyboard = (el: EventTarget | null) => {
+      if (el instanceof HTMLElement) root.current = el;
+      working.current = true;
+      byKeyboard.current = true;
+      onEnter.current?.();
+    };
+    return {
+      onMouseDown: (e: MouseEvent) => { working.current = insideGrid(e.target); byKeyboard.current = false; },
+      onFocusIn: (e: FocusEvent) => {
+        if (!insideGrid(e.target)) working.current = false;
+        // A click focuses the root too, but its mousedown came first (already working, by mouse)
+        else if (isGridRoot(e.target) && !working.current) enterByKeyboard(e.target);
+      },
+      /**
+       * true: this key is the grid's to handle. Escape (outside a text field) also ends working in
+       * the grid — after this key, so the view's own Escape (clear the focused cell) still runs.
+       */
+      claim: (e: KeyboardEvent) => {
+        const t = e.target;
+        if (!working.current && isGridRoot(t) && e.key !== 'Tab' && e.key !== 'Escape') enterByKeyboard(t);
+        const mine = working.current && (isNowhere(t) || isPlainGridPart(t))
+          && !(e.key === 'Tab' && byKeyboard.current);
+        if (e.key === 'Escape' && !isTextEntry(t)) working.current = false;
+        return mine;
+      },
+      /**
+       * An inline edit closed: its input is gone and the browser's focus fell to <body>. A keyboard
+       * user goes back on the grid root, so the focus ring, the cell read-out and a screen reader's
+       * focus mode (arrows to the grid, not browse mode) carry on.
+       */
+      refocusAfterEdit: () => {
+        if (working.current && byKeyboard.current && isNowhere(document.activeElement) && root.current?.isConnected) {
+          root.current.focus({ preventScroll: true });
+        }
+      },
     };
   }, []);
-  return useMemo(() => ({
-    /**
-     * true: this key is the grid's to handle. Escape (outside a text field) also ends working in
-     * the grid — after this key, so the view's own Escape (clear the focused cell) still runs.
-     */
-    claim: (e: KeyboardEvent) => {
-      const t = e.target;
-      const mine = working.current && (isNowhere(t)
-        || (insideGrid(t) && !(t instanceof Element && t.closest(OWN_KEYS_SELECTOR))));
-      if (e.key === 'Escape' && !isTextEntry(t)) working.current = false;
-      return mine;
-    },
-  }), []);
+  useEffect(() => {
+    document.addEventListener('mousedown', scope.onMouseDown, true);
+    document.addEventListener('focusin', scope.onFocusIn, true);
+    return () => {
+      document.removeEventListener('mousedown', scope.onMouseDown, true);
+      document.removeEventListener('focusin', scope.onFocusIn, true);
+    };
+  }, [scope]);
+  return useMemo(() => ({ claim: scope.claim, refocusAfterEdit: scope.refocusAfterEdit }), [scope]);
 }
 
-/** When an inline edit ends, the focus goes back to that cell. */
+/**
+ * Indent / outdent keys: Tab / Shift+Tab (once list mode started with the mouse; useGridFocusScope
+ * decides) and Alt+Shift+Right / Alt+Shift+Left (MS Project; any list mode). null for any other key.
+ */
+export function indentDirection(e: KeyboardEvent): 'indent' | 'outdent' | null {
+  if (e.key === 'Tab') return e.shiftKey ? 'outdent' : 'indent';
+  if (e.altKey && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    if (e.key === 'ArrowRight') return 'indent';
+    if (e.key === 'ArrowLeft') return 'outdent';
+  }
+  return null;
+}
+
+/** Where entering the grid by keyboard puts the focused cell: the active row (else the first row), first visible field. */
+export function keyboardEntryCell<F extends string>(rowTasks: GanttTask[], fieldOrder: F[], activeTaskId?: string | null): GridCell<F> | null {
+  const taskId = activeTaskId && rowTasks.some(t => t.id === activeTaskId) ? activeTaskId : rowTasks[0]?.id;
+  return taskId && fieldOrder.length > 0 ? { taskId, field: fieldOrder[0] } : null;
+}
+
+/** When an inline edit ends, the focus goes back to that cell (and, for a keyboard user, onto the grid: `onEditEnd`). */
 export function useRestoreFocusAfterEdit<F extends string>(
   editingCell: GridCell<F> | null,
   setFocusedCell: (cell: GridCell<F> | null) => void,
+  onEditEnd?: () => void,
 ) {
   useEffect(() => {
     if (!editingCell) return;
     return () => {
       setFocusedCell(editingCell);
+      onEditEnd?.();
     };
     // setFocusedCell is a state setter (stable); the effect only follows editingCell, as before
     // eslint-disable-next-line react-hooks/exhaustive-deps

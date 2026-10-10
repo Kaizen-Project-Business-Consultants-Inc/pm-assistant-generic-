@@ -9,6 +9,10 @@
  * Now (useGridFocusScope, shared by both views): a mouse press in the grid starts "working in
  * the grid"; a press or focus elsewhere, or Escape, ends it. Keys from outside the grid, or after
  * that, behave as anywhere else: Tab moves focus, nothing is changed.
+ *
+ * Keyboard way in (WCAG 2.1.1, 2026-10-09): the grid root is one Tab stop. Tabbing onto it starts
+ * working in the grid on the active (else first) row; the arrows move; Alt+Shift+Right / Left
+ * indent / outdent; Tab and Shift+Tab leave the grid (no trap). Click-then-Tab still indents.
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
@@ -38,6 +42,7 @@ function buildPage() {
   toolbar.append(search, button);
   const grid = document.createElement('div');
   grid.setAttribute('role', 'grid');
+  grid.tabIndex = 0; // the grid root is one Tab stop, as in both views
   const row = document.createElement('div');
   row.setAttribute('role', 'row');
   const box = Object.assign(document.createElement('input'), { type: 'checkbox' });
@@ -200,7 +205,8 @@ for (const view of [gantt, table]) {
       for (const round of [0, 1]) {
         if (round) { mouseDown(page.row); mouseDown(page.button); }
         for (const [k, opts] of [['Delete', {}], ['d', { ctrlKey: true }], ['c', { ctrlKey: true }], ['v', { ctrlKey: true }],
-          ['ArrowDown', { altKey: true }], ['ArrowUp', { altKey: true }], ['Enter', {}]] as Array<[string, KeyboardEventInit]>) {
+          ['ArrowDown', { altKey: true }], ['ArrowUp', { altKey: true }], ['Enter', {}],
+          ['ArrowRight', { altKey: true, shiftKey: true }], ['ArrowLeft', { altKey: true, shiftKey: true }]] as Array<[string, KeyboardEventInit]>) {
           for (const target of [document.body, page.button]) {
             expect(key(k, target, opts).defaultPrevented, `${k} round ${round}`).toBe(false);
           }
@@ -253,6 +259,67 @@ for (const view of [gantt, table]) {
       const v = view.mount({ activeTaskId: 'c', readOnly: true });
       mouseDown(page.row);
       expect(key('Tab').defaultPrevented).toBe(false);
+      expect(v.changed()).toEqual([]);
+    });
+
+    it('keyboard: Tab onto the grid starts list mode on the first row; arrows move; Alt+Shift+Right indents; Tab leaves', () => {
+      buildPage();
+      const v = view.mount({});
+      focusOn(page.grid); // arrived by Tab: no mouse press
+      expect(v.focusedCell()).toEqual({ taskId: 'p', field: 'name' });
+      expect(key('ArrowDown', page.grid).defaultPrevented).toBe(true);
+      key('ArrowDown', page.grid);
+      expect(v.focusedCell()).toEqual({ taskId: 'b', field: 'name' });
+      expect(v.changed()).toEqual([]);
+      const e = key('ArrowRight', page.grid, { altKey: true, shiftKey: true });
+      expect(e.defaultPrevented).toBe(true);
+      expect(v.changed().length).toBe(1); // B goes under A (one update, or one bulk update)
+      expect(JSON.stringify(v.changed()[0])).toContain('"a"');
+      // Tab and Shift+Tab move out of the grid: not taken, nothing indented
+      expect(key('Tab', page.grid).defaultPrevented).toBe(false);
+      expect(key('Tab', page.grid, { shiftKey: true }).defaultPrevented).toBe(false);
+      expect(v.changed().length).toBe(1);
+    });
+
+    it('keyboard: Tab onto the grid keeps the active row; Alt+Shift+Left outdents it', () => {
+      buildPage();
+      const v = view.mount({ activeTaskId: 'a' });
+      focusOn(page.grid);
+      expect(v.focusedCell()).toEqual({ taskId: 'a', field: 'name' });
+      expect(key('ArrowLeft', page.grid, { altKey: true, shiftKey: true }).defaultPrevented).toBe(true);
+      expect(v.changed().length).toBe(1); // A comes out of the phase
+    });
+
+    it('mouse: after a click, Alt+Shift+Right indents too, and Tab still indents', () => {
+      buildPage();
+      const v = view.mount({ activeTaskId: 'b' });
+      mouseDown(page.row);
+      focusOn(page.grid); // a click focuses the grid root too: still "by mouse"
+      expect(key('ArrowRight', page.grid, { altKey: true, shiftKey: true }).defaultPrevented).toBe(true);
+      expect(key('Tab', page.grid).defaultPrevented).toBe(true);
+      expect(v.changed().length).toBe(2);
+    });
+
+    it('keyboard: Escape leaves list mode; Tab then moves on; an arrow on the grid starts it again', () => {
+      buildPage();
+      const v = view.mount({ activeTaskId: 'b' });
+      focusOn(page.grid);
+      key('Escape', page.grid);
+      expect(key('ArrowRight', page.grid, { altKey: true, shiftKey: true }).defaultPrevented).toBe(true); // starts it again
+      expect(v.changed().length).toBe(1);
+      key('Escape', page.grid);
+      expect(key('Tab', page.grid).defaultPrevented).toBe(false);
+      expect(v.changed().length).toBe(1);
+    });
+
+    it('read-only plan, by keyboard: Alt+Shift+arrows and Tab change nothing', () => {
+      buildPage();
+      const v = view.mount({ activeTaskId: 'b', readOnly: true });
+      focusOn(page.grid);
+      for (const k of ['ArrowRight', 'ArrowLeft']) {
+        expect(key(k, page.grid, { altKey: true, shiftKey: true }).defaultPrevented).toBe(false);
+      }
+      expect(key('Tab', page.grid).defaultPrevented).toBe(false);
       expect(v.changed()).toEqual([]);
     });
 

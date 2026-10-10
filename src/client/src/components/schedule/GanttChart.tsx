@@ -527,27 +527,6 @@ export function GanttChart({
     }
   }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, showBulkDone, clearBulkState]);
 
-  // Delete key for single or bulk delete
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Delete') return;
-      const target = e.target as HTMLElement;
-      const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
-      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !isCheckbox) return;
-      e.preventDefault();
-      if (selectedIds.size > 0 && onBulkDelete) {
-        handleBulkDelete();
-      } else if (activeTaskId && onBulkDelete) {
-        // Single selected task — use same bulk delete flow for consistency & undo support
-        setPendingDeleteIds([activeTaskId]);
-      } else if (activeTaskId && onDeleteTask) {
-        setPendingDeleteIds([activeTaskId]);
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, onBulkDelete, handleBulkDelete, activeTaskId, onDeleteTask, tasks]);
-
   const timelineRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
 
@@ -714,12 +693,35 @@ export function GanttChart({
 
 
   // Grid keyboard: focused cell + arrow keys, Enter/F2/Escape, copy/paste (cell and row),
-  // Ctrl+D, Tab/Shift+Tab indent/outdent, Alt+Up/Down reorder; focus back on a cell after editing
-  const { focusedCell, pasteFlash } = useGridKeyboard({
+  // Ctrl+D, Tab/Shift+Tab and Alt+Shift+Right/Left indent/outdent, Alt+Up/Down reorder; focus back
+  // on a cell after editing
+  const { focusedCell, pasteFlash, grid } = useGridKeyboard({
     tasks, rows, editingCell, activeTaskId, onTaskUpdate, onTaskReorder, onTaskSelect,
     onDuplicateTasks, onBulkUpdate, startEditing, getTaskFieldValue, rowNumToTaskId, workCalendar,
     someSelected, selectedIds, setBulkMessage, orderedColumns, isColVisible,
   });
+
+  // Delete key for single or bulk delete — only while working in the list (useGridFocusScope: a
+  // click in the grid or tabbing onto it). Elsewhere, or with nothing to delete, Delete keeps its
+  // usual job (deleting text in a field) and is not prevented (2026-10-09).
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete') return;
+      const target = e.target as HTMLElement;
+      const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
+      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !isCheckbox) return;
+      if (!grid.claim(e)) return;
+      // The selection (bulk flow), else the active task — the same bulk flow for undo support
+      const ids = selectedIds.size > 0 && onBulkDelete ? Array.from(selectedIds)
+        : activeTaskId && (onBulkDelete || onDeleteTask) ? [activeTaskId]
+        : [];
+      if (ids.length === 0) return;
+      e.preventDefault();
+      setPendingDeleteIds(ids);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [grid, selectedIds, onBulkDelete, activeTaskId, onDeleteTask]);
 
   // Scroll to today on mount
   useEffect(() => {
