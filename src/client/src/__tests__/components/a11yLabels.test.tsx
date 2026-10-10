@@ -27,7 +27,7 @@ vi.mock('../../services/api', () => ({
   }),
 }));
 vi.mock('../../hooks/useProjectRole', () => ({
-  useProjectRole: () => ({ canEdit: true, role: 'pm', isLoading: false }),
+  useProjectRole: () => ({ canEdit: true, isManager: true, role: 'pm', isLoading: false }),
 }));
 
 // The Table's assignee picker loads people; not needed here

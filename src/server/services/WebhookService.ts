@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { webhookRepository, Webhook } from '../database/WebhookRepository';
 import { webhookDeliveryRepository } from '../database/WebhookDeliveryRepository';
 import logger from '../utils/logger';
+import type { WebhookEvent } from '../constants/webhookEvents';
 
 export type { Webhook } from '../database/WebhookRepository';
 
@@ -73,7 +74,7 @@ export class WebhookService {
     return webhookRepository.deleteByUser(webhookId, userId);
   }
 
-  async dispatch(event: string, payload: object, userId?: string): Promise<void> {
+  async dispatch(event: WebhookEvent, payload: object, userId?: string): Promise<void> {
     if (!userId) return;
     let hooks: Webhook[];
     try {

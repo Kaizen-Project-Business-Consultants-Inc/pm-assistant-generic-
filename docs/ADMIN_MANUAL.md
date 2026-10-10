@@ -627,8 +627,8 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 ## 12. Webhooks
 
 ### Configuring Outbound Webhooks
-- **Settings > Webhooks** -- provide a target URL and tick event types (project managers, PMOs and the owner; others are refused when they save).
-- The tab offers `task.created`, `task.updated`, `task.deleted`, `project.created`, `project.updated`, `proposal.created`, `proposal.accepted` and `agent.scan_completed`. The app also sends `sprint.created`, `sprint.started`, `sprint.completed`, `risk.created`, `risk.updated`, `change_request.created` and `change_request.withdrawn`, which can only be subscribed to through the API for now.
+- **Settings > Webhooks** -- provide a target URL and tick event types (roles that may change data — project managers, PMOs, the owner and the other write roles; hidden for team members, viewers and executives).
+- The tab offers every event the app sends: `task.created`, `task.updated`, `task.deleted`, `project.created`, `project.updated`, `proposal.created`, `proposal.accepted`, `sprint.created`, `sprint.started`, `sprint.completed`, `risk.created`, `risk.updated`, `change_request.created`, `change_request.approved`, `change_request.rejected`, `change_request.returned`, `change_request.withdrawn` and `agent.scan_completed`. One list: `src/server/constants/webhookEvents.ts` — `webhookService.dispatch` accepts only these names (type-checked), and a client test keeps the tab's copy equal.
 - Each delivery has an HMAC-SHA256 signature in the `X-Webhook-Signature` header for verification.
 
 ### Delivery Logs

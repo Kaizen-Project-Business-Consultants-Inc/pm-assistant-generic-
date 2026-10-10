@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-10 — Audit 2 app gaps: hide what a role is always refused (branch client-gaps-audit2, not deployed when written)
+- Settings: API Keys keeps listing/revoking own keys (Claude connections) for read-only roles but Create Key is hidden for them; the 'admin' right is offered only to the Kovarti platform admin. Webhooks tab hidden for roles without 'write'.
+- Webhook events: one list `src/server/constants/webhookEvents.ts` (18 events); `webhookService.dispatch` takes only `WebhookEvent` (type-checked); the tab offered 8 — now all, incl. change_request approved/rejected/returned (were sent, never offered). Client copy kept equal by a test.
+- Own AI Preferences are a personal setting (like 99cee55e): `PUT /context/config/user/<own id>` needs sign-in only (+ a key that may write); org/project still need 'write'.
+- `GET /projects/:id/members/me`: new `isManager` (project Manager/Owner) vs `canEdit` (= Manager AND role has 'write'); `canManageOwners` also needs 'write'. A team member/viewer made project Manager no longer sees edit buttons that 403, but keeps the Manager's read views (RAID Review, weekly review — Run/Dismiss/status report hidden — and timesheet flags, which need only 'read').
+- Change requests: Manage Workflows only with canEdit. Team tab: invite/role/remove members owner (or admin) only; guests invited by owner/admin/PM, revoked by owner/admin. Digest label 'Send time (your time zone)'.
+- Test fix: a11yKeyboardFixes stubs scrollIntoView itself (passed only when another file had stubbed it first).
+
 ## 2026-10-09 — Audit 2 part 7: guides match the app (branch guides-audit2, docs only, not deployed when written)
 - PRODUCT_MANUAL, ADMIN_MANUAL, README, WORLD_CLASS (committed): roles (platform admin / owner as PMO / PMO / PM / executive / team member / viewer / guest; Editor gone), Team plan $19/seat min 3 + unlimited viewers, billing owner-only, API keys never exceed the role, real env vars and paths, nightly checks on for staging / off for production, automations every 5 min, 36 Table / 15 Gantt columns, MCP over OAuth.
 - USER_GUIDE + quick guide + guideAnchors role test: written and code-reviewed, committed only after client tsc + guide tests + lint (machine was low on memory).

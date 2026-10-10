@@ -24,7 +24,7 @@ vi.mock('../../services/api', () => ({
     getProjectMembers: vi.fn().mockResolvedValue({ members: [] }),
   },
 }));
-vi.mock('../../hooks/useProjectRole', () => ({ useProjectRole: () => ({ canEdit: true, role: 'owner', isLoading: false }) }));
+vi.mock('../../hooks/useProjectRole', () => ({ useProjectRole: () => ({ canEdit: true, isManager: true, role: 'owner', isLoading: false }) }));
 vi.mock('../../components/raids/review/useRaidReview', () => ({ useRaidReview: () => ({ data: null }) }));
 vi.mock('../../components/risks/RAIDDetailPanel', () => ({
   RAIDDetailPanel: ({ raidId }: { raidId: string }) => <div data-testid="raid-detail">{raidId}</div>,
@@ -37,6 +37,10 @@ import { MOBILE_MENU_BUTTON_ID } from '../../components/layout/mobileMenuIds';
 import { useAuthStore, type User } from '../../stores/authStore';
 import { structureClientReport } from '../../utils/clientReportStructure';
 import { RAIDTab } from '../../pages/ProjectDetailPage/RAIDTab';
+
+// The test DOM has no scrollIntoView (browsers do); the palette scrolls its active item into view.
+// Without this the file only passed when another file had stubbed it first.
+Element.prototype.scrollIntoView ??= vi.fn();
 
 afterEach(() => {
   cleanup();

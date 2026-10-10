@@ -1691,7 +1691,7 @@ Critical and high-severity notifications are automatically sent via email (Resen
 
 Users control digest content and delivery time in **Settings > Notifications**:
 
-- **Preferred send hour** — choose any hour 0–23 UTC (replaces the previous hardcoded 7 AM delivery). The `DigestService` cron checks each user's configured hour and sends at the right time.
+- **Preferred send hour** — choose any hour 0–23 in the person's own time zone (Settings → Display; the label said UTC until October 2026) (replaces the previous hardcoded 7 AM delivery). The `DigestService` cron checks each user's configured hour and sends at the right time.
 - **Section toggles** — checkboxes to include or exclude each section independently:
   - Overdue Tasks
   - Upcoming Deadlines

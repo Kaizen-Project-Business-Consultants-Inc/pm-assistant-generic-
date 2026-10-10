@@ -34,6 +34,9 @@ export const TeamTab: React.FC = () => {
   const availableRoleOptions = isConsultant
     ? ROLE_OPTIONS.filter(r => r.value === 'viewer')
     : ROLE_OPTIONS;
+  // Only the company owner invites people, changes roles and removes members (server: org.ts);
+  // a PMO or PM sees the team but not those controls (hide, don't disable)
+  const isOwner = user?.organization?.isOwner === true || user?.role === 'admin';
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('viewer');
@@ -96,8 +99,12 @@ export const TeamTab: React.FC = () => {
         </div>
       </div>
 
+      {!isOwner && (
+        <p className="text-sm text-gray-600 dark:text-gray-300">Only the company owner invites people, changes roles and removes members.</p>
+      )}
+
       {/* Invite Form */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+      {isOwner && <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
           <UserPlus className="w-4 h-4" /> Invite Member
         </h3>
@@ -145,7 +152,7 @@ export const TeamTab: React.FC = () => {
             {inviteMsg.text}
           </p>
         )}
-      </div>
+      </div>}
 
       {/* Members Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
@@ -176,7 +183,7 @@ export const TeamTab: React.FC = () => {
                         {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
                         {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
                       </span>
-                    ) : isConsultant ? (
+                    ) : isConsultant || !isOwner ? (
                       <span className="text-gray-700 dark:text-gray-300">
                         {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
                         {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
@@ -204,7 +211,7 @@ export const TeamTab: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm text-right">
-                    {!isMe && (
+                    {!isMe && isOwner && (
                       <button
                         onClick={() => setConfirmRemove(m)}
                         className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
@@ -258,6 +265,10 @@ interface Guest {
 }
 
 const GuestSection: React.FC = () => {
+  // Guests: the company owner or a project manager invites; only the owner changes or revokes access (server: org.ts)
+  const { user } = useAuthStore();
+  const isOwner = user?.organization?.isOwner === true || user?.role === 'admin';
+  const canInviteGuest = isOwner || user?.role === 'project_manager';
   const queryClient = useQueryClient();
   const [guestEmail, setGuestEmail] = useState('');
   const [guestProjectId, setGuestProjectId] = useState('');
@@ -307,7 +318,7 @@ const GuestSection: React.FC = () => {
       </p>
 
       {/* Invite Form */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
+      {canInviteGuest && <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="email"
@@ -342,7 +353,7 @@ const GuestSection: React.FC = () => {
             {guestMsg.text}
           </p>
         )}
-      </div>
+      </div>}
 
       {/* Guests Table */}
       {guests.length > 0 && (
@@ -374,13 +385,13 @@ const GuestSection: React.FC = () => {
                     ) : 'Never'}
                   </td>
                   <td className="px-4 py-3 text-sm text-right">
-                    <button
+                    {isOwner && <button
                       onClick={() => setConfirmRevoke(g)}
                       className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                       title="Revoke access"
                     >
                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    </button>}
                   </td>
                 </tr>
               ))}

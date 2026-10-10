@@ -16,6 +16,7 @@ import {
   FlaskConical,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { canChangeData } from '../hooks/useCanChangeData';
 import { ProfileTab } from './settings/ProfileTab';
 import { TeamTab } from './settings/TeamTab';
 import { NotificationsTab } from './settings/NotificationsTab';
@@ -62,8 +63,11 @@ export const SettingsPage: React.FC = () => {
   const canSeeSupportVisits = !!user && (user.organization?.isOwner === true || user.role === 'pmo');
   // Sample project: the company owner or a PMO loads and removes it (same rule as the server)
   const canManageSample = !!user && !user.isGuest && (user.organization?.isOwner === true || ['admin', 'pmo'].includes(user.role));
+  // Webhooks: making, changing and removing one needs a role that may change data (server: 'write')
+  const canUseWebhooks = canChangeData(user);
   const tabs = ALL_TABS.filter(t =>
     t.id === 'support-visits' ? canSeeSupportVisits
+      : t.id === 'webhooks' ? canUseWebhooks
       : t.id === 'sample-project' ? canManageSample
       : (t.id !== 'team' && t.id !== 'rate-card') || canManageTeam);
 
@@ -116,7 +120,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'accessibility' && <AccessibilityTab />}
         {activeTab === 'ai-context' && <AIContextTab />}
         {activeTab === 'api-keys' && <ApiKeysTab />}
-        {activeTab === 'webhooks' && <WebhooksTab />}
+        {activeTab === 'webhooks' && canUseWebhooks && <WebhooksTab />}
         {activeTab === 'danger' && <DangerZoneTab />}
       </div>
     </div>

@@ -79,7 +79,7 @@ const who = vi.hoisted(() => ({ org: 'org-a' as string | null }));
 vi.mock('../../middleware/auth', () => ({
   authMiddleware: vi.fn(async (req: any) => { req.user = { userId: 'u-a', role: 'pmo' }; if (who.org) req.tenantOrg = { id: who.org }; }),
 }));
-vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}), keyChangesNeed: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRole: vi.fn(async () => ({ ok: true })) }));
 import { contextConfigRoutes } from '../../routes/ai/contextConfig';
 

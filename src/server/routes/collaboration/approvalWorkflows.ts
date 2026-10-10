@@ -11,6 +11,7 @@ import { automationEventBus } from '../../services/automation/AutomationEventBus
 import { projectMemberService } from '../../services/ProjectMemberService';
 import { projectService } from '../../services/ProjectService';
 import logger from '../../utils/logger';
+import type { WebhookEvent } from '../../constants/webhookEvents';
 
 const workflowStepSchema = z.object({
   name: z.string().min(1),
@@ -267,12 +268,12 @@ export async function approvalWorkflowRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const { action, comment } = actOnStepSchema.parse(request.body);
       const result = await approvalWorkflowService.actOnStep(id, user.userId, action, comment, user.role);
-      const eventMap: Record<string, string> = {
+      const eventMap: Record<z.infer<typeof actOnStepSchema>['action'], WebhookEvent> = {
         approve: 'change_request.approved', approved: 'change_request.approved',
         reject: 'change_request.rejected', rejected: 'change_request.rejected',
         return: 'change_request.returned', returned: 'change_request.returned',
       };
-      const eventName = eventMap[action] || 'change_request.updated';
+      const eventName = eventMap[action];
       webhookService.dispatch(eventName, { changeRequestId: id, action, comment }, user.userId);
       automationEventBus.emit({ type: eventName, entityType: 'change_request', entityId: id, projectId: result.projectId, userId: user.userId, payload: result as any, timestamp: new Date().toISOString() }).catch(() => {});
       return { result };

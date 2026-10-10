@@ -9,7 +9,7 @@ import Fastify from 'fastify';
 vi.mock('../../middleware/auth', () => ({
   authMiddleware: vi.fn(async (req: any) => { req.user = { userId: 'u-7', role: 'project_manager' }; req.tenantOrg = { id: 'org-3', slug: 'acme', dbName: 'pmassist_t_acme' }; }),
 }));
-vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}), keyChangesNeed: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRole: vi.fn(async () => ({ ok: true })) }));
 const svc = vi.hoisted(() => ({ resolveContext: vi.fn(async () => ({})), formatForPrompt: vi.fn(() => '') }));
 vi.mock('../../services/context/ContextConfigService', () => ({ contextConfigService: svc, CONFIG_KEY_SCHEMAS: {} }));

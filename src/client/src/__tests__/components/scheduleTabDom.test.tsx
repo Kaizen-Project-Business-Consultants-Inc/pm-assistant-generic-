@@ -62,7 +62,7 @@ function setUpApi() {
   Object.assign(api.known, {
     getSchedules: vi.fn(async () => ({ schedules: state.schedules })),
     getTasks: vi.fn(async (sid: string) => ({ data: sid === 's1' ? TASKS.map(t => ({ ...t })) : [] })),
-    getMyProjectRole: vi.fn(async () => ({ role: state.canEdit ? 'owner' : 'viewer', canEdit: state.canEdit, canManageOwners: state.canEdit })),
+    getMyProjectRole: vi.fn(async () => ({ role: state.canEdit ? 'owner' : 'viewer', isManager: state.canEdit, canEdit: state.canEdit, canManageOwners: state.canEdit })),
     getNonWorkingDates: vi.fn(async () => ({ dates: ['2026-03-07', '2026-03-08', '2026-03-14', '2026-03-15', '2026-04-03'] })),
     getScenarios: vi.fn(async () => ({ scenarios: [{ id: 'sc1', name: 'Faster build' }] })),
     getCriticalPath: vi.fn(async () => ({ projectDuration: 41, criticalPathTaskIds: ['t2', 't3', 't5'], tasks: [{ taskId: 't6', totalFloat: 3 }] })),

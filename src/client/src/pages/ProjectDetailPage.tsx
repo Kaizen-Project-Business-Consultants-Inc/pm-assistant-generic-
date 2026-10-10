@@ -116,11 +116,11 @@ export function ProjectDetailPage() {
 
   const { user } = useAuthStore();
   // Project Manager/Owner (or admin/PMO) of THIS project — not the organisation role
-  const { canEdit: canEditStatus, loaded: roleLoaded } = useProjectRole(id);
+  const { canEdit: canEditStatus, isManager, loaded: roleLoaded } = useProjectRole(id);
   // The weekly review is the PM's: anyone else following a link lands on Overview
   useEffect(() => {
-    if (activeTab === 'weekly-review' && roleLoaded && !canEditStatus) setActiveTab('overview');
-  }, [activeTab, roleLoaded, canEditStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (activeTab === 'weekly-review' && roleLoaded && !isManager) setActiveTab('overview');
+  }, [activeTab, roleLoaded, isManager]); // eslint-disable-line react-hooks/exhaustive-deps
   const { viewers: presenceViewers, editors: presenceEditors } = usePresence(id);
   const otherViewers = presenceViewers.filter(v => v.userId !== user?.id);
 
@@ -707,7 +707,7 @@ export function ProjectDetailPage() {
       {activeTab === 'overview' && canEditStatus && <SetupChecklist project={project} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
 
       {/* Weekly PM review — the project's PM only (hidden from team, viewers, executives) */}
-      {activeTab === 'overview' && canEditStatus && <WeeklyReviewCard projectId={id!} onOpen={() => setActiveTab('weekly-review')} />}
+      {activeTab === 'overview' && isManager && <WeeklyReviewCard projectId={id!} canEdit={canEditStatus} onOpen={() => setActiveTab('weekly-review')} />}
 
       {/* Tab Content */}
       <h2 className="sr-only">{[...getPrimaryTabs(methodology), ...getOverflowTabs(methodology)].find(t => t.id === activeTab)?.label ?? activeTab}</h2>
@@ -732,8 +732,8 @@ export function ProjectDetailPage() {
         )}
         {activeTab === 'automations' && <AutomationsTab projectId={id!} />}
         {activeTab === 'documents' && <DocumentsTab projectId={id!} />}
-        {activeTab === 'weekly-review' && canEditStatus && (
-          <WeeklyReviewView projectId={id!} onBack={() => setActiveTab('overview')} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} />
+        {activeTab === 'weekly-review' && isManager && (
+          <WeeklyReviewView projectId={id!} canEdit={canEditStatus} onBack={() => setActiveTab('overview')} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} />
         )}
       </Suspense>
 

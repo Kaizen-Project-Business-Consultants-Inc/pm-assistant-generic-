@@ -8,7 +8,7 @@ import { apiService } from '../services/api';
  * The server enforces the rule; this only decides what to show.
  */
 export function useProjectRole(projectId?: string | null) {
-  const { data, isSuccess } = useQuery<{ role: string; canEdit: boolean; canManageOwners: boolean }>({
+  const { data, isSuccess } = useQuery<{ role: string; isManager?: boolean; canEdit: boolean; canManageOwners: boolean }>({
     queryKey: ['my-project-role', projectId],
     queryFn: () => apiService.getMyProjectRole(projectId!),
     enabled: !!projectId,
@@ -16,6 +16,8 @@ export function useProjectRole(projectId?: string | null) {
   });
   return {
     role: data?.role ?? null,
+    /** The project's Manager/Owner (or admin/PMO) — may see the Manager's read views; changing data also needs canEdit */
+    isManager: !!data?.isManager,
     canEdit: !!data?.canEdit,
     canManageOwners: !!data?.canManageOwners,
     loaded: isSuccess,
