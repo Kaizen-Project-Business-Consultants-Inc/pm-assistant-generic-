@@ -153,7 +153,7 @@ export function AdminSchedulesPage() {
                         ) : s.lastRunStatus === 'success' ? (
                           <span className="text-xs text-green-600 dark:text-green-400">Success</span>
                         ) : !s.isActive ? (
-                          <span className="text-xs text-amber-500">Paused</span>
+                          <span className="text-xs text-amber-500 dark:text-amber-400">Paused</span>
                         ) : (
                           <span className="text-xs text-gray-500">Pending</span>
                         )}

@@ -66,12 +66,20 @@
   .dark code {
     @apply bg-gray-800 text-gray-200;
   }
-  /* Dark mode: general text and span colors */
-  .dark span {
+  /* Dark mode: a span or link that sets only a light-mode GREY text colour (no dark: variant)
+     would be dark grey on a dark surface, so it takes its readable parent colour instead.
+     Anything that sets its own colour for dark mode (dark:text-*), white text, or a coloured
+     hue keeps it: badges, avatar initials, active menu items and status pills used to lose
+     their colour here (audit 2 H1: 1.5:1 badge, 2.5:1 initials). */
+  .dark :is(span, a:not(.btn):not(.btn-primary)):is([class*="text-gray-"], [class*="text-neutral-"], [class*="text-stone-"], [class*="text-slate-"], [class*="text-zinc-"]):not([class*="dark:text-"]) {
     color: inherit;
   }
-  .dark a:not(.btn):not(.btn-primary) {
-    color: inherit;
+  /* Dark mode: teal-600/700 TEXT with no dark: variant is under 4.5:1 on the dark surfaces
+     (3.9:1 and 3.2:1 on gray-900); show it as primary-400 (9.4:1). Fills are unchanged, and
+     an element with its own background (a light pill or button) keeps its dark teal text.
+     Anything with its own dark:text-* colour keeps it. */
+  .dark :is(.text-primary-600, .text-primary-700):not([class*="bg-"]):not([class*="dark:text-"]) {
+    color: theme('colors.primary.400');
   }
   .dark a:not(.btn):not(.btn-primary):hover {
     text-decoration-line: underline;
@@ -109,7 +117,8 @@
     @apply px-4 py-2 rounded-md font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
   .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+    /* hover one step darker than before: primary-600 is now close to 700 (audit 2 H2) */
+    @apply bg-primary-600 text-white hover:bg-primary-800 focus:ring-primary-500;
   }
   .btn-secondary {
     @apply bg-neutral-200 text-neutral-800 hover:bg-neutral-300 focus:ring-neutral-400 dark:bg-neutral-700 dark:text-neutral-200 dark:hover:bg-neutral-600;
@@ -119,6 +128,30 @@
   }
   .input {
     @apply w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-neutral-700 dark:text-neutral-100;
+  }
+}
+
+@layer components {
+  /* A document that stays light in dark mode (the client report preview: it is what the client
+     gets by email and PDF). Its inline colours are kept; text without one is dark, and the
+     page-wide dark rules for p/table/th/td/span/label/headings and row hover are undone. */
+  .report-light-surface {
+    color-scheme: light;
+    background-color: #ffffff;
+    color: #111827;
+  }
+  .dark .report-light-surface :is(p, table, th, td, span, a, label, li, h1, h2, h3, h4, h5) {
+    color: inherit;
+  }
+  .dark .report-light-surface th {
+    background-color: transparent;
+    border-color: #c7cbe0;
+  }
+  .dark .report-light-surface td {
+    border-color: #e5e7eb;
+  }
+  .dark .report-light-surface tr:hover {
+    background-color: transparent;
   }
 }
 

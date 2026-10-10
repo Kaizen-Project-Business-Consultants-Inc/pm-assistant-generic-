@@ -127,7 +127,7 @@ export function StandupSummaryWidget({ projects }: Props) {
                   <span>{c.taskName}</span>
                 )} />
                 <Section icon={AlertTriangle} title="New Risks" color="amber" items={changes.newRisks} render={(c: any) => (
-                  <span>{c.title} <span className={`text-xs font-medium ${c.severity === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>({c.severity})</span></span>
+                  <span>{c.title} <span className={`text-xs font-medium ${c.severity === 'critical' ? 'text-red-500 dark:text-red-400' : 'text-amber-500 dark:text-amber-400'}`}>({c.severity})</span></span>
                 )} />
                 <Section icon={Ban} title="Blockers" color="red" items={changes.blockers} render={(c: any) => (
                   <span>{c.taskName}{c.assignee ? <span className="text-gray-500"> — {c.assignee}</span> : ''}</span>

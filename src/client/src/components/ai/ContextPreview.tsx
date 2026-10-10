@@ -72,7 +72,7 @@ export const ContextPreview: React.FC = () => {
                       {source.label}
                     </span>
                     {entry.isLocked && (
-                      <span className="flex items-center gap-0.5 text-xs text-amber-600">
+                      <span className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400">
                         <Lock className="w-3 h-3" />
                         Locked
                       </span>

@@ -185,7 +185,7 @@ export function WeeklyReviewPanel({ projectId }: { projectId: string }) {
                       <span className="text-red-600 dark:text-red-400 font-medium">{t.actualHours.toFixed(1)}h</span>
                       <span className="text-gray-500 mx-1">/</span>
                       <span className="text-gray-500">{t.estimatedHours.toFixed(1)}h est.</span>
-                      <span className="ml-2 text-xs text-red-500 font-medium">+{t.overBy.toFixed(1)}h</span>
+                      <span className="ml-2 text-xs text-red-500 dark:text-red-400 font-medium">+{t.overBy.toFixed(1)}h</span>
                     </div>
                   </div>
                 ))}

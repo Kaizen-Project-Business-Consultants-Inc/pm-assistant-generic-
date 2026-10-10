@@ -956,8 +956,8 @@ export function EVMDashboardPage() {
                             const worstEAC = Math.max(...result.forecastComparison.map(f => f.eacValue));
                             const remaining = (m.BAC + managementReserve) - worstEAC;
                             return remaining >= 0
-                              ? <span className="text-green-600 font-medium">{formatCurrency(remaining)} reserve remaining</span>
-                              : <span className="text-red-600 font-medium">{formatCurrency(Math.abs(remaining))} beyond reserve</span>;
+                              ? <span className="text-green-600 dark:text-green-400 font-medium">{formatCurrency(remaining)} reserve remaining</span>
+                              : <span className="text-red-600 dark:text-red-400 font-medium">{formatCurrency(Math.abs(remaining))} beyond reserve</span>;
                           })()}
                         </td>
                       </tr>
@@ -1134,7 +1134,7 @@ export function EVMDashboardPage() {
                           {changed && (
                             <div className="text-xs text-gray-500">
                               was {s.isIndex ? s.current.toFixed(2) : formatCurrency(s.current)}
-                              <span className={`ml-1 font-semibold ${(s.label.includes('VAC') ? s.sim > s.current : s.sim < s.current) ? 'text-green-500' : 'text-red-500'}`}>
+                              <span className={`ml-1 font-semibold ${(s.label.includes('VAC') ? s.sim > s.current : s.sim < s.current) ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
                                 ({s.sim > s.current ? '+' : ''}{s.isIndex ? (s.sim - s.current).toFixed(2) : formatCurrency(s.sim - s.current)})
                               </span>
                             </div>

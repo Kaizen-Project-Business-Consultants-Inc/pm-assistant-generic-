@@ -442,7 +442,7 @@ function PortfolioResourcesView() {
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-red-500" />
             <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">Cross-Project Contention</h3>
-            <span className="text-xs text-red-500">{contentions.length} resource{contentions.length !== 1 ? 's' : ''} over-allocated across projects</span>
+            <span className="text-xs text-red-500 dark:text-red-400">{contentions.length} resource{contentions.length !== 1 ? 's' : ''} over-allocated across projects</span>
           </div>
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table className="w-full text-sm">

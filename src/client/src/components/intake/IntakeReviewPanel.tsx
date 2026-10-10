@@ -256,7 +256,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
               {reviewMutation.isPending ? 'Saving…' : 'Save Review'}
             </button>
             {reviewMutation.isError && (
-              <span className="text-xs text-red-600">Failed to save review.</span>
+              <span className="text-xs text-red-600 dark:text-red-400">Failed to save review.</span>
             )}
           </div>
         </div>
@@ -300,7 +300,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
                 </button>
               </div>
               {convertMutation.isError && (
-                <span className="text-xs text-red-600">Failed to convert. Please try again.</span>
+                <span className="text-xs text-red-600 dark:text-red-400">Failed to convert. Please try again.</span>
               )}
             </div>
           )}

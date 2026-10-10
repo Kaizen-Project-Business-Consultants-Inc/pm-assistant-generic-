@@ -602,7 +602,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               >
                 <Upload className="w-10 h-10 text-gray-500 dark:text-gray-400" />
                 <div className="text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop your file here, or <span className="text-blue-600 font-medium">browse</span></p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop your file here, or <span className="text-blue-600 dark:text-blue-400 font-medium">browse</span></p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">.xlsx, .xls, or .csv (max 5MB)</p>
                 </div>
               </div>
@@ -636,7 +636,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
                 <span className="text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">{uploadedFileName}</span>
-                <span className="text-xs text-blue-500">{fileParsed.rows.length} rows</span>
+                <span className="text-xs text-blue-500 dark:text-blue-400">{fileParsed.rows.length} rows</span>
               </div>
 
               {/* Sheet selector for multi-sheet Excel files */}
@@ -677,7 +677,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                           {fileParsed.headers.map((h, i) => (
                             <th key={i} className="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300 whitespace-nowrap">
                               {h}
-                              {columnMap[i] && <span className="ml-1 text-blue-500 text-xs">({columnMap[i]})</span>}
+                              {columnMap[i] && <span className="ml-1 text-blue-500 dark:text-blue-400 text-xs">({columnMap[i]})</span>}
                             </th>
                           ))}
                         </tr>

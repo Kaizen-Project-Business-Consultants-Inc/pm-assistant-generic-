@@ -186,7 +186,7 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
           {formatDate(endDate)}
         </span>
         {daysLeft !== undefined && (
-          <span className={daysLeft < 0 ? 'text-red-500 font-medium' : daysLeft <= 7 ? 'text-amber-500 font-medium' : ''}>
+          <span className={daysLeft < 0 ? 'text-red-500 dark:text-red-400 font-medium' : daysLeft <= 7 ? 'text-amber-500 dark:text-amber-400 font-medium' : ''}>
             {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`}
           </span>
         )}

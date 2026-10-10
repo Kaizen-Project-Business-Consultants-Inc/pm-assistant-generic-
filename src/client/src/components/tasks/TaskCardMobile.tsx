@@ -99,7 +99,7 @@ export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCy
           style={{ backgroundColor: swipeProgress >= 1 ? '#22c55e' : '#86efac' }}
         >
           <Check className={`w-5 h-5 transition-transform ${swipeProgress >= 1 ? 'text-white scale-110' : 'text-green-700'}`} />
-          <span className={`ml-2 text-xs font-semibold ${swipeProgress >= 1 ? 'text-white' : 'text-green-800'}`}>
+          <span className={`ml-2 text-xs font-semibold ${swipeProgress >= 1 ? 'text-white' : 'text-green-800 dark:text-green-400'}`}>
             {swipeProgress >= 1 ? 'Release to complete' : 'Swipe to complete'}
           </span>
         </div>

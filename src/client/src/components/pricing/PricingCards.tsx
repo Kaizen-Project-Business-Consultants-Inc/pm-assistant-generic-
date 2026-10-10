@@ -339,7 +339,8 @@ const PLANS: PlanDef[] = pricingData?.tiers
             : dk ? 'border-slate-600 shadow-lg shadow-black/30' : 'border-gray-200 dark:border-gray-700';
           const textPrimary = dk ? 'text-white' : 'text-gray-900 dark:text-white';
           const textSecondary = dk ? 'text-gray-300' : 'text-gray-500 dark:text-gray-400';
-          const textTertiary = dk ? 'text-gray-500' : 'text-gray-500 dark:text-gray-400';
+          // On the dark (slate-800) card gray-500 was 2.4:1; slate-300 reads at 9:1
+          const textTertiary = dk ? 'text-slate-300' : 'text-gray-500 dark:text-gray-400';
           const textFeature = dk ? 'text-gray-200' : 'text-gray-700 dark:text-gray-200';
 
           return (
@@ -621,7 +622,9 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
         <h2 className="text-2xl font-bold text-white text-center mb-8">
           Compare plans
         </h2>
-        <div className="overflow-x-auto flex justify-center">
+        {/* Scrolls sideways on phones: focusable so it can be scrolled with the keyboard */}
+        {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable (WCAG 2.1.1) */}
+        <div className="overflow-x-auto flex justify-center" tabIndex={0} role="region" aria-label="Compare plans table">
           <table className="text-sm" style={{ maxWidth: '900px', width: '100%' }}>
             <caption className="sr-only">Feature comparison across subscription tiers</caption>
             <thead>

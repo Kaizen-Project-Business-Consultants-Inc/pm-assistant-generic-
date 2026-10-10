@@ -323,7 +323,7 @@ export function PortalLinkManager({ projectId, canEdit = false }: { projectId: s
                   {copiedId === link.id ? (
                     <>
                       <CheckCircle2 className="w-3 h-3 text-green-600" />
-                      <span className="text-green-600">Copied!</span>
+                      <span className="text-green-600 dark:text-green-400">Copied!</span>
                     </>
                   ) : (
                     <>
@@ -358,7 +358,7 @@ export function PortalLinkManager({ projectId, canEdit = false }: { projectId: s
 
                 {!canEdit ? null : deleteConfirmId === link.id ? (
                   <div className="flex items-center gap-1 ml-auto">
-                    <span className="text-red-600">Delete?</span>
+                    <span className="text-red-600 dark:text-red-400">Delete?</span>
                     <button
                       onClick={() => deleteMutation.mutate(link.id)}
                       disabled={deleteMutation.isPending}

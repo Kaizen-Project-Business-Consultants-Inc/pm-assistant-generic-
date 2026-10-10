@@ -104,7 +104,7 @@ export const BaselineVarianceReport = React.memo(function BaselineVarianceReport
                 </td>
                 <td className="text-center px-2 py-1.5">
                   {tv.statusChanged ? (
-                    <span className="text-amber-600">{tv.baselineStatus} → {tv.actualStatus}</span>
+                    <span className="text-amber-600 dark:text-amber-400">{tv.baselineStatus} → {tv.actualStatus}</span>
                   ) : (
                     <span className="text-gray-500 dark:text-gray-400">{tv.actualStatus}</span>
                   )}

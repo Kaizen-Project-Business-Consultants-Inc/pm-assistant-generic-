@@ -50,7 +50,7 @@ export function AlertActionButton({ toolName, params, label, onComplete }: Alert
         {label}
       </button>
       {error && (
-        <span className="text-xs text-red-500 mt-1 max-w-[200px] truncate" title={error}>
+        <span className="text-xs text-red-500 dark:text-red-400 mt-1 max-w-[200px] truncate" title={error}>
           {error}
         </span>
       )}

@@ -15,11 +15,11 @@ function formatDollar(value: number): string {
 function BurnIndicator({ spentPct, progressPct }: { spentPct: number; progressPct: number }) {
   // Compare spend rate vs progress — if spending faster than delivering, flag it
   if (progressPct <= 0) {
-    return spentPct > 10 ? <span title="Spending with no progress"><AlertTriangle className="w-3 h-3 text-red-500" /></span> : null;
+    return spentPct > 10 ? <span title="Spending with no progress"><AlertTriangle className="w-3 h-3 text-red-500 dark:text-red-400" /></span> : null;
   }
   const ratio = spentPct / progressPct;
-  if (ratio > 1.3) return <span title="Burn rate exceeds progress"><TrendingUp className="w-3 h-3 text-red-500" /></span>;
-  if (ratio < 0.8) return <span title="Under budget"><TrendingDown className="w-3 h-3 text-green-500" /></span>;
+  if (ratio > 1.3) return <span title="Burn rate exceeds progress"><TrendingUp className="w-3 h-3 text-red-500 dark:text-red-400" /></span>;
+  if (ratio < 0.8) return <span title="Under budget"><TrendingDown className="w-3 h-3 text-green-500 dark:text-green-400" /></span>;
   return <span title="On track"><Minus className="w-3 h-3 text-gray-500" /></span>;
 }
 

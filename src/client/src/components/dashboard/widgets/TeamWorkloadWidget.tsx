@@ -179,8 +179,8 @@ export function TeamWorkloadWidget({ projects }: Props) {
                   <div className="flex items-center justify-between gap-1 mb-0.5">
                     <p className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate">{r.name}</p>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {overloaded && <span title="High task count"><AlertTriangle className="w-3 h-3 text-amber-500" /></span>}
-                      {multiProject && <span title={`Spread across ${r.projectCount} projects`}><AlertOctagon className="w-3 h-3 text-red-500" /></span>}
+                      {overloaded && <span title="High task count"><AlertTriangle className="w-3 h-3 text-amber-500 dark:text-amber-400" /></span>}
+                      {multiProject && <span title={`Spread across ${r.projectCount} projects`}><AlertOctagon className="w-3 h-3 text-red-500 dark:text-red-400" /></span>}
                       <span className={`text-xs font-medium ${hasWarning ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
                         {r.tasks}
                       </span>

@@ -155,8 +155,8 @@ export const WebhooksTab: React.FC = () => {
                       ))}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      <span className={wh.isActive ? 'text-green-600' : 'text-red-500'}>{wh.isActive ? 'Active' : 'Inactive'}</span>
-                      {wh.failureCount > 0 && <span className="text-amber-600">{wh.failureCount} failures</span>}
+                      <span className={wh.isActive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>{wh.isActive ? 'Active' : 'Inactive'}</span>
+                      {wh.failureCount > 0 && <span className="text-amber-600 dark:text-amber-400">{wh.failureCount} failures</span>}
                       {wh.lastTriggeredAt && <span>Last triggered: {new Date(wh.lastTriggeredAt).toLocaleString()}</span>}
                     </div>
                   </div>

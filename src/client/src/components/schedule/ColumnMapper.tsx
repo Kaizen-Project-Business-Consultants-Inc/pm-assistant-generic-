@@ -297,7 +297,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
           Column Mapping ({mappedCount} mapped)
         </h3>
         {aiLoading && (
-          <span className="flex items-center gap-1 text-xs text-purple-500">
+          <span className="flex items-center gap-1 text-xs text-purple-500 dark:text-purple-400">
             <Sparkles size={12} className="animate-pulse" />
             AI analyzing columns...
           </span>
@@ -324,7 +324,7 @@ export function ColumnMapper({ headers, mappings, onMappingsChange, enableAI = t
             <span id={`${mapperId}-col-${i}`} className="text-xs text-gray-500 dark:text-gray-400 truncate" title={h}>
               {h}
               {aiSource.has(i) && (
-                <span className="ml-1 inline-flex items-center gap-0.5 text-purple-500" title="AI suggested">
+                <span className="ml-1 inline-flex items-center gap-0.5 text-purple-500 dark:text-purple-400" title="AI suggested">
                   <Sparkles size={10} />
                 </span>
               )}

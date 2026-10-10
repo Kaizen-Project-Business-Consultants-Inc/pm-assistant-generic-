@@ -46,3 +46,54 @@ export function getAvgTextColor(averageUtilization: number): string {
   if (averageUtilization > 80) return WORKLOAD_AVG_TEXT.high;
   return WORKLOAD_AVG_TEXT.ok;
 }
+
+// ── Allocation tiles: Resources page → Workload Heatmap, and the project Resources tab ──────
+// These use solid colour fills (the agreed look — do not change them). The text on them used
+// to be white (2.0–3.2:1); it is now black, which reads at ≥ 4.5:1 on every fill in light and
+// dark mode, except the red tile in dark mode, where white reads better (black 4.49:1).
+// The tiles used to fade the whole cell with `opacity`, which also faded the text; now only
+// the fill is translucent (same painted fill colour), so the text keeps its full contrast.
+// heatmapContrast.test.ts recomputes every pair.
+
+interface AllocationLevel {
+  label: string;
+  /** Solid fill colour (hex) */
+  fill: string;
+  /** Text on a week cell (fill at ALLOCATION_CELL_ALPHA) */
+  cellText: string;
+  /** Text on the solid "Avg" pill */
+  pillText: string;
+}
+
+export const ALLOCATION_LEVELS = {
+  low: { label: '≤80%', fill: '#22c55e', cellText: 'text-[#000]', pillText: 'text-[#000]' },
+  optimal: { label: '80–100%', fill: '#3b82f6', cellText: 'text-[#000]', pillText: 'text-[#000]' },
+  over: { label: '100–120%', fill: '#f59e0b', cellText: 'text-[#000]', pillText: 'text-[#000]' },
+  critical: { label: '>120%', fill: '#ef4444', cellText: 'text-[#000] dark:text-white', pillText: 'text-[#000]' },
+} satisfies Record<string, AllocationLevel>;
+
+/** How strongly a week cell's fill is painted (an empty week is a faint tint plus an outline). */
+export const ALLOCATION_CELL_ALPHA = 0.85;
+const ALLOCATION_EMPTY_ALPHA = 0.15;
+
+export function getAllocationLevel(pct: number): AllocationLevel {
+  if (pct <= 80) return ALLOCATION_LEVELS.low;
+  if (pct <= 100) return ALLOCATION_LEVELS.optimal;
+  if (pct <= 120) return ALLOCATION_LEVELS.over;
+  return ALLOCATION_LEVELS.critical;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+/** Classes + inline fill for one week cell (the fill is translucent, the text is not). */
+export function allocationCell(pct: number): { className: string; style: { backgroundColor: string } } {
+  const level = getAllocationLevel(pct);
+  const empty = pct === 0;
+  return {
+    className: empty ? EMPTY_CELL_BORDER : level.cellText,
+    style: { backgroundColor: hexToRgba(level.fill, empty ? ALLOCATION_EMPTY_ALPHA : ALLOCATION_CELL_ALPHA) },
+  };
+}

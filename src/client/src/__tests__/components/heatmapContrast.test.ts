@@ -16,7 +16,10 @@ import tailwindConfig from '../../../tailwind.config.js';
 // @ts-expect-error -- plain-JS PostCSS plugin, no type declarations (read here for its dark-mode remap)
 import darkRemapPlugin from '../../../postcss-dark-mode.cjs';
 import { contrastRatio, composite, parseColor, type Rgba } from '../../components/resources/heatmapContrast';
-import { WORKLOAD_HEAT_LEVELS, WORKLOAD_AVG_TEXT, getHeatColor } from '../../components/resources/workloadHeatColors';
+import {
+  WORKLOAD_HEAT_LEVELS, WORKLOAD_AVG_TEXT, getHeatColor,
+  ALLOCATION_LEVELS, ALLOCATION_CELL_ALPHA, EMPTY_CELL_BORDER, allocationCell, getAllocationLevel,
+} from '../../components/resources/workloadHeatColors';
 import { UTIL_HEAT_LEVELS, UTIL_SUMMARY_TEXT, getUtilColor } from '../../components/timetracking/utilizationHeatColors';
 
 type Mode = 'light' | 'dark';
@@ -214,4 +217,49 @@ describe('figures next to the heatmaps read at WCAG AA', () => {
       expect(contrastRatio(resolve('text-gray-400', 'text', mode), resolve(CARD, 'bg', mode))).toBeGreaterThanOrEqual(4.5);
     });
   }
+});
+
+// Resources page → Workload Heatmap and the project Resources tab (audit 2 H4): solid fills
+// with white text were 2.0–3.2:1. Fills stay; the text (and the empty-week outline) changed.
+describe('allocation tiles (Resources page + project Resources tab) read at WCAG AA', () => {
+  it('fills are unchanged (the user chose them)', () => {
+    expect([50, 90, 110, 130].map((u) => getAllocationLevel(u).fill)).toEqual(['#22c55e', '#3b82f6', '#f59e0b', '#ef4444']);
+    expect(ALLOCATION_CELL_ALPHA).toBe(0.85);
+  });
+
+  it('only the fill is translucent — the cell itself is never faded with opacity', () => {
+    for (const pct of [0, 50, 90, 110, 130]) {
+      const cell = allocationCell(pct);
+      expect(Object.keys(cell.style)).toEqual(['backgroundColor']);
+      expect(cell.className).not.toMatch(/opacity/);
+    }
+  });
+
+  for (const mode of MODES) {
+    for (const [key, level] of Object.entries(ALLOCATION_LEVELS)) {
+      it(`${mode} · ${level.label} (${key}): week-cell text ≥ 4.5:1`, () => {
+        const card = resolve(CARD, 'bg', mode);
+        const fill = composite({ ...parseColor(level.fill), a: ALLOCATION_CELL_ALPHA }, card);
+        const ratio = contrastRatio(resolve(level.cellText, 'text', mode), fill);
+        expect(ratio, `${level.cellText} on ${hex(fill)} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+      });
+      it(`${mode} · ${level.label} (${key}): Avg pill text ≥ 4.5:1`, () => {
+        const ratio = contrastRatio(resolve(level.pillText, 'text', mode), parseColor(level.fill));
+        expect(ratio, `${level.pillText} on ${level.fill} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+    it(`${mode} · empty week: outline ≥ 3:1 on the card`, () => {
+      expect(allocationCell(0).className).toBe(EMPTY_CELL_BORDER);
+      const ratio = contrastRatio(resolve(EMPTY_CELL_BORDER, 'border', mode), resolve(CARD, 'bg', mode));
+      expect(ratio).toBeGreaterThanOrEqual(3);
+    });
+  }
+
+  it('one copy of the colours: the pages import them instead of keeping their own', () => {
+    for (const file of ['pages/ResourceManagementPage.tsx', 'components/project/ResourcesTab.tsx']) {
+      const src = readFileSync(path.resolve(__dirname, '../..', file), 'utf8');
+      expect(src, file).not.toMatch(/UTIL_COLORS|#22c55e/);
+      expect(src, file).toMatch(/workloadHeatColors/);
+    }
+  });
 });
