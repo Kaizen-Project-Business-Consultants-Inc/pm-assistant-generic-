@@ -2,6 +2,56 @@ import { databaseService } from '../../database/connection';
 import { emailService } from '../EmailService';
 import logger from '../../utils/logger';
 import { keysAlreadySet } from '../../utils/redisKeysSet';
+import { redisService } from '../RedisService';
+import crypto from 'crypto';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * People who signed up but never clicked the confirmation link. Their account isn't usable yet,
+ * so they get a fresh link a day and three days after signing up rather than a trial countdown
+ * (2026-10-10: 6 of the first 7 outside sign-ups never confirmed, and got a week of "your trial
+ * ends" emails for a trial they never started). Paid-plan and invited sign-ups get it too, so
+ * the wording never mentions a trial.
+ */
+async function sendConfirmEmailReminders(): Promise<void> {
+  // Day 1 or day 3 is worked out by the database's own clock, the same one the window uses
+  const rows = await databaseService.queryControlPlane(
+    `SELECT id, email, TIMESTAMPDIFF(HOUR, created_at, NOW()) >= 72 AS late
+     FROM users
+     WHERE email_verified = 0
+       AND is_active = 1
+       AND created_at <= DATE_SUB(NOW(), INTERVAL 1 DAY)
+       AND created_at > DATE_SUB(NOW(), INTERVAL 4 DAY)
+     LIMIT 500`,
+  );
+  if (rows.length === 0) return;
+
+  const due = rows.map((row: any) => ({ row, key: `verify-reminder:${row.id}:${Number(row.late) ? '3day' : '1day'}` }));
+  const alreadySent = await keysAlreadySet(due.map(d => d.key));
+
+  for (const [i, { row, key }] of due.entries()) {
+    if (alreadySent[i]) continue;
+    try {
+      // A fresh link: the first one lasted 24 hours, so it has run out by now
+      const token = crypto.randomUUID();
+      // eslint-disable-next-line no-await-in-loop -- each person gets their own link, saved before it is emailed
+      await databaseService.queryControlPlane(
+        'UPDATE users SET email_verification_token = ?, email_verification_expires = ? WHERE id = ? AND email_verified = 0',
+        [token, new Date(Date.now() + DAY_MS), row.id],
+      );
+      // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
+      await emailService.sendVerificationEmail(row.email, token, { reminder: true });
+      // eslint-disable-next-line no-await-in-loop -- marks the reminder sent only after this person's email went out
+      await redisService.set(key, '1', 30 * DAY_MS / 1000);
+      logger.info(`[trial-reminder] Sent confirm-your-email reminder to ${row.id}`);
+    } catch (err) {
+      logger.error(`[trial-reminder] Failed to send confirm-your-email reminder to ${row.id}`, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
 
 /**
  * Sends trial reminder emails to users whose trial is ending soon (3 days, 1 day)
@@ -47,16 +97,27 @@ export async function runTrialReminders(): Promise<void> {
       logger.info(`[trial-reminder] Downgraded ${orgCount} expired trial orgs to 'none'`);
     }
 
-    // --- Step 2: Send reminder/expired emails ---
+    // --- Step 2: Nudge people who never confirmed their email ---
+    // Its own catch: a fault here must not stop Step 3's countdown emails
+    await sendConfirmEmailReminders().catch((err) => {
+      logger.error('[trial-reminder] Confirm-your-email reminders failed', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
+    // --- Step 3: Send reminder/expired emails ---
     // Find trialing users with trial ending in the next 3 days or already expired
     // Free-tier trials only. `subscription_tier = 'trial'` keeps these emails away
     // from paying customers — telling a subscriber their trial is expiring is both
     // alarming and wrong. The window reaches 8 days out for the first nudge.
+    // Confirmed emails only: an unconfirmed account isn't usable yet, so a countdown
+    // means nothing to them — they get Step 2's nudge instead (2026-10-10).
     const rows = await databaseService.queryControlPlane(
       `SELECT id, email, full_name, trial_ends_at, subscription_status
        FROM users
        WHERE subscription_status IN ('trialing', 'none')
          AND subscription_tier = 'trial'
+         AND email_verified = 1
          AND trial_ends_at IS NOT NULL
          AND trial_ends_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
          AND trial_ends_at <= DATE_ADD(NOW(), INTERVAL 8 DAY)
@@ -64,8 +125,6 @@ export async function runTrialReminders(): Promise<void> {
     );
 
     if (rows.length === 0) return;
-
-    const { redisService } = await import('../RedisService');
 
     // Which reminder each person is due, worked out first so "already sent?" is one MGET for
     // everyone, not a GET per person (2026-10-09)

@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-10 — Sign-up emails: confirm-your-email reminders; no mail to staging test logins (branch fix/email-bounces-verify-reminders)
+- Found on prod: 6 of the first 7 outside sign-ups never confirmed their email (all verification mails delivered per Resend), then got a week of "your trial ends" mails for a trial they never started.
+- `trialReminderJob`: trial countdown only for `email_verified = 1`; unconfirmed sign-ups 1–4 days old get a fresh 24 h link (`sendVerificationEmail(..., { reminder: true })`) at day 1 and day 3, Redis keys `verify-reminder:{id}:1day|3day`; a failed send isn't marked, so it retries next day.
+- `isUndeliverableEmail` (utils/placeholderEmail.ts) = placeholder OR `@pm.kpbc.ca` (staging test logins, no mailboxes — dozens of bounces/day from e2e on the Resend account prod shares). EmailService.sendEmail drops them.
+- New `scripts/prod-report.sh users|signups|activity|funnel|emails|errors|logs <prod|staging>` — read-only lookups (server must be named), allow-listed for Claude by path. Note: the allow-list trusts the file path, so an edit to the script would also be trusted — review changes to it like a prod change.
+- Reminder wording never says "trial" (paid-plan and invited sign-ups get it too); a fault in the reminder step can't stop the countdown step.
+- Not changed: staging ALERT_EMAIL info@kpbc.ca is on Resend's suppression list (user to remove it in Resend or give another address).
+
 ## 2026-10-10 — Audit 2 app gaps: hide what a role is always refused (branch client-gaps-audit2, not deployed when written)
 - Settings: API Keys keeps listing/revoking own keys (Claude connections) for read-only roles but Create Key is hidden for them; the 'admin' right is offered only to the Kovarti platform admin. Webhooks tab hidden for roles without 'write'.
 - Webhook events: one list `src/server/constants/webhookEvents.ts` (18 events); `webhookService.dispatch` takes only `WebhookEvent` (type-checked); the tab offered 8 — now all, incl. change_request approved/rejected/returned (were sent, never offered). Client copy kept equal by a test.

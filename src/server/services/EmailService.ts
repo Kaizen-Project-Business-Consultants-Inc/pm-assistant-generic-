@@ -2,7 +2,7 @@ import { Resend } from 'resend';
 import { config } from '../config';
 import logger, { maskPii } from '../utils/logger';
 import { redisService } from './RedisService';
-import { isPlaceholderEmail } from '../utils/placeholderEmail';
+import { isUndeliverableEmail } from '../utils/placeholderEmail';
 import { timelineForEmail } from '../utils/reportTimelineImage';
 
 /**
@@ -44,10 +44,11 @@ export class EmailService {
 
   private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; attachments?: any[] }): Promise<void> {
     // Placeholder addresses (name@example.com) belong to people whose real email isn't known
-    // yet — never send to them, whichever feature is sending
-    const recipients = (Array.isArray(params.to) ? params.to : [params.to]).filter((r) => !isPlaceholderEmail(r));
+    // yet, and staging's test logins have no mailbox — never send to them, whichever feature
+    // is sending (utils/placeholderEmail.ts)
+    const recipients = (Array.isArray(params.to) ? params.to : [params.to]).filter((r) => !isUndeliverableEmail(r));
     if (recipients.length === 0) {
-      logger.info('Email not sent: placeholder address only', { subject: params.subject });
+      logger.info('Email not sent: no deliverable address', { subject: params.subject });
       return;
     }
     params = { ...params, to: Array.isArray(params.to) ? recipients : recipients[0] };
@@ -118,7 +119,8 @@ export class EmailService {
     return { sent: parseInt(sent || '0', 10), failed: parseInt(failed || '0', 10) };
   }
 
-  async sendVerificationEmail(to: string, token: string): Promise<void> {
+  /** `reminder`: the nudge for someone who signed up but never clicked the first link (trialReminderJob) */
+  async sendVerificationEmail(to: string, token: string, opts: { reminder?: boolean } = {}): Promise<void> {
     if (!this.isConfigured) {
       logger.warn(`[EmailService] RESEND_API_KEY not set — skipping verification email to ${maskPii(to)}`);
       return;
@@ -130,7 +132,9 @@ export class EmailService {
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
       to,
-      subject: 'Verify your Kovarti PM Assistant account',
+      subject: opts.reminder
+        ? 'Reminder: confirm your email to finish setting up your Kovarti PM account'
+        : 'Verify your Kovarti PM Assistant account',
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
           <div style="text-align: center; margin-bottom: 32px;">
@@ -138,7 +142,9 @@ export class EmailService {
           </div>
           <h2 style="color: #1f2937;">Verify your email address</h2>
           <p style="color: #4b5563; line-height: 1.6;">
-            Thanks for signing up! Please verify your email address by clicking the button below.
+            ${opts.reminder
+              ? "You signed up for Kovarti PM but haven't confirmed your email yet, so your account isn't ready. Click the button below to finish setting it up."
+              : 'Thanks for signing up! Please verify your email address by clicking the button below.'}
           </p>
           <div style="text-align: center; margin: 32px 0;">
             <a href="${verifyUrl}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">

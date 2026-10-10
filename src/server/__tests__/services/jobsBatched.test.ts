@@ -36,7 +36,7 @@ vi.mock('../../services/RedisService', () => ({
   },
 }));
 vi.mock('../../services/NotificationService', () => ({ notificationService: { create: (n: any) => h.notify(n) } }));
-vi.mock('../../services/EmailService', () => ({ emailService: { sendTrialExpiredEmail: (...a: any[]) => h.email('expired', ...a), sendTrialReminderEmail: (...a: any[]) => h.email('reminder', ...a) } }));
+vi.mock('../../services/EmailService', () => ({ emailService: { sendTrialExpiredEmail: (...a: any[]) => h.email('expired', ...a), sendTrialReminderEmail: (...a: any[]) => h.email('reminder', ...a), sendVerificationEmail: (...a: any[]) => h.email('verify', ...a) } }));
 vi.mock('../../utils/recipientTime', () => ({ isLocalHour: () => true, timezonesFor: async () => new Map() }));
 vi.mock('../../utils/assigneeLogins', () => ({ loginsForAssignees: async () => new Map() }));
 vi.mock('../../utils/companyCacheKey', () => ({ companyCacheKey: (k: string) => `co:${k}` }));
@@ -140,16 +140,71 @@ describe('utilization coaching', () => {
 describe('trial reminders', () => {
   it('one MGET for every person\'s reminder key; a reminder already sent is not sent again', async () => {
     const inDays = (d: number) => new Date(Date.now() + d * 86400000 - 60000).toISOString();
-    h.answer = (sql) => /SELECT id, email/.test(sql) ? [
+    h.answer = (sql) => /SELECT id, email, full_name/.test(sql) ? [
       { id: 'u1', email: 'a@x', full_name: 'A', trial_ends_at: inDays(3) },
       { id: 'u2', email: 'b@x', full_name: 'B', trial_ends_at: inDays(7) },
       { id: 'u3', email: 'c@x', full_name: 'C', trial_ends_at: inDays(-0.5) },
-    ] : { affectedRows: 0 };
+    ] : /^\s*SELECT/.test(sql) ? [] : { affectedRows: 0 };
     h.store.set('trial-reminder:u2:7day', '1');
     await runTrialReminders();
     expect(h.client.mget.mock.calls).toEqual([[['trial-reminder:u1:3day', 'trial-reminder:u2:7day', 'trial-reminder:u3:expired']]]);
     expect(h.client.get).not.toHaveBeenCalled();
     expect(h.email.mock.calls).toEqual([['reminder', 'a@x', 'A', 3], ['expired', 'c@x', 'C']]);
+  });
+
+  it('the trial countdown only goes to people who confirmed their email', async () => {
+    await runTrialReminders();
+    expect(stmts(/SELECT id, email, full_name/)[0].sql).toMatch(/email_verified = 1/);
+  });
+
+  it('unconfirmed sign-ups get a fresh confirm-your-email link at day 1 and day 3, once each', async () => {
+    h.answer = (sql) => /SELECT id, email, TIMESTAMPDIFF/.test(sql) ? [
+      { id: 'n1', email: 'new@x', late: 0 },
+      { id: 'n3', email: 'old@x', late: 1 },
+      { id: 'n9', email: 'done@x', late: 0 },
+    ] : /^\s*SELECT/.test(sql) ? [] : { affectedRows: 1 };
+    h.store.set('verify-reminder:n9:1day', '1');
+    await runTrialReminders();
+
+    const pick = stmts(/SELECT id, email, TIMESTAMPDIFF/)[0].sql;
+    expect(pick).toMatch(/email_verified = 0/);
+    expect(pick).toContain('TIMESTAMPDIFF(HOUR, created_at, NOW()) >= 72 AS late');
+    expect(pick).toMatch(/INTERVAL 1 DAY[\s\S]*INTERVAL 4 DAY/);
+    expect(h.client.mget.mock.calls[0][0]).toEqual(['verify-reminder:n1:1day', 'verify-reminder:n3:3day', 'verify-reminder:n9:1day']);
+
+    // New link saved for each person (only while still unconfirmed), then emailed as a reminder
+    const saves = stmts(/^UPDATE users SET email_verification_token/);
+    expect(saves.map(s => s.params[2])).toEqual(['n1', 'n3']);
+    expect(saves[0].sql).toMatch(/AND email_verified = 0/);
+    expect(saves[0].params[1].getTime()).toBeGreaterThan(Date.now() + 23 * 3600000);
+    const sent = h.email.mock.calls.filter(c => c[0] === 'verify');
+    expect(sent.map(c => [c[1], c[2], c[3]])).toEqual([
+      ['new@x', saves[0].params[0], { reminder: true }],
+      ['old@x', saves[1].params[0], { reminder: true }],
+    ]);
+    expect(saves[0].params[0]).not.toBe(saves[1].params[0]);
+    expect(h.store.has('verify-reminder:n1:1day') && h.store.has('verify-reminder:n3:3day')).toBe(true);
+  });
+
+  it('a failed send is not marked sent, so tomorrow tries again; the others still go', async () => {
+    h.answer = (sql) => /SELECT id, email, TIMESTAMPDIFF/.test(sql) ? [
+      { id: 'a', email: 'a@x', late: 0 },
+      { id: 'b', email: 'b@x', late: 0 },
+    ] : /^\s*SELECT/.test(sql) ? [] : { affectedRows: 1 };
+    h.email.mockRejectedValueOnce(new Error('provider down'));
+    await runTrialReminders();
+    expect(h.store.has('verify-reminder:a:1day')).toBe(false);
+    expect(h.store.has('verify-reminder:b:1day')).toBe(true);
+  });
+
+  it('if the confirm-your-email step breaks, the trial countdown still goes out', async () => {
+    const inDays = (d: number) => new Date(Date.now() + d * 86400000 - 60000).toISOString();
+    h.answer = (sql) => {
+      if (/TIMESTAMPDIFF/.test(sql)) throw new Error('db hiccup');
+      return /SELECT id, email, full_name/.test(sql) ? [{ id: 'u1', email: 'a@x', full_name: 'A', trial_ends_at: inDays(3) }] : { affectedRows: 0 };
+    };
+    await runTrialReminders();
+    expect(h.email.mock.calls).toEqual([['reminder', 'a@x', 'A', 3]]);
   });
 });
 

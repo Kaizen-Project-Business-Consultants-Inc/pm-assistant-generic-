@@ -2347,6 +2347,10 @@ The `EmailService` sends automated reminder emails to users approaching the end 
 | 1 day | "Your trial ends tomorrow" reminder |
 | 0 days (expiry day) | "Your trial has ended" notice |
 
+Trial countdown emails go only to people who **confirmed their email**. Someone who signed up but never clicked the confirmation link can't use the account yet, so instead they get **"Reminder: confirm your email to finish setting up your Kovarti PM account"** (no mention of a trial — paid-plan and invited sign-ups get it too) with a fresh 24-hour link, once a day after signing up and once three days after (both inside a 7-day trial). Keys `verify-reminder:{userId}:1day|3day` stop repeats (Oct 2026).
+
+**Addresses the app never emails:** placeholders (`name@example.com`) and staging's test logins on `pm.kpbc.ca`, which has no mailboxes — every send there bounced, and bounces on the Resend account prod shares push real customers' mail toward spam (`isUndeliverableEmail` in `utils/placeholderEmail.ts`, checked in `EmailService.sendEmail`, the one path all mail takes).
+
 A daily cron job runs at **09:00** to scan for trials expiring within the relevant windows and dispatch the appropriate email. Redis-backed deduplication prevents the same reminder from being sent more than once per user per trigger window — if the cron runs multiple times or a user is picked up on consecutive days for the same window, only one email is delivered.
 
 #### Email Design

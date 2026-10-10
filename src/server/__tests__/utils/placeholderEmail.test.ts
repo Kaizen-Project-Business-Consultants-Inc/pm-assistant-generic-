@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
-import { isPlaceholderEmail, makePlaceholderEmail } from '../../utils/placeholderEmail';
+import { isPlaceholderEmail, isUndeliverableEmail, makePlaceholderEmail } from '../../utils/placeholderEmail';
 import { isPlaceholderEmail as clientIsPlaceholder, PLACEHOLDER_EMAIL_DOMAIN as clientDomain } from '../../../client/src/utils/placeholderEmail';
 import { PLACEHOLDER_EMAIL_DOMAIN } from '../../utils/placeholderEmail';
 
@@ -30,6 +30,16 @@ describe('placeholder emails (2026-10-01)', () => {
     expect(isPlaceholderEmail('a@notexample.com')).toBe(false);
     expect(isPlaceholderEmail('')).toBe(false);
     expect(isPlaceholderEmail(null)).toBe(false);
+  });
+
+  it('undeliverable = placeholders plus staging test logins (pm.kpbc.ca), not real kpbc.ca mail', () => {
+    expect(isUndeliverableEmail('a.b@example.com')).toBe(true);
+    expect(isUndeliverableEmail('qa.team@pm.kpbc.ca')).toBe(true);
+    expect(isUndeliverableEmail(' QA.PM@PM.KPBC.CA ')).toBe(true);
+    expect(isUndeliverableEmail('michaela@kpbc.ca')).toBe(false);
+    expect(isUndeliverableEmail('a@xpm.kpbc.ca')).toBe(false);
+    expect(isUndeliverableEmail('someone@gmail.com')).toBe(false);
+    expect(isUndeliverableEmail(null)).toBe(false);
   });
 
   it('the screens and the server agree on what a placeholder is', () => {

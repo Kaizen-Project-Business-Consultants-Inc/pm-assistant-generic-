@@ -772,7 +772,9 @@ The file `src/server/services/aiContextBuilder.ts` has 3 pre-existing type error
 
 ### 9a. Trial Reminder Cron
 
-The trial reminder cron sends emails to users approaching or past their trial expiration. It deduplicates sends using Redis keys of the form `trial-reminder:{userId}:{type}`.
+The trial reminder cron sends emails to users approaching or past their trial expiration. It deduplicates sends using Redis keys of the form `trial-reminder:{userId}:{type}`. The countdown goes only to confirmed emails; unconfirmed sign-ups 1–4 days old get a fresh confirm-your-email link instead (keys `verify-reminder:{userId}:1day|3day`). Automated: `jobsBatched.test.ts` (trial reminders), `EmailService.test.ts` (reminder wording; no mail to `@pm.kpbc.ca`), `placeholderEmail.test.ts` (`isUndeliverableEmail`).
+
+**Manual on staging:** register a new account with a real address you can read, don't confirm, then set its `created_at` back 1 day (`UPDATE users SET created_at = NOW() - INTERVAL 25 HOUR WHERE email = ...`) and run the job — one "Reminder: confirm your email" arrives and its link works; running again sends nothing. Staging test logins on `pm.kpbc.ca` never get mail (log line "Email not sent: no deliverable address").
 
 **Invoke directly (SSH to server):**
 

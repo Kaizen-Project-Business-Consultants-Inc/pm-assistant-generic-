@@ -113,6 +113,22 @@ describe('EmailService', () => {
       expect(service.getStats().sent).toBe(0);
     });
 
+    it('never sends to staging test logins (@pm.kpbc.ca, no mailboxes — every send bounced)', async () => {
+      await service.sendVerificationEmail('qa.team@pm.kpbc.ca', 'token123');
+      await service.sendVerificationEmail(' QA.PM@PM.KPBC.CA', 'token123');
+      expect(mockSend).not.toHaveBeenCalled();
+    });
+
+    it('a reminder keeps the link but says they have not confirmed yet', async () => {
+      await service.sendVerificationEmail('user@test.com', 'tok-r', { reminder: true });
+      const args = mockSend.mock.calls[0][0];
+      // No "trial": paid-plan and invited sign-ups get this too, and they have no trial
+      expect(args.subject).toBe('Reminder: confirm your email to finish setting up your Kovarti PM account');
+      expect(args.html).not.toMatch(/trial/i);
+      expect(args.html).toContain('verify-email?token=tok-r');
+      expect(args.html).toContain("haven't confirmed your email yet");
+    });
+
     it('sends email successfully and tracks success', async () => {
       await service.sendVerificationEmail('user@test.com', 'token123');
 

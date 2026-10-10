@@ -65,7 +65,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
    - Both password fields must match before the form can be submitted.
    - Check the **Terms of Service** checkbox — the **Create Account** button stays disabled until you accept.
    - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
-5. Verify your email address using the link sent to your inbox.
+5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? Check your spam or Promotions folder.
 
 > **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
