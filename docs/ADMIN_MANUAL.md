@@ -1,19 +1,23 @@
 # PM Assistant -- Admin Manual
 
-This manual is for **system administrators** who manage users, projects, and platform configuration for PM Assistant, an enterprise project management platform.
+This manual is for the **Kovarti platform admin**, and for **company owners and PMOs**, who administer their own company (members, holidays, rate card, sample project), in PM Assistant, an enterprise project management platform.
 
 ---
 
 ## 1. Roles and Access
 
-| Role          | Access                                                              |
-|---------------|---------------------------------------------------------------------|
-| **admin**     | The Kovarti platform admin only (see below). Never a company member. |
-| **executive** | Read-only portfolio view, analytics dashboards, KPI summaries.      |
-| **manager**   | Create/manage projects, assign members, run reports, approve tasks. |
-| **member**    | View and work on assigned projects, log time, update tasks.         |
+| Role | Access |
+|------|--------|
+| **admin** | The Kovarti platform admin only (see below): no company, never a company member. |
+| **owner** (of a company) | The person who set up the company. Not a separate role value: whatever role they hold, they work as **PMO** inside their company (below). Only the owner manages billing. |
+| **pmo** | Every project in the company, read and change; company-wide settings (holidays, sample project, rate card, support visits), company-wide workflows, the people list and line managers; every menu item. |
+| **project_manager** | Creates projects and manages the ones they own or manage; invites members; Team and Rate card settings. Every menu item except Portfolio. |
+| **executive** | Reads every project in the company and opens the company pages (not Integrations or AI Proposals); changes nothing (`read` scope only). |
+| **team_member** | Works on assigned tasks and RAID items, logs time, comments. Team-member menu (no company-wide pages). |
+| **viewer** | Reads the projects they're a member of; updates only items assigned to them. Free, no seat. |
+| **guest** | An invited outside collaborator on chosen projects (`isGuest` flag, not a role value); see the User Guide. |
 
-Managers operate within projects they own or are assigned to. Members participate in their assigned work.
+The invite form offers Project Manager, Team Member, Viewer and Executive. The backend keeps 14 role values in all (`src/server/constants/roleScopes.ts`): the other job roles (scrum_master, risk_manager, ba, qa, devops — with write — and tester, finance_officer, claude_sme — read only) get a team member's menu.
 
 **The company owner works as PMO (October 2026).** Whatever role the owner has, the server gives them a PMO's permissions inside their company (`utils/companyOwner.ts` → `permissionRole`, applied in `authMiddleware` for cookie and API-key/Claude sign-ins, and sent as `role` by `/auth/login` and `/auth/me`; `accountRole` is their own role, shown as "your role"). Never during the admin's Support view; guests are never elevated.
 
@@ -24,27 +28,26 @@ Managers operate within projects they own or are assigned to. Members participat
 ## 2. User Management
 
 ### Creating Users
-- Navigate to **Settings > Users > Add User**.
-- Provide name, email, role, and initial password.
-- Users receive an email invitation if SMTP is configured.
+- Company members: **Settings → Team → Invite Member** (company owner, PMO or project manager). Enter an email and a role (Project Manager, Team Member, Viewer or Executive) and click **Invite**. There is no password field: the person sets their own password from the invitation email (sent through Resend).
+- The platform admin's list of every account is **Admin → Users**.
 
 ### Editing Users
 - Update role, display name, email, or deactivate accounts.
-- Role changes take effect on the user's next request (JWT re-issued on login).
+- Role changes take effect at the user's next sign-in or token refresh (within 15 minutes). API keys and Claude connections follow the new role immediately.
 
 ### Password Management
 - Admins can trigger a password reset email or set a temporary password.
-- Enforce password complexity via `PASSWORD_MIN_LENGTH` and `PASSWORD_REQUIRE_SPECIAL` env vars.
+- Passwords need at least 8 characters. This is fixed in the code; there is no setting for password complexity.
 
 ### Users Table Columns
 
-The **Admin > Users** table displays 14 sortable columns. Click any column header to sort ascending/descending.
+The **Admin > Users** table has 14 columns; 11 of them sort (all except AI Budget, Period End and Actions). Click a sortable column header to sort ascending/descending.
 
 | Column | Description |
 |--------|-------------|
 | User | Full name, email, username |
 | Role | Color-coded role badge |
-| Tier | Subscription tier badge (Trial, Consultant, SME, Enterprise) |
+| Tier | Subscription tier badge (Trial, Consultant Basic, Consultant Pro, SME — sold as Team, Enterprise) |
 | Organization | Multi-tenant organization name (or "none") |
 | Signed up | Account creation date |
 | Login status | Verified / **Never confirmed** / Pending login / Expired token |
@@ -52,7 +55,8 @@ The **Admin > Users** table displays 14 sortable columns. Click any column heade
 | Projects | Number of projects owned |
 | AI Usage | Token consumption progress bar with percentage (current month vs budget) |
 | AI Budget | Per-user override or "tier default" (inline-editable) |
-| Subscription | Current subscription status badge (active, trialing, past_due, canceled, none) and period-end date |
+| Sub Status | Current subscription status badge (active, trialing, past_due, canceled, none) |
+| Period End | End of the current billing period |
 | Status | Active/Inactive toggle |
 | Actions | Reset PW, Unlock (for stuck login tokens), View subscription event history |
 
@@ -80,7 +84,7 @@ Login status badges indicate email verification and login token state:
 | Status | Meaning |
 |---|---|
 | **Verified** (green) | Email verified, no pending login token. Normal state. |
-| **Unverified** (gray) | Email address not yet verified. |
+| **Never confirmed** | The email was never confirmed (see above). |
 | **Pending login** (yellow) | A login verification token has been issued and is awaiting confirmation. |
 | **Expired token** (red) | The login verification token has expired. User cannot complete login. |
 
@@ -98,13 +102,14 @@ When a user has a pending or expired login token, an **Unlock** button appears i
 
 ### Creating Projects
 - **Projects > New Project** -- set name, description, start/end dates, and budget.
-- Assign a project manager (must have `manager` role).
+- Choose the project's manager (a user with the project_manager role).
+- Pick a **Client** (optional). The project gets a code (PRJ-001 …) that never changes. A name already used by a live project in the company is refused, with a link to the existing project. Owners, PMOs and PMs manage the client list; a project's manager sets its client.
 - Optionally apply a **project template** to pre-populate tasks and milestones.
 - The creator is **automatically added as project owner** in the project members list.
 
 ### Managing Members
 - Add or remove members from a project's **Team** tab.
-- Set per-project roles: **owner**, **manager**, **editor**, **viewer**.
+- Set per-project roles: **owner**, **manager**, **viewer**. Editor was removed in September 2026; an old editor membership now counts as Viewer.
 
 ### Project-Level Access Control
 
@@ -114,7 +119,6 @@ Project membership is enforced on all project-scoped API routes. Only members of
 |---|---|---|---|---|---|
 | **owner** | Yes | Yes | Yes | Yes | Yes |
 | **manager** | Yes | Yes | Yes | Yes | No |
-| **editor** | Yes | Yes | Yes | No | No |
 | **viewer** | Yes | Time entries on assigned tasks only; RAID items they own; comments on assigned tasks | No | No | No |
 | **Non-member** | 404 | 404 | 404 | 404 | 404 |
 
@@ -122,9 +126,9 @@ Project membership is enforced on all project-scoped API routes. Only members of
 
 **Viewer time logging:** Viewers can log time entries on tasks assigned to them and edit their own time entries. They cannot delete time entries or modify schedule data (tasks, dates, assignments). Schedules are fully read-only for viewers — all editing controls are hidden in the UI.
 
-**Viewer sidebar:** Viewers and team_members see a reduced sidebar: role-restricted items (Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM Dashboard, Simulation, Scenario Modeling, Report Builder, AI Proposals) are left out of their menu, and typing one of those addresses opens their Dashboard. The menu and the router use one role-to-pages map (`src/client/src/constants/roleRoutes.ts`). The server still decides what data each person can read.
+**Viewer sidebar:** Viewers and team_members see a reduced sidebar: role-restricted items (Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM Dashboard, Simulation, Scenario Modeling, Report Builder, AI Proposals) are left out of their menu, and typing one of those addresses opens their Dashboard. The menu and the router use one role-to-pages map (`src/client/src/constants/roleRoutes.ts`). The server still decides what data each person can read. Project managers don't see Portfolio. Executives don't see Integrations or AI Proposals. Guests also lose Resources, Integrations, Workflows, Intake, Change Requests and Settings (their own settings stay in the top-right menu). A client's risks page and client report open for anyone who can open one of its projects. The platform admin gets a separate Administration menu.
 
-> **Important:** Project roles (owner/manager/editor/viewer) are separate from global user roles (admin/executive/project_manager/team_member/etc.). A user needs both: a global role with sufficient scope *and* a project role with sufficient access.
+> **Important:** Project roles (owner/manager/viewer) are separate from global user roles (admin/executive/project_manager/team_member/etc.). A user needs both: a global role with sufficient scope *and* a project role with sufficient access.
 
 ### Pinned Project Links
 
@@ -133,10 +137,10 @@ Each project supports a set of pinned links (e.g., Confluence pages, Figma files
 | Method | Endpoint | Min Role | Description |
 |--------|----------|----------|-------------|
 | `GET` | `/api/v1/projects/:projectId/links` | viewer | List all pinned links for the project |
-| `POST` | `/api/v1/projects/:projectId/links` | editor | Create a new pinned link |
-| `PUT` | `/api/v1/projects/:projectId/links/reorder` | editor | Reorder pinned links |
-| `PUT` | `/api/v1/projects/:projectId/links/:linkId` | editor | Update a pinned link |
-| `DELETE` | `/api/v1/projects/:projectId/links/:linkId` | editor | Delete a pinned link |
+| `POST` | `/api/v1/projects/:projectId/links` | manager | Create a new pinned link |
+| `PUT` | `/api/v1/projects/:projectId/links/reorder` | manager | Reorder pinned links |
+| `PUT` | `/api/v1/projects/:projectId/links/:linkId` | manager | Update a pinned link |
+| `DELETE` | `/api/v1/projects/:projectId/links/:linkId` | manager | Delete a pinned link |
 
 All endpoints require project membership enforced by `requireProjectAccess`.
 
@@ -146,12 +150,12 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - Kovarti support never deletes or archives a customer's project.
 
 ### Rate Card
-- **Settings → Rate card** holds hourly cost rates by role, each with a start date (`rate_card`, tenant migration T063 — one card per company database). Admins, PMO, project managers and the company owner see and change it; the tab is hidden from everyone else and the API answers 403.
+- **Settings → Rate card** holds hourly cost rates by role, each with a start date (`rate_card`, tenant migration T063 — one card per company database). PMOs, project managers and the company owner see and change it; the tab is hidden from everyone else and the API answers 403.
 - A resource is costed from the card only when its form says **Use rate card** (`resources.use_rate_card`); every existing resource started on its own rate, so no cost changed when this shipped. A role with no card rate yet falls back to the resource's own rate.
 - Costs use the rate in force for the week the work happened. Two lines for the same role and start date are refused.
 
 ### Company Holidays and Working Calendars
-- **Settings → Company holidays** holds one holiday list for the company; every project's working calendar treats those dates as days off. The company owner, an admin or PMO can add or remove dates; others see the list read-only.
+- **Settings → Company holidays** holds one holiday list for the company; every project's working calendar treats those dates as days off. The company owner or a PMO can add or remove dates; others see the list read-only.
 - Each change shows a preview first — how many tasks would move in how many active projects — and nothing is saved until **Apply**. Applying moves tasks in every affected plan and records a line in each plan's Schedule History (Undo puts the dates back; the holiday stays).
 - A project's Manager/Owner can add its own days off, or mark a company holiday (or a Saturday) as a working day for that project only, from **Working calendar** in the schedule toolbar.
 - Holidays differ by province and company, so the list starts empty.
@@ -183,15 +187,15 @@ Key variables in `.env` (never commit secrets):
 
 | Variable              | Purpose                                     |
 |-----------------------|---------------------------------------------|
-| `DATABASE_URL`        | MySQL/MariaDB connection string             |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | MariaDB connection (the database runs on the app server itself) |
 | `JWT_SECRET`          | Token signing secret                        |
 | `COOKIE_SECRET`       | Session cookie signing secret               |
 | `AI_ENABLED`          | Enable/disable Claude AI features (`true`/`false`) |
 | `ANTHROPIC_API_KEY`   | Anthropic API key (required if AI enabled)  |
 | `STRIPE_SECRET_KEY`   | Stripe billing integration                  |
-| `SMTP_HOST` / `SMTP_PORT` | Outbound email configuration            |
+| `RESEND_API_KEY`      | Outbound email (Resend)                     |
 | `CORS_ORIGIN`         | Allowed CORS origins                        |
-| `BASE_URL`            | Public-facing URL of the application        |
+| `APP_URL`             | Public-facing URL of the application        |
 | `MULTI_TENANT_ENABLED` | Enable database-per-customer multi-tenancy (`true`/`false`) |
 
 ### AI Features Toggle
@@ -230,14 +234,16 @@ Run one by hand: `sudo systemctl start pm-cron@<name>.service`
 
 Inspect: `systemctl list-timers 'pm-cron@*'` and `journalctl -u pm-cron@<name>.service`
 
+Other timers (all in `deploy/systemd/`): `deadline-check` (hourly at :05), `digest` (hourly), `recurrence` (02:00), `reports` (every 15 min), `schedule-review` (Mon 04:00), `timesheet-compliance` (hourly at :10), `utilization-coaching` (Mon 09:00), `weekly-review-pack` (Fri 17:00), `alert-check` (every 5 min), plus `agent-scan` (02:00), `overdue-scan` (every 15 min), `health-snapshot` (03:00), `data-retention` (03:30), `backup` (02:30) and the ones below.
+
 - **Trial Reminder Cron** — A daily job (`pm-cron@trial-reminder`) runs at 09:00 UTC to send trial expiry reminder emails. It sends emails at the 7-day, 3-day and 1-day warnings, and on expiry. It only ever touches free-tier trials (`subscription_tier = 'trial'`) — a paying customer is never told their trial is expiring, and the expired-trial downgrade in the same job carries the same restriction so it cannot lock out an account that has paid. Emails use a polished dark-themed HTML template matching the Kovarti brand (teal accent bar, logo, status badge, gradient CTA button, reassurance info points, responsive layout, dark-mode CSS, Outlook VML fallback). Redis-backed deduplication prevents repeat sends: each reminder is keyed as `trial-reminder:{userId}:{type}` with a 30-day TTL. Implementation: `src/server/services/scheduling/trialReminderJob.ts`, template: `buildTrialEmailHtml()` in `EmailService.ts`.
 - **Pending Payment Sweep** — Daily at 09:30, `src/server/services/scheduling/pendingPaymentJob.ts`. Looks after accounts stuck in `incomplete` (chose a paid plan, never completed checkout). For each one it asks Stripe directly whether the payment in fact succeeded and activates the account if so — this is the backstop behind `POST /stripe/reconcile`, which the client calls when someone returns from checkout, and it exists because a dropped webhook would otherwise lock out a customer who has paid. Genuinely unpaid signups get one reminder email after 2 days (Redis key `pending-payment-reminded:{userId}`) and the empty account is deactivated after 14 days, unless it already owns a provisioned workspace, in which case it is left for a human. An account that cannot be verified with Stripe is never acted on.
 
 ### Tier ENUM and Feature Gating
 
-The subscription tier is stored as a `tier` ENUM column on both the `users` table (single-tenant) and the `organizations` table (multi-tenant). Valid values are: `trial`, `consultant`, `sme`, `enterprise`.
+The subscription tier is stored as a `tier` ENUM column on both the `users` table (single-tenant) and the `organizations` table (multi-tenant). Valid values are: `trial`, `consultant_basic`, `consultant_pro`, `sme`, `enterprise` (migration 102 split `consultant` into Basic and Pro; `sme` is sold as **Team**, migration 118).
 
-**Migration 067** automatically migrates all existing data from the old tier names:
+**Migration 067** (historical — replaced by 102) automatically migrates all existing data from the old tier names:
 
 | Old value | New value |
 |-----------|-----------|
@@ -246,7 +252,7 @@ The subscription tier is stored as a `tier` ENUM column on both the `users` tabl
 | `business` | `sme` |
 | `consultant` | `enterprise` |
 
-**`requirePaidTier` middleware** blocks trial users from accessing advanced features. Any route decorated with this middleware returns `403 Forbidden` when the requesting user is on the `trial` tier. Paid tiers (consultant, sme, enterprise) pass through without restriction. When such a refusal answers a change (not a page load), the app opens the **Part of a paid plan** window with **View Plans** (October 2026); page loads stay quiet.
+**`requirePaidTier` middleware** blocks trial users from accessing advanced features. Any route decorated with this middleware returns `403 Forbidden` when the requesting user is on the `trial` tier. Paid tiers (`consultant_basic`, `consultant_pro`, `sme`, `enterprise`) pass through without restriction. A member who isn't the company owner sees "Your company's owner manages the plan." instead of a buy button. When such a refusal answers a change (not a page load), the app opens the **Part of a paid plan** window with **View Plans** (October 2026); page loads stay quiet.
 
 ---
 
@@ -254,21 +260,23 @@ The subscription tier is stored as a `tier` ENUM column on both the `users` tabl
 
 ### Plans
 
-Three paid tiers are available, each with monthly and annual billing:
+Four paid tiers exist, each with monthly and annual billing (Enterprise is not shown on the Pricing page):
 
 | Tier | Monthly | Annual | AI Tokens/mo | Viewer Invites |
 |------|---------|--------|--------------|----------------|
-| Consultant | $19 | ~$190 | 500,000 | 5 |
-| SME | $39 | ~$390 | 1,500,000 | 20 |
+| Consultant Basic | $19 | ~$190 | none | 5 |
+| Consultant Pro | $29 | ~$290 | 500,000 | 15 |
+| Team (stored as `sme`) | $19 per seat, minimum 3 seats | ~$190 per seat | 500,000 per seat, pooled (1,500,000 at the 3-seat minimum) | Unlimited |
 | Enterprise | $79 | ~$790 | 5,000,000 | Unlimited |
 
 Trial accounts are free, limited to 14 days, 3 projects, and 5K AI tokens (~10 AI chats to explore Mjuzi). Consultant Basic ($19/mo) includes core PM features plus resource management, reports, and workflow automation — but no AI. Consultant Pro ($29/mo) adds all AI features with 500K tokens/month. Annual billing saves ~17%.
 
-> **Viewer invites:** Viewer accounts are free — invited viewers do not need a subscription. The invite limit is per paid account (Basic: 5 / Pro: 15 / SME: 20 / Enterprise: unlimited).
+> **Viewer invites:** Viewer accounts are free — invited viewers do not need a subscription. The invite limit is per paid account (Basic: 5 / Pro: 15 / Team: unlimited / Enterprise: unlimited).
 
 Map Stripe price IDs to app tiers via env vars:
-- `STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID`
-- `STRIPE_SME_MONTHLY_PRICE_ID`, `STRIPE_SME_ANNUAL_PRICE_ID`
+- `STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID`
+- `STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID`
+- `STRIPE_SME_SEAT_MONTHLY_PRICE_ID`, `STRIPE_SME_SEAT_ANNUAL_PRICE_ID` (Team, per seat; `STRIPE_SME_MONTHLY/ANNUAL_PRICE_ID` and `STRIPE_CONSULTANT_NEW_*` are kept for older subscribers)
 - `STRIPE_ENTERPRISE_MONTHLY_PRICE_ID`, `STRIPE_ENTERPRISE_ANNUAL_PRICE_ID`
 
 ### Token Top-Ups
@@ -280,9 +288,9 @@ Users can purchase additional AI token packs at any time: **500,000 tokens for $
 - `GET /api/v1/stripe/topup-balance` — returns remaining top-up tokens and purchase history
 
 ### Managing Subscriptions
-- View active subscriptions under **Settings > Billing**.
-- Upgrade, downgrade, or cancel subscriptions from the Stripe billing portal.
-- Stripe webhooks (`/api/webhooks/stripe`) handle payment events and top-up fulfillment automatically.
+- The company owner sees the plan, credits and the billing portal on **Account** (command palette → Go to Account & Billing) and changes plan on **Pricing**. Other members see the plan and usage, and "Your company's owner manages the plan." instead of the buttons.
+- Upgrade, downgrade, or cancel subscriptions from the Stripe billing portal (owner only).
+- Stripe webhooks (`POST /api/v1/stripe/webhook`) handle payment events and top-up fulfillment automatically.
 
 ### AI Budget Administration
 
@@ -291,7 +299,7 @@ Admins can override per-user AI token budgets from the **Admin > Users** page:
 - Click the value to inline-edit. Set a custom budget or clear to revert to tier default.
 - **API:** `PATCH /api/v1/admin/users/:id/budget` with body `{ budget: number | null }`.
 
-Tier budget defaults are displayed on the **Admin > Configuration** page under "Tier Budget Defaults". These are configured via env vars (`AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE`).
+Tier budget defaults are displayed on the **Admin > Configuration** page under "Tier Budget Defaults". These are configured via env vars (`AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_BASIC`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_SME_PER_SEAT`, `AI_TIER_BUDGET_ENTERPRISE`).
 
 ### Revenue Dashboard
 
@@ -302,7 +310,7 @@ Navigate to **Admin > Revenue** (`/admin/revenue`) for a real-time financial ove
 | Metric | Description |
 |--------|-------------|
 | MRR | Monthly Recurring Revenue — sum of all active monthly subscriptions plus annuals normalized to monthly |
-| Subscribers by Tier | Counts of active subscribers at Trial, Consultant, SME, and Enterprise tiers |
+| Subscribers by Tier | Counts of active subscribers at Trial, Consultant Basic/Pro, Team (SME), and Enterprise tiers |
 | Churn Rate | Percentage of subscribers who cancelled in the current calendar month |
 | Top-Up Revenue | Total one-time revenue from AI token top-up purchases (current month) |
 | Trial Conversion | Percentage of trials that converted to a paid subscription |
@@ -335,21 +343,20 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 - Ensure `STRIPE_WEBHOOK_SECRET` is set for webhook signature verification.
 
 ### Billing Route Scope
-- The billing routes (`create-checkout-session`, `billing-portal`) use `requireScope('read')` so that all authenticated users — including those with the `team_member` role — can manage their own subscriptions.
-- This is intentional. Do not change these routes to require `write` scope.
+- Buying a plan or credits, opening the billing portal and re-checking the subscription (`create-checkout-session`, `create-topup-session`, `create-portal-session`, `reconcile`) are for the **company owner only** (`billingOwnerOnly`, since 2026-10-08). Someone with no company buys for themselves. Other members get 403: "Only the company's owner can change the plan or buy credits. Ask them to do it from Account."
+- Reading the subscription status and top-up balance stays open to every signed-in member.
 
 ---
 
 ## 6. API Key Management
 
 ### Generating Keys
-- **Settings > API Keys > Generate** -- create keys scoped to specific permissions.
-- Available scopes: `read`, `write`, `admin`.
+- **Settings > API Keys** -- create keys with `read` or `read` + `write` rights. `admin` is for the Kovarti platform admin only; anyone else asking for it gets 403 "Your role (…) cannot create API keys with scopes: admin".
+- A key never gets more than its owner's role: on every request it is cut down to the role (`effectiveScopes`), and if the owner's role is lowered later, their existing keys shrink with it. Creating a key needs the `write` scope, so project managers, PMOs and the owner can create keys; executives, team members and viewers can't (their only key is a Claude connection, read-only). The tab still shows everyone the Create button and all three scope buttons (an app gap).
 - Keys are shown once at creation; store them securely.
 
 ### Rate Limiting
-- Default rate limits: 100 requests/minute per key.
-- Configure via `API_RATE_LIMIT` and `API_RATE_WINDOW` env vars.
+- Each key has its own rate limit, stored with the key (default 100 requests per minute). There are no environment variables for it.
 
 ### Revoking Keys
 - Revoke compromised or unused keys immediately from **Settings > API Keys**.
@@ -361,7 +368,7 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 
 ### JWT Dual-Token Strategy
 - **Access token:** HTTP-only cookie (`access_token`), 15-minute expiry.
-- **Refresh token:** HTTP-only cookie (`refresh_token`), 7-day expiry.
+- **Refresh token:** HTTP-only cookie (`refresh_token`), 24-hour expiry.
 - Both cookies use `secure: true` in production, `sameSite: 'lax'`.
 
 ### Login Flow
@@ -382,17 +389,17 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 ## 8. Audit Trail
 
 ### Viewing the Audit Ledger
-- **Settings > Audit Trail** -- browse the immutable, append-only audit log.
+- A project's audit chain shows in **Reports → Compliance** for that project. The platform admin's audit list is **Admin → Audit Trail**. There is no Audit Trail tab in Settings.
 - Every create, update, delete, and auth event is recorded with timestamp, user, and action.
 
 ### Hash-Chain Integrity
 - Each audit entry includes a SHA-256 hash linking it to the previous entry. Entries are added one at a time per company (since 2026-10-08).
 - **History written before 8 October 2026 may show "broken" at an early entry.** That is not tampering: two changes saved at the same moment used to link to the same earlier entry. To check only the history since the fix, verify with `?since=2026-10-09`.
-- Run the integrity check via **Settings > Audit Trail > Verify Integrity** (`GET /api/v1/audit/verify`). Since 2026-10-08 the whole-company check is for the company's PMO/owner only, reads the history 1,000 entries at a time and may be run 10 times per 10 minutes; a single project's count needs access to that project.
+- Run the integrity check through the project's Compliance report, or for the whole company with `GET /api/v1/audit/verify`. Since 2026-10-08 the whole-company check is for the company's PMO/owner only, reads the history 1,000 entries at a time and may be run 10 times per 10 minutes; a single project's count needs access to that project.
 
 ### Search and Filter
 - Filter by date range, user, action type, or resource.
-- Export audit logs as CSV for compliance reporting.
+- Export audit logs as CSV through the API only (no button), rate-limited to 10 per 10 minutes.
 
 ---
 
@@ -447,11 +454,12 @@ The efficiency guard (`src/server/__tests__/utils/efficiencyGuard.test.ts`) fail
 ### Event-Driven Triggers
 - Workflows fire automatically on task events (create, update, priority change, assignment change, dependency change).
 - Project-level triggers fire on budget threshold crossings and status changes.
-- An overdue-task scanner (`pm-cron@overdue-scan`, every 15 minutes) detects past-due tasks and fires `date_passed` triggers. **It only runs when `AGENT_ENABLED=true`, which is currently off on staging and production — so `date_passed` triggers do not fire today.** The interval is set by the timer file in `deploy/systemd/`; `AGENT_OVERDUE_SCAN_MINUTES` is no longer read.
+- An overdue-task scanner (`pm-cron@overdue-scan`, every 15 minutes) detects past-due tasks and fires `date_passed` triggers. **It only runs when `AGENT_ENABLED=true`: on for staging (since 2026-10-07), off for production. So on production the overdue scan does nothing and `date_passed` triggers don't fire; on staging they do.** The interval is set by the timer file in `deploy/systemd/`; `AGENT_OVERDUE_SCAN_MINUTES` is no longer read.
 
 ### Monitoring Executions
 - View workflow runs on the **Workflows** page → **Executions** tab.
 - Track which stage each item is in, who approved, and time spent per stage.
+- The Executions tab works for every role that can open Workflows and lists the newest 50 runs on that person's projects (PMOs, the owner and executives see all). Opening a single run they may not see answers 404.
 
 ### Approval Gates
 - Configure stages that require one or more approvers before progressing.
@@ -470,7 +478,7 @@ The efficiency guard (`src/server/__tests__/utils/efficiencyGuard.test.ts`) fail
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `AGENT_ENABLED` | Switches on the two jobs that need it: the nightly checks (`pm-cron@agent-scan`) and the overdue-task scan (`pm-cron@overdue-scan`). **Off (`false`) on staging and production** — so neither does any work today. Every other scheduled job runs regardless. | `false` |
+| `AGENT_ENABLED` | Switches on the two jobs that need it: the nightly checks (`pm-cron@agent-scan`) and the overdue-task scan (`pm-cron@overdue-scan`). **On for staging (since 2026-10-07), off (`false`) for production** — so on production neither does any work; on staging both run. Every other scheduled job runs regardless. | `false` |
 | `AGENT_DELAY_THRESHOLD_DAYS` | Minimum delay days to flag (slipping-tasks check) | `3` |
 | `AGENT_BUDGET_CPI_THRESHOLD` | CPI below which the budget check alerts | `0.9` |
 | `AGENT_MC_CONFIDENCE_LEVEL` | Monte Carlo confidence level the schedule-risk check uses | `80` |
@@ -569,7 +577,7 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 ## 11. Integrations
 
 ### Jira
-- **Settings > Integrations > Jira** -- provide Jira URL, email, and API token.
+- **Integrations** in the sidebar (Manage section; project managers and PMOs) → **Jira** -- provide Jira URL, email, and API token.
 - Sync projects, issues, and statuses bidirectionally.
 - Map PM Assistant statuses to Jira statuses in the configuration panel.
 
@@ -619,9 +627,9 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 ## 12. Webhooks
 
 ### Configuring Outbound Webhooks
-- **Settings > Webhooks > Add Webhook** -- provide a target URL and select event types.
-- Events: `task.created`, `task.updated`, `project.created`, `sprint.completed`, etc.
-- Each webhook includes an HMAC signature header for verification.
+- **Settings > Webhooks** -- provide a target URL and tick event types (project managers, PMOs and the owner; others are refused when they save).
+- The tab offers `task.created`, `task.updated`, `task.deleted`, `project.created`, `project.updated`, `proposal.created`, `proposal.accepted` and `agent.scan_completed`. The app also sends `sprint.created`, `sprint.started`, `sprint.completed`, `risk.created`, `risk.updated`, `change_request.created` and `change_request.withdrawn`, which can only be subscribed to through the API for now.
+- Each delivery has an HMAC-SHA256 signature in the `X-Webhook-Signature` header for verification.
 
 ### Delivery Logs
 - View delivery history, response codes, and retry status.
@@ -631,16 +639,14 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 
 ## 13. Notifications
 
-- **Settings > Notifications** -- configure system-wide notification preferences.
+- **Settings > Notifications** -- each person sets their own preferences (in-app and email per category, and the digest). There are no company-wide or mandatory notification settings.
 - Notification channels: in-app, email, Slack (if integrated).
-- Admins can set mandatory notifications (e.g., security alerts) that users cannot disable.
 
 ---
 
 ## 14. Resource Management
 
-- **Resources > Pool** -- define team members, their skills, and availability.
-- **Capacity Planning** -- view resource allocation across projects by week/month.
+- **Resources** (sidebar; project managers, PMOs and executives) has these tabs: **Team** (people, skills, rates, availability), **Team Planner** (shown only to people who can change the plan; PMs and PMOs move work between people), **Workload Heatmap**, **Resource Histogram**, **Capacity Forecast**, **Trends**, **Calendar Templates** and **Requests**.
 - Identify over-allocated resources and rebalance assignments.
 - Generate resource histograms and workload reports.
 
@@ -648,7 +654,7 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 
 ## 15. Report Templates
 
-- **Reports > Templates** -- create reusable report templates with custom fields, filters, and layouts.
+- **Report Builder** (sidebar, for project managers, PMOs and executives) -- create reusable report templates with custom fields, filters, and layouts.
 - Built-in templates: project status, burndown, velocity, budget forecast.
 - Schedule automated report generation and email delivery.
 - **AI Status Reports** -- users can generate AI-powered project status reports via `POST /api/v1/status-reports/generate` and schedule recurring delivery via `POST /api/v1/status-reports/schedule`. Schedules use the existing `report_schedules` table with `templateId = "status-report::<projectId>"`. Requires `AI_ENABLED=true` for AI generation (falls back to template otherwise) and `RESEND_API_KEY` for email delivery. Gated by `requirePaidTier`.
@@ -658,18 +664,18 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 ## 16. Intake Forms
 
 ### Configuring Forms
-- **Settings > Intake Forms** -- design forms for project requests with custom fields.
+- **Intake** in the sidebar → **Forms** tab -- design forms for project requests with custom fields.
 - Set required fields, dropdown options, and validation rules.
 
 ### Reviewing Submissions
-- Submissions appear under **Intake > Pending Review**.
+- Submissions appear under **Intake → Submissions**.
 - Approve to create a project automatically, or reject with comments.
 
 ---
 
 ## 17. Project Templates
 
-- **Settings > Templates** -- create and manage reusable project templates.
+- There is no templates screen in Settings: save a project as a template with **Save as Template**, and pick one when creating a project.
 - Templates capture task structure, milestones, workflow assignments, and default settings.
 - Apply templates when creating new projects to ensure consistency.
 
@@ -679,7 +685,8 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 
 ### Setup
 - The MCP server enables Claude Desktop and Claude Web to interact with PM Assistant data.
-- Configure the MCP endpoint in Claude Desktop's `claude_desktop_config.json`:
+- Users connect Claude to Kovarti as a remote connector at `https://<host>/mcp`. They sign in and approve (OAuth), and the connection acts as them with their role's rights.
+- The local stdio setup below is for development only. Configure it in Claude Desktop's `claude_desktop_config.json`:
 
 ```json
 {
@@ -730,11 +737,11 @@ Navigate to **Admin Panel > Tenants** to view and manage all organizations. This
 | Organization | Name and slug |
 | Owner | Full name and email of the org owner |
 | Users | Current user count / max users limit |
-| Tier | Subscription tier badge (trial, consultant, sme, enterprise) |
+| Tier | Subscription tier badge (trial, consultant_basic, consultant_pro, sme — Team, enterprise) |
 | Status | Active/Inactive toggle — deactivated orgs cannot log in |
 | Provisioned | Green check if tenant DB exists; red retry button if provisioning failed |
 | Created | Organization creation date |
-| Actions | Run pending tenant migrations |
+| Actions | View as support; Migrate (run pending tenant migrations) |
 
 ### Managing Tenants
 
@@ -748,7 +755,7 @@ Navigate to **Admin Panel > Tenants** to view and manage all organizations. This
 |--------|----------|---------|
 | `GET` | `/api/v1/admin/tenants` | List all organizations with owner info and user counts |
 | `GET` | `/api/v1/admin/tenants/:id` | Get single org details including table count |
-| `PATCH` | `/api/v1/admin/tenants/:id` | Update org settings (name, isActive, maxUsers, tier [trial/consultant/sme/enterprise], status, trialEndsAt) |
+| `PATCH` | `/api/v1/admin/tenants/:id` | Update org settings (name, isActive, maxUsers, tier [trial/consultant_basic/consultant_pro/sme/enterprise], status, trialEndsAt) |
 | `POST` | `/api/v1/admin/tenants/:id/provision` | Retry tenant database provisioning |
 | `POST` | `/api/v1/admin/tenants/:id/run-migrations` | Run pending tenant migrations |
 
@@ -802,6 +809,7 @@ The nightly `pm-cron@data-retention` job (03:30 UTC) deletes old rows, in batche
 | Automation runs (Insights show the same 90 days) | `RETENTION_AUTOMATION_RUN_DAYS` | 90 (since 2026-10-08) |
 | Integration sync log | `RETENTION_SYNC_LOG_DAYS` | 30 (since 2026-10-08) |
 | AI usage log | `RETENTION_AI_USAGE_DAYS` | 400 (since 2026-10-08) |
+| Agent memory: expired entries, and reflections older than | `RETENTION_AGENT_REFLECTION_DAYS` | 90 |
 
 Kept on purpose: the audit history, timesheets, tasks, RAID and task history, project health history, AI memory change log, and people's Mjuzi conversations.
 
@@ -834,8 +842,8 @@ This restores into a throwaway database and reports what came back. Until
 - Memory status shows `WARN` if heap usage exceeds 90% of heap total.
 - Monitor API latency, error rates, and database connection pool usage.
 - Set up alerts for repeated failures or degraded performance.
-- **The platform admin account has no company (Sep 2026).** It runs the business from the admin pages and owns no project data; opening a project page takes it to the admin pages. Any other account without a company sees "You're not part of a company yet". Company data is only ever read or written in a company's own database — never the shared one (company features answer `no_company` otherwise). The admin never changes customer data; a read-only, logged **Support view** into one chosen company is planned for troubleshooting.
-- **Support view (Sep 2026):** to troubleshoot a customer, open **Admin → Companies** and click **View as support** on their row. Give a reason (the company sees it) and your password. For 30 minutes the app shows that company's workspace exactly as they see it, **read-only** — the server refuses every change — under an amber banner with the time left and **Exit support view**. Every visit is recorded in the company's own audit trail and listed for its owner in **Settings → Support visits**. The admin never changes customer data; if something must be fixed, the customer (or their PM) does it.
+- **The platform admin account has no company (Sep 2026).** It runs the business from the admin pages and owns no project data; opening a project page takes it to the admin pages. Any other account without a company sees "You're not part of a company yet". Company data is only ever read or written in a company's own database — never the shared one (company features answer `no_company` otherwise). The admin never changes customer data; troubleshooting uses the read-only, logged **Support view** (next item).
+- **Support view (Sep 2026):** to troubleshoot a customer, open **Admin → Tenants** and click **View as support** on their row. Give a reason (the company sees it) and your password. For 30 minutes the app shows that company's workspace exactly as they see it, **read-only** — the server refuses every change — under an amber banner with the time left and **Exit support view**. Every visit is recorded in the company's own audit trail and listed for the owner (and PMOs) in **Settings → Support visits**. The admin never changes customer data; if something must be fixed, the customer (or their PM) does it.
 - **Dreaming is switched off (Sep 2026):** it read users' AI conversations across the platform; the platform doesn't read customers' conversations.
 - **Admin statistics are platform-wide (Sep 2026):** feature usage, Mjuzi chat counts, webhook deliveries and the failed-job queue add up every company's own database (counts only). They used to read old copies in the shared database, frozen since July.
 - **Old shared copies retired (Sep 2026):** migration 124 renamed 58 leftover copies of company tables in the shared database to `_retired_*` (data kept; rename back to undo). They will be dropped after a quiet period. A test fails if code ever points the shared database at one again.
@@ -861,11 +869,11 @@ This restores into a throwaway database and reports what came back. Until
 | Stripe webhooks failing      | Verify `STRIPE_WEBHOOK_SECRET`; check Stripe event logs.      |
 | Integrations not syncing     | Check API tokens/credentials; review sync logs.               |
 | Audit integrity check fails  | Investigate potential data tampering; restore from backup.     |
-| Health snapshots not appearing | Verify `AGENT_ENABLED=true`; run manual snapshot via `POST /api/v1/predictions/health/snapshot`; check `project_health_history` table. |
+| Health snapshots not appearing | Check `systemctl list-timers 'pm-cron@health-snapshot*'` and `journalctl -u pm-cron@health-snapshot.service` (it doesn't depend on `AGENT_ENABLED`); run manual snapshot via `POST /api/v1/predictions/health/snapshot`; check `project_health_history` table. |
 | Tenant provisioning failed   | Check DB user has `CREATE DATABASE` privileges; retry via Admin > Tenants > Retry button or `POST /api/v1/admin/tenants/:id/provision`. |
 | Tenant tab shows no orgs     | Verify `MULTI_TENANT_ENABLED=true` in `.env` and at least one organization exists in the `organizations` table. |
 
-For detailed logs, check `./logs/` or your hosting provider's log viewer.
+For detailed logs use journald: `journalctl -u pm-app` (and `journalctl -u pm-cron@<name>.service` for a scheduled job); retention is set in `deploy/journald/pm-retention.conf`.
 
 ---
 
