@@ -21,7 +21,7 @@ vi.mock('../../database/connection', () => ({
 }));
 vi.mock('../../middleware/auth', () => ({ authMiddleware: vi.fn(async (req: any) => { req.user = { userId: 'u1', role: state.role }; }) }));
 vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
-vi.mock('../../middleware/rateLimiter', () => ({ heavyActionLimit: () => vi.fn(async () => {}), rateLimiter: { check: vi.fn(() => ({ allowed: true })) } }));
+vi.mock('../../middleware/rateLimiter', () => ({ heavyActionLimit: () => vi.fn(async () => {}), whenSendingEmail: (h: unknown) => h, rateLimiter: { check: vi.fn(() => ({ allowed: true })) } }));
 vi.mock('../../utils/readableProjects', () => ({ readableProjectIds: vi.fn(async () => state.readable) }));
 const checkProjectRole = vi.hoisted(() => vi.fn(async (_r: any, projectId: string) => ({ ok: projectId === 'p-ok' })));
 vi.mock('../../middleware/requireProjectAccess', () => ({

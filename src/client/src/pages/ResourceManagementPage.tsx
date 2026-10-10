@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, Lock, LineChart, Calendar, CalendarRange, FileInput } from 'lucide-react';
+import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, LineChart, Calendar, CalendarRange, FileInput } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { UtilizationTrendChart } from '../components/resources/UtilizationTrendChart';
@@ -198,13 +198,11 @@ export function ResourceManagementPage() {
     queryFn: () => apiService.getResources(),
   });
   const resources: Resource[] = resourcesData?.resources || [];
-  const isResourcesSample: boolean = resourcesData?.sample || false;
 
   // Project allocations — Enhancement A
   const { data: allocationsData } = useQuery({
     queryKey: ['resource-project-allocations'],
     queryFn: () => apiService.getResourceProjectAllocations(),
-    enabled: !isResourcesSample,
   });
   const allocationsMap: Record<string, Array<{ projectId: string; projectName: string; scheduleName: string; totalHoursPlanned: number; taskCount: number }>> = allocationsData?.allocations || {};
 
@@ -212,7 +210,6 @@ export function ResourceManagementPage() {
   const { data: orgMembersData } = useQuery({
     queryKey: ['org-members'],
     queryFn: () => apiService.getOrgMembers(),
-    enabled: !isResourcesSample,
   });
   const lineManagers: Array<{ id: string; name: string; role: string }> = useMemo(
     () => ((orgMembersData?.members || []) as any[])
@@ -492,21 +489,6 @@ export function ResourceManagementPage() {
         </div>
       </div>
 
-      {/* Sample upgrade banner */}
-      {isResourcesSample && (
-        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <div className="flex items-start gap-2">
-            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Resource Data</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                These are sample resources with demo data. Upgrade to a paid plan to manage your team's capacity, skills, assignments, and workload.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Team Tab */}
       {activeTab === 'team' && (
         <div className="space-y-4">
@@ -534,7 +516,7 @@ export function ResourceManagementPage() {
                 </select>
               )}
             </div>
-            {!isResourcesSample && canChange && (
+            {canChange && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setGenericForm({ name: 'Generic ', role: '' })}
@@ -834,7 +816,7 @@ export function ResourceManagementPage() {
                               </div>
                             );
                           })()
-                        ) : !canChange || isResourcesSample ? (
+                        ) : !canChange ? (
                           <span className="text-gray-300 dark:text-gray-600">--</span>
                         ) : isPlaceholderEmail(r.email) ? (
                           <button onClick={() => openEdit(r)} className="text-xs font-medium text-primary-700 hover:text-primary-800 dark:text-primary-300 dark:hover:text-primary-200 underline">
@@ -874,66 +856,64 @@ export function ResourceManagementPage() {
           </div>
 
           {/* Generic roles — stand-ins for work not yet staffed: no email, no login, never on a Team list */}
-          {!isResourcesSample && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Generic roles</h2>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Stand-ins for work you haven't staffed yet. No email, no login, never on a Team list — replace them with real people from a project's Team tab.</p>
-              </div>
-              {genericForm && (
-                <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-primary-50/40 dark:bg-primary-900/10 flex flex-wrap items-end gap-3">
-                  <div>
-                    <label htmlFor="generic-name" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
-                    <input id="generic-name" type="text" value={genericForm.name} onChange={(e) => setGenericForm({ ...genericForm, name: e.target.value })} className="input text-sm w-64 dark:bg-gray-700 dark:text-gray-100" placeholder="Generic Mobile Developer" autoFocus />
-                  </div>
-                  <div>
-                    <label htmlFor="generic-role" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Role</label>
-                    <input id="generic-role" type="text" list="generic-role-options" value={genericForm.role} onChange={(e) => setGenericForm({ ...genericForm, role: e.target.value })} className="input text-sm w-56 dark:bg-gray-700 dark:text-gray-100" placeholder="Mobile App Developer" />
-                    <datalist id="generic-role-options">{RESOURCE_ROLES.map(r => <option key={r} value={r} />)}</datalist>
-                  </div>
-                  <button
-                    onClick={() => saveGenericMutation.mutate({ ...genericForm, name: genericForm.name.trim(), role: genericForm.role.trim() })}
-                    disabled={!genericForm.name.trim() || genericForm.name.trim() === 'Generic' || saveGenericMutation.isPending}
-                    className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
-                  >
-                    {saveGenericMutation.isPending ? 'Saving…' : genericForm.id ? 'Save' : 'Add'}
-                  </button>
-                  <button onClick={() => setGenericForm(null)} className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Cancel</button>
-                </div>
-              )}
-              {genericResources.length === 0 ? (
-                <p className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">No generic roles yet.</p>
-              ) : (
-                <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
-                  {genericResources.map(g => {
-                    const taskCount = (allocationsMap[g.id] || []).reduce((n, a) => n + a.taskCount, 0);
-                    return (
-                      <li key={g.id} className="rounded-lg border border-dashed border-gray-400 dark:border-gray-500 px-3.5 py-3 flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{g.name}</span>
-                            <GenericBadge />
-                          </div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{g.role || 'No role'} · {taskCount ? `on ${taskCount} task${taskCount === 1 ? '' : 's'}` : 'not used'}</p>
-                        </div>
-                        {canChange && (
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button onClick={() => openEdit(g)} className="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Edit ${g.name}`}><Edit2 className="w-3.5 h-3.5" /></button>
-                            <button onClick={() => {
-                              setDeleteConfirmId(g.id);
-                              setDeleteImpact(null);
-                              setDeleteImpactLoading(true);
-                              apiService.getResourceDeleteImpact(g.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
-                            }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label={`Delete ${g.name}`}><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Generic roles</h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Stand-ins for work you haven't staffed yet. No email, no login, never on a Team list — replace them with real people from a project's Team tab.</p>
             </div>
-          )}
+            {genericForm && (
+              <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-primary-50/40 dark:bg-primary-900/10 flex flex-wrap items-end gap-3">
+                <div>
+                  <label htmlFor="generic-name" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Name</label>
+                  <input id="generic-name" type="text" value={genericForm.name} onChange={(e) => setGenericForm({ ...genericForm, name: e.target.value })} className="input text-sm w-64 dark:bg-gray-700 dark:text-gray-100" placeholder="Generic Mobile Developer" autoFocus />
+                </div>
+                <div>
+                  <label htmlFor="generic-role" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Role</label>
+                  <input id="generic-role" type="text" list="generic-role-options" value={genericForm.role} onChange={(e) => setGenericForm({ ...genericForm, role: e.target.value })} className="input text-sm w-56 dark:bg-gray-700 dark:text-gray-100" placeholder="Mobile App Developer" />
+                  <datalist id="generic-role-options">{RESOURCE_ROLES.map(r => <option key={r} value={r} />)}</datalist>
+                </div>
+                <button
+                  onClick={() => saveGenericMutation.mutate({ ...genericForm, name: genericForm.name.trim(), role: genericForm.role.trim() })}
+                  disabled={!genericForm.name.trim() || genericForm.name.trim() === 'Generic' || saveGenericMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 disabled:opacity-50"
+                >
+                  {saveGenericMutation.isPending ? 'Saving…' : genericForm.id ? 'Save' : 'Add'}
+                </button>
+                <button onClick={() => setGenericForm(null)} className="px-3 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Cancel</button>
+              </div>
+            )}
+            {genericResources.length === 0 ? (
+              <p className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">No generic roles yet.</p>
+            ) : (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
+                {genericResources.map(g => {
+                  const taskCount = (allocationsMap[g.id] || []).reduce((n, a) => n + a.taskCount, 0);
+                  return (
+                    <li key={g.id} className="rounded-lg border border-dashed border-gray-400 dark:border-gray-500 px-3.5 py-3 flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{g.name}</span>
+                          <GenericBadge />
+                        </div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{g.role || 'No role'} · {taskCount ? `on ${taskCount} task${taskCount === 1 ? '' : 's'}` : 'not used'}</p>
+                      </div>
+                      {canChange && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => openEdit(g)} className="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Edit ${g.name}`}><Edit2 className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => {
+                            setDeleteConfirmId(g.id);
+                            setDeleteImpact(null);
+                            setDeleteImpactLoading(true);
+                            apiService.getResourceDeleteImpact(g.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
+                          }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label={`Delete ${g.name}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 

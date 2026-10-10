@@ -1337,7 +1337,7 @@ describe('EmailService', () => {
 
       const args = mockSend.mock.calls[0][0];
       expect(args.subject).toContain('Kovarti PM is Live');
-      expect(args.html).toContain('14-day free trial');
+      expect(args.html).toContain('7-day free trial');
       expect(args.html).toContain('20% off');
       expect(args.html).toContain('https://pm.kpbc.ca/register');
     });

@@ -1,10 +1,11 @@
 import { useState, useMemo, useRef, useCallback, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Lock, Download, SlidersHorizontal, Clock, ListOrdered, ChevronRight, Settings2, ShieldAlert } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, AlertTriangle, ChevronDown, Activity, Target, BarChart3, Download, SlidersHorizontal, Clock, ListOrdered, ChevronRight, Settings2, ShieldAlert } from 'lucide-react';
 import { apiService } from '../services/api';
 import { EVMMetricTooltip } from '../components/evm/EVMMetricTooltip';
 import type { MetricValues } from '../components/evm/EVMMetricTooltip';
 import { SCurveChart } from '../components/evm/SCurveChart';
+import { ExampleDataNote } from '../components/ui/ExampleDataNote';
 import { AgileEVMSection } from '../components/evm/AgileEVMSection';
 import { toLocalDate, formatCalendarDate } from '../utils/dateUtils';
 
@@ -525,17 +526,7 @@ export function EVMDashboardPage() {
       {result && m && (
         <div ref={dashboardRef}>
           {isSample && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 mb-6">
-              <div className="flex items-start gap-2">
-                <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample EVM Dashboard</p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                    This is a sample dashboard with demo data. Upgrade to a paid plan to see EVM metrics calculated from your actual project budgets, costs, and schedule performance.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <ExampleDataNote className="mb-6">This project has no tasks yet, so these are example figures. Add tasks with budgets and progress to see your own earned value.</ExampleDataNote>
           )}
 
           <div className="space-y-6">

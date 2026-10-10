@@ -662,7 +662,7 @@ export class EmailService {
       accentGradient: 'linear-gradient(90deg,#78716c,#dc2626,#78716c)',
       headline: 'Your free trial has ended',
       bodyParagraphs: [
-        `Hi ${escapedName}, your 14-day <strong style="color:#e8ecf1;">Kovarti PM</strong> free trial has expired.`,
+        `Hi ${escapedName}, your 7-day <strong style="color:#e8ecf1;">Kovarti PM</strong> free trial has expired.`,
         'Your account is now in read-only mode — your projects, schedules, and data are all safely preserved. Subscribe to restore full access and pick up right where you left off.',
         'Plans start at just $19/month for core PM features, or $29/month with AI insights, Mjuzi assistant, and advanced forecasting.',
       ],
@@ -1187,7 +1187,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
           </p>
 
           <ul style="color: #374151; font-size: 15px; line-height: 1.8; padding-left: 20px;">
-            <li><strong>14-day free trial</strong> — full access, no credit card required</li>
+            <li><strong>7-day free trial</strong> — full access, no credit card required</li>
             <li><strong>20% off</strong> your first year of Pro (annual plan)</li>
             <li><strong>Founders badge</strong> — exclusive to launch-week subscribers</li>
           </ul>

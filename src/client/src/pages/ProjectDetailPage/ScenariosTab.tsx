@@ -13,6 +13,7 @@ import {
 import { apiService } from '../../services/api';
 import { useProjectRole } from '../../hooks/useProjectRole';
 import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
+import { ExampleDataNote } from '../../components/ui/ExampleDataNote';
 
 function SectionError({ message }: { message: string }) {
   return (
@@ -125,6 +126,9 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
 
       {result && (
         <div className="space-y-4">
+          {mutation.data?.sample && (
+            <ExampleDataNote>This project has no tasks yet, so this is an example result. Add tasks to the project and run the scenario again to see its real impact.</ExampleDataNote>
+          )}
           {result.confidence != null && (
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Confidence:</span>

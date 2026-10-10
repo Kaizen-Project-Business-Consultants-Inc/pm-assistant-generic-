@@ -125,3 +125,13 @@ export function heavyActionLimit(action: string, limit = 10, windowMs = 10 * 60_
     }
   };
 }
+
+type PreHandler = (request: FastifyRequest, reply: FastifyReply) => Promise<FastifyReply | void>;
+
+/** Runs the preHandler only when the body asks to email the result (report generate routes, 2026-10-10) */
+export function whenSendingEmail(handler: PreHandler): PreHandler {
+  return async function whenSendingEmailHandler(request, reply) {
+    if ((request.body as { sendEmail?: unknown } | undefined)?.sendEmail !== true) return;
+    return handler(request, reply);
+  };
+}

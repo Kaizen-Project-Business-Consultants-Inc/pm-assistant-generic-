@@ -11,7 +11,6 @@ import {
   Shield,
   DollarSign,
   Zap,
-  Lock,
   FlaskConical,
   Clock,
   Users,
@@ -28,6 +27,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { ExampleDataNote } from '../components/ui/ExampleDataNote';
 import { ScenarioSliderPanel, type SliderValues } from '../components/scenarios/ScenarioSliderPanel';
 import { ScenarioImpactGauges } from '../components/scenarios/ScenarioImpactGauges';
 import { SensitivityChart } from '../components/scenarios/SensitivityChart';
@@ -226,17 +226,7 @@ const PortfolioIntelligence: React.FC = () => {
       </h2>
 
       {isSample && (
-        <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <div className="flex items-start gap-2">
-            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Portfolio Intelligence</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                This is sample data. Upgrade to a paid plan to see cross-project insights, anomaly detection, and budget reallocation recommendations from your actual portfolio.
-              </p>
-            </div>
-          </div>
-        </div>
+        <ExampleDataNote className="mb-4">You have no projects yet, so this is an example portfolio. Create a project to see insights from your own work.</ExampleDataNote>
       )}
 
       {/* Summary */}
@@ -421,17 +411,7 @@ const AnomalyDetection: React.FC = () => {
   return (
     <div className="card">
       {isSample && (
-        <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <div className="flex items-start gap-2">
-            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Anomaly Detection</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                This is sample data. Upgrade to a paid plan to detect anomalies across your actual portfolio.
-              </p>
-            </div>
-          </div>
-        </div>
+        <ExampleDataNote className="mb-4">You have no projects yet, so these are example anomalies. Create a project to have your own work checked.</ExampleDataNote>
       )}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
@@ -824,6 +804,7 @@ const WhatIfScenario: React.FC = () => {
     enabled: !!projectId,
   });
   const baseline: BaselineData | undefined = baselineData?.data;
+  const isBaselineSample: boolean = baselineData?.sample || false;
 
   // Client-side preview calculation
   const computePreview = useCallback(
@@ -951,6 +932,9 @@ const WhatIfScenario: React.FC = () => {
       {/* Interactive Sliders */}
       {projectId && baseline && (
         <div className="mb-4">
+          {isBaselineSample && (
+            <ExampleDataNote className="mb-3">This project has no tasks yet, so the sliders start from an example project. Add tasks to the project to model your own.</ExampleDataNote>
+          )}
           <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Adjust parameters:</p>
           <ScenarioSliderPanel values={sliderValues} onChange={setSliderValues} disabled={mutation.isPending} />
         </div>
@@ -1010,15 +994,9 @@ const WhatIfScenario: React.FC = () => {
         </p>
       )}
 
-      {/* Trial sample banner */}
+      {/* Example result (the project has no tasks yet) */}
       {isSample && (
-        <div className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3">
-          <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-          <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-            <span className="font-semibold">Sample data.</span>{' '}
-            This is a demo scenario result. Upgrade to a paid plan to run what-if scenarios against your actual project data with AI-powered analysis.
-          </p>
-        </div>
+        <ExampleDataNote className="mt-4">This project has no tasks yet, so this is an example scenario result. Add tasks to the project and run the scenario again to see its real impact.</ExampleDataNote>
       )}
 
       {/* Results */}

@@ -5,7 +5,6 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { checkProjectRole } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { aiRefusalReply } from '../../services/AIBudgetService';
 
@@ -15,7 +14,6 @@ export async function nlQueryRoutes(fastify: FastifyInstance) {
   const nlQueryService = new NLQueryService();
 
   // POST / — process a natural-language query
-  // Trial users get a sample response with an upgrade prompt.
   fastify.post('/', {
     preHandler: [requireScope('write')],
     schema: {
@@ -50,14 +48,6 @@ export async function nlQueryRoutes(fastify: FastifyInstance) {
 
         const user = request.user!;
         const userId = user.userId;
-
-        // Trial users get sample NL query response
-        if (user.role !== 'admin') {
-          const fullUser = await userService.findById(userId);
-          if (fullUser && fullUser.subscriptionTier === 'trial') {
-            return generateSampleNLResponse(parsed.data.query);
-          }
-        }
 
         // Rate limit: 30 NL queries per hour
         const rl = rateLimiter.check(`ai:nlquery:${userId}`, 30, 3600_000);
@@ -106,28 +96,4 @@ export async function nlQueryRoutes(fastify: FastifyInstance) {
       }
     },
   });
-}
-
-function generateSampleNLResponse(query: string) {
-  return {
-    answer: `**Sample Response** — This is a preview of the Natural Language Query feature.\n\nYour query: *"${query}"*\n\nWith the full version, Mjuzi AI analyzes your actual project data to answer questions like:\n- Which projects are at risk?\n- Show resource utilization across teams\n- Compare project budgets and spending\n- What tasks are overdue this week?\n\nResults include interactive charts and suggested follow-up questions.`,
-    charts: [
-      {
-        type: 'bar' as const,
-        title: 'Sample: Project Health Scores',
-        labels: ['ERP Migration', 'Mobile App v2', 'Data Platform', 'Website Redesign'],
-        datasets: [{
-          label: 'Health Score',
-          data: [62, 81, 45, 90],
-          backgroundColor: ['#f59e0b', '#22c55e', '#ef4444', '#22c55e'],
-        }],
-      },
-    ],
-    suggestedFollowUps: [
-      'Which projects are behind schedule?',
-      'Show budget vs. spending for all projects',
-      'Who is over-allocated this month?',
-    ],
-    sample: true,
-  };
 }

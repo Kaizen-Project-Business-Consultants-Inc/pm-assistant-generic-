@@ -25,7 +25,7 @@ vi.mock('../../middleware/requireProjectAccess', () => ({
   checkProjectRole: vi.fn(async () => ({ ok: true })),
   checkProjectRoleFor: vi.fn(async () => ({ ok: true })),
 }));
-vi.mock('../../middleware/requireTier', () => ({ requirePaidTier: vi.fn(async () => {}), requireFeature: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireTier', () => ({ requireFeature: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/viewerWriteBypass', () => ({ viewerWriteBypass: () => vi.fn(async () => {}), ownWorkScope: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/checkEntityProjectAccess', () => ({ checkEntityProjectAccess: vi.fn(async () => true) }));
 vi.mock('../../database/connection', () => ({

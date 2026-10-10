@@ -24,6 +24,10 @@ vi.mock('../../services/RedisService', () => ({
 }));
 
 // Mock logger
+vi.mock('../../services/PricingConfigService', () => ({
+  pricingConfigService: { trialLengthDays: vi.fn(async () => 7) },
+}));
+
 vi.mock('../../utils/logger', () => ({
   default: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
@@ -323,7 +327,7 @@ describe('OrganizationService', () => {
       expect(org.slug.length).toBeLessThanOrEqual(80);
     });
 
-    it('sets trialEndsAt to 14 days from now', async () => {
+    it('sets trialEndsAt to the trial length (7 days) from now', async () => {
       mockRepo.findBySlug.mockResolvedValueOnce(null);
       mockRepo.create.mockImplementationOnce(async (data: any) => ({
         ...data,
@@ -337,9 +341,16 @@ describe('OrganizationService', () => {
       const trialEnd = new Date(createArg.trialEndsAt);
       const now = new Date();
       const diffDays = (trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-      // Should be approximately 14 days (tolerance accounts for timezone offset in ISO slice)
-      expect(diffDays).toBeGreaterThan(13.5);
-      expect(diffDays).toBeLessThan(14.5);
+      // Should be approximately 7 days (tolerance accounts for timezone offset in ISO slice)
+      expect(diffDays).toBeGreaterThan(6.5);
+      expect(diffDays).toBeLessThan(7.5);
+    });
+
+    it("uses the owner's trial end when given, so the company's trial ends with theirs", async () => {
+      mockRepo.findBySlug.mockResolvedValueOnce(null);
+      mockRepo.create.mockImplementationOnce(async (data: any) => ({ ...data }));
+      await service.createOrganization('Trial Org', 'owner-8', undefined, { trialEndsAt: new Date('2026-10-17T12:34:56Z') });
+      expect(mockRepo.create.mock.calls.at(-1)![0].trialEndsAt).toBe('2026-10-17 12:34:56');
     });
 
     it('gives a paid signup no trial at all — it is awaiting payment, not on trial', async () => {

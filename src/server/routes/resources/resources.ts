@@ -7,10 +7,9 @@ import { parse as csvParse } from 'csv-parse/sync';
 import { resourceService, normalizeSkills, ResourceValidationError } from '../../services/ResourceService';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { authMiddleware } from '../../middleware/auth';
-import { maySeePayRates, peopleFor, withoutPay, withoutPayInput } from '../../utils/payRates';
+import { maySeePayRates, maySetPayRates, peopleFor, withoutPay, withoutPayInput } from '../../utils/payRates';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import { scheduleService } from '../../services/ScheduleService';
 import { emailService, EmailRejectedError } from '../../services/EmailService';
 import { databaseService } from '../../database/connection';
@@ -190,16 +189,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /resources - List resources (paginated, optional group filter)
-  // Trial users get sample resource data with an upgrade prompt.
   fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
-    // Trial users get sample resources (skip for viewers — they're invited, not trialing)
-    if (request.user!.role !== 'admin' && request.user!.role !== 'viewer') {
-      const user = await userService.findById(request.user!.userId);
-      if (user && user.subscriptionTier === 'trial') {
-        return { resources: generateSampleResources(), total: 4, sample: true };
-      }
-    }
-
     const { limit, offset, group } = request.query as { limit?: string; offset?: string; group?: string };
     const result = await resourceService.findAllResourcesPaginated(
       // text or negative values fall back to the defaults (a negative offset reached SQL — 2026-10-07)
@@ -230,8 +220,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.post('/', { preHandler: [requireScope('write'), requireFeature('resources')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const parsed = createResourceSchema.parse(request.body);
-      // pay fields only from those who may see pay; others get the defaults (no rate)
-      const raw = (await maySeePayRates(request))
+      // pay fields only from those who may set pay; others get the defaults (no rate)
+      const raw = (await maySetPayRates(request))
         ? parsed
         : { ...parsed, costRateHourly: null, overtimeRateHourly: null, useRateCard: false };
       await checkCreate(request.user, raw as any);
@@ -265,8 +255,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const parsed = updateResourceSchema.parse(request.body);
-      // a rate the caller can't see is never changed by them (it reaches them blank)
-      const raw = (await maySeePayRates(request)) ? parsed : withoutPayInput(parsed);
+      // a rate the caller may not set is never changed by them (most see it blank)
+      const raw = (await maySetPayRates(request)) ? parsed : withoutPayInput(parsed);
       const data = raw.skills ? { ...raw, skills: normalizeSkills(raw.skills) } : raw;
       const existing = await resourceService.findResourceById(id);
       if (!existing) return reply.status(404).send({ error: 'Resource not found' });
@@ -629,8 +619,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       if (records.length > 200) return reply.status(400).send({ error: 'Maximum 200 resources per import' });
 
       const results: { created: number; errors: Array<{ row: number; error: string }> } = { created: 0, errors: [] };
-      // a cost-rate column counts only for those who may see pay
-      const ratesAllowed = await maySeePayRates(request);
+      // a cost-rate column counts only for those who may set pay
+      const ratesAllowed = await maySetPayRates(request);
 
       for (let i = 0; i < records.length; i++) {
         const row = records[i];
@@ -845,14 +835,4 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const usage = await taskAssignmentService.getResourceUsageForProject(projectId);
     return { usage };
   });
-}
-
-/** Trial accounts' sample people — the same shape as real ones (skills with a level; a person, not a generic role) */
-export function generateSampleResources() {
-  return [
-    { id: 'sample-r1', name: 'Jane Smith', role: 'Project Manager', email: 'jane@example.com', capacityHoursPerWeek: 40, skills: ['Leadership', 'Agile', 'Risk Management'], isActive: true, costRateHourly: 95 },
-    { id: 'sample-r2', name: 'John Doe', role: 'Senior Developer', email: 'john@example.com', capacityHoursPerWeek: 40, skills: ['React', 'TypeScript', 'Node.js'], isActive: true, costRateHourly: 85 },
-    { id: 'sample-r3', name: 'Sarah Kim', role: 'QA Engineer', email: 'sarah@example.com', capacityHoursPerWeek: 35, skills: ['Test Automation', 'Selenium', 'Performance Testing'], isActive: true, costRateHourly: 70 },
-    { id: 'sample-r4', name: 'Alex Chen', role: 'UX Designer', email: 'alex@example.com', capacityHoursPerWeek: 30, skills: ['Figma', 'User Research', 'Prototyping'], isActive: true, costRateHourly: 75 },
-  ].map(r => ({ ...r, skills: normalizeSkills(r.skills), isGeneric: false, lineManagerUserId: null, lineManagerIsDefault: false }));
 }

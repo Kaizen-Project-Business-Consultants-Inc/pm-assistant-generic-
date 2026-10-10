@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Copy, Check, Lock } from 'lucide-react';
+import { Plus, Copy, Check } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -60,24 +60,9 @@ export const ApiKeysTab: React.FC = () => {
   };
 
   const keys = data?.apiKeys || [];
-  const isApiKeysSample: boolean = data?.sample || false;
 
   return (
     <div className="space-y-6">
-      {isApiKeysSample && (
-        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <div className="flex items-start gap-2">
-            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample API Keys</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                These are sample API keys. Upgrade to a paid plan to create real API keys for external integrations, CI/CD pipelines, and AI agents.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -87,7 +72,7 @@ export const ApiKeysTab: React.FC = () => {
               <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Your role can't create keys. Keys made for you, such as a Claude connection, are listed here and you can revoke them.</p>
             )}
           </div>
-          {!isApiKeysSample && canCreate && (
+          {canCreate && (
             <button
               onClick={() => { setShowCreate(true); setCreatedKey(null); }}
               className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors"

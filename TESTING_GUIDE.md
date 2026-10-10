@@ -808,6 +808,16 @@ Open the Resend dashboard (resend.com) and filter by the sending domain. Confirm
 
 ---
 
+### 9a-2. Free trial: real features, examples only when empty, email allowance (2026-10-10)
+
+The trial has every Pro feature on the user's own data. Unit tests: `npx vitest run src/server/__tests__/routes/trialRealResults.test.ts src/server/__tests__/utils/trialEmailAllowance.test.ts src/server/__tests__/routes/raidReportEmailGate.test.ts src/server/__tests__/services/automation/sendEmailLimits.test.ts src/server/__tests__/services/ReportScheduleService.test.ts`.
+
+On staging, as a new trial account:
+1. Create a project with no tasks → Monte Carlo, EVM, status report and risk scan show the amber "Example — not your project's data" note; Email/Schedule/Download are unavailable on the example.
+2. Add tasks → the same screens show real results, no note.
+3. Email a status report to 6 people → refused ("up to 5 people"); send 5 report emails → the 6th that day is refused ("up to 5 emails a day").
+4. As a viewer (or team member) open RAID → RAID Report: no Email or Schedule tab.
+
 ### 9b. Onboarding WelcomeModal
 
 The WelcomeModal appears on first login for new users. It is suppressed for returning users via two storage keys.

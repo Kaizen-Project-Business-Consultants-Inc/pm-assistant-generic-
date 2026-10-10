@@ -4,7 +4,7 @@ import { Eye } from 'lucide-react';
  * Shown where change buttons are hidden because only the project's Manager or Owner can
  * make changes (Sep 2026 permissions). Says what the viewer CAN still do, if anything.
  */
-export function ViewOnlyNote({ youCan, className = '' }: { youCan?: string; className?: string }) {
+export function ViewOnlyNote({ youCan, who = "the project's Manager or Owner", className = '' }: { youCan?: string; who?: string; className?: string }) {
   return (
     <div
       role="note"
@@ -12,7 +12,7 @@ export function ViewOnlyNote({ youCan, className = '' }: { youCan?: string; clas
     >
       <Eye className="w-4 h-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
       <span>
-        View only — the project's Manager or Owner makes changes here.
+        View only — {who} makes changes here.
         {youCan && <> You can {youCan}.</>}
       </span>
     </div>

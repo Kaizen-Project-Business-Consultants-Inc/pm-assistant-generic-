@@ -2,22 +2,29 @@ import type { FastifyRequest } from 'fastify';
 import { organizationService } from '../services/OrganizationService';
 
 /**
- * Who sees pay information — the rate card and each person's hourly / overtime rate. Only the
- * people who manage costs: admins, PMO, project managers and the company owner (a consultant is a
- * PM and owns their company). Team members, viewers, executives and guests never do.
+ * Who sees pay information — the rate card and each person's hourly / overtime rate. The people
+ * who manage costs: admins, PMO, project managers and the company owner (a consultant is a PM and
+ * owns their company), plus finance officers, who see them but never change them (user 2026-10-10).
+ * Team members, viewers, executives and guests never do.
  * (One rule for the rate card and the people lists — 2026-10-09 audit M11: the lists showed
  * everyone's rates to every role while the rate card itself was hidden.)
  */
 /** The roles that see and set pay rates (plus the company owner). The one list to change. */
-export const PAY_RATE_ROLES: readonly string[] = ['admin', 'pmo', 'project_manager'];
+const PAY_RATE_ROLES: readonly string[] = ['admin', 'pmo', 'project_manager'];
+/** The roles that see pay rates: those above plus finance officers, who only read them */
+export const PAY_RATE_READ_ROLES: readonly string[] = [...PAY_RATE_ROLES, 'finance_officer'];
 
-export async function maySeePayRates(request: FastifyRequest): Promise<boolean> {
+async function hasPayRole(request: FastifyRequest, roles: readonly string[]): Promise<boolean> {
   const user = request.user!;
   if (user.isGuest) return false;
-  if (PAY_RATE_ROLES.includes(user.role)) return true;
+  if (roles.includes(user.role)) return true;
   const org = await organizationService.findByUserId(user.userId).catch(() => null);
   return !!org && org.ownerUserId === user.userId;
 }
+
+export const maySeePayRates = (request: FastifyRequest) => hasPayRole(request, PAY_RATE_READ_ROLES);
+/** Who may set a rate: the rate card, or a person's own rate */
+export const maySetPayRates = (request: FastifyRequest) => hasPayRole(request, PAY_RATE_ROLES);
 
 type PayFields = { costRateHourly?: number | null; overtimeRateHourly?: number | null };
 
@@ -44,7 +51,7 @@ export async function peopleFor<T extends PayFields & { email?: string | null }>
 const PAY_INPUT_FIELDS = ['costRateHourly', 'overtimeRateHourly', 'useRateCard'] as const;
 
 /**
- * A save from someone who may not see pay rates: the rate fields are dropped, silently. They see
+ * A save from someone who may not set pay rates: the rate fields are dropped, silently. Most see
  * an empty rate box (the server blanks it), so saving the form used to store "no rate" and
  * re-price every plan the person is on (2026-10-10 review). A field you can't see never changes.
  */

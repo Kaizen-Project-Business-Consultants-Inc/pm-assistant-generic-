@@ -99,7 +99,7 @@ export function FeaturesPage() {
             to="/register"
             className="inline-block text-[15px] font-bold text-white bg-gradient-to-br from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-8 py-4 rounded-xl transition-all shadow-lg shadow-primary-500/35"
           >
-            Start Your Free 14-Day Trial
+            Start Your Free 7-Day Trial
           </Link>
           <p className="mt-4 text-sm text-slate-400">No credit card required</p>
         </div>

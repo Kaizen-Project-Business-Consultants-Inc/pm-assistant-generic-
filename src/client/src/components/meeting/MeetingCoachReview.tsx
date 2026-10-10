@@ -25,7 +25,6 @@ interface Props {
   projectId: string;
   /** The project's Manager/Owner — the only one who adds to RAID */
   canEdit: boolean;
-  isSample?: boolean;
 }
 
 const TYPE_LABEL: Record<string, string> = { action: 'Action', risk: 'Risk', issue: 'Issue', decision: 'Decision', dependency: 'Dependency' };
@@ -33,7 +32,7 @@ const tag = 'inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitesp
 const warnTag = `${tag} bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300`;
 const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);
 
-export const MeetingCoachReview: React.FC<Props> = ({ analysis, projectId, canEdit, isSample }) => {
+export const MeetingCoachReview: React.FC<Props> = ({ analysis, projectId, canEdit }) => {
   const queryClient = useQueryClient();
   const base = useMemo(() => mapAnalysisToRaidCandidates(analysis), [analysis]);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -197,7 +196,7 @@ export const MeetingCoachReview: React.FC<Props> = ({ analysis, projectId, canEd
         {spottedIdx.length ? table(spottedIdx) : <p className="text-sm text-gray-500 dark:text-gray-400">Nothing else spotted.</p>}
       </div>
 
-      {canEdit && !isSample && (
+      {canEdit && (
         <div className="flex flex-wrap items-center gap-3">
           <button type="button" onClick={() => add(calledIdx)} disabled={busy || calledIdx.length === 0} className="btn btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}

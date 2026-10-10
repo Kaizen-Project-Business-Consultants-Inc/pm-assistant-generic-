@@ -12,9 +12,9 @@ import {
   BarChart3,
   Activity,
   Target,
-  Lock,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { ExampleDataNote } from '../components/ui/ExampleDataNote';
 import { MonteCarloHistogram } from '../components/montecarlo/MonteCarloHistogram';
 import { TornadoDiagram } from '../components/montecarlo/TornadoDiagram';
 import { CriticalityIndex } from '../components/montecarlo/CriticalityIndex';
@@ -400,17 +400,7 @@ export function MonteCarloPage() {
       {result && (
         <div className="space-y-6">
           {isSample && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-              <div className="flex items-start gap-2">
-                <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Simulation</p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                    This is a sample simulation with demo data. Upgrade to a paid plan to run Monte Carlo simulations on your actual project schedules with configurable iterations and uncertainty models.
-                  </p>
-                </div>
-              </div>
-            </div>
+            <ExampleDataNote>This schedule has no tasks yet, so this is an example simulation. Add tasks to the schedule and run it again to see your own forecast.</ExampleDataNote>
           )}
 
           {/* Summary Cards - Duration */}

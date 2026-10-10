@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, X, Download, Mail, Calendar, Trash2, Lock, Pencil, Save, RotateCcw, FileDown } from 'lucide-react';
+import { FileText, X, Download, Mail, Calendar, Trash2, Pencil, Save, RotateCcw, FileDown } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 import { AccessibleModal } from '../../components/ui/AccessibleModal';
+import { ExampleDataNote } from '../../components/ui/ExampleDataNote';
 
 interface RAGArea {
   name: string;
@@ -93,14 +94,15 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
   const mutation = useMutation({
     mutationFn: () => apiService.generateStatusReport(projectId),
     onSuccess: (data) => {
-      // Trial users get a synchronous sample response
+      // An example report comes back at once (a trial project with no tasks yet)
       if (data?.sample || data?.report) {
         setReport(data);
-        if (data?.sample) setIsSample(true);
+        setIsSample(!!data?.sample);
         if (data?.report?.html) setOriginalHtml(data.report.html);
         setGenerating(false);
       } else if (data?.status === 'generating') {
         // Background generation — wait for WebSocket event
+        setIsSample(false);
         setGenerating(true);
         setGenerateError(null);
       }
@@ -413,6 +415,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
               key={t.key}
               onClick={() => !t.locked && setTab(t.key)}
               disabled={t.locked}
+              title={t.locked ? 'Not for example data: add tasks and generate the report again' : undefined}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                 t.locked
                   ? 'border-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed'
@@ -423,7 +426,6 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
             >
               <t.icon className="w-3 h-3" />
               {t.label}
-              {t.locked && <Lock className="w-3 h-3 ml-0.5" />}
             </button>
           ))}
         </div>
@@ -432,17 +434,7 @@ export function StatusReportModal({ projectId, projectName, onClose }: { project
           {tab === 'report' && (
             <>
               {isSample && (
-                <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                  <div className="flex items-start gap-2">
-                    <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Report</p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        This is a sample report with demo data. Upgrade to a paid plan to generate AI-powered status reports using your actual project data, email them to stakeholders, and schedule recurring delivery.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <ExampleDataNote className="mb-4">This project has no tasks yet, so this is an example report. Add tasks to the project and generate it again to get your own report.</ExampleDataNote>
               )}
               {(mutation.isPending || generating) ? (
                 <div className="flex flex-col items-center justify-center py-12">

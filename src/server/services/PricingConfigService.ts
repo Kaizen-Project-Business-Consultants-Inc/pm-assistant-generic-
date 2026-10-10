@@ -37,6 +37,12 @@ class PricingConfigService {
     return match.enabled;
   }
 
+  /** The free trial's length in days: the trial plan's "Duration (days)", or 7 when missing or unreadable */
+  async trialLengthDays(): Promise<number> {
+    const days = await this.getTierConfig('trial').then((t) => t?.durationDays ?? 0).catch(() => 0);
+    return days > 0 ? days : 7;
+  }
+
   async getViewerLimit(tier: string): Promise<number> {
     const config = await this.getTierConfig(tier);
     if (!config) return 0;

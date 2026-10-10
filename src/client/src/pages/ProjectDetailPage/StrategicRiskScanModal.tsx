@@ -5,6 +5,7 @@ import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 
 import { AccessibleModal } from '../../components/ui/AccessibleModal';
+import { ExampleDataNote } from '../../components/ui/ExampleDataNote';
 export function StrategicRiskScanModal({ projectId, projectName, onClose }: { projectId: string; projectName: string; onClose: () => void }) {
   const titleId = useId();
   const [scanResult, setScanResult] = useState<any>(null);
@@ -17,9 +18,10 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
     onSuccess: (data) => {
       if (data?.sample || data?.result) {
         setScanResult(data);
-        if (data?.sample) setIsSample(true);
+        setIsSample(!!data?.sample);
         setScanning(false);
       } else if (data?.status === 'scanning') {
+        setIsSample(false);
         setScanning(true);
         setScanError(null);
       }
@@ -99,11 +101,11 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
             <ShieldAlert className="w-5 h-5 text-amber-600" />
             <h2 id={titleId} className="text-lg font-bold text-gray-900 dark:text-white">Strategic Risk Scan</h2>
             {isSample && (
-              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Sample</span>
+              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Example</span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            {html && (
+            {html && !isSample && (
               <>
                 <button
                   onClick={handleExportPDF}
@@ -147,6 +149,10 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
                 Retry Scan
               </button>
             </div>
+          )}
+
+          {isSample && html && !scanning && (
+            <ExampleDataNote className="mb-4">This project has no tasks yet, so this is an example scan. Add tasks to the project and run the scan again to see your own risks.</ExampleDataNote>
           )}
 
           {html && !scanning && (

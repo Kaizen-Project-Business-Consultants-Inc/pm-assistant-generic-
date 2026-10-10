@@ -150,7 +150,7 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - Kovarti support never deletes or archives a customer's project.
 
 ### Rate Card
-- **Settings → Rate card** holds hourly cost rates by role, each with a start date (`rate_card`, tenant migration T063 — one card per company database). PMOs, project managers and the company owner see and change it; the tab is hidden from everyone else and the API answers 403.
+- **Settings → Rate card** holds hourly cost rates by role, each with a start date (`rate_card`, tenant migration T063 — one card per company database). PMOs, project managers and the company owner see and change it; finance officers see it without the change controls (changes answer 403); the tab is hidden from everyone else and the API answers 403. Each person's own cost rate follows the same rule.
 - A resource is costed from the card only when its form says **Use rate card** (`resources.use_rate_card`); every existing resource started on its own rate, so no cost changed when this shipped. A role with no card rate yet falls back to the resource's own rate.
 - Costs use the rate in force for the week the work happened. Two lines for the same role and start date are refused.
 
@@ -252,7 +252,7 @@ The subscription tier is stored as a `tier` ENUM column on both the `users` tabl
 | `business` | `sme` |
 | `consultant` | `enterprise` |
 
-**`requirePaidTier` middleware** blocks trial users from accessing advanced features. Any route decorated with this middleware returns `403 Forbidden` when the requesting user is on the `trial` tier. Paid tiers (`consultant_basic`, `consultant_pro`, `sme`, `enterprise`) pass through without restriction. A member who isn't the company owner sees "Your company's owner manages the plan." instead of a buy button. When such a refusal answers a change (not a page load), the app opens the **Part of a paid plan** window with **View Plans** (October 2026); page loads stay quiet.
+**Plan checks.** Features are switched on per plan in `tier_features` (`requireFeature`); the free trial has every Pro feature (migration 135). The old `requirePaidTier` check (status/RAID report email, schedule and Word export) was removed on 2026-10-10. **Trial email allowance:** because a trial needs no card, every route that mails report or minutes content (status, RAID and client reports, meeting minutes, report schedules) also applies `trialEmailAllowance` (`utils/trialEmail.ts`): up to 5 recipients per email and 5 emails per day per trial company; paid plans keep each route's own limit (20 recipients, 20 an hour). Mail sent later goes through `checkBackgroundSend`: scheduled reports over the trial allowance show **skipped**, and a schedule whose owner's plan has ended shows **paused** and is switched off; automation emails take at most 20 people on every plan. A member who isn't the company owner sees "Your company's owner manages the plan." instead of a buy button. When such a refusal answers a change (not a page load), the app opens the **Part of a paid plan** window with **View Plans** (October 2026); page loads stay quiet.
 
 ---
 
@@ -269,7 +269,7 @@ Four paid tiers exist, each with monthly and annual billing (Enterprise is not s
 | Team (stored as `sme`) | $19 per seat, minimum 3 seats | ~$190 per seat | 500,000 per seat, pooled (1,500,000 at the 3-seat minimum) | Unlimited |
 | Enterprise | $79 | ~$790 | 5,000,000 | Unlimited |
 
-Trial accounts are free, limited to 14 days, 3 projects, and 5K AI tokens (~10 AI chats to explore Mjuzi). Consultant Basic ($19/mo) includes core PM features plus resource management, reports, and workflow automation — but no AI. Consultant Pro ($29/mo) adds all AI features with 500K tokens/month. Annual billing saves ~17%.
+Trial accounts are free, limited to 7 days, 3 projects and 50K AI tokens (~10 AI questions to explore Mjuzi), with every Pro feature. Consultant Basic ($19/mo) includes core PM features plus resource management, reports, and workflow automation — but no AI. Consultant Pro ($29/mo) adds all AI features with 500K tokens/month. Annual billing saves ~17%.
 
 > **Viewer invites:** Viewer accounts are free — invited viewers do not need a subscription. The invite limit is per paid account (Basic: 5 / Pro: 15 / Team: unlimited / Enterprise: unlimited).
 

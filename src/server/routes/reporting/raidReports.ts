@@ -3,10 +3,11 @@ import { requireProjectAccess, checkProjectRole } from '../../middleware/require
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requirePaidTier } from '../../middleware/requireTier';
 import { raidReportService } from '../../services/RAIDReportService';
 import { reportScheduleService } from '../../services/ReportScheduleService';
-import { userService } from '../../services/UserService';
+import { showTrialExample, projectHasRaidItems } from '../../utils/trialSample';
+import { trialEmailAllowance } from '../../utils/trialEmail';
+import { heavyActionLimit, whenSendingEmail } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
 const filtersSchema = z.object({
@@ -19,7 +20,7 @@ const filtersSchema = z.object({
 const generateSchema = z.object({
   projectId: z.string().min(1),
   filters: filtersSchema,
-  recipients: z.array(z.string().email()).optional(),
+  recipients: z.array(z.string().email()).max(20, 'Send the report to at most 20 people at a time.').optional(),
   sendEmail: z.boolean().optional(),
 });
 
@@ -29,27 +30,30 @@ const scheduleSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   timeOfDay: z.string().optional(),
-  recipients: z.array(z.string().email()).min(1),
+  recipients: z.array(z.string().email()).min(1).max(20, 'Send the report to at most 20 people at a time.'),
 });
+
+const raidProjectOf = async (req: FastifyRequest) => (req.body as { projectId?: string } | undefined)?.projectId ?? null;
 
 export async function raidReportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // Generate a RAID report
   fastify.post('/generate', {
-    preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.body as any)?.projectId ?? null })],
+    preHandler: [
+      requireScope('read'), requireProjectAccess('viewer', { resolve: raidProjectOf }),
+      // emailing it is a Manager's action, with the same limits as the status report (2026-10-10)
+      whenSendingEmail(requireScope('write')), whenSendingEmail(requireProjectAccess('manager', { resolve: raidProjectOf })),
+      whenSendingEmail(heavyActionLimit('raid-report-email', 20, 60 * 60_000)), whenSendingEmail(trialEmailAllowance()),
+    ],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
       const body = generateSchema.parse(request.body);
 
-      // Trial users get a sample report
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(userId);
-        if (user && user.subscriptionTier === 'trial') {
-          const sample = raidReportService.generateSample(body.projectId);
-          return { report: sample, sample: true };
-        }
+      // A trial user whose project has no RAID items yet gets an example report (sample: true)
+      if (await showTrialExample(request, projectHasRaidItems, body.projectId)) {
+        return { report: raidReportService.generateSample(body.projectId), sample: true };
       }
 
       const result = await raidReportService.generate(body.projectId, userId, {
@@ -68,7 +72,7 @@ export async function raidReportRoutes(fastify: FastifyInstance) {
 
   // Create a recurring schedule for RAID reports
   fastify.post('/schedule', {
-    preHandler: [requireScope('write'), requirePaidTier, requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), trialEmailAllowance()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;

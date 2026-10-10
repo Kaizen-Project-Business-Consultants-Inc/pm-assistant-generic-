@@ -6,7 +6,6 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 
@@ -14,34 +13,12 @@ export async function exportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /exports/projects/:id/export?format=csv|json
-  // Trial users get sample export data with an upgrade prompt.
   // The whole project goes out in the file: the caller must be on the project (':id' here isn't
   // under /api/v1/projects, so it has to be resolved explicitly)
   fastify.get('/projects/:id/export', { preHandler: [requireScope('read'), requireProjectAccess('viewer', { resolve: async (req) => (req.params as { id: string }).id }), heavyActionLimit('project-export', 300)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const { format } = request.query as { format?: string };
-
-      // Trial users get sample export data
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          if (format === 'csv') {
-            const csv = generateSampleCSV();
-            reply.header('Content-Type', 'text/csv');
-            reply.header('Content-Disposition', `attachment; filename="project-${id}-sample-export.csv"`);
-            return reply.send(csv);
-          }
-          if (format === 'xml') {
-            const xml = generateSampleXML(id);
-            reply.header('Content-Type', 'application/xml');
-            reply.header('Content-Disposition', `attachment; filename="project-${id}-sample.xml"`);
-            return reply.send(xml);
-          }
-          // JSON format (used for PDF export and Settings data export)
-          return reply.send(generateSampleExport(id));
-        }
-      }
 
       const schedules = await scheduleService.findByProjectId(id);
 
@@ -317,78 +294,4 @@ function toISODate(d: string | Date): string {
 
 function durationISO(days: number): string {
   return `PT${days * 8}H0M0S`;
-}
-
-function generateSampleCSV(): string {
-  const today = new Date();
-  const addDays = (n: number) => new Date(today.getTime() + n * 86400000).toISOString().slice(0, 10);
-  return [
-    'Schedule,Task ID,Task Name,Status,Priority,Assigned To,Start Date,End Date,Progress %,Predecessors,Parent Task',
-    `Phase 1 — Discovery,s1,Stakeholder Interviews,completed,high,Jane Smith,${addDays(-60)},${addDays(-50)},100,,`,
-    `Phase 1 — Discovery,s2,Requirements Document,completed,high,John Doe,${addDays(-50)},${addDays(-35)},100,1FS,`,
-    `Phase 2 — Development,s3,Frontend Development,in_progress,high,Alex Chen,${addDays(-25)},${addDays(10)},65,,`,
-    `Phase 2 — Development,s4,Backend API,in_progress,medium,Sarah Kim,${addDays(-20)},${addDays(15)},45,,`,
-    `Phase 2 — Development,s5,QA Testing,not_started,high,Mike Brown,${addDays(15)},${addDays(40)},0,3FS+2d,`,
-  ].join('\n');
-}
-
-function generateSampleXML(projectId: string): string {
-  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Project xmlns="http://schemas.microsoft.com/project">
-  <Name>Sample Project — Website Redesign</Name>
-  <Tasks>
-    <Task><UID>1</UID><ID>1</ID><Name>Stakeholder Interviews</Name><WBS>1</WBS><OutlineLevel>1</OutlineLevel><PercentComplete>100</PercentComplete><Milestone>0</Milestone><Summary>0</Summary></Task>
-    <Task><UID>2</UID><ID>2</ID><Name>Requirements Document</Name><WBS>2</WBS><OutlineLevel>1</OutlineLevel><PercentComplete>100</PercentComplete><Milestone>0</Milestone><Summary>0</Summary><PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink></Task>
-    <Task><UID>3</UID><ID>3</ID><Name>Frontend Development</Name><WBS>3</WBS><OutlineLevel>1</OutlineLevel><PercentComplete>65</PercentComplete><Milestone>0</Milestone><Summary>0</Summary></Task>
-    <Task><UID>4</UID><ID>4</ID><Name>Backend API</Name><WBS>4</WBS><OutlineLevel>1</OutlineLevel><PercentComplete>45</PercentComplete><Milestone>0</Milestone><Summary>0</Summary></Task>
-    <Task><UID>5</UID><ID>5</ID><Name>QA Testing</Name><WBS>5</WBS><OutlineLevel>1</OutlineLevel><PercentComplete>0</PercentComplete><Milestone>0</Milestone><Summary>0</Summary></Task>
-  </Tasks>
-  <Resources />
-  <Assignments />
-</Project>`;
-}
-
-function generateSampleExport(projectId: string) {
-  const today = new Date();
-  const addDays = (n: number) => new Date(today.getTime() + n * 86400000).toISOString().slice(0, 10);
-  return {
-    sample: true,
-    project: {
-      id: projectId,
-      name: 'Sample Project — Website Redesign',
-      status: 'active',
-      methodology: 'agile',
-      budgetAllocated: 150000,
-      budgetSpent: 87000,
-      progressPercentage: 58,
-      startDate: addDays(-60),
-      endDate: addDays(45),
-    },
-    schedules: [
-      {
-        id: 'sample-sched-1',
-        name: 'Phase 1 — Discovery',
-        startDate: addDays(-60),
-        endDate: addDays(-30),
-        tasks: [
-          { id: 's1', name: 'Stakeholder Interviews', status: 'completed', priority: 'high', assignedTo: 'Jane Smith', startDate: addDays(-60), endDate: addDays(-50), progressPercentage: 100, dependency: '', dependencies: [], parentTaskId: '', estimatedDays: 10 },
-          { id: 's2', name: 'Requirements Document', status: 'completed', priority: 'high', assignedTo: 'John Doe', startDate: addDays(-50), endDate: addDays(-35), progressPercentage: 100, dependency: '', dependencies: [{ dependencyId: 's1', dependencyType: 'FS', lagDays: 0 }], parentTaskId: '', estimatedDays: 15 },
-        ],
-        criticalPath: null,
-      },
-      {
-        id: 'sample-sched-2',
-        name: 'Phase 2 — Development',
-        startDate: addDays(-30),
-        endDate: addDays(45),
-        tasks: [
-          { id: 's3', name: 'Frontend Development', status: 'in_progress', priority: 'high', assignedTo: 'Alex Chen', startDate: addDays(-25), endDate: addDays(10), progressPercentage: 65, dependency: '', dependencies: [], parentTaskId: '', estimatedDays: 35 },
-          { id: 's4', name: 'Backend API', status: 'in_progress', priority: 'medium', assignedTo: 'Sarah Kim', startDate: addDays(-20), endDate: addDays(15), progressPercentage: 45, dependency: '', dependencies: [], parentTaskId: '', estimatedDays: 35 },
-          { id: 's5', name: 'QA Testing', status: 'not_started', priority: 'high', assignedTo: 'Mike Brown', startDate: addDays(15), endDate: addDays(40), progressPercentage: 0, dependency: '', dependencies: [{ dependencyId: 's3', dependencyType: 'FS', lagDays: 2 }], parentTaskId: '', estimatedDays: 25 },
-        ],
-        criticalPath: null,
-      },
-    ],
-    generatedAt: today.toISOString(),
-  };
 }

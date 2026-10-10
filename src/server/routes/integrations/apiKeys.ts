@@ -5,7 +5,6 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { scopesForRole } from '../../constants/roleScopes';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 
@@ -20,7 +19,7 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   // All routes require authentication
   fastify.addHook('preHandler', authMiddleware);
 
-  // POST / — Create a new API key (stays gated for trial users)
+  // POST / — Create a new API key (needs the api_keys feature)
   fastify.post('/', { preHandler: [requireScope('write'), requireFeature('api_keys')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
@@ -55,19 +54,10 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
   });
 
   // GET / — List all API keys for the current user
-  // Trial users get sample API key list with an upgrade prompt.
   fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const user = request.user!;
       if (!user?.userId) return reply.status(401).send({ error: 'Unauthorized' });
-
-      // Trial users get sample API keys
-      if (user.role !== 'admin') {
-        const fullUser = await userService.findById(user.userId);
-        if (fullUser && fullUser.subscriptionTier === 'trial') {
-          return { apiKeys: generateSampleApiKeys(), sample: true };
-        }
-      }
 
       const apiKeys = await apiKeyService.listKeys(user.userId);
       return { apiKeys };
@@ -114,29 +104,4 @@ export async function apiKeyRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Failed to fetch API key usage' });
     }
   });
-}
-
-function generateSampleApiKeys() {
-  return [
-    {
-      id: 'sample-key-1',
-      name: 'CI/CD Pipeline Key',
-      prefix: 'pmk_demo',
-      scopes: ['read', 'write'],
-      rateLimit: 1000,
-      lastUsedAt: new Date(Date.now() - 2 * 3600000).toISOString(),
-      expiresAt: new Date(Date.now() + 90 * 86400000).toISOString(),
-      createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-    },
-    {
-      id: 'sample-key-2',
-      name: 'Dashboard Read-Only',
-      prefix: 'pmk_demo',
-      scopes: ['read'],
-      rateLimit: 500,
-      lastUsedAt: new Date(Date.now() - 24 * 3600000).toISOString(),
-      expiresAt: null,
-      createdAt: new Date(Date.now() - 60 * 86400000).toISOString(),
-    },
-  ];
 }

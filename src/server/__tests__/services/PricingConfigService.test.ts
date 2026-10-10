@@ -248,6 +248,22 @@ describe('PricingConfigService', () => {
 
   // ── getViewerLimit ──────────────────────────────────────────────────────
 
+  describe('trialLengthDays', () => {
+    it("is the trial plan's duration (user 2026-10-10: 7 days)", async () => {
+      mockFindAllActive.mockResolvedValue([makeTier({ tier: 'trial', durationDays: 10 })]);
+      expect(await pricingConfigService.trialLengthDays()).toBe(10);
+    });
+
+    it('falls back to 7 when the trial plan is missing, has 0 days or cannot be read', async () => {
+      mockFindAllActive.mockResolvedValue([makeTier({ tier: 'consultant_pro' })]);
+      expect(await pricingConfigService.trialLengthDays()).toBe(7);
+      mockFindAllActive.mockResolvedValue([makeTier({ tier: 'trial', durationDays: 0 })]);
+      expect(await pricingConfigService.trialLengthDays()).toBe(7);
+      mockFindAllActive.mockRejectedValue(new Error('db down'));
+      expect(await pricingConfigService.trialLengthDays()).toBe(7);
+    });
+  });
+
   describe('getViewerLimit', () => {
     it('returns the viewer limit for an existing tier', async () => {
       mockFindAllActive.mockResolvedValue([makeTier({ tier: 'sme', viewerLimit: 25 })]);

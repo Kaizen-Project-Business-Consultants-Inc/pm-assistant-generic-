@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { maySeePayRates } from '../../utils/payRates';
+import { maySeePayRates, maySetPayRates } from '../../utils/payRates';
 import { rateCardService, RateCardError } from '../../services/RateCardService';
 import { sendValidationError } from '../../utils/validationError';
 
@@ -16,18 +16,23 @@ const rateSchema = z.object({
 });
 
 /**
- * Rates are pay information: only the people who manage costs see or change the card
- * (utils/payRates.ts — the same rule hides each person's rate in the people lists).
+ * Rates are pay information: only the people who manage costs see the card, plus finance officers;
+ * only the managers change it (utils/payRates.ts — the same rule hides each person's rate in the
+ * people lists).
  */
-async function rateCardManagerOnly(request: FastifyRequest, reply: FastifyReply) {
+async function rateCardReaders(request: FastifyRequest, reply: FastifyReply) {
   if (await maySeePayRates(request)) return;
-  return reply.status(403).send({ error: 'Forbidden', message: 'Only an admin or a project manager can see or change the rate card.' });
+  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner, a PMO, a project manager or a finance officer can see the rate card.' });
+}
+async function rateCardManagerOnly(request: FastifyRequest, reply: FastifyReply) {
+  if (await maySetPayRates(request)) return;
+  return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner, a PMO or a project manager can change the rate card.' });
 }
 
 export async function rateCardRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  fastify.get('/', { preHandler: [requireScope('read'), rateCardManagerOnly] }, async () => {
+  fastify.get('/', { preHandler: [requireScope('read'), rateCardReaders] }, async () => {
     return { rates: await rateCardService.list() };
   });
 

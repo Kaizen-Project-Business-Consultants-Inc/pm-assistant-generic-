@@ -152,6 +152,10 @@ export function AdminSchedulesPage() {
                           </span>
                         ) : s.lastRunStatus === 'success' ? (
                           <span className="text-xs text-green-600 dark:text-green-400">Success</span>
+                        ) : s.lastRunStatus === 'skipped' || s.lastRunStatus === 'paused' ? (
+                          <span className="text-xs text-amber-600 dark:text-amber-400" title={s.lastRunError || undefined}>
+                            {s.lastRunStatus === 'paused' ? 'Paused' : 'Skipped'}{s.lastRunError && <span className="sr-only">: {s.lastRunError}</span>}
+                          </span>
                         ) : !s.isActive ? (
                           <span className="text-xs text-amber-500 dark:text-amber-400">Paused</span>
                         ) : (

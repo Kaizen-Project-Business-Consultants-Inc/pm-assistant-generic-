@@ -54,6 +54,9 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
+const sendCheck = vi.hoisted(() => ({ checkBackgroundSend: vi.fn() }));
+vi.mock('../../utils/trialEmail', () => sendCheck);
+
 vi.mock('uuid', () => ({
   v4: vi.fn(() => 'test-uuid-1234'),
 }));
@@ -492,6 +495,33 @@ describe('ReportScheduleService', () => {
 
   // ────────────── executeDueSchedules ──────────────
   describe('executeDueSchedules', () => {
+    beforeEach(() => { sendCheck.checkBackgroundSend.mockReset().mockResolvedValue({ ok: true }); });
+
+    it("pauses a schedule whose owner's plan has ended, sending nothing (2026-10-10)", async () => {
+      mockRepo.findDue.mockResolvedValueOnce([makeSchedule({ templateId: 'status-report::proj-1' })]);
+      sendCheck.checkBackgroundSend.mockResolvedValueOnce({ ok: false, stop: true, reason: 'Paused: plan ended' });
+
+      const count = await service.executeDueSchedules();
+
+      expect(count).toBe(0);
+      expect(sendCheck.checkBackgroundSend).toHaveBeenCalledWith('user-1', 2);
+      expect(mockStatusReportGenerate).not.toHaveBeenCalled();
+      expect(mockRepo.updateFields).toHaveBeenCalled(); // is_active off
+      expect(mockRepo.updateRunStatus).toHaveBeenCalledWith('sched-1', expect.any(String), 'paused', 'Paused: plan ended', expect.any(String));
+    });
+
+    it("skips a run over the free trial's email allowance and keeps the schedule for next time", async () => {
+      mockRepo.findDue.mockResolvedValueOnce([makeSchedule({ templateId: 'raid-report::proj-3' })]);
+      sendCheck.checkBackgroundSend.mockResolvedValueOnce({ ok: false, stop: false, reason: 'trial limit' });
+
+      const count = await service.executeDueSchedules();
+
+      expect(count).toBe(0);
+      expect(mockRaidReportGenerate).not.toHaveBeenCalled();
+      expect(mockRepo.updateFields).not.toHaveBeenCalled();
+      expect(mockRepo.updateRunStatus).toHaveBeenCalledWith('sched-1', expect.any(String), 'skipped', 'trial limit', expect.any(String));
+    });
+
     it('returns 0 when no schedules are due', async () => {
       mockRepo.findDue.mockResolvedValueOnce([]);
 

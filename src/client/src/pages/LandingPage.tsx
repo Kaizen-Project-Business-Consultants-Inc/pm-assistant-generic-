@@ -757,7 +757,7 @@ export const LandingPage: React.FC = () => {
             </a>
 
             <div className="flex items-center gap-5 mt-5 flex-wrap">
-              {['No credit card', '14-day trial', 'Setup in minutes'].map((label) => (
+              {['No credit card', '7-day trial', 'Setup in minutes'].map((label) => (
                 <span key={label} className="flex items-center gap-2 text-[13px] text-slate-300">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />
@@ -965,7 +965,7 @@ export const LandingPage: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
             </a>
-            <p className="text-sm text-slate-400 mt-3">14-day trial, no credit card required</p>
+            <p className="text-sm text-slate-400 mt-3">7-day trial, no credit card required</p>
           </div>
         </div>
       </section>
@@ -976,7 +976,7 @@ export const LandingPage: React.FC = () => {
           <div className="text-center mb-14">
             <h2 className="text-2xl sm:text-3xl font-bold text-white">Simple, transparent pricing</h2>
             <p className="mt-3 text-base text-slate-300">
-              Try free for 14 days. Upgrade anytime.
+              Try free for 7 days. Upgrade anytime.
             </p>
             <div className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold text-amber-300" style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

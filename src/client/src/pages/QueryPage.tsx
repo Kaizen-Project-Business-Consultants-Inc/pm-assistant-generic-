@@ -4,7 +4,6 @@ import DOMPurify from 'dompurify';
 import {
   MessageSquare,
   Search,
-  Lock,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { announce } from '../utils/announce';
@@ -79,12 +78,9 @@ export const QueryPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<QueryResult | null>(null);
 
-  const [isSample, setIsSample] = useState(false);
-
   const queryMutation = useMutation({
     mutationFn: (q: string) => apiService.submitNLQuery({ query: q, context: {} }),
     onSuccess: (data: any) => {
-      setIsSample(data?.sample || false);
       setResult(data?.result || data);
       announce('Query results ready');
     },
@@ -150,21 +146,6 @@ export const QueryPage: React.FC = () => {
       {queryMutation.isError && (
         <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
           Failed to process your query. Please try again.
-        </div>
-      )}
-
-      {/* Sample upgrade banner */}
-      {isSample && result && (
-        <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <div className="flex items-start gap-2">
-            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Query Response</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                This is a sample response with demo data. Upgrade to a paid plan to query your actual project data using natural language.
-              </p>
-            </div>
-          </div>
         </div>
       )}
 

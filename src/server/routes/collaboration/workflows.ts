@@ -8,7 +8,6 @@ import { scheduleService } from '../../services/ScheduleService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import { claudeService } from '../../services/claudeService';
 import { workflowGenerateRequestSchema, workflowGenerationOutputSchema, WORKFLOW_GENERATION_SYSTEM_PROMPT } from '../../schemas/workflowGenerationSchemas';
 import logger from '../../utils/logger';
@@ -204,20 +203,11 @@ export async function workflowRoutes(fastify: FastifyInstance) {
   });
 
   // GET /api/v1/workflows — list definitions
-  // Trial users get sample workflow definitions with an upgrade prompt.
   fastify.get('/', {
     preHandler: [requireScope('read')],
     schema: { description: 'List workflow definitions', tags: ['workflows'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Trial users get sample workflows
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          return { definitions: generateSampleWorkflows(), sample: true };
-        }
-      }
-
       const { projectId } = request.query as { projectId?: string };
       if (projectId) {
         const d = await checkProjectRole(request, projectId, 'viewer');
@@ -408,39 +398,4 @@ export async function workflowRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Internal server error' });
     }
   });
-}
-
-function generateSampleWorkflows() {
-  return [
-    {
-      id: 'sample-wf-1',
-      name: 'Task Status Change Notification',
-      description: 'Sends notifications when critical tasks change status. Includes an approval gate for high-priority changes.',
-      isEnabled: true,
-      version: 1,
-      createdBy: 'demo',
-      createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    },
-    {
-      id: 'sample-wf-2',
-      name: 'Overdue Task Escalation',
-      description: 'Automatically escalates tasks that are more than 5 days overdue. Notifies the project manager and logs the escalation.',
-      isEnabled: true,
-      version: 2,
-      createdBy: 'demo',
-      createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-    },
-    {
-      id: 'sample-wf-3',
-      name: 'Budget Threshold Alert',
-      description: 'Triggers when project spending exceeds 80% of allocated budget. Routes approval through finance officer.',
-      isEnabled: false,
-      version: 1,
-      createdBy: 'demo',
-      createdAt: new Date(Date.now() - 21 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 21 * 86400000).toISOString(),
-    },
-  ];
 }

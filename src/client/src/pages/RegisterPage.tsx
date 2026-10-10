@@ -11,7 +11,7 @@ import { TurnstileWidget } from '../components/auth/TurnstileWidget';
 export const RegisterPage: React.FC = () => {
   useSEO({
     title: 'Create Account — Kovarti PM',
-    description: 'Start your free 14-day trial of Kovarti PM. No credit card required. AI-powered project management for consultants and teams.',
+    description: 'Start your free 7-day trial of Kovarti PM. No credit card required. AI-powered project management for consultants and teams.',
     canonical: '/register',
   });
 

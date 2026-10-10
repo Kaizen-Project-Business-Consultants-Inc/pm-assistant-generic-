@@ -9,7 +9,7 @@ import { AIScenarioRequestSchema } from '../../schemas/phase5Schemas';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
+import { isTrialUser, showTrialExample, projectHasTasks } from '../../utils/trialSample';
 import { cachedAIResult } from '../../utils/aiResultCache';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 
@@ -28,26 +28,21 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
   const crossProjectService = new CrossProjectIntelligenceService(fastify);
   const scenarioService = new WhatIfScenarioService(fastify);
 
-  // Helper: check if request user is on trial tier
-  async function isTrialUser(request: FastifyRequest): Promise<boolean> {
-    if (request.user!.role === 'admin') return false;
-    const user = await userService.findById(request.user!.userId);
-    return !!(user && user.subscriptionTier === 'trial');
-  }
+  // The free trial gets the real analysis; a trial user with nothing to analyse yet (no projects,
+  // or a project with no tasks) gets an example instead, sent with sample: true (2026-10-10).
 
   // Anomaly Detection
-  // Trial users get sample data with an upgrade prompt.
   fastify.get('/anomalies', {
     preHandler: [requireScope('read')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      if (await isTrialUser(request)) {
-        return reply.send({ data: generateSampleAnomalies(), aiPowered: false, sample: true });
-      }
       const userId = request.user!.userId;
       // per person (it covers the projects they can see), reused for 30 minutes — it asked the AI
       // on every visit to the Scenarios page
       const report = await cachedAIResult(`anomalies:${userId}`, () => anomalyService.detectPortfolioAnomalies(userId, request.user!.role));
+      if (report.scannedProjects === 0 && await isTrialUser(request)) {
+        return reply.send({ data: generateSampleAnomalies(), aiPowered: false, sample: true });
+      }
       return reply.send({ data: report, aiPowered: report.aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Portfolio anomaly detection failed');
@@ -60,9 +55,6 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('read'), requireProjectAccess('viewer'), heavyActionLimit('ai-anomalies-project', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      if (await isTrialUser(request)) {
-        return reply.send({ data: generateSampleAnomalies(), aiPowered: false, sample: true });
-      }
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
       const report = await anomalyService.detectProjectAnomalies(projectId, userId);
@@ -74,16 +66,15 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
   });
 
   // Cross-Project Intelligence
-  // Trial users get sample data with an upgrade prompt.
   fastify.get('/cross-project', {
     preHandler: [requireScope('read')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      if (await isTrialUser(request)) {
-        return reply.send({ data: generateSampleCrossProject(), aiPowered: false, sample: true });
-      }
       const userId = request.user!.userId;
       const { insight, aiPowered } = await cachedAIResult(`cross-project:${userId}`, () => crossProjectService.analyzePortfolio(userId, request.user!.role));
+      if (insight.portfolioRiskHeatMap.length === 0 && await isTrialUser(request)) {
+        return reply.send({ data: generateSampleCrossProject(), aiPowered: false, sample: true });
+      }
       return reply.send({ data: insight, aiPowered });
     } catch (err) {
       fastify.log.error({ err }, 'Cross-project analysis failed');
@@ -96,9 +87,6 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('read'), requireProjectAccess('viewer'), heavyActionLimit('ai-similar-projects', 10)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      if (await isTrialUser(request)) {
-        return reply.send({ data: [], aiPowered: false, sample: true });
-      }
       const { projectId } = request.params as { projectId: string };
       const userId = request.user!.userId;
       const { similar, aiPowered } = await crossProjectService.findSimilarProjects(projectId, userId);
@@ -117,30 +105,11 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('read'), requireFeature('cross_project_intelligence'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      if (await isTrialUser(request)) {
-        return reply.send({
-          data: {
-            projectType: 'software',
-            budgetAllocated: 250000,
-            budgetSpent: 112000,
-            totalDays: 180,
-            daysElapsed: 85,
-            daysRemaining: 95,
-            currentWorkers: 5,
-            currentRiskScore: 35,
-            completionRate: 45,
-            totalTasks: 48,
-            completedTasks: 22,
-            overdueTasks: 3,
-            scheduleVariance: -2.5,
-            budgetUtilization: 44.8,
-            coefficients: { budgetCutRiskPerPct: 0.4, budgetAddRiskPerPct: 0.2, timelineExtRiskPerDay: 0.25, timelineCompressRiskPerDay: 0.5, scopeRiskPerPct: 0.5, scopeBudgetMultiplier: 0.6 },
-          },
-          sample: true,
-        });
-      }
       const { projectId } = request.params as { projectId: string };
       const baseline = await scenarioService.getProjectBaseline(projectId);
+      if (baseline.totalTasks === 0 && await isTrialUser(request)) {
+        return reply.send({ data: generateSampleBaseline(), sample: true });
+      }
       return reply.send({ data: baseline });
     } catch (err) {
       fastify.log.error({ err }, 'Failed to get scenario baseline');
@@ -153,11 +122,10 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
     preHandler: [requireScope('write'), requireFeature('cross_project_intelligence'), requireProjectAccess('manager')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // #10: Trial users get sample data
-      if (await isTrialUser(request)) {
+      const parsed = AIScenarioRequestSchema.parse(request.body);
+      if (await showTrialExample(request, projectHasTasks, parsed.projectId)) {
         return reply.send({ data: generateSampleScenarioResult(), aiPowered: false, sample: true, id: 'sample' });
       }
-      const parsed = AIScenarioRequestSchema.parse(request.body);
       const userId = request.user!.userId;
       const { result, aiPowered, id } = await scenarioService.modelScenario(parsed, userId);
       return reply.send({ data: result, aiPowered, id });
@@ -198,6 +166,26 @@ export async function intelligenceRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Failed to delete scenario' });
     }
   });
+}
+
+function generateSampleBaseline() {
+  return {
+    projectType: 'software',
+    budgetAllocated: 250000,
+    budgetSpent: 112000,
+    totalDays: 180,
+    daysElapsed: 85,
+    daysRemaining: 95,
+    currentWorkers: 5,
+    currentRiskScore: 35,
+    completionRate: 45,
+    totalTasks: 48,
+    completedTasks: 22,
+    overdueTasks: 3,
+    scheduleVariance: -2.5,
+    budgetUtilization: 44.8,
+    coefficients: { budgetCutRiskPerPct: 0.4, budgetAddRiskPerPct: 0.2, timelineExtRiskPerDay: 0.25, timelineCompressRiskPerDay: 0.5, scopeRiskPerPct: 0.5, scopeBudgetMultiplier: 0.6 },
+  };
 }
 
 function generateSampleAnomalies() {

@@ -73,6 +73,18 @@ describe('rate card routes', () => {
     expect(db.query).not.toHaveBeenCalled();
   });
 
+  it('a finance officer sees the card but cannot change it (user 2026-10-10)', async () => {
+    who.user = { userId: 'f1', role: 'finance_officer' };
+    expect((await app.inject({ method: 'GET', url: '/api/v1/rate-card' })).statusCode).toBe(200);
+    db.query.mockClear();
+    const add = await app.inject({ method: 'POST', url: '/api/v1/rate-card', payload: { role: 'Dev', hourlyRate: 1, effectiveFrom: '2026-10-01' } });
+    expect(add.statusCode).toBe(403);
+    expect(add.json().message).toMatch(/can change the rate card/);
+    expect((await app.inject({ method: 'PUT', url: '/api/v1/rate-card/r1', payload: { role: 'Dev', hourlyRate: 1, effectiveFrom: '2026-10-01' } })).statusCode).toBe(403);
+    expect((await app.inject({ method: 'DELETE', url: '/api/v1/rate-card/r1' })).statusCode).toBe(403);
+    expect(db.query).not.toHaveBeenCalled();
+  });
+
   it('a guest is refused even with a PM role', async () => {
     who.user = { userId: 'g1', role: 'project_manager', isGuest: true };
     expect((await app.inject({ method: 'GET', url: '/api/v1/rate-card' })).statusCode).toBe(403);

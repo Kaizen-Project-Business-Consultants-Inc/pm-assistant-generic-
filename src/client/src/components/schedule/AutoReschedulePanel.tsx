@@ -1,7 +1,7 @@
 import { useState, useId } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
-import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag, Lock } from 'lucide-react';
+import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag } from 'lucide-react';
 import { severityColor } from '../../utils/severityColors';
 import { announce } from '../../utils/announce';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -106,7 +106,6 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
   });
 
   const delays: Delay[] = delaysData?.delayedTasks || delaysData?.delays || [];
-  const isSample: boolean = delaysData?.sample || false;
 
   // Generate proposal mutation
   const generateMutation = useMutation({
@@ -249,20 +248,6 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
 
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-          {isSample && (
-            <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-              <div className="flex items-start gap-2">
-                <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Auto-Reschedule Data</p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                    This is sample data. Upgrade to a paid plan to detect delays, generate AI-powered reschedule proposals, and apply changes to your actual schedules.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* --- Detected Delays Section --- */}
           <section>
             <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">Detected Delays</h3>
@@ -326,7 +311,7 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
             <div className="flex justify-center">
               <button
                 onClick={() => generateMutation.mutate()}
-                disabled={generateMutation.isPending || delays.length === 0 || isSample}
+                disabled={generateMutation.isPending || delays.length === 0}
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-600 text-white text-sm font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
               >
                 {generateMutation.isPending ? (

@@ -1,7 +1,10 @@
 import type { ActionType, AutomationContext, AutomationEvent } from './types';
 import logger from '../../utils/logger';
+import { checkBackgroundSend } from '../../utils/trialEmail';
 
 type ActionExecutorFn = (params: Record<string, any>, context: AutomationContext, event: AutomationEvent) => Promise<void>;
+
+const MAX_EMAIL_RECIPIENTS = 20;
 
 // Dynamic recipient tokens that resolve at execution time
 const RECIPIENT_TOKENS = ['assignee', 'creator', 'project_owner', 'trigger_user'] as const;
@@ -137,6 +140,13 @@ const executors: Record<ActionType, ActionExecutorFn> = {
       logger.warn(`[AutomationAction] send_email: no recipients resolved from "${params.to}"`);
       return;
     }
+    // Like the report emails: at most 20 people, and the automation's owner must still be on a
+    // plan and keep to the free trial's allowance — a rule must not become a mail relay (2026-10-10)
+    if (resolved.length > MAX_EMAIL_RECIPIENTS) {
+      throw new Error(`An automation email can go to at most ${MAX_EMAIL_RECIPIENTS} people.`);
+    }
+    const send = await checkBackgroundSend(context._aiBillTo ?? event.userId, resolved.length);
+    if (!send.ok) throw new Error(send.reason);
     for (const r of resolved) {
       // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
       await emailService.sendNotificationEmail(r.email, params.subject, params.subject, params.body);

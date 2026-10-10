@@ -241,7 +241,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Daily and weekly email digests (overdue tasks, upcoming deadlines, unread count)
 - Trial reminder emails: daily cron at 09:00 sends 3-day, 1-day, and expired-trial notices via Resend to confirmed emails (unconfirmed sign-ups get a fresh confirm-your-email link at day 1 and 3 instead); dark-themed branded HTML templates with preheader text, teal accent bar, status badge, gradient CTA button, reassurance info points, responsive layout, Outlook VML fallback, and dark-mode support; Redis-backed dedup prevents duplicate sends
 - **Viewer Invite Flow** — Consultant/SME/Enterprise users can invite client stakeholders as free viewer accounts (Basic: 5 / Pro: 15 / Team (SME): unlimited / Enterprise: unlimited invites per tier respectively); viewers get read-only access scoped to the inviting user's projects
-- **Feature gating** — Trial accounts are restricted from advanced features (exports, EVM, Monte Carlo, etc.); `requireTier`/`requirePaidTier` middleware enforces tier checks server-side on protected routes
+- **Feature gating** — plan features are switched on per tier (`tier_features`) and enforced server-side by `requireFeature`/`requireTier`. The free trial has every Consultant Pro feature on the user's real data (limits: 7 days, 3 projects, 100MB, 50K AI tokens); analyses show a labelled example only when a trial project has nothing to analyse yet (`utils/trialSample.ts`)
 
 ### Client / Stakeholder Portal
 - External-facing read-only project views with progress, budget, milestones, and recent activity
@@ -284,7 +284,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 
 ### Billing (Stripe)
 - Subscription management with tiered pricing (Trial / Consultant / SME / Enterprise), feature comparison matrix, usage equivalents, and sidebar token usage indicator
-  - **Trial:** Free, 14 days, 3 projects, 5K AI tokens (~10 chats to explore Mjuzi), basic PM features only
+  - **Trial:** Free, 7 days, 3 projects, 50K AI tokens (~10 questions to explore Mjuzi), every Pro feature
   - **Consultant Basic:** $19/mo ($190/yr), unlimited projects, no AI, core PM + resources + reports + workflows, 5 viewer invites
   - **Consultant Pro:** $29/mo ($290/yr), unlimited projects, 500K AI tokens/month, all features including AI, 15 viewer invites
   - **Team (SME):** $19/seat/mo ($190/seat/yr, min 3 seats), unlimited projects, 500K AI tokens/seat (pooled), all features, unlimited viewer invites

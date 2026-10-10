@@ -1966,7 +1966,7 @@
   },
   "src/server/routes/core/exports.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -2003,11 +2003,6 @@
   "src/server/routes/reporting/instantReports.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 2
-    }
-  },
-  "src/server/routes/reporting/strategicRiskScan.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
     }
   },
   "src/server/routes/resources/availability.ts": {

@@ -6,15 +6,16 @@
 
 ## Overview
 
-Single paid tier targeting individual consultants. No free tier — full-featured 14-day trial, then pay or downgrade to read-only.
+Single paid tier targeting individual consultants. No free tier — full-featured 7-day trial, then pay or downgrade to read-only.
 
 ---
 
 ## Trial
 
-- **Duration:** 14 days from account creation
+- **Duration:** 7 days from account creation
 - **Credit card required:** No
-- **Access:** All features, no restrictions
+- **Access:** Every Consultant Pro feature, on the user's own data (since October 2026, migration 135). Limits: up to 3 projects, 100MB storage, 50K AI tokens a month.
+- **Examples:** analyses (Monte Carlo, EVM, status/RAID reports, risk scan, portfolio/anomaly intelligence, scenarios) show a labelled example only when the trial project has nothing to analyse yet; email/schedule/download of an example are off. Nothing else uses canned sample data.
 - **Trial expiry:** Account becomes read-only (see Post-Trial below)
 
 ---
@@ -52,7 +53,7 @@ the free tier only — no paid tier ever carries one.**
 
 | State | `subscription_tier` | `subscription_status` | `trial_ends_at` | What they get |
 |---|---|---|---|---|
-| **Free (on trial)** | `trial` | `trialing` | set, 14 days out | Everything, until the date passes |
+| **Free (on trial)** | `trial` | `trialing` | set, 7 days out | Everything, until the date passes |
 | **Free (trial spent)** | `trial` | `none` | in the past | Read-only |
 | **Awaiting payment** | `trial` | `incomplete` | NULL | Nothing but their checkout |
 | **Subscriber** | a paid tier | `active` | NULL | Everything on their plan |
@@ -140,7 +141,7 @@ When trial expires and user has no active subscription:
 ### Checkout Flow
 1. User clicks "Subscribe" on pricing page
 2. `POST /api/v1/stripe/create-checkout-session` with `priceId` (monthly or annual)
-3. Stripe Checkout opens (no trial — trial was the free 14 days)
+3. Stripe Checkout opens (no trial — trial was the free 7 days)
 4. On success: webhook updates `subscription_tier` to `consultant`, `subscription_status` to `active`
 5. Redirect to app
 
@@ -202,4 +203,4 @@ To request a refund, contact support@kpbc.ca.
 
 ### Trial Terms
 
-Your 14-day free trial begins when you create your account. No credit card is required. After the trial period, your account will be placed in read-only mode. You may subscribe at any time to restore full access. Your data is preserved indefinitely.
+Your 7-day free trial begins when you create your account. No credit card is required. After the trial period, your account will be placed in read-only mode. You may subscribe at any time to restore full access. Your data is preserved indefinitely.

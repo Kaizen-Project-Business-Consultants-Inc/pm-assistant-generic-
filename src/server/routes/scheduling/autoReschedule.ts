@@ -8,9 +8,7 @@ import { automationEventBus } from '../../services/automation/AutomationEventBus
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
-import { weekdaysOnly, onOrAfterWorking, shiftWorking, utcDay, ymdOf } from '../../utils/workingDays';
 
 const rejectBodySchema = z.object({
   feedback: z.string().optional(),
@@ -33,20 +31,11 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /:scheduleId/delays — detect delayed tasks
-  // Trial users get sample delay data with an upgrade prompt.
   fastify.get('/:scheduleId/delays', {
     preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'Detect delayed tasks in a schedule', tags: ['auto-reschedule'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Trial users get sample delays
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          return { delayedTasks: generateSampleDelays(), sample: true };
-        }
-      }
-
       const { scheduleId } = request.params as { scheduleId: string };
       const delayedTasks = await autoRescheduleService.detectDelays(scheduleId);
       return { delayedTasks };
@@ -60,20 +49,11 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
   });
 
   // GET /:scheduleId/proposals — list proposals for a schedule
-  // Trial users get sample proposals with an upgrade prompt.
   fastify.get('/:scheduleId/proposals', {
     preHandler: [requireScope('read'), requireProjectAccess('viewer')],
     schema: { description: 'List reschedule proposals for a schedule', tags: ['auto-reschedule'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Trial users get sample proposals
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          return { proposals: generateSampleProposals(), sample: true };
-        }
-      }
-
       const { scheduleId } = request.params as { scheduleId: string };
       const proposals = await autoRescheduleService.getProposals(scheduleId);
       return { proposals };
@@ -191,31 +171,4 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       });
     }
   });
-}
-
-function generateSampleDelays() {
-  return [
-    { taskId: 's1', taskName: 'API Integration', delayDays: 8, severity: 'critical' as const, reason: 'Third-party API documentation incomplete; team waiting on vendor response.', isCriticalPath: true },
-    { taskId: 's2', taskName: 'Database Migration', delayDays: 5, severity: 'high' as const, reason: 'Data volume larger than estimated; migration scripts need optimization.', isCriticalPath: true },
-    { taskId: 's3', taskName: 'UI Redesign', delayDays: 3, severity: 'medium' as const, reason: 'Design review required additional iteration with stakeholders.', isCriticalPath: false },
-  ];
-}
-
-function generateSampleProposals() {
-  const today = new Date();
-  // n working days (Mon–Fri) from today — the sample never lands on a weekend
-  const addDays = (n: number) => ymdOf(shiftWorking(onOrAfterWorking(utcDay(today), weekdaysOnly), n, weekdaysOnly));
-  return [
-    {
-      id: 'sample-prop-1',
-      status: 'pending',
-      rationale: 'Shift downstream tasks to absorb API integration delay while maintaining critical path integrity.',
-      changes: [
-        { taskId: 's4', taskName: 'Integration Testing', currentStart: addDays(4), currentEnd: addDays(11), proposedStart: addDays(12), proposedEnd: addDays(19), reason: 'Delayed due to API integration dependency' },
-        { taskId: 's5', taskName: 'User Acceptance Testing', currentStart: addDays(12), currentEnd: addDays(18), proposedStart: addDays(20), proposedEnd: addDays(26), reason: 'Cascading delay from integration testing' },
-      ],
-      estimatedImpact: { originalEndDate: addDays(18), proposedEndDate: addDays(26), daysChange: 8 },
-      createdAt: new Date().toISOString(),
-    },
-  ];
 }

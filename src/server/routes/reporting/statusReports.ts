@@ -2,12 +2,10 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requirePaidTier } from '../../middleware/requireTier';
 import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
 import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAccess';
 import { projectStatusReportService } from '../../services/ProjectStatusReportService';
 import { reportScheduleService } from '../../services/ReportScheduleService';
-import { userService } from '../../services/UserService';
 import { emailService, EmailRejectedError } from '../../services/EmailService';
 import { renderStatusReportHtml, type StructuredStatusReport } from '../../utils/statusReportRenderer';
 import { buildStatusReportDocx } from '../../utils/statusReportDocxBuilder';
@@ -18,11 +16,13 @@ import { sendValidationError } from '../../utils/validationError';
 import crypto from 'crypto';
 import { clientReportContext } from '../../utils/clientReportContext';
 import { projectService } from '../../services/ProjectService';
-import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { heavyActionLimit, whenSendingEmail } from '../../middleware/rateLimiter';
+import { showTrialExample, projectHasTasks } from '../../utils/trialSample';
+import { trialEmailAllowance } from '../../utils/trialEmail';
 
 const generateSchema = z.object({
   projectId: z.string().min(1),
-  recipients: z.array(z.string().email()).optional(),
+  recipients: z.array(z.string().email()).max(20, 'Send the report to at most 20 people at a time.').optional(),
   sendEmail: z.boolean().optional(),
 });
 
@@ -32,7 +32,7 @@ const scheduleSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   timeOfDay: z.string().optional(),
-  recipients: z.array(z.string().email()).min(1),
+  recipients: z.array(z.string().email()).min(1).max(20, 'Send the report to at most 20 people at a time.'),
 });
 
 // The edited report sent back for /render and /export/docx (2026-10-07). A partial body used to
@@ -76,21 +76,16 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // Generate a status report (background mode via WebSocket)
-  // Trial users get a sample report synchronously (no AI tokens consumed).
+  // A trial user whose project has no tasks yet gets an example report synchronously (sample: true).
   fastify.post('/generate', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), whenSendingEmail(heavyActionLimit('status-report-email', 20, 60 * 60_000)), whenSendingEmail(trialEmailAllowance())],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
       const body = generateSchema.parse(request.body);
 
-      // Check if user is on trial tier — return sample report synchronously
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(userId);
-        if (user && user.subscriptionTier === 'trial') {
-          const sample = projectStatusReportService.generateSample(body.projectId);
-          return { report: sample, sample: true };
-        }
+      if (await showTrialExample(request, projectHasTasks, body.projectId)) {
+        return { report: projectStatusReportService.generateSample(body.projectId), sample: true };
       }
 
       // Return immediately with a jobId; generate in background
@@ -131,7 +126,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // Re-render a report from edited structured data
   fastify.post('/render', {
-    preHandler: [requireScope('write'), requirePaidTier],
+    preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = parseStructuredReport(request.body, reply);
@@ -146,7 +141,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // Export report as Word (.docx)
   fastify.post('/export/docx', {
-    preHandler: [requireScope('write'), requirePaidTier, heavyActionLimit('status-report-docx', 30)],
+    preHandler: [requireScope('write'), heavyActionLimit('status-report-docx', 30)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const data = parseStructuredReport(request.body, reply);
@@ -171,7 +166,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
   // real name. It used to take any HTML with no project, no recipient cap and no limit, from the
   // Kovarti address: a mail relay for anyone with write rights (2026-10-09 audit M10).
   fastify.post('/email', {
-    preHandler: [requireScope('write'), requirePaidTier, heavyActionLimit('status-report-email', 20, 60 * 60_000)],
+    preHandler: [requireScope('write'), heavyActionLimit('status-report-email', 20, 60 * 60_000), trialEmailAllowance()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const schema = z.object({
@@ -211,7 +206,7 @@ export async function statusReportRoutes(fastify: FastifyInstance) {
 
   // Create a recurring schedule
   fastify.post('/schedule', {
-    preHandler: [requireScope('write'), requirePaidTier, requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), trialEmailAllowance()],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;

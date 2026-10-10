@@ -15,10 +15,10 @@ Every public page now has unique `<title>`, `<meta description>`, Open Graph, an
 | Page | Title | Description |
 |------|-------|-------------|
 | Landing `/` | Kovarti PM — AI-Powered Project Management Software | Plan smarter, predict risks, and deliver on time. AI scheduling, Monte Carlo simulations, EVM, Gantt charts, and real-time collaboration. |
-| Pricing `/pricing` | Pricing — Kovarti PM | Simple, transparent pricing. Free 14-day trial, Consultant Basic at $19/mo, Consultant Pro at $29/mo with AI features. No credit card required. |
+| Pricing `/pricing` | Pricing — Kovarti PM | Simple, transparent pricing. Free 7-day trial, Consultant Basic at $19/mo, Consultant Pro at $29/mo with AI features. No credit card required. |
 | Roadmap `/roadmap` | Product Roadmap — Kovarti PM | See what we are building next. Our product roadmap is shaped by customer feedback. |
 | Login `/login` | Sign In — Kovarti PM | Sign in to your Kovarti PM account. Access your projects, schedules, and AI-powered insights. |
-| Register `/register` | Create Account — Kovarti PM | Start your free 14-day trial of Kovarti PM. No credit card required. AI-powered project management. |
+| Register `/register` | Create Account — Kovarti PM | Start your free 7-day trial of Kovarti PM. No credit card required. AI-powered project management. |
 | User Guide `/guide` | User Guide — Kovarti PM | Complete user guide for Kovarti PM. Learn how to manage projects, schedules, tasks, sprints, reports, and AI features. |
 | Terms `/terms` | Terms of Service — Kovarti PM | Terms of Service for Kovarti PM. Subscription terms, AI usage limits, acceptable use, and liability. |
 | Privacy `/privacy` | Privacy Policy — Kovarti PM | Privacy Policy for Kovarti PM. How we collect, use, and protect your data. PIPEDA compliant. Data hosted in Canada. |

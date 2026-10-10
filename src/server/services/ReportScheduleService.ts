@@ -6,6 +6,7 @@ import { projectStatusReportService } from './ProjectStatusReportService';
 import { raidReportService } from './RAIDReportService';
 import logger from '../utils/logger';
 import { readableProjectIdsForUserId } from '../utils/readableProjects';
+import { checkBackgroundSend } from '../utils/trialEmail';
 
 export type { ReportSchedule } from '../database/ReportScheduleRepository';
 
@@ -134,6 +135,19 @@ export class ReportScheduleService {
 
     for (const schedule of dueSchedules) {
       try {
+        // The person who set it up must still be on a plan, and a free trial keeps to its email
+        // allowance: an abandoned trial must not keep mailing (and spending AI) for ever (2026-10-10)
+        // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
+        const send = await checkBackgroundSend(schedule.createdBy, schedule.recipients.length);
+        if (!send.ok) {
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
+          if (send.stop) await this.update(schedule.id, { isActive: false });
+          const nextRun = this.computeNextRun(schedule.frequency, schedule.dayOfWeek, schedule.dayOfMonth, schedule.timeOfDay);
+          // eslint-disable-next-line no-await-in-loop -- due reports are built and emailed one schedule at a time, keeping the job's load and email sends bounded
+          await this.updateRunStatus(schedule.id, send.stop ? 'paused' : 'skipped', send.reason, nextRun);
+          continue;
+        }
+
         // Handle status report schedules
         if (schedule.templateId.startsWith('status-report::')) {
           const projectId = schedule.templateId.replace('status-report::', '');

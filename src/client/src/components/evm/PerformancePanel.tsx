@@ -14,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { ExampleDataNote } from '../ui/ExampleDataNote';
 import { SCurveChart } from './SCurveChart';
 import { EVMTrendChart } from './EVMTrendChart';
 
@@ -681,6 +682,10 @@ export function PerformancePanel({ projectId, onNavigate }: {
           {verdict.label}
         </span>
       </div>
+
+      {evmData?.sample && (
+        <ExampleDataNote>This project has no tasks yet, so these are example figures. Add tasks with budgets and progress to see your own earned value.</ExampleDataNote>
+      )}
 
       {/* ================================================================= */}
       {/* [2] Inputs Strip                                                  */}

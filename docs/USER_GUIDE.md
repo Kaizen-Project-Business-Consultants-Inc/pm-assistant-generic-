@@ -59,7 +59,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
 1. Navigate to the PM Assistant URL in your browser.
 2. On the landing page, click **Get Started** — this scrolls to the **Pricing** section.
 3. Choose your plan:
-   - Click **Start Free Trial** for a 14-day free trial (no credit card required).
+   - Click **Start Free Trial** for a 7-day free trial (no credit card required).
    - Click **Subscribe** on a paid plan (Consultant Basic, Consultant Pro, or SME) to go straight to checkout.
 4. Fill in your email, password, and other details on the registration form.
    - Both password fields must match before the form can be submitted.
@@ -67,7 +67,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
    - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
 5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? Check your spam or Promotions folder.
 
-> **Note:** Each email address is eligible for one free 14-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
+> **Note:** Each email address is eligible for one free 7-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
 > **Paid-plan features:** If your trial or plan doesn't include something you try to do (for example a company-wide workflow or a portal link), a **Part of a paid plan** window opens with **View Plans** — nothing you've set up is lost. Pages that merely load in the background never pop this window up.
 
@@ -353,7 +353,7 @@ Additional sections below the card grid:
 - **Portal Links** -- External portal link management. Each link generates a unique token URL (`/portal/:token`) that stakeholders can access without logging in. The portal shows project progress, task statistics, budget summary, milestone timeline, recent activity, and a comment form. Visibility of each section is controlled by the link's permissions (`canViewBudget`, `canViewGantt`, `canViewReports`, `canComment`).
 - **Export XML** -- Click the **Export XML** button (same row as Export CSV and Export PDF) to download the project as an MSPDI XML file. This format is compatible with Microsoft Project and ProjectLibre and includes tasks, resources, assignments, and dependency links.
 
-> **Trial accounts:** If you are on a trial plan, clicking any export button (CSV, XML, or JSON/PDF) downloads a **sample file** containing demo project data (5 tasks across 2 phases) rather than your real project. An amber banner in the UI identifies it as a sample before the download begins. Upgrade to a paid plan to export your actual project data.
+> **Trial accounts:** Exports work the same on the free trial — every export button (CSV, XML, or JSON/PDF) downloads your real project.
 
 #### Real-Time Presence
 
@@ -1006,7 +1006,7 @@ Resources can have an **overtime rate** separate from the standard cost rate:
 - On a resource's form, under **Cost rate**, choose **Use rate card** (the role's rate, shown with its start date and any upcoming change) or **Own rate** (that person's own hourly and overtime rates). Everyone starts on **Own rate**, so nothing changes until you switch someone.
 - A resource on the rate card whose role has no rate yet is costed at its own rate until one is added.
 - Costs are worked out week by week at that week's rate (Workload Heatmap, cost reports, portfolio).
-- Rates are pay information: only PMOs and project managers (and the company owner — including a consultant, who is the PM and owner of their own company) see or change the rate card. Team members and viewers don't see it. Each company's rate card is its own; no other company can see it.
+- Rates are pay information: only PMOs and project managers (and the company owner — including a consultant, who is the PM and owner of their own company) see and change the rate card. Finance officers see it, without the change buttons. Team members and viewers don't see it. Each company's rate card is its own; no other company can see it.
 
 ### Role Capacity Planning
 
@@ -1616,7 +1616,7 @@ All generated reports appear in the **Report History** table below the report ca
 
 > **Note:** Regular users can delete report templates they created. Deleting another user's template still requires an admin role. When updating a template in the Report Designer, all configured sections are saved correctly.
 
-> **Trial accounts:** If you are on a trial plan, the Report Builder shows 3 sample templates (Weekly Status, Budget Overview, Time Tracking) so you can preview the feature. The New Report, Edit, Generate, and Delete buttons are replaced with an "Upgrade to use" label. An amber banner at the top of the page identifies the templates as samples. Upgrade to a paid plan to create and run your own custom report templates.
+> **Trial accounts:** The Report Builder works fully on the free trial — you create, edit, run and delete your own templates. Until you make one, the list is empty.
 
 ### Scheduled Reports
 
@@ -1670,7 +1670,7 @@ Monte Carlo simulation uses random sampling to model schedule uncertainty and pr
    - **Uncertainty Model** -- The probability distribution for task duration variability (e.g., triangular, PERT, normal).
 4. Click **Run Simulation**.
 
-> **Trial accounts:** If you are on a trial plan, clicking Run Simulation returns a sample simulation with demo data instead of running against your actual schedule. An amber banner at the top of the results identifies it as a sample. Upgrade to a paid plan to run simulations on your real project data.
+> **Trial accounts:** On the free trial the simulation runs on your real schedule. Only if the schedule has no tasks yet do you see an example result, marked with an amber note "Example — not your project's data". Add tasks and run it again to see your own forecast.
 
 ### Interpreting Results
 
@@ -1726,7 +1726,7 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 3. The AI returns a written answer, often accompanied by auto-generated SVG charts (bar, line, pie, or horizontal bar) rendered by the shared `DynamicChart` component.
 4. **Suggested follow-ups** appear below the answer for deeper exploration.
 
-> **Trial accounts:** If you are on a trial plan, submitting a query returns a **sample response** with demo data — a short narrative answer, a sample bar chart showing task status across fictitious projects, and 3 suggested follow-up questions. An amber banner at the top of the page identifies it as a sample. No AI tokens are consumed. Upgrade to a paid plan to query your real project data.
+> **Trial accounts:** On the free trial your questions are answered from your real project data, and each one uses some of the trial's 50K AI tokens.
 
 ### Mjuzi AI Chat Panel
 
@@ -1900,19 +1900,19 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 - Each row has its own **Send to RAID** button to re-import findings from a historical analysis into the RAID log.
 - Use the search box to find analyses by title or keyword, and the filter controls to narrow by date or project.
 
-> **Trial accounts:** If you are on a trial plan, clicking Process returns a **sample meeting analysis** with demo data — a brief summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber banner at the top of the page identifies it as a sample. The **Apply Changes** button and the **History** table are hidden or disabled for trial users. No AI tokens are consumed. Upgrade to a paid plan to process your real meeting transcripts.
+> **Trial accounts:** Meeting analysis works fully on the free trial — **Process** analyses your real transcript (using the trial's AI tokens), and **Apply Changes** and **History** work as normal.
 
-> **Trial accounts — Stakeholder Portal:** If you are on a trial plan, the Portal Links page shows 2 sample portal links (Stakeholder Review Portal, Executive Dashboard) with an amber banner instead of your real links. The **Create Link** button is hidden. Upgrade to a paid plan to create and share real stakeholder portals.
+> **Trial accounts — Stakeholder Portal:** Works fully on the free trial — you create and share real portal links. Until you make one, the page says there are no links yet.
 
-> **Trial accounts — Workflow Automation:** If you are on a trial plan, the Workflows page shows 3 sample workflow definitions (Task Status Notification, Overdue Escalation, Budget Alert) with an amber banner. The **New Workflow** button and AI Generate section are hidden. Upgrade to a paid plan to build and run your own automations.
+> **Trial accounts — Workflow Automation:** Works fully on the free trial, including **New Workflow** and AI Generate (which uses the trial's AI tokens). Until you build one, the page says there are no workflows yet.
 
-> **Trial accounts — Resource Management:** If you are on a trial plan, the Resource Management page shows 4 sample resources (Project Manager, Developer, QA Engineer, Designer — with skills and hourly rates) with an amber banner. The **Add person** and **Add generic role** buttons are hidden. Upgrade to a paid plan to manage your real team resources.
+> **Trial accounts — Resource Management:** Works fully on the free trial — **Add person** and **Add generic role** add your real team. Until you add someone, the list is empty.
 
-> **Trial accounts — Auto-Reschedule:** If you are on a trial plan, the Auto-Reschedule panel shows 3 sample detected delays (API Integration, Database Migration, UI Redesign) and 1 sample AI proposal with an amber banner. The **Generate Proposal** button is disabled. No AI tokens are consumed. Upgrade to a paid plan to run AI-powered reschedule analysis on your real schedule.
+> **Trial accounts — Auto-Reschedule:** Works on your real schedule on the free trial. **Generate Proposal** is available and uses the trial's AI tokens. If nothing is running late, the panel says so.
 
 > **What a key or a Claude connection can do (October 2026):** never more than your own role. Project managers, PMOs and the company owner can create keys with **read** or **read + write** rights, and a key changes only projects you manage. Team members, viewers and executives can't create keys or webhooks; connecting Claude gives them read-only access. The "admin" right is for the Kovarti platform team only. Connecting Claude gives it exactly your rights. You can **Revoke** any of your own keys at any time. Revoking a Claude connection ("OAuth: Claude") ends it for good: Claude can't renew it, and you connect Claude again if you want it back. A Claude connection also ends if your account is switched off, you're asked to change your password, or you move to another company. A key or Claude connection can never change your password or delete your account (sign in to do that), and a read-only key can't invite, change or remove company members or guests. When you connect Claude, its sign-in page works like Kovarti's: after 5 wrong passwords that name is locked for 15 minutes, and if you have to change your password or verify your email, do that in Kovarti first.
 
-> **Trial accounts — API Keys:** If you are on a trial plan, the API Keys tab in Settings shows 2 sample keys (CI/CD Pipeline, Dashboard Read-Only) with an amber banner. The **Create Key** button is hidden. Upgrade to a paid plan to generate real API keys for programmatic access.
+> **Trial accounts — API Keys:** Works fully on the free trial — the API Keys tab lists your own keys (empty until you create one), and **Create Key** is there for the roles described below.
 
 ### AI Summary Banner
 
@@ -1982,9 +1982,9 @@ Navigate to the **Reports** page, select a project, and click the **Status Repor
 - **Email Report** — Enter comma-separated email addresses and send the displayed report (including any edits) directly to stakeholders in branded HTML format with all 8 sections. The project's Manager or Owner sends it, to at most 20 people at a time; each person can send up to 20 report emails an hour (client reports and meeting minutes too).
 - **Schedule Recurring** — Set up automatic report delivery on a daily, weekly, or monthly cadence. Choose the day of week/month, time, and recipients. View and delete existing schedules from this tab.
 
-The report tracks trends by comparing against the previous report — if Schedule was Green last week and is now Amber, the trend arrow shows ↓ (declining). The Overall Status row always reflects the worst individual dimension: if any dimension is Red, Overall Status is Red. Report numbers increment automatically so you can reference specific reports (e.g., "as noted in SR-003"). Scheduled reports run automatically via the report scheduler cron and email the report to all configured recipients. Requires a paid subscription (Consultant, SME, or Enterprise tier).
+The report tracks trends by comparing against the previous report — if Schedule was Green last week and is now Amber, the trend arrow shows ↓ (declining). The Overall Status row always reflects the worst individual dimension: if any dimension is Red, Overall Status is Red. Report numbers increment automatically so you can reference specific reports (e.g., "as noted in SR-003"). Scheduled reports run automatically via the report scheduler cron and email the report to all configured recipients (at most 20). Available on every plan, including the free trial. **On the free trial** you can email up to 5 people at a time and send up to 5 emails a day for your whole company (report emails, scheduled reports, client reports, meeting minutes and automation emails together), so a free account can't be used to send bulk mail. A scheduled report that would go over the allowance is skipped that time and tries again at its next run. If the plan of the person who set up a schedule ends, the schedule is paused.
 
-**Trial users:** Instead of an error, a **sample report** is shown with realistic demo data so you can preview the format. An amber banner at the top identifies it as sample data. The Email, Schedule, Export, and Download options are locked — upgrade to a paid plan to generate live AI-powered reports for your project.
+**Trial users:** The report is built from your real project. Only if the project has no tasks yet do you see an example report, marked with an amber note "Example — not your project's data". Because it isn't your data, Email, Schedule and Download are unavailable for the example. Add tasks and generate it again to get your own report.
 
 ### Strategic Risk Analysis (Risk Scan)
 
@@ -2019,7 +2019,7 @@ Two export formats are available via toolbar buttons:
 
 Results are generated on demand and not stored — run the scan again at any time for a fresh analysis based on current project data.
 
-**Trial users:** A **sample risk scan** is shown with realistic demo findings across all five categories. An amber banner identifies it as sample data. Export buttons are locked — upgrade to a paid plan to run live risk analysis on your project.
+**Trial users:** The scan runs on your real project. Only if the project has no tasks yet do you see an example scan, marked with an amber note "Example — not your project's data". Add tasks and run it again to see your own risks.
 
 ---
 
@@ -2327,7 +2327,7 @@ Navigate to **Scenario Modeling** in the sidebar (under Insights) to access:
 - **Resource Conflicts** -- Flags resources assigned to overlapping tasks across projects.
 - **Anomaly Detection** -- AI identifies unusual patterns (sudden cost spikes, schedule anomalies, performance outliers) with severity ratings and recommendations.
 
-> **Trial accounts:** If you are on a trial plan, all three panels (Portfolio Intelligence, Anomaly Detection, and What-If Scenarios) display **sample data** with fictitious results rather than your real portfolio. An amber banner identifies the results as samples. Upgrade to a paid plan to run intelligence analysis on your real portfolio.
+> **Trial accounts:** On the free trial all three panels (Portfolio Intelligence, Anomaly Detection, and What-If Scenarios) use your real projects. You see an example, marked with an amber note "Example — not your project's data", only when there is nothing to work on yet: no projects for Portfolio Intelligence and Anomaly Detection, or a project with no tasks for What-If Scenarios.
 
 ### What-If Scenario Modeling
 
@@ -2588,7 +2588,7 @@ Annual plan subscribers can request a **prorated refund within 30 days** of purc
 
 #### Pricing
 All prices are displayed in **USD (US Dollars)**:
-- **Free Trial:** $0 for 14 days (no credit card required)
+- **Free Trial:** $0 for 7 days (no credit card required) — every Consultant Pro feature on your own data, 50K AI tokens, up to 3 projects and 100MB of storage
 - **Consultant Basic:** $19 USD/mo or $190 USD/yr
 - **Consultant Pro:** $29 USD/mo or $290 USD/yr (20% off annual during launch)
 
@@ -2596,7 +2596,7 @@ Signed in but not the company's owner? The **Pricing** page still shows every pl
 
 ### Settings
 
-Open **Settings** from the sidebar or from your name (top right). It has up to 13 tabs, and you see only the ones for your role. Everyone has Profile, Company holidays (read-only unless you're the owner or a PMO), Notifications, Display, Accessibility, AI Context, API Keys and Danger Zone; Webhooks is hidden for team members, viewers and executives. On API Keys, team members, viewers and executives see and revoke their own keys (such as a Claude connection) but have no Create Key button. Team and Rate card are for the company owner, PMOs and project managers — on Team, only the owner sees Invite, the role boxes and Remove; project managers also invite guests; Support visits and Sample project for the owner and PMOs.
+Open **Settings** from the sidebar or from your name (top right). It has up to 13 tabs, and you see only the ones for your role. Everyone has Profile, Company holidays (read-only unless you're the owner or a PMO), Notifications, Display, Accessibility, AI Context, API Keys and Danger Zone; Webhooks is hidden for team members, viewers and executives. On API Keys, team members, viewers and executives see and revoke their own keys (such as a Claude connection) but have no Create Key button. Team and Rate card are for the company owner, PMOs and project managers (finance officers also see Rate card, read-only) — on Team, only the owner sees Invite, the role boxes and Remove; project managers also invite guests; Support visits and Sample project for the owner and PMOs.
 
 - **Team** (company owner, PMOs and project managers) -- **Invite Member**: type an email, pick a role (Project Manager, Team Member, Viewer or Executive) and click **Invite**. Change a member's role from the list, or **Remove member** to take someone out of the company (they lose access to every project); there is no "deactivate". There is no "Admin" role for company members — admin is reserved for the Kovarti platform team. The company owner's own role can't be changed by anyone else. On Consultant plans the role is fixed to **Viewer**; on the Team and Enterprise plans, inviting anyone other than a viewer uses a paid seat (added to your subscription if needed). The same tab has **Guest Collaborators** and **Viewer Invites** (see [Viewer Invites](#viewer-invites) below).
 - **API keys** -- Create and revoke keys for programmatic access, with **read** or **read + write** rights. A key never does more than your own role allows. Project managers, PMOs, the company owner and other roles that may change data see **Create Key**; team members, viewers and executives don't (connecting Claude gives them read-only access instead), but they still see and can revoke their own keys. The "admin" right is offered only to the Kovarti platform team. Revoking a key shows a styled confirmation modal before the key is deleted.
@@ -2610,7 +2610,7 @@ Open **Settings** from the sidebar or from your name (top right). It has up to 1
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 - **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner (who works as PMO) or a PMO adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
 - **Sample project** (company owner or PMO) -- Shows whether the read-only example "Sample Web App Development" is loaded. **Remove…** asks you to confirm, then deletes the sample project and its example people, sprints, meetings, timesheets and costs; your own projects are not touched. If your own work uses one of the example people (for example a task assigned to them), that person is kept and the page tells you who. **Load** adds it back. While it is loaded it is left out of every total, report and workload. Other people never see this tab.
-- **Rate card** -- Hourly cost rates by role, each with its start date (the company owner, PMOs and project managers only). See [Rate Card](#rate-card).
+- **Rate card** -- Hourly cost rates by role, each with its start date (the company owner, PMOs and project managers; finance officers see it read-only). See [Rate Card](#rate-card).
 - **Support visits** (company owner and PMO) -- Every time Kovarti support looked at your workspace to help with a problem: when, how long and the reason given. Support visits are **read-only** — support can see your projects but can never change anything — and last at most 30 minutes. A visit happening right now is marked **Happening now**.
 
 ### AI Context Settings
@@ -2676,7 +2676,7 @@ Paid plan users (Consultant Basic, Consultant Pro, Team, and Enterprise) can inv
 
 | Plan | Viewer Invite Limit |
 |------|---------------------|
-| Trial | 0 (not available) |
+| Trial | 5 |
 | Consultant Basic | 5 viewers |
 | Consultant Pro | 15 viewers |
 | Team | Unlimited |
@@ -2958,7 +2958,7 @@ On the Workload Heatmap, Resource Histogram and Capacity Forecast tabs, pick a p
 
 ### Team
 
-A table listing everyone on your company's people list, with name, role, capacity, cost rate and the projects they're on. Cost rates are pay information: only admins, PMO, project managers and the company owner see them (as with the rate card); everyone else sees `--`. Guests see names only, without email addresses. From this tab you can:
+A table listing everyone on your company's people list, with name, role, capacity, cost rate and the projects they're on. Cost rates are pay information: only admins, PMO, project managers, finance officers and the company owner see them (as with the rate card); everyone else sees `--`. Guests see names only, without email addresses. From this tab you can:
 
 - Click **Add person** to add someone (name, role, email, line manager, hours per week, cost rate, department, skills). Saving doesn't send an invite.
 - Click **Add generic role** for work you haven't staffed yet (e.g. "Generic Developer").
@@ -3100,7 +3100,7 @@ To link a resource to a user, open the resource edit form and select the user fr
 
 The EVM Dashboard (`/evm`) provides a comprehensive earned value management view. Access it from **EVM Dashboard** in the sidebar, under **Insights**.
 
-> **Trial plan:** If you are on a trial plan, the EVM Dashboard displays a sample dashboard with demo data rather than your actual project metrics. An amber banner at the top of the page indicates this. Upgrade to a paid plan to unlock EVM metrics calculated from your real project budgets, costs, and schedule performance.
+> **Trial plan:** On the free trial the EVM Dashboard uses your real project budgets, costs and progress. Only if the chosen project has no tasks yet do you see example figures, marked with an amber note "Example — not your project's data".
 
 1. Select a project from the **project selector** dropdown.
 2. Read the **Narrative Summary** at the top of the page — a plain-English paragraph describing overall health: "The project is X% complete with Y% of budget spent. It is [schedule status] and [cost status]. [Forecast sentence]." An **On Track / Needs Attention / At Risk** badge appears alongside it, and a **% Complete vs % Spent comparison bar** gives a quick visual: the blue segment shows how much work is done, and the green (or red, if spend exceeds completion) segment shows how much budget has been used. The percentages and status labels in this narrative are guaranteed to match the KPI cards because they are pre-computed server-side from the same EVM data and passed to the AI as verified facts — the AI writes prose around those numbers rather than deriving them independently.
@@ -3123,7 +3123,7 @@ The EVM Dashboard (`/evm`) provides a comprehensive earned value management view
    - Narrative summary in plain language.
    - Corrective actions with priority badges. The AI analyzes your actual tasks — identifying the worst cost overruns, behind-schedule work, high burn-rate tasks, and blocked tasks — and produces specific actions that name the tasks and figures involved, rather than generic advice.
 
-   > **Note:** AI Predictions are available on paid plans only and are not included in the trial sample dashboard.
+   > **Note:** AI Predictions are included in the free trial (they use its AI tokens). They aren't shown with the example figures for a project that has no tasks.
 
 10. The **CPI and SPI cards** include **semicircular gauge dials** with a needle indicating the current value on a 0–2.0 scale. The gauge bands are color-coded: red (0–0.9), amber (0.9–1.0), and green (1.0+), giving you an instant visual read on cost and schedule health.
 11. Above the Forecast Comparison table, a **Forecast Comparison Bar Chart** displays each EAC forecasting method as a horizontal bar. A dashed vertical line marks the BAC reference. Bars that extend past BAC appear in red; bars under BAC appear in green.
@@ -3514,7 +3514,7 @@ Click **Review** in the Risks & Issues tab toolbar. RAID Review checks the whole
 **What it checks** (grouped High / Medium / Low / Suggestion; each finding says what good practice expects and lists the items — click one to open it):
 
 - High: open high or critical risks with no **response strategy** (avoid, mitigate, transfer, accept, escalate); open actions with no due date; items with no owner.
-- Medium: overdue items not updated for 14 days; an owner that is a team, a company or several people ("DBJ", "Marsha Turner / Rashida Wynter") instead of one accountable person; items that look like the wrong type (a risk worded as a task, an issue titled "Action A-05: …"); open issues with no response plan, workaround or root cause; decisions missing who decided, when or why.
+- Medium: overdue items not updated for 7 days; an owner that is a team, a company or several people ("DBJ", "Marsha Turner / Rashida Wynter") instead of one accountable person; items that look like the wrong type (a risk worded as a task, an issue titled "Action A-05: …"); open issues with no response plan, workaround or root cause; decisions missing who decided, when or why.
 - Low: assumptions with no validation plan or target date; closed items with no closure date or reason; possible duplicates.
 - Suggestion (doesn't lower the score): a risk not written as cause → event → effect — "Because of …, there is a risk that …, which would …".
 
@@ -3560,10 +3560,10 @@ The generated report contains four sections:
 #### Download, Email, and Schedule
 
 - **Download HTML** — Click the Download button to save the report as a standalone `.html` file. Share it as an email attachment, print it, or archive it for governance records.
-- **Email Report** — Enter comma-separated email addresses and click Send. The report is delivered as a branded HTML email to all recipients.
+- **Email Report** — Enter comma-separated email addresses and click Send. The report is delivered as a branded HTML email to all recipients. Only the project's Manager or Owner can email it, to at most 20 people at a time and up to 20 report emails an hour; on the free trial, up to 5 people and 5 emails a day.
 - **Schedule Recurring** — Set up automatic RAID report delivery on a daily, weekly, or monthly cadence. Choose the day of week (or day of month), time, and recipients. View and delete existing schedules from this tab. Schedules use a `raid-report::` prefix to keep them separate from status report schedules.
 
-**Trial users:** A **sample report** is shown with realistic demo data so you can preview the format. An amber banner identifies it as sample data. The Download, Email, and Schedule options are locked — upgrade to a paid plan to generate RAID reports from your real project data.
+**Trial users:** The report is built from your real RAID log. Only if the project has no RAID items yet do you see an example report, marked with an amber note "Example — not your project's data". Because it isn't your data, Download, Email and Schedule are unavailable for the example.
 
 
 ---
@@ -3971,7 +3971,7 @@ In addition to the standard action types, you can add an **AI Generate** action 
 
 If AI is unavailable or the request fails, a fallback message is used in place of the generated content so the rest of the automation continues uninterrupted.
 
-> **Note:** AI Generate actions require the project owner to have an AI-enabled plan. On trial accounts, the AI Generate action type is hidden.
+> **Note:** AI Generate actions require the project owner to have an AI-enabled plan (the free trial, Consultant Pro, Team or Enterprise); each run uses AI tokens.
 
 ### Insights Dashboard
 
@@ -4002,7 +4002,7 @@ If you prefer not to configure a trigger, conditions, and actions manually, use 
 
 The AI Builder is a starting point, not a black box. Everything it generates is fully editable before you save. If the suggestion misses the mark, clear the field, refine your description, and generate again.
 
-> **Note:** The AI Builder requires an AI-enabled plan. The toggle is hidden on trial accounts.
+> **Note:** The AI Builder requires an AI-enabled plan (the free trial, Consultant Pro, Team or Enterprise).
 
 ### Suggested Automations
 

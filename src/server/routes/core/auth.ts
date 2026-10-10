@@ -22,6 +22,7 @@ import { verifyTurnstile, turnstileActive } from '../../utils/turnstile';
 import { countRegistrationAttempt } from '../../utils/registrationWatch';
 import { runWithTenantContext } from '../../middleware/requestContext';
 import { resolvePriceId } from '../integrations/stripe';
+import { pricingConfigService } from '../../services/PricingConfigService';
 import logger from '../../utils/logger';
 import type { JwtPayload } from '../../types/fastify';
 
@@ -360,12 +361,13 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Multi-tenant: create the organization and provision its database. Shared by
       // the free-trial and awaiting-payment paths — SME checkout needs the org to
       // exist, so a paid signup must get one too, just without a trial stamp.
-      const createOrgForNewUser = async () => {
+      const createOrgForNewUser = async (trialEndsAt?: Date) => {
         if (!config.MULTI_TENANT_ENABLED) return;
         const orgName = organizationName || fullName || email.split('@')[0];
         try {
           const org = await organizationService.createOrganization(orgName, user.id, stripeCustomerId || undefined, {
             awaitingPayment: isPlanSignup,
+            trialEndsAt,
           });
           await userService.update(user.id, { organizationId: org.id } as any);
           // The tenant database is NOT built here — see provisionVerifiedTenant.
@@ -409,16 +411,17 @@ export async function authRoutes(fastify: FastifyInstance) {
 
         await createOrgForNewUser();
       } else {
-        // Free signup: 14-day trial on the free tier — the only place a trial belongs.
+        // Free signup: a trial on the free tier — the only place a trial belongs. Its length is the
+        // trial plan's "Duration (days)" setting (Admin → Pricing), 7 unless set (user 2026-10-10).
         const now = new Date();
-        const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+        const trialEndsAt = new Date(now.getTime() + (await pricingConfigService.trialLengthDays()) * 24 * 60 * 60 * 1000);
         await userService.update(user.id, {
           subscriptionStatus: 'trialing',
           trialStartedAt: now,
           trialEndsAt,
         });
 
-        await createOrgForNewUser();
+        await createOrgForNewUser(trialEndsAt);
       }
 
       // Plan signup flow: auto-login + create Stripe checkout session + return URL

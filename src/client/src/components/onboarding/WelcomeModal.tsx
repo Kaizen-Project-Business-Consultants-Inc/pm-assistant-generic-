@@ -45,7 +45,7 @@ export function WelcomeModal() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome to Kovarti PM!</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            Your 14-day free trial is active. Let's get you started.
+            Your 7-day free trial is active. Let's get you started.
           </p>
         </div>
 

@@ -78,7 +78,7 @@ Tasks can be marked as recurring templates with an RRULE-style recurrence rule. 
 - **Weekly / Biweekly** — with selectable days of the week (e.g., Mon/Wed/Fri). Biweekly with chosen days repeats in the template's week and every other week after it (`getNextOccurrence` is given the template's start as its anchor; Monday-based weeks). Until 2026-10-09 it repeated every week.
 - **Monthly** — on a specific day of the month; without one, the template's own day, clamped to each month's last day and never carried forward (31 Jan → 28 Feb → 31 Mar; it used to drift to the 28th)
 
-A daily cron job (02:00 UTC) scans for templates and generates instances within a 14-day horizon. Additionally, when a user creates a recurring template via the task form, instances are immediately expanded up to 90 days ahead via the `POST /:scheduleId/tasks/:taskId/expand-recurrence` API. Generated instances link back to their parent template via `recurrence_parent_id`. Template tasks appear in the Gantt chart with a blue repeat icon; instances show a smaller repeat icon.
+A daily cron job (02:00 UTC) scans for templates and generates instances within a 7-day horizon. Additionally, when a user creates a recurring template via the task form, instances are immediately expanded up to 90 days ahead via the `POST /:scheduleId/tasks/:taskId/expand-recurrence` API. Generated instances link back to their parent template via `recurrence_parent_id`. Template tasks appear in the Gantt chart with a blue repeat icon; instances show a smaller repeat icon.
 
 ### Non-Working Day Shading
 
@@ -286,7 +286,7 @@ API endpoints under `/api/projects/:projectId/calendars` provide CRUD for calend
 - **Working calendar** button (schedule toolbar) → panel: working weekdays, company holidays, the project's own days off / extra working days. Every change is previewed (`POST /api/v1/projects/:id/working-calendar/preview` → tasks that move, latest finish before/after) and saved with `/apply`. Manager/Owner edit; others read-only.
 - **Support view (Sep 2026).** The platform admin troubleshoots a customer through a read-only, recorded 30-minute visit into one company: Admin → Tenants → **View as support** (reason + password). Server-enforced read-only (`tenantResolver` refuses non-GET → `support_read_only`; `authMiddleware` makes the admin an `executive` inside the company), recorded in `support_sessions` (migration 126) and the company's audit ledger; the company owner/PMO sees visits in Settings → Support visits (`GET /api/v1/org/support-visits`). API: `POST/GET/DELETE /api/v1/admin/support-sessions[/current]`. Accounts with no company get `no_company` on company routes.
 - **Plan feature settings complete (Sep 2026).** Migrations 122–123 give every plan (Trial, Consultant Basic/Pro, SME, Enterprise) its price row and a setting for every plan-gated feature; before, production's SME/Enterprise/Trial had none (a missing setting = off), and "Import from a document (AI)" was in no plan. Guards: `requireFeature()` only accepts keys from `constants/planFeatures.ts`, a test checks the migrations, and an alert emails support on any gap.
-- **Rate card (Sep 2026).** Settings → Rate card: hourly (and optional overtime) cost rates by role, each from a date (`rate_card`, tenant migration T063; `GET/POST /api/v1/rate-card`, `PUT/DELETE /api/v1/rate-card/:id`, admin/PMO/PM/company owner only). A resource's form chooses **Use rate card** or **Own rate** (`use_rate_card`, default own). Workload cost is computed per week at that week's rate (`RateCardService.ratesOn`); reports and portfolio show today's rate. Also fixed: a resource's overtime rate was never saved on create or edit.
+- **Rate card (Sep 2026).** Settings → Rate card: hourly (and optional overtime) cost rates by role, each from a date (`rate_card`, tenant migration T063; `GET/POST /api/v1/rate-card`, `PUT/DELETE /api/v1/rate-card/:id`, admin/PMO/PM/company owner only; finance officers may read it, Oct 2026). A resource's form chooses **Use rate card** or **Own rate** (`use_rate_card`, default own). Workload cost is computed per week at that week's rate (`RateCardService.ratesOn`); reports and portfolio show today's rate. Also fixed: a resource's overtime rate was never saved on create or edit.
 - **Settings → Company holidays** (`company_holidays`, tenant migration T060): `GET/POST /api/v1/company-holidays[/preview|/apply]`; the company owner, admin or PMO edits. Precedence: project day off > project working day > company holiday > weekday.
 - Applying re-fits every plan (`ScheduleRecomputeService` re-span mode): tasks keep their working-day length, a task on a day off moves to the next working day, successors follow, finished tasks and tasks with actuals are pinned, and links that already overlapped are left alone. One Schedule History line per plan (kind `calendar`); Undo restores dates.
 - The task form warns (amber) when a start or finish is on a day off; saving is still allowed.
@@ -429,7 +429,7 @@ A dedicated analytics page for earned value management, accessible from the side
   - **Sprint Burndown chart**: reuses existing `SprintBurndownChart` component for the active sprint (shows "No active sprint" message when none is in progress).
   - All EVM metrics (CPI, SPI, EAC, etc.) still work identically — the Agile branch only changes how PV/EV are computed (from story points instead of task duration). The AI prompt includes methodology context and sprint velocity data for Agile-specific corrective actions.
 
-**Trial user behavior:** Trial users who navigate to `/evm` see a sample EVM dashboard populated with realistic demo data (CPI: 0.93, SPI: 1.07, 7-week trend, 3 early warnings, 3 forecast comparison methods) instead of a 403 error. An amber banner at the top of the page reads: "Sample EVM Dashboard — This is a sample dashboard with demo data. Upgrade to a paid plan to see EVM metrics calculated from your actual project budgets, costs, and schedule performance." The AI Predictions section (`/:projectId/ai`) remains gated to paid tiers. No tokens or database queries are consumed for the sample. This follows the same pattern as the sample status report feature.
+**Trial user behavior (October 2026):** The free trial has every Consultant Pro feature, so trial users get the real EVM dashboard and AI Predictions (`/:projectId/ai`, using the trial's AI tokens) for their own projects. Only when the selected project has no tasks yet does the forecast endpoint return example figures with `sample: true`; the page then shows an amber "Example — not your project's data" note and does not ask for AI predictions. Paid users with no tasks get the normal empty result. See `src/server/utils/trialSample.ts`.
 
 Uses the existing `getEVMForecast()` API.
 
@@ -964,7 +964,7 @@ The `MonteCarloService` runs configurable simulations (default: 10,000 iteration
 - **Criticality index**: percentage of iterations in which each task appears on the critical path
 - **Tornado diagram data**: ranked sensitivity items for visualization
 
-**Trial user behavior:** Trial users who click "Run Simulation" see a sample Monte Carlo result populated with realistic demo data instead of a 403 error. The sample includes duration forecast cards (P50: 142 days, P80: 158 days, P90: 168 days), a 10-bin histogram, sensitivity analysis for 5 sample tasks ranked by correlation, a criticality index for 5 sample tasks, and a cost forecast (P50: $485K, P80: $538K, P90: $572K). A simulation metadata footer shows 10,000 iterations using the PERT model. An amber banner reads: "Sample Simulation — This is a sample simulation with demo data. Upgrade to a paid plan to run Monte Carlo simulations on your actual project schedules." No computation or database queries are performed for the sample. This follows the same pattern as the sample status report and EVM features.
+**Trial user behavior (October 2026):** Trial users run the real simulation on their own schedule. Only when the chosen schedule has no tasks yet does the endpoint return an example result with `sample: true`, shown under an amber "Example — not your project's data" note. Paid users with no tasks still get the normal "add tasks" answer.
 
 ---
 
@@ -1008,7 +1008,7 @@ Users ask questions like "Which projects are over budget?" or "Show me the criti
 
 **Chart rendering:** AI-suggested charts (bar, line, pie) are rendered using the extracted `DynamicChart` component — lightweight SVG-based charts with automatic axis scaling, color coding, and responsive sizing. The QueryPage converts the AI's Chart.js-style response schema (datasets with label arrays) into the `DynamicChart` flat data format via an adapter function.
 
-**Trial User Experience:** Trial users who submit a query on the AI Query page are not blocked with a 403. Instead, `POST /api/v1/nl-query` returns a **sample NL query response** with demo data: a short narrative answer, a sample bar chart (task status breakdown across demo projects), and 3 suggested follow-up questions. An amber upgrade banner reads: "Sample Query — This is a sample response with demo data. Upgrade to a paid plan to query your real project data." No AI tokens are consumed for the sample. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
+**Trial User Experience (October 2026):** Trial users' queries run against their real project data, the same as on Consultant Pro, and use the trial's 50K AI tokens. The old canned sample response is removed.
 
 ### Meeting Intelligence
 
@@ -1021,7 +1021,7 @@ The `MeetingIntelligenceService` processes meeting transcripts or notes to extra
 
 The Meeting Intelligence page (sidebar label: **Intelligence**, Brain icon, URL: `/meetings`) is a single-page flow — no tabs. It replaces the former three-tab Meeting Minutes page.
 
-**Trial User Experience:** Trial users who submit a transcript are not blocked with a 403. Instead, `POST /api/v1/meeting-intelligence/analyze` returns a **sample meeting analysis** populated with realistic demo data: a brief executive summary, 3 sample action items (with assignees and due dates), 2 sample decisions, 1 sample risk, and 1 task update suggestion. An amber upgrade banner reads: "Sample Meeting Analysis — This is a sample analysis with demo data. Upgrade to a paid plan to process your real meeting transcripts." The **Apply Changes** button and the **History** table remain gated for trial users. No AI tokens are consumed for the sample.
+**Trial User Experience (October 2026):** Trial users analyse their real transcripts (using the trial's AI tokens); **Apply Changes** and **History** work as on Consultant Pro. The old canned sample analysis is removed.
 
 #### Input Modes
 
@@ -1261,7 +1261,7 @@ This wrapper is also where per-org branding will attach if BR2 is ever built —
 
 **Trend Computation:** Compares current RAG status against the previous report (stored in `ai_conversations` with `context_type = 'status-report'`). If current is better than previous → improving (↑), same → stable (→), worse → declining (↓).
 
-**Data Sources:** All sections use existing project data — no new database tables are required. Milestones come from tasks with `is_milestone = true`. Achievements and planned activities come from task completion/due dates within the 14-day windows. Management attention items come from open RAID items with critical/high severity. Change control data comes from the `change_requests` table.
+**Data Sources:** All sections use existing project data — no new database tables are required. Milestones come from tasks with `is_milestone = true`. Achievements and planned activities come from task completion/due dates within the 7-day windows. Management attention items come from open RAID items with critical/high severity. Change control data comes from the `change_requests` table.
 
 **Edit Before Sending:**
 
@@ -1297,7 +1297,7 @@ Click **Save** to re-render the report with your edits (calls `POST /status-repo
 
 **MCP Tool:** `generate-status-report` — Available to project_manager, scrum_master, pmo, ba, and admin roles.
 
-**Trial User Experience:** Trial users are not blocked with a 403. Instead, the endpoint returns a **sample status report** populated with realistic demo data (green/amber RAG statuses, trend arrows, and example management actions). An amber upgrade banner appears above the report reading "This is a sample report with demo data. Upgrade to a paid plan to generate AI-powered status reports…". The report is rendered at reduced opacity (80%). The Email, Schedule, and Download tabs/buttons are locked with a lock icon. No AI tokens are consumed for the sample report. Paid tier users are unaffected — full AI-powered reports are generated as normal.
+**Trial User Experience (October 2026):** Trial users get the real report for their project. Only when the project has no tasks yet does the endpoint return an example report with `sample: true`: an amber "Example — not your project's data" note appears above it, it is rendered at reduced opacity (80%), and Email, Schedule and Download are locked because it is not their data. Paid users with an empty project get the normal (empty) report.
 
 **Feature Gating:** Full AI report generation requires a paid tier (consultant/sme/enterprise). AI generation requires `AI_ENABLED=true`; falls back to all-amber template when disabled. Email delivery requires `RESEND_API_KEY`.
 
@@ -1323,12 +1323,12 @@ Navigate to the **Reports** page, select a project, and click the **Strategic Ri
 
 **AI Enhancement (Optional):**
 
-When AI is enabled and the user is on a paid tier, Claude reviews the algorithmic findings to:
+When AI is enabled and the user's plan includes AI (the free trial, Consultant Pro, Team or Enterprise), Claude reviews the algorithmic findings to:
 - Refine risk descriptions with project-specific context
 - Identify cross-category compound risks (e.g., a resource bottleneck on a critical-path milestone)
 - Prioritize findings by overall project impact
 
-When AI is disabled or for trial users, the algorithmic findings are presented as-is.
+When AI is disabled or the plan has no AI, the algorithmic findings are presented as-is.
 
 **Export Formats:**
 
@@ -1337,7 +1337,7 @@ When AI is disabled or for trial users, the algorithmic findings are presented a
 
 **No Content Stored:** Risk scan results are generated on demand and not persisted in the database. Run the scan again at any time for a fresh analysis based on current project data.
 
-**Trial User Experience:** Trial users receive a **sample risk scan** with realistic demo findings across all five categories. An amber upgrade banner identifies the report as sample data. Export buttons are locked. No AI tokens are consumed.
+**Trial User Experience (October 2026):** Trial users get the real scan of their project. Only when the project has no tasks yet does the endpoint return an example scan with `sample: true` (an "Example" badge and an amber "Example — not your project's data" note); no AI tokens are used for it.
 
 **API Endpoint:**
 - `POST /api/v1/risk-scan/generate` — Generate a strategic risk analysis for a project
@@ -1395,13 +1395,13 @@ Each scenario run is automatically persisted to the `scenario_analyses` table (t
 
 **Actual resource counts:** Worker counts are derived from `task_assignments` (distinct resources assigned to active tasks), falling back to `COUNT(DISTINCT assigned_to)` from the tasks table if no assignments exist.
 
-**Trial gate:** Trial users receive sample scenario data with an amber banner: "Sample data. This is a demo scenario result. Upgrade to a paid plan to run what-if scenarios against your actual project data with AI-powered analysis." No AI tokens are consumed for sample responses.
+**Trial users (October 2026):** Scenarios run on the trial user's real project. Only when the project has no tasks yet is an example result returned (`sample: true`), shown under an amber "Example — not your project's data" note; no AI tokens are used for it.
 
 ### Cross-Project Intelligence
 
 The `crossProjectIntelligenceService` analyzes patterns across the entire portfolio to surface systemic risks, resource conflicts, and optimization opportunities.
 
-**Trial User Experience:** Trial users who access Portfolio Intelligence or Anomaly Detection are not blocked with a 403. The Portfolio Intelligence endpoint (`GET /api/v1/intelligence/portfolio`) and Anomaly Detection endpoint (`GET /api/v1/intelligence/anomalies`) each return **sample data** with realistic demo results: sample risk summaries, resource conflicts, and anomaly flags drawn from fictitious projects. An amber upgrade banner reads: "Sample Intelligence — This is a sample analysis with demo data. Upgrade to a paid plan to run cross-project intelligence on your real portfolio." The **What-If Scenarios** endpoint (`POST /api/v1/intelligence/scenarios`) remains fully gated — trial users who attempt to submit a scenario see a standard upgrade prompt without sample data. The Scenario Modeling page shows the same amber sample banner when loaded. No AI tokens are consumed for the sample portfolio and anomaly responses.
+**Trial User Experience (October 2026):** Portfolio Intelligence (`GET /api/v1/intelligence/cross-project`), Anomaly Detection (`GET /api/v1/intelligence/anomalies`) and What-If Scenarios (`POST /api/v1/intelligence/scenarios`) all run on the trial user's real projects. An example (`sample: true`, amber "Example — not your project's data" note) is returned only when there is nothing to analyse: no projects for portfolio and anomalies, or a project with no tasks for scenarios. Paid users in the same situation get the normal empty result.
 
 ### Mjuzi Chat
 
@@ -1477,7 +1477,7 @@ The `ReportBuilderService` provides a configurable report engine:
 - Regular users can delete their own report templates (previously required admin role).
 - The Report Designer correctly persists all configured sections when updating an existing template.
 
-**Trial User Experience:** Trial users who navigate to the Report Builder are not blocked with a 403. Instead, `GET /api/v1/report-builder/templates` returns **3 sample report templates** (Weekly Status, Budget Overview, Time Tracking) so the page renders meaningfully. The **New Report**, **Edit**, **Generate**, and **Delete** buttons are hidden or replaced with an "Upgrade to use" label — trial users cannot create, modify, generate, or delete templates. An amber upgrade banner at the top of the page reads: "Sample Templates — You are viewing sample report templates. Upgrade to a paid plan to build and generate custom reports." No database writes are performed for trial users on this page.
+**Trial User Experience (October 2026):** The Report Builder works fully on the trial: `GET /api/v1/report-builder/templates` returns the user's own templates (an empty list until they make one), and New Report, Edit, Generate and Delete work as on Consultant Pro. The old sample templates are removed.
 
 ### Reports Page (Category-Based Layout)
 
@@ -1545,7 +1545,7 @@ The RAID Report is a canned (non-AI) stakeholder report generated from live RAID
 - **Key Mitigations**: critical/high risks with mitigation plans listed
 - **Output**: HTML with inline CSS (email-compatible), preview, download, email, schedule
 - **API**: `POST /api/v1/raid-reports/:projectId/generate`, `POST /schedule`, `GET /schedules/:projectId`, `DELETE /schedule/:id`
-- **Trial users**: receive a sample report with dummy data
+- **Trial users**: get the real report; an example report (`sample: true`, amber "Example — not your project's data" note, Download/Email/Schedule locked) only when the project has no RAID items yet
 
 ### Report History
 
@@ -2178,7 +2178,7 @@ The `PolicyEngineService` enforces configurable governance rules:
 
 The `AIBudgetService` enforces per-user monthly AI token limits with tier-aware budget resolution:
 
-- **Per-tier defaults**: Trial — 5,000 (~10 AI chats to explore Mjuzi); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
+- **Per-tier defaults**: Trial — 50,000 (~10 AI questions to explore Mjuzi; 7-day trial with every Pro feature); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
 - **Budget resolution chain**: per-user override (`users.ai_monthly_token_budget`) → subscription tier default → global fallback (`AI_MONTHLY_TOKEN_BUDGET`)
 - **Token top-ups**: Users can purchase additional token packs ($10 per 500K tokens) via Stripe one-time payment. Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. FIFO consumption (oldest packs first). Managed by `TokenTopUpRepository`.
 - Tracks all AI usage in the `ai_usage_log` table (input/output tokens, cost, latency, feature, model)
@@ -2289,7 +2289,7 @@ Paid subscribers (Consultant Basic/Pro, Team and Enterprise tiers) can invite ex
 
 | Tier | Viewer Invites |
 |------|---------------|
-| Trial | 0 (not available) |
+| Trial | 5 |
 | Consultant Basic | 5 |
 | Consultant Pro | 15 |
 | Team (SME) | Unlimited |
@@ -2339,7 +2339,7 @@ The invite system enforces role restrictions based on the organization's subscri
 
 ### Trial Reminder Emails
 
-The `EmailService` sends automated reminder emails to users approaching the end of their 14-day free trial:
+The `EmailService` sends automated reminder emails to users approaching the end of their 7-day free trial:
 
 | Days Before Expiry | Email Sent |
 |--------------------|------------|
@@ -2375,7 +2375,7 @@ Implementation: `buildTrialEmailHtml()` private method in `EmailService.ts`.
 
 ### Trial Abuse Prevention
 
-When a user deletes their account (via `DELETE /api/v1/auth/delete-account`), their email address is recorded in the `deleted_emails` table. If the same email is used to register again, the system skips the 14-day free trial — the new account is created with `subscriptionStatus: 'none'` and the user must select a paid plan to access features. This prevents users from repeatedly deleting and re-registering to obtain unlimited free trials.
+When a user deletes their account (via `DELETE /api/v1/auth/delete-account`), their email address is recorded in the `deleted_emails` table. If the same email is used to register again, the system skips the 7-day free trial — the new account is created with `subscriptionStatus: 'none'` and the user must select a paid plan to access features. This prevents users from repeatedly deleting and re-registering to obtain unlimited free trials.
 
 - **Table**: `deleted_emails` (control plane DB) — stores `email` and `deleted_at` timestamp
 - **Registration check**: case-insensitive email lookup against `deleted_emails` before granting trial
@@ -2391,7 +2391,7 @@ All entry points route users through plan selection before registration:
 
 From the pricing cards, users choose their plan:
 
-- **"Start Free Trial"** on the Trial card links to `/register` for standard registration with a 14-day trial
+- **"Start Free Trial"** on the Trial card links to `/register` for standard registration with a 7-day trial
 - **"Subscribe"** on paid plan cards links to `/register?tier=<tier>&billing=<billing>`, which creates the account and redirects to Stripe checkout
 
 The `/register` page remains directly accessible for invite links and direct URL access.
@@ -2407,26 +2407,26 @@ The Pricing page (`/pricing`) presents the Free Trial tier and three paid tiers 
 - Feature list with checkmarks
 - Start Free Trial / Subscribe / Switch Plan / Current Plan button (context-aware based on auth state and current tier)
 
-Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side table across 4 tiers (Trial, Consultant Basic, Consultant Pro, Team). Enterprise is not shown on the page (`HIDDEN_TIERS`). The summary below lists what the plans include (the page's own table marks Trial ✓ on every feature, although the server's trial feature settings turn several off — see Feature Gating). Features are marked with checkmarks (included), X marks (excluded), or text values (e.g., "3", "1GB", "Unlimited"). The table covers projects, AI tokens, exports, API access, EVM, Monte Carlo, resource management, workflows, portal, intelligence features, meeting tools, MCP, storage, and top-ups.
+Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side table across 4 tiers (Trial, Consultant Basic, Consultant Pro, Team). Enterprise is not shown on the page (`HIDDEN_TIERS`). The summary below lists what the plans include (since October 2026 the trial has every Consultant Pro feature — migration 135 copies Pro's feature settings to the trial). Features are marked with checkmarks (included), X marks (excluded), or text values (e.g., "3", "1GB", "Unlimited"). The table covers projects, AI tokens, exports, API access, EVM, Monte Carlo, resource management, workflows, portal, intelligence features, meeting tools, MCP, storage, and top-ups.
 
 | Feature | Trial | Consultant Basic | Consultant Pro | Team (SME) | Enterprise (not on the page) |
 |---------|-------|-----------------|----------------|-----|------------|
 | Projects | 3 | Unlimited | Unlimited | Unlimited | Unlimited |
-| AI Tokens/mo | 5K | None | 500K | 500K per seat, pooled | 5M |
+| AI Tokens/mo | 50K | None | 500K | 500K per seat, pooled | 5M |
 | Storage | 100MB | 1GB | 1GB | 5GB | 10GB |
 | Viewer Invites | 0 | 5 | 15 | Unlimited | Unlimited |
-| Exports | ✗ | ✓ | ✓ | ✓ | ✓ |
-| API Keys | ✗ | ✓ | ✓ | ✓ | ✓ |
-| EVM | ✗ | ✓ | ✓ | ✓ | ✓ |
-| Monte Carlo | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Auto-Reschedule | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Resource Management | ✗ | ✓ | ✓ | ✓ | ✓ |
-| Custom Reports | ✗ | ✓ | ✓ | ✓ | ✓ |
-| DAG Workflows | ✗ | ✓ | ✓ | ✓ | ✓ |
-| Portal Management | ✗ | ✓ | ✓ | ✓ | ✓ |
-| Meeting Intelligence | ✗ | ✗ | ✓ | ✓ | ✓ |
-| NL Query | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Cross-Project Intelligence | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Exports | ✓ | ✓ | ✓ | ✓ | ✓ |
+| API Keys | ✓ | ✓ | ✓ | ✓ | ✓ |
+| EVM | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Monte Carlo | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Auto-Reschedule | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Resource Management | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Custom Reports | ✓ | ✓ | ✓ | ✓ | ✓ |
+| DAG Workflows | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Portal Management | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Meeting Intelligence | ✓ | ✗ | ✓ | ✓ | ✓ |
+| NL Query | ✓ | ✗ | ✓ | ✓ | ✓ |
+| Cross-Project Intelligence | ✓ | ✗ | ✓ | ✓ | ✓ |
 | Token Top-Ups | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Price (monthly) | Free | $19/mo | $29/mo | $19 per seat (minimum 3) | $79/mo |
 | Price (annual) | Free | $190/yr | $290/yr | $190 per seat | $790/yr |
@@ -2445,52 +2445,29 @@ The SME tier is shown on the public pricing page as **Team**. Other ways in:
 
 ### Feature Gating
 
-Trial users have access to core project management features only. The following features are restricted to paid tiers (Consultant Basic, Consultant Pro, SME, Enterprise), with AI features additionally requiring Consultant Pro or higher:
+**Free trial (October 2026):** 7 days with every Consultant Pro feature — migration `135_trial_7_days_pro_features.sql` copies Pro's `tier_features` rows to the trial (a feature added to Pro later is decided then) — and 50K AI tokens for the whole trial. The limits that stay are up to 3 projects and 100MB of storage (the 3-project check in `routes/core/projects.ts` is the only route that tests for the trial tier). Everything runs on the trial user's own data; the old canned sample responses (exports, Report Builder templates, AI Query, meeting analysis, portal links, workflows, resources, auto-reschedule, API keys) are removed, and empty lists show the normal "nothing yet" message.
 
-| Restricted Feature | Trial | Paid Tiers |
-|--------------------|-------|------------|
-| Exports (CSV, PDF, XML) | ✗ | ✓ |
-| API Keys | ✗ | ✓ |
-| Earned Value Management (EVM) | ✗ | ✓ |
-| Monte Carlo Simulation | ✗ | ✓ |
-| Auto-Reschedule | ✗ | ✓ |
-| Resource Management | ✗ | ✓ |
-| Custom Report Builder | ✗ | ✓ |
-| DAG Workflow Automation | ✗ | ✓ |
-| Stakeholder Portal Management | ✗ | ✓ |
-| Meeting Intelligence | ✗ | ✓ |
-| Natural Language Query | ✗ | ✓ |
-| Cross-Project Intelligence | ✗ | ✓ |
-| Token Top-Ups | ✗ | ✓ |
-| Viewer Invites | ✗ | ✓ |
+**Examples when there is nothing to analyse yet.** For analyses only, a trial user whose project has nothing to analyse gets a clearly labelled example (`sample: true`; the screen shows an amber "Example — not your project's data" note via `ExampleDataNote`) instead of an empty result:
 
-When a trial user attempts to access a gated feature, the behavior depends on the feature:
+| Analysis | Example shown when |
+|----------|--------------------|
+| Monte Carlo | the schedule has no tasks |
+| EVM forecast / EVM Dashboard | the project has no tasks |
+| Status report | the project has no tasks |
+| RAID report | the project has no RAID items |
+| Strategic risk scan | the project has no tasks |
+| Portfolio Intelligence, Anomaly Detection | the user has no projects to scan |
+| What-if / baseline scenarios | the project has no tasks |
 
-- **Sample data pattern** — For the following 13 features, trial users receive realistic **sample/demo data** with an amber upgrade banner instead of a 403 error. No AI tokens are consumed, and no real project data is read or written:
-  - Status Reports (`POST /api/v1/status-reports/generate`)
-  - EVM Dashboard (`GET /evm` — sample KPI and forecast data)
-  - Monte Carlo Simulation (`POST /api/v1/monte-carlo`)
-  - Report Builder (`GET /api/v1/report-builder/templates` — 3 sample templates; create/edit/generate/delete locked)
-  - Exports (CSV, XML, JSON/PDF — sample project with 5 tasks across 2 phases)
-  - Cross-Project Intelligence (portfolio and anomaly detection endpoints — sample portfolio data; What-If Scenarios POST remains hard-gated)
-  - Natural Language Query (`POST /api/v1/nl-query` — sample response with demo chart and follow-ups)
-  - Meeting Intelligence (`POST /api/v1/meeting-intelligence/analyze` — sample analysis; Apply Changes and History remain gated)
-  - Stakeholder Portal (`GET /api/v1/links/:projectId` — 2 sample portal links: Stakeholder Review Portal, Executive Dashboard; Create Link button hidden)
-  - Workflow Automation (`GET /api/v1/workflows` — 3 sample workflow definitions: Task Status Notification, Overdue Escalation, Budget Alert; New Workflow and AI Generate section hidden)
-  - Resource Management (`GET /api/v1/resources` — 4 sample resources: PM, Developer, QA, Designer with skills and rates; Add Resource button hidden)
-  - Auto-Reschedule (`GET /api/v1/delays` — 3 sample delays; `GET /api/v1/proposals` — 1 sample proposal; Generate Proposal button disabled)
-  - API Keys (`GET /api/v1/api-keys` — 2 sample keys: CI/CD Pipeline, Dashboard Read-Only; Create Key button hidden)
+With an example, Email, Schedule and Download of that report stay unavailable because it is not the user's data. Paid users with no data get the normal empty result. The check is one indexed lookup (`src/server/utils/trialSample.ts`: `showTrialExample`, `projectHasTasks`, `projectHasRaidItems`); `src/server/__tests__/routes/trialRealResults.test.ts` covers the behaviour and guards that no route swaps in canned data just because the user is on the trial.
 
-- **Hard gate (403)** — All remaining gated features (What-If Scenarios, Token Top-Ups, Viewer Invites) return HTTP 403 with `code: 'FEATURE_GATED'` and an upgrade prompt linking to the Pricing page.
+**Still not on the trial:** Token Top-Ups (buying needs a payment account, which a trial doesn't have) and cloud storage connectors (BYOS, tier-gated to Pro/SME/Enterprise with a per-tier document limit of 0 for the trial). A plan-gated request that is refused returns HTTP 403 `UPGRADE_REQUIRED`, and the app opens its **Part of a paid plan** window.
 
 Client-side gating provides an early upgrade prompt but is not the security boundary — enforcement is always server-side.
 
 **Implementation notes:**
 
-- A global `requireActiveSubscription` hook in `plugins.ts` blocks all POST/PUT/DELETE requests for expired trial users. POST-based sample endpoints (`/api/v1/nl-query`, `/api/v1/meeting-intelligence/analyze`) are added to the `SUBSCRIPTION_EXEMPT_PREFIXES` list so the in-handler trial check can return sample data instead of 403.
-- For Portal Links, the trial check runs as a preHandler **before** `requireProjectAccess` — this avoids a 404 when the trial user's project ID doesn't exist in the database.
-- For Meeting Intelligence, the trial check runs **before** Zod schema validation — this avoids a 400 when the trial user submits without required fields (projectId, scheduleId).
-- Write/mutate endpoints for all 13 features remain hard-gated with `requireFeature()` — sample data is read-only.
+- When a trial ends, the global subscription guard (`middleware/requireSubscription.ts`, run from the auth middleware) blocks POST/PUT/PATCH/DELETE for the expired account; reading stays allowed.
 
 ### Launch Offer
 
@@ -2537,7 +2514,7 @@ Kovarti offers a limited-time launch promotion for early subscribers:
 #### Pricing Display
 
 - All prices shown in USD
-- "Try free for 14 days. Upgrade anytime." subtitle on all pricing pages
+- "Try free for 7 days. Upgrade anytime." subtitle on all pricing pages
 - "30-day prorated refund guarantee on annual plans" shown with shield icon
 - Pricing cards use dark styling on landing pages for visual consistency
 
@@ -2666,7 +2643,7 @@ A global dark theme is available throughout the application. The user toggles it
 
 **Full coverage:** Every page in the application has `dark:` companion classes — including all auth pages (Login, Register, Forgot/Reset Password, Verify Email), public pages (Landing, Pricing, Privacy, Terms), dashboard pages (Executive, Portfolio, Analytics), tool pages (Report Builder, Workflow, Monte Carlo, Scenario Modeling), admin pages, and all shared components (report designer/preview, lessons cards, task form modal, notification bell, time tracking, custom fields, attachments, templates, timesheet grid, etc.).
 
-**Settings page (up to 13 tabs):** Profile, Team, Company holidays, Sample project, Rate card, Support visits, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks and Danger Zone all have full dark mode coverage (Team and Rate card show for admin/PM/PMO; Support visits for the owner or PMO; Sample project for the owner, admin or PMO — `SettingsPage.tsx`). Toggle tracks, form panels, badges, code blocks, and the danger zone destructive section each have dedicated `dark:` variants.
+**Settings page (up to 13 tabs):** Profile, Team, Company holidays, Sample project, Rate card, Support visits, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks and Danger Zone all have full dark mode coverage (Team and Rate card show for admin/PM/PMO; Rate card also read-only for finance officers; Support visits for the owner or PMO; Sample project for the owner, admin or PMO — `SettingsPage.tsx`). Toggle tracks, form panels, badges, code blocks, and the danger zone destructive section each have dedicated `dark:` variants.
 
 **Admin page:** Role badges, stat card icon colors, tier badges, reset-token banner, and the header icon all have dark variants. The user search bar and AI Usage tab sortable columns also render correctly in dark mode.
 
@@ -3088,7 +3065,7 @@ The generated XML includes:
 
 **Client access:** The API client exposes `exportProjectXML(projectId)`. On the **Project Detail** page, an **"Export XML"** button appears in the same action row as Export CSV and Export PDF.
 
-**Trial User Experience:** Trial users who trigger any project export (CSV via `GET /api/v1/exports/projects/:id/export?format=csv`, XML via `?format=xml`, or JSON/PDF via `?format=json`) are not blocked with a 403. Instead, all three export endpoints return **sample project data**: a fictitious project with 5 tasks across 2 phases (Planning and Execution), with realistic names, dates, statuses, and assignments. An amber upgrade banner is shown in the UI before the download: "Sample Export — This download contains sample data, not your real project. Upgrade to a paid plan to export your actual project data." The file downloads successfully in the requested format. No real project data is read from the database for trial export requests. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
+**Trial User Experience (October 2026):** Exports (CSV via `GET /api/v1/exports/projects/:id/export?format=csv`, XML via `?format=xml`, JSON/PDF via `?format=json`) return the trial user's real project, the same as on paid plans. The old sample export is removed.
 
 ---
 
@@ -3680,7 +3657,7 @@ Click **Generate Report** to produce the report with the selected filters applie
 
 **API Endpoint:** `POST /api/v1/raid-reports/generate` — Generates the RAID report for a project with optional filters (types, severities, ownerId) and optional email recipients.
 
-**Trial User Experience:** Trial users are not blocked with a 403. Instead, the endpoint returns a **sample RAID report** populated with realistic demo data (example risks, issues, actions, and decisions with varied severities and statuses). An amber upgrade banner appears above the report. The Email, Schedule, and Download actions are locked with a lock icon. No database queries against real project data are performed for the sample report. Paid tier users receive full reports generated from their actual RAID data.
+**Trial User Experience (October 2026):** Trial users get the report built from their real RAID data. Only when the project has no RAID items yet does the endpoint return an example report with `sample: true`: an amber "Example — not your project's data" note appears above it and Email, Schedule and Download are locked because it is not their data. Paid users with no RAID items get the normal empty report.
 
 **Feature Gating:** Full report generation requires a paid tier (consultant/sme/enterprise). Email delivery requires `RESEND_API_KEY`. Scheduling requires a paid tier.
 
@@ -3827,9 +3804,9 @@ All API routes are prefixed with `/api/v1/` and organized by domain:
 
 The Terms of Service (`/terms`) has been updated to include the following provisions:
 
-- **Trial conversion clause** — describes how the 14-day free trial converts to a paid subscription at the end of the trial period if a payment method is on file.
+- **Trial conversion clause** — describes how the 7-day free trial converts to a paid subscription at the end of the trial period if a payment method is on file.
 - **Refund policy** — monthly plan fees are non-refundable. Annual plan fees are pro-rated and refundable within 30 days of the billing date. Token top-ups are non-refundable.
-- **AI Usage Limits (Section 5A)** — highlighted section covering per-tier monthly token allowances (Trial: 5K, Consultant Basic: none, Consultant Pro: 500K, Team: 1.5M, Enterprise: 5M), budget exhaustion behavior (AI features blocked, non-AI features unaffected), token top-up terms (non-refundable, no expiry), no carry-over of unused monthly tokens, per-user overrides, and fair use policy.
+- **AI Usage Limits (Section 5A)** — highlighted section covering per-tier monthly token allowances (Trial: 50K, Consultant Basic: none, Consultant Pro: 500K, Team: 1.5M, Enterprise: 5M), budget exhaustion behavior (AI features blocked, non-AI features unaffected), token top-up terms (non-refundable, no expiry), no carry-over of unused monthly tokens, per-user overrides, and fair use policy.
 - **Governing law** — disputes are governed by the laws of British Columbia, Canada.
 - **Dispute resolution** — parties agree to attempt informal resolution before pursuing formal legal proceedings.
 

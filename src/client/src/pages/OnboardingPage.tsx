@@ -725,7 +725,7 @@ export const OnboardingPage: React.FC = () => {
                 ) : user?.subscriptionTier === 'trial' && user?.subscriptionStatus === 'trialing' && (
                   <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6 text-left">
                     <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
-                      Your 14-day free trial is active
+                      Your 7-day free trial is active
                     </p>
                     <p className="text-xs text-primary-600 dark:text-primary-400 mt-1">
                       You have {daysLeft} days to explore all Pro features — AI analysis, Gantt charts, reports, and more. No credit card required.

@@ -7,7 +7,6 @@ import {
   Eye,
   Activity,
   Clock,
-  Lock,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
@@ -47,7 +46,6 @@ export const ReportBuilderPage: React.FC = () => {
   });
 
   const templates: ReportTemplate[] = data?.templates || data || [];
-  const isSample: boolean = data?.sample || false;
 
   const handleNewReport = () => {
     setSelectedTemplateId(undefined);
@@ -114,31 +112,14 @@ export const ReportBuilderPage: React.FC = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400">Create custom reports with KPIs, charts, and tables</p>
           </div>
         </div>
-        {!isSample && (
-          <button
-            onClick={handleNewReport}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-          >
-            <Plus className="w-4 h-4" />
-            New Report
-          </button>
-        )}
+        <button
+          onClick={handleNewReport}
+          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+        >
+          <Plus className="w-4 h-4" />
+          New Report
+        </button>
       </div>
-
-      {/* Sample upgrade banner */}
-      {isSample && (
-        <div className="mb-6 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-          <div className="flex items-start gap-2">
-            <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Report Templates</p>
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                These are sample templates with demo data. Upgrade to a paid plan to create custom reports with KPIs, charts, and tables from your actual project data.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Loading */}
       {isLoading && (
@@ -199,47 +180,37 @@ export const ReportBuilderPage: React.FC = () => {
                 {template.sections && ` \u00b7 ${template.sections.length} section${template.sections.length !== 1 ? 's' : ''}`}
               </p>
 
-              {!isSample && (
-                <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
-                  <button
-                    onClick={() => handleEdit(template.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleGenerate(template.id)}
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    Generate
-                  </button>
-                  <button
-                    onClick={() => setScheduleTemplate({ id: template.id, name: template.name })}
-                    className="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
-                    title="Schedule delivery"
-                    aria-label="Schedule delivery"
-                  >
-                    <Clock className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(template.id)}
-                    disabled={deleteMutation.isPending}
-                    className="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    aria-label="Delete template"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-              {isSample && (
-                <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
-                  <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                    <Lock className="w-3.5 h-3.5" />
-                    Upgrade to use
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
+                <button
+                  onClick={() => handleEdit(template.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleGenerate(template.id)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  Generate
+                </button>
+                <button
+                  onClick={() => setScheduleTemplate({ id: template.id, name: template.name })}
+                  className="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                  title="Schedule delivery"
+                  aria-label="Schedule delivery"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => handleDelete(template.id)}
+                  disabled={deleteMutation.isPending}
+                  className="flex items-center justify-center p-1.5 text-gray-500 dark:text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  aria-label="Delete template"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

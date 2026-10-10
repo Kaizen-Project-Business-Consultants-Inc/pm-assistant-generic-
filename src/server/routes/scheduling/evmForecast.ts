@@ -4,30 +4,22 @@ import { evmForecastService, EVMAIUnavailableError } from '../../services/EVMFor
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
+import { showTrialExample, projectHasTasks } from '../../utils/trialSample';
 import { aiRefusalReply } from '../../services/AIBudgetService';
 
 export async function evmForecastRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /:projectId — returns metrics immediately (AI included if cached)
-  // Trial users get sample data with an upgrade prompt.
+  // A trial user whose project has no tasks yet gets example figures (sample: true).
   fastify.get('/:projectId', {
     preHandler: [requireScope('read'), requireProjectAccess('viewer')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
 
-      // Trial users get sample EVM data
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          return reply.send({
-            result: evmForecastService.generateSampleMetrics(),
-            aiPowered: false,
-            sample: true,
-          });
-        }
+      if (await showTrialExample(request, projectHasTasks, projectId)) {
+        return reply.send({ result: evmForecastService.generateSampleMetrics(), aiPowered: false, sample: true });
       }
 
       const result = await evmForecastService.generateMetricsOnly(projectId);

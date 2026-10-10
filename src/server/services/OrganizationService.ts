@@ -3,6 +3,7 @@ import { organizationRepository, Organization } from '../database/OrganizationRe
 import { redisService } from './RedisService';
 import logger from '../utils/logger';
 import { config } from '../config';
+import { pricingConfigService } from './PricingConfigService';
 
 const CACHE_PREFIX = 'org:user:';
 const CACHE_TTL = 300; // 5 minutes
@@ -52,7 +53,8 @@ export class OrganizationService {
     name: string,
     ownerUserId: string,
     stripeCustomerId?: string,
-    options?: { awaitingPayment?: boolean },
+    /** `trialEndsAt`: the owner's trial end, so the company's matches it (else the trial length from now) */
+    options?: { awaitingPayment?: boolean; trialEndsAt?: Date },
   ): Promise<Organization> {
     const id = crypto.randomUUID();
     const slug = slugify(name) || `org-${id.slice(0, 8)}`;
@@ -81,7 +83,8 @@ export class OrganizationService {
       seatPriceCents: 3300,
       trialEndsAt: options?.awaitingPayment
         ? null
-        : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+        : (options?.trialEndsAt ?? new Date(Date.now() + (await pricingConfigService.trialLengthDays()) * 24 * 60 * 60 * 1000))
+          .toISOString().slice(0, 19).replace('T', ' '),
       maxUsers: 10,
       viewerLimit: 5,
       isActive: true,

@@ -7,7 +7,6 @@ import {
   Clock,
   FileText,
   Send,
-  Lock,
   Upload,
   Shield,
   Mail,
@@ -191,7 +190,6 @@ export const MeetingMinutesPage: React.FC = () => {
 
   // Analysis state
   const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [isSample, setIsSample] = useState(false);
 
   // RAID state
   const [raidModalOpen, setRaidModalOpen] = useState(false);
@@ -264,7 +262,6 @@ export const MeetingMinutesPage: React.FC = () => {
         scheduleId: selectedScheduleId,
       }),
     onSuccess: (data: any) => {
-      setIsSample(data?.sample || false);
       const result = data?.data || data?.analysis || data;
       setAnalysisResult(result);
       queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
@@ -284,7 +281,6 @@ export const MeetingMinutesPage: React.FC = () => {
 
   /** From Teams: the analysis came back from the Teams tab — show it like Paste / Upload */
   const handleTeamsAnalyzed = (result: any, title: string) => {
-    setIsSample(false);
     setAnalysisResult(result);
     queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
     apiService.createMeeting({
@@ -302,7 +298,6 @@ export const MeetingMinutesPage: React.FC = () => {
     onSuccess: (data: any) => {
       setUploadError(null);
       const result = data?.data || data?.analysis || data;
-      setIsSample(data?.sample || false);
       setAnalysisResult(result);
       queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
 
@@ -769,20 +764,6 @@ export const MeetingMinutesPage: React.FC = () => {
           {/* Analysis Results */}
           {analysisResult && (
             <div className="space-y-4">
-              {isSample && (
-                <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                  <div className="flex items-start gap-2">
-                    <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Meeting Analysis</p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        This is a sample analysis with demo data. Upgrade to a paid plan to analyze your actual meeting transcripts.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                   <FileText className="w-4 h-4 text-primary-500" />
@@ -794,9 +775,8 @@ export const MeetingMinutesPage: React.FC = () => {
                   {!analysisResult.coach && (
                   <button
                     onClick={() => handleSendToRaid(analysisResult)}
-                    disabled={isSample}
-                    className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                    title={isSample ? 'Not available for sample analyses' : 'Import items to RAID log'}
+                    className="btn btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+                    title="Import items to RAID log"
                   >
                     <Shield className="w-3.5 h-3.5 text-indigo-500" />
                     Send to RAID
@@ -824,13 +804,12 @@ export const MeetingMinutesPage: React.FC = () => {
                   analysis={analysisResult}
                   projectId={selectedProjectId}
                   canEdit={canEdit}
-                  isSample={isSample}
                 />
               )}
 
               <MeetingResultPanel
                 analysis={analysisResult}
-                onApply={isSample ? () => {} : handleApply}
+                onApply={handleApply}
                 isApplying={applyMutation.isPending}
                 canApply={canEdit}
               />

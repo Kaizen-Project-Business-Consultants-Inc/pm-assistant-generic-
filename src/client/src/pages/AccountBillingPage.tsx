@@ -64,9 +64,9 @@ function getStatusBadge(status: string, cancelAtPeriodEnd: boolean) {
 
 const TIER_FEATURES: Record<string, string[]> = {
   trial: [
+    'Every Consultant Pro feature for 7 days',
     'Up to 3 projects',
-    'Basic PM features',
-    '25K AI tokens/month',
+    '50K AI tokens a month',
   ],
   consultant_basic: [
     'Unlimited projects',

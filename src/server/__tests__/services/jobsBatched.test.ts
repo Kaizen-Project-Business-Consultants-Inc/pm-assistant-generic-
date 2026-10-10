@@ -142,12 +142,12 @@ describe('trial reminders', () => {
     const inDays = (d: number) => new Date(Date.now() + d * 86400000 - 60000).toISOString();
     h.answer = (sql) => /SELECT id, email, full_name/.test(sql) ? [
       { id: 'u1', email: 'a@x', full_name: 'A', trial_ends_at: inDays(3) },
-      { id: 'u2', email: 'b@x', full_name: 'B', trial_ends_at: inDays(7) },
+      { id: 'u2', email: 'b@x', full_name: 'B', trial_ends_at: inDays(1) },
       { id: 'u3', email: 'c@x', full_name: 'C', trial_ends_at: inDays(-0.5) },
     ] : /^\s*SELECT/.test(sql) ? [] : { affectedRows: 0 };
-    h.store.set('trial-reminder:u2:7day', '1');
+    h.store.set('trial-reminder:u2:1day', '1');
     await runTrialReminders();
-    expect(h.client.mget.mock.calls).toEqual([[['trial-reminder:u1:3day', 'trial-reminder:u2:7day', 'trial-reminder:u3:expired']]]);
+    expect(h.client.mget.mock.calls).toEqual([[['trial-reminder:u1:3day', 'trial-reminder:u2:1day', 'trial-reminder:u3:expired']]]);
     expect(h.client.get).not.toHaveBeenCalled();
     expect(h.email.mock.calls).toEqual([['reminder', 'a@x', 'A', 3], ['expired', 'c@x', 'C']]);
   });

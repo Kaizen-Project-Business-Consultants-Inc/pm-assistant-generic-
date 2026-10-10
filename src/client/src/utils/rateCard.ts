@@ -1,13 +1,14 @@
 import type { RateCardEntry } from '../services/api';
 
 /**
- * Who sees and sets pay rates — the server's rule (src/server/utils/payRates.ts PAY_RATE_ROLES;
- * the company owner arrives as 'pmo'). Guests never do. Others get no rates from the server, so
- * the rate fields are hidden from them (2026-10-10).
+ * Who sees pay rates — the server's rule (src/server/utils/payRates.ts PAY_RATE_READ_ROLES; the
+ * company owner arrives as 'pmo'): those who set them, plus finance officers, who only read them.
+ * Guests never do. Others get no rates from the server, so the rate fields are hidden from them
+ * (2026-10-10).
  */
-const PAY_RATE_ROLES: readonly string[] = ['admin', 'pmo', 'project_manager'];
+const PAY_RATE_READ_ROLES: readonly string[] = ['admin', 'pmo', 'project_manager', 'finance_officer'];
 export const canSeePayRates = (user: { role?: string; isGuest?: boolean } | null | undefined) =>
-  !!user && !user.isGuest && PAY_RATE_ROLES.includes(user.role ?? '');
+  !!user && !user.isGuest && PAY_RATE_READ_ROLES.includes(user.role ?? '');
 
 /** Roles match without regard to case or surrounding spaces (same rule as the server) */
 export const roleKey = (role: string | null | undefined) => (role ?? '').trim().toLowerCase();

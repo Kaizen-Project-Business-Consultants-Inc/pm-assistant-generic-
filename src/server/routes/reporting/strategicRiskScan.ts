@@ -3,11 +3,10 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { requirePaidTier } from '../../middleware/requireTier';
 import { strategicRiskAnalysisService } from '../../services/StrategicRiskAnalysisService';
 import { renderStrategicRiskHtml } from '../../utils/strategicRiskRenderer';
 import { WebSocketService } from '../../services/WebSocketService';
-import { userService } from '../../services/UserService';
+import { showTrialExample, projectHasTasks } from '../../utils/trialSample';
 import { getTenantContext, runWithTenantContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
 import crypto from 'crypto';
@@ -29,14 +28,10 @@ export async function strategicRiskScanRoutes(fastify: FastifyInstance) {
       const userId = request.user!.userId;
       const body = scanSchema.parse(request.body);
 
-      // Trial users get a sample result synchronously
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(userId);
-        if (user && user.subscriptionTier === 'trial') {
-          const sample = strategicRiskAnalysisService.generateSample(body.projectId);
-          const html = renderStrategicRiskHtml(sample);
-          return { result: { ...sample, html }, sample: true };
-        }
+      // A trial user whose project has no tasks yet gets an example result synchronously (sample: true)
+      if (await showTrialExample(request, projectHasTasks, body.projectId)) {
+        const sample = strategicRiskAnalysisService.generateSample(body.projectId);
+        return { result: { ...sample, html: renderStrategicRiskHtml(sample) }, sample: true };
       }
 
       // Return immediately with a jobId; generate in background

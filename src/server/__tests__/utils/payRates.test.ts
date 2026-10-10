@@ -9,7 +9,7 @@ vi.mock('../../services/OrganizationService', () => ({
   organizationService: { findByUserId: vi.fn(async () => ({ id: 'o1', ownerUserId: org.owner })) },
 }));
 
-import { maySeePayRates, peopleFor } from '../../utils/payRates';
+import { maySeePayRates, maySetPayRates, peopleFor } from '../../utils/payRates';
 
 const req = (user: Record<string, unknown>) => ({ user }) as any;
 const people = [{ id: 'r1', name: 'Ann', email: 'ann@co.example', costRateHourly: 95, overtimeRateHourly: 140 }];
@@ -20,6 +20,16 @@ describe('who sees pay rates and emails in the people lists', () => {
     expect(await maySeePayRates(req({ userId: 'u', role: 'project_manager' }))).toBe(true);
     expect(await maySeePayRates(req({ userId: 'owner-1', role: 'team_member' }))).toBe(true);
     expect((await peopleFor(req({ userId: 'u', role: 'project_manager' }), people))[0].costRateHourly).toBe(95);
+  });
+
+  it('finance officers see rates but may not set them; managers and the owner may (user 2026-10-10)', async () => {
+    const finance = req({ userId: 'u', role: 'finance_officer' });
+    expect(await maySeePayRates(finance)).toBe(true);
+    expect(await maySetPayRates(finance)).toBe(false);
+    expect((await peopleFor(finance, people))[0].costRateHourly).toBe(95);
+    expect(await maySetPayRates(req({ userId: 'u', role: 'project_manager' }))).toBe(true);
+    expect(await maySetPayRates(req({ userId: 'owner-1', role: 'team_member' }))).toBe(true);
+    expect(await maySetPayRates(req({ userId: 'g', role: 'pmo', isGuest: true }))).toBe(false);
   });
 
   it('team members, viewers and executives get the list without rates, emails kept', async () => {

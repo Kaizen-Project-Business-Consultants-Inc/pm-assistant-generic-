@@ -581,7 +581,7 @@ const sections: Section[] = [
       'Team tab: the company owner invites members, changes roles and removes members; the owner and project managers invite guests and viewers',
       'Company holidays tab: everyone sees the list; the owner or a PMO changes it',
       'Sample project tab (owner and PMOs): load or remove the read-only example project',
-      'Rate card tab (owner, PMOs and PMs): hourly rates by role, each with a start date — when a rate changes, add a new line; on a resource form choose Use rate card. Only they see people’s cost rates in the people lists too',
+      'Rate card tab (owner, PMOs and PMs; finance officers see it read-only): hourly rates by role, each with a start date — when a rate changes, add a new line; on a resource form choose Use rate card. Only they see people’s cost rates in the people lists too',
       'Support visits tab (company owner and PMOs): every time Kovarti support looked at your workspace, read-only, with the reason they gave',
       'Notifications tab: which email and in-app notifications you get, and your digest; the digest send hour is in your own time zone',
       'Display tab: dark mode, language, time zone and interface preferences',
@@ -599,7 +599,7 @@ const sections: Section[] = [
     description:
       'Create API keys so external AI agents or scripts can authenticate and interact with the application programmatically.',
     items: [
-      'Project managers, PMOs and the company owner (paid plans; Trial shows sample keys): Settings → API Keys → create a key with read or read + write rights',
+      'Project managers, PMOs and the company owner (free trial and paid plans): Settings → API Keys → create a key with read or read + write rights',
       'A key can never do more than your own role, and changes only projects you manage; "admin" is for the Kovarti platform team only and is refused',
       'Team members, viewers and executives can\'t create keys or webhooks; connecting Claude gives them read-only access',
       'The full API key (kpm_...) is shown only once — copy it immediately',
@@ -695,7 +695,8 @@ const sections: Section[] = [
     items: [
       'Everyone: see the current plan and AI usage on Account (Ctrl+K → Go to Account & Billing)',
       'The company owner only: upgrade, change or cancel the plan, buy AI top-ups and manage payment (Stripe portal)',
-      'Start on the free Trial plan; a paid plan becomes active once payment is confirmed',
+      'Start on the free Trial: 7 days with every Consultant Pro feature on your own projects, 50K AI tokens, up to 3 projects and 100MB of storage; a paid plan becomes active once payment is confirmed',
+      'On the trial, an analysis with nothing to work on yet (for example a simulation on a schedule with no tasks) shows an example marked "Example — not your project\'s data"; add your own data and run it again',
     ],
   },
 ];

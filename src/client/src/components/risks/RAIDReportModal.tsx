@@ -1,10 +1,13 @@
 import { useState, useEffect, useId } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FileText, X, Download, Mail, Calendar, Trash2, Lock, RefreshCw } from 'lucide-react';
+import { FileText, X, Download, Mail, Calendar, Trash2, RefreshCw } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 
 import { AccessibleModal } from '../ui/AccessibleModal';
+import { ExampleDataNote } from '../ui/ExampleDataNote';
+import { useProjectRole } from '../../hooks/useProjectRole';
+
 interface Props {
   projectId: string;
   projectName: string;
@@ -41,6 +44,8 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
   const [scheduleTime, setScheduleTime] = useState('08:00');
   const [scheduleRecipients, setScheduleRecipients] = useState('');
   const queryClient = useQueryClient();
+  // Emailing and scheduling are the project Manager's (and need change rights): hidden for everyone else
+  const { canEdit } = useProjectRole(projectId);
 
   const [filters, setFilters] = useState<Filters>({
     types: [],
@@ -58,7 +63,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
     }),
     onSuccess: (data) => {
       setReport(data);
-      if (data?.sample) setIsSample(true);
+      setIsSample(!!data?.sample);
     },
   });
 
@@ -171,13 +176,16 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
         <div className="flex border-b border-gray-200 dark:border-gray-700 px-5">
           {[
             { key: 'report' as const, label: 'Report', icon: FileText, locked: false },
-            { key: 'email' as const, label: 'Email Report', icon: Mail, locked: isSample },
-            { key: 'schedule' as const, label: 'Schedule Recurring', icon: Calendar, locked: isSample },
+            ...(canEdit ? [
+              { key: 'email' as const, label: 'Email Report', icon: Mail, locked: isSample },
+              { key: 'schedule' as const, label: 'Schedule Recurring', icon: Calendar, locked: isSample },
+            ] : []),
           ].map(t => (
             <button
               key={t.key}
               onClick={() => !t.locked && setTab(t.key)}
               disabled={t.locked}
+              title={t.locked ? 'Not for example data: add RAID items and run the report again' : undefined}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${
                 t.locked
                   ? 'border-transparent text-gray-300 dark:text-gray-600 cursor-not-allowed'
@@ -188,7 +196,6 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
             >
               <t.icon className="w-3 h-3" />
               {t.label}
-              {t.locked && <Lock className="w-3 h-3 ml-0.5" />}
             </button>
           ))}
         </div>
@@ -266,17 +273,7 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
               </div>
 
               {isSample && (
-                <div className="mb-4 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700">
-                  <div className="flex items-start gap-2">
-                    <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Sample Report</p>
-                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
-                        This is a sample RAID report with demo data. Upgrade to a paid plan to generate reports from your actual project data, email them to stakeholders, and schedule recurring delivery.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <ExampleDataNote className="mb-4">This project has no RAID items yet, so this is an example report. Add risks, issues, actions or decisions and generate it again to get your own report.</ExampleDataNote>
               )}
 
               {mutation.isPending ? (

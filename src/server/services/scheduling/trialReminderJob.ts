@@ -109,7 +109,7 @@ export async function runTrialReminders(): Promise<void> {
     // Find trialing users with trial ending in the next 3 days or already expired
     // Free-tier trials only. `subscription_tier = 'trial'` keeps these emails away
     // from paying customers — telling a subscriber their trial is expiring is both
-    // alarming and wrong. The window reaches 8 days out for the first nudge.
+    // alarming and wrong. The window reaches 4 days out for the first nudge.
     // Confirmed emails only: an unconfirmed account isn't usable yet, so a countdown
     // means nothing to them — they get Step 2's nudge instead (2026-10-10).
     const rows = await databaseService.queryControlPlane(
@@ -120,7 +120,7 @@ export async function runTrialReminders(): Promise<void> {
          AND email_verified = 1
          AND trial_ends_at IS NOT NULL
          AND trial_ends_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
-         AND trial_ends_at <= DATE_ADD(NOW(), INTERVAL 8 DAY)
+         AND trial_ends_at <= DATE_ADD(NOW(), INTERVAL 4 DAY)
        LIMIT 500`,
     );
 
@@ -135,8 +135,8 @@ export async function runTrialReminders(): Promise<void> {
       const msLeft = trialEnd.getTime() - now.getTime();
       const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
 
-      // Four touches: a week out (while they are still actively using it and have
-      // time to get a budget approved), then 3 days, 1 day, and the day it ends.
+      // Three touches: 3 days, 1 day, and the day it ends. (A week-out nudge went with the
+      // 7-day trial, 2026-10-10: it would have arrived on the day they signed up.)
       let reminderKey: string;
       if (daysLeft <= 0) {
         reminderKey = `trial-reminder:${row.id}:expired`;
@@ -144,8 +144,6 @@ export async function runTrialReminders(): Promise<void> {
         reminderKey = `trial-reminder:${row.id}:1day`;
       } else if (daysLeft <= 3) {
         reminderKey = `trial-reminder:${row.id}:3day`;
-      } else if (daysLeft <= 7) {
-        reminderKey = `trial-reminder:${row.id}:7day`;
       } else {
         continue;
       }

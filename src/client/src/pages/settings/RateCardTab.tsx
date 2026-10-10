@@ -7,6 +7,7 @@ import { announce } from '../../utils/announce';
 import { fmtDay } from '../../components/schedule/calendar/CalendarChangePreview';
 import { RESOURCE_ROLES } from '../../constants/resourceRoles';
 import { cardRateOn, money, roleKey, todayYmd } from '../../utils/rateCard';
+import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
 
 /**
  * Rate card: hourly cost rates by role, each starting on a date. Resources set to "Use
@@ -17,7 +18,8 @@ import { cardRateOn, money, roleKey, todayYmd } from '../../utils/rateCard';
 interface Form { id: string | null; role: string; hourly: string; overtime: string; from: string }
 const EMPTY = (): Form => ({ id: null, role: '', hourly: '', overtime: '', from: todayYmd() });
 
-export function RateCardTab() {
+/** `canChange` false: a finance officer — they see the rates, without the change controls */
+export function RateCardTab({ canChange }: { canChange: boolean }) {
   const queryClient = useQueryClient();
   const q = useQuery({ queryKey: ['rate-card'], queryFn: () => apiService.getRateCard(), retry: false });
   const [form, setForm] = useState<Form>(EMPTY);
@@ -93,12 +95,14 @@ export function RateCardTab() {
           </p>
         </div>
 
+        {!canChange && <ViewOnlyNote who="the company owner, a PMO or a project manager" />}
+
         {q.isLoading && <p className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400"><Loader2 className="w-4 h-4 animate-spin motion-reduce:animate-none" /> Loading…</p>}
         {q.isError && <p className="text-sm text-red-600 dark:text-red-400">{getApiErrorMessage(q.error, 'Could not load the rate card. Refresh the page to try again.')}</p>}
         {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md px-3 py-2">{error}</p>}
         {done && <p role="status" className="text-sm text-green-800 dark:text-green-200 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md px-3 py-2">{done}</p>}
 
-        {q.data && rates.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">No rates yet. Add the first one below.</p>}
+        {q.data && rates.length === 0 && <p className="text-sm text-gray-500 dark:text-gray-400">{canChange ? 'No rates yet. Add the first one below.' : 'No rates yet.'}</p>}
 
         {rates.length > 0 && (
           <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -109,7 +113,7 @@ export function RateCardTab() {
                   <th scope="col" className="px-3 py-2 text-right font-semibold">Hourly</th>
                   <th scope="col" className="px-3 py-2 text-right font-semibold">Overtime</th>
                   <th scope="col" className="px-3 py-2 text-left font-semibold">From</th>
-                  <th scope="col" className="px-3 py-2"><span className="sr-only">Actions</span></th>
+                  {canChange && <th scope="col" className="px-3 py-2"><span className="sr-only">Actions</span></th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -129,7 +133,7 @@ export function RateCardTab() {
                           {status === 'current' && <span className="ml-2 text-xs font-semibold px-1.5 py-0.5 rounded bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">Current</span>}
                           {status === 'upcoming' && <span className="ml-2 text-xs font-semibold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">Upcoming</span>}
                         </td>
-                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                        {canChange && <td className="px-3 py-2 text-right whitespace-nowrap">
                           {confirmDelete === r.id ? (
                             <span className="inline-flex items-center gap-2 text-xs">
                               Remove?
@@ -148,7 +152,7 @@ export function RateCardTab() {
                               </button>
                             </>
                           )}
-                        </td>
+                        </td>}
                       </tr>
                     );
                   });
@@ -159,7 +163,7 @@ export function RateCardTab() {
           </div>
         )}
 
-        {q.data && (
+        {q.data && canChange && (
           <div className="flex flex-wrap items-end gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
             <div className="flex flex-col gap-1 flex-1 min-w-[10rem]">
               <label htmlFor="rc-role" className="text-xs font-medium text-gray-700 dark:text-gray-300">Role</label>

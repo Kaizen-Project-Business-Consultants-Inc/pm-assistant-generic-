@@ -12,6 +12,7 @@ import { emailService, EmailRejectedError } from '../../services/EmailService';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { readableProjectIds } from '../../utils/readableProjects';
 import { databaseService } from '../../database/connection';
+import { trialEmailAllowance } from '../../utils/trialEmail';
 
 /**
  * Project groups are shown as CLIENTS (2026-10-07): a consultant's customers. Clients never sign
@@ -206,7 +207,7 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
   });
 
   // POST /:id/report/email — send the report to the client (owner, PMO or a project manager)
-  fastify.post('/:id/report/email', { preHandler: [requireScope('write'), heavyActionLimit('client-report-email', 20, 60 * 60_000)] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/report/email', { preHandler: [requireScope('write'), heavyActionLimit('client-report-email', 20, 60 * 60_000), trialEmailAllowance()] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       if (!canManageClients(request.user!.role)) return reply.status(403).send({ error: 'Forbidden', message: 'Only the company owner, PMO and project managers send client reports.' });
       const { id } = request.params as { id: string };

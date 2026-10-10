@@ -53,7 +53,7 @@ export interface PlanDef {
  * be seen by a real visitor.
  */
 const PLAN_AUDIENCE: Record<string, string> = {
-  trial: 'Try everything for 14 days. No card needed.',
+  trial: 'Try everything for 7 days. No card needed.',
   consultant_basic: 'One consultant. Full project management, no AI.',
   consultant_pro: 'One consultant, with AI. Most people start here.',
   sme: 'Consultancies with more than one PM. Priced per person.',
@@ -67,14 +67,14 @@ const FALLBACK_PLANS: PlanDef[] = [
     name: 'Free Trial',
     monthly: 0,
     annual: 0,
-    tokens: '5K',
-    tokensEquiv: '~10 AI chats to explore Mjuzi',
+    tokens: '50K',
+    tokensEquiv: '~10 AI questions to explore Mjuzi',
     storage: '100MB',
-    viewerInvites: '0',
+    viewerInvites: '5',
     features: [
       'Up to 3 projects',
-      '14-day full access (Pro features)',
-      'Mjuzi AI assistant (5K tokens)',
+      '7-day full access (Pro features)',
+      'Mjuzi AI assistant (50K tokens)',
       'Gantt, Kanban, Sprint boards',
       'RAID management',
       'No credit card required',
@@ -179,9 +179,9 @@ export interface FeatureRow {
 
 export const COMPARISON: FeatureRow[] = [
   { feature: 'Projects', desc: 'Active projects you can manage simultaneously', trial: '3', consultant_basic: 'Unlimited', consultant_pro: 'Unlimited', sme: 'Unlimited' },
-  { feature: 'AI tokens/month', desc: 'Monthly budget for AI-powered features', trial: '5K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
+  { feature: 'AI tokens/month', desc: 'Monthly budget for AI-powered features', trial: '50K', consultant_basic: '—', consultant_pro: '500K', sme: '500K/seat' },
   { feature: 'File Storage', desc: 'Space for documents, attachments, and exports', trial: '100MB', consultant_basic: '1GB', consultant_pro: '1GB', sme: '5GB' },
-  { feature: 'Viewer Invites', desc: 'Read-only access for clients and stakeholders', trial: '0', consultant_basic: '5', consultant_pro: '15', sme: 'Unlimited' },
+  { feature: 'Viewer Invites', desc: 'Read-only access for clients and stakeholders', trial: '5', consultant_basic: '5', consultant_pro: '15', sme: 'Unlimited' },
   { feature: 'Gantt Charts & Critical Path', desc: 'Visual timelines with dependency tracking and critical path analysis', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Kanban Boards', desc: 'Drag-and-drop task boards for agile workflows', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Sprint / Agile Management', desc: 'Sprint planning, backlog grooming, and velocity tracking', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
@@ -200,7 +200,7 @@ export const COMPARISON: FeatureRow[] = [
   { feature: 'DAG Workflow Automation', desc: 'Automated task pipelines triggered by project events', trial: true, consultant_basic: true, consultant_pro: true, sme: true },
   { feature: 'Cross-Project Intelligence', desc: 'AI insights across your entire portfolio', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
   { feature: 'MCP Integration', desc: 'Connect Kovarti PM to Claude and other AI tools', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
-  { feature: 'Token Top-Up Packs', desc: 'Buy extra AI tokens anytime — $10 per 500K', trial: true, consultant_basic: false, consultant_pro: true, sme: true },
+  { feature: 'Token Top-Up Packs', desc: 'Buy extra AI tokens anytime — $10 per 500K', trial: false, consultant_basic: false, consultant_pro: true, sme: true },
 ];
 
 interface PricingCardsProps {
@@ -364,7 +364,7 @@ const PLANS: PlanDef[] = pricingData?.tiers
                 {plan.monthly === 0 ? (
                   <div className="mt-3 flex items-baseline gap-1">
                     <span className={`text-4xl font-bold ${textPrimary}`}>Free</span>
-                    <span className={`text-sm ${textSecondary}`}>/14 days</span>
+                    <span className={`text-sm ${textSecondary}`}>/7 days</span>
                   </div>
                 ) : plan.perSeat ? (
                   <>
@@ -632,7 +632,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ mode, forceDark 
                 <th scope="col" className="text-left py-3 pr-6 font-semibold text-white">Feature</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-gray-500 w-20">
                   Trial
-                  <div className="text-xs font-normal text-gray-500">14 days</div>
+                  <div className="text-xs font-normal text-gray-500">7 days</div>
                 </th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-white w-20">Basic</th>
                 <th scope="col" className="text-center py-3 px-3 font-semibold text-primary-400 w-20">Pro</th>

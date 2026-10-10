@@ -28,6 +28,7 @@ import { DangerZoneTab } from './settings/DangerZoneTab';
 import { AIContextTab } from './settings/AIContextTab';
 import { HolidaysTab } from './settings/HolidaysTab';
 import { RateCardTab } from './settings/RateCardTab';
+import { canSeePayRates } from '../utils/rateCard';
 import { SupportVisitsTab } from './settings/SupportVisitsTab';
 import { SampleProjectTab } from './settings/SampleProjectTab';
 
@@ -58,7 +59,11 @@ export const SettingsPage: React.FC = () => {
 
   const { user } = useAuthStore();
   const canManageTeam = user && ['admin', 'project_manager', 'pmo'].includes(user.role);
-  // Rates are pay information: the same people who manage the team manage the rate card
+  // Rates are pay information: the same people who manage the team manage the rate card;
+  // finance officers see it without the change controls
+  const seesRateCard = canSeePayRates(user);
+  // Changing it also needs a role that may change data (not a guest, not Kovarti's Support view)
+  const changesRateCard = !!canManageTeam && !user?.isGuest && canChangeData(user);
   // Support visits: the company owner (or PMO) sees every time Kovarti support looked in
   const canSeeSupportVisits = !!user && (user.organization?.isOwner === true || user.role === 'pmo');
   // Sample project: the company owner or a PMO loads and removes it (same rule as the server)
@@ -69,7 +74,8 @@ export const SettingsPage: React.FC = () => {
     t.id === 'support-visits' ? canSeeSupportVisits
       : t.id === 'webhooks' ? canUseWebhooks
       : t.id === 'sample-project' ? canManageSample
-      : (t.id !== 'team' && t.id !== 'rate-card') || canManageTeam);
+      : t.id === 'rate-card' ? seesRateCard
+      : t.id !== 'team' || canManageTeam);
 
   const setActiveTab = (tab: Tab) => {
     setSearchParams(tab === 'profile' ? {} : { tab }, { replace: true });
@@ -113,7 +119,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'team' && canManageTeam && <TeamTab />}
         {activeTab === 'holidays' && <HolidaysTab />}
         {activeTab === 'sample-project' && canManageSample && <SampleProjectTab />}
-        {activeTab === 'rate-card' && canManageTeam && <RateCardTab />}
+        {activeTab === 'rate-card' && seesRateCard && <RateCardTab canChange={changesRateCard} />}
         {activeTab === 'support-visits' && canSeeSupportVisits && <SupportVisitsTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'display' && <DisplayTab />}

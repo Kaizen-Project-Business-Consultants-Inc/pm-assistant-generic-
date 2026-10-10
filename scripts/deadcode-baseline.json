@@ -514,7 +514,6 @@
     "server|types|src/server/utils/instantReportRenderer.ts|ResourceStatusReportData",
     "server|types|src/server/utils/instantReportRenderer.ts|WhoDoesWhatReportData",
     "server|types|src/server/utils/instantReportRenderer.ts|WhoDoesWhatWhenReportData",
-    "server|types|src/server/utils/memberSubscription.ts|OrgBilling",
     "server|types|src/server/utils/mimeValidator.ts|MimeValidationResult",
     "server|types|src/server/utils/notificationLink.ts|NotificationTarget",
     "server|types|src/server/utils/readingLevel.ts|ReadingLevelResult",

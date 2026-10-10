@@ -4,7 +4,7 @@ import { monteCarloService } from '../../services/MonteCarloService';
 import { MonteCarloConfigSchema } from '../../schemas/monteCarloSchemas';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { userService } from '../../services/UserService';
+import { isTrialUser } from '../../utils/trialSample';
 import { ZodError } from 'zod';
 import { validationMessage } from '../../utils/validationError';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
@@ -13,21 +13,14 @@ export async function monteCarloRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // POST /:scheduleId/simulate — Run Monte Carlo simulation for a schedule
-  // Trial users get sample results with an upgrade prompt.
+  // A trial user whose schedule has no tasks yet gets an example result (sample: true) instead of
+  // the 'add tasks' message, so they can see what the simulation shows.
   fastify.post('/:scheduleId/simulate', { preHandler: [requireScope('write'), requireProjectAccess('viewer'), heavyActionLimit('monte-carlo', 10)] }, async (
     request: FastifyRequest,
     reply: FastifyReply,
   ) => {
     try {
       const { scheduleId } = request.params as { scheduleId: string };
-
-      // Trial users get sample simulation data
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          return reply.send({ result: generateSampleResult(scheduleId), sample: true });
-        }
-      }
 
       // Parse optional config from body, applying defaults
       const rawBody = (request.body as Record<string, unknown>) || {};
@@ -44,6 +37,8 @@ export async function monteCarloRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Not found', message: 'That schedule no longer exists.' });
       }
       if (message.startsWith('No tasks found')) {
+        const { scheduleId } = request.params as { scheduleId: string };
+        if (await isTrialUser(request)) return reply.send({ result: generateSampleResult(scheduleId), sample: true });
         return reply.status(400).send({ error: 'No tasks', message: 'Add tasks to the schedule before running a Monte Carlo simulation.' });
       }
       fastify.log.error({ err }, 'Monte Carlo simulation failed');

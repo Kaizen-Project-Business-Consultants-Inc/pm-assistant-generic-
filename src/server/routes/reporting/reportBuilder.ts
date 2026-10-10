@@ -5,7 +5,6 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { readableProjectIds } from '../../utils/readableProjects';
 import { requireFeature } from '../../middleware/requireTier';
-import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
@@ -61,17 +60,8 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
   });
 
   // GET /templates — list templates
-  // Trial users get sample templates with an upgrade prompt.
   fastify.get('/templates', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      // Trial users get sample report templates
-      if (request.user!.role !== 'admin') {
-        const user = await userService.findById(request.user!.userId);
-        if (user && user.subscriptionTier === 'trial') {
-          return { templates: generateSampleTemplates(), sample: true };
-        }
-      }
-
       const user = request.user!;
       const templates = await reportBuilderService.getTemplates(user.userId);
       return { templates };
@@ -165,46 +155,4 @@ export async function reportBuilderRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: 'Failed to export report' });
     }
   });
-}
-
-function generateSampleTemplates() {
-  return [
-    {
-      id: 'sample-1',
-      name: 'Weekly Status Report',
-      description: 'Summarize project progress, risks, and upcoming milestones for the week.',
-      isShared: true,
-      createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-      sections: [
-        { type: 'kpi', dataSource: 'projects', title: 'Key Metrics' },
-        { type: 'table', dataSource: 'tasks', title: 'Task Summary' },
-        { type: 'bar_chart', dataSource: 'tasks', title: 'Tasks by Status' },
-      ],
-    },
-    {
-      id: 'sample-2',
-      name: 'Budget Overview',
-      description: 'Track budget allocation vs. spending across all projects.',
-      isShared: false,
-      createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
-      sections: [
-        { type: 'kpi', dataSource: 'budgets', title: 'Budget KPIs' },
-        { type: 'pie_chart', dataSource: 'budgets', title: 'Spending Breakdown' },
-      ],
-    },
-    {
-      id: 'sample-3',
-      name: 'Time Tracking Summary',
-      description: 'Analyze team time entries and utilization rates.',
-      isShared: true,
-      createdAt: new Date(Date.now() - 21 * 86400000).toISOString(),
-      updatedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
-      sections: [
-        { type: 'line_chart', dataSource: 'time_entries', title: 'Hours by Week' },
-        { type: 'table', dataSource: 'time_entries', title: 'Time Entry Details' },
-      ],
-    },
-  ];
 }

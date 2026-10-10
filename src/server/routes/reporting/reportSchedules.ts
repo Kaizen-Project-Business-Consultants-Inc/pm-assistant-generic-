@@ -5,6 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { reportScheduleService } from '../../services/ReportScheduleService';
 import logger from '../../utils/logger';
+import { trialEmailAllowance } from '../../utils/trialEmail';
 
 const createScheduleSchema = z.object({
   templateId: z.string().min(1),
@@ -12,7 +13,7 @@ const createScheduleSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   timeOfDay: z.string().optional(),
-  recipients: z.array(z.string().min(1)).min(1),
+  recipients: z.array(z.string().min(1)).min(1).max(20, 'Send the report to at most 20 people at a time.'),
   isActive: z.boolean().optional(),
 });
 
@@ -42,7 +43,7 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // Create schedule
-  fastify.post('/', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: [requireScope('write'), trialEmailAllowance()] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
       const body = createScheduleSchema.parse(request.body);
@@ -87,7 +88,7 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
   });
 
   // Run a schedule immediately
-  fastify.post('/:id/run-now', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/run-now', { preHandler: [requireScope('write'), trialEmailAllowance()] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const schedule = await reportScheduleService.getById(id);
@@ -138,7 +139,7 @@ export async function reportScheduleRoutes(fastify: FastifyInstance) {
   });
 
   // Update schedule
-  fastify.put('/:id', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.put('/:id', { preHandler: [requireScope('write'), trialEmailAllowance('recipients', false)] }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
       const body = updateScheduleSchema.parse(request.body);

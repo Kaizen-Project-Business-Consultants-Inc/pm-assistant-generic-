@@ -20,7 +20,7 @@ import { needsEscalationPrompt as serverEscalation } from '../../utils/escalatio
 import { analyzeReadingLevel as serverReading } from '../../utils/readingLevel';
 import { ratesOn, type RateCardEntry } from '../../services/RateCardService';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
-import { PAY_RATE_ROLES } from '../../utils/payRates';
+import { PAY_RATE_READ_ROLES } from '../../utils/payRates';
 import { COMPANY_ASSIGNABLE_ROLES } from '../../constants/roles';
 // Screen copies
 import { buildRowNumberMap, type GanttTask } from '../../../client/src/components/schedule/gantt/types';
@@ -303,8 +303,8 @@ describe('project types — the same list everywhere', () => {
 /** Who sees pay rates (2026-10-10): the people form hides the rate fields by the same list */
 describe('pay-rate roles: screen = server', () => {
   it('the same roles: every role the server allows sees them on screen, and no other role does', () => {
-    const roles = [...new Set([...PAY_RATE_ROLES, ...COMPANY_ASSIGNABLE_ROLES, 'admin', 'executive', 'viewer'])];
-    for (const role of roles) expect(canSeePayRates({ role }), role).toBe(PAY_RATE_ROLES.includes(role));
+    const roles = [...new Set([...PAY_RATE_READ_ROLES, ...COMPANY_ASSIGNABLE_ROLES, 'admin', 'executive', 'viewer'])];
+    for (const role of roles) expect(canSeePayRates({ role }), role).toBe(PAY_RATE_READ_ROLES.includes(role));
     expect(canSeePayRates({ role: 'pmo', isGuest: true }), 'guests never').toBe(false);
   });
 });
