@@ -52,6 +52,9 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 
+/** A real click: the mouse press first (it starts "working in the grid", so the grid keys act), then the click */
+const clickCell = (el: HTMLElement) => { fireEvent.mouseDown(el); fireEvent.click(el); };
+
 const COST: Array<[string, string]> = [
   ['Budget', 'Calculated: booked hours × rate'],
   ['Actual Cost', 'Calculated: approved timesheet hours × rate'],
@@ -69,12 +72,12 @@ describe('Budget and Actual Cost in the Table', () => {
     expect(cell('Plan', 'Budget').textContent).toBe('$4,000');
     expect(cell('Plan', 'Actual Cost').textContent).toBe('$1,250');
     for (const [label] of COST) {
-      fireEvent.click(cell('Plan', label));
+      clickCell(cell('Plan', label));
       expect(cell('Plan', label).querySelector('input'), label).toBeNull();
       expect(cell('Plan', label).className).toContain('cursor-default');
       expect(cell('Plan', label).className).toContain('opacity-70');
       // On a row that isn't active, a click focuses the cell; Enter / F2 then try to open it
-      fireEvent.click(cell('Build', label));
+      clickCell(cell('Build', label));
       act(() => { fireEvent.keyDown(document, { key: 'Enter' }); });
       expect(cell('Build', label).querySelector('input'), label).toBeNull();
       act(() => { fireEvent.keyDown(document, { key: 'F2' }); });
@@ -101,9 +104,9 @@ describe('Budget and Actual Cost in the Table', () => {
   it('refuse a paste (copied from another cost cell) and send nothing', () => {
     const { cell, onTaskUpdate } = setup();
     for (const [label] of COST) {
-      fireEvent.click(cell('Plan', label)); // focuses the cell (row not active)
+      clickCell(cell('Plan', label)); // focuses the cell (row not active)
       act(() => { fireEvent.keyDown(document, { key: 'c', ctrlKey: true }); });
-      fireEvent.click(cell('Build', label));
+      clickCell(cell('Build', label));
       act(() => { fireEvent.keyDown(document, { key: 'v', ctrlKey: true }); });
       expect(cell('Build', label).textContent, label).toBe('—');
     }
@@ -112,7 +115,7 @@ describe('Budget and Actual Cost in the Table', () => {
 
   it('leave the other cells as they were: Work still opens and saves', () => {
     const { cell, onTaskUpdate } = setup('a');
-    fireEvent.click(cell('Plan', 'Work'));
+    clickCell(cell('Plan', 'Work'));
     const input = cell('Plan', 'Work').querySelector('input')!;
     expect(input.getAttribute('aria-label')).toBe('Work (hours) for Plan');
     expect(cell('Plan', 'Work').hasAttribute('aria-describedby')).toBe(false);

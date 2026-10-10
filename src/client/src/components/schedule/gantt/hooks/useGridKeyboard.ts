@@ -5,7 +5,7 @@ import { useUnmountSafeTimeouts } from '../../shared/hooks/useUnmountSafeTimeout
 import { firstByKey } from '../../../../utils/lookup';
 import {
   useGridCellState, useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell,
-  handleGridNavKey, GANTT_KEYBOARD_RULES,
+  handleGridNavKey, GANTT_KEYBOARD_RULES, useGridFocusScope,
 } from '../../shared/hooks/useGridKeyboardPaste';
 
 /**
@@ -14,7 +14,9 @@ import {
  * Shift+Tab indent / outdent (one task or the selection), Alt+Up/Down to move the active row,
  * and putting the focus back on a cell when its inline edit ends. One document keydown
  * listener, off while a cell is being edited or the plan is read-only; keys typed in an
- * input, textarea or select are left alone. Editing state, selection, columns and the bulk
+ * input, textarea or select are left alone, and so is every key while the user isn't working
+ * in the grid (useGridFocusScope: a click in the grid starts it, Escape or anything outside
+ * ends it — so Tab elsewhere moves focus and changes nothing; 2026-10-09, audit K1). Editing state, selection, columns and the bulk
  * message stay owned by GanttChart / other hooks and are passed in.
  * Moved out of GanttChart.tsx unchanged (2026-10-04, code-health item 4). The steps it does
  * the same way as the Table view (cell state, copy, paste, row pick, arrows / Enter / F2 /
@@ -68,6 +70,8 @@ export function useGridKeyboard({
   } = useGridCellState<EditableField>();
   // The "Copied N tasks" message timer is cleared if the Gantt goes away first
   const later = useUnmountSafeTimeouts();
+  // Whether a key is the grid's (a click in the grid, until Escape or a click / focus elsewhere)
+  const grid = useGridFocusScope();
 
   const rowTasks = useMemo(() => rows.map(r => r.task), [rows]);
 
@@ -87,10 +91,14 @@ export function useGridKeyboard({
   useEffect(() => {
     if (!onTaskUpdate || editingCell) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      // Is this key the grid's? (Escape, even on a row checkbox, also leaves the grid: the next Tab moves on)
+      const inGrid = grid.claim(e);
       const target = e.target as HTMLElement;
       // Allow Tab through for indent/outdent even when a checkbox is focused
       const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
       if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && e.key === 'Tab')) return;
+      // Not working in the grid: the key does what it does anywhere else (Tab moves focus)
+      if (!inGrid) return;
 
       // W12: Keyboard reorder — Alt+ArrowUp/Down moves active row
       if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && activeTaskId && onTaskReorder && !editingCell) {
@@ -228,7 +236,7 @@ export function useGridKeyboard({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId, later]);
+  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId, later, grid]);
 
   // When editing ends, restore focus to that cell
   useRestoreFocusAfterEdit(editingCell, setFocusedCell);
