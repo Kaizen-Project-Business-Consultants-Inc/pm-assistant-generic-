@@ -191,7 +191,7 @@ The left sidebar is grouped into sections. Some items only show for certain role
 | | My Feedback | Feedback you've sent us | Everyone |
 | | Settings | Your profile and preferences; team, rate card and company settings for those who manage them | Everyone |
 
-The company owner works as PMO, so sees the PMO items. **Help** is in the menu under your name (top right) → **Help & Support**. **Account** (plan and billing) opens from the command palette (**Go to Account & Billing**) or from the AI usage indicator in the sidebar.
+The company owner works as PMO, so sees the PMO items. **Help** is in the menu under your name (top right) → **Help & Support**. **Account** (plan and billing) opens from the command palette (Ctrl+K → **Go to Account & Billing**), or from **View usage details →** under the AI usage bar when that bar is showing.
 
 **Pages your role can't open (October 2026).** The "Who" column is also what you can open by typing an address. If your role can't use a page — for a team member, viewer or any other role that isn't Admin, Executive, Project Manager or PMO: Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM Dashboard, Simulation, Scenario Modeling, Report Builder and AI Proposals — typing its address (or a deeper one such as `/workflows/…`) takes you to the Dashboard, and Back returns you to where you were. Links to those pages are hidden for you too: in the command palette (Ctrl+K), dashboard widgets, notifications, breadcrumbs and the Workload Heatmap links. Everything you reach from inside your projects still works — the project pages, a client's **Risks & issues** and **Client report** from the Projects page, Help, Settings, Timesheets, Goals and Account. Guests (invited outside collaborators) also don't get Resources, Workflows, Intake, Integrations or Change Requests.
 
@@ -201,7 +201,7 @@ The sidebar can be collapsed using the toggle at the bottom. On mobile devices, 
 
 Your UI layout preferences — theme (light/dark), sidebar collapsed state, AI panel open state, schedule view mode, and projects view mode — are automatically synced to the server. When you log in from a different device or browser, your layout preferences are restored automatically.
 
-An **AI Token Usage** indicator appears above the user section, showing your current month's AI token consumption as a progress bar (or a ring chart when the sidebar is collapsed). The bar changes color as usage increases: green (<70%), amber (70-90%), red (>90%). Click the indicator text to view detailed usage in Settings.
+When you've used 70% or more of the month's AI allowance, an **AI usage** bar appears near the bottom of the sidebar (a ring when the sidebar is collapsed): amber ("AI usage high"), turning red ("AI usage critical") at 90%. Below 70% it isn't shown. **View usage details →** under the bar opens **Account**, where the full usage meter is.
 
 ### Command Palette
 
@@ -327,7 +327,7 @@ Available cards:
 
 The **Project Brief** card is part of the reorderable overview card grid — drag it to reposition alongside KPI, milestones, and other cards (it always spans full width). The brief displays the project description with full markdown rendering (headings, bold, italic, lists, links, and inline code) powered by the `marked` GFM parser.
 
-- **Editing** -- Admins and project managers see a pencil icon (always visible on mobile; appears on hover on desktop). Click the card (or the pencil) to enter edit mode with a monospace textarea. Clicking a **link** in the rendered brief opens it in a new tab without entering edit mode. The card shows a focus ring while editing. The textarea is capped at 50vh height with scrolling to prevent it from consuming the entire viewport on mobile. You can also **Tab** to the brief and press **Enter** or **Space** to start editing (keyboard accessible).
+- **Editing** -- The project's Manager or Owner sees a pencil icon (always visible on mobile; appears on hover on desktop). Click the card (or the pencil) to enter edit mode with a monospace textarea. Clicking a **link** in the rendered brief opens it in a new tab without entering edit mode. The card shows a focus ring while editing. The textarea is capped at 50vh height with scrolling to prevent it from consuming the entire viewport on mobile. You can also **Tab** to the brief and press **Enter** or **Space** to start editing (keyboard accessible).
 - **Markdown toolbar** -- In edit mode, a formatting toolbar appears above the textarea with 6 buttons: **Bold**, **Italic**, **Heading**, **Bullet list**, **Link**, and **Inline code**. Each button wraps the current text selection with the appropriate markdown syntax (or inserts a placeholder if nothing is selected). Keyboard shortcuts **Ctrl+B** (bold) and **Ctrl+I** (italic) also work. The toolbar wraps to a second row on narrow screens.
 - **Save on blur** -- Changes save when you click outside the editor or tab away. A "Saving..." / "Saved" indicator appears next to the header. If a save fails, a red "Save failed" message with a **Retry** link appears. If you navigate away mid-edit, the draft is persisted to sessionStorage and an API save is attempted; if the save fails, the draft is recovered on your next visit. Closing the browser tab while editing with unsaved changes triggers a confirmation warning.
 - **Escape to cancel** -- Pressing **Escape** while editing discards your changes and reverts the draft to the pre-edit description. Because nothing is saved while you type, Escape is always a clean cancel — no partial saves to worry about.
@@ -471,7 +471,7 @@ A project's own day off always wins; its extra working day beats a company holid
 
 **What moves when you apply:** every plan in the project is fitted to the new calendar. A task keeps its length in working days, so a new day off inside a task makes it finish a day later; a task starting on a day off moves to the next working day; tasks that wait on a moved task move after it. Finished tasks and tasks with an actual start or finish never move. Links that already overlapped (a task that starts before its predecessor allows) are left as they are. Each plan gets a line in **Schedule History**, whose **Undo** puts the dates back (the calendar change itself stays).
 
-**Company holidays** (Settings → Company holidays) work the same way across **all** active projects: the preview says how many tasks move in how many projects. Only the company owner or an admin can change the list; everyone can see it.
+**Company holidays** (Settings → Company holidays) work the same way across **all** active projects: the preview says how many tasks move in how many projects. Only the company owner or a PMO can change the list; everyone can see it.
 
 **When working calendars were switched on**, every task that started or finished on a weekend or holiday was moved once onto working days, keeping its working-day length (e.g. a task running Saturday to Tuesday now runs Monday to Tuesday; one ending on a Sunday now ends on the Friday before). Each plan that changed has a "Moved tasks off days off" line in Schedule History with Undo. If a task really does happen at a weekend (a go-live or a disaster-recovery test), add those days as **working days** in the project's calendar and set its dates again.
 
@@ -645,12 +645,13 @@ Toggle between Month / Week / Day using buttons in the calendar header. Navigati
 
 ### Table View
 
-A spreadsheet-like view of all tasks with inline editing. Click the **Columns** button (gear icon) to open the column picker. Choose from 24 columns organized into four groups:
+A spreadsheet-like view of all tasks with inline editing. Click the **Columns** button (gear icon) to open the column picker. Choose from 36 columns in five groups:
 
-- **Standard** -- # (row number, always visible), Name, then the **default view: Duration, Start Date, End Date, Predecessor, Assigned To, Status** (in that order, in both the Gantt and Table views). Priority, Progress, **Est Days**, **Work**, Successor, Resource and Notes are available but hidden by default. A schedule you have already customised keeps your columns: open **Columns** and click **Reset visibility** and **Reset order** to switch it to the default view.
-- **Scheduling (CPM)** -- Duration, Early Start, Early Finish, Late Start, Late Finish, Total Float, Free Float, Critical (read-only; enabling any of these triggers CPM computation automatically)
+- **Standard** -- # (row number, always visible), Name, then the **default view: Duration, Start Date, End Date, Predecessor, Assigned To, Status** (in that order, in both the Gantt and Table views). Priority, Progress, **Est Days**, **Work**, Actual Start, Actual Finish, Successor, Resource and Notes are available but hidden by default. A schedule you have already customised keeps your columns: open **Columns** and click **Reset visibility** and **Reset order** to switch it to the default view.
+- **Scheduling (CPM)** -- Early Start, Early Finish, Late Start, Late Finish, Total Float, Free Float, Critical (read-only; enabling any of these triggers CPM computation automatically), plus Constraint and Constraint Date (editable)
 - **Baseline** -- Baseline Start, Baseline End, Start Variance, End Variance (read-only; populated when a baseline comparison is active). Baseline Start and Baseline End columns use task-level baseline fields (`baseline_start_date` / `baseline_finish_date`) when available, falling back to the active baseline snapshot. Additional toggleable columns: **Baseline Duration** (days planned at baseline) and **Baseline Cost** (cost planned at baseline), shown in the Baseline/Cost column groups.
-- **Other** -- Predecessor (inline-editable), Successor (read-only; shows which tasks depend on this one), WBS (read-only; auto-computed from task hierarchy)
+- **Cost** -- Budget, Actual Cost, Cost Variance and Baseline Cost (read-only)
+- **Other** -- WBS (read-only; auto-computed from task hierarchy). Predecessor (inline-editable) and Successor (read-only; shows which tasks depend on this one) are in the Standard group.
 
 The **# column** always appears as the first column and cannot be toggled off. It shows **fixed row numbers**, like the ID column in MS Project: a task's number is its position in the plan (top to bottom, phases expanded). Sorting, filtering, searching or collapsing a phase changes what you see, not the numbers — sorted by Start you might see 1, 2, 3, 4, 5, 9, 10, 6, 7, and a filter leaves gaps. Adding, moving or dragging a task changes the plan, so numbers below it shift (existing predecessor links are kept — they are stored against the task, not the number). Moving a task's dates (by hand or because a new link pushed it) never changes its number. The Gantt and Table views and the Morning Briefing always show the same number for the same task, and a typed predecessor like `8FS` always means row 8 of the plan, whatever sort or filter is on.
 
@@ -956,9 +957,17 @@ The workload heatmap shows resource utilization across time. It counts every way
 
 **A person's load counts all their projects (October 2026).** On a project's Team and Resources tabs, the heatmap shows each person's whole week — this project plus their other live projects (hover a cell for the split). Costs stay this project's only. The **Overallocated Resources** report lists people who are over 100% *in a week they work on this project*, with columns **Total**, **This project** and **Other projects**, and a week-by-week list: this project's tasks by name, and other work named only if you're on that project (otherwise "Work on another project" with the hours). (Before this, only the hours-per-week bookings counted, so the Heatmap was usually empty.)
 
-- **Green** -- Under-allocated (available capacity).
-- **Yellow** -- Optimally allocated.
-- **Red** -- Over-allocated (overloaded).
+On a project's **Team** tab the cells are coloured:
+
+| Color | Utilization Range |
+|-------|-------------------|
+| Grey, outlined | 0% (no work booked) |
+| Light green | Below 50% |
+| Green | 50%–80% |
+| Yellow | 80%–100% |
+| Red   | Above 100% |
+
+All cell text meets the WCAG AA contrast level (4.5:1) in light and dark mode (October 2026). Empty cells — here and in the Time Tracking Utilization Heatmap — have a thin grey outline so they don't disappear into the page. The company-wide Resources page uses a different scale (see [Resource Management Page](#26-resource-management-page)).
 
 Each cell displays **actual/allocated hours** (e.g., "28/40h") with the utilization percentage below. Hover over a cell for a detailed tooltip showing allocated, actual, capacity, utilization %, and cost. Click a resource name to open their **Resource Profile** modal.
 
@@ -997,7 +1006,7 @@ Resources can have an **overtime rate** separate from the standard cost rate:
 - On a resource's form, under **Cost rate**, choose **Use rate card** (the role's rate, shown with its start date and any upcoming change) or **Own rate** (that person's own hourly and overtime rates). Everyone starts on **Own rate**, so nothing changes until you switch someone.
 - A resource on the rate card whose role has no rate yet is costed at its own rate until one is added.
 - Costs are worked out week by week at that week's rate (Workload Heatmap, cost reports, portfolio).
-- Rates are pay information: only admins, PMO and project managers (and the company owner — including a consultant, who is the PM and owner of their own company) see or change the rate card. Team members and viewers don't see it. Each company's rate card is its own; no other company can see it.
+- Rates are pay information: only PMOs and project managers (and the company owner — including a consultant, who is the PM and owner of their own company) see or change the rate card. Team members and viewers don't see it. Each company's rate card is its own; no other company can see it.
 
 ### Role Capacity Planning
 
@@ -1037,7 +1046,7 @@ Shows planned capacity vs. actual demand for each resource, helping identify whe
 
 ### Resource Forecast
 
-AI-powered forecasting of future resource bottlenecks based on current task assignments and capacity (configurable up to 8 weeks ahead).
+A bottleneck forecast for up to 8 weeks ahead, worked out from current task assignments and capacity. It uses no AI. For AI ideas, the project's PM presses **Suggest how to rebalance** on the Team tab (below).
 
 ### Rebalance Suggestions
 
@@ -1062,7 +1071,7 @@ Workload calculations automatically account for availability — if a resource h
 
 PM Assistant includes a DAG (Directed Acyclic Graph) workflow engine for automating project processes.
 
-**A project's workflow only runs on that project (October 2026).** A workflow saved for a project reacts only to that project's task changes, project changes and AI suggestions, and its steps (notify, run an agent, approve a suggestion) only act on that project. Company-wide workflows — made by a company admin, with no project — still run on every project.
+**A project's workflow only runs on that project (October 2026).** A workflow saved for a project reacts only to that project's task changes, project changes and AI suggestions, and its steps (notify, run an agent, approve a suggestion) only act on that project. Company-wide workflows — made by the company owner or a PMO, with no project — still run on every project.
 
 ### Creating a Workflow
 
@@ -1125,7 +1134,7 @@ All automatic triggers are non-blocking and will not slow down the originating o
 
 ### Execution History
 
-Each workflow run creates an execution record. The **Executions** tab on the Workflows page lists the 50 newest runs on your projects — runs of your projects' workflows, and runs of company-wide workflows on tasks in your projects (an admin, PMO or executive sees every run). For each run you can:
+Each workflow run creates an execution record. The **Executions** tab on the Workflows page lists the 50 newest runs on your projects — runs of your projects' workflows, and runs of company-wide workflows on tasks in your projects (a PMO — including the company owner — or an executive sees every run). For each run you can:
 
 - View the status of each node in the run (pending, running, completed, failed, waiting_approval).
 - See timestamps for when each node started and completed.
@@ -1171,7 +1180,7 @@ Before submitting change requests, project editors/managers can define approval 
 2. Click **Create Workflow** and define:
    - **Name** and **Description**
    - **Entity Type** (e.g., "release", "scope change")
-   - **Steps** — Ordered list of approval stages, each specifying a step name and required approver role (e.g., "Manager Review" → `project_manager`, "Director Sign-off" → `admin`)
+   - **Steps** — Ordered list of approval stages, each specifying a step name and required approver role (e.g., "Manager Review" → `project_manager`, "Director Sign-off" → `pmo` or `executive`). Use a company role (Project Manager, PMO, Executive …): there is no Admin role in a company, so a step that asks for `admin` would never be approved
 3. Workflows cannot be deleted while active change requests reference them.
 
 ### Submitting for Approval
@@ -1191,7 +1200,7 @@ When a change request is pending or in review, authorized reviewers can:
 
 Each action can include an optional comment. The requester receives an in-app notification when their CR is approved, rejected, or returned.
 
-Role enforcement: Each workflow step specifies a required approver role. Users without the matching role (unless they are admins) cannot act on that step.
+Role enforcement: Each workflow step specifies a required approver role. Only people with the matching role can act on that step.
 
 ### Withdrawing
 
@@ -1734,7 +1743,7 @@ All AI surfaces are grouped under the **Mjuzi AI** section in the sidebar. "Ask 
 - Click the **History** button (clock icon) in the chat header to browse past conversations.
 - Click any conversation to reload it and continue where you left off.
 - Click the **+** button to start a new conversation.
-- Mjuzi remembers past interactions about a project for richer, more informed responses. (It can also use the nightly checks' findings, but those checks are switched off today, so there are none to use.)
+- Mjuzi remembers past interactions about a project for richer, more informed responses. (It can also use the nightly checks' findings; those checks are switched off on the live service, so there are none to use there.)
 
 **Self-learning**
 
@@ -1901,7 +1910,7 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 
 > **Trial accounts — Auto-Reschedule:** If you are on a trial plan, the Auto-Reschedule panel shows 3 sample detected delays (API Integration, Database Migration, UI Redesign) and 1 sample AI proposal with an amber banner. The **Generate Proposal** button is disabled. No AI tokens are consumed. Upgrade to a paid plan to run AI-powered reschedule analysis on your real schedule.
 
-> **What a key or a Claude connection can do (October 2026):** never more than your own role. A viewer's or team member's key can only read; a project manager's can also change the projects they manage. Connecting Claude gives it exactly your rights. You can **Revoke** any of your own keys at any time. Revoking a Claude connection ("OAuth: Claude") ends it for good: Claude can't renew it, and you connect Claude again if you want it back. A Claude connection also ends if your account is switched off, you're asked to change your password, or you move to another company. A key or Claude connection can never change your password or delete your account (sign in to do that), and a read-only key can't invite, change or remove company members or guests. When you connect Claude, its sign-in page works like Kovarti's: after 5 wrong passwords that name is locked for 15 minutes, and if you have to change your password or verify your email, do that in Kovarti first.
+> **What a key or a Claude connection can do (October 2026):** never more than your own role. Project managers, PMOs and the company owner can create keys with **read** or **read + write** rights, and a key changes only projects you manage. Team members, viewers and executives can't create keys or webhooks; connecting Claude gives them read-only access. The "admin" right is for the Kovarti platform team only. Connecting Claude gives it exactly your rights. You can **Revoke** any of your own keys at any time. Revoking a Claude connection ("OAuth: Claude") ends it for good: Claude can't renew it, and you connect Claude again if you want it back. A Claude connection also ends if your account is switched off, you're asked to change your password, or you move to another company. A key or Claude connection can never change your password or delete your account (sign in to do that), and a read-only key can't invite, change or remove company members or guests. When you connect Claude, its sign-in page works like Kovarti's: after 5 wrong passwords that name is locked for 15 minutes, and if you have to change your password or verify your email, do that in Kovarti first.
 
 > **Trial accounts — API Keys:** If you are on a trial plan, the API Keys tab in Settings shows 2 sample keys (CI/CD Pipeline, Dashboard Read-Only) with an amber banner. The **Create Key** button is hidden. Upgrade to a paid plan to generate real API keys for programmatic access.
 
@@ -2478,7 +2487,7 @@ Lessons surface automatically at key moments so you benefit from past experience
 
 A **proposal** is a recommended set of changes that waits for the project's PM to review it. Nothing is changed until the PM approves and executes it.
 
-**Nightly checks are switched off.** The automatic nightly checks are not running on Kovarti today, so no new proposals or alerts arrive by themselves. (The earlier promise that "AI agents continuously monitor your projects" no longer applies: those agents were retired in October 2026.) A PM can still run the checks for one project on demand from the project's **Agent Activity** tab (see below).
+**Nightly checks are switched off on the live service.** The automatic nightly checks don't run on Kovarti's live service, so no new proposals or alerts arrive by themselves there. (On the test (staging) service they are switched on, and findings arrive overnight.) (The earlier promise that "AI agents continuously monitor your projects" no longer applies: those agents were retired in October 2026.) A PM can still run the checks for one project on demand from the project's **Agent Activity** tab (see below).
 
 **October 2026:** the checks are now three, with no AI: **slipping tasks** (counted in working days — open the schedule and use AI Reschedule for proposed dates), **budget** (cost performance from the real spend, labour + expenses) and **schedule risk** (Monte Carlo finish later than the plan's end). You get one alert per plan or project until you've read it, not one every night. The other agents were removed — Schedule Review, the Team Planner, EVM, status reports and Lessons already do their jobs better.
 
@@ -2488,7 +2497,7 @@ Access the proposals page from **AI Proposals** in the sidebar (under **Mjuzi AI
 
 **More → Agent Activity** on a project lists every check that ran for it: when, which check (Auto-Reschedule, Budget or Monte Carlo), and the result (**Alert Created**, **Skipped** — nothing wrong — or **Error**). Filter by check with the **All Agents** list. The list keeps the last **180 days** (older entries are cleared each night, since October 2026).
 
-People who can edit the project see **Run AI Analysis**. Despite the name it **uses no AI** and costs no AI credit: it runs the same three rule-based checks for this project straight away, even though the nightly run is switched off.
+People who can edit the project see **Run AI Analysis**. Despite the name it **uses no AI** and costs no AI credit: it runs the same three rule-based checks for this project straight away, even where the nightly run is switched off.
 
 ### Viewing Proposals
 
@@ -2554,15 +2563,15 @@ Each proposal has a risk level that determines its approval requirements:
 
 ### Account and Billing
 
-Open **Account** (command palette → **Go to Account & Billing**, or the AI usage indicator in the sidebar) to manage:
+Open **Account** (command palette, Ctrl+K → **Go to Account & Billing**; or **View usage details →** under the sidebar's AI usage bar, which shows from 70% use) to see:
 
-- **Subscription plan**: The billing page displays your current plan name based on your actual subscription tier (e.g., "Trial", "Consultant Basic Plan", "Consultant Pro Plan", "SME Plan", or "Enterprise Plan"). Paid plans: Consultant Basic ($19/mo or $190/yr, core PM + resources + reports + workflows, no AI), Consultant Pro ($29/mo or $290/yr, core PM + all AI features), SME ($39/mo or $390/yr), and Enterprise ($79/mo or $790/yr). Annual billing saves ~17%. Visit the **Pricing** page to see a full feature comparison matrix across all tiers, with practical usage equivalents explaining what each token budget means (e.g., "~100 AI chats, 50 risk scans").
-- **Payment method**: Managed via Stripe's secure billing portal.
+- **Subscription plan**: The billing page displays your current plan name based on your actual subscription tier (e.g., "Trial", "Consultant Basic Plan", "Consultant Pro Plan", "Team Plan", or "Enterprise Plan"). Paid plans: Consultant Basic ($19/mo or $190/yr, core PM + resources + reports + workflows, no AI), Consultant Pro ($29/mo or $290/yr, core PM + all AI features), **Team** ($19 per seat per month, minimum 3 seats, with 500K AI tokens per seat pooled across the team — called SME in some older places), and Enterprise ($79/mo or $790/yr, not shown on the Pricing page). Annual billing saves ~17%. Visit the **Pricing** page to see a full feature comparison matrix across all tiers, with practical usage equivalents explaining what each token budget means (e.g., "~100 AI chats, 50 risk scans").
+- **Payment method**: Managed via Stripe's secure billing portal (company owner only).
 - **AI usage meter**: A progress bar shows your current-month token consumption vs your effective budget (tier allowance plus any purchased top-up balance), color-coded green (<70%), amber (70–90%), or red (>90%).
 - **Top-up balance**: Your remaining purchased token balance is displayed below the usage meter. Click **Buy More** to purchase additional packs instantly.
 - **Who can buy**: only the company's owner can change the plan, buy AI credits or open the billing portal (since October 2026). Everyone else sees the plan and usage, and asks the owner for changes.
 - **Token top-ups**: If you exhaust your monthly AI tokens, purchase additional packs (500K tokens for $10). Top-up tokens are added instantly and do not expire. When your monthly budget is exhausted, AI features are temporarily unavailable but all other features (scheduling, tasks, reports, collaboration) continue working normally. Your budget resets on the first of each month.
-- **Upgrade to SME**: Consultant Basic and Consultant Pro users see an "Upgrade to SME" card on their billing page. Clicking it initiates a per-seat Stripe checkout for your organization (minimum 3 seats at $19/seat/month). SME includes unlimited viewer invites, 5GB storage, and pooled AI tokens for the whole team.
+- **Moving to the Team plan**: to move to the per-seat **Team** plan (minimum 3 seats at $19/seat/month, unlimited viewer invites, 5GB storage and AI tokens pooled for the whole team), the company owner opens the **Pricing** page. There is no upgrade card on the Account page.
 
 ### Launch Offer
 
@@ -2585,42 +2594,41 @@ All prices are displayed in **USD (US Dollars)**:
 
 Signed in but not the company's owner? The **Pricing** page still shows every plan and which one your company is on, but not the Subscribe / Switch Plan, billing or **Buy Token Pack** buttons; it says "Your company's owner manages the plan, payment and AI top-ups." instead. If billing or a top-up is ever refused, the page now says why instead of doing nothing.
 
-### Settings (Admin/Manager)
+### Settings
 
-Navigate to **Settings** to configure:
+Open **Settings** from the sidebar or from your name (top right). It has up to 13 tabs, and you see only the ones for your role. Everyone has Profile, Company holidays (read-only unless you're the owner or a PMO), Notifications, Display, Accessibility, AI Context, API Keys, Webhooks and Danger Zone. Team and Rate card are for the company owner, PMOs and project managers; Support visits and Sample project for the owner and PMOs.
 
-- **User management** -- Add, edit, or deactivate users. Assign roles (admin, executive, manager, member).
-- **Team & Viewers** -- Manage your team members and invite client stakeholders as viewer accounts (see [Viewer Invites](#viewer-invites) below). Available on Consultant Basic, Consultant Pro, SME, and Enterprise plans. **Note:** Consultant tiers can only invite viewers (the role dropdown is hidden). SME and Enterprise tiers can invite any company role (Project Manager, Team Member, Viewer, Executive, PMO and the other job roles), but non-viewer invites consume a paid seat (auto-added to your Stripe subscription if needed). There is no "Admin" role for company members — admin is reserved for the Kovarti platform team. The company owner's own role can't be changed by anyone else.
-- **API keys** -- Generate and manage API keys for programmatic access. Revoking a key shows a styled confirmation modal before the key is deleted.
-- **Webhooks** -- Configure outbound webhook endpoints. Deleting a webhook shows a styled confirmation modal.
-- **Custom fields** -- Define organization-wide custom fields that appear on tasks and projects.
+- **Team** (company owner, PMOs and project managers) -- **Invite Member**: type an email, pick a role (Project Manager, Team Member, Viewer or Executive) and click **Invite**. Change a member's role from the list, or **Remove member** to take someone out of the company (they lose access to every project); there is no "deactivate". There is no "Admin" role for company members — admin is reserved for the Kovarti platform team. The company owner's own role can't be changed by anyone else. On Consultant plans the role is fixed to **Viewer**; on the Team and Enterprise plans, inviting anyone other than a viewer uses a paid seat (added to your subscription if needed). The same tab has **Guest Collaborators** and **Viewer Invites** (see [Viewer Invites](#viewer-invites) below).
+- **API keys** -- Create and revoke keys for programmatic access, with **read** or **read + write** rights. A key never does more than your own role allows. Only project managers, PMOs and the company owner can create one; team members, viewers and executives are refused (connecting Claude gives them read-only access instead). The tab still shows everyone the Create button and an "admin" choice, but "admin" is for the Kovarti platform team only and is always refused. Revoking a key shows a styled confirmation modal before the key is deleted.
+- **Webhooks** -- Register outbound webhook URLs (project managers, PMOs and the owner; anyone else is refused when they save). Deleting a webhook shows a styled confirmation modal.
+- Custom fields are not a Settings tab: they're set up per project, on the project's **Overview** tab.
 - **Notifications** -- Configure notification preferences per category (Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines) with independent in-app and email toggles. Includes email master toggle, digest frequency, and the following digest customization options:
-  - **Preferred send hour** -- Choose any hour from 0 to 23 (UTC) for your digest email delivery. The default is 7 AM UTC.
+  - **Send time** -- the hour (0–23) your digest arrives, **in your own time zone** (Settings → Display → Time Zone). The default is 7 AM. The box is labelled "Send Time (UTC)", but the hour is used in your own time zone.
   - **Digest section toggles** -- Enable or disable each section of the digest independently: Overdue Tasks, Upcoming Deadlines, Overdue actions (RAID) — the RAID actions you own that are past due, with their project —, Upcoming Meetings, Sprint Status, Recent Changes, Unread Notifications.
   The digest email uses color-coded sections (red for overdue, amber for deadlines, purple for overdue RAID actions, blue for upcoming meetings, green for sprint status, cyan for recent activity). System alerts are always delivered to admin users.
 - **Language** -- Select your preferred display language (English, French, or Spanish). The change applies instantly without a page reload.
 - **Time Zone** -- Set your IANA timezone (e.g., `America/Toronto`). All dates in the application are displayed in this timezone.
 - **Company holidays** -- The company's holiday list, grouped by year. Every project treats these as days off. The company owner (who works as PMO) or a PMO adds one (date + name, **+ Add holiday**) or removes one; the preview shows how many tasks move in how many projects before anything is saved. See [Working Calendar and Company Holidays](#working-calendar-and-company-holidays).
 - **Sample project** (company owner or PMO) -- Shows whether the read-only example "Sample Web App Development" is loaded. **Remove…** asks you to confirm, then deletes the sample project and its example people, sprints, meetings, timesheets and costs; your own projects are not touched. If your own work uses one of the example people (for example a task assigned to them), that person is kept and the page tells you who. **Load** adds it back. While it is loaded it is left out of every total, report and workload. Other people never see this tab.
-- **Rate card** -- Hourly cost rates by role, each with its start date (admins, PMO and project managers only). See [Rate Card](#rate-card).
+- **Rate card** -- Hourly cost rates by role, each with its start date (the company owner, PMOs and project managers only). See [Rate Card](#rate-card).
 - **Support visits** (company owner and PMO) -- Every time Kovarti support looked at your workspace to help with a problem: when, how long and the reason given. Support visits are **read-only** — support can see your projects but can never change anything — and last at most 30 minutes. A visit happening right now is marked **Happening now**.
 
 ### AI Context Settings
 
 Open **Settings > AI Context** to customize how Mjuzi AI responds to you:
 
-- **AI Preferences** -- Set custom instructions (up to 5,000 characters), response style (tone, length, format), forbidden topics, project methodology, and AI creativity/temperature. Your user-level settings override project and org defaults unless locked by an admin.
+- **AI Preferences** -- Set custom instructions (up to 5,000 characters), response style (tone, length, format), forbidden topics, project methodology, and AI creativity/temperature. Your user-level settings override project and org defaults unless a setting has been locked (only Kovarti platform staff can lock one). At the moment only project managers, PMOs and the company owner can save AI Preferences: team members, viewers and executives see the tab, but their save is refused.
 - **Memory Browser** (Kovarti support only since October 2026 — hidden for everyone else) -- View, search, edit, and delete all AI memories. Each memory shows its version number, permission scope (org/project/user), and source. Edit with optimistic locking (if another user changed the memory, you'll see a conflict dialog). Roll back to previous versions from the version history panel.
 - **Dreaming** -- *Switched off (September 2026).* It read users' AI conversations across the platform to suggest memory improvements. The platform doesn't read customers' conversations, so the tab has been removed.
 - **Context Preview** -- See exactly what custom context the AI receives for your current session. Each config entry shows which layer it comes from (org, project, or user) and whether it's locked. The raw prompt injection preview shows the exact text added to the AI system prompt.
 
 **Changing your email (October 2026).** On **Settings → Profile**, when you change your email a **Current Password** box appears; enter your password to save the new email. Changing only your name needs no password. Only the company owner can rename the company.
 
-All nine Settings tabs (Profile, Team, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
+All thirteen Settings tabs (Profile, Team, Company holidays, Sample project, Rate card, Support visits, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
 
 ### Admin AI Usage (Admin Only)
 
-Navigate to **Admin > AI Usage** to monitor AI consumption across your organization. The page has three tabs:
+For the Kovarti platform admin: **Admin > AI Usage** shows AI use across all companies. The page has three tabs:
 
 - **AI Costs** — Per-user AI cost breakdown with summary cards (Total Calls, Total Tokens, Total Cost), a daily cost trend chart, and a sortable table of users by calls, tokens, cost, and last usage date.
 - **Agent Costs** — Per-agent token cost breakdown showing each background agent's invocations, input tokens, output tokens, total tokens, cost, and average tokens per call. Sorted by cost descending.
@@ -2664,22 +2672,22 @@ The application is designed for WCAG 2.2 Level AA compliance:
 
 ### Viewer Invites
 
-Paid plan users (Consultant Basic, Consultant Pro, SME, and Enterprise) can invite external client stakeholders as **viewer accounts** at no extra charge, up to their plan's limit:
+Paid plan users (Consultant Basic, Consultant Pro, Team, and Enterprise) can invite external client stakeholders as **viewer accounts** at no extra charge, up to their plan's limit:
 
 | Plan | Viewer Invite Limit |
 |------|---------------------|
 | Trial | 0 (not available) |
 | Consultant Basic | 5 viewers |
 | Consultant Pro | 15 viewers |
-| SME | 20 viewers |
+| Team | Unlimited |
 | Enterprise | Unlimited |
 
 **Inviting a viewer:**
 
-1. Go to **Settings → Team & Viewers**.
-2. Click **Invite Viewer**.
-3. Enter the invitee's email address and select which project(s) they should have access to.
-4. Click **Send Invite**. The invitee receives an email with a link to create their free viewer account (link expires in 7 days).
+1. Go to **Settings → Team** and scroll to **Viewer Invites**.
+2. Type the invitee's email address.
+3. Click **Invite**. The invitee receives an email with a link to create their free viewer account (link expires in 7 days).
+4. Add the viewer to each project they should see, from that project's **Team** tab (**Add Member**). The invite itself doesn't choose projects.
 
 **Resending an invite:** If an invite expires or the recipient missed the email, go to the **Resources** page. Resources with a **Pending** or **Expired** status badge will show a **Resend** link. Clicking it generates a new 7-day token and sends a fresh invite email. Accepted and revoked invites cannot be resent.
 
@@ -2749,10 +2757,13 @@ Buttons that change company-wide things — New Project, Start, Add person, New 
 |------|-------------|
 | **Admin** | The Kovarti platform team only (October 2026) — not part of any company. Runs the admin pages and can look into a company only through the read-only, recorded Support view. A company owner can't give anyone this role. |
 | **Company owner** | The person who set up the company (October 2026): whatever their role says, they can do everything a **PMO** can inside the company — every project, company-wide workflows and AI settings, resource requests, the people list, holidays, the rate card. Their own role is still what's shown as "your role". |
-| **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management. |
+| **PMO** | Every project in the company, to read and change; company-wide settings (holidays, rate card, sample project, support visits), company-wide workflows, the people list and line managers, and every menu item including Portfolio. |
+| **Project Manager** | Full project lifecycle — projects, AI, reports, scheduling, team management — on the projects they manage. Every menu item except Portfolio. |
 | **Team Member** | Update assigned tasks/RAID items, timesheets, and comments. Write access is granted through assignment-based bypass (same as Viewer). Opens the same pages as a Viewer (see **Sidebar Navigation** for the list); the company-wide pages are hidden. |
 | **Viewer** | Read-only access to assigned projects. Schedules (Gantt, Table, Kanban, Calendar) are fully read-only — no task editing, dragging, or adding. Assignment-based write permissions: log time on assigned tasks, comment on assigned tasks, update RAID actions they own (meeting actions included), upload file attachments to assigned tasks and owned RAID items, update/comment on RAID items they own. Opens only Dashboard, Projects, Lessons, Reports, AI Query and the personal pages; the other menu items are left out of their menu, and typing their address goes to the Dashboard. Free — no seat consumption. |
-| **Executive** | Pure read-only — dashboards, portfolio, and reports. No edits, no comments. |
+| **Executive** | Reads every project in the company and opens the same company pages as a PM — Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Analytics, EVM, Simulation, Scenario Modeling and Report Builder (not Integrations or AI Proposals) — but changes nothing. No edits, no comments. |
+| **Scrum Master, Risk Manager, BA, QA, DevOps** | Can change project data where they are the project's Manager or Owner; otherwise they work like a team member, with a team member's menu. (Tester, Finance Officer and Claude SME are read-only, with the same menu.) |
+| **Guest** | An invited outside collaborator on chosen projects (see [Guest Collaborators](#guest-collaborators)). The same pages as a team member, minus Resources, Workflows, Intake, Integrations, Change Requests and the Settings menu item. |
 
 **My Assignments Widget** *(removed September 2026)*: its tasks and RAID items now appear under **Yours to do** in each project of the Morning Briefing (it also showed archived projects and the old meeting action-item list).
 
@@ -2958,17 +2969,16 @@ A table listing everyone on your company's people list, with name, role, capacit
 
 ### Workload Heatmap
 
-A table showing all resources with weekly utilization percentages rendered as colored cells:
+A table showing all resources with weekly utilization percentages rendered as colored cells. The legend under the table reads:
 
 | Color | Utilization Range |
 |-------|-------------------|
-| Grey, outlined | 0% (no work booked) |
-| Light green | Below 50% |
-| Green | 50%–80% |
-| Yellow | 80%–100% |
-| Red   | Above 100% |
+| Green | 80% or less (Under) — a week with nothing booked is a very faint green |
+| Blue | 80%–100% (Optimal) |
+| Amber | 100%–120% (Warning) |
+| Red   | Above 120% (Critical) |
 
-All cell text meets the WCAG AA contrast level (4.5:1) in light and dark mode (October 2026). Empty cells — here and in the Time Tracking Utilization Heatmap — have a thin grey outline so they don't disappear into the page.
+This page uses its own scale. A project's **Team** tab heatmap uses a different one (grey for nothing booked, then light green, green, yellow and red above 100%) — see [Workload Heatmap](#workload-heatmap) in chapter 8.
 
 Each row displays the resource name, role, average utilization, total cost (for resources with hourly rates), and per-week cells. Hover over a weekly cell to see the allocated hours, capacity, utilization percentage, and cost for that week.
 
@@ -4081,7 +4091,7 @@ In addition to event-driven triggers (e.g., "when a task is completed"), you can
 
 **How it works:**
 - When you enable a scheduled automation, the system computes when it should next run.
-- A background job checks every minute for automations that are due and executes them.
+- A background job checks every 5 minutes for automations that are due and executes them.
 - After each run, the next run time is recalculated.
 - If the server was restarted, missed automations fire once (not once per missed interval).
 
@@ -4182,7 +4192,7 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 - **Contextual support links** -- "Need help? Contact support" links appear on the **login page**, **404 page**, and **error pages**. These mailto links pre-fill the subject and body with your current page URL and timestamp so the support team can diagnose faster.
 - **Error reporting** -- If you encounter a crash (error boundary), a "Report this issue" link lets you email the error details directly to support.
 - **Administrators** -- System configuration and deployment are covered in the Admin Manual (ask your administrator or support for a copy).
-- **API access** -- Generate an API key in Settings to integrate with external tools.
+- **API access** -- Project managers, PMOs and the company owner can create an API key in Settings → API Keys to integrate with external tools.
 
 ### Getting new versions
 

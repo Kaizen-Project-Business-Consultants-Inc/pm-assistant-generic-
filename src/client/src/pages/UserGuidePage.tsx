@@ -104,6 +104,7 @@ const sections: Section[] = [
       'Assign resources and track progress percentages',
       'Drag-and-drop tasks in Kanban and Gantt views',
       'Changed your mind while dragging a bar or drawing a link in the Gantt (or moving a Table row)? Press Escape before letting go — nothing is saved',
+      'Table: switch on Est Days and Work in Columns (saved, and shared with the Gantt); click any column header to sort — empty values always go last',
       'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',
       'Tick several tasks and use Group to put them under a new heading (summary task)',
       'Progress chart: Burndown for Agile and Hybrid projects, S-curve (planned vs earned vs actual cost) for Waterfall',
@@ -256,6 +257,7 @@ const sections: Section[] = [
     description:
       'Get a bird\u2019s-eye view across all your projects.',
     items: [
+      'Who: PMOs (and the company owner) and executives; other roles don\'t have Portfolio in their menu',
       'Cross-project Gantt chart for timeline comparison',
       'Portfolio health dashboard with red/amber/green indicators',
       'Aggregate budget and resource utilization',
@@ -265,15 +267,16 @@ const sections: Section[] = [
   },
   {
     id: 'intelligence',
-    title: 'Intelligence',
+    title: 'Scenario Modeling',
     icon: Brain,
     description:
-      'AI-powered scenario modeling and risk analysis tools.',
+      'Cross-project insights and what-if planning (Insights → Scenario Modeling).',
     items: [
-      'Scenario modeling to compare what-if plans',
-      'Risk heatmap for visual risk prioritization',
-      'Budget analysis with trend detection',
-      'Anomaly detection to flag unusual project patterns',
+      'Who: project managers, PMOs and executives (not team members or viewers)',
+      'Portfolio Intelligence: patterns across your projects',
+      'Anomaly Detection: flags unusual project patterns',
+      'AI Accuracy: how close earlier AI forecasts came to what happened',
+      'What-If Scenario Modeling: compare what-if plans before you change anything',
     ],
   },
   {
@@ -283,6 +286,7 @@ const sections: Section[] = [
     description:
       'Run probabilistic simulations to forecast project outcomes.',
     items: [
+      'Who: project managers, PMOs and executives (Insights → Simulation)',
       'Configure and run simulations with custom parameters',
       'View confidence levels for completion dates and budgets',
       'Sensitivity analysis to identify highest-impact variables',
@@ -294,12 +298,13 @@ const sections: Section[] = [
     title: 'Workflows',
     icon: Workflow,
     description:
-      'Automate repetitive actions with trigger-based rules.',
+      'Build multi-step workflows: a trigger, then conditions, actions and approvals.',
     items: [
-      'Create automation rules with triggers and actions',
-      'Trigger on task status changes, date thresholds, or budget alerts',
-      'Actions include notifications, status updates, and assignments',
-      'Enable or disable rules without deleting them',
+      'Who: project managers, PMOs and executives open Workflows (Manage section); team members and viewers don\'t have it',
+      'Build a workflow from steps (trigger → condition → action or approval), or describe it and click Generate with AI',
+      'A project\'s workflow runs only on that project; company-wide workflows are made by the company owner or a PMO',
+      'Executions lists the 50 newest runs on your projects',
+      'Simple "when X, do Y" rules are under the project\'s Automations tab instead',
     ],
   },
   {
@@ -309,6 +314,7 @@ const sections: Section[] = [
     description:
       'Upload meeting transcripts and let AI extract key information.',
     items: [
+      'Who: project managers, PMOs and executives (Manage → Meeting Intelligence)',
       'Upload or paste meeting transcripts — or pick a Teams meeting under From Teams',
       'From Teams: connect your Microsoft account once (your IT admin approves Kovarti one time); Kovarti reads the Teams transcript and never joins the call',
       "Check who's who: speakers are matched to project members, and your choices are remembered",
@@ -357,7 +363,7 @@ const sections: Section[] = [
       'Open More → Agent Activity on any project',
       'Each check logs its result: alert created, skipped (nothing wrong), or error',
       'Filter by check (Auto-Reschedule, Budget, Monte Carlo)',
-      'The nightly checks are switched off; people who can edit the project can press Run AI Analysis to run them now (despite the name, it uses no AI)',
+      'The nightly checks are switched off on the live service; people who can edit the project can press Run AI Analysis to run them now (despite the name, it uses no AI)',
       'Summaries explain why an alert was or wasn\'t created (e.g., thresholds, metrics)',
       'Paginated log with timestamps for full audit trail',
     ],
@@ -449,7 +455,7 @@ const sections: Section[] = [
       'Define multi-step approval workflows and manage formal change requests with full audit trails.',
     items: [
       'Open the Changes tab on any project (in the More menu)',
-      'Click "Manage Workflows" to define approval steps with roles and actions',
+      'Click "Manage Workflows" to define approval steps, each with the company role that approves it (Project Manager, PMO, Executive …); only the project\'s Manager or Owner, or a PMO, can save them',
       'Create a change request with title, description, category, priority, and impact summary',
       'Submit a CR for approval — it progresses through each workflow step',
       'Approvers can approve, reject, or return CRs with comments',
@@ -478,6 +484,7 @@ const sections: Section[] = [
     description:
       'See who is overloaded, across all projects, and fix it before it happens.',
     items: [
+      'Who: the Resources page is for project managers, PMOs and executives; Team Planner only for people who can change the plan',
       'A person counts at their % on a task (50% of 40 h = 20 h a week); "Assigned To" alone counts as 100%',
       "A week counts only the days a task covers (a task ending on Monday adds one day, not a week); finished and cancelled tasks don't count",
       "A person's load counts all their projects; the Overallocated Resources report shows how much is this project and how much is elsewhere",
@@ -503,6 +510,7 @@ const sections: Section[] = [
     description:
       'Connect with Jira, GitHub, Slack, and Trello to sync tasks and send notifications.',
     items: [
+      'Who: project managers and PMOs (Manage → Integrations)',
       'Navigate to Integrations from the sidebar',
       'For Jira, GitHub and Trello: click "Connect" and enter your API credentials',
       'For Slack: click "Connect Slack" and approve access in the Slack window — no credentials to copy',
@@ -536,6 +544,7 @@ const sections: Section[] = [
     description:
       'Design custom reports with KPI cards, tables, and charts, then export to CSV or PDF.',
     items: [
+      'Who: project managers, PMOs and executives (Insights → Report Builder)',
       'Navigate to Report Builder from the sidebar',
       'Create a new report template with a name and description',
       'Add sections: KPI Card, Table, Bar Chart, Line Chart, or Pie Chart',
@@ -551,6 +560,7 @@ const sections: Section[] = [
     description:
       'Create intake form templates, collect project requests, review submissions, and convert approved requests into projects.',
     items: [
+      'Who: project managers, PMOs and executives (Manage → Intake)',
       'Navigate to Intake from the sidebar',
       'Create a form template with custom fields (text, number, date, dropdown, textarea, checkbox)',
       'Share the form — any team member can fill it out and submit a project request',
@@ -566,13 +576,19 @@ const sections: Section[] = [
     description:
       'Manage your profile, notification preferences, display options, API keys, and webhooks.',
     items: [
+      'You see only the tabs for your role (up to 13)',
       'Profile tab: update your display name, email, and password — a new email needs your current password',
-      'Notifications tab: configure which email and in-app notifications you receive',
-      'Display tab: toggle dark mode and adjust interface preferences',
-      'Rate card tab (owners, PMO and PMs): hourly rates by role, each with a start date — when a rate changes, add a new line; on a resource form choose Use rate card. Only they see people’s cost rates in the people lists too',
-      'Support visits tab (company owner): every time Kovarti support looked at your workspace, read-only, with the reason they gave',
-      'API Keys tab: create and manage API keys for external agent access',
-      'Webhooks tab: register webhook URLs to receive real-time event notifications',
+      'Team tab: the company owner invites members, changes roles and removes members; the owner and project managers invite guests and viewers',
+      'Company holidays tab: everyone sees the list; the owner or a PMO changes it',
+      'Sample project tab (owner and PMOs): load or remove the read-only example project',
+      'Rate card tab (owner, PMOs and PMs): hourly rates by role, each with a start date — when a rate changes, add a new line; on a resource form choose Use rate card. Only they see people’s cost rates in the people lists too',
+      'Support visits tab (company owner and PMOs): every time Kovarti support looked at your workspace, read-only, with the reason they gave',
+      'Notifications tab: which email and in-app notifications you get, and your digest; the digest send hour is in your own time zone',
+      'Display tab: dark mode, language, time zone and interface preferences',
+      'Accessibility tab: your own accessibility preferences',
+      'AI Context tab: how Mjuzi answers you; saving AI Preferences works for PMs, PMOs and the owner',
+      'API Keys tab: create and manage API keys (PMs, PMOs and the owner)',
+      'Webhooks tab: register webhook URLs to receive real-time event notifications (PMs, PMOs and the owner)',
       'Danger Zone: delete your account (irreversible)',
     ],
   },
@@ -583,8 +599,9 @@ const sections: Section[] = [
     description:
       'Create API keys so external AI agents or scripts can authenticate and interact with the application programmatically.',
     items: [
-      'Navigate to Settings → API Keys tab to create a new key',
-      'Choose a name and select scopes: read, write, or admin',
+      'Project managers, PMOs and the company owner (paid plans; Trial shows sample keys): Settings → API Keys → create a key with read or read + write rights',
+      'A key can never do more than your own role, and changes only projects you manage; "admin" is for the Kovarti platform team only and is refused',
+      'Team members, viewers and executives can\'t create keys or webhooks; connecting Claude gives them read-only access',
       'The full API key (kpm_...) is shown only once — copy it immediately',
       'Use the key as a Bearer token: Authorization: Bearer kpm_...',
       'Each key has its own rate limit (default 100 requests/minute)',
@@ -601,10 +618,11 @@ const sections: Section[] = [
     description:
       'Register webhook endpoints to receive real-time HTTP POST notifications when events occur in your projects.',
     items: [
-      'Navigate to Settings → Webhooks tab to register a new webhook',
+      'Project managers, PMOs and the company owner: Settings → Webhooks tab to register a new webhook',
       'Provide a URL and select which events to subscribe to',
-      'Supported events: task.created, task.updated, task.deleted, project.created, project.updated, proposal.created, proposal.accepted, agent.scan_completed',
-      'Each webhook receives an HMAC-SHA256 signature in the X-Signature header for verification',
+      'Events you can tick: task.created, task.updated, task.deleted, project.created, project.updated, proposal.created, proposal.accepted, agent.scan_completed (only when the nightly checks run, which they don\'t on the live service)',
+      'Also sent, but only subscribable through the API for now: sprint.created, sprint.started, sprint.completed, risk.created, risk.updated, change_request.created, change_request.withdrawn',
+      'Each delivery has an HMAC-SHA256 signature in the X-Webhook-Signature header for verification',
       'Use the "Test" button to send a test ping to your endpoint',
       'Webhooks auto-disable after 5 consecutive delivery failures',
       'View failure count and last status code for troubleshooting',
@@ -676,10 +694,9 @@ const sections: Section[] = [
     description:
       'Manage your subscription, billing, and account settings.',
     items: [
-      'View current plan and usage',
-      'Upgrade, downgrade, or cancel your subscription',
+      'Everyone: see the current plan and AI usage on Account (Ctrl+K → Go to Account & Billing)',
+      'The company owner only: upgrade, change or cancel the plan, buy AI top-ups and manage payment (Stripe portal)',
       'Start on the free Trial plan; a paid plan becomes active once payment is confirmed',
-      'Manage payment methods via Stripe portal',
     ],
   },
 ];

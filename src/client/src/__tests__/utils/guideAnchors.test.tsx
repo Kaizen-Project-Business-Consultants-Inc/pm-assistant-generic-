@@ -74,6 +74,40 @@ describe('docs/USER_GUIDE.md links (in-app reader /help/guide)', () => {
   });
 });
 
+/**
+ * The reader leaves out "(Admin Only)" / "(Admin/Manager)" sections for people who can't use them
+ * (splitUserGuide's role), so check the guide as each role sees it, not only as an admin
+ * (audit 2 part 7, 2026-10-09): every link that role can see still lands, and the sections
+ * everyone uses (their own settings) are never hidden from them.
+ */
+const READER_ROLES = ['admin', 'pmo', 'project_manager', 'executive', 'team_member', 'viewer'];
+const EVERYONE_SEES = ['settings', 'ai-context-settings', 'viewer-invites', 'reversing-a-decision-project-manager-or-owner-and-pmo'];
+
+describe('docs/USER_GUIDE.md as each role reads it', () => {
+  it.each(READER_ROLES)('every link a %s can see lands', role => {
+    const chapters = splitUserGuide(guide, role);
+    const broken: string[] = [];
+    for (const c of chapters) {
+      for (const m of c.markdown.matchAll(/\]\(#([^)\s]+)\)/g)) {
+        const id = decodeURIComponent(m[1]);
+        if (!findGuideAnchor(chapters, id)) broken.push(`${c.id}:#${id}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+
+  it.each(READER_ROLES)('a %s sees the sections everyone uses', role => {
+    const ids = new Set(splitUserGuide(guide, role).flatMap(c => c.headingIds));
+    expect(EVERYONE_SEES.filter(id => !ids.has(id))).toEqual([]);
+  });
+
+  it('admin-only sections are still left out for company roles (the filter is live)', () => {
+    const ids = (role: string) => new Set(splitUserGuide(guide, role).flatMap(c => c.headingIds));
+    expect(ids('admin').has('admin-ai-usage-admin-only')).toBe(true);
+    expect(ids('pmo').has('admin-ai-usage-admin-only')).toBe(false);
+  });
+});
+
 describe('in-app quick guide (/help) contents list', () => {
   afterEach(cleanup);
 
