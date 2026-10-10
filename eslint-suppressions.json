@@ -108,10 +108,10 @@
       "count": 2
     },
     "jsx-a11y/click-events-have-key-events": {
-      "count": 3
+      "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 3
+      "count": 1
     }
   },
   "src/client/src/components/attachments/AttachmentVersionHistory.tsx": {
@@ -237,13 +237,7 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 3
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 2
     }
   },
@@ -253,14 +247,8 @@
     }
   },
   "src/client/src/components/feedback/FeedbackModal.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 4
-    },
     "jsx-a11y/label-has-associated-control": {
       "count": 3
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 4
     }
   },
   "src/client/src/components/intake/IntakeReviewPanel.tsx": {
@@ -285,12 +273,6 @@
   "src/client/src/components/integrations/SyncLogPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "src/client/src/components/landing/TourVideo.tsx": {
@@ -342,11 +324,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "src/client/src/components/layout/Sidebar.tsx": {
-    "@typescript-eslint/no-floating-promises": {
       "count": 1
     }
   },
@@ -555,12 +532,6 @@
   "src/client/src/components/reports/InstantReportModal.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "src/client/src/components/reports/ReportDesigner.tsx": {
@@ -615,25 +586,11 @@
   "src/client/src/components/resources/ResourceImportModal.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "src/client/src/components/resources/ResourceLevelingPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
-    }
-  },
-  "src/client/src/components/resources/ResourceProfileModal.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "src/client/src/components/resources/ResourceRequestApprovalPanel.tsx": {
@@ -671,12 +628,6 @@
   },
   "src/client/src/components/risks/RAIDReportModal.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 2
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 2
     }
   },
@@ -1013,13 +964,7 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 1
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -1143,12 +1088,6 @@
   "src/client/src/pages/AgentProposalsPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 7
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "src/client/src/pages/AnalyticsPage.tsx": {
@@ -1193,10 +1132,10 @@
       "count": 2
     },
     "jsx-a11y/click-events-have-key-events": {
-      "count": 3
+      "count": 2
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 3
+      "count": 2
     },
     "react-hooks/exhaustive-deps": {
       "count": 2
@@ -1236,13 +1175,13 @@
       "count": 10
     },
     "jsx-a11y/click-events-have-key-events": {
-      "count": 3
+      "count": 1
     },
     "jsx-a11y/label-has-associated-control": {
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 3
+      "count": 1
     }
   },
   "src/client/src/pages/LoginPage.tsx": {
@@ -1325,14 +1264,8 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 8
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
       "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -1396,24 +1329,12 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 2
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
     "jsx-a11y/label-has-associated-control": {
       "count": 4
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 2
     }
   },
   "src/client/src/pages/ProjectDetailPage/StrategicRiskScanModal.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
@@ -1441,13 +1362,7 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 20
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     },
     "prefer-const": {
@@ -1494,10 +1409,10 @@
       "count": 2
     },
     "jsx-a11y/click-events-have-key-events": {
-      "count": 2
+      "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 2
+      "count": 1
     }
   },
   "src/client/src/pages/ResourceManagementPage.tsx": {
@@ -1543,12 +1458,6 @@
   "src/client/src/pages/WorkflowPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 4
-    },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "src/client/src/pages/admin/AdminFeedbackPage.tsx": {
@@ -1576,13 +1485,7 @@
     "@typescript-eslint/no-floating-promises": {
       "count": 3
     },
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
-      "count": 2
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 2
     },
     "no-extra-boolean-cast": {
