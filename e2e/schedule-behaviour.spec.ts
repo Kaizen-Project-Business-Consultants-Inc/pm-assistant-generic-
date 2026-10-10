@@ -306,8 +306,11 @@ test('Gantt keyboard: arrows move between cells, Enter edits, Escape cancels, Ta
   await expect(await ganttCell(page, ids.design, 'Task Name')).toHaveClass(isFocusedCell);
 
   // Tab while editing saves and edits the next field — today that is Predecessors
-  // (the fixed field order Name → Pred → Start → End → Dur …, not the column order on screen)
-  await page.keyboard.press('Enter');
+  // (the fixed field order Name → Pred → Start → End → Dur …, not the column order on screen).
+  // The list was entered by a click, so that Escape also left it (K1/K2): click the selected row's
+  // name again, which opens its editor.
+  await (await ganttCell(page, ids.design, 'Task Name')).click();
+  await expect(input).toBeFocused();
   await input.fill('Design');
   await page.keyboard.press('Tab');
   await expect(ganttRow(page, ids.design).locator('input[placeholder="e.g. 3FS"]')).toBeFocused();
