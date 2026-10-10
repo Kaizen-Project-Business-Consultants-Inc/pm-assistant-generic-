@@ -11,6 +11,7 @@ import type { useGanttLayout } from './hooks/useGanttLayout';
 import type { useDependencyDraw } from './hooks/useDependencyDraw';
 import type { useGridKeyboard } from './hooks/useGridKeyboard';
 import type { useInlineCellEdit } from '../shared/hooks/useInlineCellEdit';
+import { GridKeyboardHelp, GANTT_GRID_HELP_ID } from '../shared/GridKeyboardHelp';
 
 type Columns = ReturnType<typeof useGanttColumns>;
 type Filtering = ReturnType<typeof useTaskFiltering>;
@@ -138,11 +139,15 @@ export function GanttGridPanel({
   onBulkUpdate, onTaskClick, onTaskReorder, onTaskUpdate, onInsertAfter, onDeleteTask,
 }: GanttGridPanelProps) {
   return (
+    <>
+    {/* One Tab stop: tabbing onto the grid starts list mode on the active or first row (useGridFocusScope) */}
     <div
       ref={leftPanelRef}
       role="grid"
       aria-label="Task list"
-      className="flex-shrink-0 overflow-y-auto overflow-x-auto scrollbar-hide"
+      aria-describedby={GANTT_GRID_HELP_ID}
+      tabIndex={0}
+      className="flex-shrink-0 overflow-y-auto overflow-x-auto scrollbar-hide focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
       style={{ width: panelMode === 'table' ? '100%' : tableWidth }}
     >
       {/* Table header */}
@@ -385,5 +390,7 @@ export function GanttGridPanel({
       ))}
       </div>
     </div>
+    <GridKeyboardHelp id={GANTT_GRID_HELP_ID} editable={!!onTaskUpdate} focusedCell={editingCell ? null : focusedCell} taskById={taskById} />
+    </>
   );
 }

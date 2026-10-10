@@ -23,6 +23,7 @@ import { useInlineCellEdit, TABLE_EDIT_RULES } from './shared/hooks/useInlineCel
 import { useUnmountSafeTimeouts } from './shared/hooks/useUnmountSafeTimeouts';
 import { useGridCellState } from './shared/hooks/useGridKeyboardPaste';
 import { useTableKeyboard } from './table/hooks/useTableKeyboard';
+import { GridKeyboardHelp, TABLE_GRID_HELP_ID } from './shared/GridKeyboardHelp';
 import {
   barColors, priorityColors, statusOptions, priorityOptions,
   formatDate,
@@ -1433,7 +1434,14 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         style={{ maxHeight: 'calc(100vh - 280px)' }}
         onScroll={useVirtualization ? (e) => setScrollTop((e.target as HTMLDivElement).scrollTop) : undefined}
       >
-        <table className="text-sm" role="grid" style={{ minWidth: '100%' }}>
+        {/* One Tab stop: tabbing onto the table starts list mode on the active or first row (useGridFocusScope) */}
+        <table
+          className="text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+          role="grid"
+          aria-describedby={TABLE_GRID_HELP_ID}
+          tabIndex={0}
+          style={{ minWidth: '100%' }}
+        >
           <caption className="sr-only">
             Project schedule tasks
             {/* Read out as the description of each Budget / Actual Cost cell */}
@@ -1693,6 +1701,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           </tbody>
         </table>
       </div>
+      <GridKeyboardHelp id={TABLE_GRID_HELP_ID} editable={!!(onTaskUpdate || onBulkUpdate)} focusedCell={editingCell ? null : focusedCell} taskById={taskById} />
 
       {/* Notes popup editor */}
       {notesPopup && (
