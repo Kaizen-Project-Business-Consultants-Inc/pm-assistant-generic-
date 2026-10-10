@@ -1,13 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useId } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Upload, FileText, AlertTriangle, CheckCircle } from 'lucide-react';
 import { apiService } from '../../services/api';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface ResourceImportModalProps {
   onClose: () => void;
 }
 
 export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
+  const titleId = useId();
   const queryClient = useQueryClient();
   const [csvText, setCsvText] = useState('');
   const [fileName, setFileName] = useState('');
@@ -56,10 +58,15 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
   const result = importMutation.data;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      busy={importMutation.isPending}
+      labelledBy={titleId}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto m-4"
+    >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Import Resources from CSV</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-white">Import Resources from CSV</h2>
           <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close"><X className="w-5 h-5" /></button>
         </div>
 
@@ -194,7 +201,6 @@ export function ResourceImportModal({ onClose }: ResourceImportModalProps) {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

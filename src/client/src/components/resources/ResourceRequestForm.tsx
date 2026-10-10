@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Plus } from 'lucide-react';
 import { apiService } from '../../services/api';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface ResourceRequestFormProps {
   isOpen: boolean;
   onClose: () => void;
@@ -72,10 +73,17 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      busy={mutation.isPending}
+      backdropClassName="bg-black/40"
+      closeOnBackdrop={false}
+      labelledBy={`${uid}-dialog-title`}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto"
+    >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h2 id={`${uid}-dialog-title`} className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {isEdit ? 'Edit Resource Request' : 'New Resource Request'}
           </h2>
           <button onClick={onClose} aria-label="Close" className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
@@ -246,7 +254,6 @@ export function ResourceRequestForm({ isOpen, onClose, editingRequest }: Resourc
             <p className="text-sm text-red-600">{(mutation.error as any)?.response?.data?.error || (mutation.error as Error).message}</p>
           )}
         </form>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

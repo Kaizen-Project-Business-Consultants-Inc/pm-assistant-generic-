@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown, X } from 'lucide-react';
 import { useCanManageBilling } from '../../hooks/useCanManageBilling';
+import { AccessibleModal } from '../ui/AccessibleModal';
 
 interface BlockDetail {
   message?: string;
@@ -17,6 +18,8 @@ export function UpgradePrompt() {
   const [detail, setDetail] = useState<BlockDetail | null>(null);
   // Only the company owner pays; everyone else is told who does instead of being sent to Pricing
   const canBill = useCanManageBilling();
+  const titleId = useId();
+  const bodyId = useId();
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -38,8 +41,14 @@ export function UpgradePrompt() {
   const ctaLabel = awaitingPayment ? 'Complete Checkout' : 'View Plans';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-md mx-4 relative">
+    <AccessibleModal
+      isOpen
+      onClose={() => setVisible(false)}
+      labelledBy={titleId}
+      describedBy={bodyId}
+      closeOnBackdrop={false}
+      className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-md mx-4"
+    >
         <button
           onClick={() => setVisible(false)}
           aria-label="Close"
@@ -50,10 +59,10 @@ export function UpgradePrompt() {
 
         <div className="text-center">
           <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center mx-auto mb-4">
-            <Crown className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+            <Crown className="w-6 h-6 text-amber-600 dark:text-amber-400" aria-hidden="true" />
           </div>
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{heading}</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
+          <h3 id={titleId} className="text-lg font-bold text-gray-900 dark:text-white mb-2">{heading}</h3>
+          <p id={bodyId} className="text-sm text-gray-600 dark:text-gray-300 mb-6">
             {body}
             {!canBill && <> Your company's owner manages the plan.</>}
           </p>
@@ -75,7 +84,6 @@ export function UpgradePrompt() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

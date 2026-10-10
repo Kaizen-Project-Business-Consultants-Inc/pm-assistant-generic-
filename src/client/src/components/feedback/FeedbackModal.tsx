@@ -2,6 +2,7 @@ import React, { useState, useRef, useId } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { X, Star, Send, Camera, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { AccessibleModal } from '../ui/AccessibleModal';
 
 interface FeedbackModalProps {
   onClose: () => void;
@@ -131,12 +132,11 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
 
   if (submitted) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 text-center" onClick={(e) => e.stopPropagation()}>
-          <div className="text-4xl mb-3">&#10024;</div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h2>
+      <AccessibleModal isOpen onClose={onClose} labelledBy={`${uid}-thanks`} className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+          <div className="text-4xl mb-3" aria-hidden="true">&#10024;</div>
+          <h2 id={`${uid}-thanks`} className="text-xl font-bold text-gray-900 dark:text-white mb-2">Thank you!</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Your feedback helps us improve Kovarti PM. You can track your submissions on the <a href="/my-feedback" className="text-primary-600 hover:text-primary-700 underline">My Feedback</a> page.
+            Your feedback helps us improve Kovarti PM. You can track your submissions on the <a href="/my-feedback" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 underline">My Feedback</a> page.
           </p>
           <button
             onClick={onClose}
@@ -144,20 +144,21 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           >
             Close
           </button>
-        </div>
-      </div>
+      </AccessibleModal>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
-        onPaste={handlePaste}
-      >
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={`${uid}-title`}
+      busy={mutation.isPending}
+      onPaste={handlePaste}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"
+    >
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Share Your Feedback</h2>
+          <h2 id={`${uid}-title`} className="text-lg font-semibold text-gray-900 dark:text-white">Share Your Feedback</h2>
           <button aria-label="Close" onClick={onClose} className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
@@ -167,7 +168,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
           {/* Overall Rating */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              How would you rate your overall experience? <span className="text-red-500">*</span>
+              How would you rate your overall experience? <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <StarRating value={overallRating} onChange={setOverallRating} />
             {overallRating === 0 && mutation.isError && (
@@ -286,7 +287,6 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({ onClose }) => {
             {mutation.isPending ? 'Submitting...' : 'Submit Feedback'}
           </button>
         </form>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 };

@@ -7,6 +7,7 @@ import { announce } from '../../utils/announce';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { useProjectRole } from '../../hooks/useProjectRole';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface AttachmentPanelProps {
   entityType: 'task' | 'project';
   entityId: string;
@@ -164,7 +165,7 @@ export function AttachmentPanel({ entityType, entityId, projectId }: AttachmentP
                   {formatSize(att.fileSize)} &middot; v{att.version} &middot; {new Date(att.createdAt).toLocaleDateString('en-US')}
                 </p>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                 <button onClick={() => setVersionHistoryId(att.id)} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" title="Version history" aria-label="Version history">
                   <Clock className="w-3.5 h-3.5" />
                 </button>
@@ -195,11 +196,14 @@ export function AttachmentPanel({ entityType, entityId, projectId }: AttachmentP
 
       {/* Preview modal */}
       {previewUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { setPreviewUrl(null); }}>
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-2 max-w-3xl max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+        <AccessibleModal
+          isOpen
+          onClose={() => { setPreviewUrl(null); }}
+          ariaLabel="File preview"
+          className="bg-white dark:bg-gray-800 rounded-xl p-2 max-w-3xl max-h-[85vh] overflow-auto"
+        >
             <img src={previewUrl} alt="Preview" className="max-w-full" onError={() => setPreviewUrl(null)} />
-          </div>
-        </div>
+        </AccessibleModal>
       )}
 
       {deleteConfirmId && (

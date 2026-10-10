@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   X,
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
   integrationId,
   onClose,
 }) => {
+  const titleId = useId();
   const queryClient = useQueryClient();
 
   const {
@@ -90,17 +92,17 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Panel */}
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={titleId}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl mx-4 max-h-[85vh] flex flex-col"
+    >
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-white">
               Sync History
             </h2>
           </div>
@@ -252,7 +254,6 @@ export const SyncLogPanel: React.FC<SyncLogPanelProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 };

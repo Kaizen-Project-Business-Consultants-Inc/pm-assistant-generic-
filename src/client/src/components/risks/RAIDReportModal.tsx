@@ -4,6 +4,7 @@ import { FileText, X, Download, Mail, Calendar, Trash2, Lock, RefreshCw } from '
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface Props {
   projectId: string;
   projectName: string;
@@ -141,12 +142,17 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
   const checkboxLabelClass = 'inline-flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      backdropClassName="bg-black/40"
+      labelledBy={`${uid}-dialog-title`}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+    >
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-primary-500" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">RAID Report — {projectName}</h2>
+            <h2 id={`${uid}-dialog-title`} className="text-lg font-semibold text-gray-900 dark:text-white">RAID Report — {projectName}</h2>
           </div>
           <div className="flex items-center gap-2">
             {html && !isSample && (
@@ -445,7 +451,6 @@ export function RAIDReportModal({ projectId, projectName, members, onClose }: Pr
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

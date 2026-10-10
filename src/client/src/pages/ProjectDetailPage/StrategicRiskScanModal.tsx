@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ShieldAlert, X, Download, Loader2 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../../services/api';
 
+import { AccessibleModal } from '../../components/ui/AccessibleModal';
 export function StrategicRiskScanModal({ projectId, projectName, onClose }: { projectId: string; projectName: string; onClose: () => void }) {
+  const titleId = useId();
   const [scanResult, setScanResult] = useState<any>(null);
   const [isSample, setIsSample] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -83,14 +85,19 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl mx-4 my-8">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      overlayClassName="z-50 flex items-start justify-center overflow-y-auto"
+      backdropClassName="fixed bg-black/50"
+      labelledBy={titleId}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl mx-4 my-8"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <ShieldAlert className="w-5 h-5 text-amber-600" />
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Strategic Risk Scan</h2>
+            <h2 id={titleId} className="text-lg font-bold text-gray-900 dark:text-white">Strategic Risk Scan</h2>
             {isSample && (
               <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Sample</span>
             )}
@@ -155,7 +162,6 @@ export function StrategicRiskScanModal({ projectId, projectName, onClose }: { pr
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

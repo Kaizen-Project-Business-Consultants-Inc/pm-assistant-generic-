@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Target, Plus, ChevronDown, ChevronRight, Edit2, Trash2, X } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { AccessibleModal } from '../components/ui/AccessibleModal';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { useAuthStore } from '../stores/authStore';
 
@@ -156,12 +157,16 @@ const GoalModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={`${uid}-title`}
+      busy={isSubmitting}
+      className="w-full max-w-lg mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh]"
+    >
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Target className="w-5 h-5 text-green-600" />
+          <h2 id={`${uid}-title`} className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <Target className="w-5 h-5 text-green-600" aria-hidden="true" />
             {title}
           </h2>
           <button onClick={onClose} className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Close">
@@ -250,12 +255,11 @@ const GoalModal: React.FC<{
         <div className="flex justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
           {error && <p role="alert" className="mr-auto text-sm text-red-700 dark:text-red-300">{error}</p>}
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">Cancel</button>
-          <button onClick={() => { if (form.name.trim()) onSubmit(form); }} disabled={isSubmitting || !form.name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
+          <button onClick={() => { if (form.name.trim()) onSubmit(form); }} disabled={isSubmitting || !form.name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors">
             {isSubmitting ? 'Saving…' : 'Save'}
           </button>
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 };
 
@@ -309,9 +313,22 @@ const ObjectiveRow: React.FC<{ obj: Goal; onEdit: (g: Goal) => void; onDelete: (
   return (
     <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
       <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors" onClick={() => hasChildren && setExpanded(!expanded)}>
-        <div className="w-5 h-5 flex items-center justify-center text-gray-500 dark:text-gray-400">
-          {hasChildren ? (expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : <Target className="w-4 h-4 text-green-500" />}
-        </div>
+        {hasChildren ? (
+          // The whole row still toggles on click; this is the keyboard / screen-reader control
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+            aria-expanded={expanded}
+            aria-label={`Key results for ${obj.name}`}
+            className="w-5 h-5 flex items-center justify-center text-gray-500 dark:text-gray-400 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+          >
+            {expanded ? <ChevronDown className="w-4 h-4" aria-hidden="true" /> : <ChevronRight className="w-4 h-4" aria-hidden="true" />}
+          </button>
+        ) : (
+          <div className="w-5 h-5 flex items-center justify-center text-gray-500 dark:text-gray-400">
+            <Target className="w-4 h-4 text-green-500" aria-hidden="true" />
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">{obj.name}</p>
           {owner && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Owner: {owner}</p>}
@@ -325,8 +342,8 @@ const ObjectiveRow: React.FC<{ obj: Goal; onEdit: (g: Goal) => void; onDelete: (
         </div>
         {obj.dueDate && <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{obj.dueDate.slice(0, 10)}</span>}
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-          <button onClick={() => onEdit(obj)} className="p-1 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit objective"><Edit2 className="w-3.5 h-3.5" /></button>
-          <button onClick={() => onDelete(obj.id)} className="p-1 rounded text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Delete objective"><Trash2 className="w-3.5 h-3.5" /></button>
+          <button onClick={() => onEdit(obj)} className="p-1 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Edit objective ${obj.name}`}><Edit2 className="w-3.5 h-3.5" /></button>
+          <button onClick={() => onDelete(obj.id)} className="p-1 rounded text-gray-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Delete objective ${obj.name}`}><Trash2 className="w-3.5 h-3.5" /></button>
         </div>
       </div>
       {expanded && hasChildren && (
@@ -419,7 +436,7 @@ export const GoalsPage: React.FC = () => {
           <Target className="w-6 h-6 text-green-600" />
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Goals & OKRs</h1>
         </div>
-        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors">
+        <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-700 rounded-lg hover:bg-green-800 transition-colors">
           <Plus className="w-4 h-4" /> New Goal
         </button>
       </div>

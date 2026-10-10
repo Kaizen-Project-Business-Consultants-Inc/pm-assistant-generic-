@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { X } from 'lucide-react';
+import { AccessibleModal } from '../../../components/ui/AccessibleModal';
 
 interface ResourceLevelingModalProps {
   result: any[];
@@ -8,11 +9,18 @@ interface ResourceLevelingModalProps {
 }
 
 export const ResourceLevelingModal = React.memo(function ResourceLevelingModal({ result, onClose, onApply }: ResourceLevelingModalProps) {
+  const titleId = useId();
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[70vh] flex flex-col">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={titleId}
+      closeOnBackdrop={false}
+      backdropClassName="bg-black/40"
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[70vh] flex flex-col"
+    >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Resource Leveling</h3>
+          <h3 id={titleId} className="text-base font-semibold text-gray-900 dark:text-white">Resource Leveling</h3>
           <button onClick={onClose} aria-label="Close" className="text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-4 h-4" />
           </button>
@@ -55,7 +63,6 @@ export const ResourceLevelingModal = React.memo(function ResourceLevelingModal({
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </AccessibleModal>
   );
 });

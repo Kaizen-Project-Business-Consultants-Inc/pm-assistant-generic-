@@ -27,6 +27,7 @@ import {
 import { apiService } from '../services/api';
 import { PatternCard } from '../components/lessons/PatternCard';
 
+import { AccessibleModal } from '../components/ui/AccessibleModal';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -147,8 +148,8 @@ function statusBadge(status?: string) {
 
 function sourceIcon(sourceType?: string) {
   switch (sourceType) {
-    case 'ai_extracted': return <span title="AI Extracted"><Sparkles className="w-3 h-3 text-purple-500" /></span>;
-    case 'agent': return <span title="Agent Generated"><Bot className="w-3 h-3 text-indigo-500" /></span>;
+    case 'ai_extracted': return <span title="AI Extracted"><Sparkles className="w-3 h-3 text-purple-500 dark:text-purple-400" /></span>;
+    case 'agent': return <span title="Agent Generated"><Bot className="w-3 h-3 text-indigo-500 dark:text-indigo-400" /></span>;
     case 'seeded': return <span title="Auto-seeded"><Database className="w-3 h-3 text-gray-500" /></span>;
     case 'manual': return <span title="Manual Entry"><User className="w-3 h-3 text-gray-500" /></span>;
     default: return null;
@@ -206,12 +207,16 @@ const AddLessonModal: React.FC<{
     setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-lg mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      busy={isSubmitting}
+      labelledBy={`${uid}-dialog-title`}
+      className="w-full max-w-lg mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col max-h-[90vh]"
+    >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 id={`${uid}-dialog-title`} className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Plus className="w-5 h-5 text-primary-500" />
             {modalTitle || 'Add Lesson Learned'}
           </h2>
@@ -228,13 +233,13 @@ const AddLessonModal: React.FC<{
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4">
           <div>
             <label htmlFor={`${uid}-title`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Title <span className="text-red-500">*</span>
+              Title <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <input id={`${uid}-title`} type="text" value={form.title} onChange={(e) => update('title', e.target.value)} className="input w-full" placeholder="Brief title for the lesson..." required />
           </div>
           <div>
             <label htmlFor={`${uid}-description`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              Description <span className="text-red-500">*</span>
+              Description <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <textarea id={`${uid}-description`} value={form.description} onChange={(e) => update('description', e.target.value)} className="input w-full resize-y" rows={3} placeholder="Detailed description of what was learned..." required />
           </div>
@@ -292,8 +297,7 @@ const AddLessonModal: React.FC<{
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 };
 
@@ -600,9 +604,9 @@ export const LessonsLearnedPage: React.FC = () => {
             {extractLessonsMutation.isPending ? <div className="w-3.5 h-3.5 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin" /> : <Lightbulb className="w-3.5 h-3.5" />}
             Extract Lessons from {selectedProject?.name || 'Project'}
           </button>
-          {extractLessonsMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Extracted as drafts</span>}
-          {seedMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Knowledge base seeded</span>}
-          {detectPatternsMutation.isSuccess && <span className="text-xs text-green-600 font-medium">Patterns detected</span>}
+          {extractLessonsMutation.isSuccess && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Extracted as drafts</span>}
+          {seedMutation.isSuccess && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Knowledge base seeded</span>}
+          {detectPatternsMutation.isSuccess && <span className="text-xs text-green-600 dark:text-green-400 font-medium">Patterns detected</span>}
         </div>
       )}
 
@@ -763,7 +767,7 @@ export const LessonsLearnedPage: React.FC = () => {
                     <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">{lesson.title}</h3>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       {lesson.isElevated && (
-                        <span title="Elevated to org-wide"><ArrowUpCircle className="w-3.5 h-3.5 text-amber-500" /></span>
+                        <span title="Elevated to org-wide"><ArrowUpCircle className="w-3.5 h-3.5 text-amber-500 dark:text-amber-400" /></span>
                       )}
                       {statusBadge(lesson.status)}
                       {severityBadge(lesson.severity)}
@@ -859,9 +863,13 @@ export const LessonsLearnedPage: React.FC = () => {
 
       {/* Delete Confirmation Modal */}
       {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmDeleteId(null)} />
-          <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4">
+        <AccessibleModal
+          isOpen
+          onClose={() => setConfirmDeleteId(null)}
+          ariaLabel="Delete Lesson"
+          busy={deleteLessonMutation.isPending}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-sm mx-4"
+        >
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Delete Lesson</h3>
             <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Are you sure you want to delete this lesson? This cannot be undone.</p>
             <div className="flex justify-end gap-3">
@@ -870,8 +878,7 @@ export const LessonsLearnedPage: React.FC = () => {
                 {deleteLessonMutation.isPending ? 'Deleting...' : 'Delete'}
               </button>
             </div>
-          </div>
-        </div>
+        </AccessibleModal>
       )}
     </div>
   );

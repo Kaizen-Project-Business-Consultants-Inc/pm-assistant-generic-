@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, User, Briefcase, Clock, TrendingUp } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -6,6 +7,7 @@ import { getInitials, getAvatarColor } from '../ui/Avatar';
 import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface ResourceProfileModalProps {
   resourceId: string;
   onClose: () => void;
@@ -20,6 +22,7 @@ function formatDate(dateStr: string): string {
 }
 
 export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileModalProps) {
+  const titleId = useId();
   const { data, isLoading } = useQuery({
     queryKey: ['resourceProfile', resourceId],
     queryFn: () => apiService.getResourceProfile(resourceId),
@@ -31,10 +34,14 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
   const summary = data?.summary;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto m-4" onClick={e => e.stopPropagation()}>
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={titleId}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto m-4"
+    >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Resource Profile</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-white">Resource Profile</h2>
           <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" aria-label="Close"><X className="w-5 h-5" /></button>
         </div>
 
@@ -140,7 +147,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
               )}
               <div>
                 <span className="text-gray-500">Status:</span>{' '}
-                <span className={resource.isActive ? 'text-green-600' : 'text-gray-500'}>{resource.isActive ? 'Active' : 'Inactive'}</span>
+                <span className={resource.isActive ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}>{resource.isActive ? 'Active' : 'Inactive'}</span>
               </div>
             </div>
           </div>
@@ -149,7 +156,6 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
         <div className="flex justify-end px-5 py-3 border-t border-gray-200 dark:border-gray-700">
           <button onClick={onClose} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700">Close</button>
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

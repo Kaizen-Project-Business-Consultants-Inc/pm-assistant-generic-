@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 import { X, Cloud, Loader2, HardDrive, Link2, FolderOpen } from 'lucide-react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { FolderPicker } from './FolderPicker';
 
+import { AccessibleModal } from '../ui/AccessibleModal';
 interface StorageConnectModalProps {
   projectId: string;
   onClose: () => void;
@@ -32,6 +33,7 @@ const PROVIDER_COLORS: Record<string, string> = {
 };
 
 export function StorageConnectModal({ projectId, onClose }: StorageConnectModalProps) {
+  const titleId = useId();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('provider');
   const [connectorId, setConnectorId] = useState<string | null>(null);
@@ -136,13 +138,15 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
-      <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      busy={authMutation.isPending}
+      labelledBy={titleId}
+      className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4 p-6"
+    >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
+          <h2 id={titleId} className="text-lg font-semibold flex items-center gap-2">
             <Cloud className="w-5 h-5 text-blue-500" />
             Connect Storage
           </h2>
@@ -345,7 +349,6 @@ export function StorageConnectModal({ projectId, onClose }: StorageConnectModalP
             </p>
           </div>
         )}
-      </div>
-    </div>
+    </AccessibleModal>
   );
 }

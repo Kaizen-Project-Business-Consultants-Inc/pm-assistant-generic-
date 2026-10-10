@@ -37,6 +37,7 @@ import { ReportTile } from '../components/reports/ReportTile';
 import { InstantReportModal } from '../components/reports/InstantReportModal';
 import { ReportScheduleModal } from '../components/reports/ReportScheduleModal';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
+import { AccessibleModal } from '../components/ui/AccessibleModal';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -156,6 +157,7 @@ const ReportViewerModal: React.FC<{
   onClose: () => void;
   onRegenerate?: (report: ReportListItem) => void;
 }> = ({ report, onClose, onRegenerate }) => {
+  const titleId = useId();
   const badgeColor = badgeColorMap[report.reportType] || 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200';
   const typeLabel = labelMap[report.reportType] || report.reportType;
   const dateStr = report.createdAt || report.generatedAt || '';
@@ -183,12 +185,15 @@ const ReportViewerModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-3xl max-h-[90vh] mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col">
+    <AccessibleModal
+      isOpen
+      onClose={onClose}
+      labelledBy={titleId}
+      className="w-full max-w-3xl max-h-[90vh] mx-4 bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col"
+    >
         <div className="flex items-start justify-between p-5 border-b border-gray-200 dark:border-gray-700">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white truncate">{report.title}</h2>
+            <h2 id={titleId} className="text-lg font-bold text-gray-900 dark:text-white truncate">{report.title}</h2>
             <div className="flex items-center gap-3 mt-2">
               <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${badgeColor}`}>
                 {typeLabel}
@@ -253,8 +258,7 @@ const ReportViewerModal: React.FC<{
             />
           )}
         </div>
-      </div>
-    </div>
+    </AccessibleModal>
   );
 };
 
