@@ -17,7 +17,8 @@ Full CRUD lifecycle for projects with the following attributes:
 - **Methodology**: waterfall (default), agile, or hybrid. Controls the presentation layer — tab ordering, readiness bar steps, context cards, and default view mode. Does not restrict feature access (e.g., waterfall projects can still use sprints).
 - **Budget management**: allocated budget, spent budget, budget variance
 - **Date management**: start date, end date, auto-calculated duration
-- **Team assignment**: project members with role-based access (owner, manager, editor, viewer). Only members can access a project; non-members get 404. Creator is auto-added as owner. Admin/pmo bypass membership; executive gets read-only bypass. **Viewer assignment-based permissions**: viewers (free, no seat consumption) can update tasks assigned to them (via resource linkage), comment on assigned tasks, update the RAID actions they own (meeting actions included — they live in the RAID log since Oct 2026), upload file attachments to assigned tasks and owned RAID items, and update/comment on RAID items they own. Unassigned items return 403. The "My Assignments" dashboard widget shows all items assigned to the viewer across tasks, RAID items, and action items.
+- **Project code and name**: each project gets a code (PRJ-001, PRJ-002 …) that never changes, shown beside the name in the header, the Projects list and cards, and status reports, and searchable. Two live projects in a company can't share a name: the create is refused (409 "A project called … already exists"), with **Open it** for people who may open that project. Archiving a project frees its name.
+- **Team assignment**: project members with role-based access (owner, manager, viewer — Editor was removed in September 2026; an old editor membership counts as Viewer). Only members can access a project; non-members get 404. Creator is auto-added as owner. Admin/pmo bypass membership; executive gets read-only bypass. **Viewer assignment-based permissions**: viewers (free, no seat consumption) can update tasks assigned to them (via resource linkage), comment on assigned tasks, update the RAID actions they own (meeting actions included — they live in the RAID log since Oct 2026), upload file attachments to assigned tasks and owned RAID items, and update/comment on RAID items they own. Unassigned items return 403. The "My Assignments" dashboard widget shows all items assigned to the viewer across tasks, RAID items, and action items.
 - **Project Brief**: Inline-editable markdown description on the Overview tab. The brief card is part of the **reorderable card grid** — drag it to reposition alongside KPI, milestones, and other overview cards (rendered full-width via `col-span-full`). Supports headings, bold, italic, lists, links, and inline code via the **`marked` GFM parser** (not regex). Clicking a link in the rendered brief opens it in a new tab without entering edit mode. Click-to-edit with **save-on-blur** — text is saved when you click outside the editor or tab away, not while typing. A formatting toolbar (bold, italic, heading, list, link, code) appears in edit mode with Ctrl+B/I shortcuts; toolbar wraps on narrow screens. Collaborative editing indicators show when another user is editing the brief (amber pulsing dot with username via the shared `PresenceIndicator` component, `role="status"` and `aria-live="polite"` for screen readers, `motion-reduce:animate-none` for reduced motion). Empty projects show a placeholder prompting the user to add a brief. Read-only users see rendered markdown without edit controls. The edit button is always visible on touch devices (no hover required). Failed saves show a "Save failed" message with a Retry link. Content is sanitized client-side via DOMPurify on render. Description is limited to 50,000 characters. **Keyboard accessible:** view-mode and empty-state divs have `tabIndex`, `role="button"`, and keyboard handlers (Enter/Space to edit). **Escape cancels** editing and reverts draft to the pre-edit description — because nothing is saved mid-keystroke, Escape is an honest cancel. **Unmount recovery:** navigating away mid-edit persists the draft to sessionStorage and attempts to save; if the save fails, the draft is recovered on next visit. Closing the browser tab triggers a `beforeunload` warning if there are unsaved changes. **Optimistic locking:** each save sends the last-known `expectedUpdatedAt` timestamp; if another user saved in the meantime, the server returns 409 Conflict and the UI shows "Someone else saved — Refresh" instead of silently overwriting. **Reconnect resilience:** editing presence is re-sent after WebSocket reconnect so other users continue to see the editing indicator during network interruptions. **Notifications** are scoped per-user — WebSocket notification events are sent only to the target user, not broadcast to all clients.
 
 ### Schedules
@@ -123,11 +124,11 @@ API endpoints:
 
 ### Views
 
-- **Gantt chart** -- interactive timeline with dependency arrows and critical path highlighting. **Five zoom levels** (Day, Week, Month, Quarter, Year) with a **two-tier timescale header** (e.g. months over weeks, years over months). Zoom selection persists per schedule via localStorage. A **draggable splitter** between the task table and timeline lets you resize the panels; width persists per schedule. The left panel shows 13 columns: row number (#), task name, predecessor (row-number format with health dot), successor (Succ — read-only, derived from predecessor relationships), start date, end date, duration, estimated days, work (effort hours), progress %, priority, assigned to, and status. **Default visible columns** are the 6 essentials (Pred, Start, End, Duration, %, Status) plus # and Task Name which are always visible; the remaining columns (Succ, Est Days, Work, Priority, Assigned) are hidden by default to ensure the Task Name column has sufficient width. The left panel uses horizontal scrolling (overflow-x: auto) so all columns remain accessible without squeezing the task name. **Resizable columns**: drag column borders in the header to resize; the Task Name column has a 250px default width and is now fully resizable (not just flex-width); all resize handles show a visible dot indicator; double-click a handle to auto-fit that column to its content; widths persist per schedule in localStorage. **Column picker**: Columns button in toolbar toggles column visibility; # and Task Name always visible; persists per schedule. **Row expand/collapse**: parent tasks have a chevron toggle to collapse/expand children; persists in localStorage. **Collapse All / Expand All** buttons in toolbar toggle all parent tasks at once. **Click-to-select, click-to-edit**: first click on a task row selects it (highlights with a primary ring); clicking again on the selected row enters inline edit mode for that cell. This matches MS Project behavior and enables selection-dependent actions like Tab indent before editing. **Inline grid editing**: once selected, click any cell (except row #) to edit directly — text inputs for name/assignee, date pickers for start/end, number inputs for est days/work hours/%, select dropdowns for priority/status, and MS Project notation for predecessors. Tab/Shift+Tab navigates across fields and rows. Duration edits auto-compute end date. Enter saves, Escape cancels, blur auto-saves, green flash confirms. **Row drag reorder (cross-parent)**: hover over the # column for a drag grip; drag rows to any position — tasks can be moved across parent levels (MSP-style free drag). Dropping on a summary task makes the dragged task its first child; dropping between tasks makes it a sibling of the drop target. Summary tasks move with all their descendants. Cycle prevention blocks dropping a parent onto its own child, and the server refuses it too (400 "A task can't be moved under one of its own sub-tasks." — single edit, bulk edit, and parents within one bulk create; `utils/parentLoop.ts`, 2026-10-09). Both sort order and parent assignment are persisted and undoable. **Multi-select bulk edit**: Ctrl+click (Cmd+click on Mac) to add/remove individual tasks from selection, Shift+click for range select, or use checkboxes in the # column. Sticky toolbar for bulk status/priority/assignee changes and delete. Delete key triggers a confirmation modal showing the exact task count ("Delete N tasks?"). Right-clicking a task when multiple tasks are selected shows "Delete N Tasks" in the context menu, and the confirmation modal covers all selected tasks plus the right-clicked task. Both paths use the same ConfirmModal (not the browser's native `window.confirm()`). **Undo/Redo**: Ctrl+Z/Ctrl+Y or Ctrl+Shift+Z (up to 50 actions per session) for inline edits, bar drags, reorders, bulk updates, and delete operations (single or bulk). Task data is captured before deletion so undo can fully recreate tasks via the API. Creating new tasks is not undoable. Stack resets on navigation or page refresh. Undo/redo buttons in toolbar with tooltips. **Keyboard navigation**: Arrow keys move between cells, Enter/F2 to edit, Escape to clear focus. Supports drag-and-drop rescheduling: drag a bar to move a task, drag the right edge to resize; timeline auto-scrolls when dragging near viewport edges. **Escape cancels any timeline drag** before the mouse is released — a bar move/resize (selected bars go back too), a link being drawn, the progress handle, or drag-to-create — and nothing is saved; while dragging, Escape goes to the drag only (a window capture-phase listener in `shared/escapeCancel.ts`, so the grid keyboard, an open cell editor or a menu don't also react). The Table's grip row drag cancels the same way. Date changes push the tasks that follow later where they would now start too early (`services/followSuccessors.ts` → `ScheduleRecomputeService`, see *Link selected tasks*); nothing is pulled earlier. Dependency arrows are colour-coded by predecessor health: green (completed), yellow (in progress), red (overdue/at risk). Hover over a bar to see predecessor details including row number, task name, and health status. **Column header sort**: click any column header to cycle through ascending/descending/none; sort indicator (▲/▼) shown in header; sorts within sibling groups to preserve hierarchy; row drag reorder disabled while sort is active. Every column except # sorts (Oct 2026: Succ, Resource, Notes and Work added, and Pred — clickable before but a no-op — now sorts): Pred/Succ by the first row number listed (fixed plan numbers), Resource by the first resource's name, Notes by text, Assigned by the displayed name; blanks last in both directions (Est and Work too since 2026-10-06 -- a blank used to count as 0 and sort first ascending; now the Gantt and the Table sort them alike through `sortValues.ts`). One Gantt column → sort field map (`components/schedule/sortValues.ts`) serves the header, the click handler and saved-view loading; a guard test checks every column has a sort value. **Copy/Paste cells**: Ctrl+C copies the focused cell value to clipboard; Ctrl+V pastes into the focused cell (same field type only); green flash confirms. **Copy/Paste rows**: When no cell is focused, Ctrl+C copies the selected/active task(s) and Ctrl+V pastes them as duplicates with a "(copy)" suffix. **Column auto-fit**: Double-click a column's resize handle (right border of a column header) to auto-fit the width to its content via canvas text measurement, capped at 400px. **Baseline bar refinement**: ghost bars are rendered only when a task's baseline dates differ from its current dates, eliminating visual noise for on-schedule tasks. **Indent/Outdent**: Tab indents the selected or focused task (makes it a child of the task above); Shift+Tab outdents (promotes to parent's parent). Works both when a task is simply selected (clicked) and when a cell is focused (via arrow keys). **Multi-select indent**: select multiple tasks via checkboxes, then press Tab to indent them all or Shift+Tab to outdent; selected tasks won't indent under each other. Both operations go through onTaskUpdate and are undoable. **Bar progress drag**: drag the progress fill edge in a task bar to set completion percentage; visible handle appears on hover; change is undoable via Ctrl+Z. **Row action icons**: each row shows three action icons on hover — edit (pencil, opens task editor), insert below (+ icon, opens an inline input row directly below where you type a task name and press Enter to create — no modal), and delete (trash, opens a confirmation modal; if multiple tasks are selected the trash icon deletes the entire selection). Icons fade in with opacity transition on row hover. **Inline task insert**: the + button and right-click → Insert After both use inline insert — a green-tinted blank row appears below the target task with an auto-focused input. Enter creates the task at the correct sort position, Tab creates and opens another blank row for continuous entry (MS Project style), Escape cancels. The new task inherits the parent of the target row. Insert Before still uses the full task form modal. **MPP-style inline task entry**: 3-6 persistent empty rows appear below existing tasks in the left panel (MS Project style) with continuation row numbers. Click into the Task Name cell and type a name, press Enter to create the task instantly without a modal. The first empty row shows a "Type a task name…" placeholder. When the schedule has no tasks, the empty rows are the primary way to start adding tasks (an Add Task button is also shown).
+- **Gantt chart** -- interactive timeline with dependency arrows and critical path highlighting. **Five zoom levels** (Day, Week, Month, Quarter, Year) with a **two-tier timescale header** (e.g. months over weeks, years over months). Zoom selection persists per schedule via localStorage. A **draggable splitter** between the task table and timeline lets you resize the panels; width persists per schedule. The left panel offers 15 columns: row number (#), task name, predecessor (Pred, row-number format with health dot), successor (Succ — read-only, derived from predecessor relationships), start date, end date, duration (Dur), estimated days (Est), work (effort hours), progress %, priority, assigned to, resource, status and notes. **Default visible columns** are Duration, Start, End, Predecessor, Assigned and Status, plus # and Task Name which are always visible; the rest (Succ, Est, Work, %, Priority, Resource, Notes) are hidden by default so the Task Name column has room (`gantt/types.ts` `DEFAULT_VISIBLE_COLS`). The left panel uses horizontal scrolling (overflow-x: auto) so all columns remain accessible without squeezing the task name. **Resizable columns**: drag column borders in the header to resize; the Task Name column has a 250px default width and is now fully resizable (not just flex-width); all resize handles show a visible dot indicator; double-click a handle to auto-fit that column to its content; widths persist per schedule in localStorage. **Column picker**: Columns button in toolbar toggles column visibility; # and Task Name always visible; persists per schedule. **Row expand/collapse**: parent tasks have a chevron toggle to collapse/expand children; persists in localStorage. **Collapse All / Expand All** buttons in toolbar toggle all parent tasks at once. **Click-to-select, click-to-edit**: first click on a task row selects it (highlights with a primary ring); clicking again on the selected row enters inline edit mode for that cell. This matches MS Project behavior and enables selection-dependent actions like Tab indent before editing. **Inline grid editing**: once selected, click any cell (except row #) to edit directly — text inputs for name/assignee, date pickers for start/end, number inputs for est days/work hours/%, select dropdowns for priority/status, and MS Project notation for predecessors. Tab/Shift+Tab navigates across fields and rows. Duration edits auto-compute end date. Enter saves, Escape cancels, blur auto-saves, green flash confirms. **Row drag reorder (cross-parent)**: hover over the # column for a drag grip; drag rows to any position — tasks can be moved across parent levels (MSP-style free drag). Dropping on a summary task makes the dragged task its first child; dropping between tasks makes it a sibling of the drop target. Summary tasks move with all their descendants. Cycle prevention blocks dropping a parent onto its own child, and the server refuses it too (400 "A task can't be moved under one of its own sub-tasks." — single edit, bulk edit, and parents within one bulk create; `utils/parentLoop.ts`, 2026-10-09). Both sort order and parent assignment are persisted and undoable. **Multi-select bulk edit**: Ctrl+click (Cmd+click on Mac) to add/remove individual tasks from selection, Shift+click for range select, or use checkboxes in the # column. Sticky toolbar for bulk status/priority/assignee changes and delete. Delete key triggers a confirmation modal showing the exact task count ("Delete N tasks?"). Right-clicking a task when multiple tasks are selected shows "Delete N Tasks" in the context menu, and the confirmation modal covers all selected tasks plus the right-clicked task. Both paths use the same ConfirmModal (not the browser's native `window.confirm()`). **Undo/Redo**: Ctrl+Z/Ctrl+Y or Ctrl+Shift+Z (up to 50 actions per session) for inline edits, bar drags, reorders, bulk updates, and delete operations (single or bulk). Task data is captured before deletion so undo can fully recreate tasks via the API. Creating new tasks is not undoable. Stack resets on navigation or page refresh. Undo/redo buttons in toolbar with tooltips. **Keyboard navigation**: Arrow keys move between cells, Enter/F2 to edit, Escape to clear focus. Supports drag-and-drop rescheduling: drag a bar to move a task, drag the right edge to resize; timeline auto-scrolls when dragging near viewport edges. **Escape cancels any timeline drag** before the mouse is released — a bar move/resize (selected bars go back too), a link being drawn, the progress handle, or drag-to-create — and nothing is saved; while dragging, Escape goes to the drag only (a window capture-phase listener in `shared/escapeCancel.ts`, so the grid keyboard, an open cell editor or a menu don't also react). The Table's grip row drag cancels the same way. Date changes push the tasks that follow later where they would now start too early (`services/followSuccessors.ts` → `ScheduleRecomputeService`, see *Link selected tasks*); nothing is pulled earlier. Dependency arrows are colour-coded by predecessor health: green (completed), yellow (in progress), red (overdue/at risk). Hover over a bar to see predecessor details including row number, task name, and health status. **Column header sort**: click any column header to cycle through ascending/descending/none; sort indicator (▲/▼) shown in header; sorts within sibling groups to preserve hierarchy; row drag reorder disabled while sort is active. Every column except # sorts (Oct 2026: Succ, Resource, Notes and Work added, and Pred — clickable before but a no-op — now sorts): Pred/Succ by the first row number listed (fixed plan numbers), Resource by the first resource's name, Notes by text, Assigned by the displayed name; blanks last in both directions (Est and Work too since 2026-10-06 -- a blank used to count as 0 and sort first ascending; now the Gantt and the Table sort them alike through `sortValues.ts`). One Gantt column → sort field map (`components/schedule/sortValues.ts`) serves the header, the click handler and saved-view loading; a guard test checks every column has a sort value. **Copy/Paste cells**: Ctrl+C copies the focused cell value to clipboard; Ctrl+V pastes into the focused cell (same field type only); green flash confirms. **Copy/Paste rows**: When no cell is focused, Ctrl+C copies the selected/active task(s) and Ctrl+V pastes them as duplicates with a "(copy)" suffix. **Column auto-fit**: Double-click a column's resize handle (right border of a column header) to auto-fit the width to its content via canvas text measurement, capped at 400px. **Baseline bar refinement**: ghost bars are rendered only when a task's baseline dates differ from its current dates, eliminating visual noise for on-schedule tasks. **Indent/Outdent**: Tab indents the selected or focused task (makes it a child of the task above); Shift+Tab outdents (promotes to parent's parent). Works both when a task is simply selected (clicked) and when a cell is focused (via arrow keys). **Multi-select indent**: select multiple tasks via checkboxes, then press Tab to indent them all or Shift+Tab to outdent; selected tasks won't indent under each other. Both operations go through onTaskUpdate and are undoable. **Bar progress drag**: drag the progress fill edge in a task bar to set completion percentage; visible handle appears on hover; change is undoable via Ctrl+Z. **Row action icons**: each row shows three action icons on hover — edit (pencil, opens task editor), insert below (+ icon, opens an inline input row directly below where you type a task name and press Enter to create — no modal), and delete (trash, opens a confirmation modal; if multiple tasks are selected the trash icon deletes the entire selection). Icons fade in with opacity transition on row hover. **Inline task insert**: the + button and right-click → Insert After both use inline insert — a green-tinted blank row appears below the target task with an auto-focused input. Enter creates the task at the correct sort position, Tab creates and opens another blank row for continuous entry (MS Project style), Escape cancels. The new task inherits the parent of the target row. Insert Before still uses the full task form modal. **MPP-style inline task entry**: 3-6 persistent empty rows appear below existing tasks in the left panel (MS Project style) with continuation row numbers. Click into the Task Name cell and type a name, press Enter to create the task instantly without a modal. The first empty row shows a "Type a task name…" placeholder. When the schedule has no tasks, the empty rows are the primary way to start adding tasks (an Add Task button is also shown).
 - **Failed saves (Oct 2026)** -- inline edits, bar drags and Calendar moves show at once (the `['tasks', scheduleId]` cache is patched after cancelling any refetch on its way). If the save fails, only the fields that save changed go back to their last saved values — a field a later edit has changed since is left alone — and the tasks are refetched once the last save still on its way has finished. A red message at the bottom (dismiss with ✕; also read out to screen readers) says what was not saved, the server's reason when there is one, and what to do: *Your change to "Build" was not saved: <reason>. The last saved version is shown again — please try again.* The failed change's Undo entry and toast are removed, the cell's green "saved" flash waits for the save and is skipped when it fails, and the over-100% load warning only appears once an assignment has saved. Task create, delete, reorder, bulk update, bulk delete and duplicate failures show the same kind of message (e.g. *The new task "X" was not created … Please try again.*). Task form saves keep the form open with what was typed.
 - **Kanban board** -- drag-and-drop cards grouped by status. A dragged card moves to its new column once the status change has saved; a failed change leaves it where it was and shows the failed-save message. **Subtask and dependency badges**: each card shows a count badge for subtasks (child tasks) and dependencies, derived from the loaded task list without additional API calls. **Inline quick-add**: a "+" button at the bottom of each status column reveals an inline text input — type a task name and press Add to create a task directly in that column without opening a modal. **Swimlane mode**: a dropdown in the Kanban header lets you group cards by Assignee or Priority in addition to the default flat status layout. Each swimlane row shows a label column and mini status columns per lane. Swimlane selection persists in localStorage.
 - **Calendar view** -- tasks plotted on a calendar grid with three display modes. **Month view** (default): tasks shown as dots and short labels per day cell; supports drag-to-reschedule by dragging a task from one day to another (task duration is preserved — start and end dates shift together). **Week view**: 7-column layout with large day headers and full task lists per day, showing priority, assignee, and date range. **Day view**: single-day detail view with rich task cards showing priority badge, assignee, date range, and progress bar. Toggle between Month / Week / Day using buttons in the calendar header. Navigation arrows and a Today button move through time periods in any mode.
-- **Table view** -- sortable (every column except # and WBS; Predecessor, Successor and Resource sort since Oct 2026, and the cost and constraint columns — marked sortable but previously unsorted — now sort; blanks last for Predecessor, Successor, Resource, Notes, Budget, Actual Cost, Cost Variance and Constraint Date), filterable spreadsheet-style listing with a customizable column picker. Full feature parity with the Gantt chart. Choose from 24 columns across four groups (Standard, Scheduling/CPM, Baseline, Other). **Est Days** and **Work** (Oct 2026, hidden by default) show and edit exactly like the Gantt's Est / Work: `5d` / `40h`, no rounding, a dash when blank; inline number edit through the shared `useInlineCellEdit` (`TABLE_EDIT_RULES`) and paste (`TABLE_KEYBOARD_RULES`) clamp to >= 0 and send `estimatedDays` / `estimatedDurationHours`, as the Gantt does; summary rows follow the shared roll-up rule (`summaryRollup.ts`): Est Days is a roll-up cell in both views since 2026-10-06 (the server sets a summary's `estimated_days` from its dates on every roll-up, so a typed value was overwritten) -- it doesn't open for typing and refuses a paste; Work is not rolled up by the server and stays editable; they sort through `sortValues.ts` with blanks last; the %-from-approved-hours lock is unchanged by a Work edit (it follows the server's `progressFromHours`). **What a saved Work value does** (the update schema didn't list `estimatedDurationHours` until 2026-10-06, so Zod stripped it and a Work edit only looked saved; a guard test now checks every field the grids send — `shared/taskUpdateFields.ts` — is kept by `updateTaskSchema` / the bulk schema): Work does **not** change money — a task's budget prices its bookings (`TaskBudgetService`), not Work; Work **does** weight the summary task's % roll-up when the schedule's `progressMode` is `work` (`recomputeParentRollup`; a Work change now triggers the roll-up); and Schedule Review rule R12 reads it (hours equal to the task's day span look like days). The **# (row number)** column is always visible and shows sequential numbering. The **Predecessor** column displays dependencies in compact MS Project-style row-number format (e.g. "3", "7SS+2d") with colour-coded health badges: green dot (predecessor completed), yellow dot (in progress), red dot (overdue). Predecessors are **inline-editable** — click and type a row number with optional type and lag. Column selections persist per schedule. Scheduling columns automatically trigger CPM computation. Baseline columns show variance data when a baseline comparison is active. **Right-click context menu**: right-click any task row to open a menu with Insert Before, Insert After, Edit Task, Indent, Outdent, and Delete. Insert After uses inline insert (blank row appears below for quick name entry). When multiple tasks are selected, Delete shows the count and removes all selected plus the right-clicked task. **Row action icons**: each row shows three action icons on hover — edit (pencil), insert below (+ icon, inline insert), and delete (trash). **Inline task insert**: the + button and right-click → Insert After both show a green-tinted blank row below the target task. Enter creates, Tab creates + continues, Escape cancels. Same behavior as the Gantt chart. **Tab indent / Shift+Tab outdent**: select a task (or multi-select) and press Tab to indent under the task above, or Shift+Tab to outdent. Works identically to the Gantt chart. **Delete key**: press Delete to remove the active task or all selected tasks via a confirmation modal. **Undo/Redo**: Ctrl+Z/Ctrl+Y (up to 50 actions per session) for edits, bulk updates, and deletions. Undo/redo buttons in the toolbar with tooltips. **Bulk operations with undo**: multi-select via checkboxes, use the bulk toolbar for status/priority/assignee changes — all tracked in the undo history. A change or delete that worked shows a green status message at the bottom for 3 s (`shared/BulkDoneToast`, "✓ Updated N tasks" / "✓ Deleted N tasks", Gantt too); the Undo text is plain English ("Status changed on N tasks", "Indented N tasks", "Deleted N tasks"). **Saved Views** let you name and store column+sort configurations; load, update, or delete them from the Views dropdown. **Group-by**: a dropdown in the header lets you group rows by Status, Priority, or Assignee. Each group has a collapsible header row showing the group name and task count. Collapsed groups persist in localStorage. **MPP-style empty rows**: 5-8 persistent empty rows appear at the bottom of the table (MS Project style). Each row shows a continuation row number and an editable Task Name cell — click and start typing, press Enter to create the task. The input clears and new empty rows remain available for the next entry. The first empty row shows a "Type a task name…" placeholder. **Arrow key navigation**: Use Arrow keys to move between cells (focused cell gets a blue ring). Press Enter or F2 to enter edit mode; Escape to clear the focus. First click selects the row; second click on a selected row enters edit mode (matching Gantt behavior). **Cell-level copy/paste**: When a cell is focused, Ctrl+C copies its value to the clipboard and Ctrl+V pastes from the clipboard into the same field type; a green flash confirms. **Copy/Paste rows**: When no cell is focused, Ctrl+C copies the selected/active task(s) and Ctrl+V pastes them as duplicates with a "(copy)" suffix appended to the task name. **Resource column**: The Resource column (inline chip assignment via `ResourceQuickAssign`) is available in the Table View column picker — the same quick-assign functionality previously available only in the Gantt chart. **Column auto-fit**: Double-click any column's resize handle (the right border of a column header) to auto-fit the column width to its content. Width is measured via canvas text measurement and capped at 400px.
+- **Table view** -- sortable (every column except # and WBS; Predecessor, Successor and Resource sort since Oct 2026, and the cost and constraint columns — marked sortable but previously unsorted — now sort; blanks last for Predecessor, Successor, Resource, Notes, Budget, Actual Cost, Cost Variance and Constraint Date), filterable spreadsheet-style listing with a customizable column picker. Full feature parity with the Gantt chart. Choose from 36 columns in five groups (Standard, Scheduling/CPM, Baseline, Cost, Other); Predecessor, Successor, Resource and Notes are in Standard, and Other holds only WBS (`tableColumns.ts`). **Est Days** and **Work** (Oct 2026, hidden by default) show and edit exactly like the Gantt's Est / Work: `5d` / `40h`, no rounding, a dash when blank; inline number edit through the shared `useInlineCellEdit` (`TABLE_EDIT_RULES`) and paste (`TABLE_KEYBOARD_RULES`) clamp to >= 0 and send `estimatedDays` / `estimatedDurationHours`, as the Gantt does; summary rows follow the shared roll-up rule (`summaryRollup.ts`): Est Days is a roll-up cell in both views since 2026-10-06 (the server sets a summary's `estimated_days` from its dates on every roll-up, so a typed value was overwritten) -- it doesn't open for typing and refuses a paste; Work is not rolled up by the server and stays editable; they sort through `sortValues.ts` with blanks last; the %-from-approved-hours lock is unchanged by a Work edit (it follows the server's `progressFromHours`). **What a saved Work value does** (the update schema didn't list `estimatedDurationHours` until 2026-10-06, so Zod stripped it and a Work edit only looked saved; a guard test now checks every field the grids send — `shared/taskUpdateFields.ts` — is kept by `updateTaskSchema` / the bulk schema): Work does **not** change money — a task's budget prices its bookings (`TaskBudgetService`), not Work; Work **does** weight the summary task's % roll-up when the schedule's `progressMode` is `work` (`recomputeParentRollup`; a Work change now triggers the roll-up); and Schedule Review rule R12 reads it (hours equal to the task's day span look like days). The **# (row number)** column is always visible and shows sequential numbering. The **Predecessor** column displays dependencies in compact MS Project-style row-number format (e.g. "3", "7SS+2d") with colour-coded health badges: green dot (predecessor completed), yellow dot (in progress), red dot (overdue). Predecessors are **inline-editable** — click and type a row number with optional type and lag. Column selections persist per schedule. Scheduling columns automatically trigger CPM computation. Baseline columns show variance data when a baseline comparison is active. **Right-click context menu**: right-click any task row to open a menu with Insert Before, Insert After, Edit Task, Indent, Outdent, and Delete. Insert After uses inline insert (blank row appears below for quick name entry). When multiple tasks are selected, Delete shows the count and removes all selected plus the right-clicked task. **Row action icons**: each row shows three action icons on hover — edit (pencil), insert below (+ icon, inline insert), and delete (trash). **Inline task insert**: the + button and right-click → Insert After both show a green-tinted blank row below the target task. Enter creates, Tab creates + continues, Escape cancels. Same behavior as the Gantt chart. **Tab indent / Shift+Tab outdent**: select a task (or multi-select) and press Tab to indent under the task above, or Shift+Tab to outdent. Works identically to the Gantt chart. **Delete key**: press Delete to remove the active task or all selected tasks via a confirmation modal. **Undo/Redo**: Ctrl+Z/Ctrl+Y (up to 50 actions per session) for edits, bulk updates, and deletions. Undo/redo buttons in the toolbar with tooltips. **Bulk operations with undo**: multi-select via checkboxes, use the bulk toolbar for status/priority/assignee changes — all tracked in the undo history. A change or delete that worked shows a green status message at the bottom for 3 s (`shared/BulkDoneToast`, "✓ Updated N tasks" / "✓ Deleted N tasks", Gantt too); the Undo text is plain English ("Status changed on N tasks", "Indented N tasks", "Deleted N tasks"). **Saved Views** let you name and store column+sort configurations; load, update, or delete them from the Views dropdown. **Group-by**: a dropdown in the header lets you group rows by Status, Priority, or Assignee. Each group has a collapsible header row showing the group name and task count. Collapsed groups persist in localStorage. **MPP-style empty rows**: 5-8 persistent empty rows appear at the bottom of the table (MS Project style). Each row shows a continuation row number and an editable Task Name cell — click and start typing, press Enter to create the task. The input clears and new empty rows remain available for the next entry. The first empty row shows a "Type a task name…" placeholder. **Arrow key navigation**: Use Arrow keys to move between cells (focused cell gets a blue ring). Press Enter or F2 to enter edit mode; Escape to clear the focus. First click selects the row; second click on a selected row enters edit mode (matching Gantt behavior). **Cell-level copy/paste**: When a cell is focused, Ctrl+C copies its value to the clipboard and Ctrl+V pastes from the clipboard into the same field type; a green flash confirms. **Copy/Paste rows**: When no cell is focused, Ctrl+C copies the selected/active task(s) and Ctrl+V pastes them as duplicates with a "(copy)" suffix appended to the task name. **Resource column**: The Resource column (inline chip assignment via `ResourceQuickAssign`) is available in the Table View column picker — the same quick-assign functionality previously available only in the Gantt chart. **Column auto-fit**: Double-click any column's resize handle (the right border of a column header) to auto-fit the column width to its content. Width is measured via canvas text measurement and capped at 400px.
 
 ### Schedule Filter Bar & CSV Export
 
@@ -169,7 +170,7 @@ Bulk create, update, and status-change endpoints allow operating on multiple tas
 
 **Group selected tasks** (September 2026). The selection bar (Gantt and Table) has a **Group** box: type a heading name and **Group under heading** puts the selected tasks (two or more, all at the same level) under a new summary task placed where the first one was; dates roll up. Recorded in Schedule History with Undo. Schedule Review's AI phase grouping now also works on partly organised plans (6+ loose top-level tasks), reusing existing phase names.
 
-**Link selected tasks** (September 2026). The schedule's selection bar (Gantt and Table) can add dependencies to many tasks at once: **Link in order** (chain by fixed row number, FS), **All wait on it** (every selected task gets the typed row as predecessor; accepts `3`, `3SS`, `3FS+2d`), and **It waits on all** (the typed row gets every selected task as predecessor). The batch is all-or-nothing: the server checks the whole schedule plus the new links for loops (including loops that only close when two new links combine) and the 20-predecessor cap before writing anything, and names the rows in its message ("These links would create a loop: row 6 → row 9 → row 6. Nothing was linked."). Existing links are kept; duplicates are skipped. One undo removes exactly the links that were added and restores any dates the re-flow moved. **Adding a link re-flows dates** (MS Project behaviour), for the bulk actions and for a single predecessor edit: a newly linked task that starts earlier than the link allows is pushed later, with its successors, keeping each task's length. Only the newly linked tasks and their successors may move (an unrelated, pre-existing violation elsewhere is left alone); completed or actual-dated tasks are pinned; calendar days; never pulled earlier, and removing a link never moves dates. Uses the same re-flow as Schedule Review's apply-fixes. Undo goes through Schedule History (`POST /api/v1/schedules/:id/changes/:changeId/undo`; the add returns `changeId`). **Every moved date is audited:** one `task.reschedule` entry per task in the audit trail, with before/after start and end dates and a reason (`link_added`, `schedule_review_fix`, or `undo`), attributed to the user (web or MCP). Endpoint: `POST /api/v1/schedules/:id/dependencies/bulk` (editor access; the old `…/dependencies/bulk-remove` and `…/tasks/restore-dates` undo routes were removed 2026-10-09). **A task re-dated by hand** (task form, Gantt drag, AI `reschedule_task` / `cascade_reschedule`, meeting actions; 2026-10-09) goes through the same re-flow — `services/followSuccessors.ts` `moveSuccessorsAfter` → `recompute(onlyFrom: [task], keep: [task], reason: 'task_moved')`: the edited task keeps the dates it was given, only what follows it may move, and when anything moved the edited task's old dates plus every pushed task form one Schedule History entry (kind `successors_moved`, Undo restores all). It replaces `ScheduleService.cascadeReschedule`, which set each successor to its predecessor's finish + 1 (pulling tasks earlier, closing deliberate gaps, moving finished tasks, ignoring constraints, no History). The API's `cascadedChanges` keeps its shape. **Date constraints in every re-flow:** "must start/finish on" (MSO/MFO with a date) is pinned like a finished task; "start/finish no later than" (SNLT/FNLT) caps the push (the date wins over the link, as in MS Project; Schedule Review R14 flags hard constraints); "no earlier than" can't be broken by a push-later-only re-flow. **Bulk edit predecessors** (`PUT /bulk/tasks` `dependency`, MCP `bulk-update-tasks`; 2026-10-09): written to `task_dependencies` like a single edit (the task's links replaced by the one given; empty removes them) — before, only the legacy `dependency` column was written, so the link was invisible. The whole batch is checked first for link loops and parent loops (including two edits that close a loop together; 400, nothing saved), linked tasks re-flow (`link_added`), and the History entry's Undo restores the old links and the pushed dates.
+**Link selected tasks** (September 2026). The schedule's selection bar (Gantt and Table) can add dependencies to many tasks at once: **Link in order** (chain by fixed row number, FS), **All wait on it** (every selected task gets the typed row as predecessor; accepts `3`, `3SS`, `3FS+2d`), and **It waits on all** (the typed row gets every selected task as predecessor). The batch is all-or-nothing: the server checks the whole schedule plus the new links for loops (including loops that only close when two new links combine) and the 20-predecessor cap before writing anything, and names the rows in its message ("These links would create a loop: row 6 → row 9 → row 6. Nothing was linked."). Existing links are kept; duplicates are skipped. One undo removes exactly the links that were added and restores any dates the re-flow moved. **Adding a link re-flows dates** (MS Project behaviour), for the bulk actions and for a single predecessor edit: a newly linked task that starts earlier than the link allows is pushed later, with its successors, keeping each task's length. Only the newly linked tasks and their successors may move (an unrelated, pre-existing violation elsewhere is left alone); completed or actual-dated tasks are pinned; calendar days; never pulled earlier, and removing a link never moves dates. Uses the same re-flow as Schedule Review's apply-fixes. Undo goes through Schedule History (`POST /api/v1/schedules/:id/changes/:changeId/undo`; the add returns `changeId`). **Every moved date is audited:** one `task.reschedule` entry per task in the audit trail, with before/after start and end dates and a reason (`link_added`, `schedule_review_fix`, or `undo`), attributed to the user (web or MCP). Endpoint: `POST /api/v1/schedules/:id/dependencies/bulk` (project Manager/Owner; the old `…/dependencies/bulk-remove` and `…/tasks/restore-dates` undo routes were removed 2026-10-09). **A task re-dated by hand** (task form, Gantt drag, AI `reschedule_task` / `cascade_reschedule`, meeting actions; 2026-10-09) goes through the same re-flow — `services/followSuccessors.ts` `moveSuccessorsAfter` → `recompute(onlyFrom: [task], keep: [task], reason: 'task_moved')`: the edited task keeps the dates it was given, only what follows it may move, and when anything moved the edited task's old dates plus every pushed task form one Schedule History entry (kind `successors_moved`, Undo restores all). It replaces `ScheduleService.cascadeReschedule`, which set each successor to its predecessor's finish + 1 (pulling tasks earlier, closing deliberate gaps, moving finished tasks, ignoring constraints, no History). The API's `cascadedChanges` keeps its shape. **Date constraints in every re-flow:** "must start/finish on" (MSO/MFO with a date) is pinned like a finished task; "start/finish no later than" (SNLT/FNLT) caps the push (the date wins over the link, as in MS Project; Schedule Review R14 flags hard constraints); "no earlier than" can't be broken by a push-later-only re-flow. **Bulk edit predecessors** (`PUT /bulk/tasks` `dependency`, MCP `bulk-update-tasks`; 2026-10-09): written to `task_dependencies` like a single edit (the task's links replaced by the one given; empty removes them) — before, only the legacy `dependency` column was written, so the link was invisible. The whole batch is checked first for link loops and parent loops (including two edits that close a loop together; 400, nothing saved), linked tasks re-flow (`link_added`), and the History entry's Undo restores the old links and the pushed dates.
 
 **Default schedule columns** (September 2026): Duration, Start, End, Predecessor, Assigned To, Status, in that order, in both views. Schedules a user already customised keep their saved columns until they use **Reset visibility / Reset order** in the Columns menu.
 
@@ -283,7 +284,7 @@ API endpoints under `/api/projects/:projectId/calendars` provide CRUD for calend
 
 **Working calendar screen and company holidays (Sep 2026).** Every date calculation counts **working days** from the project calendar, with the start day included (1 day = same day): the Duration column (Gantt + Table, display, sort, typing), a new task's finish, the re-flow after linking or applying review fixes, and the push-along when a finish date changes. Lag is in working days.
 - **Working calendar** button (schedule toolbar) → panel: working weekdays, company holidays, the project's own days off / extra working days. Every change is previewed (`POST /api/v1/projects/:id/working-calendar/preview` → tasks that move, latest finish before/after) and saved with `/apply`. Manager/Owner edit; others read-only.
-- **Support view (Sep 2026).** The platform admin troubleshoots a customer through a read-only, recorded 30-minute visit into one company: Admin → Companies → **View as support** (reason + password). Server-enforced read-only (`tenantResolver` refuses non-GET → `support_read_only`; `authMiddleware` makes the admin an `executive` inside the company), recorded in `support_sessions` (migration 126) and the company's audit ledger; the company owner/PMO sees visits in Settings → Support visits (`GET /api/v1/org/support-visits`). API: `POST/GET/DELETE /api/v1/admin/support-sessions[/current]`. Accounts with no company get `no_company` on company routes.
+- **Support view (Sep 2026).** The platform admin troubleshoots a customer through a read-only, recorded 30-minute visit into one company: Admin → Tenants → **View as support** (reason + password). Server-enforced read-only (`tenantResolver` refuses non-GET → `support_read_only`; `authMiddleware` makes the admin an `executive` inside the company), recorded in `support_sessions` (migration 126) and the company's audit ledger; the company owner/PMO sees visits in Settings → Support visits (`GET /api/v1/org/support-visits`). API: `POST/GET/DELETE /api/v1/admin/support-sessions[/current]`. Accounts with no company get `no_company` on company routes.
 - **Plan feature settings complete (Sep 2026).** Migrations 122–123 give every plan (Trial, Consultant Basic/Pro, SME, Enterprise) its price row and a setting for every plan-gated feature; before, production's SME/Enterprise/Trial had none (a missing setting = off), and "Import from a document (AI)" was in no plan. Guards: `requireFeature()` only accepts keys from `constants/planFeatures.ts`, a test checks the migrations, and an alert emails support on any gap.
 - **Rate card (Sep 2026).** Settings → Rate card: hourly (and optional overtime) cost rates by role, each from a date (`rate_card`, tenant migration T063; `GET/POST /api/v1/rate-card`, `PUT/DELETE /api/v1/rate-card/:id`, admin/PMO/PM/company owner only). A resource's form chooses **Use rate card** or **Own rate** (`use_rate_card`, default own). Workload cost is computed per week at that week's rate (`RateCardService.ratesOn`); reports and portfolio show today's rate. Also fixed: a resource's overtime rate was never saved on create or edit.
 - **Settings → Company holidays** (`company_holidays`, tenant migration T060): `GET/POST /api/v1/company-holidays[/preview|/apply]`; the company owner, admin or PMO edits. Precedence: project day off > project working day > company holiday > weekday.
@@ -485,6 +486,8 @@ The resource workload endpoint aggregates task assignments across projects to pr
 
 The Workload Heatmap UI displays a **Cost** column per resource and an **Estimated Cost** summary card. Weekly cell tooltips include the cost for that week.
 
+**Project Team tab heatmap colours** (`components/resources/workloadHeatColors.ts`, 31aef8ee): grey with an outline for 0%, light green under 50%, green 50–80%, yellow 80–100%, red over 100%. Text meets WCAG AA, and empty cells are outlined in the Time-tab heatmap too. The company-wide Resources page uses its own scale (green / blue / amber / red at 80 / 100 / 120% — see below).
+
 ### Assignment Conflict Detection
 
 When creating a resource assignment via `POST /api/v1/resources/assignments`, the system checks for over-allocation before inserting. It queries all existing assignments for the resource that overlap the requested date range, sums their `hoursPerWeek` with the new assignment, and compares against the resource's `capacityHoursPerWeek`. If the total exceeds capacity, a warning is returned in the response (the assignment is still created — warnings are advisory, not blocking):
@@ -599,7 +602,7 @@ Workflows are triggered automatically by task and project lifecycle events:
 
 - **Task events:** `ScheduleService.createTask()` and `updateTask()` call `evaluateTaskChange()` (fire-and-forget)
 - **Project events:** `ProjectService.update()` calls `evaluateProjectChange()` on budget or status changes
-- **Overdue scanner:** A 15-minute cron in `AgentSchedulerService` detects newly-overdue tasks and fires `date_passed` triggers
+- **Overdue scanner:** the `pm-cron@overdue-scan` timer (every 15 minutes) detects newly-overdue tasks and fires `date_passed` triggers. It runs only when `AGENT_ENABLED=true` — on for staging since 2026-10-07, off for production — so `date_passed` triggers don't fire on production
 
 All event-driven calls are non-blocking -- they use `.catch()` so workflow failures never break task or project operations.
 
@@ -625,6 +628,7 @@ The system prompt enumerates all available trigger types, action types, conditio
 - Full execution history is retained with start/end timestamps and error messages
 - Executions can be running, completed, failed, cancelled, or waiting (paused at an approval or delay node)
 - All workflow actions are recorded in the audit ledger
+- **Who sees which runs** (cc7c0ad1, aacf8cbe): the Executions tab works for everyone who can open Workflows and returns the newest 50 runs the person may see. PMO (and so the company owner) and executives see all runs; others see runs of their projects' workflows, and runs of company-wide workflows only for tasks in their projects. Opening a single run they may not see answers 404. Company-wide workflows (no project) are created by the owner or a PMO
 
 ---
 
@@ -663,7 +667,7 @@ Each step in a change request records: who acted (with resolved user name), what
 
 ### Authorization
 
-- CR creation and listing require project access (`editor` for write, `viewer` for read)
+- CR creation needs the project's Manager or Owner role (`requireProjectAccess('manager')`); listing needs `viewer`
 - Detail, submit, action, and withdraw endpoints verify project membership by resolving the CR's `projectId` and checking via `projectMemberService`
 - Role enforcement on approval steps: each step's `approverRole` is validated against the acting user's role (admins bypass)
 - Global roles (admin, PMO) have full access; executives have read-only access
@@ -824,7 +828,7 @@ A Friday cron job (17:00) generates per-project weekly summaries:
 - Anomaly count and compliance percentage.
 - Top tasks by hours consumed.
 - Over-budget tasks (actual vs estimated comparison).
-- **AI Narrative (Phase 2):** A 2-3 sentence plain-language summary generated by Claude, shown in a blue callout with Sparkles icon at the top of the expanded review. Falls back to template-based summary when AI is disabled.
+- **AI Narrative (Phase 2):** A 2-3 sentence plain-language summary, shown in a blue callout with Sparkles icon at the top of the expanded review. It is written only when a manager opens the Weekly Review panel, and never for a week with no hours; the Friday run sends the figures without asking the AI (bd90d191). Falls back to a template-based summary when AI is disabled.
 - Delivered as `weekly_review` notifications to project owners/managers.
 - On-demand generation via the API endpoint.
 - Displayed in a collapsible `WeeklyReviewPanel` in the Time tab with a date picker.
@@ -918,11 +922,11 @@ Custom field values are stored per-entity (task, project) and included in search
 
 ### Custom Field Manager (Project Overview)
 
-On the **Overview** tab of a project, editors see a **Custom Field Manager** section below the custom field values. This component (`CustomFieldManager`) allows defining new custom field schemas directly from the project page — add fields, set types, configure dropdown options — without navigating to Settings. Changes apply to all entities in the project.
+On the **Overview** tab of a project, the project's Manager or Owner sees a **Custom Field Manager** section below the custom field values. This component (`CustomFieldManager`) allows defining new custom field schemas directly from the project page — add fields, set types, configure dropdown options — without navigating to Settings. Changes apply to all entities in the project.
 
 ### Custom Field Manager in Project Overview
 
-On the project **Overview** tab, editors see a **Custom Field Manager** section below the existing custom field values. This inline panel (powered by the `CustomFieldManager` component) lets project editors define and manage custom field schemas directly from the project page — add new fields, set types and options, or remove fields — without navigating to Settings.
+On the project **Overview** tab, the project's Manager or Owner sees a **Custom Field Manager** section below the existing custom field values. This inline panel (powered by the `CustomFieldManager` component) lets project editors define and manage custom field schemas directly from the project page — add new fields, set types and options, or remove fields — without navigating to Settings.
 
 ---
 
@@ -1004,7 +1008,7 @@ Users ask questions like "Which projects are over budget?" or "Show me the criti
 
 **Chart rendering:** AI-suggested charts (bar, line, pie) are rendered using the extracted `DynamicChart` component — lightweight SVG-based charts with automatic axis scaling, color coding, and responsive sizing. The QueryPage converts the AI's Chart.js-style response schema (datasets with label arrays) into the `DynamicChart` flat data format via an adapter function.
 
-**Trial User Experience:** Trial users who submit a query on the Ask AI page are not blocked with a 403. Instead, `POST /api/v1/nl-query` returns a **sample NL query response** with demo data: a short narrative answer, a sample bar chart (task status breakdown across demo projects), and 3 suggested follow-up questions. An amber upgrade banner reads: "Sample Query — This is a sample response with demo data. Upgrade to a paid plan to query your real project data." No AI tokens are consumed for the sample. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
+**Trial User Experience:** Trial users who submit a query on the AI Query page are not blocked with a 403. Instead, `POST /api/v1/nl-query` returns a **sample NL query response** with demo data: a short narrative answer, a sample bar chart (task status breakdown across demo projects), and 3 suggested follow-up questions. An amber upgrade banner reads: "Sample Query — This is a sample response with demo data. Upgrade to a paid plan to query your real project data." No AI tokens are consumed for the sample. This follows the same pattern as Status Reports, EVM, and Monte Carlo.
 
 ### Meeting Intelligence
 
@@ -1404,13 +1408,13 @@ The `crossProjectIntelligenceService` analyzes patterns across the entire portfo
 **Mjuzi** is the AI project assistant, available as a slide-out chat panel on every page. The `aiChatService` provides a conversational interface where users can ask open-ended questions about their projects and receive AI-generated responses grounded in actual project data.
 
 All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the sidebar:
-- **AI Query** (previously “Ask AI”) — natural language query interface at `/nl-query`
+- **AI Query** (previously “Ask AI”) — natural language query interface at `/query` (API `POST /api/v1/nl-query`)
 - **AI Proposals** (previously “Agent”) — agentic proposal review at `/agent`
 - The chat panel header reads **”Mjuzi AI Chat”** (previously “AI Assistant — Powered by Claude”)
 
 **Key features:**
 - **Persistent conversations** — chat history is stored in the database (`chat_conversations` + `chat_messages` tables) and survives server restarts. Users can browse, switch between, and resume past conversations from the history panel.
-- **Agent memory integration** — Mjuzi injects recent agent scan findings (via `InterAgentQueryService`; none today, as the nightly scan is switched off), prior conversation context, and its own project-specific memories into the system prompt, enabling more informed and contextual responses.
+- **Agent memory integration** — Mjuzi injects recent agent scan findings (via `InterAgentQueryService`; none on production, where the nightly scan is switched off — it runs on staging), prior conversation context, and its own project-specific memories into the system prompt, enabling more informed and contextual responses.
 - **Action memory** — when Mjuzi executes tools (create task, update project, etc.), it stores a memory of the action via `AgentMemoryService` for future reference.
 - **Self-learning** — Mjuzi learns from conversations in two ways:
   - **User preferences**: when a user states an ongoing preference (e.g. “keep responses brief”, “always show budget numbers”), Mjuzi stores it via `remember_user_preference` and applies it to all future responses for that user.
@@ -2086,17 +2090,19 @@ Bi-directional sync between project tasks and Google Calendar events. Task deadl
 
 ### Roles
 
-Five user roles with hierarchical scope-based permissions. The `write` scope allows creating, editing, and deleting project-level entities (tasks, schedules, resources, etc.). The `admin` scope is reserved for system-level operations (kill switches, agent policies, feedback management).
+Company roles with hierarchical scope-based permissions, plus the Kovarti platform admin. The `write` scope allows creating, editing, and deleting project-level entities (tasks, schedules, resources, etc.). The `admin` scope is reserved for system-level operations (kill switches, agent policies, feedback management).
 
 | Role | Scopes | Description |
 |------|--------|-------------|
-| `admin` | read, write, admin | Full system access + admin panel |
-| `project_manager` | read, write | Full project lifecycle management — projects, AI, reports, scheduling, team management |
+| `admin` | read, write, admin | Kovarti platform admin only: an account with no company. It can't be given to a company member (`ADMIN_NOT_ASSIGNABLE_MESSAGE`). It sees the Administration pages, and inside a company only through a read-only, recorded support visit |
+| `pmo` | read, write | Every project in the company; company-wide settings, workflows, holidays, people list and line managers; every menu item. **The company owner has PMO rights inside their company, whatever role is shown** |
+| `project_manager` | read, write | Full project lifecycle management on the projects they manage — projects, AI, reports, scheduling, team management. Every menu item except Portfolio |
 | `team_member` | read | Update assigned tasks/RAID items, timesheets, comments (write access via assignment bypass) |
 | `viewer` | read | View projects + update assigned RAID items, comment on assigned items |
-| `executive` | read | Pure read-only — dashboards, portfolio, reports. No edits, no comments |
+| `executive` | read | Reads every project in the company and opens the company pages (Clients, Portfolio, Resources, Analytics, EVM, Report Builder …) except Integrations and AI Proposals. No edits, no comments |
+| guest | (their role's) | `isGuest` flag, not a role: an invited outside collaborator on chosen projects — see *Guest Collaborator Role* below |
 
-**Legacy roles:** The backend retains 14 historical roles (scrum_master, finance_officer, risk_manager, pmo, ba, qa, tester, devops, claude_sme) for backward compatibility with existing users. These roles are no longer offered in UI dropdowns but continue to function with their original scope permissions. Users with legacy roles don't see the role-restricted sidebar items until their role is updated to one of the 5 active roles.
+**Other roles:** The backend has 14 roles in all (`roleScopes.ts`). The invite form offers Project Manager, Team Member, Viewer and Executive; PMO is a full working role (above). The other legacy roles (scrum_master, finance_officer, risk_manager, ba, qa, tester, devops, claude_sme) keep their scope permissions (scrum_master, risk_manager, ba, qa and devops have write; the rest read) and don't see the role-restricted menu items.
 
 **Pages by role (October 2026).** One list, `src/client/src/constants/roleRoutes.ts`, drives both the sidebar menu and the router. A page whose menu entry is limited to some roles can't be opened by others: typing its address (or a deeper one, or with `?tab=`) goes to the Dashboard, replacing the history entry so Back doesn't loop. Team members, viewers and the legacy roles lose Clients, Portfolio, Resources, Meeting Intelligence, Change Requests, Workflows, Intake, Integrations, Analytics, EVM, Simulation, Scenarios, Report Builder and AI Proposals; project managers lose Portfolio; executives lose Integrations and AI Proposals; PMO (and the company owner) keep everything. Pages outside the menu — a project and its tabs, a client's RAID and report (linked from Projects), Help, Settings, Account, KPI drill-ins — stay open. Links to hidden pages (command palette, dashboard widgets, notifications, breadcrumbs, Workload Heatmap links, email buttons) are hidden or pointed elsewhere. The server's own checks are unchanged; this is what the app shows.
 
@@ -2105,7 +2111,7 @@ Five user roles with hierarchical scope-based permissions. The `write` scope all
 External stakeholders (clients, contractors, auditors) can be invited as guest collaborators with authenticated, scoped access to specific projects — without consuming a paid seat.
 
 **Inviting guests:**
-- Admin or project managers navigate to **Settings > Team** and use the "Invite Guest" form.
+- The company owner or a project manager navigates to **Settings > Team** and uses the "Invite Guest" form.
 - Specify the guest's email, select a project, and configure granular permissions.
 - The guest receives an invite email and logs in with their own credentials.
 
@@ -2143,6 +2149,7 @@ MCP tools are filtered by role — agents only see tools their role permits (see
 The `ApiKeyService` issues scoped API keys for programmatic access:
 
 - Scope-based permissions (read, write, admin)
+- **Never more than the owner's role** (ccfb7631): a key — including a Claude connection — is cut to its owner's current role on every request (`effectiveScopes`; `*` means "what the role allows"). Only the platform admin has `admin`, so a company member asking for it gets 403 "Your role (…) cannot create API keys with scopes: admin". Creating a key or a webhook needs the `write` scope, so team members, viewers and executives can't create either (their only key is a Claude connection, read-only). Lowering a person's role also lowers their existing keys. The Settings → API Keys tab still offers all three scope buttons to everyone (app gap)
 - **Role resolution**: API key auth resolves the user's actual database role (not inferred from scopes)
 - Key hashing (only prefix stored in plaintext for identification)
 - Expiration support
@@ -2216,30 +2223,22 @@ Defense-in-depth protection against prompt injection in AI-powered features. Use
 
 ### Overview
 
-A standalone Model Context Protocol (MCP) server (`mcp-server/src/index.ts`) enables Claude Desktop and Claude Web to interact with PM Assistant directly. It communicates over stdio transport and authenticates via API key.
+A standalone Model Context Protocol (MCP) server (`mcp-server/src/index.ts`) enables Claude Desktop and Claude Web to interact with PM Assistant directly. It runs over Streamable HTTP with OAuth — the "Claude connection" a user makes by signing in and approving (`/authorize`, `/token`, `POST /mcp`) — or, for development and older setups, over stdio with an API key. The tools offered and the rights used are limited to the person's role (`mcp-server/src/permissions.ts`, `roleScopes.ts`), and a connection never does more than its owner's role.
 
 ### Available Tools
 
+About 117 tools are registered, one file per area in `mcp-server/src/tools/` (projects, schedules, tasks, sprints, RAID, resources, time tracking, reports, approvals, intake, templates, custom fields, lessons learned, integrations, schedule review, auto-reschedule, resource optimizer, AI insights, admin). Some common ones:
+
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List all projects |
-| `get-project` | Get project details by ID |
-| `get-schedules` | Get all schedules for a project |
-| `get-tasks` | Get all tasks in a schedule |
-| `get-project-health` | AI health score for a project |
-| `get-project-risks` | AI risk assessment for a project |
-| `get-project-budget` | AI budget forecast for a project |
-| `get-spend-to-date` | Cumulative project spending with earned value and variance |
-| `get-burn-rate` | Daily/monthly spending rate with EVM cost metrics |
-| `get-analytics` | Portfolio-level analytics summary |
-| `get-alerts` | Proactive alerts across all projects |
-| `search` | Search projects and tasks by keyword |
-| `get-portfolio` | Full portfolio overview |
-| `suggest-risk-mitigations` | AI risk mitigation suggestions from historical lessons |
-| `get-meeting-summary` | Extract summary, actions, and decisions from meeting transcript |
-| `send-slack-message` | Send a message to all Slack channels configured for a project |
-| `test-slack-connection` | Verify that the Slack webhook for a project is reachable |
-| `list-slack-channels` | List all Slack channel configurations registered for a project |
+| `list-projects` / `get-project` | Projects the person may see; one project's details |
+| `list-schedules` / `list-tasks` | A project's schedules; a schedule's tasks |
+| `get-project-health` / `get-project-risks` | Health score and risk assessment for a project |
+| `get-spend-to-date` / `get-burn-rate` | Spending with earned value and variance; spending rate with EVM cost metrics |
+| `get-analytics-summary` / `get-portfolio-overview` | Portfolio-level analytics; portfolio overview |
+| `get-alerts` / `search` | Alerts across the person's projects; keyword search |
+| `suggest-risk-mitigations` / `get-meeting-summary` | Mitigation ideas from past lessons; summary, actions and decisions from a transcript |
+| `send-slack-message` / `test-slack-connection` / `list-slack-channels` | Slack messages and channel checks for a project |
 
 ### MCP Proxy
 
@@ -2254,9 +2253,10 @@ The main application also exposes an `/mcp` reverse proxy route for HTTP-based M
 The `StripeService` manages subscription billing:
 
 - **Customer creation**: linked to user accounts
-- **Multi-tier checkout**: Consultant Basic ($19/mo or $190/yr), Consultant Pro ($29/mo or $290/yr), SME ($39/mo or $390/yr), Enterprise ($79/mo or $790/yr). Price IDs configured via `STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID`, `STRIPE_SME_MONTHLY_PRICE_ID`, `STRIPE_ENTERPRISE_MONTHLY_PRICE_ID` (and annual variants).
+- **Multi-tier checkout**: Consultant Basic ($19/mo or $190/yr), Consultant Pro ($29/mo or $290/yr), Team (stored as `sme`; $19 per seat per month or $190 per seat per year, minimum 3 seats), Enterprise ($79/mo or $790/yr). Price IDs configured via `STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID`, `STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID`, `STRIPE_SME_MONTHLY_PRICE_ID`, `STRIPE_ENTERPRISE_MONTHLY_PRICE_ID` (and annual variants).
 - **Token top-up checkout**: One-time payment for 500K token packs ($10 each, 1-20 packs per purchase). Price ID via `STRIPE_TOPUP_PRICE_ID`. Webhook prevents double-processing via `findByStripeSession()`.
 - **Billing portal**: self-service subscription management via Stripe's portal
+- **Owner only** (`billingOwnerOnly`): checkout, top-up, the portal and reconcile are for the company owner (or a person with no company); anyone else gets 403 and sees "Your company's owner manages the plan."
 - **Webhook handling**: processes Stripe events for subscription lifecycle (created, updated, cancelled, payment succeeded/failed) and top-up completion. Every event is written to the `subscription_events` table and logged to the audit ledger.
 - **Tier resolution**: `resolveTierFromPriceId()` maps Stripe price IDs to app tiers (trial, consultant, sme, enterprise) with legacy fallback support
 - **Revenue capture**: `amount_cents`, `currency`, and `billing_interval` are extracted from Stripe webhook payloads and stored on the `subscriptions` row so revenue figures are always queryable without a Stripe API call.
@@ -2276,14 +2276,14 @@ Only the company owner can change the plan, buy AI top-ups, open the Stripe bill
 
 The `AccountBillingPage` (`/account/billing`) shows:
 
-- **Plan name**: dynamically resolved from the user's actual subscription tier — never hardcoded. Trial tier shows "Trial Plan", paid tiers show "Consultant Basic Plan", "Consultant Pro Plan", "SME Plan", or "Enterprise Plan" accordingly.
+- **Plan name**: dynamically resolved from the user's actual subscription tier — never hardcoded. Trial tier shows "Trial Plan", paid tiers show "Consultant Basic Plan", "Consultant Pro Plan", "Team Plan", or "Enterprise Plan" accordingly (the per-seat tier is labelled Team since migration 118).
 - **Top-up balance**: remaining purchased token balance with a **Buy More** button linking to the token top-up Stripe checkout.
 - **Owner only (October 2026)**: Manage Billing, the top-up card, seat buttons and View Plans & Subscribe show only to the company owner (or the platform admin) — billing runs on the owner's own payment account. Everyone else sees the plan and AI usage and "Your company's owner manages the plan, payment and AI top-ups." The trial banner, the paid-plan window and the public Pricing page follow the same rule: a signed-in member who isn't the owner sees the plans and which one is theirs, but no Subscribe / Switch Plan, billing or Buy Token Pack buttons (signed-out visitors and owners see the page as before). Someone with no company pays for themselves, as the server allows. If billing or a top-up is refused, the page shows the server's message instead of doing nothing.
 - **AI usage meter**: progress bar showing current-month token consumption vs the effective budget (tier allowance + top-up balance), color-coded green/amber/red.
 
 ### Viewer Invite Flow
 
-Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external client stakeholders as **viewer accounts** — free, read-only users who do not consume a paid seat.
+Paid subscribers (Consultant Basic/Pro, Team and Enterprise tiers) can invite external client stakeholders as **viewer accounts** — free, read-only users who do not consume a paid seat.
 
 **Invite limits by tier:**
 
@@ -2291,8 +2291,8 @@ Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external cli
 |------|---------------|
 | Trial | 0 (not available) |
 | Consultant Basic | 5 |
-| Consultant Pro | 5 |
-| SME | 20 |
+| Consultant Pro | 15 |
+| Team (SME) | Unlimited |
 | Enterprise | Unlimited |
 
 **What viewers can do:**
@@ -2304,13 +2304,13 @@ Paid subscribers (Consultant, SME, and Enterprise tiers) can invite external cli
 - Create, cancel, or reverse RAID items
 - Create or delete projects, tasks, or any other entities
 - Access projects they have not been invited to
-- Access administrative settings, reports, API keys, or billing
+- Access administrative settings, API keys or billing. They can open Reports (and AI Query), but only for the projects they were invited to
 
 Viewers remain free and do not consume a paid seat regardless of RAID activity. This lets external stakeholders (e.g., risk owners, vendors) manage the items assigned to them without requiring an upgraded account.
 
 **Invite flow:**
-1. A paid user navigates to **Settings → Viewer Invites** (or the project's Members tab).
-2. They enter the invitee's email address and select one or more projects to share.
+1. The company owner, a PMO or a project manager opens **Settings → Team → Viewer Invites**.
+2. They enter the invitee's email address and click **Invite** (the invite doesn't pick projects; the viewer is then added to each project from that project's Team tab).
 3. The system checks the inviting user's remaining invite quota. If the quota is exhausted, the invite is blocked with a clear upgrade prompt.
 4. An invitation email is sent to the invitee (7-day expiry). If the email does not match an existing account, a viewer account is auto-provisioned on first acceptance.
 5. The invitee clicks the link and sees the registration page with messaging that says **"You've been invited to join this organization"** (not "invited as a viewer"). They complete registration (password only — no billing) and land on a read-only project view.
@@ -2396,21 +2396,21 @@ The `/register` page remains directly accessible for invite links and direct URL
 
 ### Pricing Page
 
-The Pricing page (`/pricing`) presents the Free Trial tier and three paid tiers (Consultant Basic, Consultant Pro, SME) with monthly/annual billing toggle and a 17%-save badge on annual plans. Each plan card shows:
+The Pricing page (`/pricing`) presents the Free Trial tier and three paid tiers (Consultant Basic, Consultant Pro, Team) with monthly/annual billing toggle and a 17%-save badge on annual plans. Each plan card shows:
 
 - Price and billing period
 - AI token allowance with **practical usage equivalents** (e.g., "~100 AI chats, 50 risk scans, or 25 reports/mo") so users understand what their token budget means in real terms
 - Feature list with checkmarks
 - Start Free Trial / Subscribe / Switch Plan / Current Plan button (context-aware based on auth state and current tier)
 
-Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side table across all 5 tiers (Trial, Consultant Basic, Consultant Pro, SME, Enterprise). Features are marked with checkmarks (included), X marks (excluded), or text values (e.g., "3", "1GB", "Unlimited"). The table covers projects, AI tokens, exports, API access, EVM, Monte Carlo, resource management, workflows, portal, intelligence features, meeting tools, MCP, storage, and top-ups.
+Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side table across 4 tiers (Trial, Consultant Basic, Consultant Pro, Team). Enterprise is not shown on the page (`HIDDEN_TIERS`). The summary below lists what the plans include (the page's own table marks Trial ✓ on every feature, although the server's trial feature settings turn several off — see Feature Gating). Features are marked with checkmarks (included), X marks (excluded), or text values (e.g., "3", "1GB", "Unlimited"). The table covers projects, AI tokens, exports, API access, EVM, Monte Carlo, resource management, workflows, portal, intelligence features, meeting tools, MCP, storage, and top-ups.
 
-| Feature | Trial | Consultant Basic | Consultant Pro | SME | Enterprise |
+| Feature | Trial | Consultant Basic | Consultant Pro | Team (SME) | Enterprise (not on the page) |
 |---------|-------|-----------------|----------------|-----|------------|
 | Projects | 3 | Unlimited | Unlimited | Unlimited | Unlimited |
-| AI Tokens/mo | 25K | None | 500K | 1.5M | 5M |
+| AI Tokens/mo | 5K | None | 500K | 500K per seat, pooled | 5M |
 | Storage | 100MB | 1GB | 1GB | 5GB | 10GB |
-| Viewer Invites | 0 | 5 | 15 | 20 | Unlimited |
+| Viewer Invites | 0 | 5 | 15 | Unlimited | Unlimited |
 | Exports | ✗ | ✓ | ✓ | ✓ | ✓ |
 | API Keys | ✗ | ✓ | ✓ | ✓ | ✓ |
 | EVM | ✗ | ✓ | ✓ | ✓ | ✓ |
@@ -2424,8 +2424,8 @@ Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side ta
 | NL Query | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Cross-Project Intelligence | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Token Top-Ups | ✗ | ✗ | ✓ | ✓ | ✓ |
-| Price (monthly) | Free | $19/mo | $29/mo | $39/mo | $79/mo |
-| Price (annual) | Free | $190/yr | $290/yr | $390/yr | $790/yr |
+| Price (monthly) | Free | $19/mo | $29/mo | $19 per seat (minimum 3) | $79/mo |
+| Price (annual) | Free | $190/yr | $290/yr | $190 per seat | $790/yr |
 
 A **Token Top-Up CTA** below the comparison table lets users purchase additional token packs ($10 per 500K).
 
@@ -2433,11 +2433,11 @@ A **Token Top-Up CTA** below the comparison table lets users purchase additional
 
 ### SME Access Paths
 
-The SME tier is hidden from the public pricing page but accessible through three paths:
+The SME tier is shown on the public pricing page as **Team**. Other ways in:
 
 1. **Secret Registration URL** — `/register?tier=sme&billing=monthly` (or `billing=annual`). Includes a seat count picker (minimum 3 seats, $19/seat/month). Uses per-seat Stripe checkout on the organization.
 2. **Admin Tier Change** — In Admin > Users, click the tier badge on any user row to change their tier via a dropdown. Changing to SME automatically sets the org to per-seat billing with minimum 3 seats.
-3. **In-App Upgrade** — On the Account & Billing page, consultant-tier users see an "Upgrade to SME" card that initiates a per-seat Stripe checkout session for their organization (starting at 3 seats).
+3. **In-App Upgrade** — the company owner picks Team on the **Pricing** page. (An "Upgrade to SME" card on Account & Billing is built but hidden until the tier is publicly launched — nothing is shown there.)
 
 ### Feature Gating
 
@@ -2662,7 +2662,7 @@ A global dark theme is available throughout the application. The user toggles it
 
 **Full coverage:** Every page in the application has `dark:` companion classes — including all auth pages (Login, Register, Forgot/Reset Password, Verify Email), public pages (Landing, Pricing, Privacy, Terms), dashboard pages (Executive, Portfolio, Analytics), tool pages (Report Builder, Workflow, Monte Carlo, Scenario Modeling), admin pages, and all shared components (report designer/preview, lessons cards, task form modal, notification bell, time tracking, custom fields, attachments, templates, timesheet grid, etc.).
 
-**Settings page (all 8 tabs):** Profile, Team, Notifications, Display, Accessibility, API Keys, Webhooks, and Danger Zone all have full dark mode coverage. Toggle tracks, form panels, badges, code blocks, and the danger zone destructive section each have dedicated `dark:` variants.
+**Settings page (up to 13 tabs):** Profile, Team, Company holidays, Sample project, Rate card, Support visits, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks and Danger Zone all have full dark mode coverage (Team and Rate card show for admin/PM/PMO; Support visits for the owner or PMO; Sample project for the owner, admin or PMO — `SettingsPage.tsx`). Toggle tracks, form panels, badges, code blocks, and the danger zone destructive section each have dedicated `dark:` variants.
 
 **Admin page:** Role badges, stat card icon colors, tier badges, reset-token banner, and the header icon all have dark variants. The user search bar and AI Usage tab sortable columns also render correctly in dark mode.
 
@@ -2903,7 +2903,7 @@ Rules that need dependency logic are listed under **Unlocks when dependencies ex
 
 **Storage.** One row per run in the tenant table `schedule_reviews` (score, band, counts, findings JSON, skipped rules, trigger, rules version). The last 50 runs per schedule are kept.
 
-**API** (mounted under `/api/v1/schedules`): `POST /:scheduleId/review` (editor) runs and stores a review; `GET /:scheduleId/review/latest` (viewer, 204 when none); `GET /:scheduleId/review/history?limit=8` (viewer) returns the score trend newest first; `GET /:scheduleId/review/export/docx` (viewer) returns the latest review as a Word document (404 with an actionable message when no review has been run yet).
+**API** (mounted under `/api/v1/schedules`): `POST /:scheduleId/review` (project Manager/Owner) runs and stores a review; `GET /:scheduleId/review/latest` (viewer, 204 when none); `GET /:scheduleId/review/history?limit=8` (viewer) returns the score trend newest first; `GET /:scheduleId/review/export/docx` (viewer) returns the latest review as a Word document (404 with an actionable message when no review has been run yet).
 
 **Word export — the only form of the review that leaves the product.** `src/server/utils/scheduleReviewDocxBuilder.ts`. A consultant attaches it to a proposal or sends it to a sponsor; the recipient has no account and never opens a web page (showing the score on the client portal was explicitly declined — see todo SD3). Because it carries no surrounding context, it is deliberately *not* the panel rendered to paper:
 
@@ -2926,7 +2926,7 @@ Tests (`__tests__/utils/scheduleReviewDocxBuilder.test.ts`) assert what a strang
 The import summary reports how many dependencies were linked, whether a baseline was captured, any duration re-interpretation, skipped rows and predecessor warnings, alongside the score chip.
 
 **Fix proposals (Phase 3, structural).** The review no longer only diagnoses — it drafts the
-repair. From the findings panel an editor clicks **Propose fixes**; the system proposes concrete
+repair. From the findings panel the project's Manager or Owner clicks **Propose fixes**; the system proposes concrete
 structural changes and the PM ticks which to apply:
 
 - **Add link** — a finish-to-start dependency between two existing tasks (a sequential chain
@@ -3226,13 +3226,6 @@ See [Section 23](#23-dashboard) for full widget and endpoint details.
 
 ## 42. Multi-Agent Collaboration
 
-### Memory Context for Reasoning
-ReasoningEngine generators (scope analysis, budget analysis) now inject historical context into Claude prompts:
-- Past reflections from the same agent for the same project
-- Cross-agent insights (what other agents found in recent scans)
-
-This is provided by `getMemoryContext(agentId, projectId)` which queries the `agent_memory` table.
-
 ### Inter-Agent Query Service
 Agents can query other agents' conclusions via `InterAgentQueryService`:
 - `getLatestInsight(agentId, projectId)` — specific agent's latest finding
@@ -3328,7 +3321,7 @@ SME-tier users get an extended **4-step onboarding wizard** that adds a dedicate
 | Step | Content |
 |------|---------|
 | **Step 1 — Profile & Org Setup** | Same profile fields as the standard wizard (name, role, methodology), plus a **required** Organization Name field. On other tiers the org name field is optional; for SME it must be filled before proceeding. |
-| **Step 2 — Team Setup** (SME only) | Seat summary banner showing total seats purchased, seats already used, and seats still available. An invite form with an email field and a role dropdown (owner / manager / editor / viewer) lets the admin send invitations immediately. Sent invites accumulate in a pending-invites list below the form. Buttons: **Send Invites & Continue** (proceeds after at least one invite is sent) and **Skip — I'll invite later** (proceeds without sending invites). Uses existing APIs: `GET /api/v1/seats` for seat data and `POST /api/v1/org/invite` for each invitation. |
+| **Step 2 — Team Setup** (SME only) | Seat summary banner showing total seats purchased, seats already used, and seats still available. An invite form with an email field and a role dropdown (Project Manager / Team Member / Viewer / Executive) lets the owner send invitations immediately. Sent invites accumulate in a pending-invites list below the form. Buttons: **Send Invites & Continue** (proceeds after at least one invite is sent) and **Skip — I'll invite later** (proceeds without sending invites). Uses existing APIs: `GET /api/v1/seats` for seat data and `POST /api/v1/org/invite` for each invitation. |
 | **Step 3 — Create First Project** | Same methodology-aware template picker as the standard wizard. |
 | **Step 4 — Done** | Completion screen showing an org summary: organization name, total seats, and the number of invites sent during Step 2, rather than trial countdown info. |
 
@@ -3348,7 +3341,7 @@ The project detail page shows a few **primary tabs** plus a single **More** menu
 
 **More (all methodologies), in order:** Time, Files, Insights, Resources, Agent Activity, Automations, Doc Intelligence — then the methodology's extra items above. **Insights** has two sub-tabs: **Performance** (EVM and cost forecast; its AI analysis is requested only when this view opens) and **AI Predictions** (task slip, scope creep, risk assessment). The **Weekly review** tab has no entry in the bar: it opens from the Weekly PM review card on Overview (project PM only).
 
-**Agent Activity tab.** Lists each run of the three rule-based checks for this project (`GET /api/v1/agent-log`): time, check, result (Alert Created / Skipped / Error) and summary. People who can edit the project see **Run AI Analysis** (`POST /api/v1/agent/trigger` with the projectId) — it runs the same three checks (delays, budget CPI/VAC, Monte Carlo) straight away and **makes no AI call**, despite the label. The nightly run of these checks is switched off (`AGENT_ENABLED` unset on staging and production). The filter list still offers "Meeting", a retired agent that no longer writes entries. History kept (nightly clean-up, since 2026-10-08): agent activity 180 days, workflow and automation runs 90 days (automation Insights cover the same 90 days; the Total Runs counter is lifetime), integration sync log 30 days, AI usage 400 days — see ADMIN_MANUAL "Automatic clean-up of history tables".
+**Agent Activity tab.** Lists each run of the three rule-based checks for this project (`GET /api/v1/agent-log`): time, check, result (Alert Created / Skipped / Error) and summary. People who can edit the project see **Run AI Analysis** (`POST /api/v1/agent/trigger` with the projectId) — it runs the same three checks (delays, budget CPI/VAC, Monte Carlo) straight away and **makes no AI call**, despite the label. The nightly run of these checks (`pm-cron@agent-scan`, 02:00 UTC) is on for staging (since 2026-10-07) and off for production. The filter list offers All Agents / Auto-Reschedule / Budget / Monte Carlo. History kept (nightly clean-up, since 2026-10-08): agent activity 180 days, workflow and automation runs 90 days (automation Insights cover the same 90 days; the Total Runs counter is lifetime), integration sync log 30 days, AI usage 400 days — see ADMIN_MANUAL "Automatic clean-up of history tables".
 
 The RAID log tab is labelled **Risks & Issues** in the tab bar. Its badge shows the **critical-item count only** (not total open items).
 
@@ -3376,7 +3369,7 @@ When a project has **zero schedules**, the Schedule tab shows two options: a pri
 
 ### Navigation
 
-Accessible via the "Plan" section in the sidebar:
+Accessible via the "Work" section in the sidebar:
 - Dashboard → `/dashboard`
 - Projects → `/projects`
 
@@ -3469,7 +3462,7 @@ Fields: title, description, owner, rationale, decided_by, decision_date, alterna
 Status workflow:
 ```
 proposed → pending_decision → decided → deferred
-                                      ↘ reversed (admin only — requires reason)
+                                      ↘ reversed (project Manager/Owner or PMO — requires reason)
 ```
 
 #### Assumption
@@ -3606,7 +3599,7 @@ Clicking any row in the RAID log opens a slide-out panel from the right side of 
 
 - Full record header (ID, type badge, status pill, severity chip)
 - All type-specific fields (editable inline for permitted roles)
-- **Updates** — a dedicated section for team communication. Users with editor access can post updates and delete their own updates. Each update shows the author name, relative timestamp, and text.
+- **Updates** — a dedicated section for team communication. The project's Manager or Owner, and the item's assigned owner (a viewer too), can post updates and delete their own updates. Each update shows the author name, relative timestamp, and text.
 - **Activity** — a pure audit trail showing every state change, with actor name, timestamp, and change description. Comments are no longer mixed with audit entries.
 
 ### Updates vs Activity
@@ -3632,12 +3625,14 @@ The RAID log integrates with the platform's AI agent layer in two ways:
 
 **AI Scan** — A project-scoped scan that reads the current schedule, task statuses, overdue items, and budget data to surface new risks and issues. Results are presented as a preview; the user selects which findings to import. Imported records are tagged with `source: ai_scan`.
 
-**Agent writes** — Background agents (e.g., the Risk Agent, Budget Agent) can write directly to the RAID log using the `importFromAgent` pathway. These records are tagged with `source: agent` and appear in the log alongside manually created entries. Agent-written records go through the same activity logging as manual records.
+**Agent writes** — No background check writes to the RAID log today. `RiskService.importFromAgent` (records tagged `source: agent`) still exists, but nothing calls it, and the Risk Agent is retired.
 
 **Suggest with AI** — When editing a risk, the form offers "Suggest with AI" buttons on three fields:
 - **Mitigation Plan** — AI suggests preventive strategies based on historical lessons learned and RAG-based similarity search
 - **Trigger Condition** — AI suggests early warning signs and leading indicators to monitor
 - **Response Plan** — AI suggests contingency actions, escalation paths, and recovery steps
+
+Separately, past-lesson mitigation ideas appear only when you click **Suggest mitigations from past lessons**; it asks once, with no retries, and nothing is asked while you type (bd90d191).
 
 All three use the same `POST /:projectId/risks/:riskId/suggest-mitigation?field=mitigation|trigger|response` endpoint, which queries the lessons-learned knowledge base via RAG (or deterministic fallback) and generates suggestions using Claude. The `suggest-mitigation` MCP tool also uses this pathway.
 
@@ -3689,12 +3684,12 @@ Click **Generate Report** to produce the report with the selected filters applie
 
 | Role | Create Risk | Create Issue | Create Action | Create Decision | Create Assumption | Create Dependency | Cancel | Reverse |
 |------|-------------|--------------|---------------|-----------------|-------------------|-------------------|--------|---------|
-| `admin` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
-| `project_manager` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
-| `scrum_master` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
-| `pmo` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
-| `ba` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No |
-| `risk_manager` | Yes | Yes | No | No | Yes | Yes | Yes | No |
+| `admin` (platform; read-only inside a company) | Yes | Yes | Yes | Yes | Yes | Yes | Yes | — |
+| `project_manager` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Manager/Owner |
+| `scrum_master` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Manager/Owner |
+| `pmo` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| `ba` | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Manager/Owner |
+| `risk_manager` | Yes | Yes | No | No | Yes | Yes | Yes | Manager/Owner |
 | `team_member` | No | Yes | Yes | No | Yes | No | Own only | No |
 | `finance_officer` | No | No | No | No | No | No | No | No |
 | `executive` | No | No | No | No | No | No | No | No |
@@ -3830,7 +3825,7 @@ The Terms of Service (`/terms`) has been updated to include the following provis
 
 - **Trial conversion clause** — describes how the 14-day free trial converts to a paid subscription at the end of the trial period if a payment method is on file.
 - **Refund policy** — monthly plan fees are non-refundable. Annual plan fees are pro-rated and refundable within 30 days of the billing date. Token top-ups are non-refundable.
-- **AI Usage Limits (Section 5A)** — highlighted section covering per-tier monthly token allowances (Trial: 25K, Consultant Basic: none, Consultant Pro: 500K, SME: 1.5M, Enterprise: 5M), budget exhaustion behavior (AI features blocked, non-AI features unaffected), token top-up terms (non-refundable, no expiry), no carry-over of unused monthly tokens, per-user overrides, and fair use policy.
+- **AI Usage Limits (Section 5A)** — highlighted section covering per-tier monthly token allowances (Trial: 5K, Consultant Basic: none, Consultant Pro: 500K, Team: 1.5M, Enterprise: 5M), budget exhaustion behavior (AI features blocked, non-AI features unaffected), token top-up terms (non-refundable, no expiry), no carry-over of unused monthly tokens, per-user overrides, and fair use policy.
 - **Governing law** — disputes are governed by the laws of British Columbia, Canada.
 - **Dispute resolution** — parties agree to attempt informal resolution before pursuing formal legal proceedings.
 
@@ -4169,6 +4164,7 @@ UI layout preferences are persisted server-side so they follow the user across d
 - Partial updates are merged with existing preferences — changing one setting does not reset others.
 - If the server has no saved preferences (new user), localStorage defaults are used.
 - Stored in the `view_preferences` JSON column on the `users` table (migration 076).
+- **Everyone saves their own settings** (99cee55e): every role, read-only roles included, can save its own view, notification, time zone/language, accessibility and dashboard settings — these routes need only sign-in and write only the caller's row. Only real changes are sent, and only the changed keys; nothing is sent before the first read. (AI Context user preferences are not yet among them: saving them needs the `write` scope, so team members, viewers and executives are refused.)
 
 ---
 
@@ -4217,7 +4213,7 @@ In both Table View and Gantt Chart, double-clicking a column's resize handle (th
 
 The Gantt left panel previously showed all 12 columns by default, which squeezed the flex-width Task Name column to near-zero pixels. This is fixed:
 
-- **Default visible columns** are now 6 essentials: Pred, Start, End, Duration, %, Status (plus # and Task Name which are always shown). All other columns (Succ, Est Days, Work, Priority, Assigned) are hidden by default and can be toggled on via the column picker.
+- **Default visible columns** are now 6 essentials: Duration, Start, End, Pred, Assigned, Status (plus # and Task Name which are always shown). All other columns (Succ, Est, Work, %, Priority, Resource, Notes) are hidden by default and can be toggled on via the column picker.
 - **Task Name is now resizable** with a 250px default width (previously flex-only, so it was unresizable). Drag its right border to adjust; the width persists in localStorage per schedule.
 - **Improved resize handles**: all column resize handles show a visible dot indicator for discoverability.
 - **Horizontal scroll**: the left panel uses `overflow-x: auto` so toggling on additional columns does not crush the task name — columns extend horizontally and the panel scrolls.
@@ -4787,7 +4783,7 @@ Phases 1–3 built an event-driven automation engine that reacts to things that 
 
 | Type | Description | Example |
 |------|-------------|---------|
-| Interval | Every N minutes (1–1440) | Every 30 minutes |
+| Interval | Every N minutes (5–1440) | Every 30 minutes |
 | Daily | Once per day at a specific time | Daily at 09:00 |
 | Weekly | Once per week on a specific day/time | Mondays at 09:00 |
 | Monthly | Once per month on a specific day/time | 1st of each month at 09:00 |
@@ -4799,7 +4795,7 @@ Each scheduled automation can be configured with a timezone (e.g., `America/New_
 
 #### Execution Model
 
-A cron job runs **every minute**, queries all active automations where `next_run_at <= NOW()`, and executes each through the existing pipeline (conditions, actions, cooldowns, execution logging). After execution, `next_run_at` is recomputed from the current time.
+A systemd timer (`pm-cron@scheduled-automations`) runs **every 5 minutes**, queries all active automations where `next_run_at <= NOW()`, and executes each through the existing pipeline (conditions, actions, cooldowns, execution logging). After execution, `next_run_at` is recomputed from the current time.
 
 **Missed runs:** If the server was down, the automation fires once on restart — it does not fire once per missed interval.
 
@@ -5060,7 +5056,7 @@ Migration `T042_project_links.sql` (tenant DB). Table `project_links` with colum
 
 - The **Key Links** card renders directly after the Project Brief card in the Overview card grid.
 - **12 icon presets** with color-coded badges: Generic Link, SharePoint, Jira, Confluence, Figma, GitHub, Google Drive, Slack, Teams, Notion, Miro, Trello.
-- **Inline add form** — editors click **+ Add Link** to reveal a title + URL + icon picker inline form. Save adds the link immediately; Cancel hides the form.
+- **Inline add form** — the project's Manager or Owner clicks **+ Add Link** to reveal a title + URL + icon picker inline form. Save adds the link immediately; Cancel hides the form.
 - **Hover controls** — hovering a link row reveals pencil (edit) and trash (delete) icon buttons. Edit switches the row to an inline form; delete shows a confirm prompt.
 - **Drag to reorder** — links can be dragged to reposition; order is persisted via the reorder endpoint.
 

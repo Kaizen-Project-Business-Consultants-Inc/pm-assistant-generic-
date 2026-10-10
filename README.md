@@ -185,7 +185,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - **Cross-Project Intelligence** -- Insights across the portfolio
 - **What-If Scenario Modeling** -- Simulate schedule and resource changes
 
-### Agentic System (requires `AGENT_ENABLED=true` — switched off on staging and production)
+### Agentic System (requires `AGENT_ENABLED=true` — on for staging since 2026-10-07, off for production)
 - **Nightly checks (no AI)** -- slipping tasks (working days; then AI Reschedule proposes dates on request), budget performance from EVM (labour + expenses), and Monte Carlo schedule risk. Each alerts the project's PM once per unread alert.
 - **Agents only suggest; the PM decides.** Twelve earlier agents were removed in October 2026 (they duplicated Schedule Review, the Team Planner, EVM, status reports and Lessons, and their AI output was unreliable). PM playbooks are the planned next step.
 - **Autonomous Execution** -- Not offered in the app (October 2026): agents only suggest and the PM decides. The API still accepts per-project promotion by that project's Manager/Owner; acting by themselves is a long-term goal
@@ -240,7 +240,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
 - Email notifications for critical/high severity events (respects per-category email preference)
 - Daily and weekly email digests (overdue tasks, upcoming deadlines, unread count)
 - Trial reminder emails: daily cron at 09:00 sends 3-day, 1-day, and expired-trial notices via Resend; dark-themed branded HTML templates with preheader text, teal accent bar, status badge, gradient CTA button, reassurance info points, responsive layout, Outlook VML fallback, and dark-mode support; Redis-backed dedup prevents duplicate sends
-- **Viewer Invite Flow** — Consultant/SME/Enterprise users can invite client stakeholders as free viewer accounts (Basic: 5 / Pro: 15 / SME: 20 / Enterprise: unlimited invites per tier respectively); viewers get read-only access scoped to the inviting user's projects
+- **Viewer Invite Flow** — Consultant/SME/Enterprise users can invite client stakeholders as free viewer accounts (Basic: 5 / Pro: 15 / Team (SME): unlimited / Enterprise: unlimited invites per tier respectively); viewers get read-only access scoped to the inviting user's projects
 - **Feature gating** — Trial accounts are restricted from advanced features (exports, EVM, Monte Carlo, etc.); `requireTier`/`requirePaidTier` middleware enforces tier checks server-side on protected routes
 
 ### Client / Stakeholder Portal
@@ -287,7 +287,7 @@ This starts both the Fastify API server and the Vite dev server concurrently.
   - **Trial:** Free, 14 days, 3 projects, 5K AI tokens (~10 chats to explore Mjuzi), basic PM features only
   - **Consultant Basic:** $19/mo ($190/yr), unlimited projects, no AI, core PM + resources + reports + workflows, 5 viewer invites
   - **Consultant Pro:** $29/mo ($290/yr), unlimited projects, 500K AI tokens/month, all features including AI, 15 viewer invites
-  - **SME:** $19/seat/mo ($190/seat/yr, min 3 seats), unlimited projects, 500K AI tokens/seat (pooled), all features, 20 viewer invites
+  - **Team (SME):** $19/seat/mo ($190/seat/yr, min 3 seats), unlimited projects, 500K AI tokens/seat (pooled), all features, unlimited viewer invites
   - **Enterprise:** $79/mo ($790/yr), unlimited projects, 5M AI tokens/month, all features, unlimited viewer invites
 - Usage-based billing support
 - Stripe Checkout and customer portal integration
