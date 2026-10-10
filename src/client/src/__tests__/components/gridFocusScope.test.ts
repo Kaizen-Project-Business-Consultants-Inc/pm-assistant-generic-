@@ -242,7 +242,8 @@ for (const view of [gantt, table]) {
       expect(v.changed()).toEqual([]);
     });
 
-    it('Escape in a text field (cancelling an edit) does not leave the grid', () => {
+    it('Escape in a text field (cancelling an edit) after a click leaves the grid too: the next Tab moves on', () => {
+      // staging bug 2026-10-09: click → Tab → Shift+Tab → click (opens the editor) → Escape → Tab indented
       buildPage();
       const v = view.mount({ activeTaskId: 'b' });
       const edit = Object.assign(document.createElement('input'), { type: 'text' });
@@ -250,7 +251,20 @@ for (const view of [gantt, table]) {
       mouseDown(edit);
       key('Escape', edit);
       edit.remove(); // the edit closes; focus is back on <body>
-      expect(key('Tab').defaultPrevented).toBe(true);
+      expect(key('Tab').defaultPrevented).toBe(false);
+      expect(v.changed()).toEqual([]);
+    });
+
+    it("a keyboard user's Escape in a text field only cancels the edit: still in the list", () => {
+      buildPage();
+      const v = view.mount({ activeTaskId: 'b' });
+      focusOn(page.grid);
+      const edit = Object.assign(document.createElement('input'), { type: 'text' });
+      page.row.append(edit);
+      focusOn(edit);
+      key('Escape', edit);
+      edit.remove();
+      expect(key('ArrowRight', document.body, { altKey: true, shiftKey: true }).defaultPrevented).toBe(true);
       expect(v.changed().length).toBe(1);
     });
 

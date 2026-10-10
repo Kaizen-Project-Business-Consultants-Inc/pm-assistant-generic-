@@ -103,8 +103,11 @@ const isTextEntry = (target: EventTarget | null) =>
  * - the grid root is one Tab stop: focus landing on it by keyboard starts it (by keyboard) and
  *   calls `onEnterByKeyboard` (the view puts the focused cell on the active or first row); a key
  *   other than Tab / Escape on the focused root after leaving starts it again;
- * - a press outside the grid, focus moving to anything outside it, or Escape ends it (Escape
- *   in a text field only cancels that field);
+ * - a press outside the grid, focus moving to anything outside it, or Escape ends it — wherever
+ *   the focus is, including Escape that cancels an inline edit (a document capture listener, since
+ *   the Gantt's grid listener is off while a cell is edited; staging bug 2026-10-09: click → Tab →
+ *   Shift+Tab → click (opens the editor) → Escape → Tab indented again). Only a keyboard user's
+ *   Escape in a text field just cancels that field: their focus goes back on the grid;
  * - the key must come from <body>, the grid root or a plain part of the grid (a row checkbox
  *   counts; the callers decide about inputs) — never from a toolbar, filter or dialog, nor from a
  *   button, link or sort header inside the grid, which keep their own Tab and Enter;
@@ -127,7 +130,18 @@ export function useGridFocusScope(onEnterByKeyboard?: () => void) {
       byKeyboard.current = true;
       onEnter.current?.();
     };
+    /** Is this key the grid's, as the list mode stands now? */
+    const isMine = (e: KeyboardEvent) => working.current
+      && (isNowhere(e.target) || isPlainGridPart(e.target))
+      && !(e.key === 'Tab' && byKeyboard.current);
+    // The Escape that ended list mode, and whether it was the grid's before that (claim answers with it)
+    let escape: { event: KeyboardEvent; mine: boolean } | null = null;
     return {
+      onEscape: (e: KeyboardEvent) => {
+        if (e.key !== 'Escape') return;
+        escape = { event: e, mine: isMine(e) };
+        if (!(byKeyboard.current && isTextEntry(e.target))) working.current = false;
+      },
       onMouseDown: (e: MouseEvent) => { working.current = insideGrid(e.target); byKeyboard.current = false; },
       onFocusIn: (e: FocusEvent) => {
         if (!insideGrid(e.target)) working.current = false;
@@ -135,16 +149,13 @@ export function useGridFocusScope(onEnterByKeyboard?: () => void) {
         else if (isGridRoot(e.target) && !working.current) enterByKeyboard(e.target);
       },
       /**
-       * true: this key is the grid's to handle. Escape (outside a text field) also ends working in
-       * the grid — after this key, so the view's own Escape (clear the focused cell) still runs.
+       * true: this key is the grid's to handle. For the Escape that just ended list mode, the answer
+       * from before it ended, so the view's own Escape (clear the focused cell) still runs.
        */
       claim: (e: KeyboardEvent) => {
-        const t = e.target;
-        if (!working.current && isGridRoot(t) && e.key !== 'Tab' && e.key !== 'Escape') enterByKeyboard(t);
-        const mine = working.current && (isNowhere(t) || isPlainGridPart(t))
-          && !(e.key === 'Tab' && byKeyboard.current);
-        if (e.key === 'Escape' && !isTextEntry(t)) working.current = false;
-        return mine;
+        if (e.key === 'Escape' && escape?.event === e) return escape.mine;
+        if (!working.current && isGridRoot(e.target) && e.key !== 'Tab' && e.key !== 'Escape') enterByKeyboard(e.target);
+        return isMine(e);
       },
       /**
        * An inline edit closed: its input is gone and the browser's focus fell to <body>. A keyboard
@@ -161,7 +172,9 @@ export function useGridFocusScope(onEnterByKeyboard?: () => void) {
   useEffect(() => {
     document.addEventListener('mousedown', scope.onMouseDown, true);
     document.addEventListener('focusin', scope.onFocusIn, true);
+    document.addEventListener('keydown', scope.onEscape, true);
     return () => {
+      document.removeEventListener('keydown', scope.onEscape, true);
       document.removeEventListener('mousedown', scope.onMouseDown, true);
       document.removeEventListener('focusin', scope.onFocusIn, true);
     };

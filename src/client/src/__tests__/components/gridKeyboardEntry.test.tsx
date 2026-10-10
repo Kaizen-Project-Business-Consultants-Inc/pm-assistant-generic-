@@ -9,6 +9,7 @@
  * The hook-level rules for both views are in gridFocusScope.test.ts.
  */
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import { useState } from 'react';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -181,6 +182,56 @@ for (const view of views) {
       keyOn(grid, 'ArrowRight', { altKey: true, shiftKey: true });
       expect(keyOn(grid, 'Tab').defaultPrevented).toBe(false);
       expect(changed()).toEqual([]);
+    });
+  });
+}
+
+/**
+ * Staging bug (2026-10-09): click a name cell, Tab (indent), Shift+Tab (outdent), click the same name
+ * cell again — the row is already selected, so that click opens the inline editor — Escape (cancels
+ * the edit; focus falls to <body>), Tab: the row indented again. The Escape went to the edit box
+ * only (the Gantt's grid listener is off while a cell is edited; the Table's left Escape in a text
+ * field alone), so "working in the list" stayed on. Now Escape always ends a mouse-started list mode.
+ */
+function SelectingGantt({ onTaskUpdate }: { onTaskUpdate: (id: string, d: Record<string, unknown>) => void }) {
+  const [active, setActive] = useState<string | null>(null);
+  return <GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s-kbd-esc" activeTaskId={active}
+    onTaskSelect={t => setActive(t.id)} onTaskUpdate={onTaskUpdate} />;
+}
+function SelectingTable({ onTaskUpdate }: { onTaskUpdate: (id: string, d: Record<string, unknown>) => void }) {
+  const [active, setActive] = useState<string | undefined>(undefined);
+  const columnState = useColumnState('s-kbd-esc-table');
+  return <TableView tasks={TASKS} scheduleId="s-kbd-esc-table" onTaskClick={() => {}} columnState={columnState}
+    activeTaskId={active} onTaskSelect={t => setActive(t.id)} onTaskUpdate={onTaskUpdate} />;
+}
+
+for (const [name, View] of [['Gantt', SelectingGantt], ['Table', SelectingTable]] as const) {
+  describe(`${name}: Escape after an indent ends list mode (click → Tab → Shift+Tab → click → Escape → Tab)`, () => {
+    it('the last Tab moves on and indents nothing', () => {
+      const onTaskUpdate = vi.fn();
+      const utils = wrap(<View onTaskUpdate={onTaskUpdate} />);
+      const nameCell = () => utils.getAllByText('Bravo')[0];
+      const click = () => { fireEvent.mouseDown(nameCell()); fireEvent.click(nameCell()); };
+      click(); // selects Bravo
+      expect(keyOn(document.body, 'Tab').defaultPrevented).toBe(true); // indent
+      expect(keyOn(document.body, 'Tab', { shiftKey: true }).defaultPrevented).toBe(true); // outdent
+      expect(onTaskUpdate).toHaveBeenCalledTimes(2);
+      click(); // Bravo is selected: this opens the name editor
+      const input = document.activeElement as HTMLElement;
+      expect(input.tagName).toBe('INPUT');
+      keyOn(input, 'Escape'); // cancels the edit; focus falls to <body>
+      expect(utils.container.querySelector('input:focus')).toBeNull();
+      expect(keyOn(document.body, 'Tab').defaultPrevented).toBe(false);
+      expect(onTaskUpdate).toHaveBeenCalledTimes(2);
+    });
+
+    it('on a freshly loaded page, click → Escape → Tab moves on too (unchanged)', () => {
+      const onTaskUpdate = vi.fn();
+      const utils = wrap(<View onTaskUpdate={onTaskUpdate} />);
+      fireEvent.mouseDown(utils.getAllByText('Bravo')[0]); fireEvent.click(utils.getAllByText('Bravo')[0]);
+      keyOn(document.body, 'Escape');
+      expect(keyOn(document.body, 'Tab').defaultPrevented).toBe(false);
+      expect(onTaskUpdate).not.toHaveBeenCalled();
     });
   });
 }
