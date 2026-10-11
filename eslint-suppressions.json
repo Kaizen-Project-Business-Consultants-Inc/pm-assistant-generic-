@@ -1807,7 +1807,7 @@
   },
   "src/server/__tests__/services/scheduleReview/autoRerun.test.ts": {
     "no-promise-executor-return": {
-      "count": 4
+      "count": 3
     }
   },
   "src/server/__tests__/services/weeklyLoad.test.ts": {
