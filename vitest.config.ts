@@ -6,6 +6,10 @@ export default defineConfig({
     globals: true,
     testTimeout: 30000,
     hookTimeout: 60000,
+    // Half the cores, not all but one: with every core busy (plus Docker, the browser and other
+    // sessions) the runner's own workers stopped answering it ("Timeout calling onTaskUpdate")
+    // and failed a release whose 6,255 tests had all passed (2026-10-11)
+    maxWorkers: '50%',
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html', 'lcov'],
