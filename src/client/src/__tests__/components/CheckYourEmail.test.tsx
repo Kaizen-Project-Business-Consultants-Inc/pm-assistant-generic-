@@ -40,6 +40,8 @@ describe('the confirm-your-email screen', () => {
     show();
     expect(screen.getByText(/Spam/)).toBeTruthy();
     expect(screen.getByText(/Promotions/)).toBeTruthy();
+    // Our own reminder landed in Gmail's Updates tab, not Primary (2026-10-11)
+    expect(screen.getAllByText(/Updates/).length).toBeGreaterThan(0);
   });
 
   it('offers a one-tap link to the mailbox it can recognise', () => {

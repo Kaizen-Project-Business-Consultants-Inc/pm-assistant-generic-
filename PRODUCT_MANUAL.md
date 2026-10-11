@@ -2396,7 +2396,7 @@ From the pricing cards, users choose their plan:
 
 The `/register` page remains directly accessible for invite links and direct URL access.
 
-**Registration form guards:** The submit button is disabled until both conditions are met: the user has accepted the Terms of Service checkbox, and the password and confirm-password fields match. This prevents accidental form submission with mismatched credentials.
+**Registration form (shortened Oct 2026):** four fields — Your name, Work email ("You'll sign in with this"), Company (optional) and Password (show/hide eye, no confirm box). No username field: the server makes one from the email, and sign-in accepts the email. Heading "Start your free 7-day trial", button "Start my free trial"; invite ("Join …") and paid-plan ("Subscribe to …") sign-ups keep their own headings. The button stays disabled until the Terms of Service box is ticked and a password is entered. Why: 84 people opened the form in 11 days and 1 finished. After sign-up the "Confirm your email" screen names Gmail's Updates tab, where our own test email landed.
 
 ### Pricing Page
 

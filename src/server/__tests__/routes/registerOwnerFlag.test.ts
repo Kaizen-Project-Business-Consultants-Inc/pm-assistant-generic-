@@ -47,6 +47,7 @@ vi.mock('../../routes/integrations/stripe', () => ({ resolvePriceId: vi.fn(() =>
 import { authRoutes } from '../../routes/core/auth';
 import { config } from '../../config';
 import { organizationService } from '../../services/OrganizationService';
+import { userService } from '../../services/UserService';
 
 function registerPro() {
   return app.inject({
@@ -81,5 +82,28 @@ describe('POST /auth/register — the reply carries the owner flag', () => {
     expect(res.statusCode).toBe(201);
     expect(res.json().user.organization).toBeNull();
     expect(res.json().user.role).toBe('project_manager');
+  });
+});
+
+describe('POST /auth/register — the username nobody types (shorter sign-up form, 2026-10-11)', () => {
+  const made = () => (vi.mocked(userService.create).mock.calls.at(-1)![0] as { username: string }).username;
+  const register = (email: string) => app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email, password: 'Password123!', tier: 'consultant_pro', plan: 'monthly' } });
+
+  it('a long email still gives a username of at most 47 characters, from its letters and digits', async () => {
+    const res = await register(`${'firstname.middlename.lastname.department.team'.padEnd(60, 'x')}@agency.gov`);
+    expect(res.statusCode).toBe(201);
+    expect(made()).toMatch(/^[a-zA-Z0-9_]{1,40}_[0-9a-f]{6}$/);
+    expect(made().length).toBeLessThanOrEqual(47);
+  });
+
+  it('a taken name gets a fresh suffix instead of refusing the sign-up', async () => {
+    const before = vi.mocked(userService.findByUsername).mock.calls.length;
+    vi.mocked(userService.findByUsername).mockResolvedValueOnce({ id: 'someone' } as never);
+    const res = await register('jane@company.com');
+    expect(res.statusCode).toBe(201);
+    const tried = vi.mocked(userService.findByUsername).mock.calls.slice(before).map(c => c[0]);
+    expect(tried[0]).toMatch(/^jane_[0-9a-f]{6}$/);
+    expect(tried[0]).not.toBe(made());
+    expect(made()).toMatch(/^jane_[0-9a-f]{6}$/);
   });
 });

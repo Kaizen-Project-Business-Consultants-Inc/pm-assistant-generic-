@@ -808,6 +808,10 @@ Open the Resend dashboard (resend.com) and filter by the sending domain. Confirm
 
 ---
 
+### 9a-1b. Sign-up form (Oct 2026)
+
+Automated: `src/client/src/__tests__/pages/registerPageShortForm.test.tsx` (four fields, no username/confirm, no username sent, invite keeps "Join …"). Manual on staging: open `/register` in a private window → Your name, Work email, Company (optional), Password, terms → **Start my free trial** → "Confirm your email" screen mentions Gmail's Updates tab → confirm → sign in with the **email** address.
+
 ### 9a-2. Free trial: real features, examples only when empty, email allowance (2026-10-10)
 
 The trial has every Pro feature on the user's own data. Unit tests: `npx vitest run src/server/__tests__/routes/trialRealResults.test.ts src/server/__tests__/utils/trialEmailAllowance.test.ts src/server/__tests__/routes/raidReportEmailGate.test.ts src/server/__tests__/services/automation/sendEmailLimits.test.ts src/server/__tests__/services/ReportScheduleService.test.ts`.

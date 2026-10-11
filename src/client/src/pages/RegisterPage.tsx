@@ -35,10 +35,8 @@ export const RegisterPage: React.FC = () => {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [username, setUsername] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>();
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -74,11 +72,6 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
     if (!acceptTerms) {
       setError('You must accept the Terms of Service');
       return;
@@ -88,8 +81,9 @@ export const RegisterPage: React.FC = () => {
     try {
       const result = await apiService.register({
         fullName: isPlanSignup ? undefined : fullName,
+        // No username: people sign in with their email and the server makes one (2026-10-11 —
+        // 84 people opened this form in 11 days and 1 finished it; six fields became four)
         email,
-        username: isPlanSignup ? undefined : username,
         password,
         organizationName: inviteToken ? undefined : (isPlanSignup ? undefined : (organizationName || undefined)),
         inviteToken,
@@ -190,10 +184,16 @@ export const RegisterPage: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Join {inviteOrgName}</h2>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">You've been invited to join this organization</p>
               </>
-            ) : (
+            ) : inviteToken ? (
+              // An invite still being checked, or no longer valid: no trial promise here
               <>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create your account</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Start managing projects with AI</p>
+              </>
+            ) : (
+              <>
+                {/* The trial is 7 days by the user's decision (2026-10-10, migration 135) */}
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Start your free 7-day trial</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Every Pro feature on your own projects. No credit card.</p>
               </>
             )}
           </div>
@@ -219,33 +219,27 @@ export const RegisterPage: React.FC = () => {
             {/* Full form fields — only for traditional / invite flows */}
             {!isPlanSignup && (
               <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Full Name</label>
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Your name</label>
                 <input id="fullName" type="text" required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                  className="input" placeholder="John Doe" />
+                  className="input" placeholder="Jane Smith" />
               </div>
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Work email</label>
               <input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                className="input" placeholder="john@example.com" readOnly={!!inviteEmail} aria-describedby={error ? 'register-error' : undefined} />
+                className="input" placeholder="jane@company.com" readOnly={!!inviteEmail}
+                aria-describedby={error ? 'register-error email-hint' : 'email-hint'} />
+              <p id="email-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">You&apos;ll sign in with this.</p>
             </div>
-
-            {!isPlanSignup && (
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Username</label>
-                <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)}
-                  className="input" placeholder="johndoe" minLength={3} />
-              </div>
-            )}
 
             {!isPlanSignup && !isInviteFlow && (
               <div>
                 <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Organization Name <span className="text-gray-500 font-normal">(optional)</span>
+                  Company <span className="text-gray-500 font-normal">(optional)</span>
                 </label>
                 <input id="organizationName" type="text" autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
-                  className="input" placeholder="Your company name (we'll use your name if blank)" />
+                  className="input" placeholder="Leave blank to use your name" />
               </div>
             )}
 
@@ -253,26 +247,14 @@ export const RegisterPage: React.FC = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Password</label>
               <div className="relative">
                 <input id="password" type={showPassword ? 'text' : 'password'} required autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
-                  className="input pr-10" placeholder="Min. 8 characters" minLength={8} aria-describedby={error ? 'register-error' : undefined} />
+                  className="input pr-10" minLength={8} aria-describedby={error ? 'register-error password-hint' : 'password-hint'} />
                 <button type="button" onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}>
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Confirm Password</label>
-              <div className="relative">
-                <input id="confirmPassword" type={showPassword ? 'text' : 'password'} required autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="input pr-10" placeholder="Confirm your password" minLength={8} />
-                <button type="button" onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+              <p id="password-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">At least 8 characters.</p>
             </div>
 
             {isPlanSignup && tierParam === 'sme' && (
@@ -308,7 +290,7 @@ export const RegisterPage: React.FC = () => {
 
             <TurnstileWidget onToken={setTurnstileToken} />
 
-            <button type="submit" disabled={isLoading || !acceptTerms || !password || password !== confirmPassword}
+            <button type="submit" disabled={isLoading || !acceptTerms || !password}
               className="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               {isLoading ? (
                 <div className="flex items-center">
@@ -319,8 +301,10 @@ export const RegisterPage: React.FC = () => {
                 'Continue to Payment'
               ) : isInviteFlow ? (
                 'Accept Invitation'
+              ) : inviteToken ? (
+                'Create account'
               ) : (
-                'Create Account'
+                'Start my free trial'
               )}
             </button>
 

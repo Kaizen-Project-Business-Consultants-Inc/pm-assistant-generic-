@@ -267,8 +267,19 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Auto-generate username if not provided (plan signup flow)
-      const username = parsed.username || email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '') + '_' + crypto.randomBytes(3).toString('hex');
+      // The sign-up form asks for no username (2026-10-11): people sign in with their email, so one
+      // is made from it — at most 47 characters (usernames are capped at 50 elsewhere), and a fresh
+      // suffix if it is taken, so nobody is refused over a field they never saw.
+      let username = parsed.username || '';
+      if (!username) {
+        const base = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 40) || 'user';
+        for (let attempt = 0; attempt < 3 && !username; attempt++) {
+          const candidate = `${base}_${crypto.randomBytes(3).toString('hex')}`;
+          // eslint-disable-next-line no-await-in-loop -- at most three tries, each depends on the last
+          if (!(await userService.findByUsername(candidate))) username = candidate;
+        }
+        if (!username) username = `${base}_${crypto.randomBytes(6).toString('hex')}`;
+      }
       // Use empty string for fullName if not provided (will be collected in onboarding)
       const fullName = parsed.fullName || '';
 

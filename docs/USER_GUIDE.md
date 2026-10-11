@@ -61,11 +61,10 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
 3. Choose your plan:
    - Click **Start Free Trial** for a 7-day free trial (no credit card required).
    - Click **Subscribe** on a paid plan (Consultant Basic, Consultant Pro, or SME) to go straight to checkout.
-4. Fill in your email, password, and other details on the registration form.
-   - Both password fields must match before the form can be submitted.
-   - Check the **Terms of Service** checkbox — the **Create Account** button stays disabled until you accept.
+4. Fill in the short sign-up form: **Your name**, **Work email** (you sign in with it — there is no separate username), **Company** (optional; leave it blank to use your name) and a **Password** of at least 8 characters. Use the eye button to check what you typed.
+   - Check the **Terms of Service** checkbox — the **Start my free trial** button stays disabled until you accept.
    - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
-5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? Check your spam or Promotions folder.
+5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? In Gmail look in the **Updates** tab, then Spam or Promotions.
 
 > **Note:** Each email address is eligible for one free 7-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 

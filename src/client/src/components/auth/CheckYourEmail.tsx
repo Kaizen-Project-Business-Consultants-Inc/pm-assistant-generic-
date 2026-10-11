@@ -106,8 +106,9 @@ export function CheckYourEmail({ email, onChangeEmail }: { email: string; onChan
           </dl>
           <p className="mt-3 text-xs text-gray-600 dark:text-gray-300">
             {/* The actual failure mode, said out loud. */}
-            If it is in <strong>Spam</strong> or <strong>Promotions</strong>, drag it to your main
-            inbox so our future emails reach you.
+            {/* Our own test landed in Gmail's Updates tab, not Primary (2026-10-11) */}
+            In Gmail it often lands in the <strong>Updates</strong> tab, not Primary. If it is in <strong>Updates</strong>, <strong>Spam</strong> or <strong>Promotions</strong>,
+            drag it to your main inbox so our future emails reach you.
           </p>
         </div>
 
