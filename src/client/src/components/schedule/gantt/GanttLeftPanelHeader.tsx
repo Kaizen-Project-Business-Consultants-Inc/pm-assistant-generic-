@@ -56,6 +56,7 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
   return (
     <div
       role="row"
+      aria-rowindex={1}
       className="sticky top-0 z-10 flex items-center bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider"
       style={{ height: HEADER_H, minWidth: minRowWidth }}
     >
@@ -99,10 +100,13 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
               />
             ) : (
               <div className="flex items-center gap-0.5 justify-center whitespace-nowrap overflow-visible">
-                {/* Move arrows -- visible on hover, positioned as overlay */}
+                {/* Move arrows -- mouse shortcuts shown on hover, as an overlay. Kept out of the header's
+                    name and the Tab order; the keyboard way is the Columns menu (audit 2 H10). */}
                 {canReorder && (
-                  <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0 opacity-0 group-hover/gh:opacity-100 transition-opacity z-20 bg-gray-100 dark:bg-gray-600 rounded shadow-sm px-0.5 py-0.5">
+                  <span aria-hidden="true" className="absolute -top-0.5 left-1/2 -translate-x-1/2 flex items-center gap-0 opacity-0 group-hover/gh:opacity-100 transition-opacity z-20 bg-gray-100 dark:bg-gray-600 rounded shadow-sm px-0.5 py-0.5">
                     <button
+                      type="button"
+                      tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
                         const tableKey = ganttKeyToTableKey[col.key];
@@ -111,11 +115,13 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
                       }}
                       disabled={reorderIdx <= 0}
                       className="p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-20"
-                      title="Move left"
+                      title={`Move ${col.label} column left`}
                     >
                       <ArrowLeft className="w-3 h-3" />
                     </button>
                     <button
+                      type="button"
+                      tabIndex={-1}
                       onClick={(e) => {
                         e.stopPropagation();
                         const tableKey = ganttKeyToTableKey[col.key];
@@ -124,31 +130,29 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
                       }}
                       disabled={reorderIdx >= visibleCols.length - 1}
                       className="p-0.5 rounded hover:bg-gray-300 dark:hover:bg-gray-500 disabled:opacity-20"
-                      title="Move right"
+                      title={`Move ${col.label} column right`}
                     >
                       <ArrowRight className="w-3 h-3" />
                     </button>
                   </span>
                 )}
-                {/* Column label -- clickable to sort */}
-                <span
-                  className={`flex items-center gap-0.5 ${isSortable ? 'cursor-pointer' : ''}`}
-                  onClick={isSortable ? () => handleHeaderSort(col.key) : undefined}
-                  {...(isSortable ? {
-                    role: 'button',
-                    tabIndex: 0,
-                    onKeyDown: (e: React.KeyboardEvent<HTMLSpanElement>) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHeaderSort(col.key); } },
-                  } : {})}
-                >
-                  {col.label}
-                  {isSortable && (
-                    !isActiveSortCol
-                      ? <ArrowUpDown className="w-3 h-3 text-gray-500" />
+                {/* Column label -- a button that sorts (Tab reaches it; Enter / Space sort) */}
+                {isSortable ? (
+                  <button
+                    type="button"
+                    className="flex items-center gap-0.5 uppercase tracking-wider font-semibold rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                    onClick={() => handleHeaderSort(col.key)}
+                  >
+                    {col.label}
+                    {!isActiveSortCol
+                      ? <ArrowUpDown className="w-3 h-3 text-gray-500" aria-hidden="true" />
                       : sortDirection === 'asc'
-                        ? <ArrowUp className="w-3 h-3 text-primary-600" />
-                        : <ArrowDown className="w-3 h-3 text-primary-600" />
-                  )}
-                </span>
+                        ? <ArrowUp className="w-3 h-3 text-primary-600" aria-hidden="true" />
+                        : <ArrowDown className="w-3 h-3 text-primary-600" aria-hidden="true" />}
+                  </button>
+                ) : (
+                  <span className="flex items-center gap-0.5">{col.label || <span className="sr-only">Actions</span>}</span>
+                )}
               </div>
             )}
             {col.resizable && (

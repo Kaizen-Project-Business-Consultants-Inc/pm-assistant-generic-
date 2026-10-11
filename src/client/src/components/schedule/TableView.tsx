@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect, useId } from 'react';
+import { Fragment, useState, useMemo, useCallback, useRef, useEffect, useId } from 'react';
 import { BulkDoneToast } from './shared/BulkDoneToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
@@ -18,12 +18,13 @@ import { BulkGroupControls } from './BulkGroupControls';
 import { TableHeaderRow } from './table/TableHeaderRow';
 import { TableContextMenu } from './table/TableContextMenu';
 import { TableNotesPopup } from './table/TableNotesPopup';
-import { useTableGrouping } from './table/hooks/useTableGrouping';
+import { useTableGrouping, type TableBodyRow } from './table/hooks/useTableGrouping';
 import { useInlineCellEdit, TABLE_EDIT_RULES } from './shared/hooks/useInlineCellEdit';
 import { useUnmountSafeTimeouts } from './shared/hooks/useUnmountSafeTimeouts';
 import { useGridCellState } from './shared/hooks/useGridKeyboardPaste';
 import { useTableKeyboard } from './table/hooks/useTableKeyboard';
-import { GridKeyboardHelp, TABLE_GRID_HELP_ID } from './shared/GridKeyboardHelp';
+import { planRowDrop } from './table/rowDrop';
+import { GridKeyboardHelp, TABLE_GRID_HELP_ID, TABLE_GRID_CELLS, gridCellId } from './shared/GridKeyboardHelp';
 import {
   barColors, priorityColors, statusOptions, priorityOptions,
   formatDate,
@@ -37,6 +38,7 @@ import { cellEditLabel } from './cellEditLabel';
 import { listenForEscapeCancel } from './shared/escapeCancel';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 import { firstByKey } from '../../utils/lookup';
+import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
@@ -50,7 +52,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   // to the middle once it has rendered (a few frames — data and layout may still settle).
   // In a long plan (100+ rows, virtualised) only the rows on screen exist, so the table is
   // first scrolled to where the row sits; then it renders and is centred (2026-10-04).
-  const virtualRowsRef = useRef<{ on: boolean; rows: GanttTask[] }>({ on: false, rows: [] });
+  const virtualRowsRef = useRef<{ on: boolean; rows: TableBodyRow[] }>({ on: false, rows: [] });
   useEffect(() => {
     if (!focusTaskId) return;
     const byId = new Map(tasks.map(t => [t.id, t]));
@@ -66,7 +68,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       const row = document.querySelector(`tr[data-task-id="${CSS.escape(focusTaskId)}"]`);
       if (row) { row.scrollIntoView({ block: 'center' }); return; }
       const box = scrollContainerRef.current;
-      const idx = virtualRowsRef.current.on ? virtualRowsRef.current.rows.findIndex(t => t.id === focusTaskId) : -1;
+      const idx = virtualRowsRef.current.on ? virtualRowsRef.current.rows.findIndex(r => r.kind === 'task' && r.task.id === focusTaskId) : -1;
       if (box && idx >= 0) {
         box.scrollTop = Math.max(0, idx * ROW_H - box.clientHeight / 2);
         setScrollTop(box.scrollTop);
@@ -301,11 +303,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const {
     sortField, setSortField, sortDir, setSortDir,
     groupBy, setGroupBy,
-    collapsedGroups, setCollapsedGroups,
+    setCollapsedGroups,
     collapsedSummaries, setCollapsedSummaries,
     toggleSort,
     visibleSorted, summaryTaskIds, toggleSummaryCollapse,
-    groupedSorted, toggleGroupCollapse,
+    toggleGroupCollapse, bodyRows,
   } = useTableGrouping({ tasks, cpmMap, baselineMap, workCalendar, rowNumMap, resourceNameOf: resourceNameMap });
 
   // Build hierarchical ordering
@@ -329,26 +331,33 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     return map;
   }, [tasks]);
 
-  // Row drag reorder state
-  const [rowDrag, setRowDrag] = useState<{
-    taskId: string;
-    startIdx: number;
-    targetIdx: number;
-  } | null>(null);
+  // Row drag reorder state: the dragged task and the task under the pointer, by id (the rows on
+  // screen are not the plan's rows by position once grouped or windowed)
+  const [rowDrag, setRowDrag] = useState<{ taskId: string; targetTaskId: string } | null>(null);
   const tbodyRef = useRef<HTMLTableSectionElement | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const ROW_H = 35;
   const OVERSCAN = 20;
 
-  // Virtualization
-  const useVirtualization = visibleSorted.length >= 100 && !groupBy;
+  // Virtualization: only the rows on screen (plus overscan) are rendered. Grouped or not, the body
+  // is one flat list of rows (group headings + tasks), so grouping no longer renders every row.
+  const useVirtualization = bodyRows.length >= 100;
   const containerHeight = scrollContainerRef.current?.clientHeight ?? 600;
   const startRow = useVirtualization ? Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN) : 0;
-  const endRow = useVirtualization ? Math.min(visibleSorted.length, Math.ceil((scrollTop + containerHeight) / ROW_H) + OVERSCAN) : visibleSorted.length;
-  virtualRowsRef.current = { on: useVirtualization, rows: visibleSorted };
+  const endRow = useVirtualization ? Math.min(bodyRows.length, Math.ceil((scrollTop + containerHeight) / ROW_H) + OVERSCAN) : bodyRows.length;
+  virtualRowsRef.current = { on: useVirtualization, rows: bodyRows };
 
-  const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField;
+  // The task rows in the order they are shown: grouped, group by group without collapsed groups'
+  // tasks (review 2026-10-11) — the arrow keys and where the focus lands follow it
+  const rowTasks = useMemo(
+    () => (groupBy ? bodyRows.flatMap(r => (r.kind === 'task' ? [r.task] : [])) : visibleSorted),
+    [groupBy, bodyRows, visibleSorted],
+  );
+  // Not while sorted or grouped: the rows are not in plan order then, so "drop between these two"
+  // has no place in the plan (audit 2: a grouped drop used to move the wrong tasks)
+  const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField && !groupBy;
 
   const getDescendantIds = useCallback((taskId: string, allTasks: GanttTask[]): Set<string> => {
     const result = new Set<string>();
@@ -365,23 +374,21 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     return result;
   }, []);
 
-  const handleGripMouseDown = useCallback((e: React.MouseEvent, task: GanttTask, rowIdx: number) => {
+  const handleGripMouseDown = useCallback((e: React.MouseEvent, task: GanttTask) => {
     if (!canDragRows) return;
     e.preventDefault();
     e.stopPropagation();
 
-    setRowDrag({ taskId: task.id, startIdx: rowIdx, targetIdx: rowIdx });
+    setRowDrag({ taskId: task.id, targetTaskId: task.id });
 
     const onMove = (ev: MouseEvent) => {
       if (!tbodyRef.current) return;
-      const rows = tbodyRef.current.querySelectorAll('tr[data-row-idx]');
+      const rows = tbodyRef.current.querySelectorAll('tr[data-task-id]');
       for (const row of rows) {
         const rect = row.getBoundingClientRect();
         if (ev.clientY >= rect.top && ev.clientY <= rect.bottom) {
-          const idx = parseInt(row.getAttribute('data-row-idx') || '-1', 10);
-          if (idx >= 0) {
-            setRowDrag(prev => prev ? { ...prev, targetIdx: idx } : null);
-          }
+          const id = row.getAttribute('data-task-id');
+          if (id) setRowDrag(prev => prev ? { ...prev, targetTaskId: id } : null);
           break;
         }
       }
@@ -392,47 +399,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       document.removeEventListener('mouseup', onUp);
       stopEscape();
       setRowDrag(prev => {
-        if (!prev || !onTaskReorder || prev.startIdx === prev.targetIdx) return null;
-
-        const draggedTask = visibleSorted[prev.startIdx];
-        const targetTask = visibleSorted[prev.targetIdx];
-        if (!draggedTask || !targetTask) return null;
-
-        const descendantIds = getDescendantIds(draggedTask.id, visibleSorted);
-        if (targetTask.id === draggedTask.id || descendantIds.has(targetTask.id)) return null;
-
-        const isTargetSummary = visibleSorted.some(t => t.parentTaskId === targetTask.id);
-        const newParentId = isTargetSummary ? targetTask.id : (targetTask.parentTaskId || null);
-
-        const blockIds = new Set([draggedTask.id, ...descendantIds]);
-        const block = visibleSorted.filter(t => blockIds.has(t.id));
-        const rest = visibleSorted.filter(t => !blockIds.has(t.id));
-
-        const targetIdxInRest = rest.findIndex(t => t.id === targetTask.id);
-        if (targetIdxInRest === -1) return null;
-
-        const insertAt = isTargetSummary
-          ? targetIdxInRest + 1
-          : prev.targetIdx > prev.startIdx
-            ? targetIdxInRest + 1
-            : targetIdxInRest;
-
-        const newList = [...rest];
-        newList.splice(insertAt, 0, ...block);
-
-        const oldParentId = draggedTask.parentTaskId || null;
-        const updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }> = [];
-        newList.forEach((t, i) => {
-          const entry: { taskId: string; sortOrder: number; parentTaskId?: string | null } = {
-            taskId: t.id, sortOrder: (i + 1) * 10,
-          };
-          if (t.id === draggedTask.id && newParentId !== oldParentId) {
-            entry.parentTaskId = newParentId;
-          }
-          updates.push(entry);
-        });
-
-        onTaskReorder(updates);
+        if (!prev || !onTaskReorder) return null;
+        const updates = planRowDrop(visibleSorted, prev.taskId, prev.targetTaskId, getDescendantIds);
+        if (updates) onTaskReorder(updates);
         return null;
       });
     };
@@ -558,16 +527,23 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     savedCell?.taskId === taskId && savedCell.field === field;
 
   const editableCellClass = (taskId: string, field: string, task?: GanttTask) => {
+    // A muted colour that still reads 4.5:1 on the summary row in both themes (opacity-70 gave 3.3:1 in dark; audit 2 L4)
     if (isLockedCell(task, field)) {
-      return 'relative cursor-default opacity-70';
+      return 'relative cursor-default !text-gray-600 dark:!text-gray-400';
     }
     const base = 'relative cursor-pointer transition-all duration-150';
     if (isEditing(taskId, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
     if (isPasteFlash(taskId, field)) return `${base} ring-2 ring-green-400 ring-inset rounded bg-green-50 dark:bg-green-900/20`;
-    if (isFocused(taskId, field)) return `${base} ring-2 ring-primary-300 ring-inset rounded bg-primary-50/30 dark:bg-primary-900/20`;
+    if (isFocused(taskId, field)) return `${base} ring-2 ring-primary-500 ring-inset rounded bg-primary-50/30 dark:bg-primary-900/20`;
     if (isSaved(taskId, field)) return `${base} bg-green-50 dark:bg-green-900/20`;
     return `${base} hover:bg-blue-50/50 dark:hover:bg-blue-900/20 group/cell`;
   };
+  // A cell the arrow keys can reach: its id (the table's aria-activedescendant points at it while the
+  // arrow keys are on it) and, for a calculated or rolled-up value, that it can't be changed
+  const cellA11y = (task: GanttTask, field: string) => ({
+    id: gridCellId(TABLE_GRID_CELLS, task.id, field),
+    'aria-readonly': !onTaskUpdate || isLockedCell(task, field) ? true : undefined,
+  });
 
   // Selection helpers
   const allSelected = visibleSorted.length > 0 && visibleSorted.every(t => selectedIds.has(t.id));
@@ -594,11 +570,23 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     later(() => setBulkMessage(''), 3000);
   }, [later]);
   // A bulk change/delete that worked goes to the green message at the bottom: the bulk bar
-  // closes when the selection clears, so its own text could never be seen
-  const showBulkDone = useCallback((msg: string) => {
+  // closes when the selection clears, so its own text could never be seen. Only when the page
+  // doesn't say it itself: the schedule page's Undo message ("Status changed on 2 tasks · Undo")
+  // already does, and two messages at once competed (audit 2 M5).
+  const showBulkDone = useCallback((msg: string, saidByPage: boolean) => {
+    if (saidByPage) return;
     setBulkDone(msg);
     later(() => setBulkDone(''), 3000);
   }, [later]);
+
+  // After a bulk change or a delete the bar / row that had the focus is gone: the focus goes back
+  // on the table, on the given row (audit 2 M4)
+  const focusGridOn = useCallback((taskId: string | null) => {
+    const field = visibleFieldOrder[0];
+    const cell = taskId && field ? { taskId, field } : null;
+    if (cell) setFocusedCell(cell);
+    refocusGrid(tableRef.current, () => { if (cell) setFocusedCell(cell); });
+  }, [visibleFieldOrder, setFocusedCell]);
 
   const clearBulkState = useCallback(() => {
     setSelectedIds(new Set());
@@ -622,8 +610,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         );
       }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
-      showBulkDone(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
+      showBulkDone(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`, !!onBulkUpdate);
       clearBulkState();
+      focusGridOn(rowTasks.find(t => selectedIds.has(t.id))?.id ?? null);
     } catch (err) {
       console.error('Bulk update failed:', err);
       setBulkMessage('Some updates failed');
@@ -631,9 +620,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkDone, clearBulkState, later]);
+  }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkDone, clearBulkState, later, focusGridOn, rowTasks]);
 
   const confirmAndDeleteTasks = useCallback(async (taskIds: string[]) => {
+    // The row the focus lands on afterwards: the next one that stays (worked out before they go)
+    const landOn = rowAfterRemoval(rowTasks, new Set(taskIds));
     setBulkLoading(true);
     try {
       if (onBulkDelete) {
@@ -643,8 +634,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       }
       queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
       queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
-      showBulkDone(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`);
+      showBulkDone(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`, !!onBulkDelete);
       clearBulkState();
+      focusGridOn(landOn);
     } catch (err) {
       console.error('Delete failed:', err);
       setBulkMessage('Some deletes failed');
@@ -652,7 +644,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } finally {
       setBulkLoading(false);
     }
-  }, [onBulkDelete, scheduleId, queryClient, showBulkDone, clearBulkState, later]);
+  }, [onBulkDelete, scheduleId, queryClient, showBulkDone, clearBulkState, later, focusGridOn, rowTasks]);
 
   const handleDeleteTasks = useCallback((taskIds: string[]) => {
     if (taskIds.length === 0) return;
@@ -691,7 +683,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   // a cell after editing (table/hooks/useTableKeyboard; the steps shared with the Gantt grid are
   // in shared/hooks/useGridKeyboardPaste)
   useTableKeyboard({
-    tasks, visibleSorted, visibleFieldOrder, selectedIds, activeTaskId, editingCell,
+    tasks, visibleSorted, rowTasks, visibleFieldOrder, selectedIds, activeTaskId, editingCell,
     focusedCell, setFocusedCell, copiedValue, setCopiedValue, copiedTasks, setCopiedTasks, flashPaste,
     contextMenu, setContextMenu, onTaskUpdate, onBulkUpdate, onDuplicateTasks, onTaskSelect,
     startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess,
@@ -743,7 +735,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const renderHoverPencil = (taskId: string, field: string) => {
     if (isEditing(taskId, field) || isSaving(taskId, field) || isSaved(taskId, field)) return null;
     return (
-      <span className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 transition-opacity">
+      <span className="absolute top-1 right-1 opacity-0 group-hover/cell:opacity-100 transition-opacity" aria-hidden="true">
         <Pencil className="w-2.5 h-2.5 text-gray-500 dark:text-gray-400" />
       </span>
     );
@@ -777,6 +769,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${editableCellClass(task.id, 'name', task)}`}
+            {...cellA11y(task, 'name')}
+            role="rowheader"
             onClick={() => handleCellClick(task.id, 'name', task)}
           >
             {isEditing(task.id, 'name') ? (
@@ -798,8 +792,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                     className="w-4 h-4 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 flex-shrink-0"
                     onClick={(e) => { e.stopPropagation(); toggleSummaryCollapse(task.id); }}
                     title={collapsedSummaries.has(task.id) ? 'Expand children' : 'Collapse children'}
+                    aria-label={`${collapsedSummaries.has(task.id) ? 'Expand' : 'Collapse'} ${task.name}`}
+                    aria-expanded={!collapsedSummaries.has(task.id)}
                   >
-                    <svg className={`w-3 h-3 ${collapsedSummaries.has(task.id) ? '' : 'rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg aria-hidden="true" className={`w-3 h-3 ${collapsedSummaries.has(task.id) ? '' : 'rotate-90'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </button>
@@ -822,6 +818,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'status', task)}`}
+            {...cellA11y(task, 'status')}
             onClick={() => handleCellClick(task.id, 'status', task)}
           >
             {isEditing(task.id, 'status') ? (
@@ -853,6 +850,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 w-24 ${editableCellClass(task.id, 'priority', task)}`}
+            {...cellA11y(task, 'priority')}
             onClick={() => handleCellClick(task.id, 'priority', task)}
           >
             {isEditing(task.id, 'priority') ? (
@@ -884,6 +882,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'startDate', task)}`}
+            {...cellA11y(task, 'startDate')}
             onClick={() => handleCellClick(task.id, 'startDate', task)}
           >
             {isEditing(task.id, 'startDate') ? (
@@ -910,6 +909,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, 'endDate', task)}`}
+            {...cellA11y(task, 'endDate')}
             onClick={() => handleCellClick(task.id, 'endDate', task)}
           >
             {isEditing(task.id, 'endDate') ? (
@@ -936,6 +936,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 w-28 ${editableCellClass(task.id, 'progressPercentage', task)}`}
+            {...cellA11y(task, 'progressPercentage')}
             onClick={() => handleCellClick(task.id, 'progressPercentage', task)}
           >
             {isEditing(task.id, 'progressPercentage') ? (
@@ -972,6 +973,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 relative ${editableCellClass(task.id, 'assignedTo', task)}`}
+            {...cellA11y(task, 'assignedTo')}
             onClick={() => handleCellClick(task.id, 'assignedTo', task)}
           >
             {isEditing(task.id, 'assignedTo') ? (
@@ -1007,6 +1009,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         if (days == null && task.estimatedDays != null) days = task.estimatedDays;
         return (
           <td key={col.key} className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 relative group/cell ${editableCellClass(task.id, 'duration', task)}`}
+            {...cellA11y(task, 'duration')}
             onClick={() => handleCellClick(task.id, 'duration', task)}>
             {isEditing(task.id, 'duration') ? (
               <input
@@ -1039,6 +1042,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-20 ${editableCellClass(task.id, estField, task)}`}
+            {...cellA11y(task, estField)}
             onClick={() => handleCellClick(task.id, estField, task)}
           >
             {isEditing(task.id, estField) ? (
@@ -1112,6 +1116,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${editableCellClass(task.id, adField, task)}`}
+            {...cellA11y(task, adField)}
             onClick={() => handleCellClick(task.id, adField, task)}
           >
             {isEditing(task.id, adField) ? (
@@ -1142,6 +1147,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           <td
             key={col.key}
             className={`px-3 py-2 text-xs w-28 ${hasDepError ? 'ring-2 ring-risk-critical/40 ring-inset rounded' : editableCellClass(task.id, 'dependency', task)}`}
+            {...cellA11y(task, 'dependency')}
             onClick={() => handleCellClick(task.id, 'dependency', task)}
             title={hasDepError ? depError!.message : undefined}
           >
@@ -1237,6 +1243,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         const isNotesOpen = notesPopup?.taskId === task.id;
         return (
           <td key={col.key}
+            {...cellA11y(task, notesField)}
             className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] group/cell relative ${editableCellClass(task.id, notesField, task)}`}
             onClick={(e) => {
               if (!isNotesOpen) {
@@ -1279,6 +1286,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
             className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, col.key, task)}`}
             title={CALCULATED_CELL_HINTS[col.key]}
             aria-describedby={`${calcHintId}-${col.key}`}
+            {...cellA11y(task, col.key as EditableField)}
             onClick={() => handleCellClick(task.id, col.key as EditableField, task)}
           >
             {formatted}
@@ -1300,6 +1308,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-24 ${editableCellClass(task.id, 'constraintType' as EditableField, task)}`}
+            {...cellA11y(task, 'constraintType' as EditableField)}
             onClick={() => handleCellClick(task.id, 'constraintType' as EditableField, task)}
           >
             {isEditing(task.id, 'constraintType' as EditableField) ? (
@@ -1334,6 +1343,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-28 ${needsDate ? editableCellClass(task.id, 'constraintDate' as EditableField, task) : ''}`}
+            {...cellA11y(task, 'constraintDate' as EditableField)}
             onClick={() => { if (needsDate) handleCellClick(task.id, 'constraintDate' as EditableField, task); }}
           >
             {isEditing(task.id, 'constraintDate' as EditableField) ? (
@@ -1380,6 +1390,15 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     setGroupBy(value);
     setCollapsedGroups(new Set());
   }, []);
+
+  // Row positions for screen readers (aria-rowcount / aria-rowindex): the header is row 1, then the
+  // body rows (group headings and tasks), the inline "new task" row where it is open, then the
+  // quick-add rows. A long plan only renders the rows on screen, so each row says where it is (audit 2 M3).
+  const inlineInsertPos = inlineInsert ? bodyRows.findIndex(r => r.kind === 'task' && r.task.id === inlineInsert.afterTaskId) : -1;
+  const ariaRowIndexOf = (bodyIdx: number) => 2 + bodyIdx + (inlineInsertPos >= 0 && bodyIdx > inlineInsertPos ? 1 : 0);
+  const quickAddRowCount = onQuickAdd ? Math.max(5, 8 - visibleSorted.length) : 0;
+  const ariaRowCount = 1 + bodyRows.length + (inlineInsertPos >= 0 ? 1 : 0) + quickAddRowCount
+    + (visibleSorted.length === 0 && !onQuickAdd ? 1 : 0);
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
@@ -1434,11 +1453,16 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         style={{ maxHeight: 'calc(100vh - 280px)' }}
         onScroll={useVirtualization ? (e) => setScrollTop((e.target as HTMLDivElement).scrollTop) : undefined}
       >
-        {/* One Tab stop: tabbing onto the table starts list mode on the active or first row (useGridFocusScope) */}
+        {/* One Tab stop: tabbing onto the table starts list mode on the active or first row (useGridFocusScope).
+            A treegrid: the rows are an outline (summaries open and close) and the table is operable. */}
         <table
+          ref={tableRef}
           className="text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
-          role="grid"
+          // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role -- an editable outline table is a treegrid (WAI-ARIA); the rule only lists "grid" for <table>
+          role="treegrid"
           aria-describedby={TABLE_GRID_HELP_ID}
+          aria-rowcount={ariaRowCount}
+          aria-multiselectable={true}
           tabIndex={0}
           style={{ minWidth: '100%' }}
         >
@@ -1466,9 +1490,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           </thead>
           <tbody ref={tbodyRef}>
             {(() => {
-              const renderTaskRow = (task: GanttTask, rowIdx: number) => {
+              const renderTaskRow = (task: GanttTask, rowIdx: number, bodyIdx: number) => {
                 const isSelected = selectedIds.has(task.id);
-                const isDragTarget = rowDrag && rowDrag.targetIdx === rowIdx && rowDrag.taskId !== task.id;
+                const isDragTarget = rowDrag && rowDrag.targetTaskId === task.id && rowDrag.taskId !== task.id;
+                const isSummary = summaryTaskIds.has(task.id);
                 const riskLevel = taskRiskMap?.get(task.id);
                 const riskBorder = riskLevel === 'late' || riskLevel === 'critical' ? 'border-l-4 border-l-red-500' : riskLevel === 'at_risk' ? 'border-l-4 border-l-orange-400' : '';
                 return (
@@ -1476,6 +1501,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                     key={task.id}
                     data-row-idx={rowIdx}
                     data-task-id={task.id}
+                    aria-rowindex={ariaRowIndexOf(bodyIdx)}
+                    // grouped: every task sits one level under its group heading (the plan's
+                    // outline is not shown across groups); the active row is not a selection
+                    aria-level={groupBy ? 2 : (levelMap.get(task.id) || 0) + 1}
+                    // grouped: nothing is nested under a summary, so it has no open/closed state
+                    aria-expanded={isSummary && !groupBy ? !collapsedSummaries.has(task.id) : undefined}
+                    aria-selected={isSelected}
                     className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${riskBorder} ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${focusTaskId === task.id || highlightTaskIds?.has(task.id) ? '!bg-amber-100 dark:!bg-amber-900/40 ring-2 ring-inset ring-amber-400 dark:ring-amber-500' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
                     onClick={() => onTaskSelect?.(task)}
                     onContextMenu={(e) => {
@@ -1489,8 +1521,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                           <span
                             className="cursor-grab active:cursor-grabbing text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0 select-none w-5 text-center text-xs font-medium"
                             title="Drag to reorder"
-                            onMouseDown={(e) => handleGripMouseDown(e, task, rowIdx)}
-                           aria-label="Drag to reorder"><GripVertical className="w-3.5 h-3.5 mx-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100 motion-safe:transition-opacity" aria-hidden="true" /></span>
+                            onMouseDown={(e) => handleGripMouseDown(e, task)}
+                            aria-hidden="true"><GripVertical className="w-3.5 h-3.5 mx-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100 motion-safe:transition-opacity" aria-hidden="true" /></span>
                         ) : (
                           <span className="w-5" aria-hidden="true" />
                         )}
@@ -1508,12 +1540,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                     {visibleColumns.map(col => renderCell(task, col))}
 
                     <td className="px-2 py-2">
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+                      {/* Shown on hover, and whenever something in the row has the keyboard focus (audit 2 M1) */}
+                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all">
                         <button
                           onClick={() => onTaskClick(task)}
                           className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
                           title="Edit task"
-                          aria-label="Edit task"
+                          aria-label={`Edit ${task.name}`}
                         >
                           <Pencil className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
                         </button>
@@ -1529,7 +1562,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                             }}
                             className="p-1 rounded hover:bg-green-100 dark:hover:bg-green-900/20"
                             title="Insert task below"
-                            aria-label="Insert task below"
+                            aria-label={`Insert a task below ${task.name}`}
                           >
                             <PlusCircle className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 hover:text-green-600" />
                           </button>
@@ -1538,7 +1571,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                           onClick={() => handleRowDelete(task.id)}
                           className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-900/20"
                           title="Delete task"
-                          aria-label="Delete task"
+                          aria-label={`Delete ${task.name}`}
                         >
                           <Trash2 className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400 hover:text-red-500" />
                         </button>
@@ -1548,8 +1581,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 );
               };
 
-              const renderInlineInsertRow = (afterTaskId: string) => (
-                <tr key={`inline-insert-${afterTaskId}`} className="border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20">
+              const renderInlineInsertRow = (afterTaskId: string, bodyIdx: number) => (
+                <tr key={`inline-insert-${afterTaskId}`} aria-rowindex={ariaRowIndexOf(bodyIdx) + 1} className="border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20">
                   <td className="px-2 py-2">
                     <span className="w-5 text-center text-xs font-medium text-green-400 dark:text-green-600">+</span>
                   </td>
@@ -1591,80 +1624,71 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 </tr>
               );
 
-              const renderRowWithInsert = (task: GanttTask, rowIdx: number) => {
-                const row = renderTaskRow(task, rowIdx);
+              const renderRowWithInsert = (task: GanttTask, rowIdx: number, bodyIdx: number) => {
+                const row = renderTaskRow(task, rowIdx, bodyIdx);
                 if (inlineInsert?.afterTaskId === task.id) {
-                  return <>{row}{renderInlineInsertRow(task.id)}</>;
+                  return <Fragment key={task.id}>{row}{renderInlineInsertRow(task.id, bodyIdx)}</Fragment>;
                 }
                 return row;
               };
 
-              if (groupedSorted) {
-                const rows: React.ReactNode[] = [];
-                let globalIdx = 0;
-                for (const [groupKey, groupTasks] of groupedSorted) {
-                  const isCollapsed = collapsedGroups.has(groupKey);
-                  rows.push(
-                    <tr
-                      key={`group-${groupKey}`}
-                      className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
-                      onClick={() => toggleGroupCollapse(groupKey)}
+              // A group heading: its button opens / closes the group (Tab reaches it; it was a click-only row)
+              const renderGroupRow = (groupKey: string, count: number, isCollapsed: boolean, bodyIdx: number) => (
+                <tr
+                  key={`group-${groupKey}`}
+                  aria-rowindex={ariaRowIndexOf(bodyIdx)}
+                  aria-level={1}
+                  aria-expanded={!isCollapsed}
+                  className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                  onClick={() => toggleGroupCollapse(groupKey)}
+                >
+                  <td colSpan={visibleColumns.length + 2} className="px-3 py-2">
+                    <button
+                      type="button"
+                      aria-expanded={!isCollapsed}
+                      onClick={(e) => { e.stopPropagation(); toggleGroupCollapse(groupKey); }}
+                      className="flex items-center gap-2 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     >
-                      <td colSpan={visibleColumns.length + 2} className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          {isCollapsed ? (
-                            <ChevronRight className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-                          ) : (
-                            <ChevronDown className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
-                          )}
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 capitalize">
-                            {groupKey.replace(/_/g, ' ')}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                            {groupTasks.length} task{groupTasks.length !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                  if (!isCollapsed) {
-                    for (const task of groupTasks) {
-                      rows.push(renderRowWithInsert(task, globalIdx));
-                      globalIdx++;
-                    }
-                  } else {
-                    globalIdx += groupTasks.length;
-                  }
-                }
-                return rows;
-              }
+                      {isCollapsed ? (
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                      )}
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 capitalize">
+                        {groupKey.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                        {count} task{count !== 1 ? 's' : ''}
+                      </span>
+                    </button>
+                  </td>
+                </tr>
+              );
 
-              if (useVirtualization) {
-                const rows: React.ReactNode[] = [];
-                if (startRow > 0) {
-                  rows.push(<tr key="spacer-top" style={{ height: startRow * ROW_H }} />);
-                }
-                for (let i = startRow; i < endRow; i++) {
-                  rows.push(renderRowWithInsert(visibleSorted[i], i));
-                }
-                if (endRow < visibleSorted.length) {
-                  rows.push(<tr key="spacer-bottom" style={{ height: (visibleSorted.length - endRow) * ROW_H }} />);
-                }
-                return rows;
+              const rows: React.ReactNode[] = [];
+              if (startRow > 0) {
+                rows.push(<tr key="spacer-top" aria-hidden="true" style={{ height: startRow * ROW_H }} />);
               }
-              return visibleSorted.map((task, rowIdx) => renderRowWithInsert(task, rowIdx));
+              for (let i = startRow; i < endRow; i++) {
+                const r = bodyRows[i];
+                rows.push(r.kind === 'group' ? renderGroupRow(r.key, r.count, r.collapsed, i) : renderRowWithInsert(r.task, r.rowIdx, i));
+              }
+              if (endRow < bodyRows.length) {
+                rows.push(<tr key="spacer-bottom" aria-hidden="true" style={{ height: (bodyRows.length - endRow) * ROW_H }} />);
+              }
+              return rows;
             })()}
 
             {/* MPP-style empty input rows */}
-            {onQuickAdd && Array.from({ length: Math.max(5, 8 - visibleSorted.length) }).map((_, i) => {
+            {onQuickAdd && Array.from({ length: quickAddRowCount }).map((_, i) => {
               const emptyRowKey = `empty-${i}`;
               return (
-                <tr key={emptyRowKey} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
+                <tr key={emptyRowKey} aria-rowindex={2 + bodyRows.length + (inlineInsertPos >= 0 ? 1 : 0) + i} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                   <td className="px-2 py-2" />
                   {visibleColumns.map((col) => (
                     <td key={col.key} className={`px-3 py-2${col.key === 'rowNum' ? ' text-center' : ''}`} style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key] } : undefined}>
                       {col.key === 'rowNum' ? (
-                        <span className="text-xs font-medium text-gray-300 dark:text-gray-600">{rowNumMap.size + i + 1}</span>
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">{rowNumMap.size + i + 1}</span>
                       ) : col.key === 'name' ? (
                         <input
                           type="text"
@@ -1692,7 +1716,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
             })}
 
             {visibleSorted.length === 0 && !onQuickAdd && (
-              <tr>
+              <tr aria-rowindex={2}>
                 <td colSpan={visibleColumns.length + 2} className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
                   No tasks found
                 </td>
@@ -1701,7 +1725,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           </tbody>
         </table>
       </div>
-      <GridKeyboardHelp id={TABLE_GRID_HELP_ID} editable={!!(onTaskUpdate || onBulkUpdate)} focusedCell={editingCell ? null : focusedCell} taskById={taskById} />
+      <GridKeyboardHelp id={TABLE_GRID_HELP_ID} editable={!!(onTaskUpdate || onBulkUpdate)} focusedCell={editingCell ? null : focusedCell} taskById={taskById} gridRef={tableRef} cellPrefix={TABLE_GRID_CELLS} />
 
       {/* Notes popup editor */}
       {notesPopup && (
@@ -1752,3 +1776,4 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     </div>
   );
 }
+

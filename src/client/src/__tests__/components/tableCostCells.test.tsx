@@ -75,7 +75,11 @@ describe('Budget and Actual Cost in the Table', () => {
       clickCell(cell('Plan', label));
       expect(cell('Plan', label).querySelector('input'), label).toBeNull();
       expect(cell('Plan', label).className).toContain('cursor-default');
-      expect(cell('Plan', label).className).toContain('opacity-70');
+      // greyed with a colour that keeps 4.5:1 (not opacity: audit 2 L4), and read-only to screen readers
+      expect(cell('Plan', label).className).toContain('!text-gray-600');
+      expect(cell('Plan', label).className).toContain('dark:!text-gray-400');
+      expect(cell('Plan', label).className).not.toContain('opacity-70');
+      expect(cell('Plan', label).getAttribute('aria-readonly')).toBe('true');
       // On a row that isn't active, a click focuses the cell; Enter / F2 then try to open it
       clickCell(cell('Build', label));
       act(() => { fireEvent.keyDown(document, { key: 'Enter' }); });

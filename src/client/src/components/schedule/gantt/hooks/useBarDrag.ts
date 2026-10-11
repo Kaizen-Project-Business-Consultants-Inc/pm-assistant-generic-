@@ -305,7 +305,9 @@ export function useBarDrag({
       lastMouseXRef.current = e.clientX;
       const deltaX = e.clientX - startX;
       const dayDelta = Math.round(deltaX / dayPxRef.current);
-      setDrag(prev => prev ? { ...prev, dayDelta } : null);
+      // only when the bar moves to another day: a new drag object on every mouse move re-rendered
+      // the Gantt for each pixel (2026-10-11)
+      setDrag(prev => (prev && prev.dayDelta !== dayDelta ? { ...prev, dayDelta } : prev));
 
       // Auto-scroll when near timeline edges
       const tl = timelineRef.current;

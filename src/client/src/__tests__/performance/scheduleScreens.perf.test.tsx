@@ -8,6 +8,7 @@ import { useTableGrouping } from '../../components/schedule/table/hooks/useTable
 import { packLanes, mondayOfYmd, shiftYmd } from '../../utils/plannerLayout';
 import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
 import type { WorkCalendar } from '../../utils/workingDays';
+import { groupTasksByStatus } from '../../components/schedule/KanbanBoard';
 
 /**
  * SPEED TEST — the schedule screens' in-browser work on a big plan, 2026-10-08. Same made-up plan
@@ -21,6 +22,8 @@ import type { WorkCalendar } from '../../utils/workingDays';
  *     Duration (working days on the calendar, worked out once per task per sort) and group by person
  *   - packLanes (utils/plannerLayout.ts:34): Team Planner lanes for one busy person
  *   - findResourceConflicts (utils/resourceConflicts.ts:31): the Gantt's "Conflicts"
+ *   - groupTasksByStatus (components/schedule/KanbanBoard.tsx): the Kanban's columns, sorted by
+ *     priority (2026-10-11: one pass, once per tasks change — it was 7 filter + sort passes per render)
  *
  * Measured on the dev machine, 2026-10-08 (perfData.ts `measure`): six runs of this file, each the
  * median of 3–5 samples after a warm-up call; "measured" is the median of the six. Limit = 3×
@@ -36,14 +39,20 @@ import type { WorkCalendar } from '../../utils/workingDays';
  *   | Gantt search + sort by name            | 2,000  | 0.8 ms   | 50 ms  | 1.50–1.85 (< 3.0)   |
  *   | Table sort by Duration + group         | 1,000  | 52 ms    | 160 ms | 1.42–2.13 (< 3.0)   |
  *   | Team Planner lanes (1 person, all work)| 2,000  | 3.2 ms   | 50 ms  | 1.35–2.39 (< 3.0)   |
- *   | Gantt conflicts                        | 2,000  | 189 ms   | 570 ms | 2.08–2.36 (< 3.0)   |
+ *   | Gantt conflicts                        | 2,000  | 17 ms    | 60 ms  | 1.12–1.18 (< 3.0)   |
+ *   | Kanban columns                         | 2,000  | 2.2 ms   | 50 ms  | 2.10–2.11 (< 3.0)   |
  *
  * Table sort re-measured after the 2026-10-08 speed fix (six runs): each task's Duration is now
  * counted once per sort (sortValues.ts `sortByValue`), not twice per comparison. Before: 241 ms
  * (limit 730 ms).
+ *
+ * Gantt conflicts and Kanban columns re-measured 2026-10-11 (two runs on the laptop, which measured
+ * conflicts at 512 ms median / 410 ms fastest just before the fix): each over-100% week's last day
+ * is worked out once per person, not once per task that touches it, and one date formatter makes
+ * every label (resourceConflicts.ts). Before: 189 ms (limit 570 ms).
  */
 
-const LIMIT_MS = { flat: 50, strip: 50, search: 50, tableSort: 160, lanes: 50, conflicts: 570 };
+const LIMIT_MS = { flat: 50, strip: 50, search: 50, tableSort: 160, lanes: 50, conflicts: 60, kanban: 50 };
 
 const plans = new Map<number, { plan: PerfPlan; tasks: GanttTask[] }>();
 function planOf(n: number) {
@@ -118,6 +127,8 @@ function conflicts(n: number) {
   return () => findResourceConflicts(tasks as never, workload, headings);
 }
 
+const kanbanColumns = (n: number) => { const { tasks } = planOf(n); return () => groupTasksByStatus(tasks as never); };
+
 // [label, case, N, limit at N (ms)] — growth is measured from N/4 to N
 const CASES: Array<[string, (n: number) => () => unknown, number, number]> = [
   ['flat rows + row numbers', flatRows, 2000, LIMIT_MS.flat],
@@ -126,6 +137,7 @@ const CASES: Array<[string, (n: number) => () => unknown, number, number]> = [
   ['table sort duration + group', tableSortGroup, 1000, LIMIT_MS.tableSort],
   ['planner lanes', plannerLanes, 2000, LIMIT_MS.lanes],
   ['gantt conflicts', conflicts, 2000, LIMIT_MS.conflicts],
+  ['kanban columns', kanbanColumns, 2000, LIMIT_MS.kanban],
 ];
 
 // a timing check that fails once on a busy machine is re-run once; a real slow-down fails both
@@ -140,6 +152,7 @@ describe('speed: schedule screens (client)', { retry: 1 }, () => {
     expect(tableSortGroup(1000)()).toBeGreaterThan(10);
     expect((plannerLanes(2000)() as { lanes: number }).lanes).toBeGreaterThan(3);
     expect((conflicts(2000)() as Map<string, string[]>).size).toBeGreaterThan(40);
+    expect(Object.values(kanbanColumns(2000)() as Record<string, unknown[]>).flat().length).toBeGreaterThan(1000);
   });
 
   it.each(CASES)('%s: within budget, and 2× the plan is about 2× the time', async (label, make, n, limit) => {

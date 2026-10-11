@@ -131,11 +131,12 @@ describe('TableView — a task link reaches an off-screen row in a long (virtual
   it('scrolls the table to the row\'s position when the row is not rendered yet', () => {
     const seek = src.slice(src.indexOf('const seek = () =>'), src.indexOf('frame = requestAnimationFrame(seek);\n    return'));
     expect(seek).toContain("row.scrollIntoView({ block: 'center' })");
-    expect(seek).toMatch(/virtualRowsRef\.current\.rows\.findIndex\(t => t\.id === focusTaskId\)/);
+    // the body rows: group headings and tasks, so a grouped Table finds it too (2026-10-11)
+    expect(seek).toMatch(/virtualRowsRef\.current\.rows\.findIndex\(r => r\.kind === 'task' && r\.task\.id === focusTaskId\)/);
     expect(seek).toMatch(/box\.scrollTop = Math\.max\(0, idx \* ROW_H/);
     expect(seek).toContain('setScrollTop(box.scrollTop)');
   });
   it('knows, on every render, whether rows are virtualised and in what order', () => {
-    expect(src).toContain('virtualRowsRef.current = { on: useVirtualization, rows: visibleSorted };');
+    expect(src).toContain('virtualRowsRef.current = { on: useVirtualization, rows: bodyRows };');
   });
 });

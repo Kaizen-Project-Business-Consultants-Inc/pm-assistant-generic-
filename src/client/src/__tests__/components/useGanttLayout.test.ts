@@ -196,3 +196,18 @@ describe('useGanttLayout — scroll tracking and virtualisation', () => {
     expect(result.current.visEnd).toBe(Math.ceil(1000 / ROW_H) + OVERSCAN);
   });
 });
+
+describe('useGanttLayout — a scroll to the same place keeps the scroll position object (2026-10-11)', () => {
+  it('no new object (no re-render) when the position has not changed', () => {
+    const many: GanttTask[] = Array.from({ length: 300 }, (_, i) => task(`t${i}`, '2026-03-02', '2026-03-06', { sortOrder: (i + 1) * 10 }));
+    const tl = makeEl(400);
+    const { result } = setup({ tasks: many, rows: buildFlatRows(many), timelineRef: { current: tl } });
+    act(() => { tl.scrollTop = 720; tl.dispatchEvent(new Event('scroll')); });
+    const pos = result.current.scrollPos;
+    expect(pos).toEqual({ left: 0, top: 720 });
+    act(() => { tl.dispatchEvent(new Event('scroll')); });
+    expect(result.current.scrollPos).toBe(pos);
+    act(() => { tl.scrollLeft = 40; tl.dispatchEvent(new Event('scroll')); });
+    expect(result.current.scrollPos).toEqual({ left: 40, top: 720 });
+  });
+});

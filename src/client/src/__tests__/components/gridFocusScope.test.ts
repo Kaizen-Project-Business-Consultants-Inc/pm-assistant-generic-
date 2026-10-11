@@ -41,7 +41,7 @@ function buildPage() {
   const button = document.createElement('button');
   toolbar.append(search, button);
   const grid = document.createElement('div');
-  grid.setAttribute('role', 'grid');
+  grid.setAttribute('role', 'treegrid');
   grid.tabIndex = 0; // the grid root is one Tab stop, as in both views
   const row = document.createElement('div');
   row.setAttribute('role', 'row');

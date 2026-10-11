@@ -44,7 +44,7 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); documen
 function renderGantt(over: Partial<Parameters<typeof GanttChart>[0]> = {}) {
   const fns = { onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}), onBulkDelete: vi.fn(async () => {}), onDeleteTask: vi.fn() };
   const utils = wrap(<GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s-kbd" activeTaskId="b" {...fns} {...over} />);
-  const grid = utils.container.querySelector('[role="grid"]') as HTMLElement;
+  const grid = utils.container.querySelector('[role="treegrid"]') as HTMLElement;
   const confirmOpen = () => utils.queryByText('Delete Task') !== null;
   return { ...utils, grid, fns, confirmOpen };
 }
@@ -119,12 +119,12 @@ const views = [
     mount: (editable: boolean) => {
       const fns = { onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}) };
       const utils = wrap(<TableHarness {...(editable ? fns : {})} />);
-      return { grid: utils.container.querySelector('[role="grid"]') as HTMLElement, changed: () => [...fns.onTaskUpdate.mock.calls, ...fns.onBulkUpdate.mock.calls] };
+      return { grid: utils.container.querySelector('[role="treegrid"]') as HTMLElement, changed: () => [...fns.onTaskUpdate.mock.calls, ...fns.onBulkUpdate.mock.calls] };
     },
     mountUnselected: () => {
       const onTaskSelect = vi.fn();
       const utils = wrap(<TableHarness onTaskUpdate={vi.fn()} onTaskSelect={onTaskSelect} />);
-      return { grid: utils.container.querySelector('[role="grid"]') as HTMLElement, selected: () => onTaskSelect.mock.calls.map(c => (c[0] as GanttTask).id) };
+      return { grid: utils.container.querySelector('[role="treegrid"]') as HTMLElement, selected: () => onTaskSelect.mock.calls.map(c => (c[0] as GanttTask).id) };
     },
   },
 ];
@@ -147,7 +147,10 @@ for (const view of views) {
       act(() => { grid.focus(); });
       keyOn(grid, 'ArrowDown');
       keyOn(grid, 'ArrowDown'); // Phase → Alpha → Bravo
-      expect(document.body.textContent).toContain('Task name for Bravo'); // the polite live region
+      // the grid points at the cell the arrows are on (screen readers land on it; audit 2 M3)
+      const cell = document.getElementById(grid.getAttribute('aria-activedescendant') ?? '');
+      expect(cell?.textContent).toContain('Bravo');
+      expect(grid.getAttribute('aria-activedescendant')).toMatch(/-cell-b-name$/);
       expect(keyOn(grid, 'ArrowRight', { altKey: true, shiftKey: true }).defaultPrevented).toBe(true);
       expect(changed().length).toBe(1);
       expect(keyOn(grid, 'Tab').defaultPrevented).toBe(false);
@@ -166,7 +169,7 @@ for (const view of views) {
       fireEvent.keyDown(input, { key: 'Escape' }); // close the edit
       expect(document.activeElement).toBe(grid);
       keyOn(grid, 'ArrowDown');
-      expect(document.body.textContent).toMatch(/Task name for (Alpha|Bravo)/);
+      expect(grid.getAttribute('aria-activedescendant')).toMatch(/-cell-(a|b)-name$/);
     });
 
     it('tabbing in with no task selected selects the first row, so Delete has a task to act on', () => {

@@ -207,12 +207,15 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           </div>
         )}
       </div>
-      {/* Zoom controls */}
-      <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-500">
+      {/* Zoom controls: one pressed button says which zoom is on (not the colour alone; audit 2 M2) */}
+      <div role="group" aria-label="Zoom" className="inline-flex rounded-md border border-gray-300 dark:border-gray-500">
         {ZOOM_LEVELS.map((level, i) => (
           <button
             key={level}
+            type="button"
             onClick={() => setZoom(level)}
+            aria-pressed={zoom === level}
+            aria-label={level.charAt(0).toUpperCase() + level.slice(1)}
             className={`px-2.5 py-1 text-xs font-medium transition-colors ${
               zoom === level
                 ? 'bg-primary-600 text-white'
@@ -356,6 +359,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
                     onClick={() => moveColumn(col.key, 'left')}
                     disabled={idx === 0}
                     title="Move left"
+                    aria-label={`Move ${col.label || col.key} column left`}
                   >
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
                   </button>
@@ -364,6 +368,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
                     onClick={() => moveColumn(col.key, 'right')}
                     disabled={idx === arr.length - 1}
                     title="Move right"
+                    aria-label={`Move ${col.label || col.key} column right`}
                   >
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
                   </button>
@@ -483,10 +488,13 @@ export const GanttToolbar = React.memo(function GanttToolbar({
         )}
         {/* Schedule overflow menu (baselines, scenarios, import, etc.) */}
         {overflowMenu}
-        {/* Panel mode toggle */}
-        <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden print:hidden">
+        {/* Panel mode toggle (aria-pressed: which layout is on; audit 2 M2) */}
+        <div role="group" aria-label="Layout" className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden print:hidden">
           <button
+            type="button"
             onClick={() => setPanelMode('table')}
+            aria-pressed={panelMode === 'table'}
+            aria-label="Table only"
             className={`px-2 py-1.5 text-xs font-medium transition-colors ${panelMode === 'table' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             title="Table only"
           >
@@ -495,7 +503,10 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             </svg>
           </button>
           <button
+            type="button"
             onClick={() => setPanelMode('split')}
+            aria-pressed={panelMode === 'split'}
+            aria-label="Split view"
             className={`px-2 py-1.5 text-xs font-medium border-x border-gray-300 dark:border-gray-600 transition-colors ${panelMode === 'split' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             title="Split view"
           >
@@ -504,7 +515,10 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             </svg>
           </button>
           <button
+            type="button"
             onClick={() => setPanelMode('gantt')}
+            aria-pressed={panelMode === 'gantt'}
+            aria-label="Gantt only"
             className={`px-2 py-1.5 text-xs font-medium transition-colors ${panelMode === 'gantt' ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             title="Gantt only"
           >

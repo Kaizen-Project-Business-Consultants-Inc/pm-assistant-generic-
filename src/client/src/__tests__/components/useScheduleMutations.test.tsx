@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { GanttTask } from '../../components/schedule/GanttChart';
 
@@ -32,7 +32,8 @@ vi.mock('../../services/api', () => ({ apiService: api }));
 vi.mock('../../utils/announce', () => ({ announce: vi.fn() }));
 import { announce } from '../../utils/announce';
 
-import { useScheduleMutations } from '../../pages/ProjectDetailPage/schedule-tab/useScheduleMutations';
+import { useScheduleMutations, savedChangedOtherTasks, UNDO_TOAST_MS } from '../../pages/ProjectDetailPage/schedule-tab/useScheduleMutations';
+import { isOwnTaskBroadcast, resetOwnTaskSaves } from '../../utils/ownTaskSaves';
 
 const TASKS: GanttTask[] = [
   { id: 'a', name: 'Alpha', status: 'pending', priority: 'medium', startDate: '2026-03-02', endDate: '2026-03-06', sortOrder: 10, assignedTo: 'r1' },
@@ -204,6 +205,8 @@ describe('edits with undo', () => {
     await flush();
     expect(result.current.undoToast).toBe('Edit Gamma (predecessors) · 1 task moved later');
     expect(result.current.undoDescription).toBe('Edit Gamma (dependencies)');
+    // said once, with the tasks it moved (review: it was said twice, the first without them)
+    expect(vi.mocked(announce).mock.calls.map(c => c[0])).toEqual(['Edit Gamma (predecessors) · 1 task moved later. Press Ctrl+Z to undo.']);
     invalidated = [];
     api.updateTask.mockClear();
     await act(async () => { result.current.undo(); });
@@ -242,6 +245,8 @@ describe('edits with undo', () => {
     const { result } = setup();
     act(() => { result.current.updateTaskWithUndo('c', { dependencies: [{ dependencyId: 'b', dependencyType: 'FS', lagDays: 0 }] }); });
     await flush();
+    expect(result.current.undoToast).toBe('Edit Gamma (dependencies)');
+    expect(vi.mocked(announce).mock.calls.map(c => c[0])).toEqual(['Edit Gamma (dependencies). Press Ctrl+Z to undo.']);
     await act(async () => { result.current.undo(); });
     await flush();
     expect(api.undoScheduleChange).not.toHaveBeenCalled();
@@ -386,16 +391,45 @@ describe('edits with undo', () => {
     expect(done).toBe(true);
   });
 
-  it('the Undo toast clears itself after 4 s', async () => {
+  it('the Undo toast stays 10 s (long enough to reach Undo), then clears itself', async () => {
     vi.useFakeTimers();
     try {
       const { result } = setup();
       act(() => { result.current.handleTaskDragEndWithUndo('a', '2026-03-03', '2026-03-09'); });
       expect(result.current.undoToast).toBe('Move Alpha');
-      act(() => { vi.advanceTimersByTime(3999); });
+      act(() => { vi.advanceTimersByTime(UNDO_TOAST_MS - 1); });
       expect(result.current.undoToast).toBe('Move Alpha');
       act(() => { vi.advanceTimersByTime(1); });
       expect(result.current.undoToast).toBe(null);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('while the pointer or the focus is on it, the Undo toast stays; it starts its wait again after', async () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = setup();
+      act(() => { result.current.handleTaskDragEndWithUndo('a', '2026-03-03', '2026-03-09'); });
+      act(() => { result.current.holdUndoToast(true); });
+      act(() => { vi.advanceTimersByTime(UNDO_TOAST_MS * 3); });
+      expect(result.current.undoToast).toBe('Move Alpha');
+      act(() => { result.current.holdUndoToast(false); });
+      act(() => { vi.advanceTimersByTime(UNDO_TOAST_MS - 1); });
+      expect(result.current.undoToast).toBe('Move Alpha');
+      act(() => { vi.advanceTimersByTime(1); });
+      expect(result.current.undoToast).toBe(null);
+    } finally { vi.useRealTimers(); }
+  });
+
+  it('the change and how to undo it are announced once, politely ("Task updated" does not talk over it)', async () => {
+    vi.useFakeTimers();
+    try {
+      const { result } = setup();
+      vi.mocked(announce).mockClear();
+      act(() => { result.current.handleTaskDragEndWithUndo('a', '2026-03-03', '2026-03-09'); });
+      await act(async () => { await vi.runOnlyPendingTimersAsync(); });
+      const said = vi.mocked(announce).mock.calls.map(c => c[0]);
+      expect(said).toContain('Move Alpha. Press Ctrl+Z to undo.');
+      expect(said).not.toContain('Task updated');
     } finally { vi.useRealTimers(); }
   });
 });
@@ -628,5 +662,185 @@ describe('a failed save', () => {
     await flush();
     expect(result.current.saveError).toBe('Your change to "Alpha" was not saved: Nope. Please try again.');
     expect(invalidated).toEqual([['tasks', 's1']]);
+  });
+});
+
+/**
+ * A saved edit is put in the cached plan from the reply (2026-10-11 speed fix): one cell edit
+ * used to refetch the whole plan (every page of it) on success, and again for the save's own
+ * WebSocket broadcast. The plan is still refetched when the save changed other tasks too, failed,
+ * or someone else changed the same task meanwhile.
+ */
+describe('a saved edit: the reply goes in the cache, no whole-plan refetch', () => {
+  const planRefetched = () => qc.getQueryState(['tasks', 's1'])!.isInvalidated;
+  beforeEach(() => { resetOwnTaskSaves(); });
+
+  it('a top-level task: the saved task (with the server\'s fields) replaces the cached one; the plan is not refetched', async () => {
+    api.updateTask.mockResolvedValue({ task: { ...TASKS[0], name: 'Alpha 2', updatedAt: '2026-10-11T10:00:00Z' }, cascadedChanges: null, rescheduled: [] });
+    const { result } = setup();
+    let ok: Promise<boolean> | undefined;
+    act(() => { ok = result.current.updateTaskWithUndo('a', { name: 'Alpha 2' }); });
+    await flush();
+    await expect(ok).resolves.toBe(true);
+    expect(cached().find(t => t.id === 'a')).toMatchObject({ name: 'Alpha 2', updatedAt: '2026-10-11T10:00:00Z' });
+    expect(planRefetched()).toBe(false);
+    // other lists of this plan's tasks (the Overview's) are still refreshed
+    expect(invalidated).toEqual([['tasks', 's1']]);
+    expect(qc.getQueryState(['tasks', 's1'])!.isInvalidated).toBe(false);
+  });
+
+  it('the save\'s own broadcast is recognised (after the reply, or while it is on its way); someone else\'s is not', async () => {
+    const reply = { ...TASKS[0], name: 'Alpha 2' };
+    api.updateTask.mockResolvedValue({ task: reply });
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'Alpha 2' }); });
+    await flush();
+    expect(isOwnTaskBroadcast(JSON.parse(JSON.stringify(reply)))).toBe(true);
+    expect(isOwnTaskBroadcast({ ...reply, name: 'By someone else' })).toBe(false);
+    expect(isOwnTaskBroadcast({ ...TASKS[2] })).toBe(false);
+  });
+
+  it('a broadcast that is not this save, arriving while it is on its way: the plan is refetched after all', async () => {
+    const calls: Array<{ resolve: (v: unknown) => void }> = [];
+    api.updateTask.mockImplementation(() => new Promise(resolve => { calls.push({ resolve }); }));
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'Alpha 2' }); });
+    await flush();
+    expect(isOwnTaskBroadcast({ ...TASKS[0], priority: 'urgent' })).toBe(true); // held back while saving
+    await act(async () => { calls[0].resolve({ task: { ...TASKS[0], name: 'Alpha 2' } }); });
+    await flush();
+    expect(planRefetched()).toBe(true);
+  });
+
+  it('a change a summary rolls up (task under a summary), a move, successors pushed, or a re-flow: the plan is refetched', async () => {
+    const cases: Array<[string, Record<string, unknown>, Record<string, unknown>]> = [
+      ['b', { status: 'completed' }, { task: { ...TASKS[1], status: 'completed' } }],
+      ['a', { parentTaskId: 'p' }, { task: { ...TASKS[0], parentTaskId: 'p' } }],
+      ['a', { endDate: '2026-03-10' }, { task: { ...TASKS[0], endDate: '2026-03-10' }, cascadedChanges: { affectedTasks: [{ id: 'c' }] } }],
+      ['c', { dependencies: [{ dependencyId: 'a' }] }, { task: { ...TASKS[2] }, rescheduled: [{ taskId: 'c' }] }],
+    ];
+    for (const [taskId, data, res] of cases) {
+      api.updateTask.mockResolvedValue(res);
+      const { result, unmount } = setup();
+      await act(async () => { await result.current.updateMutation.mutateAsync({ taskId, data }); });
+      await flush();
+      expect(planRefetched(), `${taskId} ${JSON.stringify(data)}`).toBe(true);
+      unmount();
+    }
+  });
+
+  it('a name change under a summary is not rolled up: no refetch', async () => {
+    api.updateTask.mockResolvedValue({ task: { ...TASKS[1], name: 'Beta 2' } });
+    const { result } = setup();
+    await act(async () => { await result.current.updateMutation.mutateAsync({ taskId: 'b', data: { name: 'Beta 2' } }); });
+    expect(planRefetched()).toBe(false);
+    expect(cached().find(t => t.id === 'b')!.name).toBe('Beta 2');
+  });
+
+  it('two quick edits: the first reply is not put in (it would undo the second on screen); one refetch after the last', async () => {
+    const calls: Array<{ resolve: (v: unknown) => void }> = [];
+    api.updateTask.mockImplementation(() => new Promise(resolve => { calls.push({ resolve }); }));
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'A1' }); });
+    act(() => { result.current.updateTaskWithUndo('a', { priority: 'high' }); });
+    await flush();
+    await act(async () => { calls[0].resolve({ task: { ...TASKS[0], name: 'A1' } }); });
+    await flush();
+    expect(cached().find(t => t.id === 'a')).toMatchObject({ name: 'A1', priority: 'high' });
+    expect(planRefetched()).toBe(false);
+    await act(async () => { calls[1].resolve({ task: { ...TASKS[0], name: 'A1', priority: 'high' } }); });
+    await flush();
+    expect(planRefetched()).toBe(true);
+  });
+});
+
+/**
+ * Review 2026-10-11 (must-fix 1): a whole-plan fetch that started before a save finished would
+ * put the old task back over the patched reply. Such a fetch (on its way, or cancelled by a later
+ * drag) means the plan is fetched again after the save.
+ */
+describe('a saved edit while a plan fetch is owed', () => {
+  beforeEach(() => { resetOwnTaskSaves(); });
+  const OLD = { data: TASKS.map(t => ({ ...t })) };
+  /** The Schedule screen's own subscription to the plan: each fetch waits until it is answered */
+  function watchPlan() {
+    const fetches: Array<(v: unknown) => void> = [];
+    const observer = new QueryObserver(qc, { queryKey: ['tasks', 's1'], queryFn: () => new Promise(r => { fetches.push(r); }) });
+    const unsub = observer.subscribe(() => {});
+    return { fetches, unsub };
+  }
+
+  it("someone else's change started a plan fetch, then the task form saves: the plan is fetched again, the old fetch cannot put the old task back", async () => {
+    api.updateTask.mockResolvedValue({ task: { ...TASKS[0], name: 'Alpha 2' } });
+    const { result } = setup();
+    const { fetches, unsub } = watchPlan();
+    expect(fetches).toHaveLength(1); // the broadcast's fetch, on its way
+    await act(async () => { await result.current.updateMutation.mutateAsync({ taskId: 'a', data: { name: 'Alpha 2' } }); });
+    await flush();
+    expect(fetches).toHaveLength(2); // fetched again after the save
+    await act(async () => { fetches[0](OLD); }); // the older fetch answers late: ignored (cancelled)
+    await flush();
+    await act(async () => { fetches[1]({ data: TASKS.map(t => (t.id === 'a' ? { ...t, name: 'Alpha 2' } : { ...t })) }); });
+    await flush();
+    expect(cached().find(t => t.id === 'a')!.name).toBe('Alpha 2');
+    unsub();
+  });
+
+  it('a drag that moved other tasks, then a second drag before the refetch came back: the cancelled refetch is still made', async () => {
+    const { result } = setup();
+    const { fetches, unsub } = watchPlan();
+    await act(async () => { fetches[0](OLD); });
+    await flush();
+    api.updateTask.mockResolvedValueOnce({ task: { ...TASKS[0], startDate: '2026-03-03', endDate: '2026-03-09' }, cascadedChanges: { affectedTasks: [{ id: 'c' }] } });
+    act(() => { result.current.handleTaskDragEndWithUndo('a', '2026-03-03', '2026-03-09'); });
+    await flush();
+    expect(fetches).toHaveLength(2); // owed for A's moved successors, on its way
+    api.updateTask.mockResolvedValueOnce({ task: { ...TASKS[0], startDate: '2026-03-04', endDate: '2026-03-10' } });
+    act(() => { result.current.handleTaskDragEndWithUndo('a', '2026-03-04', '2026-03-10'); }); // cancels that refetch
+    await flush();
+    expect(fetches).toHaveLength(3); // made again after B's save
+    await act(async () => { fetches[2]({ data: TASKS.map(t => (t.id === 'c' ? { ...t, startDate: '2026-03-17', endDate: '2026-03-23' } : { ...t })) }); });
+    await flush();
+    expect(cached().find(t => t.id === 'c')!.startDate).toBe('2026-03-17');
+    unsub();
+  });
+});
+
+describe('ownTaskSaves bookkeeping (review should-fix 5)', () => {
+  beforeEach(() => { resetOwnTaskSaves(); });
+
+  it("the save's broadcast came while it was on its way: a later identical broadcast (someone else) is not skipped", async () => {
+    const reply = { ...TASKS[0], name: 'Alpha 2' };
+    const calls: Array<(v: unknown) => void> = [];
+    api.updateTask.mockImplementation(() => new Promise(r => { calls.push(r); }));
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'Alpha 2' }); });
+    await flush();
+    expect(isOwnTaskBroadcast({ ...reply })).toBe(true); // our own, held while saving
+    await act(async () => { calls[0]({ task: reply }); });
+    await flush();
+    expect(isOwnTaskBroadcast({ ...reply })).toBe(false);
+  });
+
+  it('a broadcast that does not match the saved task clears the entry: the saved one arriving later is not skipped either', async () => {
+    const reply = { ...TASKS[0], name: 'Alpha 2' };
+    api.updateTask.mockResolvedValue({ task: reply });
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('a', { name: 'Alpha 2' }); });
+    await flush();
+    expect(isOwnTaskBroadcast({ ...reply, name: 'By someone else' })).toBe(false);
+    expect(isOwnTaskBroadcast({ ...reply })).toBe(false);
+  });
+});
+
+describe('savedChangedOtherTasks', () => {
+  it('only a cascade, a re-flow, a move or a rolled-up field of a task under a summary', () => {
+    expect(savedChangedOtherTasks({ task: {} }, { name: 'x' })).toBe(false);
+    expect(savedChangedOtherTasks({ task: {} }, { startDate: '2026-01-01' })).toBe(false);
+    expect(savedChangedOtherTasks({ task: { parentTaskId: 'p' } }, { notes: 'x' })).toBe(false);
+    expect(savedChangedOtherTasks({ task: { parentTaskId: 'p' } }, { progressPercentage: 50 })).toBe(true);
+    expect(savedChangedOtherTasks({ task: {} }, { parentTaskId: null })).toBe(true);
+    expect(savedChangedOtherTasks({ task: {}, cascadedChanges: { affectedTasks: [] } }, { name: 'x' })).toBe(true);
+    expect(savedChangedOtherTasks({ task: {}, rescheduled: [{}] }, { name: 'x' })).toBe(true);
   });
 });

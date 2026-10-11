@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { isOwnTaskBroadcast } from '../utils/ownTaskSaves';
 
 const WS_URL = import.meta.env.DEV
   ? 'ws://localhost:3001/api/v1/ws'
@@ -167,8 +168,11 @@ export function useWebSocket() {
               case 'task_deleted': {
                 // the task's plan, or the plan the server names (task removed, link removed)
                 const scheduleId = message.payload?.task?.scheduleId ?? message.payload?.scheduleId;
+                // This tab's own save: the Schedule screen has already patched (or refetched) the
+                // plan from the reply, so the whole plan is not fetched a second time (2026-10-11)
+                const own = message.type === 'task_updated' && isOwnTaskBroadcast(message.payload?.task);
                 if (scheduleId) {
-                  queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
+                  if (!own) queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
                   queryClient.invalidateQueries({ queryKey: ['criticalPath', scheduleId] });
                 } else {
                   queryClient.invalidateQueries({ queryKey: ['tasks'] });

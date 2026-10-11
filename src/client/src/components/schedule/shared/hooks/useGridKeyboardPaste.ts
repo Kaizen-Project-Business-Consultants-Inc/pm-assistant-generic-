@@ -73,8 +73,9 @@ export function useGridCellState<F extends string>() {
   return { focusedCell, setFocusedCell, copiedValue, setCopiedValue, pasteFlash, flashPaste, copiedTasks, setCopiedTasks };
 }
 
-/** The task grid's root in both views (GanttGridPanel's left panel, TableView's <table>). */
-const GRID_SELECTOR = '[role="grid"]';
+/** The task grid's root in both views (GanttGridPanel's left panel, TableView's <table>): a treegrid,
+ *  since the rows are an outline (summary tasks open and close; audit 2 M3). */
+const GRID_SELECTOR = '[role="treegrid"]';
 /** Controls with their own Tab / Enter (sort headers, the collapse chevron, row Edit / Delete buttons, links) */
 const OWN_KEYS_SELECTOR = 'button, a[href], [role="button"], [tabindex]:not([tabindex="-1"])';
 const insideGrid = (target: EventTarget | null) => target instanceof Element && target.closest(GRID_SELECTOR) !== null;
@@ -136,13 +137,20 @@ export function useGridFocusScope(onEnterByKeyboard?: () => void) {
       && !(e.key === 'Tab' && byKeyboard.current);
     // The Escape that ended list mode, and whether it was the grid's before that (claim answers with it)
     let escape: { event: KeyboardEvent; mine: boolean } | null = null;
+    // The grid root a mouse user last pressed in
+    let lastRoot: HTMLElement | null = null;
     return {
       onEscape: (e: KeyboardEvent) => {
         if (e.key !== 'Escape') return;
         escape = { event: e, mine: isMine(e) };
         if (!(byKeyboard.current && isTextEntry(e.target))) working.current = false;
       },
-      onMouseDown: (e: MouseEvent) => { working.current = insideGrid(e.target); byKeyboard.current = false; },
+      onMouseDown: (e: MouseEvent) => {
+        working.current = insideGrid(e.target);
+        byKeyboard.current = false;
+        // The grid a mouse user works in (the focus goes back on it when an inline edit closes)
+        if (working.current && e.target instanceof Element) lastRoot = e.target.closest<HTMLElement>(GRID_SELECTOR);
+      },
       onFocusIn: (e: FocusEvent) => {
         if (!insideGrid(e.target)) working.current = false;
         // A click focuses the root too, but its mousedown came first (already working, by mouse)
@@ -158,14 +166,17 @@ export function useGridFocusScope(onEnterByKeyboard?: () => void) {
         return isMine(e);
       },
       /**
-       * An inline edit closed: its input is gone and the browser's focus fell to <body>. A keyboard
-       * user goes back on the grid root, so the focus ring, the cell read-out and a screen reader's
-       * focus mode (arrows to the grid, not browse mode) carry on.
+       * An inline edit closed (saved, refused or cancelled): its input is gone and the browser's focus
+       * fell to <body>. While still working in the grid the focus goes back on the grid root, so the
+       * focus ring, the cell read-out and a screen reader's focus mode (arrows to the grid, not browse
+       * mode) carry on and the next Tab starts from the grid, not the top of the page — after a mouse
+       * start too (audit 2 M4; it used to be for a keyboard start only). Mouse-started list mode
+       * stays mouse-started (Tab still indents), as it was from <body>.
        */
       refocusAfterEdit: () => {
-        if (working.current && byKeyboard.current && isNowhere(document.activeElement) && root.current?.isConnected) {
-          root.current.focus({ preventScroll: true });
-        }
+        if (!working.current || !isNowhere(document.activeElement)) return;
+        const el = byKeyboard.current ? root.current : lastRoot;
+        if (el?.isConnected) el.focus({ preventScroll: true });
       },
     };
   }, []);

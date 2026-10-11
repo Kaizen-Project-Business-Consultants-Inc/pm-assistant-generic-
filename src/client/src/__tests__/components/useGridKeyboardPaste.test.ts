@@ -103,7 +103,7 @@ function script(seed: number, length: number): Step[] {
 
 /** A stand-in for the task grid; the driver's inputs live in it, and it is clicked before each key */
 const grid = document.createElement('div');
-grid.setAttribute('role', 'grid');
+grid.setAttribute('role', 'treegrid');
 document.body.appendChild(grid);
 
 const targets: Record<string, HTMLElement> = {};

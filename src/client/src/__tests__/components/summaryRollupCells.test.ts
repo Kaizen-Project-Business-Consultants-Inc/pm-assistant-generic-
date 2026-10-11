@@ -92,7 +92,8 @@ describe('Gantt and Table refuse the same cells on summary rows', () => {
 
   it('the Gantt grid draws those cells as not editable, like the Table view', () => {
     const row = read('gantt/GanttLeftPanelRow.tsx');
-    expect(row).toContain("if (isLockedCell(task, field)) return 'relative cursor-default opacity-70';");
+    // a muted colour that keeps 4.5:1 in dark mode, the same as the Table (not opacity-70; audit 2 L4)
+    expect(row).toContain("if (isLockedCell(task, field)) return 'relative cursor-default !text-gray-600 dark:!text-gray-400';");
     expect(row).toMatch(/editableCellClass\([^)]*field, task\)/);
   });
 });

@@ -19,6 +19,7 @@ import {
   healthColor,
 } from './types';
 import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
+import { gridCellId, GANTT_GRID_CELLS } from '../shared/GridKeyboardHelp';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -28,6 +29,8 @@ export interface GanttLeftPanelRowProps {
   task: GanttTask;
   level: number;
   rowIdx: number;
+  /** The row's position among all the grid's rows (header = 1), for screen readers in a long plan */
+  ariaRowIndex: number;
   // Boolean flags (computed in parent to enable React.memo skip)
   isActive: boolean;
   /** Opened from a link (Morning Briefing) — highlighted until the page clears it */
@@ -122,14 +125,18 @@ function editableCellClass(
 ): string {
   if (!hasOnTaskUpdate) return '';
   // Same look as the Table view: a summary's rolled-up cells are not editable
-  if (isLockedCell(task, field)) return 'relative cursor-default opacity-70';
+  // A muted colour that still reads 4.5:1 on the summary row in both themes (opacity-70 gave 3.3:1 in dark; audit 2 L4)
+  if (isLockedCell(task, field)) return 'relative cursor-default !text-gray-600 dark:!text-gray-400';
   const base = 'relative cursor-pointer transition-all duration-150';
   if (isEditingField(editingField, field)) return `${base} ring-2 ring-blue-400 ring-inset rounded`;
   if (isPasteFlashField(pasteFlashField, field)) return `${base} ring-2 ring-green-400 ring-inset rounded bg-green-50 dark:bg-green-900/20`;
-  if (isFocusedField(focusedField, field)) return `${base} ring-2 ring-primary-300 ring-inset rounded bg-primary-50/30 dark:bg-primary-900/20`;
+  if (isFocusedField(focusedField, field)) return `${base} ring-2 ring-primary-500 ring-inset rounded bg-primary-50/30 dark:bg-primary-900/20`;
   if (isSavedField(savedField, field)) return `${base} bg-green-50 dark:bg-green-900/20`;
   return `${base} hover:bg-blue-50/50 dark:hover:bg-blue-900/20`;
 }
+
+/** A cell the arrow keys don't stop on (Succ, Resource, Notes): a grid cell, not focusable (see cellA11y) */
+const CELL = { role: 'gridcell' as const };
 
 // ---------------------------------------------------------------------------
 // Component
@@ -139,6 +146,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   task,
   level,
   rowIdx,
+  ariaRowIndex,
   isActive,
   isFocused,
   workCalendar,
@@ -218,10 +226,22 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   // Shorthand for building cell classes
   const cellClass = (field: string) =>
     editableCellClass(hasOnTaskUpdate, editingField, focusedField, savedField, pasteFlashField, field, task);
+  // A cell the arrow keys can reach: its id (the grid's aria-activedescendant points at it) and,
+  // for a summary's rolled-up value, that it can't be changed. Cells are deliberately not focusable:
+  // the grid root keeps the focus and points at the cell (WAI-ARIA grid, aria-activedescendant).
+  const cellA11y = (field: string, role: 'gridcell' | 'rowheader' = 'gridcell') => ({
+    role,
+    id: gridCellId(GANTT_GRID_CELLS, task.id, field),
+    'aria-readonly': !hasOnTaskUpdate || isLockedCell(task, field) ? true : undefined,
+  });
 
   return (
     <div
       role="row"
+      aria-rowindex={ariaRowIndex}
+      aria-level={level + 1}
+      aria-expanded={isParent ? !isCollapsed : undefined}
+      aria-selected={isSelected}
       data-task-id={task.id}
       className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-colors group cursor-pointer ${isParent ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${!isParent && rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${isActive ? 'bg-primary-50 dark:bg-primary-900/20 ring-1 ring-inset ring-primary-200 dark:ring-primary-700' : ''} ${isFocused ? '!bg-amber-100 dark:!bg-amber-900/40 ring-2 ring-inset ring-amber-400 dark:ring-amber-500' : ''} ${rowDragTargetHere ? 'border-t-2 border-t-blue-500' : ''} ${isRowDragSource ? 'opacity-40' : ''}`}
       style={shouldVirtualize ? { height: ROW_H, position: 'absolute', top: rowIdx * ROW_H, left: 0, right: 0, minWidth: minRowWidth } : { height: ROW_H, minWidth: minRowWidth }}
@@ -236,7 +256,8 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
     >
       {/* Row # / Checkbox / Drag handle */}
       <div
-        className="shrink-0 px-1 text-center text-xs text-gray-500 font-mono flex items-center justify-center"
+        role="gridcell"
+        className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono flex items-center justify-center"
         style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
       >
         {someSelected && hasOnBulkUpdate ? (
@@ -249,7 +270,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
           />
         ) : hasOnTaskReorder && !editingField && !sortField ? (
-          <span className="hidden group-hover:inline cursor-grab text-gray-500" title="Drag to reorder">&#x2807;</span>
+          <span className="hidden group-hover:inline cursor-grab text-gray-500" title="Drag to reorder" aria-hidden="true">&#x2807;</span>
         ) : null}
         {!(someSelected && hasOnBulkUpdate) && !(hasOnTaskReorder && !editingField && !sortField) && rowNumber}
         {!(someSelected && hasOnBulkUpdate) && hasOnTaskReorder && !editingField && !sortField && (
@@ -267,6 +288,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
 
       {/* Task name with indent */}
       <div
+        {...cellA11y('name', 'rowheader')}
         className={`shrink-0 min-w-0 overflow-hidden ${cellClass('name')}`}
         style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}
         onClick={(e) => onCellClick(e, task.id, 'name', task)}
@@ -286,11 +308,14 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             {/* Expand/collapse toggle for parent tasks */}
             {isParent ? (
               <button
+                type="button"
                 className="w-4 h-4 flex items-center justify-center flex-shrink-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 onClick={(e) => { e.stopPropagation(); toggleCollapse(task.id); }}
                 title={isCollapsed ? 'Expand children' : 'Collapse children'}
+                aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} ${task.name}`}
+                aria-expanded={!isCollapsed}
               >
-                <svg className={`w-3 h-3 ${isCollapsed ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <svg aria-hidden="true" className={`w-3 h-3 ${isCollapsed ? '' : 'rotate-90'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -346,6 +371,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'pred') return (
           <div
             key="pred"
+            {...cellA11y('dependency')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono ${cellClass('dependency')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'dependency', task)}
@@ -399,6 +425,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'succ') return (
           <div
             key="succ"
+            {...CELL}
             className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono"
             style={{ width: w }}
             title={succTitle}
@@ -422,6 +449,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'start') return (
           <div
             key="start"
+            {...cellA11y('startDate')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${cellClass('startDate')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'startDate', task)}
@@ -446,6 +474,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'end') return (
           <div
             key="end"
+            {...cellA11y('endDate')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${cellClass('endDate')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'endDate', task)}
@@ -470,6 +499,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'dur') return (
           <div
             key="dur"
+            {...cellA11y('duration')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${cellClass('duration')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'duration', task)}
@@ -494,6 +524,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'est') return (
           <div
             key="est"
+            {...cellA11y('estimatedDays')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${cellClass('estimatedDays')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'estimatedDays', task)}
@@ -519,6 +550,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'work') return (
           <div
             key="work"
+            {...cellA11y('estimatedDurationHours')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${cellClass('estimatedDurationHours')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'estimatedDurationHours', task)}
@@ -545,6 +577,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'pct') return (
           <div
             key="pct"
+            {...cellA11y('progressPercentage')}
             className={`shrink-0 px-1 text-center text-xs font-medium text-gray-600 dark:text-gray-300 ${cellClass('progressPercentage')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'progressPercentage', task)}
@@ -571,6 +604,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'priority') return (
           <div
             key="priority"
+            {...cellA11y('priority')}
             className={`shrink-0 px-1 text-center ${cellClass('priority')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'priority', task)}
@@ -603,6 +637,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'assigned') return (
           <div
             key="assigned"
+            {...cellA11y('assignedTo')}
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate relative ${cellClass('assignedTo')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'assignedTo', task)}
@@ -632,6 +667,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'resource') return (
           <div
             key="resource"
+            {...CELL}
             className="shrink-0 px-1 text-xs overflow-visible"
             style={{ width: w }}
             onClick={e => e.stopPropagation()}
@@ -649,6 +685,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'notes') return (
           <div
             key="notes"
+            {...CELL}
             className="shrink-0 px-1.5 text-xs text-gray-500 dark:text-gray-400 truncate cursor-pointer hover:text-gray-700 dark:hover:text-gray-200"
             style={{ width: getColWidth(col) }}
             title={task.description || 'Click to add notes'}
@@ -665,6 +702,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         if (col.key === 'status') return (
           <div
             key="status"
+            {...cellA11y('status')}
             className={`shrink-0 px-1 text-center ${cellClass('status')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'status', task)}
@@ -710,14 +748,16 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
 
       {/* Row actions (visible on hover): edit, insert, delete */}
       <div
+        role="gridcell"
         className="shrink-0 flex items-center justify-center gap-0.5"
         style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }}
       >
         {hasOnTaskClick && onTaskClick && (
           <button
-            className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600"
+            className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-gray-200 dark:hover:bg-gray-600"
             onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
             title="Edit task"
+            aria-label={`Edit ${task.name}`}
           >
             <svg className="w-3.5 h-3.5 text-gray-500 hover:text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -726,9 +766,10 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         )}
         {hasOnInsertAfter && onInsertAfter && (
           <button
-            className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-green-100 dark:hover:bg-green-900/30"
+            className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-green-100 dark:hover:bg-green-900/30"
             onClick={(e) => { e.stopPropagation(); onInsertAfter(task.id, task.parentTaskId); }}
             title="Insert task below"
+            aria-label={`Insert a task below ${task.name}`}
           >
             <svg className="w-3.5 h-3.5 text-gray-500 hover:text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -737,12 +778,13 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
         )}
         {hasOnDeleteTask && onDeleteTask && (
           <button
-            className="p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/30"
+            className="p-0.5 rounded opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity hover:bg-red-100 dark:hover:bg-red-900/30"
             onClick={(e) => {
               e.stopPropagation();
               setPendingDeleteIds([task.id]);
             }}
             title="Delete task"
+            aria-label={`Delete ${task.name}`}
           >
             <svg className="w-3.5 h-3.5 text-gray-500 hover:text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />

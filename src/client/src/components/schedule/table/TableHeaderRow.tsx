@@ -25,10 +25,10 @@ interface TableHeaderRowProps {
 }
 
 const SortIcon = ({ field, sortField, sortDir }: { field: ColumnKey; sortField: ColumnKey | null; sortDir: SortDir }) => {
-  if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-500 dark:text-gray-400" />;
+  if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-gray-500 dark:text-gray-400" aria-hidden="true" />;
   return sortDir === 'asc'
-    ? <ArrowUp className="w-3 h-3 text-primary-600" />
-    : <ArrowDown className="w-3 h-3 text-primary-600" />;
+    ? <ArrowUp className="w-3 h-3 text-primary-600" aria-hidden="true" />
+    : <ArrowDown className="w-3 h-3 text-primary-600" aria-hidden="true" />;
 };
 
 export const TableHeaderRow = React.memo(function TableHeaderRow({
@@ -45,7 +45,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
   onToggleSelectAll,
 }: TableHeaderRowProps) {
   return (
-    <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <tr aria-rowindex={1} className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
       <th className="w-16 px-2 py-2.5" scope="col">
         <div className="flex items-center gap-1">
           <span className="w-5" aria-hidden="true" />
@@ -72,33 +72,44 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
           style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : { minWidth: col.key === 'name' ? 200 : 100 }}
         >
           <div className="flex items-center gap-1 whitespace-nowrap">
-            <span className="flex items-center gap-0 opacity-0 group-hover/th:opacity-100 transition-opacity">
+            {/* Mouse shortcuts to move the column, shown on hover. Kept out of the header's name and the
+                Tab order (they used to read "Move column left Move column right Task Name"); the
+                keyboard way to move a column is the Columns menu, which names the column (audit 2 H10). */}
+            <span className="flex items-center gap-0 opacity-0 group-hover/th:opacity-100 transition-opacity" aria-hidden="true">
               <button
+                type="button"
+                tabIndex={-1}
                 onClick={(e) => { e.stopPropagation(); moveColumn(col.key, 'left'); }}
                 disabled={colIdx === 0}
                 className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-20"
-                title="Move left"
-                aria-label="Move column left"
+                title={`Move ${col.label} column left`}
               >
                 <ArrowLeft className="w-2.5 h-2.5" />
               </button>
               <button
+                type="button"
+                tabIndex={-1}
                 onClick={(e) => { e.stopPropagation(); moveColumn(col.key, 'right'); }}
                 disabled={colIdx === visibleColumns.length - 1}
                 className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-20"
-                title="Move right"
-                aria-label="Move column right"
+                title={`Move ${col.label} column right`}
               >
                 <ArrowRight className="w-2.5 h-2.5" />
               </button>
             </span>
-            <span
-              className={`flex items-center gap-1 ${col.sortable ? 'cursor-pointer' : ''}`}
-              onClick={() => col.sortable && onToggleSort(col.key)}
-            >
-              {col.label}
-              {col.sortable && <SortIcon field={col.key} sortField={sortField} sortDir={sortDir} />}
-            </span>
+            {col.sortable ? (
+              // A real button: Tab reaches it and Enter / Space sort (it was a click-only span; audit 2 H10)
+              <button
+                type="button"
+                className="flex items-center gap-1 uppercase tracking-wide font-semibold rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                onClick={() => onToggleSort(col.key)}
+              >
+                {col.label}
+                <SortIcon field={col.key} sortField={sortField} sortDir={sortDir} />
+              </button>
+            ) : (
+              <span>{col.label}</span>
+            )}
           </div>
           <div
             draggable={false}
@@ -119,7 +130,7 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
           </div>
         </th>
       ))}
-      <th className="w-10" scope="col" />
+      <th className="w-10" scope="col"><span className="sr-only">Actions</span></th>
     </tr>
   );
 });

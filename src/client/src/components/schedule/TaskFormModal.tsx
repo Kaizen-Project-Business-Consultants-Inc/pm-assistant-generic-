@@ -131,7 +131,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
         <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
           {current ? current.name : 'Select resource...'}
         </span>
-        <ChevronDown className="w-4 h-4 text-gray-500 shrink-0" />
+        <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
       </button>
       {open && (
         <div className="absolute left-0 right-0 mt-1 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg overflow-hidden">
@@ -150,7 +150,7 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
           {current && (
             <button
               type="button"
-              className="w-full text-left px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border-b border-gray-100 dark:border-gray-700"
+              className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 border-b border-gray-100 dark:border-gray-700"
               onClick={() => { onChange(''); setOpen(false); setSearch(''); }}
             >
               Clear assignment
@@ -386,7 +386,7 @@ export function TaskFormModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -398,7 +398,7 @@ export function TaskFormModal({
           {/* Task Name */}
           <div>
             <label htmlFor={`${uid}-task-name`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Task Name <span className="text-red-500">*</span>
+              Task Name <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id={`${uid}-task-name`}
@@ -613,7 +613,7 @@ export function TaskFormModal({
                 disabled={isSummary}
                 className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary-600"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-0.5">
+              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 <span>0%</span>
                 <span>50%</span>
                 <span>100%</span>
@@ -732,7 +732,7 @@ export function TaskFormModal({
                     const updated = form.assignments.filter((_, i) => i !== idx);
                     setForm(f => ({ ...f, assignments: updated }));
                   }}
-                  className="text-red-400 hover:text-red-600 text-xs px-1"
+                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs px-1"
                   title="Remove resource"
                 >
                   &times;
@@ -753,7 +753,7 @@ export function TaskFormModal({
                     assignments: [...f.assignments, { resourceId: '', allocationPct: 100, roleOnTask: '' }],
                   }));
                 }}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                className="text-xs text-primary-700 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium"
               >
                 + Add Resource
               </button>
@@ -852,7 +852,7 @@ export function TaskFormModal({
                     const updated = form.predecessors.filter((_, i) => i !== idx);
                     setForm(f => ({ ...f, predecessors: updated }));
                   }}
-                  className="text-red-400 hover:text-red-600 text-xs px-1"
+                  className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs px-1"
                   title="Remove predecessor"
                 >
                   &times;
@@ -868,7 +868,7 @@ export function TaskFormModal({
                     predecessors: [...f.predecessors, { dependencyId: '', dependencyType: 'FS', lagDays: '0' }],
                   }));
                 }}
-                className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                className="text-xs text-primary-700 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium"
               >
                 + Add Predecessor
               </button>
@@ -915,7 +915,7 @@ export function TaskFormModal({
             </div>
           </div>
           {form.effortDriven && (
-            <p className="text-xs text-gray-500 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
           )}
 
           {/* Constraint */}
@@ -990,7 +990,7 @@ export function TaskFormModal({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 Delete

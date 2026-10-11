@@ -35,7 +35,7 @@ type Props = Parameters<typeof useGridKeyboard>[0];
 
 /** A stand-in for the task grid (role=grid); a mouse press in it starts "working in the grid" */
 const grid = document.createElement('div');
-grid.setAttribute('role', 'grid');
+grid.setAttribute('role', 'treegrid');
 document.body.appendChild(grid);
 const clickInGrid = () => act(() => { grid.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); });
 

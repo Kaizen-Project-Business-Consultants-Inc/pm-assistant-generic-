@@ -15,10 +15,6 @@ const ALLOWED = new Map<string, string>([
   ['pages/PrelaunchLandingPage.tsx', 'decorative hover effects on marketing cards'],
   ['pages/ProjectDetailPage/OverviewTab.tsx', 'mouse-only drag handle (cards also reorder from the keyboard elsewhere); not focusable'],
   ['pages/admin/AdminUsersPage.tsx', 'decorative pencil icon next to an editable name'],
-  // Schedule grid: being reworked for keyboard on another branch, and fixed in the DOM-identity
-  // fixtures — deferred (audit 2 M1, listed in the report)
-  ['components/schedule/gantt/GanttLeftPanelRow.tsx', 'deferred: schedule grid row actions'],
-  ['components/schedule/TableView.tsx', 'deferred: schedule grid row actions'],
 ]);
 
 function files(dir: string): string[] {

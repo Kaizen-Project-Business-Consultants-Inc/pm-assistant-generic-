@@ -97,11 +97,11 @@ export async function waitForRows(page: Page, view: ViewMode, timeout = 30_000) 
 
 // ---- Gantt ---------------------------------------------------------------------------
 
-export const ganttGrid = (page: Page) => page.getByRole('grid', { name: 'Task list' });
+export const ganttGrid = (page: Page) => page.getByRole('treegrid', { name: 'Task list' });
 export const ganttRows = (page: Page) => ganttGrid(page).locator('div[role="row"][data-task-id]');
 export const ganttRow = (page: Page, taskId: string) => ganttGrid(page).locator(`div[role="row"][data-task-id="${taskId}"]`);
 
-/** Column header labels of the Gantt grid, in screen order ('' for the # and actions columns) */
+/** Column header labels of the Gantt grid, in screen order ('' for the # column, 'Actions' (screen-reader text) for the last) */
 export async function ganttHeaders(page: Page): Promise<string[]> {
   return ganttGrid(page).locator('div[role="row"]:not([data-task-id]) > div[role="columnheader"]').evaluateAll(
     els => els.map(e => (e.textContent || '').trim()));
@@ -122,7 +122,7 @@ export const ganttBar = (page: Page, name: string) =>
 
 // ---- Table ---------------------------------------------------------------------------
 
-export const tableGrid = (page: Page) => page.locator('table[role="grid"]');
+export const tableGrid = (page: Page) => page.locator('table[role="treegrid"]');
 export const tableRows = (page: Page) => tableGrid(page).locator('tbody tr[data-task-id]');
 export const tableRow = (page: Page, taskId: string) => tableGrid(page).locator(`tbody tr[data-task-id="${taskId}"]`);
 

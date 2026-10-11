@@ -71,6 +71,158 @@ function isOverdue(s?: string): boolean {
   }
 }
 
+const byPriority = (a: KanbanTask, b: KanbanTask) =>
+  (priorityOrder[a.priority || 'medium'] ?? 2) - (priorityOrder[b.priority || 'medium'] ?? 2);
+
+/**
+ * Tasks by status column, each column sorted by priority (stable: equal priorities keep the
+ * plan's order). One pass over the tasks instead of one filter per column; tasks whose status is
+ * not a column are left out, as before. Worked out once per tasks change (2026-10-11).
+ */
+export function groupTasksByStatus(taskList: KanbanTask[]): Record<string, KanbanTask[]> {
+  const grouped: Record<string, KanbanTask[]> = {};
+  for (const col of COLUMNS) grouped[col.id] = [];
+  for (const t of taskList) grouped[t.status]?.push(t);
+  // eslint-disable-next-line no-restricted-syntax -- small: the 7 status columns; each sorts only its own cards
+  for (const col of COLUMNS) grouped[col.id].sort(byPriority);
+  return grouped;
+}
+
+type RiskLevel = import('../../utils/taskRiskAssessment').TaskRiskLevel;
+
+function cardBorder(isActive: boolean, risk: RiskLevel | undefined): string {
+  if (isActive) return 'border-primary-400 ring-1 ring-primary-200';
+  if (risk === 'late' || risk === 'critical') return 'border-red-400 dark:border-red-500';
+  if (risk === 'at_risk') return 'border-orange-400 dark:border-orange-500';
+  return 'border-gray-200 dark:border-gray-600';
+}
+
+interface CardProps {
+  task: KanbanTask;
+  isActive: boolean;
+  risk: RiskLevel | undefined;
+  onCardClick: (task: KanbanTask) => void;
+  onCardDragStart: (e: React.DragEvent<HTMLDivElement>, taskId: string) => void;
+}
+
+/**
+ * A card opens its task from the keyboard as well as by a click: it is a button (Tab reaches it,
+ * Enter / Space open it, a focus ring shows; review 2026-10-11 — the cards were click-only).
+ */
+function cardButtonProps(task: KanbanTask, label: string, onCardClick: (task: KanbanTask) => void) {
+  return {
+    role: 'button' as const,
+    tabIndex: 0,
+    'aria-label': label,
+    onClick: () => onCardClick(task),
+    onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+      e.preventDefault();
+      onCardClick(task);
+    },
+  };
+}
+const CARD_FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-800';
+
+/**
+ * One card. Memoised with stable callbacks, so a drag over a column or a change to one task
+ * re-renders only the cards whose props changed, not every card on the board (2026-10-11).
+ */
+const KanbanCard = React.memo(function KanbanCard({ task, isActive, risk, subtaskCount, dependencyCount, onCardClick, onCardDragStart }: CardProps & { subtaskCount: number; dependencyCount: number }) {
+  const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
+  const due = task.dueDate || task.endDate;
+  const overdue = (task.status !== 'completed' && task.status !== 'cancelled') && isOverdue(due);
+  const label = `Open ${task.name}, ${task.priority || 'medium'} priority${due ? `, ${overdue ? 'overdue' : 'due'} ${formatDate(due)}` : ''}${task.assignedTo ? `, ${task.assignedTo}` : ''}`;
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onCardDragStart(e, task.id)}
+      {...cardButtonProps(task, label, onCardClick)}
+      className={`bg-white dark:bg-gray-700 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${CARD_FOCUS_RING} ${cardBorder(isActive, risk)}`}
+    >
+      {/* Title */}
+      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-2 line-clamp-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors flex items-center gap-1.5">
+        {task.isMilestone && <span className="w-2.5 h-2.5 flex-shrink-0 rotate-45 bg-primary-500 inline-block" title="Milestone" />}
+        {task.name}
+      </div>
+
+      {/* Priority + Due date */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${pBadge.bg} ${pBadge.text} capitalize`}>
+          {task.priority || 'medium'}
+        </span>
+
+        {due && (
+          <span className={`text-xs ${overdue ? 'text-red-600 dark:text-red-300 font-semibold' : 'text-gray-500 dark:text-gray-300'}`}>
+            {overdue ? 'Overdue ' : ''}{formatDate(due)}
+          </span>
+        )}
+      </div>
+
+      {/* Subtask + Dependency badges */}
+      {(subtaskCount > 0 || dependencyCount > 0) && (
+        <div className="flex items-center gap-2 mt-1.5">
+          {subtaskCount > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-gray-500 dark:text-gray-300" title={`${subtaskCount} subtask${subtaskCount > 1 ? 's' : ''}`}>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h8m-8 6h16" />
+              </svg>
+              {subtaskCount}
+            </span>
+          )}
+          {dependencyCount > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-gray-500 dark:text-gray-300" title={`${dependencyCount} dependenc${dependencyCount > 1 ? 'ies' : 'y'}`}>
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+              {dependencyCount}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Progress bar */}
+      {(task.progressPercentage ?? 0) > 0 && task.status !== 'completed' && (
+        <div className="mt-2">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-300 mb-0.5">
+            <span>Progress</span>
+            <span>{task.progressPercentage}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-600">
+            <div
+              className="h-full rounded-full bg-blue-500 transition-all"
+              style={{ width: `${Math.min(task.progressPercentage || 0, 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Assignee */}
+      {task.assignedTo && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <Avatar name={task.assignedTo} size="xs" />
+          <span className="text-xs text-gray-500 dark:text-gray-300 truncate">{task.assignedTo}</span>
+        </div>
+      )}
+    </div>
+  );
+});
+
+/** The small card in a swimlane's mini column (name only); memoised like KanbanCard. */
+const KanbanLaneCard = React.memo(function KanbanLaneCard({ task, isActive, risk, onCardClick, onCardDragStart }: CardProps) {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onCardDragStart(e, task.id)}
+      {...cardButtonProps(task, `Open ${task.name}`, onCardClick)}
+      className={`bg-white dark:bg-gray-700 rounded-md border p-2 text-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${CARD_FOCUS_RING} ${cardBorder(isActive, risk)}`}
+    >
+      <span className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">{task.name}</span>
+    </div>
+  );
+});
+
 const WIP_STORAGE_KEY = 'pm-kanban-wip-limits';
 
 function loadWipLimits(scheduleId: string): Record<string, number> {
@@ -114,6 +266,17 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
     }
     return new Map([...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])));
   }, [tasks, swimlane]);
+  // each lane's tasks by status column, worked out with the lanes rather than on every render
+  const swimlaneColumns = useMemo(
+    () => (swimlaneGroups ? [...swimlaneGroups.entries()].map(([laneKey, laneTasks]) => ({ laneKey, laneTasks, laneGrouped: groupTasksByStatus(laneTasks) })) : null),
+    [swimlaneGroups],
+  );
+
+  // Card click through a ref: the parent passes a new function each render, and the memoised
+  // cards should not all re-render for that
+  const onTaskClickRef = React.useRef(onTaskClick);
+  onTaskClickRef.current = onTaskClick;
+  const handleCardClick = useCallback((task: KanbanTask) => onTaskClickRef.current?.(task), []);
 
   const handleQuickAddSubmit = useCallback((columnId: string) => {
     const name = quickAddValue.trim();
@@ -178,10 +341,14 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
   const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>, columnId: string) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    setDragOverColumn(columnId);
+    setDragOverColumn(prev => (prev === columnId ? prev : columnId));
   }, []);
 
-  const handleDragLeave = useCallback(() => {
+  // dragleave also fires when the pointer moves onto a card inside the same column; only clear
+  // the highlight when it really left the column (each clear + re-set was two board renders)
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
     setDragOverColumn(null);
   }, []);
 
@@ -200,29 +367,18 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
     [tasks, onStatusChange],
   );
 
-  // Group tasks by status and sort by priority
-  const groupTasksByStatus = (taskList: KanbanTask[]) => {
-    const grouped: Record<string, KanbanTask[]> = {};
-    for (const col of COLUMNS) {
-      // eslint-disable-next-line no-restricted-syntax -- small: the 7 status columns; each sorts only its own cards
-      grouped[col.id] = taskList
-        .filter((t) => t.status === col.id)
-        .sort((a, b) => (priorityOrder[a.priority || 'medium'] ?? 2) - (priorityOrder[b.priority || 'medium'] ?? 2));
-    }
-    return grouped;
-  };
-
-  const grouped = groupTasksByStatus(tasks);
+  // Group tasks by status and sort by priority (once per tasks change)
+  const grouped = useMemo(() => groupTasksByStatus(tasks), [tasks]);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
         <div>
           <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Kanban Board</h3>
-          <span className="text-xs text-gray-500">{tasks.length} tasks</span>
+          <span className="text-xs text-gray-500 dark:text-gray-300">{tasks.length} tasks</span>
         </div>
         <div className="flex items-center gap-1">
-          <span id={`${uid}-swimlane`} className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">Swimlane</span>
+          <span id={`${uid}-swimlane`} className="text-xs text-gray-500 dark:text-gray-300 uppercase tracking-wide">Swimlane</span>
           <select
             aria-labelledby={`${uid}-swimlane`}
             value={swimlane}
@@ -236,7 +392,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
         </div>
       </div>
 
-      {swimlaneGroups ? (
+      {swimlaneColumns ? (
         // Swimlane view
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {/* Column headers */}
@@ -248,8 +404,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
               </div>
             ))}
           </div>
-          {[...swimlaneGroups.entries()].map(([laneKey, laneTasks]) => {
-            const laneGrouped = groupTasksByStatus(laneTasks);
+          {swimlaneColumns.map(({ laneKey, laneTasks, laneGrouped }) => {
             return (
               <div key={laneKey} className="flex gap-3 px-4 py-3">
                 {/* Swimlane label */}
@@ -269,19 +424,18 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                       onDrop={(e) => handleDrop(e, col.id)}
                     >
                       {columnTasks.length === 0 ? (
-                        <div className="text-center py-4 text-xs text-gray-300 dark:text-gray-600">—</div>
+                        <div className="text-center py-4 text-xs text-gray-500 dark:text-gray-400">—</div>
                       ) : (
                         <div className="space-y-1.5">
                           {columnTasks.map(task => (
-                            <div
+                            <KanbanLaneCard
                               key={task.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, task.id)}
-                              onClick={() => onTaskClick?.(task)}
-                              className={`bg-white dark:bg-gray-700 rounded-md border p-2 text-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${activeTaskId === task.id ? 'border-primary-400 ring-1 ring-primary-200' : (taskRiskMap?.get(task.id) === 'late' || taskRiskMap?.get(task.id) === 'critical') ? 'border-red-400 dark:border-red-500' : taskRiskMap?.get(task.id) === 'at_risk' ? 'border-orange-400 dark:border-orange-500' : 'border-gray-200 dark:border-gray-600'}`}
-                            >
-                              <span className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">{task.name}</span>
-                            </div>
+                              task={task}
+                              isActive={activeTaskId === task.id}
+                              risk={taskRiskMap?.get(task.id)}
+                              onCardClick={handleCardClick}
+                              onCardDragStart={handleDragStart}
+                            />
                           ))}
                         </div>
                       )}
@@ -323,8 +477,9 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                   </span>
                   <button
                     onClick={() => handleSetWipLimit(col.id)}
-                    className="text-gray-300 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                    className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                     title="Set WIP limit"
+                    aria-label={`Set WIP limit for ${col.label}`}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -337,91 +492,23 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
               {/* Cards */}
               <div className="p-2 space-y-2 max-h-[60vh] overflow-y-auto">
                 {columnTasks.length === 0 && (
-                  <div className="text-center py-8 text-xs text-gray-500">
+                  <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-400">
                     {isOver ? 'Drop here' : 'No tasks'}
                   </div>
                 )}
 
-                {columnTasks.map((task) => {
-                  const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
-                  const due = task.dueDate || task.endDate;
-                  const overdue = (task.status !== 'completed' && task.status !== 'cancelled') && isOverdue(due);
-
-                  return (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task.id)}
-                      onClick={() => onTaskClick?.(task)}
-                      className={`bg-white dark:bg-gray-700 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${activeTaskId === task.id ? 'border-primary-400 ring-1 ring-primary-200' : (taskRiskMap?.get(task.id) === 'late' || taskRiskMap?.get(task.id) === 'critical') ? 'border-red-400 dark:border-red-500' : taskRiskMap?.get(task.id) === 'at_risk' ? 'border-orange-400 dark:border-orange-500' : 'border-gray-200 dark:border-gray-600'}`}
-                    >
-                      {/* Title */}
-                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-2 line-clamp-2 group-hover:text-primary-600 transition-colors flex items-center gap-1.5">
-                        {task.isMilestone && <span className="w-2.5 h-2.5 flex-shrink-0 rotate-45 bg-primary-500 inline-block" title="Milestone" />}
-                        {task.name}
-                      </div>
-
-                      {/* Priority + Due date */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${pBadge.bg} ${pBadge.text} capitalize`}>
-                          {task.priority || 'medium'}
-                        </span>
-
-                        {due && (
-                          <span className={`text-xs ${overdue ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                            {overdue ? 'Overdue ' : ''}{formatDate(due)}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Subtask + Dependency badges */}
-                      {((subtaskCounts[task.id] || 0) > 0 || (dependencyCounts[task.id] || 0) > 0) && (
-                        <div className="flex items-center gap-2 mt-1.5">
-                          {subtaskCounts[task.id] > 0 && (
-                            <span className="flex items-center gap-0.5 text-xs text-gray-500 dark:text-gray-400" title={`${subtaskCounts[task.id]} subtask${subtaskCounts[task.id] > 1 ? 's' : ''}`}>
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h8m-8 6h16" />
-                              </svg>
-                              {subtaskCounts[task.id]}
-                            </span>
-                          )}
-                          {dependencyCounts[task.id] > 0 && (
-                            <span className="flex items-center gap-0.5 text-xs text-gray-500 dark:text-gray-400" title={`${dependencyCounts[task.id]} dependenc${dependencyCounts[task.id] > 1 ? 'ies' : 'y'}`}>
-                              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                              </svg>
-                              {dependencyCounts[task.id]}
-                            </span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Progress bar */}
-                      {(task.progressPercentage ?? 0) > 0 && task.status !== 'completed' && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-xs text-gray-500 mb-0.5">
-                            <span>Progress</span>
-                            <span>{task.progressPercentage}%</span>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-600">
-                            <div
-                              className="h-full rounded-full bg-blue-500 transition-all"
-                              style={{ width: `${Math.min(task.progressPercentage || 0, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Assignee */}
-                      {task.assignedTo && (
-                        <div className="mt-2 flex items-center gap-1.5">
-                          <Avatar name={task.assignedTo} size="xs" />
-                          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.assignedTo}</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {columnTasks.map((task) => (
+                  <KanbanCard
+                    key={task.id}
+                    task={task}
+                    isActive={activeTaskId === task.id}
+                    risk={taskRiskMap?.get(task.id)}
+                    subtaskCount={subtaskCounts[task.id] || 0}
+                    dependencyCount={dependencyCounts[task.id] || 0}
+                    onCardClick={handleCardClick}
+                    onCardDragStart={handleDragStart}
+                  />
+                ))}
               </div>
 
               {/* Quick-add */}
@@ -440,7 +527,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                           if (e.key === 'Escape') { setQuickAddColumn(null); setQuickAddValue(''); }
                         }}
                         placeholder="Task name..."
-                        className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-primary-400"
+                        className="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-300 focus:outline-none focus:ring-1 focus:ring-primary-400"
                       />
                       <div className="flex items-center gap-1">
                         <button
@@ -452,7 +539,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                         </button>
                         <button
                           onClick={() => { setQuickAddColumn(null); setQuickAddValue(''); }}
-                          className="text-xs text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 px-1"
+                          className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-1"
                         >
                           Cancel
                         </button>

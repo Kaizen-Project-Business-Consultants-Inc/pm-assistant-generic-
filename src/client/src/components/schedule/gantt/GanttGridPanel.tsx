@@ -11,7 +11,7 @@ import type { useGanttLayout } from './hooks/useGanttLayout';
 import type { useDependencyDraw } from './hooks/useDependencyDraw';
 import type { useGridKeyboard } from './hooks/useGridKeyboard';
 import type { useInlineCellEdit } from '../shared/hooks/useInlineCellEdit';
-import { GridKeyboardHelp, GANTT_GRID_HELP_ID } from '../shared/GridKeyboardHelp';
+import { GridKeyboardHelp, GANTT_GRID_HELP_ID, GANTT_GRID_CELLS } from '../shared/GridKeyboardHelp';
 
 type Columns = ReturnType<typeof useGanttColumns>;
 type Filtering = ReturnType<typeof useTaskFiltering>;
@@ -138,14 +138,24 @@ export function GanttGridPanel({
   workCalendar, reviewFlagMap, successorMap, getDepHealth,
   onBulkUpdate, onTaskClick, onTaskReorder, onTaskUpdate, onInsertAfter, onDeleteTask,
 }: GanttGridPanelProps) {
+  // Row positions for screen readers (aria-rowcount / aria-rowindex): the header is row 1, then the
+  // task rows, the inline "new task" row where it is open, and the quick-add rows. Only the rows on
+  // screen are in the page in a long plan, so each row says where it really is (audit 2 M3).
+  const hasInlineRow = inlineInsertIdx >= 0;
+  const quickAddCount = onQuickAdd && !shouldVirtualize ? Math.max(3, 6 - rows.length) : 0;
+  const rowCount = 1 + rows.length + (hasInlineRow ? 1 : 0) + quickAddCount;
+  const rowIndexOf = (rowIdx: number) => 2 + rowIdx
+    + (hasInlineRow && (inlineInsertIsBefore ? rowIdx >= inlineInsertIdx : rowIdx > inlineInsertIdx) ? 1 : 0);
   return (
     <>
     {/* One Tab stop: tabbing onto the grid starts list mode on the active or first row (useGridFocusScope) */}
     <div
       ref={leftPanelRef}
-      role="grid"
+      role="treegrid"
       aria-label="Task list"
       aria-describedby={GANTT_GRID_HELP_ID}
+      aria-rowcount={rowCount}
+      aria-multiselectable={onBulkUpdate ? true : undefined}
       tabIndex={0}
       className="flex-shrink-0 overflow-y-auto overflow-x-auto scrollbar-hide focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
       style={{ width: panelMode === 'table' ? '100%' : tableWidth }}
@@ -172,7 +182,7 @@ export function GanttGridPanel({
       />
 
       {/* Task rows */}
-      <div style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
+      <div role="rowgroup" style={shouldVirtualize ? { height: totalRowsHeight, position: 'relative' } : undefined}>
       {rows.map(({ task, level }, rowIdx) => {
         if (shouldVirtualize && (rowIdx < visStart || rowIdx >= visEnd)) return null;
         const showInlineInsertAfter = inlineInsertIdx === rowIdx && !inlineInsertIsBefore;
@@ -181,11 +191,13 @@ export function GanttGridPanel({
           <Fragment key={task.id}>
           {showInlineInsertBefore && (
             <div
+              role="row"
+              aria-rowindex={rowIndexOf(rowIdx) - 1}
               className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
               style={{ height: ROW_H, minWidth: minRowWidth }}
             >
-              <div className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono" style={{ width: getColWidth(GANTT_COLUMNS[0]) }}>+</div>
-              <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
+              <div role="gridcell" className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono" style={{ width: getColWidth(GANTT_COLUMNS[0]) }}>+</div>
+              <div role="gridcell" className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
                 <input
                   type="text"
                   autoFocus
@@ -216,15 +228,16 @@ export function GanttGridPanel({
               {orderedColumns.map(col => {
                 if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
                 if (!isColVisible(col)) return null;
-                return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
+                return <div key={col.key} role="gridcell" className="shrink-0" style={{ width: getColWidth(col) }} />;
               })}
-              <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
+              <div role="gridcell" className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
             </div>
           )}
           <GanttLeftPanelRow
             task={task}
             level={level}
             rowIdx={rowIdx}
+            ariaRowIndex={rowIndexOf(rowIdx)}
             isActive={activeTaskId === task.id}
             isFocused={focusTaskId === task.id || !!highlightTaskIds?.has(task.id)}
             workCalendar={workCalendar}
@@ -282,18 +295,21 @@ export function GanttGridPanel({
           />
           {showInlineInsertAfter && (
             <div
+              role="row"
+              aria-rowindex={rowIndexOf(rowIdx) + 1}
               className="flex items-center border-b border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-900/20"
               style={{ height: ROW_H, minWidth: minRowWidth }}
             >
               {/* Row number */}
               <div
+                role="gridcell"
                 className="shrink-0 px-1 text-center text-xs text-green-400 dark:text-green-600 font-mono"
                 style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
               >
                 +
               </div>
               {/* Task name input */}
-              <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
+              <div role="gridcell" className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]), paddingLeft: `${8 + level * 20}px` }}>
                 <input
                   type="text"
                   autoFocus
@@ -339,9 +355,9 @@ export function GanttGridPanel({
               {orderedColumns.map(col => {
                 if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
                 if (!isColVisible(col)) return null;
-                return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
+                return <div key={col.key} role="gridcell" className="shrink-0" style={{ width: getColWidth(col) }} />;
               })}
-              <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
+              <div role="gridcell" className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
             </div>
           )}
           </Fragment>
@@ -352,18 +368,21 @@ export function GanttGridPanel({
       {onQuickAdd && !shouldVirtualize && Array.from({ length: Math.max(3, 6 - rows.length) }).map((_, i) => (
         <div
           key={`empty-${i}`}
+          role="row"
+          aria-rowindex={2 + rows.length + (hasInlineRow ? 1 : 0) + i}
           className={`flex items-center border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors`}
           style={{ height: ROW_H, minWidth: minRowWidth }}
         >
           {/* Row number */}
           <div
-            className="shrink-0 px-1 text-center text-xs text-gray-300 dark:text-gray-600 font-mono"
+            role="gridcell"
+            className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono"
             style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
           >
             {rowNumMap.size + i + 1}
           </div>
           {/* Task name input */}
-          <div className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]) }}>
+          <div role="gridcell" className="shrink-0 min-w-0 px-2" style={{ width: getColWidth(GANTT_COLUMNS[1]) }}>
             <input
               type="text"
               placeholder={i === 0 ? 'Type a task name…' : ''}
@@ -383,14 +402,14 @@ export function GanttGridPanel({
           {orderedColumns.map(col => {
             if (col.key === 'rowNum' || col.key === 'name' || col.key === 'editIcon') return null;
             if (!isColVisible(col)) return null;
-            return <div key={col.key} className="shrink-0" style={{ width: getColWidth(col) }} />;
+            return <div key={col.key} role="gridcell" className="shrink-0" style={{ width: getColWidth(col) }} />;
           })}
-          <div className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
+          <div role="gridcell" className="shrink-0" style={{ width: getColWidth(GANTT_COLUMNS[GANTT_COLUMNS.length - 1]) }} />
         </div>
       ))}
       </div>
     </div>
-    <GridKeyboardHelp id={GANTT_GRID_HELP_ID} editable={!!onTaskUpdate} focusedCell={editingCell ? null : focusedCell} taskById={taskById} />
+    <GridKeyboardHelp id={GANTT_GRID_HELP_ID} editable={!!onTaskUpdate} focusedCell={editingCell ? null : focusedCell} taskById={taskById} gridRef={leftPanelRef} cellPrefix={GANTT_GRID_CELLS} />
     </>
   );
 }

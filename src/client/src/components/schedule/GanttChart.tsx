@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { BulkDoneToast } from './shared/BulkDoneToast';
+import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
 import { apiService } from '../../services/api';
 import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
 import type { ColumnState } from '../../hooks/useColumnState';
@@ -22,6 +22,7 @@ import {
   DAY_MS,
   toDate,
   daysBetween,
+  daysBetweenRaw,
   ROW_H,
   TABLE_DEFAULT_W,
   TABLE_MIN_W,
@@ -54,6 +55,9 @@ export type { TaskDependencyRef, GanttTask } from './gantt/types';
 // ---------------------------------------------------------------------------
 // GanttChart component
 // ---------------------------------------------------------------------------
+
+/** What a user does to move the timeline themselves (ends the one-time scroll to today) */
+const USER_SCROLL_EVENTS = ['wheel', 'pointerdown', 'keydown', 'touchstart'] as const;
 
 export function GanttChart({
   tasks,
@@ -413,7 +417,8 @@ export function GanttChart({
   const [bulkPriority, setBulkPriority] = useState('');
   const [bulkAssignee, setBulkAssignee] = useState('');
   const [bulkMessage, setBulkMessage] = useState('');
-  const [bulkDone, setBulkDone] = useState('');
+  // After a bulk change or a delete, the row the keyboard focus goes back to (audit 2 M4; see below)
+  const [refocusTo, setRefocusTo] = useState<{ taskId: string | null } | null>(null);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const [bulkLoading, setBulkLoading] = useState(false);
   const lastClickedIdRef = useRef<string | null>(null);
@@ -481,25 +486,23 @@ export function GanttChart({
     setBulkMessage(msg);
     later(() => setBulkMessage(''), 3000);
   }, [later]);
-  // Success goes to the green message at the bottom: the bulk bar closes when the selection clears
-  const showBulkDone = useCallback((msg: string) => {
-    setBulkDone(msg);
-    later(() => setBulkDone(''), 3000);
-  }, [later]);
+  // Success is said by the schedule page's Undo message ("Status changed on 2 tasks · Undo"): the
+  // green "Updated N tasks" here competed with it (audit 2 M5). The bulk bar closes when the
+  // selection clears, and the focus goes back on the grid (refocusTo).
 
   const applyBulkUpdate = useCallback(async (field: string, value: string) => {
     if (!value || selectedIds.size === 0 || !onBulkUpdate) return;
     setBulkLoading(true);
     try {
       await onBulkUpdate(Array.from(selectedIds), field, value);
-      showBulkDone(`Updated ${selectedIds.size} task${selectedIds.size > 1 ? 's' : ''}`);
       clearBulkState();
+      setRefocusTo({ taskId: rows.find(r => selectedIds.has(r.task.id))?.task.id ?? null });
     } catch {
       showBulkMessage('Some updates failed');
     } finally {
       setBulkLoading(false);
     }
-  }, [selectedIds, onBulkUpdate, showBulkMessage, showBulkDone, clearBulkState]);
+  }, [selectedIds, onBulkUpdate, showBulkMessage, clearBulkState, rows]);
 
   const handleBulkDelete = useCallback(() => {
     if (selectedIds.size === 0 || !onBulkDelete) return;
@@ -510,13 +513,15 @@ export function GanttChart({
   const confirmBulkDelete = useCallback(async () => {
     if (pendingDeleteIds.length === 0) return;
     const idsToDelete = [...pendingDeleteIds];
+    // The row the focus lands on afterwards: the next one that stays (worked out before they go)
+    const landOn = rowAfterRemoval(rows.map(r => r.task), new Set(idsToDelete));
     setPendingDeleteIds([]);
     if (onBulkDelete) {
       setBulkLoading(true);
       try {
         await onBulkDelete(idsToDelete);
-        showBulkDone(`Deleted ${idsToDelete.length} task${idsToDelete.length > 1 ? 's' : ''}`);
         clearBulkState();
+        setRefocusTo({ taskId: landOn });
       } catch {
         showBulkMessage('Some deletes failed');
       } finally {
@@ -524,8 +529,9 @@ export function GanttChart({
       }
     } else if (onDeleteTask && idsToDelete.length === 1) {
       onDeleteTask(idsToDelete[0]);
+      setRefocusTo({ taskId: landOn });
     }
-  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, showBulkDone, clearBulkState]);
+  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, clearBulkState, rows]);
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -646,7 +652,9 @@ export function GanttChart({
     handleKeyDown: handleEditKeyDown, handleSelectChange, handleDateChange,
   } = useInlineCellEdit<EditableField>({
     tasks, onTaskUpdate, getTaskFieldValue, rowNumToTaskId, workCalendar,
-    blockEditingWhile: drag, rules: GANTT_EDIT_RULES,
+    // a yes/no, not the drag itself: the drag changes on every mouse move, and startEditing (and
+    // every row's click handler with it) would be made anew each time (2026-10-11)
+    blockEditingWhile: !!drag, rules: GANTT_EDIT_RULES,
   });
 
   /** Click-to-select, click-again-to-edit: first click selects the row, second click enters inline edit.
@@ -695,11 +703,20 @@ export function GanttChart({
   // Grid keyboard: focused cell + arrow keys, Enter/F2/Escape, copy/paste (cell and row),
   // Ctrl+D, Tab/Shift+Tab and Alt+Shift+Right/Left indent/outdent, Alt+Up/Down reorder; focus back
   // on a cell after editing
-  const { focusedCell, pasteFlash, grid } = useGridKeyboard({
+  const { focusedCell, pasteFlash, grid, focusRow } = useGridKeyboard({
     tasks, rows, editingCell, activeTaskId, onTaskUpdate, onTaskReorder, onTaskSelect,
     onDuplicateTasks, onBulkUpdate, startEditing, getTaskFieldValue, rowNumToTaskId, workCalendar,
     someSelected, selectedIds, setBulkMessage, orderedColumns, isColVisible,
   });
+
+  // After a bulk change or a delete the bar / row that had the keyboard focus is gone: the focus
+  // goes back on the grid, on the first changed row or the row after the deleted ones (audit 2 M4)
+  useEffect(() => {
+    if (!refocusTo) return;
+    setRefocusTo(null);
+    focusRow(refocusTo.taskId);
+    refocusGrid(leftPanelRef.current, () => focusRow(refocusTo.taskId));
+  }, [refocusTo, focusRow]);
 
   // Delete key for single or bulk delete — only while working in the list (useGridFocusScope: a
   // click in the grid or tabbing onto it). Elsewhere, or with nothing to delete, Delete keeps its
@@ -723,14 +740,46 @@ export function GanttChart({
     return () => document.removeEventListener('keydown', onKeyDown);
   }, [grid, selectedIds, onBulkDelete, activeTaskId, onDeleteTask]);
 
-  // Scroll to today on mount
+  // Scroll to today when the Gantt opens a plan, and on a zoom change — not when the rows change.
+  // The first date shown (minDate) is worked out from the rows, so an edit, a search keystroke or
+  // a collapse used to jump the Gantt back to today (2026-10-11). Now, when the first date moves,
+  // the scroll position moves with it, so the same dates stay in view.
+  // The one scroll to today counts as done only once the timeline is laid out wide enough to get
+  // there (review 2026-10-11: a first run before that kept the clamped position); until then it is
+  // tried again as the timeline grows.
+  const scrolledToTodayFor = useRef<string | null>(null);
+  const shownFromRef = useRef(minDate);
   useEffect(() => {
-    if (!timelineRef.current) return;
-    const today = new Date();
-    const dayOffset = daysBetween(minDate, today);
-    const px = dayOffset * dayPx - 200;
-    timelineRef.current.scrollLeft = Math.max(0, px);
-  }, [minDate, dayPx]);
+    const tl = timelineRef.current;
+    if (!tl) return;
+    const shownFrom = shownFromRef.current;
+    shownFromRef.current = minDate;
+    const key = `${scheduleId ?? ''}|${dayPx}`;
+    if (scrolledToTodayFor.current !== key) {
+      const px = Math.max(0, daysBetween(minDate, new Date()) * dayPx - 200);
+      const scrollToToday = () => {
+        tl.scrollLeft = px;
+        // as far as the timeline goes, when today is past its end
+        const wanted = Math.min(px, Math.max(0, timelineWidth - tl.clientWidth));
+        const reached = tl.clientWidth > 0 && tl.scrollWidth - tl.clientWidth >= wanted;
+        if (reached) scrolledToTodayFor.current = key;
+        return reached;
+      };
+      if (scrollToToday()) return;
+      if (typeof ResizeObserver === 'undefined') { scrolledToTodayFor.current = key; return; }
+      // stop trying once the user moves the timeline themselves, or after a few layouts, so a
+      // timeline that never gets wide enough doesn't keep pulling them back to today
+      let tries = 0;
+      const stop = () => { scrolledToTodayFor.current = key; ro.disconnect(); USER_SCROLL_EVENTS.forEach(ev => tl.removeEventListener(ev, stop)); };
+      const ro = new ResizeObserver(() => { if (scrollToToday() || ++tries >= 10) stop(); });
+      ro.observe(tl);
+      if (tl.firstElementChild) ro.observe(tl.firstElementChild);
+      USER_SCROLL_EVENTS.forEach(ev => tl.addEventListener(ev, stop, { passive: true }));
+      return () => { ro.disconnect(); USER_SCROLL_EVENTS.forEach(ev => tl.removeEventListener(ev, stop)); };
+    }
+    const shift = daysBetweenRaw(minDate, shownFrom) * dayPx;
+    if (shift) tl.scrollLeft = Math.max(0, tl.scrollLeft + shift);
+  }, [scheduleId, minDate, dayPx, timelineWidth]);
 
   // Focus a task from a link: make its row exist (expand collapsed phases, drop the
   // Gantt's own search/filters), then scroll by row POSITION. Rows are virtualised
@@ -1332,7 +1381,6 @@ export function GanttChart({
         />
       )}
 
-      <BulkDoneToast message={bulkDone} />
     </div>
   );
 }

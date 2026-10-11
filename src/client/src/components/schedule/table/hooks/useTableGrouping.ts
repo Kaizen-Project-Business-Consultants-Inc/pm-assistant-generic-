@@ -17,6 +17,34 @@ import {
 } from '../../sortValues';
 
 const EMPTY_ROW_NUMS = new Map<string, number>();
+
+/** One row of the Table body: a group heading, or a task with its row index (data-row-idx). */
+export type TableBodyRow =
+  | { kind: 'group'; key: string; count: number; collapsed: boolean }
+  | { kind: 'task'; task: GanttTask; rowIdx: number };
+
+/**
+ * The Table body as one flat list, so a grouped Table can be windowed like an ungrouped one
+ * (2026-10-11: grouping used to render every row). Ungrouped: the tasks in order. Grouped: each
+ * group's heading, then its tasks unless collapsed; a collapsed group's tasks still count towards
+ * the row index, as before.
+ */
+export function buildTableBodyRows(
+  visibleSorted: GanttTask[],
+  groupedSorted: Map<string, GanttTask[]> | null,
+  collapsedGroups: Set<string>,
+): TableBodyRow[] {
+  if (!groupedSorted) return visibleSorted.map((task, rowIdx) => ({ kind: 'task', task, rowIdx }));
+  const rows: TableBodyRow[] = [];
+  let rowIdx = 0;
+  for (const [key, groupTasks] of groupedSorted) {
+    const collapsed = collapsedGroups.has(key);
+    rows.push({ kind: 'group', key, count: groupTasks.length, collapsed });
+    if (collapsed) { rowIdx += groupTasks.length; continue; }
+    for (const task of groupTasks) rows.push({ kind: 'task', task, rowIdx: rowIdx++ });
+  }
+  return rows;
+}
 const EMPTY_NAMES = new Map<string, string>();
 
 /**
@@ -188,6 +216,11 @@ export function useTableGrouping({
     return groups;
   }, [visibleSorted, groupBy]);
 
+  const bodyRows = useMemo(
+    () => buildTableBodyRows(visibleSorted, groupedSorted, collapsedGroups),
+    [visibleSorted, groupedSorted, collapsedGroups],
+  );
+
   const toggleGroupCollapse = useCallback((key: string) => {
     setCollapsedGroups(prev => {
       const next = new Set(prev);
@@ -203,6 +236,6 @@ export function useTableGrouping({
     collapsedSummaries, setCollapsedSummaries,
     toggleSort, getSortValue,
     visibleSorted, summaryTaskIds, toggleSummaryCollapse,
-    groupedSorted, toggleGroupCollapse,
+    groupedSorted, toggleGroupCollapse, bodyRows,
   };
 }

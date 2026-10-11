@@ -721,12 +721,12 @@ test('Gantt: search, Late / My Tasks quick filters, column sort, collapse a summ
   await page.getByLabel('Clear search').click();
   await expect(ganttRows(page)).toHaveCount(7);
 
-  await page.getByRole('tab', { name: /^Late/ }).click();
+  await page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^Late/ }).click();
   await expect.poll(() => names(page, ganttRows(page))).toEqual(['Fix bug']);
-  await expect(page.getByRole('tab', { name: /^Late/ })).toContainText('1');
-  await page.getByRole('tab', { name: /^My Tasks/ }).click();
+  await expect(page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^Late/ })).toContainText('1');
+  await page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^My Tasks/ }).click();
   await expect.poll(() => names(page, ganttRows(page))).toEqual(['Fix bug']);
-  await page.getByRole('tab', { name: /^All/ }).click();
+  await page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^All/ }).click();
   await expect(ganttRows(page)).toHaveCount(7);
 
   // sort by Start: siblings sort, children stay under their summary
@@ -758,7 +758,7 @@ test('a task due today is not Late (west of UTC)', async ({ page }) => {
   // UTC — in Toronto the evening before — so a task finishing today was "late".
   await api(setup, 'put', `/api/v1/schedules/${plan.scheduleId}/tasks/${plan.ids.fix}`, { endDate: '2026-10-13' });
   await open(page, 'gantt');
-  await expect(page.getByRole('tab', { name: /^Late/ })).toContainText('0', { timeout: 5_000 });
+  await expect(page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^Late/ })).toContainText('0', { timeout: 5_000 });
 });
 
 test('Table: search, Late / My Tasks quick filters, column sort, collapse a summary', async ({ page }) => {
@@ -770,14 +770,14 @@ test('Table: search, Late / My Tasks quick filters, column sort, collapse a summ
   await search.fill('');
   await expect(tableRows(page)).toHaveCount(7);
 
-  await page.getByRole('tab', { name: /^Late/ }).click();
+  await page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^Late/ }).click();
   await expect.poll(() => names(page, tableRows(page))).toEqual(['Fix bug']);
-  await page.getByRole('tab', { name: /^My Tasks/ }).click();
+  await page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^My Tasks/ }).click();
   await expect.poll(() => names(page, tableRows(page))).toEqual(['Fix bug']);
-  await page.getByRole('tab', { name: /^All/ }).click();
+  await page.getByRole('group', { name: 'Quick filters' }).getByRole('button', { name: /^All/ }).click();
   await expect(tableRows(page)).toHaveCount(7);
 
-  const startHeader = tableGrid(page).locator('thead th').filter({ hasText: /^Start Date$/ }).locator('span.cursor-pointer');
+  const startHeader = tableGrid(page).locator('thead th').getByRole('button', { name: /Start Date/ });
   await startHeader.click();
   await expect.poll(() => names(page, tableRows(page))).toEqual(['Fix bug', 'Phase A', 'Design', 'Build', 'Test', 'Launch', 'Docs']);
   await startHeader.click();
@@ -795,7 +795,7 @@ test('Table: search, Late / My Tasks quick filters, column sort, collapse a summ
 
 test('Columns: hide one and move one — the Gantt and the Table keep it after a reload', async ({ page }) => {
   await open(page, 'gantt');
-  expect(await ganttHeaders(page)).toEqual(['', 'Task Name', 'Dur', 'Start', 'End', 'Pred', 'Assigned', 'Status', '']);
+  expect(await ganttHeaders(page)).toEqual(['', 'Task Name', 'Dur', 'Start', 'End', 'Pred', 'Assigned', 'Status', 'Actions']);
 
   await page.getByTitle('Choose columns').click();
   const picker = page.locator('div.w-64').filter({ hasText: 'Reset visibility' });
@@ -803,7 +803,7 @@ test('Columns: hide one and move one — the Gantt and the Table keep it after a
   await picker.locator('div.flex', { has: page.getByText('Start Date', { exact: true }) }).getByLabel('Move column left').click();
   await page.keyboard.press('Escape');
   await page.mouse.click(5, 500); // close the picker
-  const expected = ['', 'Task Name', 'Start', 'Dur', 'End', 'Pred', 'Assigned', ''];
+  const expected = ['', 'Task Name', 'Start', 'Dur', 'End', 'Pred', 'Assigned', 'Actions'];
   await expect.poll(() => ganttHeaders(page)).toEqual(expected);
 
   await page.waitForTimeout(2000); // the column choice is also saved to the server, debounced
@@ -813,7 +813,7 @@ test('Columns: hide one and move one — the Gantt and the Table keep it after a
 
   await viewButton(page, 'Table').click();
   await waitForRows(page, 'table');
-  await expect.poll(() => tableHeaders(page)).toEqual(['', '#', 'Task Name', 'Start Date', 'Duration', 'End Date', 'Predecessor', 'Assigned To', '']);
+  await expect.poll(() => tableHeaders(page)).toEqual(['', '#', 'Task Name', 'Start Date', 'Duration', 'End Date', 'Predecessor', 'Assigned To', 'Actions']);
 });
 
 // ---------------------------------------------------------------------------------------

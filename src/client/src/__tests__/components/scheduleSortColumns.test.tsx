@@ -239,7 +239,9 @@ describe('Gantt header: Succ, Resource and Notes are sortable headers', () => {
       expect(h.getAttribute('aria-sort'), label).toBe('none');
     }
     const succ = headers.find(x => x.textContent?.includes('Succ'))!;
-    const btn = succ.querySelector('[role="button"], button.cursor-pointer, .cursor-pointer') as HTMLElement;
+    // the sort control is a real button (the hover-only move arrows are out of the Tab order)
+    const btn = succ.querySelector('button:not([tabindex="-1"])') as HTMLElement;
+    expect(btn.textContent).toBe('Succ');
     btn.click();
     expect(handleHeaderSort).toHaveBeenCalledWith('succ');
   });

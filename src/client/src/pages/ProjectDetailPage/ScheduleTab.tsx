@@ -185,14 +185,16 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
           ] as const).map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
+              type="button"
               onClick={() => setViewMode(mode)}
+              aria-pressed={viewMode === mode}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 viewMode === mode
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-3.5 h-3.5" aria-hidden="true" />
               {label}
             </button>
           ))}

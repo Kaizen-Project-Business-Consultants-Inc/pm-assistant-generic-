@@ -20,8 +20,9 @@ export interface ConflictTask {
 const DAY_MS = 86_400_000;
 const day = (s: string) => s.slice(0, 10);
 const addDays = (s: string, n: number) => new Date(Date.parse(`${day(s)}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
-const weekLabel = (s: string) =>
-  new Date(`${day(s)}T00:00:00Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** One over-100% week, with its last day worked out once (not once per task that touches it). */
+interface OverWeek { start: string; end: string; weekStart: string; utilization: number }
 
 /**
  * taskId → one line per overloaded person, e.g. "Anna Lee 140% (week of 12 Oct)" — the worst
@@ -33,14 +34,26 @@ export function findResourceConflicts(
   workload: WorkloadRow[],
   headingIds: Set<string>,
 ): Map<string, string[]> {
-  const over = new Map<string, { name: string; weeks: WorkloadWeek[] }>();
+  const over = new Map<string, { name: string; weeks: OverWeek[] }>();
   for (const w of workload) {
-    // eslint-disable-next-line no-restricted-syntax -- small: each person filters only their own weeks
-    const weeks = w.weeks.filter(x => x.utilization > 100);
+    const weeks: OverWeek[] = [];
+    for (const x of w.weeks) {
+      if (x.utilization > 100) weeks.push({ start: day(x.weekStart), end: addDays(x.weekStart, 6), weekStart: x.weekStart, utilization: x.utilization });
+    }
     if (weeks.length) over.set(w.resourceId, { name: w.resourceName, weeks });
   }
   const out = new Map<string, string[]>();
   if (over.size === 0) return out;
+
+  // One formatter for every label (same text as toLocaleDateString with these options), and each
+  // week's label made once — building a formatter per call was most of the cost at 2,000 tasks
+  const fmt = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const labels = new Map<string, string>();
+  const weekLabel = (s: string) => {
+    let l = labels.get(s);
+    if (l === undefined) { l = fmt.format(new Date(`${day(s)}T00:00:00Z`)); labels.set(s, l); }
+    return l;
+  };
 
   for (const t of tasks) {
     if (!t.startDate || !t.endDate || t.isMilestone || headingIds.has(t.id)) continue;
@@ -55,7 +68,7 @@ export function findResourceConflicts(
       const o = over.get(pid);
       if (!o) continue;
       // eslint-disable-next-line no-restricted-syntax -- small: one person's over-100% weeks in the loaded range, for each of the task's few people
-      const hit = o.weeks.filter(w => day(w.weekStart) <= end && addDays(w.weekStart, 6) >= start);
+      const hit = o.weeks.filter(w => w.start <= end && w.end >= start);
       if (!hit.length) continue;
       const worst = hit.reduce((a, b) => (b.utilization > a.utilization ? b : a));
       const more = hit.length > 1 ? ` +${hit.length - 1} more week${hit.length > 2 ? 's' : ''}` : '';

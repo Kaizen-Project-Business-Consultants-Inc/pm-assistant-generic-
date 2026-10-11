@@ -1,4 +1,3 @@
-import { useCallback, useRef } from 'react';
 import type { RiskThresholds } from '../../../utils/taskRiskAssessment';
 import { ThresholdConfigPopover } from './ThresholdConfigPopover';
 
@@ -23,20 +22,6 @@ const PILLS: { type: QuickFilterType; label: string; tint?: 'danger' | 'warning'
 ];
 
 export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDueWeeksChange, counts, thresholds, onThresholdsChange }: QuickFilterPillsProps) {
-  const tablistRef = useRef<HTMLDivElement>(null);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    const buttons = tablistRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
-    if (!buttons) return;
-    const currentIdx = Array.from(buttons).findIndex(b => b.getAttribute('aria-selected') === 'true');
-    let nextIdx = currentIdx;
-    if (e.key === 'ArrowRight') nextIdx = (currentIdx + 1) % buttons.length;
-    if (e.key === 'ArrowLeft') nextIdx = (currentIdx - 1 + buttons.length) % buttons.length;
-    buttons[nextIdx].focus();
-    e.preventDefault();
-  }, []);
-
   const pillClass = (isActive: boolean, hasDangerTint: boolean, hasWarningTint: boolean) =>
     isActive
       ? 'bg-primary-600 text-white border-primary-600'
@@ -59,18 +44,17 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
 
   return (
     <div className="flex items-center gap-1.5">
+      {/* A group of toggle buttons, the pressed one is the filter on (it was a tablist with no tab
+          panels and a select inside; audit 2 M3) */}
       <div
-        ref={tablistRef}
-        role="tablist"
+        role="group"
         aria-label="Quick filters"
         className="flex items-center gap-1 overflow-x-auto scrollbar-thin pb-0.5"
-        onKeyDown={handleKeyDown}
       >
         {/* All pill */}
         <button
-          role="tab"
-          aria-selected={activeFilter === 'all'}
-          tabIndex={activeFilter === 'all' ? 0 : -1}
+          type="button"
+          aria-pressed={activeFilter === 'all'}
           onClick={() => onFilterChange('all')}
           className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${pillClass(activeFilter === 'all', false, false)}`}
         >
@@ -80,9 +64,8 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
         {/* Due pill with native select */}
         <div className="inline-flex items-center">
           <button
-            role="tab"
-            aria-selected={isDueActive}
-            tabIndex={isDueActive ? 0 : -1}
+            type="button"
+            aria-pressed={isDueActive}
             onClick={() => onFilterChange('due')}
             className={`inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-medium rounded-l-full border border-r-0 whitespace-nowrap transition-colors ${pillClass(isDueActive, false, false)}`}
           >
@@ -122,9 +105,8 @@ export function QuickFilterPills({ activeFilter, onFilterChange, dueWeeks, onDue
           return (
             <button
               key={pill.type}
-              role="tab"
-              aria-selected={isActive}
-              tabIndex={isActive ? 0 : -1}
+              type="button"
+              aria-pressed={isActive}
               onClick={() => onFilterChange(pill.type)}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full border whitespace-nowrap transition-colors ${pillClass(isActive, hasDangerTint, hasWarningTint)}`}
             >

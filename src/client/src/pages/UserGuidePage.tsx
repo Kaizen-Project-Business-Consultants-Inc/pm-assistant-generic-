@@ -204,7 +204,7 @@ const sections: Section[] = [
       'Undo puts hours bookings back on exactly the days they had, even one that had been cut to fit a shorter task',
       'Accepting an AI reschedule, promoting a what-if scenario and baselines or approved timesheets: the first two are History entries you can undo; the last two are not plan edits and no longer block Undo',
       'To reverse an older change, make it again by hand — History shows exactly what it was',
-      'A bulk change or delete that worked shows a green "✓ Updated 3 tasks" message at the bottom, with Undo just below it',
+      'A bulk change or delete that worked shows one message at the bottom ("Status changed on 3 tasks") with Undo — it stays 10 seconds, longer while you point at it or Tab to it',
       'If a change can\'t be saved (e.g. the server refuses it), the task goes back to its last saved version and a red message says what was not saved — close it with ✕ and try again; it is not added to Undo',
     ],
   },

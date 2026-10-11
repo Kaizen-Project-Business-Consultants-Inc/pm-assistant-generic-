@@ -112,7 +112,12 @@ export function useGanttLayout({
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
     ro?.observe(tl);
     const handleRight = () => {
-      setScrollPos({ left: tl.scrollLeft, top: tl.scrollTop });
+      // the same position again (e.g. a scroll event the sync below set off) keeps the old object,
+      // so nothing re-renders for it (2026-10-11). Browsers send scroll at most once a frame, so
+      // there is nothing more to throttle.
+      const left = tl.scrollLeft;
+      const top = tl.scrollTop;
+      setScrollPos(prev => (prev.left === left && prev.top === top ? prev : { left, top }));
       if (scrollSyncSource.current === 'left') return;
       scrollSyncSource.current = 'right';
       if (lp && Math.abs(lp.scrollTop - tl.scrollTop) > 1) lp.scrollTop = tl.scrollTop;

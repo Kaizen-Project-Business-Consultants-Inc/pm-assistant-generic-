@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useCallback } from 'react';
 import { type GanttTask, type FlatRow, type EditableField, type GanttColDef } from '../types';
 import { type WorkCalendar } from '../../../../utils/workingDays';
 import { useUnmountSafeTimeouts } from '../../shared/hooks/useUnmountSafeTimeouts';
@@ -253,10 +253,17 @@ export function useGridKeyboard({
   // When editing ends, restore focus to that cell
   useRestoreFocusAfterEdit(editingCell, setFocusedCell, grid.refocusAfterEdit);
 
+  /** Put the focused cell on a row's first field (editable plans only; null: leave it) */
+  const focusRow = useCallback((taskId: string | null) => {
+    if (!onTaskUpdate || !taskId || visibleFieldOrder.length === 0) return;
+    setFocusedCell({ taskId, field: visibleFieldOrder[0] });
+  }, [onTaskUpdate, visibleFieldOrder, setFocusedCell]);
+
   return {
     focusedCell,
     pasteFlash,
     /** The list-mode rule, for GanttChart's Delete key */
     grid,
+    focusRow,
   };
 }

@@ -28,6 +28,7 @@ import { firstByKey, firstIndexByKey } from '../../../../utils/lookup';
 export function useTableKeyboard({
   tasks,
   visibleSorted,
+  rowTasks = visibleSorted,
   visibleFieldOrder,
   selectedIds,
   activeTaskId,
@@ -55,6 +56,9 @@ export function useTableKeyboard({
 }: {
   tasks: GanttTask[];
   visibleSorted: GanttTask[];
+  /** The task rows in the order they are shown (grouped: group by group, collapsed groups left
+   *  out); the arrow keys and tabbing in follow it. Defaults to `visibleSorted`. */
+  rowTasks?: GanttTask[];
   visibleFieldOrder: EditableField[];
   selectedIds: Set<string>;
   activeTaskId?: string | null;
@@ -85,9 +89,9 @@ export function useTableKeyboard({
   // With no task selected, the entry row is selected too, so Delete / Ctrl+C / Ctrl+D act on it.
   const grid = useGridFocusScope(() => {
     if (focusedCell) return;
-    const cell = keyboardEntryCell(visibleSorted, visibleFieldOrder, activeTaskId);
+    const cell = keyboardEntryCell(rowTasks, visibleFieldOrder, activeTaskId);
     setFocusedCell(cell);
-    const entryTask = cell && !activeTaskId ? visibleSorted.find(t => t.id === cell.taskId) : undefined;
+    const entryTask = cell && !activeTaskId ? rowTasks.find(t => t.id === cell.taskId) : undefined;
     if (entryTask) onTaskSelect?.(entryTask);
   });
   // Keyboard shortcuts
@@ -205,14 +209,14 @@ export function useTableKeyboard({
       if (!editingCell && !isInput) {
         // Arrows, Enter/F2 to edit; Enter on a row focuses its first field (Escape is above)
         handleGridNavKey(e, {
-          focusedCell, rowTasks: visibleSorted, fieldOrder: visibleFieldOrder, activeTaskId, setFocusedCell, onTaskSelect, startEditing,
+          focusedCell, rowTasks, fieldOrder: visibleFieldOrder, activeTaskId, setFocusedCell, onTaskSelect, startEditing,
           rules: TABLE_KEYBOARD_RULES,
         });
       }
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar, rowNumToTaskId, grid]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, rowTasks, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar, rowNumToTaskId, grid]);
 
   // Restore focusedCell when editing ends
   useRestoreFocusAfterEdit(editingCell, setFocusedCell, grid.refocusAfterEdit);

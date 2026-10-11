@@ -42,4 +42,26 @@ describe('findResourceConflicts (Gantt Conflicts = Workload Heatmap numbers)', (
     ], workload, new Set(['head']));
     expect([...out.keys()]).toEqual([]);
   });
+
+  it('a week runs Monday to Sunday: a task starting on its Sunday or ending on its Monday still touches it', () => {
+    const out = findResourceConflicts([
+      { id: 'sun', startDate: '2026-10-18', endDate: '2026-10-18', assignedTo: 'anna' },
+      { id: 'mon', startDate: '2026-10-08', endDate: '2026-10-12', assignedTo: 'anna' },
+      { id: 'after', startDate: '2026-10-26', endDate: '2026-10-30', assignedTo: 'anna' },
+    ], workload, new Set());
+    expect(out.get('sun')?.[0]).toMatch(/^Anna Lee 140%/);
+    expect(out.get('mon')?.[0]).toMatch(/^Anna Lee 140%/);
+    expect(out.has('after')).toBe(false);
+  });
+
+  it('week label is the same text as toLocaleDateString (one shared formatter), also for timestamped weeks', () => {
+    const expected = new Date('2026-10-12T00:00:00Z').toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' });
+    const stamped: WorkloadRow[] = [{ resourceId: 'cy', resourceName: 'Cy', weeks: [{ weekStart: '2026-10-12T00:00:00.000Z', utilization: 150 }] }];
+    const out = findResourceConflicts([
+      { id: 'a', startDate: '2026-10-13', endDate: '2026-10-13', assignedTo: 'cy' },
+      { id: 'b', startDate: '2026-10-14T00:00:00Z', endDate: '2026-10-15T00:00:00Z', assignedTo: 'cy' },
+    ], stamped, new Set());
+    expect(out.get('a')).toEqual([`Cy 150% (week of ${expected})`]);
+    expect(out.get('b')).toEqual([`Cy 150% (week of ${expected})`]);
+  });
 });

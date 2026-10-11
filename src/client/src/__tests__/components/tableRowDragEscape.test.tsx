@@ -38,7 +38,7 @@ function setup() {
   rows.forEach((tr, i) => {
     tr.getBoundingClientRect = () => ({ left: 0, right: 800, top: i * 30, bottom: i * 30 + 30, width: 800, height: 30, x: 0, y: i * 30, toJSON: () => ({}) });
   });
-  const grip = rows[0].querySelector('[aria-label="Drag to reorder"]') as HTMLElement;
+  const grip = rows[0].querySelector('[title="Drag to reorder"]') as HTMLElement;
   expect(grip).not.toBeNull();
   return { onTaskReorder, grip };
 }

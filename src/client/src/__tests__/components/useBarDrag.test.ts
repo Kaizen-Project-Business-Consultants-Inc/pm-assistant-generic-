@@ -579,3 +579,20 @@ describe('useBarDrag — Escape cancels a drag: everything goes back, nothing is
     }
   });
 });
+
+describe('useBarDrag — no re-render for a mouse move within the same day (2026-10-11)', () => {
+  it('the drag object only changes when the bar reaches another day', () => {
+    const { result } = setup();
+    act(() => { result.current.handleBarMouseDown(barEvent(MOVE_X), task('a')); });
+    docMouse('mousemove', MOVE_X + 2 * DAY_PX);
+    const atTwo = result.current.drag;
+    expect(atTwo?.dayDelta).toBe(2);
+    docMouse('mousemove', MOVE_X + 2 * DAY_PX + 3);
+    docMouse('mousemove', MOVE_X + 2 * DAY_PX - 3);
+    expect(result.current.drag).toBe(atTwo);
+    docMouse('mousemove', MOVE_X + 3 * DAY_PX);
+    expect(result.current.drag).not.toBe(atTwo);
+    expect(result.current.drag?.dayDelta).toBe(3);
+    docMouse('mouseup', MOVE_X + 3 * DAY_PX);
+  });
+});

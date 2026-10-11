@@ -78,11 +78,9 @@ describe.each([
     <GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s1" onBulkUpdate={onBulkUpdate} onTaskUpdate={() => {}} />],
   ['Table', (onBulkUpdate: (ids: string[], f: string, v: string) => Promise<void>) => <Table onBulkUpdate={onBulkUpdate} />],
 ])('%s bulk message', (_name, view) => {
-  // On success the bar closes (the selection is cleared) and a green "✓ Updated 2 tasks" message
-  // shows at the bottom instead (BulkDoneToast, 2026-10-06); a failure stays in the bar. Both
-  // clear after 3 s and the timer is cleared on unmount.
+  // A failure stays in the bar and clears after 3 s; the timer is cleared on unmount. (On success
+  // the schedule page's Undo message says it — audit 2 M5 — see below.)
   it.each([
-    ['success', async () => {}, /Updated 2 tasks/],
     ['failure', async () => { throw new Error('x'); }, /Some updates failed/],
   ])('%s: its 3 s message timer is cleared on unmount', async (_k, impl, text) => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -124,16 +122,34 @@ describe.each([
   ['Gantt', (onBulkUpdate: (ids: string[], f: string, v: string) => Promise<void>) =>
     <GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s1" onBulkUpdate={onBulkUpdate} onTaskUpdate={() => {}} />],
   ['Table', (onBulkUpdate: (ids: string[], f: string, v: string) => Promise<void>) => <Table onBulkUpdate={onBulkUpdate} />],
-])('%s: green "done" message after a bulk change', (_name, view) => {
-  it('shows "Updated 2 tasks" as a status message on success, and nothing green on failure', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+])('%s: after a bulk change (audit 2 M4 / M5)', (_name, view) => {
+  it('no second "Updated 2 tasks" next to the page’s Undo message; the focus goes back on the grid, on the first changed row', async () => {
     const ok = render(wrap(view(vi.fn(async () => {}))));
     await bulkSetStatus(ok.container);
-    await waitFor(() => expect(ok.getByRole('status').textContent).toMatch(/Updated 2 tasks/));
-    ok.unmount();
+    const grid = ok.container.querySelector('[role="treegrid"]') as HTMLElement;
+    await waitFor(() => expect(document.activeElement).toBe(grid));
+    await waitFor(() => expect(grid.getAttribute('aria-activedescendant') ?? '').toMatch(/-cell-a-name$/));
+    expect(ok.container.textContent).not.toMatch(/Updated 2 tasks/);
+    expect(ok.queryByRole('status')).toBeNull();
+  });
+
+  it('a failure stays in the bar, with nothing green', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     const bad = render(wrap(view(vi.fn(async () => { throw new Error('x'); }))));
     await bulkSetStatus(bad.container);
     await waitFor(() => expect(bad.container.textContent).toMatch(/Some updates failed/));
     expect(bad.container.textContent).not.toMatch(/Updated 2 tasks/);
+  });
+});
+
+describe('Table without a page-level bulk update (no Undo message): the green "done" message says it', () => {
+  function PlainTable() {
+    const columnState = useColumnState('s-bulk-plain');
+    return <TableView tasks={TASKS} scheduleId="s-bulk-plain" onTaskClick={() => {}} columnState={columnState} onTaskUpdate={() => {}} />;
+  }
+  it('shows "Updated 2 tasks" as a status message', async () => {
+    const r = render(wrap(<PlainTable />));
+    await bulkSetStatus(r.container);
+    await waitFor(() => expect(r.getByRole('status').textContent).toMatch(/Updated 2 tasks/));
   });
 });
