@@ -127,6 +127,17 @@ ALERT_ENABLED=true
 
 ## Deployment Steps
 
+### Releasing: `scripts/release.sh` (Oct 2026)
+
+Release with one command from the main folder:
+
+```bash
+bash scripts/release.sh staging            # quick check of master on staging
+bash scripts/release.sh prod [--mcp ...]   # only after the user said yes to this release
+```
+
+It always ships the latest `origin/master` from a clean copy at `../pm-release` (never the shared working folder, which holds other people's unsaved work). It installs packages when a lock file changed, copies the local `.env` the tests need, and warns if the laptop is on battery (the speed tests fail on battery). For prod it backs up every database first (a failed backup stops the release), then runs `deploy.sh` with all its checks, then the smoke test (`scripts/prod-smoke.cjs`). Only one release runs at a time (`../pm-release.release.lock`; one older than 45 min counts as a crashed run). Claude sessions are allowed to run it without a prompt, so treat any change to `release.sh` like a prod change. The steps below are what `deploy.sh` does inside it.
+
 ### 1. Build Locally
 
 ```bash

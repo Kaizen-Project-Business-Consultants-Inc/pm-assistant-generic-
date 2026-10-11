@@ -74,7 +74,9 @@ describe('FullUserGuidePage #links', () => {
       expect(missing, `chapter ${c.title}`).toEqual([]);
       unmount();
     }
-  });
+    // Renders every chapter of the whole guide: ~13 s alone, past 30 s when the full suite runs
+    // in parallel (2026-10-11, after the guide grew) — so it gets its own time limit
+  }, 90_000);
 
   it("GitHub's chapter ids work too, and repeated headings are numbered as on GitHub", () => {
     const chapters = splitUserGuide(guideMarkdown, 'admin');

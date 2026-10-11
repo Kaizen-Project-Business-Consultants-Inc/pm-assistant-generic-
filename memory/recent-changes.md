@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-11 — scripts/release.sh: one-command releases from a clean copy of origin/master
+- `bash scripts/release.sh <staging|prod> [deploy.sh flags]`: clean worktree ../pm-release (checkout -f + clean), installs packages when a lock file changed (stamp in node_modules), copies .env, battery warning; prod: backup (fails the release if the backup fails), deploy.sh, smoke test. One release at a time (../pm-release.release.lock, stale after 45 min).
+- User allow-listed `Bash(bash scripts/release.sh:*)` so Claude sessions release after the user says yes (the safety check blocked prod deploys from other folders). The allow-list trusts the path: review changes to release.sh like a prod change.
+
 ## 2026-10-11 — Audit trail: an entry waits up to 30 s for the chain (was 5 s)
 - Staging suite run 2026-10-11 02:02 UTC lost 5 audit entries ('audit chain busy for 5s', Team Planner move + undo under load); first ever on staging since 1 Oct. `AuditLedgerRepository`: short 2 s GET_LOCK tries, fresh connection per try, 30 s budget (`AUDIT_CHAIN_TIMING`); the HOLDER logs holds > 1 s with action + process; a timed-out waiter names the holding session (PROCESSLIST via IS_USED_LOCK). Cause of the >5 s hold not known: the 02:00 agent-scan had finished by 02:01:10. Open: a timed-out entry is still lost (dead-letter capture never fires; no replay).
 
