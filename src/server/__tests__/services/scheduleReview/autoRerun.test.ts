@@ -104,7 +104,9 @@ describe('a burst of plans coming due together', () => {
     };
     tenant.run({ db: 'company_A' }, () => { whenThereIsRoom(job('a1')); whenThereIsRoom(job('a2')); whenThereIsRoom(job('a3')); });
     tenant.run({ db: 'company_B' }, () => { whenThereIsRoom(job('b1')); whenThereIsRoom(job('b2')); });
-    await new Promise(r => setTimeout(r, 100));
+    // Wait until all five ran, not a fixed 100 ms: under the full parallel suite only two had
+    // finished by then (2026-10-11)
+    await vi.waitFor(() => expect(Object.keys(seen)).toHaveLength(5), { timeout: 5000 });
     expect(seen).toEqual({ a1: 'company_A', a2: 'company_A', a3: 'company_A', b1: 'company_B', b2: 'company_B' });
   });
 
