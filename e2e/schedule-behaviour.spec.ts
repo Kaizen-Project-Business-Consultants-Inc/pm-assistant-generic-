@@ -274,7 +274,8 @@ test('Table: inline edit name, start, finish, duration, status and assignee', as
 // 3. Keyboard
 // ---------------------------------------------------------------------------------------
 
-const isFocusedCell = /ring-primary-300/;
+// the keyboard-focused cell's ring (primary-500 since 2026-10-11: primary-300 was too faint)
+const isFocusedCell = /ring-primary-500/;
 
 test('Gantt keyboard: arrows move between cells, Enter edits, Escape cancels, Tab moves the edit on', async ({ page }) => {
   await open(page, 'gantt');
