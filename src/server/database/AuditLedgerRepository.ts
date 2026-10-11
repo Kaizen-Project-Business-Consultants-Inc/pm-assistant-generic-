@@ -1,5 +1,6 @@
 import { databaseService } from './connection';
 import { getRequestContext } from '../middleware/requestContext';
+import logger from '../utils/logger';
 
 export interface AuditEntry {
   id?: number;
@@ -41,8 +42,17 @@ interface LinkedRow {
   ipAddress: string | null; sessionId: string | null;
 }
 
-/** How long an entry waits for the one before it to be written (seconds) */
-const CHAIN_LOCK_WAIT_S = 5;
+/**
+ * Waiting for the chain (2026-10-11: a staging suite run lost 5 entries to 'audit chain busy for
+ * 5s' while another process held the lock). Short tries, each on its own pooled connection given
+ * back between tries, within a total budget — a busy chain holds at most one connection per
+ * company, handed back every 2 s so other requests can get in (the pool is small). The holder logs how long it held the chain, with its process, so a
+ * slow holder names itself; a timed-out waiter logs the holding database session if it can see it.
+ * Exported for tests only.
+ */
+export const AUDIT_CHAIN_TIMING = { tryS: 2, budgetMs: 30_000, slowMs: 1000 };
+/** Which process this is in the logs: a scheduled job's name, or the app */
+const PROCESS_NAME = process.argv.slice(2).join(' ') || 'app';
 /** The tail of each company's in-process queue of audit entries */
 const appendQueues = new Map<string, Promise<unknown>>();
 
@@ -66,34 +76,73 @@ class AuditLedgerRepository {
   }
 
   private async appendLocked(build: (prevHash: string | null) => LinkedRow): Promise<LinkedRow> {
-    const conn = await databaseService.getConnection();
-    let locked = false;
-    let lockName = '';
-    let releaseFailed = false;
-    try {
-      const [{ got, db }] = await databaseService.queryOn<{ got: number | null; db: string | null }>(conn,
-        "SELECT GET_LOCK(CONCAT('audit_chain:', LEFT(COALESCE(DATABASE(), 'shared'), 50)), ?) AS got, DATABASE() AS db", [CHAIN_LOCK_WAIT_S]);
-      lockName = `audit_chain:${(db ?? 'shared').slice(0, 50)}`;
-      locked = Number(got) === 1;
-      if (!locked) throw new Error(`audit chain busy for ${CHAIN_LOCK_WAIT_S}s`);
-      const last = await databaseService.queryOn<{ entry_hash: string }>(conn, 'SELECT entry_hash FROM audit_ledger ORDER BY id DESC LIMIT 1');
-      const row = build(last[0]?.entry_hash ?? null);
-      await databaseService.queryOn(conn,
-        `INSERT INTO audit_ledger
-          (entry_uuid, prev_hash, entry_hash, actor_id, actor_type, action,
-           entity_type, entity_id, project_id, payload, source, ip_address, session_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [row.entryUuid, row.prevHash, row.entryHash, row.actorId, row.actorType, row.action,
-         row.entityType, row.entityId, row.projectId, row.payload, row.source, row.ipAddress, row.sessionId],
-      );
-      return row;
-    } finally {
-      if (locked) {
-        await databaseService.queryOn(conn, 'DO RELEASE_LOCK(?)', [lockName]).catch(() => { releaseFailed = true; });
+    const started = Date.now();
+    for (let attempt = 1; ; attempt++) {
+      // eslint-disable-next-line no-await-in-loop -- one try at a time for the chain lock: a fresh connection per try, given back between tries
+      const conn = await databaseService.getConnection();
+      let locked = false;
+      let lockKnown = false;
+      let lockName = '';
+      let heldAt = 0;
+      let action = '';
+      let releaseFailed = false;
+      try {
+        // eslint-disable-next-line no-await-in-loop -- one try at a time for the chain lock
+        const [{ got, db }] = await databaseService.queryOn<{ got: number | null; db: string | null }>(conn,
+          "SELECT GET_LOCK(CONCAT('audit_chain:', LEFT(COALESCE(DATABASE(), 'shared'), 50)), ?) AS got, DATABASE() AS db", [AUDIT_CHAIN_TIMING.tryS]);
+        lockName = `audit_chain:${(db ?? 'shared').slice(0, 50)}`;
+        // NULL is the server's error answer (killed, out of memory): not "busy", so don't spin on it
+        if (got === null) throw new Error('audit chain lock failed (GET_LOCK returned NULL)');
+        locked = Number(got) === 1;
+        lockKnown = true;
+        const waitedMs = Date.now() - started;
+        if (!locked) {
+          if (waitedMs < AUDIT_CHAIN_TIMING.budgetMs) continue; // this connection holds no lock: back to the pool, try again
+          // eslint-disable-next-line no-await-in-loop -- runs once, on the last try
+          const holder = await this.describeHolder(conn, lockName);
+          throw new Error(`audit chain busy for ${Math.round(waitedMs / 1000)}s after ${attempt} tries${holder ? ` (held by ${holder})` : ''}`);
+        }
+        heldAt = Date.now();
+        if (waitedMs > AUDIT_CHAIN_TIMING.slowMs) logger.warn('[AuditLedger] waited for the audit chain', { lockName, waitedMs, attempts: attempt, process: PROCESS_NAME });
+        // eslint-disable-next-line no-await-in-loop -- the locked read-then-write happens once, on the try that got the lock
+        const last = await databaseService.queryOn<{ entry_hash: string }>(conn, 'SELECT entry_hash FROM audit_ledger ORDER BY id DESC LIMIT 1');
+        const row = build(last[0]?.entry_hash ?? null);
+        action = row.action;
+        // eslint-disable-next-line no-await-in-loop -- the locked read-then-write happens once, on the try that got the lock
+        await databaseService.queryOn(conn,
+          `INSERT INTO audit_ledger
+            (entry_uuid, prev_hash, entry_hash, actor_id, actor_type, action,
+             entity_type, entity_id, project_id, payload, source, ip_address, session_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [row.entryUuid, row.prevHash, row.entryHash, row.actorId, row.actorType, row.action,
+           row.entityType, row.entityId, row.projectId, row.payload, row.source, row.ipAddress, row.sessionId],
+        );
+        return row;
+      } finally {
+        if (locked) {
+          // eslint-disable-next-line no-await-in-loop -- the lock taken on this try is given back before anything else
+          await databaseService.queryOn(conn, 'DO RELEASE_LOCK(?)', [lockName]).catch(() => { releaseFailed = true; });
+          const heldMs = Date.now() - heldAt;
+          // the holder names itself: this is what makes another writer wait
+          if (heldMs > AUDIT_CHAIN_TIMING.slowMs) logger.warn('[AuditLedger] held the audit chain', { lockName, heldMs, action, process: PROCESS_NAME, pid: process.pid });
+        }
+        // a connection that may still hold the lock (release failed, or the lock query itself
+        // failed so we don't know) must never go back to the pool: closing it frees the lock
+        if (releaseFailed || !lockKnown) conn.destroy(); else conn.release();
       }
-      // a connection that may still hold the lock must never go back to the pool: closing it ends
-      // the session, and the server frees the lock
-      if (releaseFailed) conn.destroy(); else conn.release();
+    }
+  }
+
+  /** Who holds the chain lock, if this database user may see that session (for the timeout message) */
+  private async describeHolder(conn: Parameters<typeof databaseService.queryOn>[0], lockName: string): Promise<string | null> {
+    try {
+      // not INFO: the holder's statement text can carry user data
+      const rows = await databaseService.queryOn<{ id: number; command: string; secs: number; host: string | null }>(conn,
+        'SELECT ID AS id, COMMAND AS command, TIME AS secs, HOST AS host FROM information_schema.PROCESSLIST WHERE ID = IS_USED_LOCK(?)', [lockName]);
+      const h = rows[0];
+      return h ? `database session ${h.id} from ${h.host ?? 'unknown'}, ${h.command} for ${h.secs}s` : null;
+    } catch {
+      return null;
     }
   }
 

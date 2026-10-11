@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-11 — Audit trail: an entry waits up to 30 s for the chain (was 5 s)
+- Staging suite run 2026-10-11 02:02 UTC lost 5 audit entries ('audit chain busy for 5s', Team Planner move + undo under load); first ever on staging since 1 Oct. `AuditLedgerRepository`: short 2 s GET_LOCK tries, fresh connection per try, 30 s budget (`AUDIT_CHAIN_TIMING`); the HOLDER logs holds > 1 s with action + process; a timed-out waiter names the holding session (PROCESSLIST via IS_USED_LOCK). Cause of the >5 s hold not known: the 02:00 agent-scan had finished by 02:01:10. Open: a timed-out entry is still lost (dead-letter capture never fires; no replay).
+
 ## 2026-10-10 — Free trial 7 days with every Pro feature and 50K AI tokens; finance officers see pay rates (user decisions, not deployed when written)
 - Migration 135: trial `duration_days` 7, `ai_tokens_monthly` 50000 (label/description/features text), trial `tier_features` = every feature Pro has. Projects (3) and storage (100MB) unchanged. Existing trials keep their end date.
 - Sign-up reads the trial length from the trial plan's `duration_days` (was a hard-coded 14), 7 if missing. `AI_TIER_BUDGET_TRIAL` default 50000. Trial reminder emails: 3 days, 1 day, expired (the week-out nudge would land on sign-up day).

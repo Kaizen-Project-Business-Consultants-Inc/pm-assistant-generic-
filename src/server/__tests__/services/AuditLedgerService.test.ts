@@ -1,14 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // A pretend database: one ledger, and a named lock that really makes the second writer wait
-const fakeDb = vi.hoisted(() => ({ ledger: [] as any[], lockHeld: false, waiters: [] as Array<() => void>, failInsert: false, lockFails: false, releaseFails: false }));
+const fakeDb = vi.hoisted(() => ({ ledger: [] as any[], lockHeld: false, waiters: [] as Array<() => void>, failInsert: false, lockFails: false, releaseFails: false, busyTries: 0, lockError: false, lockNull: false }));
 vi.mock('../../database/connection', () => ({
   databaseService: {
     query: vi.fn().mockResolvedValue([]),
     getConnection: vi.fn(async () => ({ release: vi.fn(), destroy: vi.fn() })),
     queryOn: vi.fn(async (_c: unknown, sql: string, params: any[] = []) => {
       if (sql.includes('GET_LOCK')) {
+        if (fakeDb.lockError) throw new Error('connection lost');
+        if (fakeDb.lockNull) return [{ got: null, db: 'pmassist_t_test' }];
         if (fakeDb.lockFails) return [{ got: 0, db: 'pmassist_t_test' }];
+        if (fakeDb.busyTries > 0) { fakeDb.busyTries--; return [{ got: 0, db: 'pmassist_t_test' }]; }
         if (fakeDb.lockHeld) await new Promise<void>(res => { fakeDb.waiters.push(res); });
         fakeDb.lockHeld = true;
         return [{ got: 1, db: 'pmassist_t_test' }];
@@ -26,8 +29,11 @@ vi.mock('../../database/connection', () => ({
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'test-audit-uuid' }));
+vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } }));
 
 import { AuditLedgerService } from '../../services/AuditLedgerService';
+import { AUDIT_CHAIN_TIMING } from '../../database/AuditLedgerRepository';
+import logger from '../../utils/logger';
 import { databaseService } from '../../database/connection';
 
 const mockQuery = databaseService.query as ReturnType<typeof vi.fn>;
@@ -49,7 +55,8 @@ describe('AuditLedgerService', () => {
   beforeEach(() => {
     service = new AuditLedgerService();
     vi.clearAllMocks();
-    Object.assign(fakeDb, { ledger: [], lockHeld: false, waiters: [], failInsert: false, lockFails: false, releaseFails: false });
+    Object.assign(fakeDb, { ledger: [], lockHeld: false, waiters: [], failInsert: false, lockFails: false, releaseFails: false, busyTries: 0, lockError: false, lockNull: false });
+    Object.assign(AUDIT_CHAIN_TIMING, { tryS: 2, budgetMs: 30_000, slowMs: 1000 });
   });
 
   describe('append', () => {
@@ -100,8 +107,53 @@ describe('AuditLedgerService', () => {
       expect(conn.release).not.toHaveBeenCalled();
     });
 
-    it('does not write an unlinked entry when the chain stays busy', async () => {
+    it('a busy chain is tried again on a fresh connection, each try short, until it is free (2026-10-11: 5 s lost entries)', async () => {
+      const { databaseService } = await import('../../database/connection');
+      fakeDb.busyTries = 2;
+      await service.append(sampleInput);
+      expect(fakeDb.ledger).toHaveLength(1);
+      const lockCalls = (databaseService.queryOn as any).mock.calls.filter((c: any[]) => String(c[1]).includes('GET_LOCK'));
+      expect(lockCalls).toHaveLength(3);
+      expect(lockCalls.every((c: any[]) => c[2][0] === 2)).toBe(true); // short tries
+      const conns = await Promise.all((databaseService.getConnection as any).mock.results.map((r: any) => r.value));
+      expect(conns).toHaveLength(3);
+      expect(conns.every((c: any) => c.release.mock.calls.length === 1)).toBe(true); // each given back
+    });
+
+    it('a waiter that waited long says so', async () => {
+      AUDIT_CHAIN_TIMING.slowMs = -1;
+      fakeDb.busyTries = 1;
+      await service.append(sampleInput);
+      expect(logger.warn).toHaveBeenCalledWith('[AuditLedger] waited for the audit chain', expect.objectContaining({ attempts: 2 }));
+    });
+
+    it('a lock query that fails closes its connection (it might hold the lock) and writes nothing', async () => {
+      const { databaseService } = await import('../../database/connection');
+      fakeDb.lockError = true;
+      await service.append(sampleInput);
+      const conn = await (databaseService.getConnection as any).mock.results.at(-1).value;
+      expect(conn.destroy).toHaveBeenCalled();
+      expect(conn.release).not.toHaveBeenCalled();
+      expect(fakeDb.ledger).toHaveLength(0);
+    });
+
+    it('a NULL answer from GET_LOCK (server error) is not retried', async () => {
+      const { databaseService } = await import('../../database/connection');
+      fakeDb.lockNull = true;
+      await service.append(sampleInput);
+      expect((databaseService.getConnection as any).mock.calls).toHaveLength(1);
+      expect(fakeDb.ledger).toHaveLength(0);
+    });
+
+    it('whoever holds the chain long logs itself, with the action and the process', async () => {
+      AUDIT_CHAIN_TIMING.slowMs = -1;
+      await service.append(sampleInput);
+      expect(logger.warn).toHaveBeenCalledWith('[AuditLedger] held the audit chain', expect.objectContaining({ action: 'task.create', process: expect.any(String) }));
+    });
+
+    it('does not write an unlinked entry when the chain stays busy past the budget', async () => {
       fakeDb.lockFails = true;
+      AUDIT_CHAIN_TIMING.budgetMs = 0;
       const entry = await service.append(sampleInput);
       expect(entry.action).toBe('task.create');
       expect(fakeDb.ledger).toHaveLength(0);
