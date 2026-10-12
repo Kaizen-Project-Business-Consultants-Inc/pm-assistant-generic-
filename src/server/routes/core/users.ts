@@ -1,3 +1,4 @@
+import { hasPassword, NO_PASSWORD_MESSAGE } from '../../utils/googleOnlyAccount';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
@@ -74,6 +75,7 @@ async function profileRefusal(
 ): Promise<{ status: number; body: { error: string; message: string } } | null> {
   if (c.emailChanges || (c.usernameChanges && !c.onboarding)) {
     const what = c.emailChanges ? 'email' : 'username';
+    if (!hasPassword(current)) return { status: 400, body: { error: 'No password', message: NO_PASSWORD_MESSAGE } };
     if (!parsed.currentPassword) {
       return { status: 400, body: { error: 'Password required', message: `Enter your current password to change your ${what}.` } };
     }

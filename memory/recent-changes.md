@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — Sign in with Google, server part (branch feat/google-signin-server)
+- User OK on the mock (https://claude.ai/artifact/Lm28VFe8D1RvSwTLULzTzz): link an existing account by password once (or an emailed link), never automatically; Google-only users set a password by email to connect Claude; Microsoft later.
+- `utils/googleSignIn.ts` (OIDC code + PKCE, one-time Redis state), `routes/core/googleAuth.ts` (`/auth/providers`, `/auth/google/start|callback|link|link-email|link-confirm (POST)`), `database/UserIdentityRepository.ts`, migration 136 `user_identities` (control plane; added to CONTROL_PLANE_ONLY_TABLES and SHARED_TABLES).
+- Sign-up logic moved out of `/register` into `services/accountSignup.ts` `createAccount` so both ways follow the same rules. Session cookies in one place: `utils/session.ts` (`setSessionCookies`, `startNewSession`) replaced 5 copies in auth.ts.
+- Google-only accounts (empty password hash): `utils/googleOnlyAccount.ts` message on login, change password, profile, MCP connect.
+- Review fixes: the state is tied to the browser (cookie) against login CSRF; linking a never-confirmed account confirms it and drops its unproven password; 5 password tries per link; the emailed link opens a page + POST (mail scanners); Google sign-ups count against the sign-up hourly limit. `resolvePriceId` moved to `utils/stripePrices.ts` and `provisionVerifiedTenant` to `services/accountSignup.ts` (no service importing a route).
+- Settings: `GOOGLE_AUTH_CLIENT_ID` / `GOOGLE_AUTH_CLIENT_SECRET` (empty = feature off). Client buttons and the link screen are batch B. Tests: `googleSignIn.test.ts` (13), `googleAuth.test.ts` (21), login message in `registerOwnerFlag.test.ts`; `oauthStateGuard` now also covers `/google/callback`.
+
 ## 2026-10-11 — Dashboard AI highlights only on click (branch fix/dashboard-ai-on-click)
 - User rule "AI only when asked": the Portfolio Intelligence panel polls every minute and the server asked the AI by itself once edits settled (and at most hourly). Now `getDashboardPredictions` asks only with `refresh` (the panel's button; 10-min throttle per person + one in flight), returns `aiRequested` / `aiOutOfDate`. Removed the auto path and its constants (quiet time, min age, failure pause).
 - Found on the way: the panel's AI wasn't plan-gated — a Basic (no AI) company got AI highlights at our cost. The route now asks `hasFeature('ai_assistant')`; without it the panel shows numbers only and no button. Hidden in the support view too.

@@ -153,6 +153,9 @@ const configSchema = z.object({
   VAPID_EMAIL: z.string().optional().default(''),
 
   // Google Calendar
+  // Sign in / sign up with Google (OAuth client "Kovarti web"); the button shows only when both are set
+  GOOGLE_AUTH_CLIENT_ID: z.string().optional().default(''),
+  GOOGLE_AUTH_CLIENT_SECRET: z.string().optional().default(''),
   GOOGLE_CALENDAR_CLIENT_ID: z.string().optional().default(''),
   GOOGLE_CALENDAR_CLIENT_SECRET: z.string().optional().default(''),
 
@@ -297,6 +300,8 @@ export function validateConfiguration() {
       VAPID_PUBLIC_KEY: process.env['VAPID_PUBLIC_KEY'],
       VAPID_PRIVATE_KEY: process.env['VAPID_PRIVATE_KEY'],
       VAPID_EMAIL: process.env['VAPID_EMAIL'],
+      GOOGLE_AUTH_CLIENT_ID: process.env['GOOGLE_AUTH_CLIENT_ID'],
+      GOOGLE_AUTH_CLIENT_SECRET: process.env['GOOGLE_AUTH_CLIENT_SECRET'],
       GOOGLE_CALENDAR_CLIENT_ID: process.env['GOOGLE_CALENDAR_CLIENT_ID'],
       GOOGLE_CALENDAR_CLIENT_SECRET: process.env['GOOGLE_CALENDAR_CLIENT_SECRET'],
       UPLOAD_DIR: process.env['UPLOAD_DIR'],

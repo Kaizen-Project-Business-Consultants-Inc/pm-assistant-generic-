@@ -75,6 +75,7 @@ const READ_OK: Record<string, string[]> = {
   'resources/calendarTemplates.ts': ['/', '/:id'],
   // Your own account, sign-in, pricing, OAuth callbacks, public portal (token)
   'core/auth.ts': ['/verify-login', '/turnstile'],
+  'core/googleAuth.ts': ['/providers', '/google/start', '/google/callback'], // sign in with Google (before sign-in)
   'core/invites.ts': ['/:token/validate'],
   'core/notifications.ts': ['/', '/unread-count', '/push/vapid-key'],
   'core/pricing.ts': ['/'],

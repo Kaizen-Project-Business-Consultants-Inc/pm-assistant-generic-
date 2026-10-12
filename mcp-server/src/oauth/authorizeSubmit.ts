@@ -53,6 +53,7 @@ interface UserRow extends RowDataPacket {
   guest_expires_at: string | Date | null;
 }
 
+const NO_PASSWORD = "This account signs in with Google, which Claude cannot use. Set a password with \"Forgot password?\" on the Kovarti sign-in page, then connect again.";
 const WRONG = 'Invalid username or password.';
 
 export async function handleAuthorizeSubmit(req: Request, res: Response, clients: OAuthRegisteredClientsStore): Promise<void> {
@@ -91,6 +92,11 @@ export async function handleAuthorizeSubmit(req: Request, res: Response, clients
       [name, name],
     );
     const user = users[0];
+    // Google sign-ups have no password (empty hash): tell them how to get one, not "wrong password"
+    if (user && !user.password_hash) {
+      res.status(401).type('html').send(page(NO_PASSWORD));
+      return;
+    }
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       bump(nameFails, name, NAME_LOCK_MS, now);
       res.status(401).type('html').send(page(WRONG));

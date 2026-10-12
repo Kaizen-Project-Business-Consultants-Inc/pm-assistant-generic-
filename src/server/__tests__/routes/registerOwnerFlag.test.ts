@@ -42,7 +42,7 @@ vi.mock('../../services/OrganizationService', () => ({
   },
 }));
 vi.mock('../../database/OrganizationRepository', () => ({ organizationRepository: {} }));
-vi.mock('../../routes/integrations/stripe', () => ({ resolvePriceId: vi.fn(() => 'price_pro_monthly') }));
+vi.mock('../../utils/stripePrices', () => ({ resolvePriceId: vi.fn(() => 'price_pro_monthly') }));
 
 import { authRoutes } from '../../routes/core/auth';
 import { config } from '../../config';
@@ -105,5 +105,14 @@ describe('POST /auth/register — the username nobody types (shorter sign-up for
     expect(tried[0]).toMatch(/^jane_[0-9a-f]{6}$/);
     expect(tried[0]).not.toBe(made());
     expect(made()).toMatch(/^jane_[0-9a-f]{6}$/);
+  });
+});
+
+describe('POST /auth/login — an account made with Google has no password (2026-10-12)', () => {
+  it('says to use Google or set a password, instead of "password is incorrect"', async () => {
+    vi.mocked(userService.findByUsername).mockResolvedValueOnce({ id: 'u-g', username: 'jane_abc123', passwordHash: '', emailVerified: true } as never);
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'jane_abc123', password: 'anything' } });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().message).toMatch(/signs in with Google.*Forgot password/);
   });
 });
