@@ -3,15 +3,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
 const mockRunScanImpl = vi.fn();
-const mockRunOverdueScanImpl = vi.fn();
 
 vi.mock('../../services/scheduling/scanOrchestrator', () => ({
   runScanImpl: (...args: any[]) => mockRunScanImpl(...args),
 }));
 
-vi.mock('../../services/scheduling/cronManager', () => ({
-  runOverdueScanImpl: (...args: any[]) => mockRunOverdueScanImpl(...args),
-}));
 
 vi.mock('../../services/AgentActivityLogService', () => ({
   AgentActivityLogService: vi.fn().mockImplementation(() => ({
@@ -148,90 +144,9 @@ describe('AgentSchedulerService', () => {
     });
   });
 
-  // ── runOverdueScan ─────────────────────────────────────────────────────
-
-  describe('runOverdueScan', () => {
-    it('delegates to runOverdueScanImpl with internal flaggedOverdue map and default tenantKey', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(3);
-
-      const service = new AgentSchedulerService();
-      const result = await service.runOverdueScan();
-
-      expect(mockRunOverdueScanImpl).toHaveBeenCalledTimes(1);
-      // First arg: the flaggedOverdue Map
-      expect(mockRunOverdueScanImpl.mock.calls[0][0]).toBeInstanceOf(Map);
-      // Second arg: tenantKey defaults to 'default'
-      expect(mockRunOverdueScanImpl.mock.calls[0][1]).toBe('default');
-      expect(result).toBe(3);
-    });
-
-    it('passes custom tenantKey to runOverdueScanImpl', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(5);
-
-      const service = new AgentSchedulerService();
-      const result = await service.runOverdueScan('tenant-abc');
-
-      expect(mockRunOverdueScanImpl).toHaveBeenCalledTimes(1);
-      expect(mockRunOverdueScanImpl.mock.calls[0][1]).toBe('tenant-abc');
-      expect(result).toBe(5);
-    });
-
-    it('returns the number of triggered overdue tasks', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(0);
-
-      const service = new AgentSchedulerService();
-      const result = await service.runOverdueScan();
-
-      expect(result).toBe(0);
-    });
-
-    it('returns zero when no overdue tasks found', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(0);
-
-      const service = new AgentSchedulerService();
-      const result = await service.runOverdueScan('some-tenant');
-
-      expect(result).toBe(0);
-    });
-
-    it('propagates errors from runOverdueScanImpl', async () => {
-      mockRunOverdueScanImpl.mockRejectedValue(new Error('DB connection failed'));
-
-      const service = new AgentSchedulerService();
-      await expect(service.runOverdueScan()).rejects.toThrow('DB connection failed');
-    });
-
-    it('uses the same flaggedOverdue map across multiple calls', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(1);
-
-      const service = new AgentSchedulerService();
-      await service.runOverdueScan('tenant-1');
-      await service.runOverdueScan('tenant-2');
-
-      // Both calls should receive the same Map instance
-      const firstMap = mockRunOverdueScanImpl.mock.calls[0][0];
-      const secondMap = mockRunOverdueScanImpl.mock.calls[1][0];
-      expect(firstMap).toBe(secondMap);
-    });
-  });
-
   // ── Instance isolation ─────────────────────────────────────────────────
 
   describe('instance isolation', () => {
-    it('different instances have independent flaggedOverdue maps', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(0);
-
-      const service1 = new AgentSchedulerService();
-      const service2 = new AgentSchedulerService();
-
-      await service1.runOverdueScan();
-      await service2.runOverdueScan();
-
-      const map1 = mockRunOverdueScanImpl.mock.calls[0][0];
-      const map2 = mockRunOverdueScanImpl.mock.calls[1][0];
-      expect(map1).not.toBe(map2);
-    });
-
     it('different instances have independent activityLog instances', async () => {
       mockRunScanImpl.mockResolvedValue(emptyScanStats());
 
@@ -256,15 +171,6 @@ describe('AgentSchedulerService', () => {
       const result = await agentScheduler.runScan();
       expect(result).toEqual(emptyScanStats());
       expect(mockRunScanImpl).toHaveBeenCalledTimes(1);
-    });
-
-    it('runOverdueScan works on the singleton', async () => {
-      mockRunOverdueScanImpl.mockResolvedValue(7);
-
-      const result = await agentScheduler.runOverdueScan('prod-tenant');
-      expect(result).toBe(7);
-      expect(mockRunOverdueScanImpl).toHaveBeenCalledTimes(1);
-      expect(mockRunOverdueScanImpl.mock.calls[0][1]).toBe('prod-tenant');
     });
   });
 });

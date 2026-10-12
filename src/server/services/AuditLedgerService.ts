@@ -1,3 +1,4 @@
+import { trackBackground } from '../utils/backgroundWork';
 import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import { auditLedgerRepository, AuditEntry } from '../database/AuditLedgerRepository';
@@ -39,7 +40,15 @@ const GENESIS_HASH = '0'.repeat(64);
 const VERIFY_BATCH = 1000;
 
 export class AuditLedgerService {
-  async append(input: AppendInput): Promise<AuditEntry> {
+  /**
+   * Append an entry. Many callers don't wait for it, so it is tracked: a scheduled job waits for
+   * it before closing the database (the last entries were lost when it closed first, 2026-10-12).
+   */
+  append(input: AppendInput): Promise<AuditEntry> {
+    return trackBackground(this.appendNow(input));
+  }
+
+  private async appendNow(input: AppendInput): Promise<AuditEntry> {
     const entryUuid = uuidv4();
     const envelope = JSON.stringify({
       entryUuid,

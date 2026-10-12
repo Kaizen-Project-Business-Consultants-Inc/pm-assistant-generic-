@@ -4,6 +4,7 @@ import { dagWorkflowService } from '../DagWorkflowService';
 import { databaseService } from '../../database/connection';
 import { runWithTenantContext } from '../../middleware/requestContext';
 import logger from '../../utils/logger';
+import { redisService } from '../RedisService';
 
 export interface TenantInfo {
   slug: string;
@@ -43,10 +44,27 @@ export async function forEachTenant(callback: (tenant: TenantInfo | null) => Pro
   }
 }
 
+/** One firing per task per overdue episode (a new due date starts a new one); after 30 days a task
+ * still overdue on the same date fires once more — a reminder, not a repeat */
+const OVERDUE_FIRED_TTL_S = 30 * 24 * 3600;
+
+/**
+ * Fire the "date passed" workflows for tasks that have gone overdue — ONCE per task and due date.
+ * The job runs every 15 minutes in a fresh process, and its in-memory "already done" set was empty
+ * every time, so every overdue task's workflows ran again every 15 minutes (2026-10-12 review). The
+ * mark now lives in Redis (30 days); with Redis down nothing fires — never the same task repeatedly.
+ * One task at a time (a burst of 1,000 overflowed the database pool), stopping at `deadline`; tasks
+ * not reached are picked up next run.
+ */
 export async function runOverdueScanImpl(
-  flaggedOverdue: Map<string, Set<string>>,
   tenantKey: string = 'default',
+  opts: { deadline?: number } = {},
 ): Promise<number> {
+  const client = redisService.isConnected() ? redisService.getClient() : null;
+  if (!client) {
+    logger.warn('[Agent] Overdue scan skipped: Redis unavailable, so it cannot tell which tasks already fired');
+    return 0;
+  }
   let rows: any[];
   try {
     rows = await databaseService.query(
@@ -54,6 +72,7 @@ export async function runOverdueScanImpl(
               estimated_days, actual_days, description, parent_task_id, created_by,
               dependency_id, dependency_type, sort_order, is_recurrence_template, recurrence_rule, recurrence_parent_id
        FROM tasks WHERE end_date < CURDATE() AND status NOT IN ('completed', 'cancelled')
+       ORDER BY end_date DESC
        LIMIT 1000`,
     );
   } catch {
@@ -61,17 +80,24 @@ export async function runOverdueScanImpl(
     return 0;
   }
 
-  if (!flaggedOverdue.has(tenantKey)) {
-    flaggedOverdue.set(tenantKey, new Set<string>());
-  }
-  const tenantSet = flaggedOverdue.get(tenantKey)!;
-
   let triggered = 0;
   for (const row of rows) {
+    if (opts.deadline && Date.now() > opts.deadline) {
+      logger.info(`[Agent] Overdue scan: stopped at the time limit after ${triggered} task(s); the rest go next run`);
+      break;
+    }
     const taskId = row.id;
-    if (tenantSet.has(taskId)) continue;
+    const due = row.end_date ? String(row.end_date).slice(0, 10) : '';
+    let first: string | null;
+    try {
+      // eslint-disable-next-line no-await-in-loop -- one task at a time: each runs its workflows against the shared pool
+      first = await client.set(`overdue-fired:${tenantKey}:${taskId}:${due}`, '1', 'EX', OVERDUE_FIRED_TTL_S, 'NX');
+    } catch {
+      logger.warn('[Agent] Overdue scan stopped: Redis failed, so it cannot tell which tasks already fired');
+      break;
+    }
+    if (first !== 'OK') continue; // already fired for this due date
 
-    tenantSet.add(taskId);
     // Map row data directly — no need to re-fetch from DB
     const task: import('../ScheduleService').Task = {
       id: row.id,
@@ -97,14 +123,17 @@ export async function runOverdueScanImpl(
     };
 
     // Fire date_passed triggers via workflow engine
-    dagWorkflowService.evaluateTaskChange(task, task, scheduleService).catch(err =>
-      logger.error('[Agent] Overdue workflow trigger error', { taskId, error: err })
-    );
+    try {
+      // eslint-disable-next-line no-await-in-loop -- see above
+      await dagWorkflowService.evaluateTaskChange(task, task, scheduleService);
+    } catch (err) {
+      logger.error('[Agent] Overdue workflow trigger error', { taskId, error: err });
+    }
     triggered++;
   }
 
   if (triggered > 0) {
-    logger.info(`[Agent] Overdue scan: triggered workflows for ${triggered} newly-overdue task(s)`);
+    logger.info(`[Agent] Overdue scan: ran workflows for ${triggered} newly-overdue task(s)`);
   }
   return triggered;
 }

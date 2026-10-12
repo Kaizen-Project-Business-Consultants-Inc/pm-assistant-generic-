@@ -5,6 +5,8 @@ import { WorkflowNode, WorkflowEdge, DefinitionWithGraph } from './types';
 import { resolveTemplates } from './templateResolver';
 import logger from '../../utils/logger';
 import { markCurrentCompanyChanged } from '../../utils/portfolioChanges';
+import { trackBackground } from '../../utils/backgroundWork';
+import { isJobRunner } from '../../utils/processRole';
 import { isOverdue } from '../../utils/calendarDate';
 
 // ── Trigger matching ──────────────────────────────────────────────────────
@@ -112,6 +114,18 @@ export function buildAdjacencyList(def: DefinitionWithGraph): Map<string, Workfl
 
 // ── Action execution ──────────────────────────────────────────────────────
 
+/**
+ * Agent capabilities are registered in the app server only: in a scheduled job an agent step (an
+ * `agent` node or an `invoke_agent` action) failed every run ("Unknown capability"), after its
+ * retries. In a job it is skipped and says why; null = go ahead (2026-10-12).
+ */
+function agentStepSkippedInJob(capabilityId: unknown): { capabilityId: unknown; skipped: true; reason: string } | null {
+  if (!isJobRunner()) return null;
+  const reason = 'agent steps run only in the app, not in scheduled jobs';
+  logger.info(`[Workflow] Agent step skipped: ${reason}`, { capabilityId });
+  return { capabilityId, skipped: true, reason };
+}
+
 export async function executeAction(
   config: Record<string, any>,
   task: Task | null,
@@ -128,10 +142,10 @@ export async function executeAction(
         if (String((task as any)[config.field]) === String(config.value)) { // "100" from the settings equals 100
           return { action: 'update_field', field: config.field, value: config.value, skipped: true, reason: 'already set' };
         }
-        scheduleService.updateTask(task.id, { [config.field]: config.value } as any)
+        void trackBackground(scheduleService.updateTask(task.id, { [config.field]: config.value } as any)
           // a workflow run by a scheduled job has no request to count the change for the dashboard
           .then(() => markCurrentCompanyChanged())
-          .catch(err => logger.error('[DagWorkflow] update_field failed', { taskId: task.id, field: config.field, error: err }));
+          .catch(err => logger.error('[DagWorkflow] update_field failed', { taskId: task.id, field: config.field, error: err })));
         return { action: 'update_field', field: config.field, value: config.value };
       }
       return { action: 'update_field', skipped: true };
@@ -180,6 +194,8 @@ export async function executeAction(
       return { action: 'send_notification', message: config.message, notified: false };
     }
     case 'invoke_agent': {
+      const skipped = agentStepSkippedInJob(config.capabilityId);
+      if (skipped) return { action: 'invoke_agent', ...skipped };
       const { agentRegistry } = await import('../AgentRegistryService');
       const resolvedInput = resolveTemplates(config.input ?? {}, {}, task);
       const result = await agentRegistry.invoke(config.capabilityId, resolvedInput, {
@@ -326,8 +342,14 @@ async function executeNode(
       }
 
       case 'agent': {
-        const { agentRegistry } = await import('../AgentRegistryService');
         const capabilityId = node.config.capabilityId as string;
+        const skipped = agentStepSkippedInJob(capabilityId);
+        if (skipped) {
+          nodeOutputs[node.id] = skipped;
+          await workflowRepository.updateNodeExecutionCompleted(nodeExecId, JSON.stringify(skipped));
+          break;
+        }
+        const { agentRegistry } = await import('../AgentRegistryService');
         const maxRetries = (node.config.retries as number) ?? 0;
         const backoffMs = (node.config.backoffMs as number) ?? 1000;
 
