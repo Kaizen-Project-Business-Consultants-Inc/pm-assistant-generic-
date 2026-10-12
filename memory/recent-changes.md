@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — Background changes refresh the dashboard numbers (branch fix/background-portfolio-bump)
+- Changes saved outside a request had no onResponse hook to bump the company's change counter, so the dashboard kept old numbers for up to a day after them. `markCurrentCompanyChanged()` (`utils/portfolioChanges.ts`, current tenant or 'none') now runs after: recurrence (instances made) and scheduled automations (runs) in `scripts/runCronJob.ts`; a workflow `update_field` once its task update is saved (`dagWorkflow/engine.ts`; covers workflows the overdue scan starts); and `agents/ActionExecutor.execute` when a proposal ran or undid actions (auto-approved ones: agent scan, workflow auto-approve). The request hook (plugins.ts) and Mjuzi's tools use the same helper — single-company setups ('none') now refresh too. Calendar sync doesn't change tasks (pull only saves etags), so it doesn't mark.
+- Follow-up (not done): the overdue scan starts workflows fire-and-forget and the cron process can exit before they finish. Over-counting is free (numbers are rules; AI only on click).
+- Follows the Mjuzi fix (bac0105f). Test: `utils/backgroundPortfolioChanges.test.ts`.
+
 ## 2026-10-11 — Dashboard AI highlights only on click (branch fix/dashboard-ai-on-click)
 - User rule "AI only when asked": the Portfolio Intelligence panel polls every minute and the server asked the AI by itself once edits settled (and at most hourly). Now `getDashboardPredictions` asks only with `refresh` (the panel's button; 10-min throttle per person + one in flight), returns `aiRequested` / `aiOutOfDate`. Removed the auto path and its constants (quiet time, min age, failure pause).
 - Found on the way: the panel's AI wasn't plan-gated — a Basic (no AI) company got AI highlights at our cost. The route now asks `hasFeature('ai_assistant')`; without it the panel shows numbers only and no button. Hidden in the support view too.

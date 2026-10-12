@@ -7,8 +7,7 @@ import { scheduleService, type CreateTaskData, type Task, DependencyValidationEr
 import { moveSuccessorsAfter } from './followSuccessors';
 import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
-import { markPortfolioChanged } from '../utils/portfolioChanges';
-import { getTenantContext } from '../middleware/requestContext';
+import { markCurrentCompanyChanged } from '../utils/portfolioChanges';
 import { policyEngineService } from './PolicyEngineService';
 import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
@@ -42,8 +41,7 @@ const AI_WRITE_TOOLS = new Set([
  */
 function markIfWrite(toolName: string): void {
   if (!AI_WRITE_TOOLS.has(toolName) && toolName !== 'create_project') return;
-  const tenant = getTenantContext()?.dbName;
-  if (tenant) void markPortfolioChanged(tenant);
+  markCurrentCompanyChanged();
 }
 
 /** Tools that read one project's data: the user must be able to see that project */

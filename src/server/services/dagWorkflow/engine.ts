@@ -4,6 +4,7 @@ import { Task, ScheduleService } from '../ScheduleService';
 import { WorkflowNode, WorkflowEdge, DefinitionWithGraph } from './types';
 import { resolveTemplates } from './templateResolver';
 import logger from '../../utils/logger';
+import { markCurrentCompanyChanged } from '../../utils/portfolioChanges';
 import { isOverdue } from '../../utils/calendarDate';
 
 // ── Trigger matching ──────────────────────────────────────────────────────
@@ -128,6 +129,8 @@ export async function executeAction(
           return { action: 'update_field', field: config.field, value: config.value, skipped: true, reason: 'already set' };
         }
         scheduleService.updateTask(task.id, { [config.field]: config.value } as any)
+          // a workflow run by a scheduled job has no request to count the change for the dashboard
+          .then(() => markCurrentCompanyChanged())
           .catch(err => logger.error('[DagWorkflow] update_field failed', { taskId: task.id, field: config.field, error: err }));
         return { action: 'update_field', field: config.field, value: config.value };
       }
