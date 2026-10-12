@@ -26,8 +26,9 @@ const MAX_FILES_PER_SYNC = 50;
 const OAUTH_STATE_TTL = 600; // 10 minutes
 const TOKEN_REFRESH_BUFFER = 5 * 60 * 1000; // 5 minutes before expiry
 
+// the free trial is full Pro (user, 2026-10-10): Pro's document limit
 const TIER_DOC_LIMITS: Record<string, number> = {
-  trial: 0,
+  trial: 100,
   consultant_basic: 0,
   consultant_pro: 100,
   sme: 500,

@@ -124,7 +124,8 @@ function formatLabel(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-const CONNECTOR_TIERS = ['consultant_pro', 'sme', 'enterprise'];
+// the free trial is full Pro (user, 2026-10-10) — the server's requireTier list in routes/integrations/storageConnectors.ts
+const CONNECTOR_TIERS = ['trial', 'consultant_pro', 'sme', 'enterprise'];
 
 export function DocumentsTab({ projectId }: DocumentsTabProps) {
   // Uploading, editing and deleting documents and connecting storage: the project's Manager/Owner

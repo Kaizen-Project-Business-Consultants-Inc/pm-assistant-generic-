@@ -55,12 +55,14 @@ class AIBudgetRepository {
   }
 
   /** Who is asking, for the AI plan check: their app role and their own plan */
-  async getUserRoleAndTier(userId: string): Promise<{ role: string; tier: string } | null> {
-    const rows = await databaseService.queryControlPlane<{ role: string; subscription_tier: string | null }>(
-      'SELECT role, subscription_tier FROM users WHERE id = ?',
+  async getUserRoleAndTier(userId: string): Promise<{ role: string; tier: string; status: string; trialEndsAt: string | null } | null> {
+    const rows = await databaseService.queryControlPlane<{ role: string; subscription_tier: string | null; subscription_status: string | null; trial_ends_at: string | null }>(
+      'SELECT role, subscription_tier, subscription_status, trial_ends_at FROM users WHERE id = ?',
       [userId],
     );
-    return rows.length > 0 ? { role: rows[0].role, tier: rows[0].subscription_tier || 'trial' } : null;
+    if (rows.length === 0) return null;
+    const r = rows[0];
+    return { role: r.role, tier: r.subscription_tier || 'trial', status: r.subscription_status || 'none', trialEndsAt: r.trial_ends_at };
   }
 
   async findBudgetWarningToday(userId: string, today: string): Promise<boolean> {

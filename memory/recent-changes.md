@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — Plan gates respect an ended plan; requireTier judges viewers by the company (branch fix/plan-gates-status)
+- `planInForce(role, userId, own, company)` in `utils/memberSubscription.ts` (built on `orgSubscriptionAllowsMembers`, the write guard's rule): paid or past due, or a trial not yet ended; never while awaiting payment; the company covers a member whose own record lags (never the owner); a viewer goes by the company only (no company: no plan).
+- `middleware/requireTier.ts`: one `callerPlan` (tier via `planTierFor`, in-force, company looked up only for viewers or lapsed records) used by `requireFeature`/`hasFeature` and `requireTier`. Before: features judged by tier only (an ended trial or cancelled company kept them on reads), and `requireTier` let every viewer through.
+- `AIBudgetService.assertPlanAllowsAI` also needs the plan in force (`getUserRoleAndTier` now reads status + trial end): AI on read-only screens worked after the trial ended.
+- Review fixes: on flat (consultant) billing Stripe updates only the owner's record and the org row keeps sign-up values, so the company's plan is the owner's record there (`companyPlan`) — else every paying consultant's client viewers lost paid features after 7 days, and Basic consultants' viewers got AI as 'trial'. Support visits are not judged by a plan. Awaiting payment never in force; the owner never falls back on the company row; a viewer with no company has no plan. An ended plan gets its own message (`PLAN_ENDED_MESSAGE`, same UPGRADE_REQUIRED code).
+- Storage connectors on the trial with Pro's limit (100/project) — Master per the user's standing "trial = full Pro" rule; server `requireTier` list + `TIER_DOC_LIMITS` + client `CONNECTOR_TIERS`. Docs: PRODUCT_MANUAL, USER_GUIDE, WORLD_CLASS.
+- Tests: `hasFeature.test.ts` (+6), `AIBudgetService.test.ts` (+3). Docs: PRODUCT_MANUAL (trial implementation notes), SECURITY_GUIDE (M2).
+
 ## 2026-10-11 — Dashboard AI highlights only on click (branch fix/dashboard-ai-on-click)
 - User rule "AI only when asked": the Portfolio Intelligence panel polls every minute and the server asked the AI by itself once edits settled (and at most hourly). Now `getDashboardPredictions` asks only with `refresh` (the panel's button; 10-min throttle per person + one in flight), returns `aiRequested` / `aiOutOfDate`. Removed the auto path and its constants (quiet time, min age, failure pause).
 - Found on the way: the panel's AI wasn't plan-gated — a Basic (no AI) company got AI highlights at our cost. The route now asks `hasFeature('ai_assistant')`; without it the panel shows numbers only and no button. Hidden in the support view too.

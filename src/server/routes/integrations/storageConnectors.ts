@@ -11,7 +11,7 @@ import logger from '../../utils/logger';
 
 const VALID_CALLBACK_PROVIDERS = ['onedrive', 'google_drive', 'dropbox'];
 const VALID_AUTH_PROVIDERS: StorageProvider[] = ['onedrive', 'sharepoint', 'google_drive', 'dropbox'];
-const requireConnectorTier = requireTier('consultant_pro', 'sme', 'enterprise');
+const requireConnectorTier = requireTier('trial', 'consultant_pro', 'sme', 'enterprise'); // the trial is full Pro
 
 // OAuth callback — top-level route, no auth (called by provider redirect)
 /** Storage connectors are project settings: its Manager/Owner; the connector must be this project's */
