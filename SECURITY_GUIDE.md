@@ -40,6 +40,10 @@ Both tokens are configured with `secure: true` in production and `sameSite: 'lax
 
 Authentication is enforced by the `authMiddleware` pre-handler hook, which verifies the JWT from the cookie and attaches the decoded user to `request.user`.
 
+### Busy is not "signed out" (Oct 2026)
+
+Only a bad, expired or not-yet-valid token answers **401**. If the sign-in check (`authMiddleware`, the API-key check, `/auth/refresh`) fails for any other reason — a full database pool ("Queue limit reached"), a lost connection — it answers **503 "Kovarti is busy right now"** with `Retry-After: 5` (`utils/serviceBusy.ts`). The global error handler does the same for any request that fails because the database is full or out of reach. Owner lookups used for permission checks (pay rates, company holidays, sample project, sponsor, guest access) no longer turn a failed lookup into "you're not the owner"; the failure is reported as busy and the action is still refused. The app signs someone out only on a refused refresh (401); on 503 it keeps them signed in, and on opening it asks `/auth/me`: on 401 it refreshes the session once (the access cookie lasts 15 minutes, the refresh cookie a day — before this, reopening the app after 15 minutes signed people out), and on busy it tries three times without forgetting who was signed in (`utils/loadSignedInUser.ts`). If the API-key check fails in the global request hook (which runs before the tenant resolver), the request is marked and `authMiddleware` answers 503 even if a second check would succeed, so it never runs without its company database. Unexpected errors in these checks are logged as errors (busy pools as warnings).
+
 ### Deactivated User Rejection
 
 After JWT validation (or API key validation), the middleware checks the user's `is_active` status in the database. Deactivated users receive a `401 Account deactivated` response immediately, even if their JWT or API key is otherwise valid. This check uses Redis caching (5-minute TTL) to avoid a database query on every request.

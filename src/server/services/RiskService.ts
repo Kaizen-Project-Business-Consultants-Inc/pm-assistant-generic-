@@ -74,6 +74,10 @@ class RiskService {
     return riskRepository.findById(id);
   }
 
+  async getOpenTotals(projectIds: string[]) {
+    return riskRepository.getOpenTotals(projectIds);
+  }
+
   async getStats(projectId: string): Promise<RiskStats> {
     return riskRepository.getStats(projectId);
   }

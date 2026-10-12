@@ -18,7 +18,7 @@ async function hasPayRole(request: FastifyRequest, roles: readonly string[]): Pr
   const user = request.user!;
   if (user.isGuest) return false;
   if (roles.includes(user.role)) return true;
-  const org = await organizationService.findByUserId(user.userId).catch(() => null);
+  const org = await organizationService.findByUserId(user.userId);
   return !!org && org.ownerUserId === user.userId;
 }
 

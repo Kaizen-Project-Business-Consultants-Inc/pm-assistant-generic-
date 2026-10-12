@@ -24,6 +24,7 @@ import { runWithTenantContext } from '../../middleware/requestContext';
 import { resolvePriceId } from '../integrations/stripe';
 import { pricingConfigService } from '../../services/PricingConfigService';
 import logger from '../../utils/logger';
+import { isTokenError, isDatabaseUnavailable, sendBusy, logBusy } from '../../utils/serviceBusy';
 import type { JwtPayload } from '../../types/fastify';
 
 const loginSchema = z.object({
@@ -715,6 +716,10 @@ export async function authRoutes(fastify: FastifyInstance) {
         },
       };
     } catch (error) {
+      if (isDatabaseUnavailable(error)) { // busy, not broken: the app keeps them signed in
+        logBusy('Auth /me', error, request.url);
+        return sendBusy(reply);
+      }
       logger.error('Auth /me error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }
@@ -932,6 +937,11 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       return { message: 'Token refreshed successfully' };
     } catch (error) {
+      // Only a bad or expired refresh token ends the session; a busy database must not
+      if (!isTokenError(error)) {
+        logBusy('Token refresh failed', error, request.url);
+        return sendBusy(reply);
+      }
       logger.error('Token refresh error', { error });
       return reply.status(401).send({ error: 'Invalid refresh token', message: 'Refresh token is invalid or expired' });
     }

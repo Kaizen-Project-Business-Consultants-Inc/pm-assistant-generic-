@@ -50,7 +50,7 @@ async function guestAdminCheck(request: FastifyRequest, reply: FastifyReply, gue
     return null;
   }
   const guest = await userService.findById(guestId);
-  const guestOrg = guest ? await organizationService.findByUserId(guestId).catch(() => null) : null;
+  const guestOrg = guest ? await organizationService.findByUserId(guestId) : null;
   if (!guest || !guest.isGuest || !guestOrg || guestOrg.id !== org.id) {
     reply.status(404).send({ error: 'Guest not found', message: 'That guest is not in your organization.' });
     return null;

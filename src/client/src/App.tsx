@@ -1,12 +1,13 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom';
 import { ROUTES, ROUTE_PATTERNS, routeTo } from './routes';
-import { useAuthStore, withoutCompany, isPersonalPath, isPlatformAdmin } from './stores/authStore';
+import { useAuthStore, withoutCompany, isPersonalPath, isPlatformAdmin, type User as AuthUser } from './stores/authStore';
 import { NoCompanyPage } from './pages/NoCompanyPage';
 import { ErrorBoundary, RouteErrorBoundary } from './components/ErrorBoundary';
 import { AppUpdater } from './components/AppUpdater';
 import { AccessibilityProvider } from './contexts/AccessibilityContext';
 import { apiService } from './services/api';
+import { loadSignedInUser } from './utils/loadSignedInUser';
 import AppLayout from './components/layout/AppLayout';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { RoleRouteGuard } from './components/layout/RoleRouteGuard';
@@ -134,15 +135,12 @@ function App() {
 
   useEffect(() => {
     // Hydrate auth from cookies on mount (handles page refresh + verify-login redirect)
-    apiService.getMe()
-      .then((data) => {
-        if (data.user) {
-          setUser(data.user);
-        }
-      })
-      .catch(() => {
-        // Not authenticated — clear any stale state
-        setUser(null);
+    // Refresh the session only for someone remembered here (a first-time visitor has nothing to refresh)
+    const remembered = !!useAuthStore.getState().user;
+    void loadSignedInUser<AuthUser>(() => apiService.getMe(), remembered ? { refresh: () => apiService.refreshSession() } : {})
+      .then((user) => {
+        // undefined: the server was busy or out of reach — keep who we had, don't sign them out
+        if (user !== undefined) setUser(user);
       })
       .finally(() => {
         setLoading(false);

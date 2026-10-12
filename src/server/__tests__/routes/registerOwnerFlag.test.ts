@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
+import jwt from 'jsonwebtoken';
 
 /**
  * A paid-plan signup is signed in straight from the register reply (RegisterPage stores its user).
@@ -23,6 +24,7 @@ vi.mock('../../services/EmailService', () => ({ emailService: { sendVerification
 vi.mock('../../services/UserService', () => ({
   userService: {
     findByUsername: vi.fn(async () => null),
+    findById: vi.fn(async () => null),
     findByEmail: vi.fn(async () => null),
     create: vi.fn(async (u: any) => ({ ...u, id: 'u-new', tokenVersion: 0 })),
     update: vi.fn(async () => {}),
@@ -105,5 +107,22 @@ describe('POST /auth/register — the username nobody types (shorter sign-up for
     expect(tried[0]).toMatch(/^jane_[0-9a-f]{6}$/);
     expect(tried[0]).not.toBe(made());
     expect(made()).toMatch(/^jane_[0-9a-f]{6}$/);
+  });
+});
+
+describe('POST /auth/refresh — a busy database never ends the session (2026-10-12)', () => {
+  const refresh = (token: string) => app.inject({ method: 'POST', url: '/api/v1/auth/refresh', cookies: { refresh_token: token }, payload: {} });
+  const goodRefresh = () => jwt.sign({ userId: 'u1', type: 'refresh', tv: 0 }, config.JWT_REFRESH_SECRET, { algorithm: 'HS256' });
+
+  it('database full: 503 busy with Retry-After, and the session cookies are left alone', async () => {
+    vi.mocked(userService.findById).mockRejectedValueOnce(new Error('Queue limit reached.'));
+    const res = await refresh(goodRefresh());
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['retry-after']).toBe('5');
+    expect(res.cookies.find(c => c.name === 'refresh_token')).toBeUndefined();
+  });
+
+  it('a forged refresh token is still 401', async () => {
+    expect((await refresh('forged')).statusCode).toBe(401);
   });
 });

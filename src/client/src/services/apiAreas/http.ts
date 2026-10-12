@@ -53,10 +53,14 @@ export class ApiBase {
             // Try to refresh the token (empty body ensures Content-Type is sent)
             await this.api.post('/auth/refresh', {});
             return this.api(originalRequest);
-          } catch (_refreshError) {
-            // Refresh failed, redirect to login
-            window.location.href = '/login';
-            return Promise.reject(_refreshError);
+          } catch (refreshError) {
+            // Only a refused refresh (401) means signed out. "Busy" (503) or no connection keeps the
+            // session: the page shows the error and can try again (it used to sign people out
+            // whenever the server was busy — 2026-10-12)
+            if ((refreshError as { response?: { status?: number } })?.response?.status === 401) {
+              window.location.href = '/login';
+            }
+            return Promise.reject(refreshError);
           }
         }
 

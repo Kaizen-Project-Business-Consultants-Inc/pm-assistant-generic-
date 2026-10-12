@@ -17,6 +17,12 @@ export class RaidApi extends ApiBase {
     return response.data;
   }
 
+  /** Open risks and open critical items over several projects, in one request (dashboard) */
+  async getRiskOpenTotals(projectIds: string[]): Promise<{ openRisks: number; critical: number }> {
+    const response = await this.api.get('/projects/risks/open-totals', { params: { ids: projectIds.join(',') } });
+    return response.data?.data ?? { openRisks: 0, critical: 0 };
+  }
+
   async getRiskStats(projectId: string) {
     const response = await this.api.get(`/projects/${projectId}/risks/stats`);
     return response.data;

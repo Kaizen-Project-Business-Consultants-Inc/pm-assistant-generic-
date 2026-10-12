@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 649,
+  "count": 651,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -377,6 +377,7 @@
     "getRetroBoard",
     "getRiskItem",
     "getRiskItems",
+    "getRiskOpenTotals",
     "getRiskStats",
     "getSCurveData",
     "getSampleProject",
@@ -497,6 +498,7 @@
     "recallWeek",
     "reconcileSubscription",
     "refineTaskPrioritizationWithAI",
+    "refreshSession",
     "register",
     "rejectAgentProposal",
     "rejectDreamingProposal",

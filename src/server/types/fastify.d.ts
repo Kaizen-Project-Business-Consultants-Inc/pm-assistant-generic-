@@ -31,6 +31,8 @@ declare module 'fastify' {
     apiKeyId?: string;
     apiKeyScopes?: string[];
     apiKeyRateLimit?: number | null;
+    /** The API-key lookup in the global hook failed (database busy): the route answers 503, never runs */
+    apiKeyLookupFailed?: boolean;
     rawBody?: Buffer;
     projectMembership?: ProjectMember;
     /** Set during the platform admin's read-only Support view visit into one company */

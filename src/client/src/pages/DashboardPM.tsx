@@ -150,23 +150,12 @@ export function DashboardPM() {
   const overdueTasks  = analytics?.tasks?.overdue ?? 0;
   const atRiskCount   = analytics?.portfolio?.atRiskProjects?.length ?? 0;
 
-  // Aggregate real RAID open risk counts across all active projects
+  // Open RAID risks across all active projects — one request for all of them (it used to send one
+  // per project at once, which could fill the server's database connections)
   const projectIds = useMemo(() => activeProjects.map(p => p.id), [activeProjects]);
   const { data: raidStatsAll } = useQuery({
     queryKey: ['raid-stats-all', projectIds],
-    queryFn: async () => {
-      if (!projectIds.length) return { openRisks: 0, critical: 0 };
-      const results = await Promise.all(projectIds.map(id => apiService.getRiskStats(id).catch(() => null)));
-      let openRisks = 0, critical = 0;
-      for (const r of results) {
-        const d = r?.data || r;
-        if (d) {
-          openRisks += d.openRisks || 0;
-          critical += d.critical || 0;
-        }
-      }
-      return { openRisks, critical };
-    },
+    queryFn: () => apiService.getRiskOpenTotals(projectIds),
     staleTime: 120_000,
     enabled: projectIds.length > 0,
   });

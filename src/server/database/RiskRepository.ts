@@ -180,6 +180,10 @@ function mapActivityRow(row: any): RaidActivityLog {
   };
 }
 
+/** What counts as an open risk / an open critical item — one definition for the RAID tab and the dashboard */
+const OPEN_RISKS_SQL = "SUM(type = 'risk' AND status NOT IN ('closed','mitigated','resolved','cancelled'))";
+const OPEN_CRITICAL_SQL = "SUM(severity = 'critical' AND status NOT IN ('closed','mitigated','resolved','cancelled'))";
+
 export interface RiskFilters {
   type?: 'risk' | 'issue' | 'action' | 'decision' | 'assumption' | 'dependency';
   status?: string;
@@ -511,6 +515,24 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     return this.mapRows(rows);
   }
 
+  /**
+   * Open risks and open critical items over several projects in one query (the dashboard's Risk
+   * tile; it used to ask once per project and could swamp the database pool). Uses the
+   * (project_id, type, status) index.
+   */
+  async getOpenTotals(projectIds: string[]): Promise<{ openRisks: number; critical: number }> {
+    if (projectIds.length === 0) return { openRisks: 0, critical: 0 };
+    const rows = await this.queryRaw(
+      `SELECT
+         ${OPEN_RISKS_SQL} AS openRisks,
+         ${OPEN_CRITICAL_SQL} AS critical
+       FROM project_risks WHERE project_id IN (${projectIds.map(() => '?').join(',')})`,
+      projectIds,
+    );
+    const r = rows[0] || {};
+    return { openRisks: Number(r.openRisks) || 0, critical: Number(r.critical) || 0 };
+  }
+
   async getStats(projectId: string): Promise<RiskStats> {
     const rows = await this.queryRaw(
       `SELECT
@@ -520,13 +542,13 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
          SUM(type = 'decision') AS totalDecisions,
          SUM(type = 'assumption') AS totalAssumptions,
          SUM(type = 'dependency') AS totalDependencies,
-         SUM(type = 'risk' AND status NOT IN ('closed','mitigated','resolved','cancelled')) AS openRisks,
+         ${OPEN_RISKS_SQL} AS openRisks,
          SUM(type = 'issue' AND status NOT IN ('closed','resolved','cancelled')) AS openIssues,
          SUM(type = 'action' AND status NOT IN ('closed','completed','cancelled','deferred')) AS openActions,
          SUM(type = 'decision' AND status = 'pending_decision') AS pendingDecisions,
          SUM(type = 'assumption' AND status NOT IN ('closed','validated','cancelled')) AS openAssumptions,
          SUM(type = 'dependency' AND status NOT IN ('closed','complete','cancelled')) AS openDependencies,
-         SUM(severity = 'critical' AND status NOT IN ('closed','mitigated','resolved','cancelled')) AS critical,
+         ${OPEN_CRITICAL_SQL} AS critical,
          SUM(triggered = TRUE) AS triggered
        FROM project_risks WHERE project_id = ?`,
       [projectId],

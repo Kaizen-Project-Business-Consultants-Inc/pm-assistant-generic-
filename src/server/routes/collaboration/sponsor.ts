@@ -48,7 +48,7 @@ export async function sponsorRoutes(fastify: FastifyInstance) {
   });
 
   fastify.get('/:projectId/sponsor/candidates', { preHandler: [requireScope('read'), requireProjectAccess('manager')] }, async (request) => {
-    const org = await organizationService.findByUserId(request.user!.userId).catch(() => null);
+    const org = await organizationService.findByUserId(request.user!.userId);
     return { candidates: await sponsorService.candidates(org?.id ?? null) };
   });
 
@@ -57,7 +57,7 @@ export async function sponsorRoutes(fastify: FastifyInstance) {
       const { projectId } = request.params as { projectId: string };
       if (await sampleReadOnly(projectId, reply)) return reply;
       const body = setSchema.parse(request.body ?? {});
-      const org = await organizationService.findByUserId(request.user!.userId).catch(() => null);
+      const org = await organizationService.findByUserId(request.user!.userId);
       return { sponsor: await sponsorService.set(projectId, body, org?.id ?? null) };
     } catch (error) { return fail(reply, error, 'Saving the sponsor'); }
   });

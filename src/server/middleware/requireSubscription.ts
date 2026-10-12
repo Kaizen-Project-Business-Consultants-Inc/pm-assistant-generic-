@@ -147,7 +147,7 @@ export async function requireActiveSubscription(request: FastifyRequest, reply: 
     // their own record lags behind it (members invited after payment had 'none').
     const orgId = (fullUser as any).organizationId as string | undefined;
     if (orgId) {
-      const org = await organizationRepository.findById(orgId).catch(() => null);
+      const org = await organizationRepository.findById(orgId); // a failure fails open below, never a refusal
       if (org && org.ownerUserId !== fullUser.id && orgSubscriptionAllowsMembers(org)) {
         return;
       }

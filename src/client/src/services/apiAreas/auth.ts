@@ -82,6 +82,12 @@ export class AuthApi extends ApiBase {
     return response.data;
   }
 
+  /** New session cookies from the refresh cookie (used when the app opens after the access cookie ran out) */
+  async refreshSession() {
+    const response = await this.api.post('/auth/refresh', {});
+    return response.data;
+  }
+
   // -------------------------------------------------------------------------
   // API Keys
   // -------------------------------------------------------------------------

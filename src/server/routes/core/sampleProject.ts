@@ -11,7 +11,7 @@ async function canManageSample(request: FastifyRequest): Promise<boolean> {
   const user = request.user!;
   if (user.isGuest) return false;
   if (['admin', 'pmo'].includes(user.role)) return true;
-  const org = await organizationService.findByUserId(user.userId).catch(() => null);
+  const org = await organizationService.findByUserId(user.userId);
   return !!org && org.ownerUserId === user.userId;
 }
 

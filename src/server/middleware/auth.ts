@@ -8,6 +8,7 @@ import { permissionRole } from '../utils/companyOwner';
 import { databaseService } from '../database/connection';
 import { redisService } from '../services/RedisService';
 import { subscriptionGuard } from './requireSubscription';
+import { isTokenError, sendBusy, logBusy } from '../utils/serviceBusy';
 
 const ACTIVE_CHECK_TTL = 300; // 5 minutes
 
@@ -88,8 +89,12 @@ export async function resolveApiKeyOnRequest(request: FastifyRequest): Promise<v
       const keyUser = await apiKeyUser(request, keyInfo);
       if (keyUser) request.user = { ...keyUser };
     }
-  } catch {
-    // Silently fail — route-level authMiddleware will handle auth errors
+  } catch (err) {
+    // The key couldn't be checked (database busy). Remember it: the tenant resolver saw no user and
+    // left the request on the shared database, so authMiddleware must stop it with 503 even if a
+    // second check would now succeed (review 2026-10-12).
+    request.apiKeyLookupFailed = true;
+    logBusy('API key check failed in the request hook', err, request.url);
   }
 }
 
@@ -97,6 +102,7 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
   // Check for Bearer token (API key) first
   const authHeader = request.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
+    if (request.apiKeyLookupFailed) return sendBusy(reply);
     const rawKey = authHeader.slice(7);
     try {
       const keyInfo = await apiKeyService.validateKey(rawKey);
@@ -125,10 +131,9 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
       // An expired trial cannot write through the API either.
       return subscriptionGuard(request, reply);
     } catch (error) {
-      return reply.status(401).send({
-        error: 'Invalid API key',
-        message: 'Failed to validate API key',
-      });
+      // validateKey answers null for a bad key; a throw here is the database (or a bug), not the key
+      logBusy('API key check failed', error, request.url);
+      return sendBusy(reply);
     }
   }
 
@@ -214,9 +219,15 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         message: 'Your account has been deactivated',
       });
     }
-    return reply.status(401).send({
-      error: 'Invalid token',
-      message: 'Access token is invalid or expired',
-    });
+    if (isTokenError(error)) {
+      return reply.status(401).send({
+        error: 'Invalid token',
+        message: 'Access token is invalid or expired',
+      });
+    }
+    // Not the token: the database (full pool, lost connection) or a bug. Never "not signed in" —
+    // that made the app sign people out whenever the server was busy (2026-10-12).
+    logBusy('Sign-in check failed', error, request.url);
+    return sendBusy(reply);
   }
 }

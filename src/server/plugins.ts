@@ -28,6 +28,7 @@ import { apiKeyService } from './services/ApiKeyService';
 import { resolveApiKeyOnRequest } from './middleware/auth';
 import { metricsService } from './services/MetricsService';
 import type { JwtPayload } from './types/fastify';
+import { replyIfDatabaseBusy } from './utils/serviceBusy';
 
 // Standard HTTP status text for error response normalization
 const HTTP_STATUS_TEXT: Record<number, string> = {
@@ -295,6 +296,8 @@ export async function registerPlugins(fastify: FastifyInstance) {
       return sendValidationError(reply, err);
     }
     const error = err instanceof Error ? err : new Error(String(err));
+    // The database is full or out of reach for a moment: "busy, try again", not a crash
+    if (replyIfDatabaseBusy(error, request.url, reply)) return reply;
     const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
     // A refusal (4xx — e.g. "this feature requires a paid subscription") is the app working as
     // designed, not a fault: warn, so real errors stand out in the logs (2026-10-04: a trial

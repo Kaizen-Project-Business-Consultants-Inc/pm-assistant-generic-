@@ -19,6 +19,11 @@ import { raidChanged } from '../../services/domainEvents';
 import { RAID_RESPONSE_STRATEGIES } from '../../database/RiskRepository';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { aiRefusalReply } from '../../services/AIBudgetService';
+import { readableProjectIds } from '../../utils/readableProjects';
+
+/** The dashboard's risk totals take at most this many projects in one request: the most one page of
+ *  the projects list can hold (200), and short enough for the address line (about 7.5 KB of ids) */
+const MAX_TOTALS_PROJECTS = 200;
 
 const RAID_TYPES = ['risk', 'issue', 'action', 'decision', 'assumption', 'dependency'] as const;
 const ALL_STATUSES = ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'resolved',
@@ -153,6 +158,22 @@ export async function riskRoutes(fastify: FastifyInstance) {
     if (!p?.riskId || !p.projectId || reply.sent) return;
     const item = await riskService.findById(p.riskId);
     if (!item || item.projectId !== p.projectId) return reply.status(404).send({ error: 'RAID item not found' });
+  });
+
+  // GET /api/v1/projects/risks/open-totals?ids=a,b — open risks + open critical items over the
+  // dashboard's projects in one request (it used to send one request per project, which could fill
+  // the database pool). Only projects the caller may read count; others in `ids` are ignored.
+  fastify.get('/risks/open-totals', {
+    preHandler: [requireScope('read')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    const { ids } = request.query as { ids?: string };
+    const wanted = [...new Set((ids ?? '').split(',').map(s => s.trim()).filter(Boolean))];
+    if (wanted.length > MAX_TOTALS_PROJECTS || wanted.some(id => !/^[\w-]{1,64}$/.test(id))) {
+      return reply.status(400).send({ error: 'Validation error', message: `Give at most ${MAX_TOTALS_PROJECTS} project ids, separated by commas.` });
+    }
+    const readable = await readableProjectIds(request.user!);
+    const allowed = readable === 'all' ? wanted : wanted.filter(id => readable.has(id));
+    return reply.send({ data: await riskService.getOpenTotals(allowed) });
   });
 
   // GET /api/v1/projects/:projectId/risks — List risks with filters

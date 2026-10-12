@@ -71,6 +71,7 @@ DB_PORT=3306
 DB_USER=pmuser
 DB_PASSWORD=<PASSWORD>
 DB_NAME=pmassist
+DB_CONNECTION_LIMIT=15          # see "Database connections" below
 JWT_SECRET=<SECRET>
 JWT_REFRESH_SECRET=<SECRET>
 COOKIE_SECRET=<SECRET>
@@ -84,6 +85,14 @@ ALERT_ENABLED=true
 **Security requirements:**
 - `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `COOKIE_SECRET` must each be at least **32 characters**.
 - All three secrets **must be different from each other** (validated at startup).
+
+### Database connections (`DB_CONNECTION_LIMIT`)
+
+The app keeps a pool of database connections that every request shares (all companies use the one pool). `DB_CONNECTION_LIMIT` is its size; requests that find every connection busy wait in a queue of `DB_QUEUE_LIMIT` (default 50), and a request that finds the queue full fails with "Queue limit reached".
+
+**Use 15 on both servers** (the code default is 5). Why: opening the dashboard sends about ten requests at once, each running several queries, plus the scheduled jobs and the live-update socket at the same time. With 5 connections one person opening the dashboard filled the pool on staging (2026-10-12) — a request then failed and, before that day's fix, the app signed the person out. 15 gives room for a few people at once and stays far below MariaDB's `max_connections` (151 by default), which the MCP server's own pool (5) and backups also use. Going higher only helps if the database server has spare CPU; check `SHOW STATUS LIKE 'Threads_connected'` and the slow log before raising it.
+
+When the pool is full the app now answers **503 "Kovarti is busy right now"** with `Retry-After: 5` (never "signed out"); the screens try again by themselves.
 
 ### Optional Environment Variables
 
