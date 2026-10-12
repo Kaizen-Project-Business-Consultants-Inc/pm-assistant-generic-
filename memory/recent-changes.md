@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — MS Project XML export: SS and SF links were swapped (branch fix/mspdi-export-link-types)
+- `routes/core/exports.ts` wrote `{FF:0, FS:1, SS:2, SF:3}`; MSPDI (and our import, `client/src/utils/mspdiParser.ts`) is 0 FF, 1 FS, 2 SF, 3 SS — every start-to-start link opened in MS Project as start-to-finish and back. Now `utils/mspdiLinks.ts` (`MSPDI_LINK_TYPE`, `mspdiPredecessorLink`) builds the links. Test `client/src/__tests__/utils/mspdiRoundTrip.test.ts` exports a link of each type and reads it back with the import parser. PRODUCT_MANUAL §36 had the wrong table too — fixed.
+- Known, for the import rework (plan pending): the import parser drops lags (reads `LinkLag` as a text duration) and makes milestones 1-day tasks.
+
 ## 2026-10-11 — Dashboard AI highlights only on click (branch fix/dashboard-ai-on-click)
 - User rule "AI only when asked": the Portfolio Intelligence panel polls every minute and the server asked the AI by itself once edits settled (and at most hourly). Now `getDashboardPredictions` asks only with `refresh` (the panel's button; 10-min throttle per person + one in flight), returns `aiRequested` / `aiOutOfDate`. Removed the auto path and its constants (quiet time, min age, failure pause).
 - Found on the way: the panel's AI wasn't plan-gated — a Basic (no AI) company got AI highlights at our cost. The route now asks `hasFeature('ai_assistant')`; without it the panel shows numbers only and no button. Hidden in the support view too.

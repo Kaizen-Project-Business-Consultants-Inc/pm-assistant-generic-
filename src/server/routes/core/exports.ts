@@ -8,6 +8,7 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import { requireFeature } from '../../middleware/requireTier';
 import logger from '../../utils/logger';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { mspdiPredecessorLink } from '../../utils/mspdiLinks';
 
 export async function exportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -127,8 +128,6 @@ export async function exportRoutes(fastify: FastifyInstance) {
         const resourceUidMap = new Map<string, number>();
         resourceNames.forEach((name, i) => resourceUidMap.set(name, i + 1));
 
-        const depTypeMap: Record<string, number> = { FF: 0, FS: 1, SS: 2, SF: 3 };
-
         // Build XML
         const tasksXml = allTasks.map(t => {
           const uid = taskUidMap.get(t.id)!;
@@ -139,9 +138,7 @@ export async function exportRoutes(fastify: FastifyInstance) {
           const predLinks = t.dependencies.map(d => {
             const predUid = taskUidMap.get(d.dependencyId);
             if (!predUid) return '';
-            const type = depTypeMap[d.dependencyType?.toUpperCase() || 'FS'] ?? 1;
-            const lag = (d.lagDays || 0) * 4800; // tenths of minutes per day (8h * 60 * 10)
-            return `          <PredecessorLink><PredecessorUID>${predUid}</PredecessorUID><Type>${type}</Type><LinkLag>${lag}</LinkLag><LagFormat>7</LagFormat></PredecessorLink>`;
+            return `          ${mspdiPredecessorLink(predUid, d.dependencyType, d.lagDays)}`;
           }).filter(Boolean).join('\n');
 
           return `      <Task>
