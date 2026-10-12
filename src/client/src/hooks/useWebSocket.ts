@@ -50,8 +50,8 @@ function showStatusReportToast(message: string, type: 'success' | 'error') {
 
 // Module-level presence state with custom event dispatch
 const PRESENCE_EVENT = 'ws:presence_update';
-const presenceMap = new Map<string, { userId: string; username: string }[]>();
-const editorsMap = new Map<string, { userId: string; username: string; field: string }[]>();
+const presenceMap = new Map<string, { userId: string; name: string }[]>();
+const editorsMap = new Map<string, { userId: string; name: string; field: string }[]>();
 
 /** Sign-out: forget who was viewing/editing the previous person's projects */
 export function resetPresence(): void {
@@ -59,16 +59,16 @@ export function resetPresence(): void {
   editorsMap.clear();
 }
 
-export function getPresenceViewers(projectId: string): { userId: string; username: string }[] {
+export function getPresenceViewers(projectId: string): { userId: string; name: string }[] {
   return presenceMap.get(projectId) || [];
 }
 
-export function getPresenceEditors(projectId: string): { userId: string; username: string; field: string }[] {
+export function getPresenceEditors(projectId: string): { userId: string; name: string; field: string }[] {
   return editorsMap.get(projectId) || [];
 }
 
-export function usePresenceViewers(projectId: string | undefined): { userId: string; username: string }[] {
-  const [viewers, setViewers] = useState<{ userId: string; username: string }[]>(() =>
+export function usePresenceViewers(projectId: string | undefined): { userId: string; name: string }[] {
+  const [viewers, setViewers] = useState<{ userId: string; name: string }[]>(() =>
     projectId ? getPresenceViewers(projectId) : []
   );
 
@@ -89,8 +89,8 @@ export function usePresenceViewers(projectId: string | undefined): { userId: str
   return viewers;
 }
 
-export function usePresenceEditors(projectId: string | undefined): { userId: string; username: string; field: string }[] {
-  const [editors, setEditors] = useState<{ userId: string; username: string; field: string }[]>(() =>
+export function usePresenceEditors(projectId: string | undefined): { userId: string; name: string; field: string }[] {
+  const [editors, setEditors] = useState<{ userId: string; name: string; field: string }[]>(() =>
     projectId ? getPresenceEditors(projectId) : []
   );
 

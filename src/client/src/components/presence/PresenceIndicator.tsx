@@ -2,7 +2,8 @@ import { getInitials } from '../ui/Avatar';
 
 interface PresenceUser {
   userId: string;
-  username: string;
+  /** Full name (the server sends names, not usernames) */
+  name: string;
 }
 
 interface PresenceAvatarsProps {
@@ -32,10 +33,10 @@ export function PresenceIndicator(props: PresenceIndicatorProps) {
             <div
               key={user.userId}
               className="w-7 h-7 rounded-full bg-primary-100 dark:bg-primary-900/40 border-2 border-white dark:border-gray-800 flex items-center justify-center"
-              title={`${user.username} is ${label}`}
+              title={`${user.name} is ${label}`}
             >
               <span className="text-xs font-semibold text-primary-700 dark:text-primary-300">
-                {getInitials(user.username)}
+                {getInitials(user.name)}
               </span>
             </div>
           ))}
@@ -61,7 +62,7 @@ export function PresenceIndicator(props: PresenceIndicatorProps) {
     <span role="status" aria-live="polite" className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse motion-reduce:animate-none" />
       <span className="truncate max-w-[120px] sm:max-w-none">
-        {users.map((u) => u.username).join(', ')}
+        {users.map((u) => u.name).join(', ')}
       </span>{' '}{label}
     </span>
   );

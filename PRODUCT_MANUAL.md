@@ -1674,7 +1674,7 @@ A full-page notification center is available at `/notifications`, accessible fro
 
 ### Real-Time Presence
 
-When multiple users view the same project, avatar circles appear in the project header showing who else is currently viewing. Presence is ephemeral (in-memory on the server) and updates instantly via WebSocket. Avatars show user initials with a tooltip displaying the full username. The current user is filtered out. Up to 5 avatars are shown, with a "+N" overflow indicator for larger teams.
+When multiple users view the same project, avatar circles appear in the project header showing who else is currently viewing. Presence is ephemeral (in-memory on the server) and updates instantly via WebSocket. Avatars show initials with a tooltip showing the person's full name; the presence message carries only user id and name — no usernames or emails (2026-10-12; new sign-ups get made-up usernames such as jane_3fa9c1). The name is looked up once per connection (`WebSocketService.setClientName`). The current user is filtered out. Up to 5 avatars are shown, with a "+N" overflow indicator for larger teams.
 
 ### Email Notifications & Digests
 
@@ -2795,7 +2795,7 @@ Each status column on the Kanban board can have a **Work-In-Progress (WIP) limit
 
 ## 29. Comment @Mentions
 
-When writing a task comment, typing `@` opens an autocomplete dropdown listing project members. Selecting a username inserts the mention token into the comment. When the comment is saved, the `NotificationService` creates an in-app notification for every mentioned user, linking back to the task.
+When writing a task comment, typing `@` opens a dropdown of the people who can be mentioned on the task's project — its members with a login and its creator, still in this company (two with the same name also show their handle) (`GET /api/v1/schedules/:id/mentionable`: user id, full name and handle; no emails; `utils/mentionablePeople.ts`). Choosing a name inserts `@handle` (the username — stable and unique); comments display it as **@Full Name**. On save, each `@handle` is matched against that same list only, and the person gets an in-app notification titled "<author's full name> mentioned you". Until 2026-10-12 handles were looked up across every company's accounts (a mention could notify someone in another company and show them the task's name), and the dropdown offered People without a login under made-up handles that never matched. Comment authors are stored by full name.
 
 ---
 

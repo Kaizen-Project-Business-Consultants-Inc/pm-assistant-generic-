@@ -356,7 +356,7 @@ Additional sections below the card grid:
 
 #### Real-Time Presence
 
-When other users are viewing the same project, their avatar circles appear in the project header next to the action buttons. Each circle shows the user's initials with a tooltip displaying their username. This helps teams coordinate and avoid conflicting edits.
+When other users are viewing the same project, their avatar circles appear in the project header next to the action buttons. Each circle shows the person's initials with a tooltip showing their full name. This helps teams coordinate and avoid conflicting edits.
 
 Presence automatically re-joins after a WebSocket reconnect (e.g., if your connection drops briefly), so you don't need to refresh the page to reappear in the viewer list.
 
@@ -496,7 +496,7 @@ Each task supports up to **20 predecessors**. Set dependencies to define executi
 
 Click on any task to view its activity history, including status changes, reassignments, date modifications, and comments.
 
-**@Mentions in comments** -- When writing a comment, type `@` to open an autocomplete list of project members. Selecting a name inserts the mention. The mentioned user receives an in-app notification linking to that task.
+**@Mentions in comments** -- When writing a comment, type `@` to open a list of the people on this project who have a login (its members and its creator). Pick a name and the mention is added; the comment shows it as **@Their Name**. The person gets an in-app notification ("Jane Doe mentioned you…") linking to the task. Only people on the project can be mentioned.
 
 ### Delay Detection
 

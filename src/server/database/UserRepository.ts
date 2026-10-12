@@ -102,13 +102,6 @@ export class UserRepository extends BaseRepository<User> {
     return rows.length > 0 ? rowToUser(rows[0]) : null;
   }
 
-  async findByUsernames(usernames: string[]): Promise<User[]> {
-    if (usernames.length === 0) return [];
-    const placeholders = usernames.map(() => '?').join(',');
-    const rows = await this.queryRaw(`SELECT * FROM users WHERE username IN (${placeholders})`, usernames);
-    return rows.map(rowToUser);
-  }
-
   async findByEmail(email: string): Promise<User | null> {
     const rows = await this.queryRaw('SELECT * FROM users WHERE email = ?', [email]);
     return rows.length > 0 ? rowToUser(rows[0]) : null;

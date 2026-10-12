@@ -560,8 +560,19 @@ describe('WebSocketService', () => {
       const theirs = clientIn('pmassist_t_two', 'u2');
       WebSocketService.broadcastPresence('demo-sample-webapp', 'pmassist_t_one');
       const sent = JSON.parse(mine.send.mock.calls[0][0]);
-      expect(sent.payload.viewers).toEqual([{ userId: 'u1', username: 'u1' }]);
+      expect(sent.payload.viewers).toEqual([{ userId: 'u1', name: 'Team member' }]); // the name follows; never the username
       expect(theirs.send).not.toHaveBeenCalled();
+    });
+
+    it("presence shows the person's full name once known — no username or email goes to others (2026-10-12)", () => {
+      const mine = clientIn('pmassist_t_one', 'jane_3fa9c1');
+      const watcher = clientIn('pmassist_t_one', 'u2');
+      WebSocketService.setClientName(mine, 'Jane Doe');
+      const last = JSON.parse(watcher.send.mock.calls.at(-1)[0]);
+      expect(last.type).toBe('presence_update');
+      const jane = last.payload.viewers.find((v: any) => v.userId === 'jane_3fa9c1');
+      expect(jane).toEqual({ userId: 'jane_3fa9c1', name: 'Jane Doe' });
+      expect(JSON.stringify(last.payload)).not.toMatch(/username|email|@/);
     });
 
     it('an update with no company in context goes to nobody', () => {

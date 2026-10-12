@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { loginForAssignee } from '../../utils/assigneeLogins';
+import { mentionablePeople, mentionedHandles, inCurrentCompany } from '../../utils/mentionablePeople';
 import { z } from 'zod';
 import { scheduleService, DependencyValidationError, GroupValidationError } from '../../services/ScheduleService';
 import { flowMetricsService } from '../../services/FlowMetricsService';
@@ -665,6 +666,20 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // GET /:scheduleId/mentionable — who can be @mentioned in this project's comments (no emails)
+  fastify.get('/:scheduleId/mentionable', {
+    preHandler: [requireScope('read'), requireProjectAccess('viewer')],
+    schema: { description: 'People who can be @mentioned on this schedule\'s project', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      // the access check already found the schedule's project
+      return { people: await mentionablePeople(request.projectMembership!.projectId) };
+    } catch (error) {
+      logger.error('Get mentionable people error', { error });
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
   // Viewers can comment on tasks assigned to them
   fastify.post('/:scheduleId/tasks/:taskId/comments', {
     preHandler: [viewerWriteBypass()],
@@ -687,56 +702,52 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (typeof text !== 'string' || !text.trim()) {
         return reply.status(400).send({ error: 'Comment text is required' });
       }
-      const comment = await scheduleService.addComment(taskId, text.trim(), user.userId, user.username || 'Project Manager');
+      // people see full names, not usernames (new sign-ups get made-up ones like jane_3fa9c1)
+      const authorName = (await userService.displayNames([user.userId])).get(user.userId) || user.username || 'Project Manager';
+      const comment = await scheduleService.addComment(taskId, text.trim(), user.userId, authorName);
 
-      // Parse @mentions and notify task assignee (fire-and-forget)
-      const mentions = text.match(/@(\w+)/g);
-      const mentionedUserIds = new Set<string>();
-      if (mentions && mentions.length > 0) {
-        (async () => {
-          try {
-            const usernames = [...new Set(mentions.map(m => m.slice(1)))].filter(u => u !== user.username).slice(0, 20);
-            if (usernames.length === 0) return;
-            const [task, mentionedUsers] = await Promise.all([
-              scheduleService.findTaskById(taskId),
-              userService.findByUsernames(usernames),
-            ]);
-            for (const mu of mentionedUsers) mentionedUserIds.add(mu.id);
-            await Promise.all(mentionedUsers.map(mu =>
+      // Notices, after the reply. @mentions: only people on this project in this company — the lookup used
+      // to search every company's accounts. Worked out first, so an assignee who is also mentioned gets
+      // one notice, not two.
+      const handles = mentionedHandles(text).filter(h => h !== user.username);
+      (async () => {
+        try {
+          const task = await scheduleService.findTaskById(taskId);
+          const mentionedUserIds = new Set<string>();
+          if (handles.length > 0) {
+            // requireProjectAccess (through viewerWriteBypass) found the schedule's project
+            const projectId = request.projectMembership!.projectId;
+            const people = await mentionablePeople(projectId);
+            const mentioned = people.filter(p => handles.includes(p.handle) && p.userId !== user.userId);
+            for (const mu of mentioned) mentionedUserIds.add(mu.userId);
+            await Promise.all(mentioned.map(mu =>
               notificationService.create({
-                userId: mu.id,
+                userId: mu.userId,
                 type: 'mention',
-                title: `${user.username} mentioned you`,
-                message: `${user.username} mentioned you in a comment on "${task?.name || 'a task'}"`,
+                title: `${authorName} mentioned you`,
+                message: `${authorName} mentioned you in a comment on "${task?.name || 'a task'}"`,
                 linkType: 'task',
                 linkId: taskId,
               }),
             ));
-          } catch (err) {
-            logger.error('Mention notification error', { error: err });
           }
-        })();
-      }
-
-      // Notify task assignee about the comment (if not the commenter and not already @mentioned)
-      (async () => {
-        try {
-          const task = await scheduleService.findTaskById(taskId);
+          // Tell the task's assignee (not the commenter, not already mentioned, and still in this company)
           // "Assigned to" is a person from Resources: tell their login (none -> nobody to tell)
           const assigneeLogin = task?.assignedTo ? await loginForAssignee(task.assignedTo) : null;
-          if (task && assigneeLogin && assigneeLogin !== user.userId && !mentionedUserIds.has(assigneeLogin)) {
+          if (task && assigneeLogin && assigneeLogin !== user.userId && !mentionedUserIds.has(assigneeLogin)
+            && await inCurrentCompany(assigneeLogin)) {
             await notificationService.create({
               userId: assigneeLogin,
               type: 'task_comment',
               severity: 'low',
               title: 'New comment on your task',
-              message: `${user.username || 'Someone'} commented on "${task.name}"`,
+              message: `${authorName} commented on "${task.name}"`,
               linkType: 'task',
               linkId: taskId,
             });
           }
         } catch (err) {
-          logger.error('Task comment notification error', { error: err });
+          logger.error('Comment notification error', { error: err });
         }
       })();
 

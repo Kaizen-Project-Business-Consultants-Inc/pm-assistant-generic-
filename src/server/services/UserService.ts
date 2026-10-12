@@ -103,10 +103,6 @@ export class UserService {
     return userRepository.findByUsername(username);
   }
 
-  async findByUsernames(usernames: string[]): Promise<User[]> {
-    return userRepository.findByUsernames(usernames);
-  }
-
   async findByEmail(email: string): Promise<User | null> {
     return userRepository.findByEmail(email);
   }
