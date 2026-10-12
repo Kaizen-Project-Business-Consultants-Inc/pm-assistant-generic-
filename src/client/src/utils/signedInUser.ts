@@ -15,7 +15,7 @@ const BRIEF_DRAFT_PREFIX = 'brief-draft-';
  * could be shown the previous person's data (review 2026-10-11). View preferences already reset
  * themselves (useViewPreferences checkOwner).
  */
-export function clearSignedInUserData(queryClient: QueryClient): void {
+function clearSignedInUserData(queryClient: QueryClient): void {
   queryClient.clear();
   useAIChatStore.getState().forgetUser();
   const ui = useUIStore.getState();
