@@ -12,6 +12,7 @@ const MESSAGES: Record<string, string> = {
   cancelled: 'You cancelled at Google. Nothing was changed. Try again, or use your email and password.',
   'account-exists': 'An account with this email already exists. Sign in with Continue with Google or your password.',
   'rate-limited': 'Too many attempts. Please wait a few minutes and try again.',
+  busy: 'Kovarti is busy right now. Please wait a moment and click Continue with Google again.',
   unavailable: 'Signing in with Google is not available right now. Use your email and password, or try again later.',
   'no-account': "There's no Kovarti account for that Google address yet. Create one below — Sign up with Google works too.",
   failed: 'Google did not finish the sign-in. Please try again.',

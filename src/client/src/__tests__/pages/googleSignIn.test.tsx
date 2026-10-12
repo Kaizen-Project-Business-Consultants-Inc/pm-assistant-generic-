@@ -77,6 +77,7 @@ describe('Sign in with Google — screens', () => {
     ['unverified', "Google hasn't confirmed this email address."],
     ['switched-off', 'This account is switched off.'],
     ['expired', 'The sign-in took too long or was opened twice.'],
+    ['busy', 'Kovarti is busy right now.'],
     ['something-new', 'Google did not finish the sign-in.'],
   ])('the sign-in page explains ?google=%s', async (code, text) => {
     show(`/login?google=${code}`);

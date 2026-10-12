@@ -36,13 +36,13 @@ export function sendBusy(reply: FastifyReply) {
 }
 
 /**
- * Log a sign-in check that couldn't finish: a busy database is expected under load (warn); anything
+ * Log a sign-in step that couldn't finish (answered 503, or a "busy" message): a busy database is expected under load (warn); anything
  * else is a bug that the person also sees as "busy", so it must stand out (error).
  */
 export function logBusy(what: string, err: unknown, url?: string): void {
   const meta = { url, message: (err as Error)?.message, stack: isDatabaseUnavailable(err) ? undefined : (err as Error)?.stack };
-  if (isDatabaseUnavailable(err)) logger.warn(`${what} — database busy, answered 503`, meta);
-  else logger.error(`${what} — unexpected error, answered 503`, meta);
+  if (isDatabaseUnavailable(err)) logger.warn(`${what} — database busy, told them to try again`, meta);
+  else logger.error(`${what} — unexpected error, told them to try again`, meta);
 }
 
 /** For the global error handler: answer 503 busy when the database is full or out of reach */

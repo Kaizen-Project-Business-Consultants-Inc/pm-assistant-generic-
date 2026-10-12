@@ -292,6 +292,38 @@ describe('Sign in with Google — routes', () => {
     expect((await callback()).headers.location).toBe('/register?invite=inv&google=no-account');
   });
 
+  it('our database busy on the way back from Google says "busy", not "Google did not finish"', async () => {
+    google();
+    vi.mocked(userIdentityRepository.findUserId).mockRejectedValueOnce(new Error('Queue limit reached.'));
+    expect((await callback()).headers.location).toBe('/login?google=busy');
+    expect(startNewSession).not.toHaveBeenCalled();
+  });
+
+  it('busy while linking a new account: no session, and the invitation is kept for the retry', async () => {
+    google({ mode: 'signup', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
+    vi.mocked(createAccount).mockResolvedValueOnce({ ok: true, user: user({ id: 'u-new' }), invitedTo: 'Acme', checkoutUrl: null, verificationToken: null });
+    vi.mocked(userIdentityRepository.link).mockRejectedValueOnce(new Error('Queue limit reached.'));
+    expect((await callback()).headers.location).toBe('/register?invite=inv&google=busy');
+    expect(startNewSession).not.toHaveBeenCalled();
+  });
+
+  it('busy while joining the inviting company: not signed in half-way', async () => {
+    google({ mode: 'signin', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
+    vi.mocked(userIdentityRepository.findUserId).mockResolvedValueOnce('u1');
+    vi.mocked(inviteService.acceptInvite).mockRejectedValueOnce(new Error('Queue limit reached.'));
+    expect((await callback()).headers.location).toBe('/register?invite=inv&google=busy');
+    expect(startNewSession).not.toHaveBeenCalled();
+  });
+
+  it('busy while linking an existing account: 503, not signed in', async () => {
+    const token = await pendingLinkToken();
+    vi.mocked(userIdentityRepository.link).mockRejectedValueOnce(new Error('Queue limit reached.'));
+    expect((await link(token, 'Right1234!')).statusCode).toBeGreaterThanOrEqual(500);
+    expect(startNewSession).not.toHaveBeenCalled();
+  });
+
   it('a problem at Google comes back as a reason code for the sign-in page', async () => {
     vi.mocked(finishGoogleSignIn).mockRejectedValueOnce(new GoogleSignInError('cancelled', 'x'));
     expect((await callback()).headers.location).toBe('/login?google=cancelled');

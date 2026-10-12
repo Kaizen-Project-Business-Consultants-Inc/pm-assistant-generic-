@@ -20,6 +20,7 @@ import {
   type GoogleIdentity, type GoogleSignInIntent,
 } from '../../utils/googleSignIn';
 import logger from '../../utils/logger';
+import { isDatabaseUnavailable, logBusy } from '../../utils/serviceBusy';
 
 /**
  * Sign in / sign up with Google (2026-10-12, user OK on https://claude.ai/artifact/Lm28VFe8D1RvSwTLULzTzz).
@@ -75,6 +76,8 @@ async function joinInvite(user: User, inviteToken: string | undefined): Promise<
     await inviteService.acceptInvite(inviteToken, user.id);
     return (await userService.findById(user.id)) ?? user;
   } catch (err) {
+    // Database busy: stop before signing in, or they'd be in without joining and never told
+    if (isDatabaseUnavailable(err)) throw err;
     logger.warn('Invitation not accepted after Google sign-in', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
     return user;
   }
@@ -151,7 +154,9 @@ async function completeLink(reply: FastifyReply, pending: PendingLink): Promise<
   const user = await userService.findById(pending.userId);
   if (refusal(user)) return { refused: true };
   await userIdentityRepository.link(pending.userId, PROVIDER, pending.subject, pending.email).catch((err) => {
-    // already linked (e.g. clicked twice): fine; anything else is logged
+    // already linked (e.g. clicked twice): fine. Database busy: stop before signing in (answered
+    // busy; they'd otherwise be in but not linked). Anything else is logged.
+    if (isDatabaseUnavailable(err)) throw err;
     if (!String((err as Error)?.message).includes('Duplicate')) logger.error('Google link failed', { userId: pending.userId, message: (err as Error).message });
   });
   const unproven: Partial<User> = user!.emailVerified ? {} : { emailVerified: true, emailVerificationToken: null, emailVerificationExpires: null, passwordHash: '' } as Partial<User>;
@@ -204,8 +209,10 @@ export async function googleAuthRoutes(fastify: FastifyInstance) {
     const fromThisBrowser = sameBrowser(request);
     reply.clearCookie(STATE_COOKIE, { path: STATE_COOKIE_PATH });
     if (!fromThisBrowser) return reply.redirect(back('expired'));
+    let intent: GoogleSignInIntent | undefined; // kept for the error path: a busy retry keeps the invitation
     try {
-      const { identity, intent } = await finishGoogleSignIn(request.query as { state?: string; code?: string; error?: string });
+      const { identity, intent: pendingIntent } = await finishGoogleSignIn(request.query as { state?: string; code?: string; error?: string });
+      intent = pendingIntent;
       const linkedUserId = await userIdentityRepository.findUserId(PROVIDER, identity.subject);
       const linkedUser = linkedUserId ? await userService.findById(linkedUserId) : null;
       if (intent.inviteToken) {
@@ -237,9 +244,14 @@ export async function googleAuthRoutes(fastify: FastifyInstance) {
       if (intent.mode !== 'signup') {
         return reply.redirect(intent.inviteToken ? backToInvite(intent.inviteToken, 'no-account') : '/register?google=no-account');
       }
-      return signUp(request, reply, identity, intent);
+      return await signUp(request, reply, identity, intent); // awaited, so its errors reach the catch below
     } catch (err) {
       if (err instanceof GoogleSignInError) return reply.redirect(back(err.code));
+      // Our database busy for a moment: say so (not "Google did not finish")
+      if (isDatabaseUnavailable(err)) {
+        logBusy('Google sign-in', err, request.url);
+        return reply.redirect(intent?.inviteToken ? backToInvite(intent.inviteToken, 'busy') : back('busy'));
+      }
       logger.error('Google sign-in failed', { message: err instanceof Error ? err.message : String(err) });
       return reply.redirect(back('failed'));
     }
