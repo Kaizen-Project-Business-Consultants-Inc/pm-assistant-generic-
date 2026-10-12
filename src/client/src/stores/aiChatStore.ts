@@ -189,6 +189,8 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
           queryClient.invalidateQueries({ queryKey: ['tasks'] });
           queryClient.invalidateQueries({ queryKey: ['schedule'] });
           queryClient.invalidateQueries({ queryKey: ['gantt'] });
+          // task changes move the dashboard numbers (progress, overdue, health) too
+          refreshProjectLists(queryClient);
 
           // Find the last created task ID to highlight it
           const createAction = [...result.actions].reverse().find(

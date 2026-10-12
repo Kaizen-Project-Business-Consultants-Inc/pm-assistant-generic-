@@ -7,6 +7,8 @@ import { scheduleService, type CreateTaskData, type Task, DependencyValidationEr
 import { moveSuccessorsAfter } from './followSuccessors';
 import { userService } from './UserService';
 import { auditLedgerService } from './AuditLedgerService';
+import { markPortfolioChanged } from '../utils/portfolioChanges';
+import { getTenantContext } from '../middleware/requestContext';
 import { policyEngineService } from './PolicyEngineService';
 import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
@@ -32,6 +34,17 @@ const AI_WRITE_TOOLS = new Set([
   'create_task', 'update_task', 'delete_task', 'update_project', 'reschedule_task',
   'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies',
 ]);
+
+/**
+ * After a write tool ran (even one that failed half-way — an extra recount is free): the chat
+ * route is not counted as a change (portfolioChanges IGNORE), so without this the dashboard numbers
+ * kept the old portfolio after Mjuzi created or changed work (2026-10-11)
+ */
+function markIfWrite(toolName: string): void {
+  if (!AI_WRITE_TOOLS.has(toolName) && toolName !== 'create_project') return;
+  const tenant = getTenantContext()?.dbName;
+  if (tenant) void markPortfolioChanged(tenant);
+}
 
 /** Tools that read one project's data: the user must be able to see that project */
 const AI_READ_TOOLS = new Set(['get_project_details', 'list_tasks', 'get_dependency_chain']);
@@ -166,6 +179,7 @@ export class AIActionExecutor {
       }
 
       result = limitListResult(result);
+      markIfWrite(toolName);
 
       // Audit log every AI action
       auditLedgerService.append({
@@ -181,6 +195,7 @@ export class AIActionExecutor {
 
       return result;
     } catch (error) {
+      markIfWrite(toolName); // a write that failed half-way may still have saved its first part
       const message = error instanceof Error ? error.message : String(error);
       return { success: false, toolName, summary: `Error executing ${toolName}: ${message}`, error: message };
     }

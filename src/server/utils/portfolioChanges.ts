@@ -16,10 +16,14 @@ const IGNORE = [
   '/api/v1/rag', '/api/v1/feedback', '/api/v1/api-keys', '/api/v1/predictions', '/api/v1/context',
 ];
 
+/** Under an ignored prefix but they do save project work (the chat itself marks its tools' changes: AIActionExecutor) */
+const SAVES_DESPITE_PREFIX = ['/api/v1/ai-chat/create-project', '/api/v1/ai-chat/extract-tasks'];
+
 export function isProjectChange(method: string, url: string, status: number): boolean {
   return method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS'
     && status >= 200 && status < 300
-    && url.startsWith('/api/v1/') && !IGNORE.some((p) => url.startsWith(p));
+    && url.startsWith('/api/v1/')
+    && (SAVES_DESPITE_PREFIX.some((p) => url.startsWith(p)) || !IGNORE.some((p) => url.startsWith(p)));
 }
 
 export async function markPortfolioChanged(tenant: string): Promise<void> {

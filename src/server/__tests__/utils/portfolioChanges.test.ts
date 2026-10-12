@@ -11,6 +11,11 @@ describe('what counts as "a change" for the dashboard numbers', () => {
     expect(isProjectChange('GET', '/api/v1/projects', 200)).toBe(false);
     expect(isProjectChange('PUT', '/api/v1/schedules/s1/tasks/t1', 403)).toBe(false);
   });
+  it('the two chat routes that do save project work count, though chat itself does not', () => {
+    expect(isProjectChange('POST', '/api/v1/ai-chat/create-project', 200)).toBe(true);
+    expect(isProjectChange('POST', '/api/v1/ai-chat/extract-tasks', 200)).toBe(true);
+    expect(isProjectChange('POST', '/api/v1/ai-chat/message', 200)).toBe(false);
+  });
   it('not things that cannot move project numbers (sign-in, chat, notifications, your own settings)', () => {
     expect(isProjectChange('POST', '/api/v1/auth/login', 200)).toBe(false);
     expect(isProjectChange('POST', '/api/v1/ai-chat/message', 200)).toBe(false);
