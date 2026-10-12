@@ -18,6 +18,7 @@ import {
 import type { WeatherForecast } from './dataProviders';
 import { projectService } from './ProjectService';
 import { redisService } from './RedisService';
+import { rateLimiter } from '../middleware/rateLimiter';
 import logger from '../utils/logger';
 // Lateness compares calendar days: a date is not late until the following day.
 // `new Date(dateColumn) < now` was true from midnight UTC — the previous evening
@@ -30,17 +31,11 @@ const DASHBOARD_CACHE_KEY = 'predictions:dashboard';
 // Predictions don't change minute to minute, and every refresh is a paid AI call — the dashboard
 // and Projects pages asked again every 5 minutes (the largest routine AI cost). Refresh button: see below.
 const DASHBOARD_CACHE_TTL = 6 * 60 * 60; // 6 hours
-const DASHBOARD_REFRESH_MIN_S = 10 * 60; // a manual refresh at most every 10 minutes per person
-/** After the AI failed for the panel, don't ask again for this long */
-const DASHBOARD_AI_FAILURE_PAUSE_S = 10 * 60;
+const DASHBOARD_REFRESH_MIN_MS = 10 * 60_000; // the panel's button asks the AI at most every 10 minutes per person
 // "Just when a change is made" (user, Sep 2026): the numbers (rules only, free) are kept until something
-// in the organisation changes; the AI highlights are re-asked only when the numbers came out different,
-// once editing has been quiet for 2 minutes, so moving 20 tasks in a row costs one AI call, not 20.
+// in the organisation changes. The AI highlights are written only when the person asks (the panel's
+// button) — "AI only when asked" (user, 2026-10-11); before, the panel asked by itself after edits.
 const DASHBOARD_NUMBERS_TTL = 24 * 60 * 60; // kept until a change (a day at most)
-const DASHBOARD_AI_QUIET_S = 2 * 60;
-/** Highlights younger than this are kept even after the numbers change; Refresh still asks (audit 2026-10-10 M1:
- * with edits spaced just over the quiet time, each open dashboard re-asked about 20 times an hour) */
-const DASHBOARD_AI_MIN_AGE_S = 60 * 60;
 
 /** What the AI highlights were based on — if this hasn't changed, the old highlights still apply */
 function dashboardFingerprint(p: AIDashboardPredictions): string {
@@ -718,13 +713,14 @@ export class PredictiveIntelligenceService {
     userId?: string,
     userRole?: string,
     opts: { refresh?: boolean; ai?: boolean } = {},
-  ): Promise<{ predictions: AIDashboardPredictions; aiPowered: boolean; generatedAt?: string }> {
-    const cacheKey = `${DASHBOARD_CACHE_KEY}:${userId || 'anon'}`;
+  ): Promise<{ predictions: AIDashboardPredictions; aiPowered: boolean; generatedAt?: string; aiOutOfDate?: boolean; aiRequested?: boolean }> {
+    // per company too: an admin's support visits to two companies must not share one person's cache
+    const tenant = getTenantContext()?.dbName ?? 'none';
+    const cacheKey = `${DASHBOARD_CACHE_KEY}:${tenant}:${userId || 'anon'}`;
     const aiKey = `${cacheKey}:ai`;
 
     // 1. The numbers (health scores, risk counts, budget) — rules only, free: recalculated after a change
-    const tenant = getTenantContext()?.dbName ?? 'none';
-    const { version, changedAt } = await portfolioVersion(tenant);
+    const { version } = await portfolioVersion(tenant);
     const numbersKey = `${cacheKey}:v${version}`;
     let numbers: { predictions: AIDashboardPredictions; generatedAt: string } | null = null;
     try {
@@ -743,51 +739,30 @@ export class PredictiveIntelligenceService {
       return { predictions: numbers.predictions, aiPowered: false, generatedAt: numbers.generatedAt };
     }
 
-    // 2. AI highlights: reuse them while nothing has changed; re-ask at most every 5 minutes
+    // 2. AI highlights: the last ones written, and a new set only when the person asked (Refresh)
     let ai: { highlights: AIDashboardPredictions['highlights']; weather: AIDashboardPredictions['weather']; fingerprint: string; generatedAt: string } | null = null;
     try {
       const cached = await redisService.get(aiKey);
       if (cached) ai = JSON.parse(cached);
     } catch { /* none yet */ }
     const fingerprint = dashboardFingerprint(numbers.predictions);
-    const unchanged = !!ai && ai.fingerprint === fingerprint;
-    // Still editing? Wait until it's been quiet for 2 minutes, then ask once
-    const settling = Date.now() - changedAt < DASHBOARD_AI_QUIET_S * 1000;
-    const recent = !!ai && Date.now() - Date.parse(ai.generatedAt) < DASHBOARD_AI_MIN_AGE_S * 1000;
-    let forced = false;
-    if (opts.refresh && userId) {
-      // "Refresh" asks now, but not more than once every 10 minutes
-      const throttleKey = `${DASHBOARD_CACHE_KEY}:refresh:${userId}`;
-      if (!(await redisService.get(throttleKey))) {
-        forced = true;
-        await redisService.set(throttleKey, '1', DASHBOARD_REFRESH_MIN_S);
-      }
-    }
-    // After a failed ask, wait 10 minutes before asking again — a failure left no AI answer, so
-    // the panel asked again every minute for as long as the AI was down (2026-10-04 audit)
-    const failedKey = `${cacheKey}:failed`;
-    const pausedAfterFailure = !forced && !!(await redisService.get(failedKey).catch(() => null));
-    if (!pausedAfterFailure && (forced || (!unchanged && !settling && !recent))) {
-      // One AI call per person at a time (the panel and the page can ask together)
-      const inflightKey = `${cacheKey}:inflight`;
-      const busy = await redisService.get(inflightKey).catch(() => null);
-      if (!busy) {
-        await redisService.set(inflightKey, '1', 120).catch(() => {});
-        computed ??= await this.computeDashboardNumbers(userId, userRole);
-        this.enrichDashboardWithAI(aiKey, computed.portfolio, computed.fallbackPredictions, computed.weatherOverview, userId, fingerprint)
-          .catch((err) => {
-            logger.warn('Background AI dashboard enrichment failed: ' + String(err));
-            redisService.set(failedKey, '1', DASHBOARD_AI_FAILURE_PAUSE_S).catch(() => {});
-          })
-          .finally(() => { redisService.del(inflightKey).catch(() => {}); });
-      }
+    // In memory, not Redis: with Redis down every click would otherwise be a new paid call
+    const aiRequested = !!opts.refresh && !!userId
+      && rateLimiter.check(`dashboard-ai:${tenant}:${userId}`, 1, DASHBOARD_REFRESH_MIN_MS).allowed;
+    if (aiRequested) {
+      computed ??= await this.computeDashboardNumbers(userId, userRole);
+      this.enrichDashboardWithAI(aiKey, computed.portfolio, computed.fallbackPredictions, computed.weatherOverview, userId, fingerprint)
+        .catch((err) => logger.warn('Background AI dashboard enrichment failed: ' + String(err)));
     }
 
-    if (!ai) return { predictions: numbers.predictions, aiPowered: false, generatedAt: numbers.generatedAt };
+    if (!ai) return { predictions: numbers.predictions, aiPowered: false, generatedAt: numbers.generatedAt, aiRequested };
     return {
       predictions: { ...numbers.predictions, highlights: ai.highlights, weather: ai.weather },
       aiPowered: true,
       generatedAt: ai.generatedAt,
+      // the numbers moved since these highlights were written: the panel says so and offers Refresh
+      aiOutOfDate: ai.fingerprint !== fingerprint,
+      aiRequested,
     };
   }
 

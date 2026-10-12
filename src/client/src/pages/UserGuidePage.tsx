@@ -79,6 +79,7 @@ const sections: Section[] = [
       'Start the day with what needs you, project by project.',
     items: [
       'The Morning Briefing on the dashboard groups everything by project',
+      'Portfolio Intelligence on the dashboard: health, risks and budget always up to date; on AI plans, click Get AI highlights for an AI summary — it never runs by itself',
       '"Team follow-up": late and stalled work on projects you manage, with who owns it',
       '"Yours to do": your own tasks and RAID items for the next two weeks',
       'Overdue actions — meeting actions included — come from the RAID log and open it in one click',

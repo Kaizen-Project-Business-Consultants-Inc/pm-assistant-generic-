@@ -101,8 +101,9 @@ export class AiApi extends ApiBase {
   // -------------------------------------------------------------------------
 
   /**
-   * Portfolio numbers (rules, refreshed every 5 minutes). `ai`: also the AI highlights — only the
-   * Portfolio Intelligence panel asks. `refresh`: new AI highlights now (at most every 10 minutes).
+   * The dashboard numbers (rules, no AI; recalculated after a change). `ai`: also the AI highlights
+   * already written — only the Portfolio Intelligence panel, and it never asks the AI by itself.
+   * `refresh` + `ai`: the panel's button — asks the AI now (at most every 10 minutes).
    */
   async getDashboardPredictions(refresh = false, ai = false) {
     const params: Record<string, string> = {};

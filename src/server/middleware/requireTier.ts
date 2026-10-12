@@ -1,6 +1,8 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { userService } from '../services/UserService';
 import { pricingConfigService } from '../services/PricingConfigService';
+import { organizationRepository } from '../database/OrganizationRepository';
+import { planTierFor } from '../utils/planTier';
 import { createError } from '@fastify/error';
 import type { FeatureKey } from '../constants/planFeatures';
 
@@ -33,13 +35,17 @@ export function requireTier(...allowedTiers: string[]) {
 
 /** Whether the caller's plan has a feature: 'ok', 'off' (not on their plan) or 'auth' (no such user) */
 async function featureAccess(request: FastifyRequest, featureKey: FeatureKey): Promise<'ok' | 'off' | 'auth'> {
-  if (request.user?.role === 'admin') return 'ok';
-  if (request.user?.role === 'viewer') return 'ok';
+  const role = request.user?.role;
+  if (role === 'admin') return 'ok';
   const userId = request.user?.userId;
   if (!userId) return 'auth';
   const user = await userService.findById(userId);
   if (!user) return 'auth';
-  return (await pricingConfigService.isFeatureEnabled(user.subscriptionTier, featureKey)) ? 'ok' : 'off';
+  // a viewer by the company's plan, as the AI budget check does (viewers used to pass every gate,
+  // so a screen showed a button whose call the budget check then refused)
+  const company = role === 'viewer' ? await organizationRepository.findByUserId(userId) : null;
+  const tier = planTierFor(role ?? '', user.subscriptionTier, company?.subscriptionTier);
+  return (await pricingConfigService.isFeatureEnabled(tier, featureKey)) ? 'ok' : 'off';
 }
 
 /**

@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { timeAgo } from '../../utils/timeAgo';
 import { Shield, DollarSign, TrendingUp, RefreshCw, MessageSquare } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
+import { useAuthStore } from '../../stores/authStore';
 
 function SkeletonBanner() {
   return (
@@ -57,21 +58,36 @@ function getStatusDot(score: number): string {
 export function AISummaryBanner() {
   const { prefs } = useAccessibility();
   const queryClient = useQueryClient();
+  const inSupportVisit = useAuthStore(s => !!s.user?.supportSession);
   const [refreshing, setRefreshing] = useState(false);
-  // Predictions are kept for a few hours (each new one is a paid AI call); this asks for new ones now
+  const [refreshNote, setRefreshNote] = useState<string | null>(null);
+  const pickUpTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (pickUpTimer.current) clearTimeout(pickUpTimer.current); }, []);
+  // The AI writes highlights only when this is clicked (user rule: AI only when asked) — a paid call
   const refreshPredictions = async () => {
     setRefreshing(true);
+    setRefreshNote(null);
     try {
-      await apiService.getDashboardPredictions(true, true);
-      // New highlights are written in the background; pick them up shortly
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ['dashboard-predictions', 'ai'] }), 20_000);
+      const res = await apiService.getDashboardPredictions(true, true);
+      if (res?.aiRequested) {
+        setRefreshNote('Writing new highlights — they appear here in a few seconds. If nothing appears, try again in 10 minutes.');
+        // written in the background; pick them up shortly
+        pickUpTimer.current = setTimeout(() => {
+          void queryClient.invalidateQueries({ queryKey: ['dashboard-predictions', 'ai'] });
+          setRefreshNote(null);
+        }, 20_000);
+      } else {
+        setRefreshNote('Highlights were asked for in the last 10 minutes — try again a little later.');
+      }
+    } catch {
+      setRefreshNote('The highlights could not be refreshed. Try again later.');
     } finally { setRefreshing(false); }
   };
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-predictions', 'ai'],
     queryFn: () => apiService.getDashboardPredictions(false, true),
     staleTime: 60000,
-    refetchInterval: 60_000, // cheap: AI is only asked after a change, once editing has settled
+    refetchInterval: 60_000, // cheap: the numbers only — the AI is asked only by the button below
   });
 
   const { data: narrativeData, isLoading: narrativeLoading, refetch: refetchNarrative } = useQuery({
@@ -90,6 +106,8 @@ export function AISummaryBanner() {
   }
 
   const pred = data.data;
+  // plans without AI, and the read-only support view, get the numbers without the AI part
+  const canAskAI = !!data.aiAvailable && !inSupportVisit;
 
   // Adapt to actual API shape
   const risks = pred.risks || { critical: 0, high: 0, medium: 0, low: 0 };
@@ -112,16 +130,18 @@ export function AISummaryBanner() {
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Portfolio Intelligence</h2>
         <span className="ml-auto flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
           {data.generatedAt && <span>Updated {timeAgo(data.generatedAt)}</span>}
-          <button
-            type="button"
-            onClick={refreshPredictions}
-            disabled={refreshing}
-            className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-            title="Work out new predictions now (uses AI)"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
+          {canAskAI && (
+            <button
+              type="button"
+              onClick={refreshPredictions}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1 rounded-md border border-gray-300 dark:border-gray-600 px-2 py-1 font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+              title="Ask the AI for new highlights now (uses AI)"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin motion-reduce:animate-none' : ''}`} aria-hidden="true" />
+              {refreshing ? 'Asking…' : data.aiPowered ? 'Refresh AI highlights' : 'Get AI highlights'}
+            </button>
+          )}
         </span>
       </div>
 
@@ -211,6 +231,16 @@ export function AISummaryBanner() {
           </div>
         </div>
       </div>
+
+      {/* always there, so screen readers announce the text when it changes */}
+      <div role="status" aria-live="polite" className={refreshNote ? 'mt-3 text-xs text-gray-600 dark:text-gray-300' : 'sr-only'}>
+        {refreshNote}
+      </div>
+      {canAskAI && data.aiOutOfDate && !refreshNote && (
+        <p className="mt-3 text-xs text-amber-700 dark:text-amber-400">
+          Your projects have changed since these highlights were written — click Refresh AI highlights to update them.
+        </p>
+      )}
 
       {/* Summary + Highlights */}
       {(summary || highlights.length > 0) && (

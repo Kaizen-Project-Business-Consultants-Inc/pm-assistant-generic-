@@ -178,11 +178,6 @@
       "count": 2
     }
   },
-  "src/client/src/components/dashboard/AISummaryBanner.tsx": {
-    "@typescript-eslint/no-misused-promises": {
-      "count": 1
-    }
-  },
   "src/client/src/components/dashboard/widgets/BudgetWatchWidget.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1

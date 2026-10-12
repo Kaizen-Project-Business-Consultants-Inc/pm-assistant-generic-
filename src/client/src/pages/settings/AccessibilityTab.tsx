@@ -136,7 +136,7 @@ export const AccessibilityTab: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <p id="label-narration" className="text-sm font-medium text-gray-900 dark:text-gray-100">Enable Dashboard Narratives</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Show AI-generated plain-language summaries on dashboards</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Show an AI-written plain-language summary on the dashboard. When on, it uses AI each time the dashboard opens (counts towards your AI allowance).</p>
           </div>
           <button
             type="button"
