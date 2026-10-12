@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { apiService } from '../services/api';
-import { queryClient } from '../main';
+import { queryClient } from '../queryClient';
 import { announce } from '../utils/announce';
 import { refreshProjectLists } from '../utils/projectListCache';
 
@@ -57,6 +57,8 @@ interface AIChatState {
   setError: (error: string | null) => void;
   setConversationId: (id: string | null) => void;
   clearChat: () => void;
+  /** Sign-out or a different person signing in: drop the chat and the conversation list */
+  forgetUser: () => void;
   sendMessage: (
     userMessage: string,
     context?: { type: string; projectId?: string },
@@ -73,6 +75,9 @@ const WELCOME_MESSAGE: ChatMessage = {
   content: "Hi! I'm Mjuzi, your AI project assistant. I remember our past conversations and can help you manage projects, analyze risks, and take action. What can I help with?",
   timestamp: new Date().toISOString(),
 };
+
+/** Bumped by forgetUser: a reply or load still on its way for the previous person is then dropped */
+let userGeneration = 0;
 
 export const useAIChatStore = create<AIChatState>()((set, get) => ({
   messages: [WELCOME_MESSAGE],
@@ -124,8 +129,21 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
     isLoading: false,
   }),
 
+  forgetUser: () => {
+    userGeneration++;
+    set({
+      messages: [WELCOME_MESSAGE],
+      conversationId: null,
+      error: null,
+      isLoading: false,
+      conversations: [],
+      conversationsLoaded: false,
+    });
+  },
+
   sendMessage: async (userMessage, context) => {
     const { addMessage, updateLastAssistantMessage, setLoading, setError, setConversationId, conversationId } = get();
+    const generation = userGeneration;
 
     setLoading(true);
 
@@ -141,6 +159,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
         conversationId: conversationId || undefined,
         context,
       });
+      if (generation !== userGeneration) return; // signed out meanwhile
 
       // Update the placeholder with the real response
       set((state) => ({
@@ -208,6 +227,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
       announce('AI response received');
       setLoading(false);
     } catch (error) {
+      if (generation !== userGeneration) return;
       const errData = error && typeof error === 'object' && 'response' in error
         ? (error as { response?: { data?: { code?: string; resetDate?: string } } }).response?.data
         : undefined;
@@ -236,8 +256,10 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
   },
 
   loadConversations: async () => {
+    const generation = userGeneration;
     try {
       const data = await apiService.getConversations();
+      if (generation !== userGeneration) return;
       set({ conversations: data.conversations || [], conversationsLoaded: true });
     } catch {
       // Non-critical
@@ -245,8 +267,10 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
   },
 
   loadConversation: async (id: string) => {
+    const generation = userGeneration;
     try {
       const data = await apiService.getConversation(id);
+      if (generation !== userGeneration) return;
       if (data.conversation) {
         const conv = data.conversation;
         const messages: ChatMessage[] = (conv.messages || []).map((m: any, idx: number) => ({
@@ -263,6 +287,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
         });
       }
     } catch {
+      if (generation !== userGeneration) return;
       set({ error: 'Failed to load conversation' });
     }
   },

@@ -7,6 +7,7 @@ import { renderMarkdown } from '../../utils/renderMarkdown';
 import { announce } from '../../utils/announce';
 import { analyzeReadingLevel } from '../../utils/readingLevel';
 import { sendWsMessage, useConnectionState } from '../../hooks/useWebSocket';
+import { useAuthStore } from '../../stores/authStore';
 import { PresenceIndicator } from '../presence/PresenceIndicator';
 import { ReadingLevelBadge } from '../accessibility/ReadingLevelBadge';
 
@@ -102,6 +103,10 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   // F4: Unmount flush — persist draft to sessionStorage, attempt save
   useEffect(() => {
     return () => {
+      // the 2-second draft checkpoint must not fire after the card is gone (or after a sign-out cleared it)
+      if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
+      // closed by a sign-out: nobody to save it for, and the next person must not be offered it
+      if (!useAuthStore.getState().user) return;
       if (draftRef.current !== descriptionRef.current) {
         sessionStorage.setItem(STORAGE_KEY, draftRef.current);
         const payload: Record<string, string> = { description: draftRef.current };

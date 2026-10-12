@@ -53,6 +53,12 @@ const PRESENCE_EVENT = 'ws:presence_update';
 const presenceMap = new Map<string, { userId: string; username: string }[]>();
 const editorsMap = new Map<string, { userId: string; username: string; field: string }[]>();
 
+/** Sign-out: forget who was viewing/editing the previous person's projects */
+export function resetPresence(): void {
+  presenceMap.clear();
+  editorsMap.clear();
+}
+
 export function getPresenceViewers(projectId: string): { userId: string; username: string }[] {
   return presenceMap.get(projectId) || [];
 }
@@ -297,7 +303,13 @@ export function useWebSocket() {
       }
       connectFn = null;
       if (wsRef.current) {
+        // closed on purpose (sign-out, page gone): no reconnect — it used to keep retrying and
+        // join as the next person beside the new socket
+        wsRef.current.onclose = null;
         wsRef.current.close();
+        if (globalWs === wsRef.current) globalWs = null;
+        wsRef.current = null;
+        setConnectionState('disconnected');
       }
     };
   }, [queryClient]);

@@ -1,9 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App';
 import { setServiceWorkerRegistration, startAppUpdateChecks } from './utils/appUpdate';
+import { queryClient } from './queryClient';
+import { watchSignedInUser } from './utils/signedInUser';
 
 // Notice new deploys in open tabs (see utils/appUpdate.ts) — independent of the service worker
 startAppUpdateChecks();
@@ -25,25 +27,8 @@ registerSW({
   },
 });
 
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 10,
-      gcTime: 1000 * 60 * 15,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-      refetchOnReconnect: true,
-      retry: (failureCount, error: unknown) => {
-        const axiosError = error as { response?: { status?: number } };
-        // 401: signed out; 429: the server asked us to slow down — retrying only uses up the allowance
-        if (axiosError?.response?.status === 401 || axiosError?.response?.status === 429) {
-          return false;
-        }
-        return failureCount < 2;
-      },
-    },
-  },
-});
+// Everything cached belongs to the signed-in person: dropped when they sign out or someone else signs in
+watchSignedInUser(queryClient);
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

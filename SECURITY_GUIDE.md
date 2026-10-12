@@ -378,6 +378,17 @@ Cookies are registered via `@fastify/cookie`:
 - `secure` ensures cookies are only sent over HTTPS in production.
 - `sameSite: 'lax'` mitigates CSRF while allowing top-level navigations.
 
+### Sign-out clears the browser's copy (Oct 2026)
+
+Sign-out does not reload the page, and the client caches data for 10 minutes without refetching. So when the signed-in person changes, the client drops everything it holds for them: the query cache, the Mjuzi chat, conversations and project context, notifications, who-is-viewing lists and unsaved brief drafts (`src/client/src/utils/signedInUser.ts`, registered in `main.tsx`). This covers sign-out, another person signing in on the same tab, the same person in another company (invite, support visit), and another tab: a sign-out there signs this tab out, and someone else signing in there is taken on here.
+
+The pieces that make it work:
+- A Mjuzi reply or conversation load that arrives after sign-out is dropped.
+- A brief card closed by a sign-out keeps no draft.
+- The live-update socket does not reconnect after a deliberate close.
+
+Keep the query client in `src/client/src/queryClient.ts` and the watcher in place. Removing either brings back the leak: user B shown user A's projects.
+
 ---
 
 ## 10. Input Validation

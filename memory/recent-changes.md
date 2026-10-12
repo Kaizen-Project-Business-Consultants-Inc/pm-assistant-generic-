@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-11 — Sign-out clears the browser's copy (branch fix/logout-clears-cache)
+- Found by review of the project-list fix: sign-out kept the tab and the query cache (10 min, no refetch on mount), so the next person signing in on that tab could be shown the previous person's projects/dashboard; Mjuzi conversations and notifications stayed too.
+- `queryClient` moved to `src/client/src/queryClient.ts` (aiChatStore imported it from main.tsx). `utils/signedInUser.ts` `watchSignedInUser` clears the query cache, Mjuzi chat/conversations/context (`forgetUser`), notifications, presence maps (`resetPresence`) and `brief-draft-*` when the person or their company/support visit changes, and follows another tab (storage event): a sign-out there signs this tab out, someone else signing in there is taken on here (signing out would write null back and knock them out).
+- Late Mjuzi replies/loads after sign-out are dropped (`userGeneration`); the brief card keeps no draft when closed by a sign-out and its 2-s checkpoint timer is cleared on unmount; the socket no longer reconnects after a deliberate close (it used to retry and join as the next person).
+- Tests: `__tests__/utils/signedInUser.test.ts` (7). SECURITY_GUIDE §9 "Sign-out clears the browser's copy".
+
 ## 2026-10-11 — Project lists refresh after archive/unarchive (branch fix/project-list-refresh)
 - Bug (user, staging): archived projects stayed on the dashboard and unarchived ones never came back. The server was right; Archive refreshed only the Projects page list, and the app never refetches on mount (`main.tsx` refetchOnMount:false), so a stale list was never replaced.
 - `utils/projectListCache.ts` `refreshProjectLists(queryClient)`: refetches the project lists on screen and drops the off-screen ones (projects, pm-projects, pm-all-projects, favourite-projects, portfolio, dashboard-predictions, analytics-summary). Used by archive/unarchive, create (template picker, onboarding), edit, delete, status change (project page + dashboard Start), sample load/remove, intake → project, client rename/delete, Mjuzi create/update project.

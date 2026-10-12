@@ -17,7 +17,7 @@ export const PROJECT_LIST_KEYS = [
 /**
  * After a project is created, renamed, archived, unarchived, deleted or changes status: the lists
  * on screen fetch again, and the ones on other pages are dropped so they load fresh when opened.
- * Marking them stale is not enough — the app never refetches on mount (main.tsx), so an archived
+ * Marking them stale is not enough — the app never refetches on mount (queryClient.ts), so an archived
  * project stayed on the dashboard and an unarchived one never came back (2026-10-11).
  */
 export function refreshProjectLists(queryClient: QueryClient): void {
