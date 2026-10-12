@@ -3061,7 +3061,7 @@ The generated XML includes:
 - **Resources** — extracted from the `assignedTo` field of all tasks, deduplicated.
 - **Assignments** — task-to-resource mappings linking each task to its assigned resource.
 
-**Dependency mapping:** FS = type 1, FF = type 0, SS = type 2, SF = type 3. Lag is expressed in tenths-of-minutes.
+**Dependency mapping (Microsoft's schema):** FF = type 0, FS = type 1, SF = type 2, SS = type 3 (`utils/mspdiLinks.ts`, shared with the import's reading by a round-trip test). Until 2026-10-12 the export wrote SS as 2 and SF as 3, so start-to-start links opened in MS Project as start-to-finish and the other way round; files exported before then should be exported again. Lag is expressed in tenths-of-minutes.
 
 **Client access:** The API client exposes `exportProjectXML(projectId)`. On the **Project Detail** page, an **"Export XML"** button appears in the same action row as Export CSV and Export PDF.
 
