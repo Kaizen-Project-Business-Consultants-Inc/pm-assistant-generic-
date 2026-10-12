@@ -66,7 +66,7 @@ The prelaunch countdown is now **opt-in** via `--prelaunch` flag. Without it, th
 ### 2. Verify Production
 
 - [ ] Visit https://kovarti.com — should show the live landing page (not countdown)
-- [ ] Click "Get Started" — should go to /register
+- [ ] Click "Start your free 7-day trial" — should scroll to the pricing cards; "See how it compares" opens /compare/ms-project
 - [ ] Register a new account — verify email arrives, login works
 - [ ] Visit /pricing — verify all tier cards show, subscribe buttons work
 - [ ] Start a checkout — verify Stripe opens in **live mode** (no test banner)

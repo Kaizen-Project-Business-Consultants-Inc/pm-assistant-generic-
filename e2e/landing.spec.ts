@@ -8,17 +8,17 @@ test.describe('Landing Page', () => {
   });
 
   test('renders hero section with CTA buttons', async ({ page }) => {
-    // Use level:1 to disambiguate from the h2 "Everything you need to manage projects"
-    await expect(page.getByRole('heading', { level: 1, name: /Manage projects/i })).toBeVisible();
-    await expect(page.getByText('smarter with AI')).toBeVisible();
+    // the headline names the buyer and the alternative (user OK 2026-10-12)
+    await expect(page.getByRole('heading', { level: 1, name: /Real schedules/i })).toBeVisible();
+    await expect(page.getByText(/Without the MS.Project weight/)).toBeVisible();
 
     // Primary CTA
-    await expect(page.getByRole('link', { name: /Get Started/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /Start your free 7-day trial/i }).first()).toBeVisible();
 
-    // Secondary CTA links to proof section
-    const secondaryCta = page.getByRole('link', { name: /See how it works/i });
+    // Secondary CTA goes to the honest comparison page
+    const secondaryCta = page.getByRole('link', { name: /See how it compares/i });
     await expect(secondaryCta).toBeVisible();
-    await expect(secondaryCta).toHaveAttribute('href', '#see-it-work');
+    await expect(secondaryCta).toHaveAttribute('href', '/compare/ms-project');
   });
 
   test('hero mockup is visible on all screen sizes', async ({ page }) => {
@@ -127,13 +127,10 @@ test.describe('Landing Page', () => {
     await expect(page.getByRole('link', { name: /Sign In/i })).toBeVisible();
   });
 
-  test('hero secondary CTA scrolls to proof section', async ({ page }) => {
-    const link = page.getByRole('link', { name: /See how it works/i });
-    await link.click();
-
-    // Should scroll to the proof section
-    await page.waitForTimeout(500);
-    const proofSection = page.locator('#see-it-work');
-    await expect(proofSection).toBeInViewport();
+  test('hero secondary CTA opens the comparison page', async ({ page }) => {
+    await page.getByRole('link', { name: /See how it compares/i }).click();
+    await expect(page).toHaveURL(/\/compare\/ms-project$/);
+    await expect(page.getByRole('heading', { level: 1, name: /Microsoft Project depth/i })).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible();
   });
 });

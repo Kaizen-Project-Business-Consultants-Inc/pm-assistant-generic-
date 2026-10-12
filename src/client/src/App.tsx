@@ -30,6 +30,7 @@ const UserGuidePublicPage = lazy(() => import('./pages/UserGuidePublicPage').the
 const RoadmapPage = lazy(() => import('./pages/RoadmapPage').then(m => ({ default: m.RoadmapPage })));
 const FeaturesPage = lazy(() => import('./pages/FeaturesPage').then(m => ({ default: m.FeaturesPage })));
 const AboutPage = lazy(() => import('./pages/AboutPage').then(m => ({ default: m.AboutPage })));
+const CompareMsProjectPage = lazy(() => import('./pages/CompareMsProjectPage').then(m => ({ default: m.CompareMsProjectPage })));
 const PrelaunchLandingPage = lazy(() => import('./pages/PrelaunchLandingPage').then(m => ({ default: m.PrelaunchLandingPage })));
 const PortalViewPage = lazy(() => import('./pages/PortalViewPage'));
 const DashboardPM = lazy(() => import('./pages/DashboardPM').then(m => ({ default: m.DashboardPM })));
@@ -184,6 +185,7 @@ function App() {
         <Route path={ROUTES.roadmap} element={<RoadmapPage />} />
         <Route path={ROUTES.features} element={<FeaturesPage />} />
         <Route path={ROUTES.about} element={<AboutPage />} />
+        <Route path={ROUTES.compareMsProject} element={<CompareMsProjectPage />} />
         <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
         <Route path={ROUTES.changePassword} element={isAuthenticated ? <ChangePasswordPage /> : <Navigate to={ROUTES.login} replace />} />

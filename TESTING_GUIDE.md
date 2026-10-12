@@ -1550,6 +1550,17 @@ Made faster on 2026-10-08 (limits lowered to 3× the new times): the workload he
 
 If it fails: load the new code only where it's needed (`lazy()` / `await import()`, as the PDF and Excel readers do). Raising a limit needs the user's OK.
 
+## Comparison page and home hero (Oct 2026)
+
+`/compare/ms-project` and the home hero ("Real schedules. Without the MS Project weight.").
+- Unit: `src/client/src/__tests__/pages/compareMsProjectPage.test.tsx`. It checks:
+  - one h1 and a dated table with column and row headers
+  - our price comes from the pricing settings, as the yearly price ÷ 12, beside the others' billed-yearly prices; with the settings down, no price is shown
+  - no "[check]" left; no "Not built in" claims about other products
+  - the page is in the sitemap
+- E2E: `e2e/landing.spec.ts` checks the hero copy and that "See how it compares" opens the page.
+- By hand, every quarter: re-check each Microsoft Project / Asana cell on microsoft.com and asana.com, then update `CHECKED_ON`. A claim you can't find there says "Not listed on its plan page".
+
 ## Production smoke tests (Oct 2026)
 
 `SMOKE_CREDENTIALS=path/to/prod-smoke-account.json npx playwright test -c playwright.prod.config.ts` — 10 read-only page checks on kovarti.com. The login comes from the same credentials file as `scripts/prod-smoke.cjs` (kept outside the repository); the checks reuse the session the setup step saves. Staging tests use the QA logins (qa.pm / qa.team / qa.outsider @pm.kpbc.ca, see `e2e/staging-helpers.ts`).

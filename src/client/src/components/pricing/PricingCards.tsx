@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, X, Zap, Shield, Star, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { usePricingConfig } from '../../hooks/useFromPrice';
 import { useAuthStore } from '../../stores/authStore';
 import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
@@ -217,12 +218,7 @@ export const PricingCards: React.FC<PricingCardsProps> = ({ mode, forceDark }) =
   const ownerPaysOnly = useOwnerPaysOnly();
   const dk = forceDark; // shorthand
 
-  const { data: pricingData } = useQuery({
-    queryKey: ['pricing-config'],
-    queryFn: () => apiService.getPricingConfig(),
-    staleTime: 5 * 60 * 1000,
-    retry: 1,
-  });
+  const { data: pricingData } = usePricingConfig();
 
   const { data: stripeConfig } = useQuery({
     queryKey: ['stripe-config'],

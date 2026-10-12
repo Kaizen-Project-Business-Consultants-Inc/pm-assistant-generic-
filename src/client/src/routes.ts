@@ -21,6 +21,8 @@ export const ROUTES = {
   roadmap: '/roadmap',
   features: '/features',
   about: '/about',
+  /** Kovarti vs Microsoft Project vs Asana (public, Oct 2026) */
+  compareMsProject: '/compare/ms-project',
   waitlistAdmin: '/waitlist-admin',
   changePassword: '/change-password',
   onboarding: '/onboarding',
