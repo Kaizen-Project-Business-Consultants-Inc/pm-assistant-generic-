@@ -1,6 +1,7 @@
 import { aiBudgetRepository } from '../database/AIBudgetRepository';
 import { tokenTopUpRepository } from '../database/TokenTopUpRepository';
 import { organizationRepository } from '../database/OrganizationRepository';
+import { planTierFor } from '../utils/planTier';
 import { config, getTierBudget } from '../config';
 import { pricingConfigService } from './PricingConfigService';
 import { notificationService } from './NotificationService';
@@ -141,7 +142,7 @@ class AIBudgetService {
 
   private async assertPlanAllowsAI(who: { role: string; tier: string } | null, org: OrgRow): Promise<void> {
     if (!who || who.role === 'admin') return; // unknown ids fall to the budget check; Kovarti admin isn't on a plan
-    const tier = who.role === 'viewer' && org?.subscriptionTier ? org.subscriptionTier : who.tier;
+    const tier = planTierFor(who.role, who.tier, org?.subscriptionTier);
     if (!(await pricingConfigService.isFeatureEnabled(tier, 'ai_assistant'))) {
       throw new AIPlanRequiredError();
     }

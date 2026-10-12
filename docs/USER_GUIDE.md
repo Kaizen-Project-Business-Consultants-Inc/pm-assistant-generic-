@@ -1915,7 +1915,7 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 
 ### AI Summary Banner
 
-On the dashboard, the **Portfolio Intelligence** banner provides an AI-generated portfolio health summary, risk breakdown, budget status, and key insights. An optional AI narrative section (toggleable via accessibility settings) provides a plain-language summary tailored to your context.
+On the dashboard, the **Portfolio Intelligence** banner shows your portfolio health, risk breakdown, budget status and key insights. These numbers are worked out without AI and stay up to date. On plans with AI, click **Get AI highlights** (later **Refresh AI highlights**) to have the AI write highlights; it never does so by itself. If your projects change afterwards, the banner tells you, and you can refresh them again (at most every 10 minutes). An optional AI narrative section (toggleable via accessibility settings) provides a plain-language summary tailored to your context.
 
 ### Auto-Reschedule
 
@@ -2644,7 +2644,7 @@ Open **Settings → Accessibility** to configure:
 - **Font Size** (75%–200%) -- Adjusts font size as a percentage of your browser's default. Unlike a fixed pixel value, this multiplies your browser setting — if your browser is set to 20px and you choose 125%, you get 25px. The range extends to 200% per WCAG guidelines.
 - **Keyboard Shortcuts** -- Toggle single-key shortcuts (? for help, g+d for dashboard) on or off. Useful for users with motor disabilities or voice input software that may accidentally trigger single-key bindings.
 - **Text Simplification** (Off / Mild / Strong) -- Setting is stored but the AI simplification feature is not yet active.
-- **AI Narration** -- Toggle dashboard narrative summaries on or off. When enabled, AI-generated summaries appear on the dashboard and are announced to screen readers.
+- **AI Narration** -- Toggle dashboard narrative summaries on or off (off by default). When enabled, an AI-written summary appears on the dashboard and is announced to screen readers; it uses AI each time the dashboard opens, counted towards your AI allowance.
 
 ### Screen Reader Support
 

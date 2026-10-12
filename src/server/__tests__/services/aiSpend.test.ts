@@ -89,11 +89,6 @@ describe('the AI stops being asked when it cannot answer', () => {
     expect(svc.match(/this\.client!\.messages\.create\(/g)?.length).toBe(4); // no unguarded call left in the tool loop
   });
 
-  it('the portfolio panel waits 10 minutes after a failed ask', () => {
-    const p = src('services', 'predictiveIntelligence.ts');
-    expect(p).toMatch(/DASHBOARD_AI_FAILURE_PAUSE_S = 10 \* 60/);
-    expect(p).toMatch(/redisService\.set\(failedKey, '1', DASHBOARD_AI_FAILURE_PAUSE_S\)/);
-  });
 });
 
 describe('background AI has a budget, or no AI', () => {
@@ -137,10 +132,10 @@ describe('AI only when asked (audit 2026-10-10 M1)', () => {
     expect(svc.match(/opts\.ai === false \|\|/g)?.length).toBe(3); // risks, weather, budget
   });
 
-  it('the portfolio panel re-asks by itself at most hourly; Refresh still asks', () => {
+  it('the portfolio panel asks the AI only on its button, at most every 10 minutes (behaviour: dashboardAIOnClick.test.ts)', () => {
     const p = src('services', 'predictiveIntelligence.ts');
-    expect(p).toMatch(/DASHBOARD_AI_MIN_AGE_S = 60 \* 60/);
-    expect(p).toMatch(/forced \|\| \(!unchanged && !settling && !recent\)/);
+    expect(p.match(/this\.enrichDashboardWithAI\(/g)?.length).toBe(1);
+    expect(p).toMatch(/rateLimiter\.check\(`dashboard-ai:\$\{tenant\}:\$\{userId\}`, 1, DASHBOARD_REFRESH_MIN_MS\)/);
   });
 
   it('the portfolio narrative is reused, and standup Refresh is limited', () => {

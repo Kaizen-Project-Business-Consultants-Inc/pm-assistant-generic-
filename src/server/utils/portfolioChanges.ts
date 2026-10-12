@@ -9,7 +9,6 @@ import { redisService } from '../services/RedisService';
  */
 const TTL = 30 * 24 * 3600;
 const versionKey = (tenant: string) => `portfolio:version:${tenant}`;
-const changedAtKey = (tenant: string) => `portfolio:changed-at:${tenant}`;
 
 /** Changes that can't affect project numbers — no need to recalculate */
 const IGNORE = [
@@ -30,13 +29,11 @@ export async function markPortfolioChanged(tenant: string): Promise<void> {
     if (!client) return;
     await client.incr(versionKey(tenant));
     await client.expire(versionKey(tenant), TTL);
-    await client.set(changedAtKey(tenant), String(Date.now()), 'EX', TTL);
   } catch { /* observation only — never break a response */ }
 }
 
-/** The current change counter (0 if unknown) and when the last change happened */
-export async function portfolioVersion(tenant: string): Promise<{ version: number; changedAt: number }> {
-  if (!redisService.isConnected()) return { version: 0, changedAt: 0 };
-  const [v, at] = await Promise.all([redisService.get(versionKey(tenant)), redisService.get(changedAtKey(tenant))]);
-  return { version: Number(v) || 0, changedAt: Number(at) || 0 };
+/** The current change counter (0 if unknown) */
+export async function portfolioVersion(tenant: string): Promise<{ version: number }> {
+  if (!redisService.isConnected()) return { version: 0 };
+  return { version: Number(await redisService.get(versionKey(tenant))) || 0 };
 }

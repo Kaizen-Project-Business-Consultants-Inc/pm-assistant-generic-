@@ -7,6 +7,7 @@ import { baselineService } from '../../services/BaselineService';
 import { databaseService } from '../../database/connection';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
+import { hasFeature } from '../../middleware/requireTier';
 import { runHealthSnapshot } from '../../services/scheduling/healthSnapshotJob';
 import { platformAdminOnly } from '../../utils/platformAdmin';
 import { cachedAIResult, peekAIResult, type WithAITime } from '../../utils/aiResultCache';
@@ -39,10 +40,13 @@ export async function predictionRoutes(fastify: FastifyInstance) {
     try {
       const userId = request.user!.userId;
       const userRole = request.user!.role;
-      // ai=1: the Portfolio Intelligence panel (the only place the AI highlights are shown)
+      // ai=1: the Portfolio Intelligence panel (the only place the AI highlights are shown);
+      // refresh=1: its button — the only thing that asks the AI. Plans without AI, and the read-only
+      // support view, get the numbers only.
       const { refresh, ai } = request.query as { refresh?: string; ai?: string };
-      const { predictions, aiPowered, generatedAt } = await service.getDashboardPredictions(userId, userRole, { refresh: refresh === '1', ai: ai === '1' });
-      return reply.send({ data: predictions, aiPowered, generatedAt });
+      const aiAvailable = ai === '1' && !request.supportSession && await hasFeature(request, 'ai_assistant');
+      const { predictions, aiPowered, generatedAt, aiOutOfDate, aiRequested } = await service.getDashboardPredictions(userId, userRole, { refresh: refresh === '1', ai: aiAvailable });
+      return reply.send({ data: predictions, aiPowered, generatedAt, aiAvailable, aiOutOfDate: !!aiOutOfDate, aiRequested: !!aiRequested });
     } catch (err) {
       fastify.log.error({ err }, 'Dashboard predictions failed');
       return reply.status(500).send({ error: 'Failed to generate dashboard predictions' });
