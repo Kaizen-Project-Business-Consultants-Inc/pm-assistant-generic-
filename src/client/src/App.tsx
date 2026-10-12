@@ -23,6 +23,7 @@ const RegisterPage = lazy(() => import('./pages/RegisterPage').then(m => ({ defa
 const VerifyEmailPage = lazy(() => import('./pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
 const VerifyEmailPendingPage = lazy(() => import('./pages/VerifyEmailPendingPage').then(m => ({ default: m.VerifyEmailPendingPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const LinkGooglePage = lazy(() => import('./pages/LinkGooglePage').then(m => ({ default: m.LinkGooglePage })));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const PricingPage = lazy(() => import('./pages/PricingPage').then(m => ({ default: m.PricingPage })));
 const TermsPage = lazy(() => import('./pages/TermsPage').then(m => ({ default: m.TermsPage })));
@@ -175,6 +176,7 @@ function App() {
         <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
         <Route path={ROUTES.verifyEmailPending} element={isAuthenticated ? <VerifyEmailPendingPage /> : <Navigate to={ROUTES.login} replace />} />
         <Route path={ROUTES.forgotPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ForgotPasswordPage />} />
+        <Route path={ROUTES.linkGoogle} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <LinkGooglePage />} />
         <Route path={ROUTES.resetPassword} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <ResetPasswordPage />} />
         <Route path={ROUTES.pricing} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : <PricingPage />} />
         <Route path={ROUTES.terms} element={<TermsPage />} />

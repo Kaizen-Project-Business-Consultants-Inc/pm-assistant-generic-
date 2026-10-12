@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 651,
+  "count": 657,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -216,6 +216,7 @@
     "getAttachmentVersions",
     "getAttachments",
     "getAuditTrail",
+    "getAuthProviders",
     "getAutomation",
     "getAutomationAnalytics",
     "getAutomationEventTypes",
@@ -449,6 +450,11 @@
     "getWorkflowExecutions",
     "getWorkflows",
     "getWorkingCalendar",
+    "googleLinkByEmail",
+    "googleLinkConfirm",
+    "googleLinkPreview",
+    "googleLinkWithPassword",
+    "googleStartUrl",
     "groupTasks",
     "importDocument",
     "importFromMarketplace",

@@ -14,6 +14,8 @@ export const ROUTES = {
   verifyEmailPending: '/verify-email-pending',
   forgotPassword: '/forgot-password',
   resetPassword: '/reset-password',
+  /** Link Google to an existing account (Sign in with Google) */
+  linkGoogle: '/link-google',
   pricing: '/pricing',
   terms: '/terms',
   privacy: '/privacy',

@@ -135,6 +135,18 @@ curl -s -b cookies.txt https://pm.kpbc.ca/api/v1/projects | jq .
 
 ---
 
+### Sign in with Google (Oct 2026)
+
+Unit: `src/server/__tests__/utils/googleSignIn.test.ts` (state, nonce, token checks), `src/server/__tests__/routes/googleAuth.test.ts` (every callback path, linking, invitations, try limits), `src/client/src/__tests__/pages/googleSignIn.test.tsx` (buttons, messages, the link page).
+
+On staging, with `GOOGLE_AUTH_CLIENT_ID`/`SECRET` set and a real Google account (Playwright cannot get past Google's own sign-in, so a person does the Google step):
+1. `curl -s https://pm.kpbc.ca/api/v1/auth/providers` → `{"google":true}`; the sign-in and sign-up pages show the Google button (none when the settings are empty).
+2. **New address:** Sign up with Google → lands on onboarding, signed in, no confirmation email; the company database exists.
+3. **Existing account:** make a password account with the same Gmail address, then Continue with Google → `/link-google?token=…` names the account; a wrong password says so (5 tries, then the link expires); the right one signs in. Next time Continue with Google goes straight in.
+4. **Emailed link:** on the link page click "Forgot your password? Email me a link…"; the email opens `/link-google?confirm=…`, which names both accounts and links only on the button.
+5. **Refusals:** cancel at Google → "You cancelled at Google…"; open the callback URL in another browser → "took too long or was opened twice"; an invitation for another address → back on the invitation page with the reason.
+6. **Invitation for an existing account:** open an invitation link, Continue with Google → signed in and in the inviting company.
+
 ## 4. Testing the Workflow Engine
 
 The workflow engine is a DAG-based system at `/api/v1/workflows`. Workflows are composed of nodes (trigger, condition, action, approval, delay, agent) connected by edges. Workflows fire automatically on task create/update events, project budget/status changes, and via a 15-minute overdue-task scanner.

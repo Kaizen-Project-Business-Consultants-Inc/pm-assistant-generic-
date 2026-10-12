@@ -6,6 +6,8 @@ import { apiService } from '../services/api';
 import { SUPPORT_EMAIL } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
 import { KovartiMark } from '../components/ui/KovartiMark';
+import { GoogleButton } from '../components/auth/GoogleButton';
+import { googleSignInMessage } from '../utils/googleSignInMessages';
 
 export const LoginPage: React.FC = () => {
   useSEO({
@@ -40,6 +42,9 @@ export const LoginPage: React.FC = () => {
     } else if (errorParam === 'rate_limited') {
       setError('Too many attempts. Please try again later.');
     }
+    // Sign in with Google couldn't go ahead (the server says why)
+    const googleMessage = googleSignInMessage(searchParams.get('google'));
+    if (googleMessage) setError(googleMessage);
   }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,6 +142,10 @@ export const LoginPage: React.FC = () => {
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Sign in to your account
             </p>
+          </div>
+
+          <div className="mb-5">
+            <GoogleButton label="Continue with Google" dividerText="or with your email" intent={{ mode: 'signin', invite: searchParams.get('invite') || undefined }} />
           </div>
 
           <form className="space-y-5" onSubmit={handleSubmit}>

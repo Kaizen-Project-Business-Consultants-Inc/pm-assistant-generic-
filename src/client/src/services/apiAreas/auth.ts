@@ -89,6 +89,47 @@ export class AuthApi extends ApiBase {
   }
 
   // -------------------------------------------------------------------------
+  // Sign in with Google (Oct 2026)
+  // -------------------------------------------------------------------------
+
+  /** Whether "Continue with Google" is set up on this server */
+  async getAuthProviders(): Promise<{ google: boolean }> {
+    const response = await this.api.get('/auth/providers');
+    return { google: !!response.data?.google };
+  }
+
+  /** Where the Google button goes (a full-page visit: Google sends the person back to the server) */
+  googleStartUrl(intent: { mode: 'signin' | 'signup'; invite?: string; tier?: string; plan?: string; seats?: number }): string {
+    const params = new URLSearchParams({ mode: intent.mode });
+    if (intent.invite) params.set('invite', intent.invite);
+    if (intent.tier) params.set('tier', intent.tier);
+    if (intent.plan) params.set('plan', intent.plan);
+    if (intent.seats) params.set('seats', String(intent.seats));
+    return `${this.api.defaults.baseURL}/auth/google/start?${params.toString()}`;
+  }
+
+  /** Which account a pending Google link (`token`) or an emailed link (`code`) is for */
+  async googleLinkPreview(ref: { token: string } | { code: string }): Promise<{ account: string; google: string; hasPassword: boolean }> {
+    const response = await this.api.post('/auth/google/link-preview', ref);
+    return response.data;
+  }
+
+  async googleLinkWithPassword(token: string, password: string) {
+    const response = await this.api.post('/auth/google/link', { token, password });
+    return response.data;
+  }
+
+  async googleLinkByEmail(token: string): Promise<{ message: string }> {
+    const response = await this.api.post('/auth/google/link-email', { token });
+    return response.data;
+  }
+
+  async googleLinkConfirm(code: string) {
+    const response = await this.api.post('/auth/google/link-confirm', { code });
+    return response.data;
+  }
+
+  // -------------------------------------------------------------------------
   // API Keys
   // -------------------------------------------------------------------------
 

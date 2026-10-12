@@ -213,6 +213,14 @@ Key variables in `.env` (never commit secrets):
 | `APP_URL`             | Public-facing URL of the application        |
 | `MULTI_TENANT_ENABLED` | Enable database-per-customer multi-tenancy (`true`/`false`) |
 
+### Sign in with Google — setting it up
+
+1. In Google Cloud Console (console.cloud.google.com), pick or create a project for Kovarti.
+2. **APIs & Services → OAuth consent screen**: user type **External**; app name **Kovarti**, support email, the Kovarti logo, links to the privacy policy and terms; scopes **openid**, **email**, **profile** only (nothing that needs Google's review). Publish the app (otherwise only listed test users can sign in).
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**. Authorised redirect URIs: `https://kovarti.com/api/v1/auth/google/callback` and `https://pm.kpbc.ca/api/v1/auth/google/callback`. No JavaScript origins are needed.
+4. Put the client ID and secret in the server's `.env` as `GOOGLE_AUTH_CLIENT_ID` and `GOOGLE_AUTH_CLIENT_SECRET` (never in chat or git), then `sudo systemctl restart pm-app`. The buttons appear; empty settings hide them again.
+5. Check: `GET /api/v1/auth/providers` says `{"google":true}`; sign in with a test Google account.
+
 ### AI Features Toggle
 - Set `AI_ENABLED=true` and provide `ANTHROPIC_API_KEY` to enable AI-powered features (task suggestions, risk analysis, natural language queries).
 - When disabled, all AI endpoints return a 503 with a descriptive message.
