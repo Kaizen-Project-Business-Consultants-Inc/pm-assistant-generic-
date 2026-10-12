@@ -38,7 +38,7 @@ vi.mock('../../services/UserService', () => ({ userService: { findById: vi.fn(),
 vi.mock('../../services/accountSignup', () => ({ createAccount: vi.fn(), provisionVerifiedTenant: vi.fn(async () => {}) }));
 vi.mock('../../services/EmailService', () => ({ emailService: { sendWelcomeEmail: vi.fn(async () => {}), sendNotificationEmail: vi.fn(async () => {}) } }));
 vi.mock('../../services/OrganizationService', () => ({ organizationService: { findByUserId: vi.fn(async () => ({ id: 'org1', dbName: 'pmassist_t_jane' })) } }));
-vi.mock('../../services/InviteService', () => ({ inviteService: { validateToken: vi.fn() } }));
+vi.mock('../../services/InviteService', () => ({ inviteService: { validateToken: vi.fn(), acceptInvite: vi.fn(async () => ({})) } }));
 vi.mock('../../utils/session', () => ({ startNewSession: vi.fn(async () => 'token') }));
 
 import { googleAuthRoutes } from '../../routes/core/googleAuth';
@@ -137,6 +137,12 @@ describe('Sign in with Google — routes', () => {
     expect(userIdentityRepository.link).not.toHaveBeenCalled();
   });
 
+  it('the link page can name the account and say whether it has a password', async () => {
+    const token = await pendingLinkToken();
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/google/link-preview', payload: { token } });
+    expect(res.json()).toEqual({ account: 'jane@example.com', google: 'jane@example.com', hasPassword: true });
+  });
+
   it('linking with the right password links and signs in; the link token then stops working', async () => {
     const token = await pendingLinkToken();
     expect((await link(token, 'Right1234!')).statusCode).toBe(200);
@@ -191,7 +197,7 @@ describe('Sign in with Google — routes', () => {
   it('the page the emailed link opens can name the account first, without linking', async () => {
     const code = await emailedCode();
     const res = await app.inject({ method: 'POST', url: '/api/v1/auth/google/link-preview', payload: { code } });
-    expect(res.json()).toEqual({ account: 'jane@example.com', google: 'jane@example.com' });
+    expect(res.json()).toEqual({ account: 'jane@example.com', google: 'jane@example.com', hasPassword: true });
     expect(userIdentityRepository.link).not.toHaveBeenCalled();
     expect((await app.inject({ method: 'POST', url: '/api/v1/auth/google/link-preview', payload: { code: 'x' } })).statusCode).toBe(410);
   });
@@ -242,11 +248,48 @@ describe('Sign in with Google — routes', () => {
     expect((await callback()).headers.location).toBe('https://checkout.example/s');
   });
 
-  it('an invitation only works for the invited address', async () => {
+  it('an invitation only works for the invited address — back to the invitation with the reason', async () => {
     google({ mode: 'signup', inviteToken: 'inv' });
     vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'someone.else@example.com' } as never);
-    expect((await callback()).headers.location).toBe('/login?google=invite-other-address');
+    expect((await callback()).headers.location).toBe('/register?invite=inv&google=invite-other-address');
     expect(createAccount).not.toHaveBeenCalled();
+    expect(startNewSession).not.toHaveBeenCalled();
+  });
+
+  it('someone already linked who opens an invitation joins that company, as with a password', async () => {
+    google({ mode: 'signin', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
+    vi.mocked(userIdentityRepository.findUserId).mockResolvedValueOnce('u1');
+    expect((await callback()).headers.location).toBe('/');
+    expect(inviteService.acceptInvite).toHaveBeenCalledWith('inv', 'u1');
+    // joined before the session starts, so the session carries the new company and role
+    expect(vi.mocked(inviteService.acceptInvite).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(startNewSession).mock.invocationCallOrder[0]);
+  });
+
+  it('a linked person whose Kovarti address differs from Google can use an invitation sent to the Kovarti address', async () => {
+    google({ mode: 'signin', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'Jane@Work.com' } as never);
+    vi.mocked(userIdentityRepository.findUserId).mockResolvedValueOnce('u1');
+    vi.mocked(userService.findById).mockResolvedValue(user({ email: 'jane@work.com' }));
+    expect((await callback()).headers.location).toBe('/');
+    expect(inviteService.acceptInvite).toHaveBeenCalledWith('inv', 'u1');
+  });
+
+  it('an existing account linking from an invitation joins once the link is done', async () => {
+    google({ mode: 'signup', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
+    vi.mocked(userService.findByEmail).mockResolvedValueOnce(user({ passwordHash: hash }));
+    const token = new URL((await callback()).headers.location as string, 'https://x').searchParams.get('token')!;
+    expect(inviteService.acceptInvite).not.toHaveBeenCalled();
+    expect((await link(token, 'Right1234!')).statusCode).toBe(200);
+    expect(inviteService.acceptInvite).toHaveBeenCalledWith('inv', 'u1');
+  });
+
+  it('an invitation for a Google address with no account goes back to the invitation', async () => {
+    google({ mode: 'signin', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
+    expect((await callback()).headers.location).toBe('/register?invite=inv&google=no-account');
   });
 
   it('a problem at Google comes back as a reason code for the sign-in page', async () => {

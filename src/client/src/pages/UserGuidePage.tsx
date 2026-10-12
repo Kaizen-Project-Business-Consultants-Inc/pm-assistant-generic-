@@ -57,7 +57,8 @@ const sections: Section[] = [
     description:
       'Create your account, sign in, and get oriented with the dashboard.',
     items: [
-      'Sign up with email and verify your account',
+      'Sign up with email and verify your account — or click "Sign up with Google" and go straight in (when it is switched on)',
+      'Continue with Google signs you in; the first time, an existing Kovarti account asks for its password once (or emails you a link) — it is never linked automatically',
       'Log in and explore the main dashboard',
       'View project summaries, upcoming deadlines, and key metrics at a glance',
       'Use the sidebar to navigate between features',

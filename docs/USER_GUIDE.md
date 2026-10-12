@@ -64,6 +64,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
 4. Fill in the short sign-up form: **Your name**, **Work email** (you sign in with it — there is no separate username), **Company** (optional; leave it blank to use your name) and a **Password** of at least 8 characters. Use the eye button to check what you typed.
    - Check the **Terms of Service** checkbox — the **Start my free trial** button stays disabled until you accept.
    - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
+   - **Or click Sign up with Google** at the top of the form (when your company's Kovarti has it switched on). Pick your Google account; Google has already confirmed your email, so you go straight in — no form, no confirmation email. It follows the same rules as the form: the free trial, your chosen paid plan's checkout, or an invitation (which must be opened with the Google account of the invited address; if you already have a Kovarti account, Continue with Google from the invitation signs you in and adds you to the inviting company). You have no Kovarti password; to connect Claude, which needs one, set a password with **Forgot password?** on the sign-in page.
 5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? In Gmail look in the **Updates** tab, then Spam or Promotions.
 
 > **Note:** Each email address is eligible for one free 7-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
@@ -74,8 +75,12 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
 
 ### Logging In
 
-1. Go to the login page (`/login`) and enter your username and password.
+1. Go to the login page (`/login`) and enter your email (or username) and password.
 2. Click **Sign In**. You will be redirected to the **Dashboard**.
+   - **Continue with Google** (when shown) signs you in with your Google account instead. The first time, if you already have a Kovarti account with that address, the **You already have a Kovarti account** page asks for your Kovarti password **once** (or click **Forgot your password? Email me a link to link Google instead** and use the button on the page the email opens). This proves the account is yours — Google is never linked to an existing account automatically. After that, Continue with Google signs you straight in.
+   - If Google sign-in can't go ahead, the sign-in page says why and what to do (for example "You cancelled at Google. Nothing was changed."). A Google address with no Kovarti account is sent to **Start your free trial**.
+   - An account made with Google has no password: typing one shows "This account signs in with Google…". Use Continue with Google, or set a password with **Forgot password?**.
+   - Linking an account whose email was never confirmed confirms it and removes the password it was given (anyone could have chosen it); set a new one with Forgot password? if you want one.
 3. If your account has been flagged for a password change (e.g., auto-created via invite, or set by an admin), you will be redirected to the **Change Password** page instead. Enter your temporary password and choose a new one (minimum 8 characters). You cannot access any other part of the app until the password is changed.
 4. If your session expires, you will be returned to the login page automatically.
 5. Use **Forgot Password** if you need to reset your credentials. A reset link is emailed to you (expires after 24 hours). Clicking the link and setting a new password automatically verifies your email address, so you will not be prompted to verify it again after a reset. If the reset link has expired or is invalid, the page shows a **"Request a new reset link"** button so you can request a fresh one without navigating away.

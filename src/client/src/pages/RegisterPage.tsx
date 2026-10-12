@@ -7,6 +7,8 @@ import { TIER_LABELS } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
 import { CheckYourEmail } from '../components/auth/CheckYourEmail';
 import { TurnstileWidget } from '../components/auth/TurnstileWidget';
+import { GoogleButton } from '../components/auth/GoogleButton';
+import { googleSignInMessage } from '../utils/googleSignInMessages';
 
 export const RegisterPage: React.FC = () => {
   useSEO({
@@ -41,7 +43,10 @@ export const RegisterPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Came back from "Continue with Google" with no account yet (?google=no-account)
+  // (an invalid invitation already has its own notice on this page)
+  const [error, setError] = useState<string | null>(() =>
+    searchParams.get('google') === 'invite-invalid' ? null : googleSignInMessage(searchParams.get('google')));
   const [showLoginLink, setShowLoginLink] = useState(false);
   const [seatCount, setSeatCount] = useState(3);
   const [success, setSuccess] = useState(false);
@@ -201,6 +206,28 @@ export const RegisterPage: React.FC = () => {
           {inviteToken && inviteValid === false && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4" role="alert">
               <p className="text-sm text-red-700 dark:text-red-400">This invitation link is invalid or has expired.</p>
+            </div>
+          )}
+
+          {inviteValid !== false && (
+            <div className="mb-4 space-y-2">
+              <GoogleButton
+                label="Sign up with Google"
+                dividerText="or sign up with your email"
+                note={<>
+                  By continuing with Google you agree to the{' '}
+                  <Link to="/terms" target="_blank" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">Terms of Service</Link> and{' '}
+                  <Link to="/privacy" target="_blank" className="text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300">Privacy Policy</Link>.
+                  Google has already confirmed your email, so you go straight in.
+                </>}
+                intent={{
+                  mode: 'signup',
+                  invite: inviteToken,
+                  tier: isPlanSignup ? tierParam! : undefined,
+                  plan: isPlanSignup ? billingParam : undefined,
+                  seats: isPlanSignup && tierParam === 'sme' ? seatCount : undefined,
+                }}
+              />
             </div>
           )}
 

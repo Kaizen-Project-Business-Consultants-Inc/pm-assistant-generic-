@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — Sign in with Google, screens (branch feat/google-signin-client)
+- `components/auth/GoogleButton.tsx` (shown only when `/auth/providers` says google) on LoginPage ("Continue with Google") and RegisterPage ("Sign up with Google", carries invite/tier/plan/seats, terms note). `utils/googleSignInMessages.ts`: plain message for every `?google=` code. New page `/link-google` (`LinkGooglePage.tsx`): `?token=` password once or email a link; `?confirm=` names both accounts, button links (POST). Server: `/auth/google/link-preview` also takes the pending `token` and says `hasPassword`.
+- Review fixes: the invitation now goes with the Google button on sign-in too and is carried through every path (already linked → accepted; existing account → accepted after linking; wrong/invalid → back to `/register?invite=…&google=<code>`); the service worker no longer caches full-page API visits (Google redirects); link page: "Something went wrong" + Try again unless the link truly expired, same after-sign-in steps as LoginPage, password box focused, `getApiErrorMessage`. TESTING_GUIDE section added. Open (not changed): the auth page shell (gradient card) is copied in 8 pages — extract an `AuthCard` some time.
+- Found on the way: a wrong password on the link page (401) would have gone through the app's expired-session handler (refresh → bounce to /login); `/auth/google/` is now excluded there.
+- Docs: USER_GUIDE, in-app quick guide, PRODUCT_MANUAL, WORLD_CLASS_FEATURES, ADMIN_MANUAL (Google Cloud setup steps). Test: `__tests__/pages/googleSignIn.test.tsx` (24).
+
 ## 2026-10-12 — Sign in with Google, server part (branch feat/google-signin-server)
 - User OK on the mock (https://claude.ai/artifact/Lm28VFe8D1RvSwTLULzTzz): link an existing account by password once (or an emailed link), never automatically; Google-only users set a password by email to connect Claude; Microsoft later.
 - `utils/googleSignIn.ts` (OIDC code + PKCE, one-time Redis state), `routes/core/googleAuth.ts` (`/auth/providers`, `/auth/google/start|callback|link|link-email|link-confirm (POST)`), `database/UserIdentityRepository.ts`, migration 136 `user_identities` (control plane; added to CONTROL_PLANE_ONLY_TABLES and SHARED_TABLES).

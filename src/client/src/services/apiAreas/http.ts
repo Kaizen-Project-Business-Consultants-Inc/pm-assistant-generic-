@@ -45,6 +45,7 @@ export class ApiBase {
           !originalRequest.url?.includes('/auth/refresh') &&
           !originalRequest.url?.includes('/auth/login') &&
           !originalRequest.url?.includes('/auth/register') &&
+          !originalRequest.url?.includes('/auth/google/') && // a wrong password on the link page is not an expired session
           !originalRequest.url?.includes('/auth/me')
         ) {
           originalRequest._retry = true;

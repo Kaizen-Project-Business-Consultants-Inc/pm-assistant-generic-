@@ -11,6 +11,7 @@ import { MemoryRouter } from 'react-router-dom';
 const api = vi.hoisted(() => ({
   register: vi.fn(async () => ({ message: 'ok' })),
   validateInvite: vi.fn(async () => ({ valid: true, orgName: 'Acme', email: 'sam@acme.com' })),
+  getAuthProviders: vi.fn(async () => ({ google: false })),
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
 vi.mock('../../components/auth/TurnstileWidget', () => ({ TurnstileWidget: () => null }));

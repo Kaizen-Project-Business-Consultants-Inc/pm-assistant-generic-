@@ -42,7 +42,8 @@ const emailLinkKey = (code: string) => `google-link-email:${code}`;
 const triesKey = (token: string) => `google-link-tries:${token}`;
 const EXPIRED = { error: 'Expired', message: 'This took too long. Please click "Continue with Google" again.' };
 
-interface PendingLink { userId: string; subject: string; email: string }
+/** `inviteToken`: they came from an invitation — accepted once the link is done */
+interface PendingLink { userId: string; subject: string; email: string; inviteToken?: string }
 
 const intentSchema = z.object({
   mode: z.enum(['signin', 'signup']).default('signin'),
@@ -53,6 +54,31 @@ const intentSchema = z.object({
 });
 
 const back = (code: string) => `/login?google=${encodeURIComponent(code)}`;
+/** Back to the invitation's sign-up page (keeps the invitation) with the reason */
+const backToInvite = (invite: string, code: string) => `/register?invite=${encodeURIComponent(invite)}&google=${encodeURIComponent(code)}`;
+
+/** An invitation only works for the invited address (the Google address, or the linked account's own) */
+async function inviteRefusal(inviteToken: string, emails: Array<string | undefined>): Promise<string | null> {
+  const invite = await inviteService.validateToken(inviteToken);
+  if (!invite.valid) return 'invite-invalid';
+  if (invite.email && !emails.some(e => e?.toLowerCase() === invite.email!.toLowerCase())) return 'invite-other-address';
+  return null;
+}
+
+/**
+ * Someone who already has an account joins the inviting company — as the password sign-in does.
+ * Done before the session starts, so the new session already carries the new company and role.
+ */
+async function joinInvite(user: User, inviteToken: string | undefined): Promise<User> {
+  if (!inviteToken) return user;
+  try {
+    await inviteService.acceptInvite(inviteToken, user.id);
+    return (await userService.findById(user.id)) ?? user;
+  } catch (err) {
+    logger.warn('Invitation not accepted after Google sign-in', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
+    return user;
+  }
+}
 const isToken = (t: unknown): t is string => typeof t === 'string' && /^[a-f0-9]{48}$/.test(t);
 
 /** Can this person sign in at all? A reason code for the sign-in page, or null */
@@ -78,11 +104,6 @@ async function signUp(request: FastifyRequest, reply: FastifyReply, identity: Go
   if (!hourly.allowed) {
     logger.warn('Registration hourly limit hit (Google)', { ip });
     return reply.redirect(back('rate-limited'));
-  }
-  if (intent.inviteToken) {
-    const invite = await inviteService.validateToken(intent.inviteToken);
-    if (!invite.valid) return reply.redirect(back('invite-invalid'));
-    if (invite.email && invite.email.toLowerCase() !== identity.email) return reply.redirect(back('invite-other-address'));
   }
   const created = await createAccount({
     email: identity.email,
@@ -134,7 +155,7 @@ async function completeLink(reply: FastifyReply, pending: PendingLink): Promise<
     if (!String((err as Error)?.message).includes('Duplicate')) logger.error('Google link failed', { userId: pending.userId, message: (err as Error).message });
   });
   const unproven: Partial<User> = user!.emailVerified ? {} : { emailVerified: true, emailVerificationToken: null, emailVerificationExpires: null, passwordHash: '' } as Partial<User>;
-  await startNewSession(reply, user!, unproven);
+  await startNewSession(reply, await joinInvite(user!, pending.inviteToken), unproven);
   if (!user!.emailVerified) {
     // Confirmed only now: build their company database, as confirming the email does
     const org = await organizationService.findByUserId(user!.id).catch(() => null);
@@ -185,15 +206,19 @@ export async function googleAuthRoutes(fastify: FastifyInstance) {
     if (!fromThisBrowser) return reply.redirect(back('expired'));
     try {
       const { identity, intent } = await finishGoogleSignIn(request.query as { state?: string; code?: string; error?: string });
-
-      // 1. Already linked: sign straight in
       const linkedUserId = await userIdentityRepository.findUserId(PROVIDER, identity.subject);
+      const linkedUser = linkedUserId ? await userService.findById(linkedUserId) : null;
+      if (intent.inviteToken) {
+        const no = await inviteRefusal(intent.inviteToken, [identity.email, linkedUser?.email]);
+        if (no) return reply.redirect(backToInvite(intent.inviteToken, no));
+      }
+
+      // 1. Already linked: sign straight in (joining the inviting company first, if invited)
       if (linkedUserId) {
-        const user = await userService.findById(linkedUserId);
-        const no = refusal(user);
+        const no = refusal(linkedUser);
         if (no) return reply.redirect(back(no));
         void userIdentityRepository.touch(PROVIDER, identity.subject).catch(() => {});
-        await startNewSession(reply, user!);
+        await startNewSession(reply, await joinInvite(linkedUser!, intent.inviteToken));
         return reply.redirect('/');
       }
 
@@ -203,13 +228,15 @@ export async function googleAuthRoutes(fastify: FastifyInstance) {
         const no = refusal(existing);
         if (no) return reply.redirect(back(no));
         const token = crypto.randomBytes(24).toString('hex');
-        const pending: PendingLink = { userId: existing.id, subject: identity.subject, email: identity.email };
+        const pending: PendingLink = { userId: existing.id, subject: identity.subject, email: identity.email, inviteToken: intent.inviteToken };
         await redisService.set(linkKey(token), JSON.stringify(pending), LINK_TTL_SECONDS);
         return reply.redirect(`/link-google?token=${token}`);
       }
 
       // 3. No account: sign-up makes one; from the sign-in button, send them to start a trial
-      if (intent.mode !== 'signup') return reply.redirect('/register?google=no-account');
+      if (intent.mode !== 'signup') {
+        return reply.redirect(intent.inviteToken ? backToInvite(intent.inviteToken, 'no-account') : '/register?google=no-account');
+      }
       return signUp(request, reply, identity, intent);
     } catch (err) {
       if (err instanceof GoogleSignInError) return reply.redirect(back(err.code));
@@ -272,16 +299,18 @@ export async function googleAuthRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // The page the emailed link opens names the account before its button (so nobody is linked into
-  // an account that isn't theirs by a link someone else sent them)
-  fastify.post('/google/link-preview', { schema: { description: 'Which account an emailed Google link is for', tags: ['auth'] } }, async (request, reply) => {
+  // The link page names the account before its button (so nobody is linked into an account that
+  // isn't theirs by a link someone else sent them) and says whether it has a password to type.
+  // `token`: the pending link from the return from Google; `code`: the emailed link.
+  fastify.post('/google/link-preview', { schema: { description: 'Which account a Google link is for', tags: ['auth'] } }, async (request, reply) => {
     const rl = await rateLimiter.checkAsync(`auth:google-link:${request.ip || 'unknown'}`, 10, 60_000);
     if (!rl.allowed) return reply.status(429).send({ error: 'Too many attempts', message: 'Too many attempts. Please wait a minute and try again.' });
-    const { code } = (request.body ?? {}) as { code?: unknown };
-    const pending = isToken(code) ? await pendingLink(emailLinkKey(code)) : null;
-    if (!pending) return reply.status(410).send({ error: 'Expired', message: 'This link has expired or was used already. Please click "Continue with Google" again.' });
-    const user = await userService.findById(pending.userId);
-    return { account: user?.email ?? pending.email, google: pending.email };
+    const { code, token } = (request.body ?? {}) as { code?: unknown; token?: unknown };
+    const key = isToken(code) ? emailLinkKey(code) : isToken(token) ? linkKey(token) : null;
+    const pending = key ? await pendingLink(key) : null;
+    const user = pending ? await userService.findById(pending.userId) : null;
+    if (!pending || !user) return reply.status(410).send({ error: 'Expired', message: 'This link has expired or was used already. Please click "Continue with Google" again.' });
+    return { account: user.email, google: pending.email, hasPassword: hasPassword(user) };
   });
 
   // The button on the page the emailed link opens: link (once) and sign in

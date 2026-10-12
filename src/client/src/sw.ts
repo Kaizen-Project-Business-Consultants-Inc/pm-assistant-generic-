@@ -17,9 +17,10 @@ self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') void self.skipWaiting();
 });
 
-// API caching — NetworkFirst
+// API caching — NetworkFirst. Data requests only: a full-page visit to the API (Sign in with Google's
+// start and return addresses) is a one-time redirect and must never be stored or replayed.
 registerRoute(
-  /^https?:\/\/.*\/api\/v1\/.*/i,
+  ({ url, request }) => request.mode !== 'navigate' && /^\/api\/v1\//i.test(url.pathname),
   new NetworkFirst({
     cacheName: 'api-cache',
     plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 5 })],
