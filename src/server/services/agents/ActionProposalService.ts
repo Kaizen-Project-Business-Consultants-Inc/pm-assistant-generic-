@@ -3,6 +3,7 @@ import { proposalEvent } from '../domainEvents';
 import { actionProposalRepository, ProposalRow, ActionRow } from '../../database/ActionProposalRepository';
 import { autonomyService } from './AutonomyService';
 import logger from '../../utils/logger';
+import { trackBackground } from '../../utils/backgroundWork';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -195,10 +196,11 @@ export class ActionProposalService {
         title: proposal.title,
     });
 
-    // Tier 3 auto-execute: if agent is promoted, execute immediately
-    this.tryAutoExecute(proposal).catch(err =>
+    // Tier 3 auto-execute: if agent is promoted, execute immediately (tracked: the agent scan job
+    // waits for it before it exits)
+    void trackBackground(this.tryAutoExecute(proposal).catch(err =>
       logger.error(`[ActionProposalService] Auto-execute check failed for ${id}:`, err)
-    );
+    ));
 
     return proposal;
   }

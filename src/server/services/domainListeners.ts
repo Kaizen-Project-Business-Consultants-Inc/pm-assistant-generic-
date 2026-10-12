@@ -13,6 +13,7 @@ import { registerApprovedProgress } from './approvedProgress';
 import { calendarService } from './CalendarService';
 import { setProjectCalendarProvider } from '../database/bookingDates';
 import logger from '../utils/logger';
+import { trackBackground } from '../utils/backgroundWork';
 
 /**
  * Connects each "something changed" notice (domainEvents.ts) to what reacts to it, hands
@@ -41,18 +42,19 @@ export function registerDomainListeners(): void {
   // RAID changed → RAID Review re-runs
   onDomainEvent('raid.changed', e => queueRaidReviewRerun(e.projectId));
 
-  // Workflows react to task, project and agent-proposal changes (step 1E) — fire-and-forget, as before
+  // Workflows react to task, project and agent-proposal changes (step 1E) — not waited for here, but
+  // tracked, so a scheduled job that changed a task waits for them before it exits
   onDomainEvent('task.changed', e => {
-    dagWorkflowService.evaluateTaskChange(e.task, e.oldTask, scheduleService).catch(err =>
-      logger.error('[Workflow] evaluateTaskChange error:', err));
+    void trackBackground(dagWorkflowService.evaluateTaskChange(e.task, e.oldTask, scheduleService).catch(err =>
+      logger.error('[Workflow] evaluateTaskChange error:', err)));
   });
   onDomainEvent('project.changed', e => {
-    dagWorkflowService.evaluateProjectChange(e.projectId, e.changeType, e.data).catch(err =>
-      logger.error('[Workflow] evaluateProjectChange error:', err));
+    void trackBackground(dagWorkflowService.evaluateProjectChange(e.projectId, e.changeType, e.data).catch(err =>
+      logger.error('[Workflow] evaluateProjectChange error:', err)));
   });
   onDomainEvent('proposal.event', e => {
-    dagWorkflowService.evaluateProposalEvent(e.eventType, e.data).catch(err =>
-      logger.error('[Workflow] evaluateProposalEvent error:', err));
+    void trackBackground(dagWorkflowService.evaluateProposalEvent(e.eventType, e.data).catch(err =>
+      logger.error('[Workflow] evaluateProposalEvent error:', err)));
   });
 
   // Schedule History: the features that know how to put their own changes back (step 1D)

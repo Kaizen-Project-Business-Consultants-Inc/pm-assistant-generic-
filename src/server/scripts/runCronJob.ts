@@ -30,8 +30,14 @@ import { redisService } from '../services/RedisService';
 import { config } from '../config';
 import { forEachTenant } from '../services/scheduling/cronManager';
 import { markCurrentCompanyChanged } from '../utils/portfolioChanges';
+import { settleBackgroundWork } from '../utils/backgroundWork';
+import { markAsJobRunner } from '../utils/processRole';
 import { registerDomainListeners } from '../services/domainListeners';
 
+/** How long a job waits for the background work it set off before it exits — at most */
+const BACKGROUND_WAIT_MS = 60_000;
+/** systemd stops a job at 300 s (TimeoutStartSec); keep 30 s for closing down */
+const JOB_BUDGET_MS = 270_000;
 const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
@@ -42,6 +48,7 @@ if (!JOB_NAME) {
 
 async function run() {
   const start = Date.now();
+  markAsJobRunner();
   console.log(`[cron-runner] Starting job: ${JOB_NAME}`);
   // Jobs change data too: their changes must reach the same reactions as the app's
   registerDomainListeners();
@@ -85,10 +92,11 @@ async function run() {
           break;
         }
         const { runOverdueScanImpl } = await import('../services/scheduling/cronManager');
-        const flagged = new Map<string, Set<string>>();
+        // one task at a time; stop starting new ones after 3 minutes (the job has 5)
+        const deadline = Date.now() + 3 * 60_000;
         await forEachTenant(async (tenant) => {
           const key = tenant?.slug ?? 'default';
-          const count = await runOverdueScanImpl(flagged, key);
+          const count = await runOverdueScanImpl(key, { deadline });
           console.log(`[cron-runner] Overdue scan: ${count} tasks triggered (${key})`);
         });
         break;
@@ -269,6 +277,11 @@ async function run() {
     }
     process.exitCode = 1;
   } finally {
+    // workflows the job set off (overdue scan, tasks it created) finish before the database closes —
+    // up to a minute; the job has 5 (TimeoutStartSec)
+    const waitMs = Math.max(0, Math.min(BACKGROUND_WAIT_MS, start + JOB_BUDGET_MS - Date.now()));
+    const stillRunning = await settleBackgroundWork(waitMs);
+    if (stillRunning > 0) console.warn(`[cron-runner] ${stillRunning} background task(s) still running after ${Math.round(waitMs / 1000)}s — stopped with the job`);
     await redisService.disconnect();
     await databaseService.close();
   }
