@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/api';
 import { announce } from '../utils/announce';
 import { saveFailedMessage, SHOWN_AGAIN } from '../utils/saveFailedMessage';
+import { refreshProjectLists } from '../utils/projectListCache';
 
 /**
  * The project header's status change (taken out of ProjectDetailPage, 2026-10-05). The new status
@@ -40,6 +41,7 @@ export function useProjectStatusChange(
     },
     onSuccess: (_data, { status }) => {
       setStatusError(null);
+      refreshProjectLists(queryClient); // a completed or cancelled project leaves the dashboard
       onSavedRef.current?.(status);
     },
     onError: (error, { status }, context) => {

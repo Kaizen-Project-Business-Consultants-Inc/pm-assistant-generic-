@@ -1,6 +1,6 @@
 import React, { useState, useId } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -10,6 +10,7 @@ import {
   ClipboardList,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { refreshProjectLists } from '../../utils/projectListCache';
 import { serverKey, valueFor } from '../../utils/serverKeys';
 
 interface Props {
@@ -40,6 +41,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
   const [reviewNotes, setReviewNotes] = useState('');
   const [showConvertConfirm, setShowConvertConfirm] = useState(false);
   const [convertedProjectId, setConvertedProjectId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: submissionData, isLoading } = useQuery({
     queryKey: ['intake-submission', submissionId],
@@ -79,6 +81,7 @@ export const IntakeReviewPanel: React.FC<Props> = ({ submissionId, onClose, onUp
     onSuccess: (data) => {
       setConvertedProjectId(data?.projectId || data?.project?.id || null);
       setShowConvertConfirm(false);
+      refreshProjectLists(queryClient);
       onUpdated();
     },
   });

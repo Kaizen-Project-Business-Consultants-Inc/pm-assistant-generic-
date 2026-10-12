@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { User, Briefcase, BarChart3, Users, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { apiService } from '../services/api';
+import { refreshProjectLists } from '../utils/projectListCache';
 import { KovartiMark } from '../components/ui/KovartiMark';
 
 const ROLE_OPTIONS = [
@@ -42,6 +44,7 @@ interface PendingInvite {
 export const OnboardingPage: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState('');
@@ -188,6 +191,7 @@ export const OnboardingPage: React.FC = () => {
     if (!wantSample || !canOfferSample) return true;
     try {
       await apiService.loadSampleProject();
+      refreshProjectLists(queryClient);
       setCanOfferSample(false);
       return true;
     } catch (err) {
@@ -211,6 +215,7 @@ export const OnboardingPage: React.FC = () => {
         methodology: methodology || undefined,
       });
       const pid = result.projectId || result.project?.id;
+      refreshProjectLists(queryClient);
       setCreatedProjectId(pid || null);
       setStep(STEP_DONE);
     } catch (err: unknown) {

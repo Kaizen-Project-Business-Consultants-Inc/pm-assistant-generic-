@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-11 — Project lists refresh after archive/unarchive (branch fix/project-list-refresh)
+- Bug (user, staging): archived projects stayed on the dashboard and unarchived ones never came back. The server was right; Archive refreshed only the Projects page list, and the app never refetches on mount (`main.tsx` refetchOnMount:false), so a stale list was never replaced.
+- `utils/projectListCache.ts` `refreshProjectLists(queryClient)`: refetches the project lists on screen and drops the off-screen ones (projects, pm-projects, pm-all-projects, favourite-projects, portfolio, dashboard-predictions, analytics-summary). Used by archive/unarchive, create (template picker, onboarding), edit, delete, status change (project page + dashboard Start), sample load/remove, intake → project, client rename/delete, Mjuzi create/update project.
+- Guard test: any client file calling a project-changing API (create, from chat, applyTemplate, intake convert, update, status, archive, unarchive, delete, sample, client rename/delete) must call the helper (brief card exempt: brief text only).
+- Open: Mjuzi create_project goes through `/ai-chat`, which `portfolioChanges` IGNORE skips — server dashboard numbers not recalculated after it (separate batch).
+
 ## 2026-10-11 — Audit 2 low items (branch audit2-lows, not committed when written)
 - Docs: trial viewer invites 5 (PM matrix), Team AI = 500K per seat pooled (PM 2181/3809), only the owner invites (ADMIN_MANUAL 1 + 2), `importFromAgent` dropped from the RAID source list (method still exists, unused — removal needs the user's yes). ADMIN_MANUAL: new "The admin pages" table (Pricing, Feedback, Operations, AI Usage, Audit Trail, Schedules, Waitlist).
 - a11y: Time → Utilization heatmap greys get dark variants, scroller focusable (`role=region`). Workflows → Executions names the task/project (`entity_name` from one CASE + PK sub-select in `WorkflowRepository.findExecutions`, ≤50 rows; `utils/workflowRunTarget.ts`).

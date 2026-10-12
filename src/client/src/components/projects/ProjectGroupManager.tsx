@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import { AccessibleModal } from '../ui/AccessibleModal';
 import { useAuthStore } from '../../stores/authStore';
 import { canChangeClient } from '../../hooks/useCanManageClients';
+import { refreshProjectLists } from '../../utils/projectListCache';
 
 interface ProjectGroup {
   id: string;
@@ -35,7 +36,11 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
 
   const groups = data?.groups || [];
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['project-groups'] });
+  // a renamed or deleted client changes the projects listed under it too
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ['project-groups'] });
+    refreshProjectLists(queryClient);
+  };
 
   const createMut = useMutation({
     mutationFn: () => apiService.createProjectGroup({ name: newName, color: newColor }),

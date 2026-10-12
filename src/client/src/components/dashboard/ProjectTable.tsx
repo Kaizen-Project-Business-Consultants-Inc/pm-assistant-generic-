@@ -6,6 +6,7 @@ import { MetaPill } from '../ui/MetaPill';
 import { apiService } from '../../services/api';
 import { PROJECT_TYPE_LABELS } from '../../constants/projectTypes';
 import { useCanChangeData } from '../../hooks/useCanChangeData';
+import { refreshProjectLists } from '../../utils/projectListCache';
 
 export interface ProjectRow {
   id: string;
@@ -108,10 +109,7 @@ export function ProjectTable({ projects }: Props) {
 
   const startMutation = useMutation({
     mutationFn: (projectId: string) => apiService.updateProjectStatus(projectId, 'active'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pm-projects'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard-predictions'] });
-    },
+    onSuccess: () => refreshProjectLists(queryClient),
   });
 
   function handleSort(key: SortKey) {

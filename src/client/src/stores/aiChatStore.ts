@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { apiService } from '../services/api';
 import { queryClient } from '../main';
 import { announce } from '../utils/announce';
+import { refreshProjectLists } from '../utils/projectListCache';
 
 export interface ChatMessage {
   id: string;
@@ -196,7 +197,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
           }
         }
         if (hasProjectMutation) {
-          queryClient.invalidateQueries({ queryKey: ['projects'] });
+          refreshProjectLists(queryClient);
           queryClient.invalidateQueries({ queryKey: ['project'] });
         }
       }

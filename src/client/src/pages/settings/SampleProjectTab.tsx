@@ -4,6 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { announce } from '../../utils/announce';
+import { refreshProjectLists } from '../../utils/projectListCache';
 
 /**
  * Settings → Sample project (Oct 2026): the read-only "Sample Web App Development" is optional.
@@ -22,9 +23,7 @@ export function SampleProjectTab() {
 
   const refreshEverything = () => {
     queryClient.invalidateQueries({ queryKey: ['sample-project'] });
-    queryClient.invalidateQueries({ queryKey: ['projects'] });
-    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    queryClient.invalidateQueries({ queryKey: ['portfolio'] });
+    refreshProjectLists(queryClient);
     queryClient.invalidateQueries({ queryKey: ['resources'] });
   };
 

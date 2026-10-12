@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import type { ProjectSummaryPM } from '../../types/pm';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { useAuthStore } from '../../stores/authStore';
+import { refreshProjectLists } from '../../utils/projectListCache';
 
 interface ProjectCardPMProps {
   project: ProjectSummaryPM;
@@ -98,9 +99,7 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
   });
   const toggleArchive = useMutation({
     mutationFn: () => isArchived ? apiService.unarchiveProject(id) : apiService.archiveProject(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
-    },
+    onSuccess: () => refreshProjectLists(queryClient),
   });
 
   const label = healthLabel(healthScore);

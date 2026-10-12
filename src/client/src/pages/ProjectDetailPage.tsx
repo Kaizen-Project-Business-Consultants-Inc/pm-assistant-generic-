@@ -35,6 +35,7 @@ import { AccessibleModal } from '../components/ui/AccessibleModal';
 import { getPrimaryTabs, getOverflowTabs, getDefaultViewMode, type Methodology } from '../utils/methodology';
 import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 import { PROJECT_TYPE_LABELS } from '../constants/projectTypes';
+import { refreshProjectLists } from '../utils/projectListCache';
 
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
@@ -243,8 +244,7 @@ export function ProjectDetailPage() {
     mutationFn: (data: Record<string, unknown>) => apiService.updateProject(id!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
+      refreshProjectLists(queryClient);
       setShowEditProject(false);
     },
   });
@@ -252,13 +252,9 @@ export function ProjectDetailPage() {
   const deleteProjectMutation = useMutation({
     mutationFn: () => apiService.deleteProject(id!),
     onSuccess: () => {
-      // Clear all project caches so the list fetches fresh
       queryClient.removeQueries({ queryKey: ['project', id] });
-      queryClient.removeQueries({ queryKey: ['projects'] });
-      queryClient.removeQueries({ queryKey: ['pm-all-projects'] });
-      queryClient.removeQueries({ queryKey: ['pm-projects'] });
-      queryClient.removeQueries({ queryKey: ['favourite-projects'] });
-      // Navigate — ProjectsPM will have no cache, so it fetches fresh from server
+      // the lists are not on screen here, so they are dropped and ProjectsPM fetches fresh
+      refreshProjectLists(queryClient);
       navigate('/projects');
     },
   });

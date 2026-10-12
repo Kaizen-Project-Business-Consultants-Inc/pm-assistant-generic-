@@ -26,6 +26,7 @@ import { TemplateCustomizeForm } from './TemplateCustomizeForm';
 import { ColumnMapper } from '../schedule/ColumnMapper';
 import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
 import { useModal } from '../../hooks/useModal';
+import { refreshProjectLists } from '../../utils/projectListCache';
 
 interface TemplatePickerProps {
   isOpen: boolean;
@@ -246,8 +247,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       return apiService.applyTemplate(data);
     },
     onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
+      refreshProjectLists(queryClient);
       onClose();
       resetState();
       navigate(`/project/${result.project.id}`, { state: { showReadiness: true } });
@@ -378,8 +378,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
+      refreshProjectLists(queryClient);
       onClose();
       resetState();
       if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });
@@ -414,8 +413,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
         clientId: data.clientId,
       });
       const projectId = result.project?.id || result.id;
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      queryClient.invalidateQueries({ queryKey: ['pm-all-projects'] });
+      refreshProjectLists(queryClient);
       onClose();
       resetState();
       if (projectId) navigate(`/project/${projectId}`, { state: { showReadiness: true } });

@@ -183,11 +183,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/dashboard/ProjectTable.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 2
-    }
-  },
   "src/client/src/components/dashboard/widgets/BudgetWatchWidget.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -401,7 +396,7 @@
   },
   "src/client/src/components/pm/ProjectCardPM.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 3
+      "count": 2
     },
     "sonarjs/no-identical-functions": {
       "count": 1
@@ -487,9 +482,6 @@
     }
   },
   "src/client/src/components/projects/ProjectGroupManager.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 2
-    },
     "jsx-a11y/no-autofocus": {
       "count": 1
     }
@@ -986,7 +978,7 @@
   },
   "src/client/src/components/templates/TemplatePicker.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 11
+      "count": 5
     },
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1239,7 +1231,7 @@
   },
   "src/client/src/pages/ProjectDetailPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 8
+      "count": 6
     },
     "jsx-a11y/no-autofocus": {
       "count": 1
@@ -1507,7 +1499,7 @@
   },
   "src/client/src/pages/settings/SampleProjectTab.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 5
+      "count": 2
     }
   },
   "src/client/src/pages/settings/TeamTab.tsx": {
@@ -1530,7 +1522,7 @@
   },
   "src/client/src/stores/aiChatStore.ts": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 5
+      "count": 4
     }
   },
   "src/client/src/stores/localeStore.ts": {
