@@ -144,8 +144,9 @@ On staging, with `GOOGLE_AUTH_CLIENT_ID`/`SECRET` set and a real Google account 
 2. **New address:** Sign up with Google → lands on onboarding, signed in, no confirmation email; the company database exists.
 3. **Existing account:** make a password account with the same Gmail address, then Continue with Google → `/link-google?token=…` names the account; a wrong password says so (5 tries, then the link expires); the right one signs in. Next time Continue with Google goes straight in.
 4. **Emailed link:** on the link page click "Forgot your password? Email me a link…"; the email opens `/link-google?confirm=…`, which names both accounts and links only on the button.
-5. **Refusals:** cancel at Google → "You cancelled at Google…"; open the callback URL in another browser → "took too long or was opened twice"; an invitation for another address → back on the invitation page with the reason.
-6. **Invitation for an existing account:** open an invitation link, Continue with Google → signed in and in the inviting company.
+5. **No account:** Continue with Google with an address that has no account → Pricing, with the note "There's no Kovarti account for that Google address yet. Choose a plan…".
+6. **Refusals:** cancel at Google → "You cancelled at Google…"; open the callback URL in another browser → "took too long or was opened twice"; an invitation for another address → back on the invitation page with the reason.
+7. **Invitation for an existing account:** open an invitation link, Continue with Google → signed in and in the inviting company.
 
 ## 4. Testing the Workflow Engine
 

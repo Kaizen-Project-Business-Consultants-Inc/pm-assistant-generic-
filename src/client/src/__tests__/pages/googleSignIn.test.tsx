@@ -22,17 +22,20 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
 vi.mock('../../components/auth/TurnstileWidget', () => ({ TurnstileWidget: () => null }));
+vi.mock('../../components/pricing/PricingCards', () => ({ PricingSection: () => null }));
 
 import { useAuthStore } from '../../stores/authStore';
 import { LoginPage } from '../../pages/LoginPage';
 import { RegisterPage } from '../../pages/RegisterPage';
 import { LinkGooglePage } from '../../pages/LinkGooglePage';
+import { PricingPage } from '../../pages/PricingPage';
 
 const show = (path: string) => render(
   <MemoryRouter initialEntries={[path]}>
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
       <Route path="/link-google" element={<LinkGooglePage />} />
       <Route path="/dashboard" element={<p>Dashboard</p>} />
     </Routes>
@@ -41,7 +44,7 @@ const show = (path: string) => render(
 const googleLink = async (name: string) => (await screen.findByRole('link', { name })).getAttribute('href')!;
 
 describe('Sign in with Google — screens', () => {
-  beforeEach(() => { vi.clearAllMocks(); useAuthStore.setState({ user: null } as never); });
+  beforeEach(() => { vi.clearAllMocks(); useAuthStore.setState({ user: null, isAuthenticated: false } as never); });
   afterEach(cleanup);
 
   it('no Google button when the server has no Google settings', async () => {
@@ -84,9 +87,21 @@ describe('Sign in with Google — screens', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(text);
   });
 
-  it('a Google address with no account lands on sign-up with a note', async () => {
-    show('/register?google=no-account');
-    expect((await screen.findByRole('alert')).textContent).toMatch(/no Kovarti account for that Google address/);
+  it('a Google address with no account lands on Pricing with a note — no plan is assumed', async () => {
+    show('/pricing?google=no-account');
+    expect((await screen.findByRole('alert')).textContent).toMatch(/no Kovarti account for that Google address yet\. Choose a plan/);
+  });
+
+  it('someone already signed in never sees that note', async () => {
+    useAuthStore.setState({ user: { id: 'u1' }, isAuthenticated: true } as never);
+    show('/pricing?google=no-account');
+    expect(await screen.findByRole('heading', { name: 'Simple, transparent pricing' })).toBeTruthy();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('an invitation with no account stays on its own sign-up page, with its own note', async () => {
+    show('/register?invite=tok&google=invite-no-account');
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Create one below/);
   });
 
   it('link page: names the account, links with the password once, then opens the dashboard', async () => {

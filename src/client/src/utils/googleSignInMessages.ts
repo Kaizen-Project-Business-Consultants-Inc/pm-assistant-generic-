@@ -14,7 +14,8 @@ const MESSAGES: Record<string, string> = {
   'rate-limited': 'Too many attempts. Please wait a few minutes and try again.',
   busy: 'Kovarti is busy right now. Please wait a moment and click Continue with Google again.',
   unavailable: 'Signing in with Google is not available right now. Use your email and password, or try again later.',
-  'no-account': "There's no Kovarti account for that Google address yet. Create one below — Sign up with Google works too.",
+  'no-account': "There's no Kovarti account for that Google address yet. Choose a plan below to start — you can sign up with Google on the next page.",
+  'invite-no-account': "There's no Kovarti account for that Google address yet. Create one below — Sign up with Google works too.",
   failed: 'Google did not finish the sign-in. Please try again.',
 };
 

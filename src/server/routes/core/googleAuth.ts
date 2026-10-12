@@ -243,7 +243,9 @@ export async function googleAuthRoutes(fastify: FastifyInstance) {
 
       // 3. No account: sign-up makes one; from the sign-in button, send them to start a trial
       if (intent.mode !== 'signup') {
-        return reply.redirect(intent.inviteToken ? backToInvite(intent.inviteToken, 'no-account') : '/register?google=no-account');
+        // No account yet: choose a plan first (the trial is one choice, not an assumption — user,
+        // 2026-10-12); an invitation goes back to its own sign-up page
+        return reply.redirect(intent.inviteToken ? backToInvite(intent.inviteToken, 'invite-no-account') : '/pricing?google=no-account');
       }
       return await signUp(request, reply, identity, intent); // awaited, so its errors reach the catch below
     } catch (err) {

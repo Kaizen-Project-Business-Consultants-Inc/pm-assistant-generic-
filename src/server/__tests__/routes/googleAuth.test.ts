@@ -218,9 +218,9 @@ describe('Sign in with Google — routes', () => {
     expect((await link(token, 'Right1234!')).statusCode).toBe(200);
   });
 
-  it('from the sign-in button with no account, it sends them to start a trial', async () => {
+  it('from the sign-in button with no account, it sends them to choose a plan (not straight to a trial)', async () => {
     google({ mode: 'signin' });
-    expect((await callback()).headers.location).toBe('/register?google=no-account');
+    expect((await callback()).headers.location).toBe('/pricing?google=no-account');
     expect(createAccount).not.toHaveBeenCalled();
   });
 
@@ -298,7 +298,7 @@ describe('Sign in with Google — routes', () => {
   it('an invitation for a Google address with no account goes back to the invitation', async () => {
     google({ mode: 'signin', inviteToken: 'inv' });
     vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
-    expect((await callback()).headers.location).toBe('/register?invite=inv&google=no-account');
+    expect((await callback()).headers.location).toBe('/register?invite=inv&google=invite-no-account');
   });
 
   it('our database busy on the way back from Google says "busy", not "Google did not finish"', async () => {

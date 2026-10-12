@@ -59,6 +59,7 @@ const sections: Section[] = [
     items: [
       'Sign up with email and verify your account — or click "Sign up with Google" and go straight in (when it is switched on)',
       'Continue with Google signs you in; the first time, an existing Kovarti account asks for its password once (or emails you a link) — it is never linked automatically',
+      'No Kovarti account for your Google address yet? Continue with Google takes you to Pricing: choose the trial or a plan, then Sign up with Google',
       'Log in and explore the main dashboard',
       'View project summaries, upcoming deadlines, and key metrics at a glance',
       'Use the sidebar to navigate between features',

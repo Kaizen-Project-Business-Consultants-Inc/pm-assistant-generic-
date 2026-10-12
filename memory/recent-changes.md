@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — Google "no account" goes to Pricing, not straight to the trial (user, testing staging)
+- Continue with Google with an address that has no account used to land on "Start your free 7-day trial", assuming the trial. Now `/pricing?google=no-account` with a note above the plans (hidden for anyone signed in); every plan's sign-up page has Sign up with Google, which starts a fresh Google round (the old state cookie isn't needed) and links the identity as usual. From an invitation: its own sign-up page (`invite-no-account`). Docs: USER_GUIDE, quick guide, PRODUCT_MANUAL, TESTING_GUIDE.
+
 ## 2026-10-12 — A sign-up the database is too busy to finish is undone (on integrate/round3)
 - `services/accountSignup.ts`: everything after the account row (trial/plan, company, invitation, checkout lookup) runs as one step; if the database is busy part-way (`isDatabaseUnavailable`), the account and any unbuilt company of theirs (`organizationRepository.deleteUnbuiltOwnedBy`) are removed and the answer is 503 "busy, try again". Before, a busy company creation was only logged: the account stayed with no company (a dead end, and "email already exists" on the retry). Pending memberships are linked only once the account is kept.
 - Sign-up form: 503 + Retry-After 5 with the busy message. Google: `?google=busy` (the invitation page when there is one), nothing linked, no session.

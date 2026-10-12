@@ -1,12 +1,16 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { PricingSection } from '../components/pricing/PricingCards';
 import { useSEO } from '../hooks/useSEO';
 import { KovartiMark } from '../components/ui/KovartiMark';
+import { googleSignInMessage } from '../utils/googleSignInMessages';
 
 export const PricingPage: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
+  // Came from "Continue with Google" with no account yet (?google=no-account): say so above the plans
+  const [searchParams] = useSearchParams();
+  const googleNote = isAuthenticated ? null : googleSignInMessage(searchParams.get('google'));
 
   useSEO({
     title: 'Pricing — Kovarti PM',
@@ -65,6 +69,11 @@ export const PricingPage: React.FC = () => {
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
+            {googleNote && (
+              <div role="alert" className="mx-auto mb-8 max-w-2xl rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                {googleNote}
+              </div>
+            )}
             <h1 className="text-4xl font-bold text-white">Simple, transparent pricing</h1>
             <p className="mt-4 text-lg text-slate-300">
               Try free for 7 days. Upgrade anytime.
