@@ -172,7 +172,13 @@ class WorkflowRepository {
   async findExecutions(filters?: {
     id?: string; workflowId?: string; visibleTo?: ExecutionVisibility; entityType?: string; entityId?: string; status?: string; limit?: number;
   }): Promise<WorkflowExecution[]> {
-    let sql = 'SELECT * FROM workflow_executions WHERE 1=1';
+    // The task's or project's name rides along (one primary-key lookup per returned row, at most
+    // `limit` rows) so the Workflows page can name what a run was about instead of showing its id.
+    // NULL when the task or project no longer exists (audit 2, 2026-10-11).
+    let sql = 'SELECT workflow_executions.*, CASE workflow_executions.entity_type'
+      + " WHEN 'task' THEN (SELECT t.name FROM tasks t WHERE t.id = workflow_executions.entity_id)"
+      + " WHEN 'project' THEN (SELECT p.name FROM projects p WHERE p.id = workflow_executions.entity_id)"
+      + ' END AS entity_name FROM workflow_executions WHERE 1=1';
     const params: any[] = [];
     if (filters?.id) { sql += ' AND id = ?'; params.push(filters.id); }
     if (filters?.workflowId) { sql += ' AND workflow_id = ?'; params.push(filters.workflowId); }

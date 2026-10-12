@@ -5,6 +5,7 @@ import { apiService } from '../services/api';
 import { WorkflowNodeEditor } from '../components/workflows/WorkflowNodeEditor';
 import { ExecutionDetail } from '../components/workflows/ExecutionDetail';
 import { useCanChangeData } from '../hooks/useCanChangeData';
+import { describeRunTarget } from '../utils/workflowRunTarget';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -482,7 +483,7 @@ export function WorkflowPage() {
                     <span className="flex-1">
                       {/* The workflow's name where we have it (the raw id was all that showed) */}
                       <span className="font-medium text-gray-700 dark:text-gray-200">{workflowNames.get(exec.workflowId) ?? exec.workflowId}</span>
-                      <span className="text-gray-500 dark:text-gray-400"> — {exec.entityType} {exec.entityId}</span>
+                      {describeRunTarget(exec) && <span className="text-gray-500 dark:text-gray-400"> — {describeRunTarget(exec)}</span>}
                     </span>
                     <span className={`px-1.5 py-0.5 rounded text-xs capitalize ${
                       exec.status === 'completed' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :

@@ -46,7 +46,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
 
   if (!heatmap || heatmap.users.length === 0) {
     return (
-      <div className="text-center py-16 text-gray-500">
+      <div className="text-center py-16 text-gray-500 dark:text-gray-400">
         <Grid3X3 className="w-10 h-10 mx-auto mb-3 opacity-40" />
         <p>No time entries to display. Log time to see the utilization heatmap.</p>
       </div>
@@ -64,11 +64,11 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
       {/* Date range picker */}
       <div className="flex items-center gap-3">
         <div>
-          <label htmlFor={`${uid}-from`} className="block text-xs text-gray-500 mb-0.5">From</label>
+          <label htmlFor={`${uid}-from`} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">From</label>
           <input id={`${uid}-from`} type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
         </div>
         <div>
-          <label htmlFor={`${uid}-to`} className="block text-xs text-gray-500 mb-0.5">To</label>
+          <label htmlFor={`${uid}-to`} className="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">To</label>
           <input id={`${uid}-to`} type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="text-xs px-2 py-1.5 border border-gray-200 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300" />
         </div>
       </div>
@@ -77,7 +77,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {heatmap.summary.map(s => (
           <div key={s.userId} className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <p className="text-xs text-gray-500 truncate">{s.userName}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.userName}</p>
             <p className="text-lg font-bold text-gray-900 dark:text-white">{s.avgHours}h/day</p>
             <p className={`text-xs font-medium ${getSummaryTextColor(s.avgUtilization)}`}>
               {s.avgUtilization}% utilization
@@ -86,8 +86,9 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
         ))}
       </div>
 
-      {/* Heatmap grid */}
-      <div className="overflow-x-auto">
+      {/* Heatmap grid — scrolls sideways: focusable so the keyboard can scroll it */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scrollable region must be focusable (WCAG 2.1.1) */}
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Utilization heatmap">
         <div className="inline-block min-w-full">
           {/* A table to screen readers (person × day, with row and column headers); the rows use
               display:contents so the visual grid is unchanged */}
@@ -99,12 +100,12 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
           >
             {/* Header row */}
             <div role="row" className="contents">
-              <div role="columnheader" className="text-xs font-medium text-gray-500 p-1"><span className="sr-only">Person</span></div>
+              <div role="columnheader" className="text-xs font-medium text-gray-500 dark:text-gray-400 p-1"><span className="sr-only">Person</span></div>
               {heatmap.dates.map(date => {
                 const d = new Date(date);
                 const isWeekend = d.getDay() === 0 || d.getDay() === 6;
                 return (
-                  <div key={date} role="columnheader" className={`text-center text-xs p-1 ${isWeekend ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <div key={date} role="columnheader" className={`text-center text-xs p-1 ${isWeekend ? 'text-gray-500 dark:text-gray-400' : 'text-gray-600 dark:text-gray-300'}`}>
                     {d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </div>
                 );
@@ -150,7 +151,7 @@ export function UtilizationHeatmap({ projectId }: { projectId: string }) {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
+          <div className="flex items-center gap-3 mt-3 text-xs text-gray-500 dark:text-gray-400">
             <span>Legend:</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-200 dark:bg-red-900/40" /> &lt;25%</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-200 dark:bg-amber-900/40" /> 25-74%</span>

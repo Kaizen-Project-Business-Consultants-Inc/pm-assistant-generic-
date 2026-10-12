@@ -39,6 +39,8 @@ export interface WorkflowExecution {
   triggerNodeId: string;
   entityType: string;
   entityId: string;
+  /** The task's/project's name (list only); null when it no longer exists */
+  entityName?: string | null;
   status: 'running' | 'completed' | 'failed' | 'cancelled' | 'waiting';
   context: Record<string, any>;
   startedAt: string;

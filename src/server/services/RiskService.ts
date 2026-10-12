@@ -617,56 +617,6 @@ class RiskService {
     return { imported, updated, skipped };
   }
 
-  /**
-   * Import risks from an agent run. Links to proposal if provided.
-   */
-  async importFromAgent(
-    projectId: string,
-    agentId: string,
-    risks: Array<{
-      title: string;
-      description: string;
-      category?: string;
-      severity: string;
-      probability?: number;
-      impact?: number;
-      linkedTaskIds?: string[];
-      aiConfidence?: number;
-    }>,
-    proposalId?: string,
-    userId?: string,
-  ): Promise<number> {
-    const existing = await riskRepository.findByAgentSource(projectId, agentId);
-    const existingTitles = new Set(existing.map(r => r.title.toLowerCase().trim()));
-
-    let created = 0;
-    for (const risk of risks) {
-      if (existingTitles.has(risk.title.toLowerCase().trim())) continue;
-
-      // eslint-disable-next-line no-await-in-loop -- each new RAID item takes the next record number (R-001, A-002...), so creates must not overlap
-      await riskRepository.create({
-        projectId,
-        type: 'risk',
-        title: risk.title,
-        description: risk.description,
-        category: risk.category || 'other',
-        severity: risk.severity as any,
-        probability: risk.probability ?? 3,
-        impact: risk.impact ?? 3,
-        source: 'agent',
-        sourceAgentId: agentId,
-        aiConfidence: risk.aiConfidence,
-        linkedTaskIds: risk.linkedTaskIds,
-        linkedProposalId: proposalId,
-        createdBy: userId || 'system',
-      });
-      created++;
-    }
-
-    logger.info('Agent risks imported: project=%s agent=%s created=%d', projectId, agentId, created);
-    return created;
-  }
-
   mapAICategory(aiType?: string): string {
     if (!aiType) return 'other';
     const map: Record<string, string> = {

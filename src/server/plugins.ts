@@ -26,6 +26,7 @@ import { requestContextHook } from './middleware/requestContext';
 import { tenantResolverHook } from './middleware/tenantResolver';
 import { rateLimiter } from './middleware/rateLimiter';
 import { apiKeyService } from './services/ApiKeyService';
+import { resolveApiKeyOnRequest } from './middleware/auth';
 import { metricsService } from './services/MetricsService';
 import type { JwtPayload } from './types/fastify';
 
@@ -160,30 +161,9 @@ export async function registerPlugins(fastify: FastifyInstance) {
     return JSON.stringify(normalized);
   });
 
-  // Global API key resolution — sets apiKeyId on request for all API routes (even those without authMiddleware)
-  fastify.addHook('onRequest', async (request) => {
-    const authHeader = request.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ') && (request.url.startsWith('/api/') || request.url.startsWith('/mcp'))) {
-      try {
-        const keyInfo = await apiKeyService.validateKey(authHeader.slice(7));
-        if (keyInfo) {
-          request.apiKeyId = keyInfo.keyId;
-          request.apiKeyScopes = keyInfo.scopes;
-          request.apiKeyRateLimit = keyInfo.rateLimit;
-          // Also set user if not already set (for routes without authMiddleware)
-          if (!request.user) {
-            request.user = {
-              userId: keyInfo.userId,
-              username: 'api-key',
-              role: keyInfo.userRole,
-            };
-          }
-        }
-      } catch {
-        // Silently fail — route-level authMiddleware will handle auth errors
-      }
-    }
-  });
+  // Global API key resolution — sets apiKeyId (and the key's user) on every API request, even
+  // routes without authMiddleware; the tenant resolver below relies on that user (middleware/auth.ts)
+  fastify.addHook('onRequest', resolveApiKeyOnRequest);
 
   // Rate limiting for API key requests — runs after API key resolution hook above
   fastify.addHook('onRequest', async (request, reply) => {

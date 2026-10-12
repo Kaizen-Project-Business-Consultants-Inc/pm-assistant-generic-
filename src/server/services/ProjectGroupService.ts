@@ -2,9 +2,29 @@ import { projectGroupRepository, type ProjectGroup } from '../database/ProjectGr
 import { projectService } from './ProjectService';
 import { databaseService } from '../database/connection';
 
+/**
+ * A reorder moves only the clients it names, within the FULL list: they swap among the places they
+ * already hold, and every other client keeps its place (a project manager may only move the clients
+ * they added — 2026-10-11 — and a short list used to give them sort orders 0..n that collided with
+ * everyone else's). Unknown ids and repeats are ignored. A full list comes back exactly as sent.
+ */
+export function mergeIntoFullOrder(fullIds: string[], movedIds: string[]): string[] {
+  const known = new Set(fullIds);
+  const moved = [...new Set(movedIds.filter(id => known.has(id)))];
+  const movedSet = new Set(moved);
+  const result = [...fullIds];
+  let next = 0;
+  fullIds.forEach((id, slot) => { if (movedSet.has(id)) result[slot] = moved[next++]; });
+  return result;
+}
+
 class ProjectGroupService {
   async getGroups(): Promise<ProjectGroup[]> {
     return projectGroupRepository.findAll();
+  }
+
+  async getGroup(id: string): Promise<ProjectGroup | null> {
+    return projectGroupRepository.findById(id);
   }
 
   async createGroup(data: { name: string; color?: string; icon?: string }, userId: string): Promise<ProjectGroup> {

@@ -122,7 +122,8 @@ const sections: Section[] = [
       'The Projects page groups projects by client and can filter by client',
       'Risks & issues for a client: every open risk and issue across its projects in one read-only list — open an item to change it in its project. Only projects you can open are included',
       'Client report: one report across the client’s projects — save it as PDF or Word, or email it to the client',
-      'Clients are added and renamed by the company owner, PMOs and project managers (Clients page → Manage clients); they can also email the client report',
+      'Clients are added by the company owner, PMOs and project managers (Clients page → Manage clients); they can also email the client report',
+      'A client is renamed, moved in the list or deleted only by the company owner, a PMO, or the project manager who added it — others see the name without those controls',
     ],
   },
   {
@@ -303,7 +304,7 @@ const sections: Section[] = [
       'Who: project managers, PMOs and executives open Workflows (Manage section); team members and viewers don\'t have it',
       'Build a workflow from steps (trigger → condition → action or approval), or describe it and click Generate with AI',
       'A project\'s workflow runs only on that project; company-wide workflows are made by the company owner or a PMO',
-      'Executions lists the 50 newest runs on your projects',
+      'Executions lists the 50 newest runs on your projects, naming the task or project each run was about (or saying it no longer exists)',
       'Simple "when X, do Y" rules are under the project\'s Automations tab instead',
     ],
   },
@@ -380,6 +381,7 @@ const sections: Section[] = [
       'Preview images and PDFs directly in the browser',
       'Upload new versions of a file and view version history',
       'Download or delete attachments at any time',
+      'Project Documents (More → Documents): uploading only stores the file — AI does nothing until the project manager opens it and clicks Analyse with AI (summary, decisions, risks, actions, links to tasks and risks)',
     ],
   },
   {

@@ -503,14 +503,6 @@ class RiskRepository extends BaseRepository<ProjectRisk> {
     return this.findById(id);
   }
 
-  async findByAgentSource(projectId: string, agentId: string): Promise<ProjectRisk[]> {
-    const rows = await this.queryRaw(
-      `SELECT * FROM project_risks WHERE project_id = ? AND source_agent_id = ? ORDER BY created_at DESC`,
-      [projectId, agentId],
-    );
-    return this.mapRows(rows);
-  }
-
   async findUntriggered(projectId: string): Promise<ProjectRisk[]> {
     const rows = await this.queryRaw(
       `SELECT * FROM project_risks WHERE project_id = ? AND trigger_condition IS NOT NULL AND triggered = FALSE AND status NOT IN ('closed', 'resolved', 'cancelled')`,

@@ -390,7 +390,7 @@ An agentic AI project management platform that combines the scheduling power of 
 
 ### 3.9 Document Intelligence
 - Upload project documents (PDF, DOCX, DOC, TXT, CSV, MD) via drag-and-drop or file picker
-- AI automatically classifies document type and project phase
+- **AI only when asked:** upload and storage sync just store a document; **Analyse with AI** (project Manager/Owner) classifies document type and project phase
 - Extracts decisions, risks, issues, action items, key dates
 - Generates executive summary and keyword tags
 - Links document content to existing project tasks, risks, and milestones
@@ -398,7 +398,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Findability features:** Short description field, custom folders, pin/favourite, prominent search
 - Pinned documents always sort to top; folder filter and search cover filename, description, and AI summary
 - Detail panel with editable description and folder, all AI insights, and entity links
-- Reprocess button to re-run AI analysis on any document
+- **Analyse again with AI** re-runs the analysis on any document
 - **Multi-provider BYOS connectors (OneDrive, SharePoint, Google Drive, Dropbox):** true Bring Your Own Storage — files never stored in Kovarti, only metadata + AI insights + embeddings (~10KB/doc)
 - Provider picker modal with per-provider OAuth flows, SharePoint site URL step, OneDrive shared folder link support, folder-specific sync
 - **OneDrive shared folder links:** connect folders shared by coworkers via OneDrive sharing URLs — resolved via Microsoft Graph Shares API to browsable drive locations
@@ -647,7 +647,7 @@ A structured project control register expanded from 4 types (RAID) to 6 types (R
 - Role-based permission matrix: all roles can create RAIDAD items (triage-gated for non-PM roles); admin=all operations including reverse; project_manager/scrum_master/pmo/ba=create + triage + cancel; reverse restricted to admin; **viewer** (assignment-based) — cannot create/cancel/reverse, but can update status, edit fields, post updates, and edit/delete own updates on items they are assigned as owner. Viewer assignment-based permissions also extend to: **tasks** (update status and comment on tasks assigned via resource linkage), **meeting actions** (now RAID actions they own — the old meeting action-item list is read-only since Oct 2026), **file attachments** (upload to assigned tasks and owned RAID items)
 - **CSV/Excel Import**: bulk-load from `.csv`, `.xlsx`, `.xls` files; **multi-tab Excel support** — sheets named RAID, Risks, Issues, Actions, Decisions, Assumptions, Dependencies are auto-detected and imported by type; smart column mapper with exact alias, fuzzy, and AI-powered matching; value normalisation for type/severity/status/category; owner matching against project members; **smart date parsing** (DD-Mon-YYYY, MM/DD/YYYY, YYYY-MM-DD, and other common formats auto-converted); **title fallback** — if no Title column exists, the Description column (e.g., "Risk Description") is used as the title; max 200 rows per import; dedup by title; all records tagged `source: 'imported'`; aligned with DBJ spreadsheet column layout
 - **AI Scan**: project-scoped AI analysis surfaces new Risks and Issues from schedule/task/budget data; user selects which findings to import; imported records tagged `source: ai_scan`
-- **Agent partnership**: background agents write directly to RAID log via `importFromAgent`; agent-written records tagged `source: agent`; `suggest-mitigation` MCP tool surfaces historical lessons-learned for open risks
+- **Agent partnership**: AI scan findings are imported on the PM's choice (`importFromAIScan`, `source: ai_scan`); older agent-written records keep `source: agent` (the background agent import was removed in October 2026); `suggest-mitigation` MCP tool surfaces historical lessons-learned for open risks
 - **AI-assisted authoring**: "Suggest with AI" buttons on Mitigation Plan, Trigger Condition, and Response Plan fields (**risk-only** — these fields are not shown on the issue form); uses RAG-based lesson retrieval + Claude to generate field-specific suggestions (early warning signs for triggers, contingency actions for response plans, preventive strategies for mitigations)
 - **Mitigation Suggestions in Risk Form**: When creating or editing a risk, the `RiskFormModal` shows a collapsible **Suggested Mitigations** section (Shield icon) powered by `MitigationSuggestions` — historical mitigation strategies from past projects, ranked by relevance, with source project attribution
 - **RAID notifications**: owner assignment, status changes, updates posted, severity escalation — all notify the right people (owner + PMs) while excluding the actor to prevent noise

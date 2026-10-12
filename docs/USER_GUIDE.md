@@ -251,7 +251,7 @@ When a project is finished or stopped, **archive** it: in the **Projects** list,
 
 A **client** is who a project is for — a customer, or an internal department you deliver to. Clients never sign in to Kovarti; they get reports. (Clients used to be called *project groups*.)
 
-- **Who manages clients:** the company owner, PMOs and project managers. Open **Clients** in the sidebar (or the **Clients** button on the Projects page) and press **Manage clients** to add, rename, recolour or remove one. Removing a client doesn't touch its projects — they just show under *No client*.
+- **Who manages clients:** the company owner, PMOs and project managers. Open **Clients** in the sidebar (or the **Clients** button on the Projects page) and press **Manage clients** to add one. **Renaming, recolouring, moving in the list or removing a client** is for the company owner, a PMO, or the project manager who added that client (a project manager moves their own clients among their places; everyone else's stay put) — other project managers see its name without those controls (October 2026). Removing a client doesn't touch its projects — they just show under *No client*.
 - **Giving a project its client:** when you create a project (blank, from a file or from a template), pick it in the **Client** box on the project details step. To change it later, open the project and use **Edit** → **Client** (only people who can edit the project see this). The Client box shows once your company has at least one client.
 - **Projects page:** projects are grouped under their client (with a *No client* section for the rest), and the **Filter by client** box shows just one client's projects. Each client heading has links to its **Risks & issues** and its **Client report**. The client's name also shows next to the project code on each card.
 - **Risks & issues for a client** (*Clients → Risks & issues*): every risk, issue, action and decision across the client's projects in one list, with totals for open risks, open issues, high / critical items and overdue actions. Use **Show** to switch between open risks & issues, all RAID items, or high & critical only. The list is **read-only** — each project keeps its own register; click an item's title to open that project's RAID tab and change it there. Only projects you can open are included.
@@ -1133,7 +1133,7 @@ All automatic triggers are non-blocking and will not slow down the originating o
 
 ### Execution History
 
-Each workflow run creates an execution record. The **Executions** tab on the Workflows page lists the 50 newest runs on your projects — runs of your projects' workflows, and runs of company-wide workflows on tasks in your projects (a PMO — including the company owner — or an executive sees every run). For each run you can:
+Each workflow run creates an execution record. The **Executions** tab on the Workflows page lists the 50 newest runs on your projects, each naming the task or project it was about (or "a task that no longer exists") — runs of your projects' workflows, and runs of company-wide workflows on tasks in your projects (a PMO — including the company owner — or an executive sees every run). For each run you can:
 
 - View the status of each node in the run (pending, running, completed, failed, waiting_approval).
 - See timestamps for when each node started and completed.
@@ -4103,7 +4103,7 @@ In addition to event-driven triggers (e.g., "when a task is completed"), you can
 
 ## 40. Document Intelligence
 
-Upload and manage project documents with AI-powered classification, summarization, and search.
+Upload and manage project documents. When you ask for it, AI classifies and summarises a document, pulls out decisions, risks and actions, and links it to your tasks and risks.
 
 ### Getting Started
 1. Navigate to a project's detail page
@@ -4115,13 +4115,16 @@ Upload and manage project documents with AI-powered classification, summarizatio
 - Supported formats: PDF, DOCX, DOC, TXT, CSV, MD (max 10MB each)
 - Optionally enter a **description** before uploading (e.g., "vendor response for LMS phase 2")
 - Multiple files can be uploaded at once (hold Ctrl/Cmd)
-- After upload, AI automatically processes the document (15-30 seconds)
+- Uploading only stores the document. **AI does nothing until you ask** (since October 2026): open the document and click **Analyse with AI** (see below). Until then the list shows a clock icon ("Not analysed yet").
 
 ### Finding Documents Quickly
 - **Search** — the search bar at the top of the tab searches across filenames, descriptions, and AI summaries
 - **Pin favourites** — click the star icon on any document to pin it to the top of the list
 - **Folders** — assign documents to custom folders (e.g., "Contracts", "Vendor Docs") via the detail panel. Use the folder dropdown filter to narrow the list.
 - **Descriptions** — add a short description to any document for easy identification
+
+### Analyse with AI
+Open a document and click **Analyse with AI** in its panel (the project's Manager or Owner, on a plan with AI; it uses your AI allowance). It takes about 15–30 seconds: the button shows **Analysing…** and the results appear by themselves. Afterwards the button reads **Analyse again with AI**. If an analysis hasn't finished after 10 minutes it shows as failed and you can run it again. On a plan without AI the button isn't shown. Team members and viewers don't see the button; they see the results once a PM has run it.
 
 ### Viewing Document Details
 Click any document in the list to open the detail panel on the right:
@@ -4137,13 +4140,13 @@ Click any document in the list to open the detail panel on the right:
 ### AI Semantic Search
 Type a natural language question in the AI search field (e.g., "budget constraints") to find documents by meaning. This uses vector embeddings for intelligent matching.
 
-### Reprocessing & Deleting
-- **Reprocess** — click the refresh icon to re-run AI analysis (useful after AI improvements)
+### Analysing again & Deleting
+- **Analyse again with AI** — runs the analysis again (useful after you replace the file or after AI improvements)
 - **Delete** — click the trash icon and confirm to permanently remove the document
 
 ### Connecting Cloud Storage (BYOS)
 
-Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox so Kovarti can analyze your documents without ever storing them. Your files stay in your cloud provider — Kovarti only keeps AI-generated metadata and search indexes.
+Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox so Kovarti can list — and, when you ask, analyse — your documents without storing the files. Your files stay in your cloud provider — Kovarti only keeps AI-generated metadata and search indexes.
 
 **Requirements:** Pro, SME, or Enterprise tier. Trial and Basic users see an upgrade prompt instead of the connect button. Per-tier document limits: Pro = 100, SME = 500, Enterprise = unlimited.
 
@@ -4158,14 +4161,14 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 7. Click **Save** — Kovarti indexes supported files (PDF, DOCX, DOC, TXT, CSV, MD under 10MB)
 
 **How it works:**
-- During sync, files are temporarily downloaded for AI text extraction, then **immediately deleted**
+- Sync lists the files and checks their type; it does **not** run AI. When you click **Analyse with AI** on one, Kovarti fetches it from your provider for that analysis only and keeps no copy of the file
 - Kovarti stores only the document name, AI classification, summary, tags, and search embeddings
 - When you click **Download**, the file is streamed live from your provider — Kovarti is just a pass-through
 - Your cloud storage is the single source of truth
 
 **After connecting:**
 - Documents sync automatically every 15 minutes (configurable)
-- New and changed files are re-analyzed with updated AI insights
+- New files appear as "Not analysed yet". When a file changes, its earlier summary, insights and links are removed (they were about the old version) and it shows "Not analysed yet" until you click **Analyse with AI**
 - Deleted files are automatically removed from Kovarti's index
 - The connector status chip shows sync status, last sync time, and any errors
 - Use **Sync now** to trigger an immediate sync

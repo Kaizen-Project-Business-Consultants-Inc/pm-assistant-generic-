@@ -1,7 +1,4 @@
 import crypto from 'crypto';
-import path from 'path';
-import fs from 'fs/promises';
-import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { encryptToken, decryptToken } from '../utils/tokenEncryption';
 import { storageConnectorRepository, type StorageConnector } from '../database/StorageConnectorRepository';
@@ -332,20 +329,15 @@ class StorageConnectorService {
           continue;
         }
 
-        // Save to temp file for AI processing (BYOS: not kept permanently)
-        const ext = path.extname(item.name) || '';
-        const tmpFilename = `tmp_${uuidv4()}${ext}`;
-        const tmpDir = path.join(config.UPLOAD_DIR, 'documents', '_tmp');
-        // eslint-disable-next-line no-await-in-loop -- temp folder is created before this file is written; one file per downloaded item
-        await fs.mkdir(tmpDir, { recursive: true });
-        const tmpPath = path.join(tmpDir, tmpFilename);
-        // eslint-disable-next-line no-await-in-loop -- writes the file just downloaded; one per item, after its download
-        await fs.writeFile(tmpPath, buffer);
-
         // Build external path
         const externalPath = item.parentPath
           ? `${item.parentPath}/${item.name}`
           : item.name;
+
+        // A changed file's earlier analysis is about the old version: drop its search embeddings
+        // before the row (and its text, which sizes the chunk list) is cleared
+        // eslint-disable-next-line no-await-in-loop -- one changed file at a time, before its row is reset
+        if (existing) await documentIntelligenceService.deleteDocumentEmbeddings(existing.id);
 
         // eslint-disable-next-line no-await-in-loop -- saves the row for the file just downloaded; one per item, after its download
         const doc = await projectDocumentRepository.upsertFromConnector({
@@ -363,10 +355,8 @@ class StorageConnectorService {
           uploadedBy: connector.createdBy,
         });
 
-        // AI processing, then clean up temp file
-        documentIntelligenceService.processDocument(connector.projectId, doc.id, tmpPath, connector.createdBy)
-          .catch(err => logger.error('Connector doc processing error', { documentId: doc.id, error: err.message }))
-          .finally(() => fs.unlink(tmpPath).catch(() => {}));
+        // Stored only: the AI analysis runs when someone clicks "Analyse with AI" (audit 2, M1 —
+        // a sync used to analyse every new or changed file, every 15 minutes, with no one asking).
 
         known.set(item.id, doc);
         synced++;

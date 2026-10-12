@@ -20,9 +20,9 @@ const SEED_FILE = path.join(__dirname, '..', 'database', 'tenant-migrations', 'T
 const SAMPLE_PREFIX = 'demo-';
 /**
  * Later migrations that correct the seed's own rows: a reloaded sample runs them too, or it would
- * come back with the old figures (T076 spend) and weekend dates (T081).
+ * come back with the old figures (T076 spend), weekend dates (T081) and a broken link (T090).
  */
-export const SAMPLE_FIX_FILES = ['T076_sample_spent_fix.sql', 'T081_sample_no_weekends.sql']
+export const SAMPLE_FIX_FILES = ['T076_sample_spent_fix.sql', 'T081_sample_no_weekends.sql', 'T090_sample_links_respected.sql']
   .map(f => path.join(__dirname, '..', 'database', 'tenant-migrations', f));
 
 /** The seed file split into statements, the same way the tenant migration runner splits it */

@@ -25,7 +25,7 @@ vi.mock('../../middleware/requireProjectAccess', () => ({
   checkProjectRole: vi.fn(async () => ({ ok: true })),
   checkProjectRoleFor: vi.fn(async () => ({ ok: true })),
 }));
-vi.mock('../../middleware/requireTier', () => ({ requireFeature: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireTier', () => ({ requireFeature: () => vi.fn(async () => {}), hasFeature: vi.fn(async () => true) }));
 vi.mock('../../middleware/viewerWriteBypass', () => ({ viewerWriteBypass: () => vi.fn(async () => {}), ownWorkScope: () => vi.fn(async () => {}) }));
 vi.mock('../../middleware/checkEntityProjectAccess', () => ({ checkEntityProjectAccess: vi.fn(async () => true) }));
 vi.mock('../../database/connection', () => ({
@@ -33,7 +33,8 @@ vi.mock('../../database/connection', () => ({
 }));
 
 const groups = vi.hoisted(() => ({
-  getGroups: vi.fn(), createGroup: vi.fn(), updateGroup: vi.fn(), deleteGroup: vi.fn(),
+  // getGroup: rename/delete read the client first to check who may change it (2026-10-11); null = gone
+  getGroups: vi.fn(), getGroup: vi.fn(async () => null), createGroup: vi.fn(), updateGroup: vi.fn(), deleteGroup: vi.fn(),
   reorderGroups: vi.fn(), assignProject: vi.fn(), unassignProject: vi.fn(),
 }));
 vi.mock('../../services/ProjectGroupService', () => ({ projectGroupService: groups }));
@@ -148,6 +149,7 @@ describe('routes answer an empty or incomplete body with a clear 4xx, not a cras
   });
 
   it('a real failure still reaches the error handler (not swallowed as 4xx)', async () => {
+    groups.getGroup.mockResolvedValueOnce({ id: ID, createdBy: 'u1' }); // the PM who added it
     groups.deleteGroup.mockRejectedValue(new Error('connection lost'));
     expect((await sendPm('DELETE', `/api/v1/project-groups/${ID}`)).statusCode).toBe(500);
   });

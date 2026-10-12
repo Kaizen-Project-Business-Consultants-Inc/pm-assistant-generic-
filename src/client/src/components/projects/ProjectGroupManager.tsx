@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { AccessibleModal } from '../ui/AccessibleModal';
+import { useAuthStore } from '../../stores/authStore';
+import { canChangeClient } from '../../hooks/useCanManageClients';
 
 interface ProjectGroup {
   id: string;
@@ -10,6 +12,7 @@ interface ProjectGroup {
   color: string;
   icon: string | null;
   sortOrder: number;
+  createdBy?: string | null;
 }
 
 const COLORS = ['#6366f1', '#3b82f6', '#059669', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#78716c'];
@@ -17,6 +20,7 @@ const COLORS = ['#6366f1', '#3b82f6', '#059669', '#f59e0b', '#ef4444', '#8b5cf6'
 export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const titleId = useId();
+  const user = useAuthStore((st) => st.user);
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState(COLORS[0]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -75,7 +79,11 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
           )}
           {groups.map(g => (
             <div key={g.id} className="flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
-              <GripVertical className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+              {/* The move handle shows only on clients this person may reorder (owner/PMO, or the PM who
+                  added it — server: PUT /project-groups/reorder); others get a spacer */}
+              {canChangeClient(user, g)
+                ? <GripVertical data-testid="client-move-handle" aria-hidden="true" className="w-4 h-4 text-gray-300 dark:text-gray-600 flex-shrink-0" />
+                : <span className="w-4 h-4 flex-shrink-0" aria-hidden="true" />}
               <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: g.color }} />
               {editingId === g.id ? (
                 <>
@@ -110,14 +118,18 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     Save
                   </button>
                 </>
-              ) : (
+              ) : canChangeClient(user, g) ? (
                 <>
-                  <span
-                    className="flex-1 text-sm text-gray-900 dark:text-gray-100 cursor-pointer"
+                  {/* Rename and delete only for the owner/PMO or the PM who added this client
+                      (server: projectGroups.ts); others see the name only */}
+                  <button
+                    type="button"
+                    aria-label={`Rename client ${g.name}`}
+                    className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100 cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                     onClick={() => { setEditingId(g.id); setEditName(g.name); setEditColor(g.color); }}
                   >
                     {g.name}
-                  </span>
+                  </button>
                   <button
                     onClick={() => deleteMut.mutate(g.id)}
                     aria-label={`Delete client ${g.name}`}
@@ -126,6 +138,8 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </>
+              ) : (
+                <span className="flex-1 text-sm text-gray-900 dark:text-gray-100">{g.name}</span>
               )}
             </div>
           ))}

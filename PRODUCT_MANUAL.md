@@ -2178,7 +2178,7 @@ The `PolicyEngineService` enforces configurable governance rules:
 
 The `AIBudgetService` enforces per-user monthly AI token limits with tier-aware budget resolution:
 
-- **Per-tier defaults**: Trial — 50,000 (~10 AI questions to explore Mjuzi; 7-day trial with every Pro feature); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; SME — 1,500,000; Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
+- **Per-tier defaults**: Trial — 50,000 (~10 AI questions to explore Mjuzi; 7-day trial with every Pro feature); Consultant Basic — 0 (no AI, but includes resources, reports, workflows); Consultant Pro — 500,000; Team (SME, per seat) — 500,000 per seat, pooled across the team (`AI_TIER_BUDGET_SME_PER_SEAT`; `AI_TIER_BUDGET_SME` 1,500,000 applies only to a Team account not billed per seat); Enterprise — 5,000,000. Configurable via `AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_ENTERPRISE` env vars.
 - **Budget resolution chain**: per-user override (`users.ai_monthly_token_budget`) → subscription tier default → global fallback (`AI_MONTHLY_TOKEN_BUDGET`)
 - **Token top-ups**: Users can purchase additional token packs ($10 per 500K tokens) via Stripe one-time payment. Top-up tokens are added instantly, do not expire, and are consumed only after the monthly tier allowance is exhausted. FIFO consumption (oldest packs first). Managed by `TokenTopUpRepository`.
 - Tracks all AI usage in the `ai_usage_log` table (input/output tokens, cost, latency, feature, model)
@@ -2414,7 +2414,7 @@ Below the plan cards, a **Feature Comparison Matrix** provides a side-by-side ta
 | Projects | 3 | Unlimited | Unlimited | Unlimited | Unlimited |
 | AI Tokens/mo | 50K | None | 500K | 500K per seat, pooled | 5M |
 | Storage | 100MB | 1GB | 1GB | 5GB | 10GB |
-| Viewer Invites | 0 | 5 | 15 | Unlimited | Unlimited |
+| Viewer Invites | 5 | 5 | 15 | Unlimited | Unlimited |
 | Exports | ✓ | ✓ | ✓ | ✓ | ✓ |
 | API Keys | ✓ | ✓ | ✓ | ✓ | ✓ |
 | EVM | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -3596,7 +3596,6 @@ RAID records have two distinct sections:
 - Cancel and reverse actions (with the mandatory reason recorded)
 - Update added / Update deleted audit entries
 - AI Scan findings imported as new records
-- Agent writes via `importFromAgent` or `importFromAIScan`
 
 Legacy comments (created before the Updates feature) remain in the activity log for backward compatibility but are hidden from the activity display.
 
@@ -3606,7 +3605,7 @@ The RAID log integrates with the platform's AI agent layer in two ways:
 
 **AI Scan** — A project-scoped scan that reads the current schedule, task statuses, overdue items, and budget data to surface new risks and issues. Results are presented as a preview; the user selects which findings to import. Imported records are tagged with `source: ai_scan`.
 
-**Agent writes** — No background check writes to the RAID log today. `RiskService.importFromAgent` (records tagged `source: agent`) still exists, but nothing calls it, and the Risk Agent is retired.
+**Agent writes** — No background check writes to the RAID log today. The Risk Agent is retired, and its import (`RiskService.importFromAgent`, records tagged `source: agent`) was removed in October 2026; older records with that source still show as before.
 
 **Suggest with AI** — When editing a risk, the form offers "Suggest with AI" buttons on three fields:
 - **Mitigation Plan** — AI suggests preventive strategies based on historical lessons learned and RAG-based similarity search
@@ -3806,7 +3805,7 @@ The Terms of Service (`/terms`) has been updated to include the following provis
 
 - **Trial conversion clause** — describes how the 7-day free trial converts to a paid subscription at the end of the trial period if a payment method is on file.
 - **Refund policy** — monthly plan fees are non-refundable. Annual plan fees are pro-rated and refundable within 30 days of the billing date. Token top-ups are non-refundable.
-- **AI Usage Limits (Section 5A)** — highlighted section covering per-tier monthly token allowances (Trial: 50K, Consultant Basic: none, Consultant Pro: 500K, Team: 1.5M, Enterprise: 5M), budget exhaustion behavior (AI features blocked, non-AI features unaffected), token top-up terms (non-refundable, no expiry), no carry-over of unused monthly tokens, per-user overrides, and fair use policy.
+- **AI Usage Limits (Section 5A)** — highlighted section covering per-tier monthly token allowances (Trial: 50K, Consultant Basic: none, Consultant Pro: 500K, Team: 500K per seat, pooled across the team, Enterprise: 5M), budget exhaustion behavior (AI features blocked, non-AI features unaffected), token top-up terms (non-refundable, no expiry), no carry-over of unused monthly tokens, per-user overrides, and fair use policy.
 - **Governing law** — disputes are governed by the laws of British Columbia, Canada.
 - **Dispute resolution** — parties agree to attempt informal resolution before pursuing formal legal proceedings.
 
@@ -4349,7 +4348,7 @@ The migration also expands the RAID `source` enum to include `'standup'`.
 
 Since October 2026 project groups are shown as **Clients** — who a project is for (a consultant's customers). Clients never sign in; they receive reports. Storage is unchanged (`project_groups`, `projects.group_id`; API `/api/v1/project-groups`, projects carry `clientId`).
 
-- **Who manages the client list:** the company owner, PMO and project managers (create, rename, recolour, reorder, delete — "Manage clients"). Others get 403 and don't see the button.
+- **Who manages the client list:** the company owner, PMO and project managers (create — "Manage clients"). **Rename/recolour/reorder/delete a client:** the owner/PMO, or the project manager who added it (a reorder listing another PM's client is refused whole; the listed clients swap among the places they hold and every other client keeps its place — `mergeIntoFullOrder`) (`project_groups.created_by`; audit 2, 2026-10-11) — the controls are hidden for others and the server answers 403 "Only the company owner, a PMO or the project manager who added this client can rename or delete it." Others get 403 and don't see the button.
 - **Putting a project under a client:** the **Client** select when creating a project (blank, from file, from template — the server sets it in the same step; an unknown client is a 400) and in **Edit project**; only the project's Manager/Owner (assign/unassign routes check it).
 - **Projects page:** grouped by client with collapsible headers; **Client** filter (All clients / No client / each client); the client's name under each project; each client header links to **Risks & issues** and **Client report**.
 - **Clients page** (`/clients`): each client with its number of live projects and the two links.
@@ -4810,7 +4809,7 @@ A systemd timer (`pm-cron@scheduled-automations`) runs **every 5 minutes**, quer
 
 ## 59. Document Intelligence
 
-An AI-powered document management system that ingests, classifies, summarizes, and enables intelligent search across project documents.
+A document hub for each project. On request (a click — never on upload or sync, since October 2026), AI classifies, summarises and links a document, and its text becomes searchable by meaning.
 
 ### Upload & Processing
 
@@ -4818,7 +4817,8 @@ An AI-powered document management system that ingests, classifies, summarizes, a
 - **Supported formats:** PDF, DOCX, DOC, TXT, CSV, MD (max 10MB per file)
 - **Multiple file upload:** Hold Ctrl/Cmd to select multiple files
 - **Optional description:** Enter a short description before uploading to help identify the document later
-- **AI processing:** After upload, the document is automatically processed by Claude AI:
+- **Upload stores only.** No AI runs on upload (audit 2, M1, 2026-10-11: the rule is AI only when a person asks). The document shows "Not analysed yet" (clock icon).
+- **Analyse with AI** (button in the detail panel; the project's Manager/Owner only — hidden for others; plan feature `ai_assistant`; counts against the AI allowance). It calls `POST …/reprocess`, which claims the document with one conditional UPDATE (`claimForAnalysis`), so of two clicks only one starts the AI; the other gets 409. The list and panel re-check every 5 s while it runs. An analysis still "processing" after 10 minutes (`updated_at`) reads as failed ("The analysis didn't finish…"), polling stops, and it can be claimed again. The button is hidden when the plan lacks `ai_assistant` (the list answers `canAnalyse`). The polled list leaves out the documents' extracted text. The analysis covers:
   - **Classification:** Document type (Requirements, Design, Meeting Minutes, Risk Log, etc.) and project phase (Initiation, Planning, Execution, etc.)
   - **Summary:** AI-generated executive summary
   - **Tags:** Auto-generated keyword tags
@@ -4826,8 +4826,8 @@ An AI-powered document management system that ingests, classifies, summarizes, a
   - **Entity linking:** AI matches document content to existing tasks, risks, and milestones in the project
   - **Confidence score:** How confident the AI is in its classification (0-100%)
 - **Processing status:** Pending → Processing → Completed (green checkmark) or Failed (red warning)
-- **Reprocess:** Click the refresh icon in the detail panel to re-run AI processing
-- **Embeddings:** Document text is chunked and embedded for semantic search
+- **Analyse again with AI:** the same button after a result or a failure runs it again
+- **Embeddings:** after an analysis, the document text is chunked and embedded for semantic search
 
 ### Finding Documents
 
@@ -4858,7 +4858,7 @@ Click any document to open the detail side panel showing:
 - Key dates mentioned
 - Linked entities (tasks, risks, milestones)
 - Error message (if processing failed)
-- Reprocess and delete buttons
+- **Analyse with AI** / **Analyse again with AI** (Manager/Owner) and delete buttons
 
 ### API Endpoints
 
@@ -4873,7 +4873,7 @@ All endpoints are scoped to a project: `/api/v1/projects/:projectId/documents/`
 | GET | `/:documentId` | Get document details with entity links |
 | PATCH | `/:documentId` | Update description, folder, or pin status |
 | DELETE | `/:documentId` | Delete document, embeddings, and entity links |
-| POST | `/:documentId/reprocess` | Re-run AI processing |
+| POST | `/:documentId/reprocess` | "Analyse with AI" — the only way a document is analysed (project Manager/Owner, feature `ai_assistant`; 409 while already analysing; a connected-storage document is fetched from the provider for it) |
 
 ### Cloud Storage Connectors (BYOS)
 
@@ -4899,7 +4899,7 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 
 **How BYOS Works:**
 
-- During sync, files are temporarily downloaded for text extraction and AI analysis, then **immediately deleted** from Kovarti's servers
+- Sync downloads each new or changed file only to check its type and size; nothing is written to disk and **no AI runs**. "Analyse with AI" fetches the file from the provider again, in memory, for that analysis only
 - Kovarti stores only: document name, AI classification, summary, tags, entity links, and search embeddings
 - When you download a document, it is **streamed live from the provider** through Kovarti as a pass-through proxy
 - Your cloud storage remains the single source of truth — Kovarti never holds your files
@@ -4913,15 +4913,15 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 5. For OneDrive: choose **My OneDrive** (your own storage) or **Shared Folder Link** (paste a sharing URL from a coworker, e.g., `https://...sharepoint.com/:f:/g/personal/...`)
 6. Sign in with your account in the popup (for shared links, you must have access to the shared folder)
 7. Select which folders to sync — only those folders are indexed
-8. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are processed through the AI pipeline
+8. Documents matching supported types (PDF, DOCX, DOC, TXT, CSV, MD, max 10MB) are listed as "Not analysed yet" — AI runs when someone clicks **Analyse with AI**
 
 **Automatic Sync:**
 
 - Connectors sync every 15 minutes by default (configurable from 15 to 1440 minutes)
 - When specific folders are selected, sync lists those folders directly (fast)
-- New files are temporarily downloaded, AI-processed, then the temp file is deleted
+- New files are listed (no AI, no file kept)
 - Deleted files are automatically removed from Kovarti's index
-- Modified files are re-processed with updated AI insights
+- Modified files go back to "Not analysed yet": the earlier text, summary, insights, tags, entity links and search embeddings are removed (they describe the old version)
 - Document limit is enforced per sync: once the limit is reached, new files are skipped (updates and deletes still process)
 
 **Connector Status:**

@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
-import { projectGroupService } from '../../services/ProjectGroupService';
+import { projectGroupService, mergeIntoFullOrder } from '../../services/ProjectGroupService';
 import { sendValidationError } from '../../utils/validationError';
 import { checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 import { clientService, ClientNotFoundError } from '../../services/ClientService';
@@ -23,6 +23,15 @@ import { trialEmailAllowance } from '../../utils/trialEmail';
 const CLIENT_MANAGERS = ['pmo', 'project_manager']; // the company owner works as PMO
 const canManageClients = (role: string) => CLIENT_MANAGERS.includes(role);
 const NOT_MANAGER = { error: 'Forbidden', message: 'Only the company owner, PMO and project managers manage clients.' };
+/**
+ * Renaming, deleting or reordering a client changes it for every project manager's projects, so it is for the
+ * company owner/PMO, or the project manager who added that client (any PM could rename or delete
+ * any client — audit 2, L-g, 2026-10-11). Same rule on the client: hooks/useCanManageClients.ts.
+ */
+const canChangeClient = (user: { role: string; userId: string }, group: { createdBy: string | null }) =>
+  user.role === 'pmo' || (user.role === 'project_manager' && !!group.createdBy && group.createdBy === user.userId);
+const NOT_CLIENT_OWNER_REORDER = { error: 'Forbidden', message: 'Only the company owner, a PMO or the project manager who added a client can move it in the list.' };
+const NOT_CLIENT_OWNER = { error: 'Forbidden', message: 'Only the company owner, a PMO or the project manager who added this client can rename or delete it.' };
 
 const emailSchema = z.object({
   recipients: z.array(z.string().email('Each recipient must be an email address.'), { message: 'Say who to send it to (recipients).' })
@@ -108,7 +117,16 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
     try {
       if (!canManageClients(request.user!.role)) return reply.status(403).send(NOT_MANAGER);
       const { orderedIds } = reorderSchema.parse(request.body ?? {});
-      await projectGroupService.reorderGroups(orderedIds);
+      // Reordering moves each listed client, so — like rename/delete — a project manager may list
+      // only the clients they added (user decision, 2026-10-11). The listed clients move among the
+      // places they hold in the FULL list; everyone else's keep theirs. One read.
+      const groups = await projectGroupService.getGroups();
+      if (request.user!.role !== 'pmo') {
+        const byId = new Map(groups.map(g => [g.id, g]));
+        const notTheirs = orderedIds.some(id => { const g = byId.get(id); return !!g && !canChangeClient(request.user!, g); });
+        if (notTheirs) return reply.status(403).send(NOT_CLIENT_OWNER_REORDER);
+      }
+      await projectGroupService.reorderGroups(mergeIntoFullOrder(groups.map(g => g.id), orderedIds));
       return { ok: true };
     } catch (err) {
       return handleGroupError(reply, err);
@@ -134,6 +152,9 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       if (!canManageClients(request.user!.role)) return reply.status(403).send(NOT_MANAGER);
       const parsed = updateSchema.parse(request.body ?? {});
+      const existing = await projectGroupService.getGroup(id);
+      if (!existing) throw new ClientNotFoundError();
+      if (!canChangeClient(request.user!, existing)) return reply.status(403).send(NOT_CLIENT_OWNER);
       const group = await projectGroupService.updateGroup(id, parsed);
       return group;
     } catch (err) {
@@ -146,6 +167,9 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       if (!canManageClients(request.user!.role)) return reply.status(403).send(NOT_MANAGER);
+      const existing = await projectGroupService.getGroup(id);
+      if (!existing) throw new ClientNotFoundError();
+      if (!canChangeClient(request.user!, existing)) return reply.status(403).send(NOT_CLIENT_OWNER);
       await projectGroupService.deleteGroup(id);
       return { ok: true };
     } catch (err) {

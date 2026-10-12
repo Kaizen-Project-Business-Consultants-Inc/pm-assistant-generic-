@@ -11,7 +11,24 @@ function parseJson<T>(val: unknown, fallback: T): T {
   return val as T;
 }
 
+/**
+ * An analysis that has said "processing" for longer than this never finished (the server restarted,
+ * the AI call hung): it shows as failed, polling stops, and "Analyse again" may claim it
+ * (audit 2 review, 2026-10-11). Uses updated_at, which the claim sets.
+ */
+export const STALE_PROCESSING_MINUTES = 10;
+const STALE_SQL = `(processing_status = 'processing' AND updated_at < NOW() - INTERVAL ${STALE_PROCESSING_MINUTES} MINUTE)`;
+const STALE_MESSAGE = "The analysis didn't finish. Click Analyse again with AI to try again.";
+/** Every column, plus whether a "processing" row is stale */
+const SELECT_ONE = `SELECT *, ${STALE_SQL} AS processing_stale FROM project_documents`;
+/** The list leaves out extracted_text (whole documents' text; the list polls while analysing) */
+const LIST_COLUMNS = `id, project_id, filename, original_filename, description, content_type, file_size,
+  document_type, project_phase, tags, folder, is_pinned, ai_summary, ai_insights, confidence, processing_status,
+  error_message, uploaded_by, connector_id, external_id, external_path, external_modified_at, external_etag,
+  created_at, updated_at, ${STALE_SQL} AS processing_stale`;
+
 function mapRow(row: any): ProjectDocument {
+  const stale = !!Number(row.processing_stale);
   return {
     id: row.id,
     projectId: row.project_id,
@@ -29,8 +46,8 @@ function mapRow(row: any): ProjectDocument {
     aiSummary: row.ai_summary || null,
     aiInsights: parseJson<DocumentAIResponse | null>(row.ai_insights, null),
     confidence: Number(row.confidence) || 0,
-    processingStatus: row.processing_status,
-    errorMessage: row.error_message || null,
+    processingStatus: stale ? 'failed' : row.processing_status,
+    errorMessage: stale ? STALE_MESSAGE : (row.error_message || null),
     uploadedBy: row.uploaded_by,
     connectorId: row.connector_id || null,
     externalId: row.external_id || null,
@@ -63,7 +80,7 @@ class ProjectDocumentRepository {
 
   async findById(id: string): Promise<ProjectDocument | null> {
     const rows = await databaseService.query<any>(
-      'SELECT * FROM project_documents WHERE id = ?',
+      `${SELECT_ONE} WHERE id = ?`,
       [id],
     );
     return rows.length > 0 ? mapRow(rows[0]) : null;
@@ -89,7 +106,7 @@ class ProjectDocumentRepository {
     }
 
     const rows = await databaseService.query<any>(
-      `SELECT * FROM project_documents WHERE ${where} ORDER BY is_pinned DESC, created_at DESC LIMIT 500`,
+      `SELECT ${LIST_COLUMNS} FROM project_documents WHERE ${where} ORDER BY is_pinned DESC, created_at DESC LIMIT 500`,
       params,
     );
     return rows.map(mapRow);
@@ -99,7 +116,7 @@ class ProjectDocumentRepository {
     if (ids.length === 0) return [];
     const placeholders = ids.map(() => '?').join(',');
     const rows = await databaseService.query<any>(
-      `SELECT * FROM project_documents WHERE id IN (${placeholders})`,
+      `${SELECT_ONE} WHERE id IN (${placeholders})`,
       ids,
     );
     return rows.map(mapRow);
@@ -131,6 +148,22 @@ class ProjectDocumentRepository {
         id,
       ],
     );
+  }
+
+  /**
+   * Claim a document for an AI analysis, atomically: only one click wins (a second gets false), and
+   * a "processing" claim older than STALE_PROCESSING_MINUTES can be taken over. So two clicks never
+   * both pay for the AI. updated_at is set explicitly: taking over a stale claim changes no other
+   * value, and ON UPDATE CURRENT_TIMESTAMP only fires when a value changes, so the row would still
+   * read as stale and a third click could win again.
+   */
+  async claimForAnalysis(id: string): Promise<boolean> {
+    const result = await databaseService.query<{ affectedRows?: number }>(
+      `UPDATE project_documents SET processing_status = 'processing', error_message = NULL, updated_at = NOW()
+        WHERE id = ? AND (processing_status <> 'processing' OR updated_at < NOW() - INTERVAL ${STALE_PROCESSING_MINUTES} MINUTE)`,
+      [id],
+    );
+    return (((result as unknown as { affectedRows?: number }).affectedRows) ?? 0) > 0;
   }
 
   async updateStatus(id: string, status: ProcessingStatus, errorMessage?: string): Promise<void> {
@@ -193,12 +226,16 @@ class ProjectDocumentRepository {
     uploadedBy: string;
   }): Promise<ProjectDocument> {
     if (data.existingId) {
-      // Update existing record
+      // Update existing record. The file changed, so the earlier analysis (about the old version)
+      // goes: text, summary, insights, tags, links here; the sync removes its embeddings first.
+      // It waits for "Analyse with AI" again (audit 2 review, 2026-10-11).
       await databaseService.query(
         `UPDATE project_documents SET
            filename = ?, original_filename = ?, content_type = ?, file_size = ?,
            external_path = ?, external_modified_at = ?, external_etag = ?,
-           processing_status = 'pending', error_message = NULL
+           processing_status = 'pending', error_message = NULL,
+           extracted_text = NULL, ai_summary = NULL, ai_insights = NULL, tags = NULL,
+           document_type = 'misc', project_phase = 'unknown', confidence = 0
          WHERE id = ?`,
         [
           data.filename, data.originalFilename, data.contentType, data.fileSize,
@@ -206,6 +243,7 @@ class ProjectDocumentRepository {
           data.existingId,
         ],
       );
+      await databaseService.query('DELETE FROM document_entity_links WHERE document_id = ?', [data.existingId]);
       return (await this.findById(data.existingId))!;
     }
 

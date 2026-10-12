@@ -31,14 +31,16 @@ Rules:
 
 class DocumentIntelligenceService {
   /**
-   * Main processing pipeline for an uploaded document.
+   * AI analysis of one document — run only when a person clicks "Analyse with AI" (audit 2, M1,
+   * 2026-10-11: upload and storage sync no longer call it). `source` is the stored file's path, or
+   * a loader for a document kept in connected storage.
    */
-  async processDocument(projectId: string, documentId: string, filePath: string, userId: string): Promise<void> {
+  async processDocument(projectId: string, documentId: string, source: string | (() => Promise<Buffer>), userId: string): Promise<void> {
     try {
       await projectDocumentRepository.updateStatus(documentId, 'processing');
 
       // 1. Read file and extract text
-      const buffer = await fs.readFile(filePath);
+      const buffer = typeof source === 'string' ? await fs.readFile(source) : await source();
       const doc = await projectDocumentRepository.findById(documentId);
       if (!doc) throw new Error(`Document ${documentId} not found`);
 

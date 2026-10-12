@@ -31,7 +31,7 @@ const mockQuery = vi.fn(async () => [{ id: 'p1' }, { id: 'p2' }]);
 vi.mock('../../services/ProjectService', () => ({ projectService: { invalidateCache: (...a: any[]) => mockInvalidate(...a) } }));
 vi.mock('../../database/connection', () => ({ databaseService: { query: (...a: any[]) => mockQuery(...a) } }));
 
-import { projectGroupService } from '../../services/ProjectGroupService';
+import { projectGroupService, mergeIntoFullOrder } from '../../services/ProjectGroupService';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 function makeGroup(overrides: Partial<{
@@ -236,6 +236,18 @@ describe('ProjectGroupService', () => {
       await projectGroupService.reorderGroups([]);
 
       expect(mockReorder).toHaveBeenCalledWith([]);
+    });
+  });
+
+  // ── mergeIntoFullOrder (2026-10-11) ───────────────────────────────
+  describe('mergeIntoFullOrder', () => {
+    it('moves only the named clients among their own places; others keep theirs', () => {
+      expect(mergeIntoFullOrder(['a', 'b', 'c', 'd'], ['d', 'a'])).toEqual(['d', 'b', 'c', 'a']);
+    });
+    it('a full list comes back as sent; unknown ids and repeats are ignored', () => {
+      expect(mergeIntoFullOrder(['a', 'b', 'c'], ['c', 'b', 'a'])).toEqual(['c', 'b', 'a']);
+      expect(mergeIntoFullOrder(['a', 'b', 'c'], ['zz', 'c', 'c', 'a'])).toEqual(['c', 'b', 'a']);
+      expect(mergeIntoFullOrder(['a', 'b'], [])).toEqual(['a', 'b']);
     });
   });
 

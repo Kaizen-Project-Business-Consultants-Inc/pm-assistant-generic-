@@ -36,6 +36,8 @@ export function rowToExecution(r: any): WorkflowExecution {
   return {
     id: r.id, workflowId: r.workflow_id, triggerNodeId: r.trigger_node_id,
     entityType: r.entity_type, entityId: r.entity_id,
+    // only the list query reads it (null = the task/project no longer exists)
+    ...(r.entity_name !== undefined ? { entityName: r.entity_name ?? null } : {}),
     status: r.status, context: parseJson(r.context),
     startedAt: String(r.started_at),
     completedAt: r.completed_at ? String(r.completed_at) : null,

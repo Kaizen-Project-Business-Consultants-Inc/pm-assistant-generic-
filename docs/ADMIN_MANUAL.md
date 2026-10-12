@@ -11,7 +11,7 @@ This manual is for the **Kovarti platform admin**, and for **company owners and 
 | **admin** | The Kovarti platform admin only (see below): no company, never a company member. |
 | **owner** (of a company) | The person who set up the company. Not a separate role value: whatever role they hold, they work as **PMO** inside their company (below). Only the owner manages billing. |
 | **pmo** | Every project in the company, read and change; company-wide settings (holidays, sample project, rate card, support visits), company-wide workflows, the people list and line managers; every menu item. |
-| **project_manager** | Creates projects and manages the ones they own or manage; invites members; Team and Rate card settings. Every menu item except Portfolio. |
+| **project_manager** | Creates projects and manages the ones they own or manage; sees the Team list (only the owner invites) and Rate card settings. Every menu item except Portfolio. |
 | **executive** | Reads every project in the company and opens the company pages (not Integrations or AI Proposals); changes nothing (`read` scope only). |
 | **team_member** | Works on assigned tasks and RAID items, logs time, comments. Team-member menu (no company-wide pages). |
 | **viewer** | Reads the projects they're a member of; updates only items assigned to them. Free, no seat. |
@@ -23,12 +23,26 @@ The invite form offers Project Manager, Team Member, Viewer and Executive. The b
 
 **"Admin" means the Kovarti platform admin — and nothing else (October 2026).** The platform admin is the account with the `admin` role **and no company**: it owns nothing and has no projects. It reaches the admin pages (all companies, plans, users and password resets, revenue, logs, waitlist, feedback, the AI kill switch and skills) and can open a read-only, recorded **Support view** into one company. Company owners **cannot** give anyone the admin role: it isn't in Settings → Team, and the server refuses it ("Admin is reserved for the Kovarti platform team…"). The owner's own role can't be changed by anyone else, and a member removed from a company never keeps the admin role. The account is created by hand on the server (`seed-admin.sql`); never give it a company. Before October 2026 the admin pages only checked the role, and the company invite list offered "Admin" — that is how a company member could have become a platform admin.
 
+### The admin pages (platform admin only)
+
+Only the Kovarti platform admin sees the **Admin** menu; company owners, PMOs and everyone else never do. Users, Tenants, Revenue and Configuration are described in their own sections below. The others:
+
+| Page | What it is for |
+|------|----------------|
+| **Pricing** (`/admin/pricing`) | Edit each plan: monthly and annual price (in cents), AI tokens per month and their label, storage, viewer-invite limit, maximum projects, minimum seats, trial length in days, and the Stripe monthly/annual price IDs. A second table turns individual features on or off per plan (feature gating). Changes apply to new checks straight away; they don't change what an existing customer was charged. |
+| **Feedback** | Everything people sent with the in-app Feedback button, newest first, filtered by New / Reviewed / Resolved. Open one to see the screenshot (if attached), set its status, keep private admin notes, or write a reply. The person sees the reply in their own feedback list; it is not emailed. |
+| **Operations** | One page to check the service is healthy: warnings, system health (memory, uptime), capacity summary, usage per company (users, projects, tasks, AI tokens and cost, AI budget left), daily AI cost this month, recently active people, the scheduled background jobs (last run, status, duration) and webhook delivery (sent, failed, pending retries). Read-only. |
+| **AI Usage** | AI cost and token use by person, feature and agent for the last 7, 30 or 90 days or all time, Mjuzi chat use, daily agent runs, and which features are used most. Read-only. |
+| **Audit Trail** | The latest recorded actions (who, what, which project, when, and whether a person, the API or an agent did it), 50 per page, filtered by action and entity type. Read-only. A company's own audit chain is checked from the project's Compliance report (section 8). |
+| **Schedules** | Every scheduled report across all companies: report, project, creator, frequency, last and next run, and whether it is active. The admin can pause or resume one (for example a schedule that keeps failing); nothing else about it can be changed here. |
+| **Waitlist** | Email addresses collected on the pre-launch page with the date they joined and whether the launch email went out. **Export CSV** downloads the list; **Send launch email** (asks to confirm) emails everyone who hasn't had it yet. |
+
 ---
 
 ## 2. User Management
 
 ### Creating Users
-- Company members: **Settings → Team → Invite Member** (company owner, PMO or project manager). Enter an email and a role (Project Manager, Team Member, Viewer or Executive) and click **Invite**. There is no password field: the person sets their own password from the invitation email (sent through Resend).
+- Company members: **Settings → Team → Invite Member** (company owner only; other members see a note instead of the form). Enter an email and a role (Project Manager, Team Member, Viewer or Executive) and click **Invite**. There is no password field: the person sets their own password from the invitation email (sent through Resend).
 - The platform admin's list of every account is **Admin → Users**.
 
 ### Editing Users
@@ -103,7 +117,7 @@ When a user has a pending or expired login token, an **Unlock** button appears i
 ### Creating Projects
 - **Projects > New Project** -- set name, description, start/end dates, and budget.
 - Choose the project's manager (a user with the project_manager role).
-- Pick a **Client** (optional). The project gets a code (PRJ-001 …) that never changes. A name already used by a live project in the company is refused, with a link to the existing project. Owners, PMOs and PMs manage the client list; a project's manager sets its client.
+- Pick a **Client** (optional). The project gets a code (PRJ-001 …) that never changes. A name already used by a live project in the company is refused, with a link to the existing project. Owners, PMOs and PMs add clients; renaming, reordering or deleting a client is for the owner, a PMO or the PM who added it (October 2026); a project's manager sets its client.
 - Optionally apply a **project template** to pre-populate tasks and milestones.
 - The creator is **automatically added as project owner** in the project members list.
 

@@ -5,7 +5,6 @@ import {
   FileText,
   Search,
   Trash2,
-  RefreshCw,
   X,
   ChevronRight,
   AlertTriangle,
@@ -19,12 +18,14 @@ import {
   Check,
   Download,
   Cloud,
+  Sparkles,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { StorageConnectModal } from '../../components/documents/StorageConnectModal';
 import { StorageConnectorStatus } from '../../components/documents/StorageConnectorStatus';
 import { useAuthStore } from '../../stores/authStore';
 import { useProjectRole } from '../../hooks/useProjectRole';
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
 interface DocumentsTabProps {
   projectId: string;
@@ -77,11 +78,40 @@ const PHASE_COLORS: Record<string, string> = {
   unknown: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
 };
 
+/** The AI analysis state of a document. Nothing is analysed until someone clicks "Analyse with AI". */
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'completed') return <CheckCircle className="w-4 h-4 text-green-500" />;
-  if (status === 'processing') return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
-  if (status === 'failed') return <AlertTriangle className="w-4 h-4 text-red-500" />;
-  return <Clock className="w-4 h-4 text-gray-500" />;
+  if (status === 'completed') return <CheckCircle role="img" aria-label="Analysed" className="w-4 h-4 text-green-500" />;
+  if (status === 'processing') return <Loader2 role="img" aria-label="Analysing" className="w-4 h-4 text-blue-500 animate-spin" />;
+  if (status === 'failed') return <AlertTriangle role="img" aria-label="Analysis failed" className="w-4 h-4 text-red-500" />;
+  return <Clock role="img" aria-label="Not analysed yet" className="w-4 h-4 text-gray-500" />;
+}
+
+/**
+ * "Analyse with AI" (audit 2, M1, 2026-10-11): AI runs only when a person asks — uploading or
+ * syncing a document just stores it. Shown to the project's Manager/Owner only (hidden for others).
+ */
+export function AnalyseWithAI({ status, onAnalyse, isStarting, error }: {
+  status: string; onAnalyse: () => void; isStarting: boolean; error?: string | null;
+}) {
+  const analysing = status === 'processing' || isStarting;
+  const again = status === 'completed' || status === 'failed';
+  return (
+    <div className="rounded-lg border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 p-3">
+      {status === 'pending' && !isStarting && (
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">Not analysed yet. AI can summarise it, pull out decisions, risks and actions, and link it to this project's tasks and risks.</p>
+      )}
+      <button
+        type="button"
+        onClick={onAnalyse}
+        disabled={analysing}
+        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+      >
+        {analysing ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <Sparkles className="w-4 h-4" aria-hidden="true" />}
+        {analysing ? 'Analysing…' : again ? 'Analyse again with AI' : 'Analyse with AI'}
+      </button>
+      {error && <p role="alert" className="text-xs text-red-600 dark:text-red-400 mt-2">{error}</p>}
+    </div>
+  );
 }
 
 function formatFileSize(bytes: number): string {
@@ -117,6 +147,9 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
   // Fetch document list
   const { data: docsData, isLoading } = useQuery({
     queryKey: ['project-documents', projectId, typeFilter, phaseFilter, folderFilter, searchText],
+    // while a document is being analysed, look again every 5 s so its results appear
+    refetchInterval: (q) => ((q.state.data as { documents?: { processingStatus?: string }[] } | undefined)?.documents
+      ?.some(d => d.processingStatus === 'processing') ? 5_000 : false),
     queryFn: () => apiService.getProjectDocuments(projectId, {
       documentType: typeFilter || undefined,
       projectPhase: phaseFilter || undefined,
@@ -126,6 +159,8 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
     staleTime: 30_000,
   });
   const documents: any[] = docsData?.documents || [];
+  // the plan has AI (server: hasFeature('ai_assistant')); without it the button is hidden
+  const canAnalyse = docsData?.canAnalyse !== false;
 
   // Fetch folders
   const { data: foldersData } = useQuery({
@@ -149,6 +184,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
     queryKey: ['project-document', projectId, selectedDocId],
     queryFn: () => apiService.getProjectDocument(projectId, selectedDocId!),
     enabled: !!selectedDocId,
+    refetchInterval: (q) => ((q.state.data as { document?: { processingStatus?: string } } | undefined)?.document?.processingStatus === 'processing' ? 5_000 : false),
     staleTime: 30_000,
   });
   const selectedDoc = detailData?.document;
@@ -292,7 +328,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
             maxLength={500}
           />
         </div>
-        <p className="text-xs text-gray-500 mt-2">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB) — documents are AI-analyzed for summaries, key points, and entity linking</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">PDF, DOCX, DOC, TXT, CSV, MD (max 10MB). Documents are stored as they are — open one and click <strong>Analyse with AI</strong> for a summary, key points and links to tasks and risks.</p>
         {canConnect ? (
           <button
             className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-primary-300 dark:border-primary-600 text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/30 hover:bg-primary-100 dark:hover:bg-primary-900/50 transition-colors"
@@ -479,10 +515,12 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
             entityLinks={entityLinks}
             onClose={() => setSelectedDocId(null)}
             onReprocess={() => reprocessMutation.mutate(selectedDoc.id)}
+            analyseError={reprocessMutation.isError ? getApiErrorMessage(reprocessMutation.error, 'The analysis could not start. Please try again.') : null}
             onDelete={() => { if (confirm('Delete this document?')) deleteMutation.mutate(selectedDoc.id); }}
             onUpdate={(data) => updateMutation.mutate({ documentId: selectedDoc.id, data })}
             isReprocessing={reprocessMutation.isPending}
             canEdit={canEdit}
+            canAnalyse={canAnalyse}
             folders={folders}
           />
         )}
@@ -492,7 +530,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
 }
 
 function DetailPanel({
-  doc, entityLinks, onClose, onReprocess, onDelete, onUpdate, isReprocessing, folders, canEdit,
+  doc, entityLinks, onClose, onReprocess, onDelete, onUpdate, isReprocessing, folders, canEdit, canAnalyse, analyseError,
 }: {
   doc: any;
   entityLinks: any[];
@@ -503,6 +541,8 @@ function DetailPanel({
   isReprocessing: boolean;
   folders: string[];
   canEdit: boolean;
+  canAnalyse: boolean;
+  analyseError?: string | null;
 }) {
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(doc.description || '');
@@ -547,13 +587,6 @@ function DetailPanel({
             <Download className="w-4 h-4" />
           </a>
           {canEdit && (<>
-          <button
-            className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
-            title="Reprocess"
-            onClick={onReprocess}
-          >
-            <RefreshCw className={`w-4 h-4 ${isReprocessing ? 'animate-spin' : ''}`} />
-          </button>
           <button
             className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500"
             title="Delete"
@@ -639,6 +672,9 @@ function DetailPanel({
           </p>
         )}
       </div>
+
+      {/* AI analysis — only when the PM asks, and only on a plan with AI (hidden otherwise) */}
+      {canEdit && canAnalyse && <AnalyseWithAI status={doc.processingStatus} onAnalyse={onReprocess} isStarting={isReprocessing} error={analyseError} />}
 
       {/* Classification */}
       <div className="flex flex-wrap gap-1.5">

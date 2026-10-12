@@ -6,6 +6,7 @@ import path from 'path';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
+import { requireFeature, hasFeature } from '../../middleware/requireTier';
 import { validateMimeType } from '../../utils/mimeValidator';
 import { projectDocumentRepository } from '../../database/ProjectDocumentRepository';
 import { documentEntityLinkRepository } from '../../database/DocumentEntityLinkRepository';
@@ -85,11 +86,8 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
         description: description ? String(description).slice(0, 500) : undefined,
       });
 
-      // Trigger async processing (fire-and-forget)
-      documentIntelligenceService.processDocument(projectId, doc.id, filePath, user.userId).catch(err =>
-        logger.error('Document processing background error', { documentId: doc.id, error: err.message }),
-      );
-
+      // Stored only. AI runs when someone asks for it — "Analyse with AI" (POST …/reprocess) — not
+      // on every upload (audit 2, M1, 2026-10-11: the rule is AI only when a person asks).
       return { document: doc };
     } catch (error: any) {
       logger.error('Document upload error', { error: error.message });
@@ -107,14 +105,19 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
       search?: string;
     };
 
-    const documents = await projectDocumentRepository.findByProject(projectId, {
-      documentType: query.documentType as any,
-      projectPhase: query.projectPhase as any,
-      folder: query.folder,
-      search: query.search,
-    });
+    const [documents, aiOnPlan] = await Promise.all([
+      projectDocumentRepository.findByProject(projectId, {
+        documentType: query.documentType as any,
+        projectPhase: query.projectPhase as any,
+        folder: query.folder,
+        search: query.search,
+      }),
+      hasFeature(request, 'ai_assistant'),
+    ]);
 
-    return { documents };
+    // canAnalyse: the plan has AI, so the screen shows "Analyse with AI" (it is hidden otherwise;
+    // the button is also only for the project's Manager/Owner, decided on the client)
+    return { documents, canAnalyse: aiOnPlan };
   });
 
   // GET /:projectId/documents/folders — list distinct folder names
@@ -249,24 +252,34 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
     return { success: true };
   });
 
-  // POST /:projectId/documents/:documentId/reprocess — re-run AI processing
-  fastify.post('/:projectId/documents/:documentId/reprocess', { preHandler: [requireScope('write'), requireProjectAccess('manager')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  // POST /:projectId/documents/:documentId/reprocess — "Analyse with AI": the ONLY way a document
+  // is analysed (upload and storage sync just store it — audit 2, M1). The project's Manager/Owner,
+  // on a plan with AI; the AI budget is checked by claudeService as for every AI call.
+  fastify.post('/:projectId/documents/:documentId/reprocess', { preHandler: [requireScope('write'), requireProjectAccess('manager'), requireFeature('ai_assistant')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user!;
     const { projectId, documentId } = request.params as { projectId: string; documentId: string };
 
     const document = await projectDocumentRepository.findById(documentId);
     if (!document) return reply.status(404).send({ error: 'Document not found' });
+    // A document from a connected storage (OneDrive, SharePoint…) isn't kept here: fetch it for the
+    // analysis. An uploaded one is read from disk.
+    const source = document.connectorId && document.externalId
+      ? () => storageConnectorService.streamFileFromProvider(document.connectorId!, document.externalId!)
+      : documentIntelligenceService.getFilePath(projectId, document.filename);
 
-    const filePath = documentIntelligenceService.getFilePath(projectId, document.filename);
-
-    // Clear old entity links before reprocessing
+    // Claim it atomically: of two clicks only one starts (and pays for) the AI. A claim that has
+    // said "processing" for over 10 minutes never finished and may be taken over.
+    if (!(await projectDocumentRepository.claimForAnalysis(documentId))) {
+      return reply.status(409).send({ error: 'Already analysing', message: 'This document is already being analysed — the results will show here when it finishes.' });
+    }
+    // Clear old entity links before analysing again
     await documentEntityLinkRepository.deleteByDocument(documentId);
 
-    // Fire-and-forget reprocessing
-    documentIntelligenceService.processDocument(projectId, documentId, filePath, user.userId).catch(err =>
-      logger.error('Document reprocessing error', { documentId, error: err.message }),
+    // Fire-and-forget: the list shows "Analysing…" until it finishes
+    documentIntelligenceService.processDocument(projectId, documentId, source, user.userId).catch(err =>
+      logger.error('Document analysis error', { documentId, error: err.message }),
     );
 
-    return { success: true, message: 'Reprocessing started' };
+    return { success: true, message: 'Analysis started' };
   });
 }

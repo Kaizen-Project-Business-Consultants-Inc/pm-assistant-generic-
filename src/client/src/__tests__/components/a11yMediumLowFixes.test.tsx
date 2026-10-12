@@ -68,6 +68,22 @@ describe('Utilization heatmap semantics (M6)', () => {
     expect(cells[0].textContent).not.toContain('▲');
     expect(cells[1].textContent).toContain('▲');
   });
+
+  it('its horizontal scroller is keyboard-focusable and named', async () => {
+    wrap(<UtilizationHeatmap projectId="p1" />);
+    const region = await screen.findByRole('region', { name: 'Utilization heatmap' });
+    expect(region.getAttribute('tabindex')).toBe('0');
+    expect(region.className).toContain('overflow-x-auto');
+  });
+
+  it('every grey label, date header and the legend has a readable dark-mode colour', async () => {
+    const { container } = wrap(<UtilizationHeatmap projectId="p1" />);
+    await screen.findByRole('table');
+    const greys = Array.from(container.querySelectorAll<HTMLElement>('[class*="text-gray-4"],[class*="text-gray-5"]'))
+      .filter(el => /(^|\s)text-gray-[45]00(\s|$)/.test(el.className));
+    expect(greys.length).toBeGreaterThan(4); // From, To, date headers, legend...
+    for (const el of greys) expect(el.className).toMatch(/dark:text-gray-(300|400)/);
+  });
 });
 
 describe('Client breadcrumb (L2)', () => {

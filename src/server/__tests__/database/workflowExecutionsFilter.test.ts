@@ -39,4 +39,17 @@ describe('workflowRepository.findExecutions({ visibleTo })', () => {
     expect(await workflowRepository.findExecutions({ visibleTo: { projectWorkflowIds: [], orgWorkflowIds: ['o'], projectIds: [] } })).toEqual([]);
     expect(db.query).not.toHaveBeenCalled();
   });
+
+  it("brings the task's or project's name in the same query (no lookup per run); null when deleted", async () => {
+    db.query.mockResolvedValueOnce([
+      { id: 'r1', workflow_id: 'a', entity_type: 'task', entity_id: 't1', entity_name: 'Design review', status: 'completed', context: '{}', started_at: 'x' },
+      { id: 'r2', workflow_id: 'a', entity_type: 'task', entity_id: 't2', entity_name: null, status: 'completed', context: '{}', started_at: 'x' },
+    ]);
+    const runs = await workflowRepository.findExecutions({ limit: 50 });
+    expect(db.query).toHaveBeenCalledTimes(1);
+    const [sql] = db.query.mock.calls[0];
+    expect(sql).toContain("WHEN 'task' THEN (SELECT t.name FROM tasks t WHERE t.id = workflow_executions.entity_id)");
+    expect(sql).toContain("WHEN 'project' THEN (SELECT p.name FROM projects p WHERE p.id = workflow_executions.entity_id)");
+    expect(runs.map(r => r.entityName)).toEqual(['Design review', null]);
+  });
 });

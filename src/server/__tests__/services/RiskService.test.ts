@@ -10,7 +10,6 @@ vi.mock('../../database/RiskRepository', () => {
     update: vi.fn(),
     createActivityLog: vi.fn().mockResolvedValue({}),
     getActivityLog: vi.fn().mockResolvedValue([]),
-    findByAgentSource: vi.fn().mockResolvedValue([]),
     createUpdate: vi.fn(),
     findUpdateById: vi.fn().mockResolvedValue(null),
     editUpdate: vi.fn(),
@@ -1071,68 +1070,6 @@ describe('RiskService', () => {
 
       expect(mockRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ mitigationPlan: 'Step 1\nStep 2' }),
-      );
-    });
-  });
-
-  // ===================== importFromAgent =====================
-  describe('importFromAgent', () => {
-    it('imports new agent risks and skips duplicates', async () => {
-      const existing = { ...sampleRisk(), title: 'Known Risk', source: 'agent', sourceAgentId: 'agent1' };
-      mockRepo.findByAgentSource.mockResolvedValueOnce([existing]);
-      mockRepo.create.mockResolvedValueOnce(sampleRisk());
-
-      const created = await riskService.importFromAgent('p1', 'agent1', [
-        { title: 'Known Risk', description: 'd', severity: 'high' },  // duplicate
-        { title: 'New Risk', description: 'd', severity: 'medium' },   // new
-      ], 'proposal1', 'u1');
-
-      expect(created).toBe(1);
-      expect(mockRepo.create).toHaveBeenCalledOnce();
-      expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          source: 'agent',
-          sourceAgentId: 'agent1',
-          linkedProposalId: 'proposal1',
-        }),
-      );
-    });
-
-    it('uses system as createdBy when userId not provided', async () => {
-      mockRepo.findByAgentSource.mockResolvedValueOnce([]);
-      mockRepo.create.mockResolvedValueOnce(sampleRisk());
-
-      await riskService.importFromAgent('p1', 'agent1', [
-        { title: 'R1', description: 'd', severity: 'high' },
-      ]);
-
-      expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ createdBy: 'system' }),
-      );
-    });
-
-    it('returns 0 when all risks are duplicates', async () => {
-      const existing = { ...sampleRisk(), title: 'Risk A', source: 'agent' };
-      mockRepo.findByAgentSource.mockResolvedValueOnce([existing]);
-
-      const created = await riskService.importFromAgent('p1', 'agent1', [
-        { title: 'Risk A', description: 'd', severity: 'high' },
-      ]);
-
-      expect(created).toBe(0);
-      expect(mockRepo.create).not.toHaveBeenCalled();
-    });
-
-    it('defaults category to other when not provided', async () => {
-      mockRepo.findByAgentSource.mockResolvedValueOnce([]);
-      mockRepo.create.mockResolvedValueOnce(sampleRisk());
-
-      await riskService.importFromAgent('p1', 'agent1', [
-        { title: 'R1', description: 'd', severity: 'high' },
-      ], undefined, 'u1');
-
-      expect(mockRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ category: 'other' }),
       );
     });
   });

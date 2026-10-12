@@ -53,7 +53,8 @@ describe('Mjuzi memory (one table for every company) — Kovarti admin only', ()
     const src = readFileSync(join(__dirname, '..', '..', 'middleware', 'tenantResolver.ts'), 'utf-8');
     const exempt = src.slice(src.indexOf('const TENANT_EXEMPT_PREFIXES'), src.indexOf('];', src.indexOf('const TENANT_EXEMPT_PREFIXES')));
     expect(exempt).toContain("'/api/v1/memory'");
-    expect(exempt).toContain("'/api/v1/agent/memory'");
+    // agent memory is company data since T087 — it runs in the caller's company (agentMemoryAccess.test.ts)
+    expect(exempt).not.toContain("'/api/v1/agent/memory'");
     who.user = { userId: 'admin', role: 'admin', hasCompany: false };
     expect((await app.inject({ method: 'GET', url: '/api/v1/memory' })).statusCode).toBe(200);
     expect(listMemories).toHaveBeenCalled();

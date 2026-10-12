@@ -487,7 +487,8 @@ describe('StorageConnectorService', () => {
         originalFilename: 'report.pdf',
         externalPath: '/docs/report.pdf',
       }));
-      expect(documentIntelligenceService.processDocument).toHaveBeenCalled();
+      // stored only: no AI analysis until someone clicks "Analyse with AI" (audit 2, M1)
+      expect(documentIntelligenceService.processDocument).not.toHaveBeenCalled();
     });
 
     it('what is already synced is read once for the whole delta, and kept current as files go (2026-10-09)', async () => {
@@ -592,6 +593,28 @@ describe('StorageConnectorService', () => {
       expect(result.synced).toBe(0);
       expect(result.skipped).toBe(0);
       expect(mockAdapter.downloadFile).not.toHaveBeenCalled();
+    });
+
+    it('a changed file (new eTag): its old search embeddings go before the row is reset, and no AI runs', async () => {
+      const connector = makeConnector();
+      vi.mocked(storageConnectorRepository.findById).mockResolvedValue(connector);
+      vi.mocked(userService.findById).mockResolvedValue({ subscriptionTier: 'enterprise' } as any);
+      vi.mocked(projectDocumentRepository.findByExternalId).mockResolvedValue({ id: 'doc-1', externalEtag: 'old-etag' } as any);
+      mockAdapter.getDelta.mockResolvedValue({
+        items: [{ id: 'ext-1', name: 'report.pdf', isFolder: false, mimeType: 'application/pdf', size: 100, eTag: 'new-etag' }],
+        deltaToken: 'delta-8',
+      });
+      mockAdapter.downloadFile.mockResolvedValue(Buffer.from('file-content'));
+      const order: string[] = [];
+      vi.mocked(documentIntelligenceService.deleteDocumentEmbeddings).mockImplementationOnce(async () => { order.push('embeddings'); });
+      vi.mocked(projectDocumentRepository.upsertFromConnector).mockImplementationOnce(async () => { order.push('upsert'); return { id: 'doc-1' } as any; });
+
+      const result = await storageConnectorService.syncConnector('conn-1');
+
+      expect(result.synced).toBe(1);
+      expect(documentIntelligenceService.deleteDocumentEmbeddings).toHaveBeenCalledWith('doc-1');
+      expect(order).toEqual(['embeddings', 'upsert']);
+      expect(documentIntelligenceService.processDocument).not.toHaveBeenCalled();
     });
 
     it('should skip new files when document limit reached', async () => {

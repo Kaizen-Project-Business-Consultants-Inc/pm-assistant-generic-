@@ -25,6 +25,74 @@ async function isUserActive(userId: string): Promise<boolean> {
   return active;
 }
 
+type RequestUser = NonNullable<FastifyRequest['user']>;
+
+/**
+ * The person behind an API key / Claude connection, with the same mapping everywhere: the company
+ * owner works as PMO (never a guest), guest flags, `hasCompany`, `isOwner`. Used by authMiddleware
+ * and by the global API-key hook in plugins.ts, which used to set a bare `{ userId, role }` from
+ * the key's raw role without any of this (audit 2, L-j, 2026-10-11). null = the account is
+ * deactivated. One lookup per request: the hook and the middleware share the answer.
+ */
+const keyUserCache = new WeakMap<FastifyRequest, Promise<RequestUser | null>>();
+export function apiKeyUser(request: FastifyRequest, keyInfo: { userId: string; userRole: string }): Promise<RequestUser | null> {
+  const cached = keyUserCache.get(request);
+  if (cached) return cached;
+  const p = (async (): Promise<RequestUser | null> => {
+    if (!(await isUserActive(keyInfo.userId))) return null;
+    const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null; is_guest: number; guest_expires_at: string | null; is_owner: number | null }>(
+      `SELECT u.organization_id, u.is_guest, u.guest_expires_at, (o.owner_user_id = u.id) AS is_owner
+         FROM users u LEFT JOIN organizations o ON o.id = u.organization_id WHERE u.id = ? LIMIT 1`,
+      [keyInfo.userId],
+    );
+    const user: RequestUser = {
+      userId: keyInfo.userId,
+      username: 'api-key',
+      // the company owner has a PMO's permissions (utils/companyOwner.ts)
+      role: permissionRole(keyInfo.userRole, { isOwner: !!Number(keyOwner[0]?.is_owner), isGuest: !!keyOwner[0]?.is_guest }),
+      accountRole: keyInfo.userRole,
+      // unknown (no row) counts as having a company: never mistaken for the platform admin
+      hasCompany: keyOwner.length > 0 ? keyOwner[0].organization_id != null : true,
+      isOwner: !!Number(keyOwner[0]?.is_owner),
+    };
+    if (keyOwner[0]?.is_guest) {
+      user.isGuest = true;
+      user.guestExpiresAt = keyOwner[0].guest_expires_at;
+    }
+    return user;
+  })();
+  keyUserCache.set(request, p);
+  return p;
+}
+
+/**
+ * Global onRequest hook (registered in plugins.ts): a valid `Bearer` key tags the request with its
+ * key id, scopes and rate limit — and sets the key's user now, with the same mapping authMiddleware
+ * uses (apiKeyUser: owner → PMO, guest flags, company). The tenant resolver, a global preHandler,
+ * runs BEFORE each route's authMiddleware and picks the company database from this user; with no
+ * user it would leave the request on the shared database. Guests get a user too, flagged isGuest —
+ * their limits and expiry are applied by authMiddleware's guest guard. A deactivated account gets no
+ * user here (and a 401 from authMiddleware). Until audit 2 (L-j) this set the key's raw role with
+ * none of these checks.
+ */
+export async function resolveApiKeyOnRequest(request: FastifyRequest): Promise<void> {
+  const authHeader = request.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ') || !(request.url.startsWith('/api/') || request.url.startsWith('/mcp'))) return;
+  try {
+    const keyInfo = await apiKeyService.validateKey(authHeader.slice(7));
+    if (!keyInfo) return;
+    request.apiKeyId = keyInfo.keyId;
+    request.apiKeyScopes = keyInfo.scopes;
+    request.apiKeyRateLimit = keyInfo.rateLimit;
+    if (!request.user) {
+      const keyUser = await apiKeyUser(request, keyInfo);
+      if (keyUser) request.user = { ...keyUser };
+    }
+  } catch {
+    // Silently fail — route-level authMiddleware will handle auth errors
+  }
+}
+
 export async function authMiddleware(request: FastifyRequest, reply: FastifyReply) {
   // Check for Bearer token (API key) first
   const authHeader = request.headers.authorization;
@@ -39,34 +107,15 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
         });
       }
 
-      // Check if the API key owner is still active
-      const active = await isUserActive(keyInfo.userId);
-      if (!active) {
+      // Check if the API key owner is still active; their role mapping is shared with plugins.ts
+      const keyUser = await apiKeyUser(request, keyInfo);
+      if (!keyUser) {
         return reply.status(401).send({
           error: 'Account deactivated',
           message: 'Your account has been deactivated',
         });
       }
-
-      const keyOwner = await databaseService.queryControlPlane<{ organization_id: string | null; is_guest: number; guest_expires_at: string | null; is_owner: number | null }>(
-        `SELECT u.organization_id, u.is_guest, u.guest_expires_at, (o.owner_user_id = u.id) AS is_owner
-           FROM users u LEFT JOIN organizations o ON o.id = u.organization_id WHERE u.id = ? LIMIT 1`,
-        [keyInfo.userId],
-      );
-      request.user = {
-        userId: keyInfo.userId,
-        username: 'api-key',
-        // the company owner has a PMO's permissions (utils/companyOwner.ts)
-        role: permissionRole(keyInfo.userRole, { isOwner: !!Number(keyOwner[0]?.is_owner), isGuest: !!keyOwner[0]?.is_guest }),
-        accountRole: keyInfo.userRole,
-        // unknown (no row) counts as having a company: never mistaken for the platform admin
-        hasCompany: keyOwner.length > 0 ? keyOwner[0].organization_id != null : true,
-        isOwner: !!Number(keyOwner[0]?.is_owner),
-      };
-      if (keyOwner[0]?.is_guest) {
-        request.user.isGuest = true;
-        request.user.guestExpiresAt = keyOwner[0].guest_expires_at;
-      }
+      request.user = { ...keyUser };
       request.apiKeyId = keyInfo.keyId;
       request.apiKeyScopes = keyInfo.scopes;
       request.apiKeyRateLimit = keyInfo.rateLimit;
