@@ -2,11 +2,12 @@ import { aiBudgetRepository } from '../database/AIBudgetRepository';
 import { tokenTopUpRepository } from '../database/TokenTopUpRepository';
 import { organizationRepository } from '../database/OrganizationRepository';
 import { planTierFor } from '../utils/planTier';
+import { planInForce, companyPlan, orgSubscriptionAllowsMembers } from '../utils/memberSubscription';
 import { config, getTierBudget } from '../config';
 import { pricingConfigService } from './PricingConfigService';
 import { notificationService } from './NotificationService';
 import { deadLetterService } from './DeadLetterService';
-import { UPGRADE_REQUIRED_MESSAGE } from '../middleware/requireTier';
+import { UPGRADE_REQUIRED_MESSAGE, PLAN_ENDED_MESSAGE } from '../middleware/requireTier';
 
 export class AIBudgetExceededError extends Error {
   public statusCode = 429;
@@ -32,9 +33,9 @@ export class AIBudgetExceededError extends Error {
 export class AIPlanRequiredError extends AIBudgetExceededError {
   public statusCode = 403;
   public code = 'UPGRADE_REQUIRED';
-  constructor() {
+  constructor(planEnded = false) {
     super(0, 0);
-    this.message = UPGRADE_REQUIRED_MESSAGE;
+    this.message = planEnded ? PLAN_ENDED_MESSAGE : UPGRADE_REQUIRED_MESSAGE;
     this.name = 'AIPlanRequiredError';
   }
 }
@@ -121,7 +122,7 @@ class AIBudgetService {
   async checkBudget(userId: string, estimatedTokens = 0): Promise<BudgetSnapshot> {
     const who = await aiBudgetRepository.getUserRoleAndTier(userId);
     const org = await organizationRepository.findByUserId(userId);
-    await this.assertPlanAllowsAI(who, org);
+    await this.assertPlanAllowsAI(userId, who, org);
     const usage = await this.usageFor(userId, org, who?.tier);
     this.assertFits(usage.totalTokens, usage.budget, estimatedTokens);
 
@@ -140,12 +141,23 @@ class AIBudgetService {
     }
   }
 
-  private async assertPlanAllowsAI(who: { role: string; tier: string } | null, org: OrgRow): Promise<void> {
+  private async assertPlanAllowsAI(userId: string, who: { role: string; tier: string; status: string; trialEndsAt: string | null } | null, org: OrgRow): Promise<void> {
     if (!who || who.role === 'admin') return; // unknown ids fall to the budget check; Kovarti admin isn't on a plan
-    const tier = planTierFor(who.role, who.tier, org?.subscriptionTier);
-    if (!(await pricingConfigService.isFeatureEnabled(tier, 'ai_assistant'))) {
-      throw new AIPlanRequiredError();
+    const own = { ownerUserId: null, subscriptionTier: who.tier, subscriptionStatus: who.status, trialEndsAt: who.trialEndsAt };
+    // the company's plan — needed for a viewer, or when their own plan has lapsed; on flat billing
+    // it is the owner's record, not the organisation row
+    let company = null;
+    if (org && (who.role === 'viewer' || !orgSubscriptionAllowsMembers(own))) {
+      const owner = org.billingModel !== 'per_seat' && org.ownerUserId && org.ownerUserId !== userId
+        ? await aiBudgetRepository.getUserRoleAndTier(org.ownerUserId)
+        : null;
+      company = companyPlan(org, owner && { subscriptionTier: owner.tier, subscriptionStatus: owner.status, trialEndsAt: owner.trialEndsAt });
     }
+    const tier = planTierFor(who.role, who.tier, company?.subscriptionTier);
+    // an ended trial or cancelled plan has no AI either — the write guard stopped its changes, but
+    // AI on screens that only read kept working (2026-10-12)
+    if (!planInForce(who.role, userId, own, company)) throw new AIPlanRequiredError(true);
+    if (!(await pricingConfigService.isFeatureEnabled(tier, 'ai_assistant'))) throw new AIPlanRequiredError();
   }
 
   private async sendBudgetWarning(userId: string, usage: MonthlyUsage): Promise<void> {

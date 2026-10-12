@@ -2461,13 +2461,14 @@ The SME tier is shown on the public pricing page as **Team**. Other ways in:
 
 With an example, Email, Schedule and Download of that report stay unavailable because it is not the user's data. Paid users with no data get the normal empty result. The check is one indexed lookup (`src/server/utils/trialSample.ts`: `showTrialExample`, `projectHasTasks`, `projectHasRaidItems`); `src/server/__tests__/routes/trialRealResults.test.ts` covers the behaviour and guards that no route swaps in canned data just because the user is on the trial.
 
-**Still not on the trial:** Token Top-Ups (buying needs a payment account, which a trial doesn't have) and cloud storage connectors (BYOS, tier-gated to Pro/SME/Enterprise with a per-tier document limit of 0 for the trial). A plan-gated request that is refused returns HTTP 403 `UPGRADE_REQUIRED`, and the app opens its **Part of a paid plan** window.
+**Still not on the trial:** Token Top-Ups (buying needs a payment account, which a trial doesn't have). Cloud storage connectors (BYOS) are on the trial with Pro's limit of 100 documents per project since 2026-10-12 (the trial is full Pro). A plan-gated request that is refused returns HTTP 403 `UPGRADE_REQUIRED`, and the app opens its **Part of a paid plan** window — or, when the person's trial or subscription has ended, says so ("Your trial or subscription has ended…").
 
 Client-side gating provides an early upgrade prompt but is not the security boundary — enforcement is always server-side.
 
 **Implementation notes:**
 
 - When a trial ends, the global subscription guard (`middleware/requireSubscription.ts`, run from the auth middleware) blocks POST/PUT/PATCH/DELETE for the expired account; reading stays allowed.
+- Paid features end with the plan too (2026-10-12): `requireFeature` / `hasFeature`, `requireTier` and the AI budget check all ask whether the plan is in force (`planInForce` in `utils/memberSubscription.ts`, the write guard's rule): paid, past due, or a trial that hasn't ended; awaiting payment never; a team member whose own record lags is covered by the company's plan (never the owner — their own record is the plan); a viewer goes by the company only. The company's plan is the organisation row on per-seat billing and the **owner's own record on flat billing** (`companyPlan` — Stripe updates only the owner there). Before, an ended trial or a cancelled company kept every paid feature on screens that only read, AI included. A refusal because the plan ended says so ("Your trial or subscription has ended…"), not "part of a paid plan". The admin's support visit is not judged by a plan.
 
 ### Launch Offer
 
@@ -4892,7 +4893,8 @@ Connect your cloud storage (OneDrive, SharePoint, Google Drive, or Dropbox) so K
 
 | Tier | Access | Document Limit |
 |------|--------|---------------|
-| Trial / Basic | No | 0 |
+| Basic | No | 0 |
+| Trial (7 days, full Pro) | Yes | 100 per project |
 | Pro | Yes | 100 per project |
 | SME | Yes | 500 per project |
 | Enterprise | Yes | Unlimited |

@@ -131,7 +131,7 @@ describe('AIBudgetService', () => {
     // it, so there is no separate plan query — then the usage and the person's own budget
     function mockCheckFlow(usage: Record<string, number>, budget: number | null = null, tier = 'consultant_pro') {
       mockQueryCP
-        .mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: tier }])
+        .mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: tier, subscription_status: 'active' }])
         .mockResolvedValueOnce([usage])
         .mockResolvedValueOnce([{ ai_monthly_token_budget: budget }]);
     }
@@ -227,7 +227,7 @@ describe('AIBudgetService', () => {
   describe('AI plan and request size', () => {
     const under = { total_input: 100000, total_output: 50000, total_cost: 0.5, request_count: 10 };
     const queue = (role: string, tier: string, usage = under) => mockQueryCP
-      .mockResolvedValueOnce([{ role, subscription_tier: tier }])
+      .mockResolvedValueOnce([{ role, subscription_tier: tier, subscription_status: role === 'viewer' ? 'none' : 'active' }])
       .mockResolvedValueOnce([usage])
       .mockResolvedValueOnce([{ ai_monthly_token_budget: null }]);
 
@@ -242,15 +242,36 @@ describe('AIBudgetService', () => {
     });
 
     it("judges a viewer by the company's plan, not the trial plan on their own record", async () => {
-      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'consultant_basic', billingModel: 'flat' });
+      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'consultant_basic', billingModel: 'flat', subscriptionStatus: 'active', trialEndsAt: null });
       mockQueryCP.mockResolvedValueOnce([{ role: 'viewer', subscription_tier: 'trial' }]);
       await expect(aiBudgetService.checkBudget('viewer-1')).rejects.toBeInstanceOf(AIPlanRequiredError);
     });
 
     it("lets a viewer use AI when the company's plan has it", async () => {
-      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'enterprise', billingModel: 'flat' });
+      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'enterprise', billingModel: 'flat', subscriptionStatus: 'active', trialEndsAt: null });
       queue('viewer', 'trial');
       await expect(aiBudgetService.checkBudget('viewer-1')).resolves.toMatchObject({ used: 150000 });
+    });
+
+    it('refuses AI once the trial has ended or the plan was cancelled (2026-10-12)', async () => {
+      mockQueryCP.mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: 'trial', subscription_status: 'trialing', trial_ends_at: '2026-01-01 00:00:00' }]);
+      await expect(aiBudgetService.checkBudget('user-1')).rejects.toBeInstanceOf(AIPlanRequiredError);
+      mockQueryCP.mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: 'consultant_pro', subscription_status: 'canceled', trial_ends_at: null }]);
+      await expect(aiBudgetService.checkBudget('user-1')).rejects.toBeInstanceOf(AIPlanRequiredError);
+    });
+
+    it('refuses a viewer once the company plan has ended', async () => {
+      (organizationRepository.findByUserId as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ id: 'o1', subscriptionTier: 'trial', billingModel: 'flat', subscriptionStatus: 'canceled', trialEndsAt: null });
+      mockQueryCP.mockResolvedValueOnce([{ role: 'viewer', subscription_tier: 'trial', subscription_status: 'none' }]);
+      await expect(aiBudgetService.checkBudget('viewer-1')).rejects.toBeInstanceOf(AIPlanRequiredError);
+    });
+
+    it('a trial still running has AI', async () => {
+      mockQueryCP
+        .mockResolvedValueOnce([{ role: 'project_manager', subscription_tier: 'trial', subscription_status: 'trialing', trial_ends_at: '2099-01-01 00:00:00' }])
+        .mockResolvedValueOnce([under])
+        .mockResolvedValueOnce([{ ai_monthly_token_budget: null }]);
+      await expect(aiBudgetService.checkBudget('user-1')).resolves.toMatchObject({ used: 150000 });
     });
 
     it('refuses a request whose prompt would go past what is left', async () => {

@@ -4148,7 +4148,7 @@ Type a natural language question in the AI search field (e.g., "budget constrain
 
 Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox so Kovarti can list — and, when you ask, analyse — your documents without storing the files. Your files stay in your cloud provider — Kovarti only keeps AI-generated metadata and search indexes.
 
-**Requirements:** Pro, SME, or Enterprise tier. Trial and Basic users see an upgrade prompt instead of the connect button. Per-tier document limits: Pro = 100, SME = 500, Enterprise = unlimited.
+**Requirements:** the free trial, Pro, SME, or Enterprise. Basic users see an upgrade prompt instead of the connect button. Document limits per project: trial and Pro = 100, SME = 500, Enterprise = unlimited.
 
 1. On the Doc Intelligence tab, click the **Connect Storage** button
 2. Pick your provider from the grid (only admin-configured providers are available)
