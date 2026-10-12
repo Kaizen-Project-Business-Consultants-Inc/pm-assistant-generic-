@@ -1,8 +1,7 @@
 import path from 'path';
 import { FastifyInstance } from 'fastify';
 import { countServerError } from './utils/serverErrorWatch';
-import { isProjectChange, markPortfolioChanged } from './utils/portfolioChanges';
-import { getTenantContext } from './middleware/requestContext';
+import { isProjectChange, markCurrentCompanyChanged } from './utils/portfolioChanges';
 import fastifyStatic from '@fastify/static';
 import compress from '@fastify/compress';
 import cookie from '@fastify/cookie';
@@ -93,8 +92,7 @@ export async function registerPlugins(fastify: FastifyInstance) {
   // A saved change in an organisation: dashboard numbers recalculate, AI highlights may refresh
   fastify.addHook('onResponse', async (request, reply) => {
     if (!isProjectChange(request.method, request.url, reply.statusCode)) return;
-    const tenant = getTenantContext()?.dbName;
-    if (tenant) void markPortfolioChanged(tenant);
+    markCurrentCompanyChanged();
   });
 
   // Count server errors where the alert timer can see them (always on — this is how anyone hears)

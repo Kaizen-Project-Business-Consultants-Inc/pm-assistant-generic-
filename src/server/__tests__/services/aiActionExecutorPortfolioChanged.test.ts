@@ -6,10 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
  * (2026-10-11). Its write tools now count as a change (even one that failed half-way); reads and refusals don't.
  */
 
-const marks = vi.hoisted(() => ({ markPortfolioChanged: vi.fn(async () => {}) }));
+const marks = vi.hoisted(() => ({ markCurrentCompanyChanged: vi.fn() }));
 vi.mock('../../utils/portfolioChanges', () => marks);
-const tenant = vi.hoisted(() => ({ value: { dbName: 'pmassist_t_x' } as { dbName: string } | undefined }));
-vi.mock('../../middleware/requestContext', async (importOriginal) => ({ ...(await importOriginal<any>()), getTenantContext: () => tenant.value }));
 vi.mock('../../services/ProjectService', () => ({
   projectService: {
     create: vi.fn(async (d: any) => ({ id: 'p-new', name: d.name })),
@@ -34,43 +32,36 @@ import { checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 const ctx = { userId: 'u1', userRole: 'project_manager' } as any;
 
 describe('Mjuzi changes count as portfolio changes', () => {
-  beforeEach(() => { vi.clearAllMocks(); tenant.value = { dbName: 'pmassist_t_x' }; });
+  beforeEach(() => vi.clearAllMocks());
 
   it('creating a project marks the company as changed', async () => {
     const r = await new AIActionExecutor().execute('create_project', { name: 'New one' }, ctx);
     expect(r.success).toBe(true);
-    expect(marks.markPortfolioChanged).toHaveBeenCalledWith('pmassist_t_x');
+    expect(marks.markCurrentCompanyChanged).toHaveBeenCalled();
   });
 
   it('a read (list projects) does not', async () => {
     await new AIActionExecutor().execute('list_projects', {}, ctx);
-    expect(marks.markPortfolioChanged).not.toHaveBeenCalled();
+    expect(marks.markCurrentCompanyChanged).not.toHaveBeenCalled();
   });
 
   it('changing a project (one of the write tools) marks it', async () => {
     const r = await new AIActionExecutor().execute('update_project', { projectId: 'p1', name: 'Renamed' }, ctx);
     expect(r.success).toBe(true);
-    expect(marks.markPortfolioChanged).toHaveBeenCalledWith('pmassist_t_x');
+    expect(marks.markCurrentCompanyChanged).toHaveBeenCalled();
   });
 
   it('a write that fails half-way still marks it (its first part may be saved)', async () => {
     vi.mocked(projectService.update).mockRejectedValueOnce(new Error('db down'));
     const r = await new AIActionExecutor().execute('update_project', { projectId: 'p1', name: 'X' }, ctx);
     expect(r.success).toBe(false);
-    expect(marks.markPortfolioChanged).toHaveBeenCalledTimes(1);
+    expect(marks.markCurrentCompanyChanged).toHaveBeenCalledTimes(1);
   });
 
   it('a change refused (not the Manager/Owner) does not — nothing was written', async () => {
     vi.mocked(checkProjectRoleFor).mockResolvedValueOnce({ ok: false } as never);
     const r = await new AIActionExecutor().execute('update_project', { projectId: 'p1', name: 'X' }, ctx);
     expect(r.success).toBe(false);
-    expect(marks.markPortfolioChanged).not.toHaveBeenCalled();
-  });
-
-  it('no company in context: nothing to mark, and no error', async () => {
-    tenant.value = undefined;
-    const r = await new AIActionExecutor().execute('create_project', { name: 'New one' }, ctx);
-    expect(r.success).toBe(true);
-    expect(marks.markPortfolioChanged).not.toHaveBeenCalled();
+    expect(marks.markCurrentCompanyChanged).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import { redisService } from '../services/RedisService';
+import { getTenantContext } from '../middleware/requestContext';
 
 /**
  * "Something changed in this organisation" — a counter bumped after every saved change, so the
@@ -26,7 +27,7 @@ export function isProjectChange(method: string, url: string, status: number): bo
     && (SAVES_DESPITE_PREFIX.some((p) => url.startsWith(p)) || !IGNORE.some((p) => url.startsWith(p)));
 }
 
-export async function markPortfolioChanged(tenant: string): Promise<void> {
+async function markPortfolioChanged(tenant: string): Promise<void> {
   if (!redisService.isConnected()) return;
   try {
     const client = redisService.getClient();
@@ -40,4 +41,14 @@ export async function markPortfolioChanged(tenant: string): Promise<void> {
 export async function portfolioVersion(tenant: string): Promise<{ version: number }> {
   if (!redisService.isConnected()) return { version: 0 };
   return { version: Number(await redisService.get(versionKey(tenant))) || 0 };
+}
+
+/**
+ * Count a saved change for the current company — the one the dashboard reads ('none' = single-company
+ * setup, which the request hook used to skip, so its dashboard never refreshed). Used by the request
+ * hook (plugins.ts), Mjuzi's write tools, and writes with no request: scheduled jobs, auto-approved
+ * agent proposals, workflow field updates (2026-10-12).
+ */
+export function markCurrentCompanyChanged(): void {
+  void markPortfolioChanged(getTenantContext()?.dbName ?? 'none');
 }

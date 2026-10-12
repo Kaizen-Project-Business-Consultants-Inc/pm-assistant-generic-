@@ -5,6 +5,7 @@ import { auditLedgerService } from '../AuditLedgerService';
 import { notificationService } from '../NotificationService';
 import { deadLetterService } from '../DeadLetterService';
 import logger from '../../utils/logger';
+import { markCurrentCompanyChanged } from '../../utils/portfolioChanges';
 import { databaseService } from '../../database/connection';
 
 /** The action types that change a task (targetEntityId is the task) */
@@ -53,6 +54,13 @@ export class ActionExecutor {
    * On failure, rolls back previously executed actions.
    */
   async execute(proposalId: string): Promise<ExecutionResult> {
+    const result = await this.executeActions(proposalId);
+    // auto-approved proposals run with no request to count the change (agent scan, workflows)
+    if (result.actionsExecuted > 0 || result.actionsRolledBack > 0) markCurrentCompanyChanged();
+    return result;
+  }
+
+  private async executeActions(proposalId: string): Promise<ExecutionResult> {
     const proposal = await actionProposalService.getById(proposalId);
     if (!proposal) {
       return { success: false, actionsExecuted: 0, actionsFailed: 0, actionsRolledBack: 0, error: 'Proposal not found' };

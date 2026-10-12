@@ -29,6 +29,7 @@ import { databaseService } from '../database/connection';
 import { redisService } from '../services/RedisService';
 import { config } from '../config';
 import { forEachTenant } from '../services/scheduling/cronManager';
+import { markCurrentCompanyChanged } from '../utils/portfolioChanges';
 import { registerDomainListeners } from '../services/domainListeners';
 
 const JOB_NAME = process.argv[2];
@@ -97,6 +98,7 @@ async function run() {
         const { recurrenceService } = await import('../services/RecurrenceService');
         await forEachTenant(async (tenant) => {
           const count = await recurrenceService.generateInstances(14);
+          if (count > 0) markCurrentCompanyChanged();
           console.log(`[cron-runner] Recurrence: generated ${count} instances (${tenant?.slug ?? 'default'})`);
         });
         break;
@@ -211,6 +213,7 @@ async function run() {
         const { runDueScheduledAutomations } = await import('../services/automation/scheduledAutomationRunner');
         await forEachTenant(async (tenant) => {
           const count = await runDueScheduledAutomations();
+          if (count > 0) markCurrentCompanyChanged();
           if (count > 0) console.log(`[cron-runner] Scheduled automations: ${count} run (${tenant?.slug ?? 'default'})`);
         });
         break;
