@@ -1997,7 +1997,7 @@
   },
   "src/server/routes/scheduling/schedules.ts": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 7
+      "count": 6
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 1

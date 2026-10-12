@@ -64,17 +64,21 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
     enabled: tab === 'activity',
   });
 
-  const { data: resourcesData } = useQuery({
-    queryKey: ['resources'],
-    queryFn: () => apiService.getResources(),
+  // the people on this project who can be told (the People list included people with no login, and
+  // made-up "@jane.doe" handles the server could never match)
+  const { data: mentionableData } = useQuery({
+    queryKey: ['mentionable', scheduleId],
+    queryFn: () => apiService.getMentionable(scheduleId),
     staleTime: 5 * 60 * 1000,
   });
-  const allUsers: { name: string; username: string }[] = (resourcesData?.resources || []).map((r: any) => ({
-    name: r.name || r.fullName || r.username || 'User',
-    username: r.username || r.name?.toLowerCase().replace(/\s+/g, '.') || 'user',
-  }));
-  const filteredMentions = allUsers.filter(
-    (u) => u.name.toLowerCase().includes(mentionQuery.toLowerCase()) || u.username.toLowerCase().includes(mentionQuery.toLowerCase())
+  const mentionable = mentionableData?.people ?? [];
+  const nameByHandle = new Map(mentionable.map((p) => [p.handle, p.name]));
+  // two people with the same name: the dropdown also shows their handle
+  const nameCounts = new Map<string, number>();
+  for (const p of mentionable) nameCounts.set(p.name, (nameCounts.get(p.name) ?? 0) + 1);
+  const sharedNames = new Set([...nameCounts].filter(([, n]) => n > 1).map(([name]) => name));
+  const filteredMentions = mentionable.filter(
+    (u) => u.name.toLowerCase().includes(mentionQuery.toLowerCase()) || u.handle.toLowerCase().includes(mentionQuery.toLowerCase())
   ).slice(0, 5);
 
   const handleCommentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,14 +97,14 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
     }
   }, []);
 
-  const insertMention = useCallback((username: string) => {
+  const insertMention = useCallback((handle: string) => {
     const cursor = inputRef.current?.selectionStart || newComment.length;
     const textBeforeCursor = newComment.slice(0, cursor);
     const atIdx = textBeforeCursor.lastIndexOf('@');
     if (atIdx >= 0) {
       const before = newComment.slice(0, atIdx);
       const after = newComment.slice(cursor);
-      setNewComment(`${before}@${username} ${after}`);
+      setNewComment(`${before}@${handle} ${after}`);
     }
     setShowMentions(false);
     inputRef.current?.focus();
@@ -116,7 +120,7 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
       setMentionIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter' || e.key === 'Tab') {
       e.preventDefault();
-      insertMention(filteredMentions[mentionIndex].username);
+      insertMention(filteredMentions[mentionIndex].handle);
     } else if (e.key === 'Escape') {
       setShowMentions(false);
     }
@@ -200,16 +204,16 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                 <div className="absolute left-0 right-0 bottom-full mb-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-40 overflow-y-auto">
                   {filteredMentions.map((user, idx) => (
                     <button
-                      key={user.username}
+                      key={user.userId}
                       type="button"
-                      onClick={() => insertMention(user.username)}
+                      onClick={() => insertMention(user.handle)}
                       className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-primary-50 dark:hover:bg-primary-900/30 ${
                         idx === mentionIndex ? 'bg-primary-50 dark:bg-primary-900/30' : ''
                       }`}
                     >
                       <Avatar name={user.name} size="xs" />
                       <span className="font-medium text-gray-700 dark:text-gray-200">{user.name}</span>
-                      <span className="text-gray-500">@{user.username}</span>
+                      {sharedNames.has(user.name) && <span className="text-gray-500 dark:text-gray-400">@{user.handle}</span>}
                     </button>
                   ))}
                 </div>
@@ -269,7 +273,8 @@ export function TaskActivityPanel({ scheduleId, taskId }: TaskActivityPanelProps
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                     {comment.text.split(/(@\w+)/g).map((part: string, i: number) =>
                       part.startsWith('@') ? (
-                        <span key={i} className="font-semibold text-primary-600 dark:text-primary-400">{part}</span>
+                        // the comment keeps the @handle; people see the name
+                        <span key={i} className="font-semibold text-primary-600 dark:text-primary-400">@{nameByHandle.get(part.slice(1)) ?? part.slice(1)}</span>
                       ) : (
                         <span key={i}>{part}</span>
                       )

@@ -13,6 +13,8 @@ export interface WSMessage {
 interface ClientInfo {
   userId: string;
   username: string;
+  /** Full name, shown to others viewing the project */
+  name: string;
   role: string;
   projectId: string | null;
   editingField: string | null;
@@ -62,7 +64,7 @@ export class WebSocketService {
     WebSocketService.pingTimer.unref();
   }
 
-  static addClient(ws: WebSocket, userInfo?: { userId: string; username: string; role: string }) {
+  static addClient(ws: WebSocket, userInfo?: { userId: string; username: string; name?: string; role: string }) {
     if (WebSocketService.clients.size >= MAX_CONNECTIONS) {
       logger.warn('WebSocket max connections reached — rejecting new client');
       ws.close(1013, 'Max connections reached');
@@ -95,6 +97,8 @@ export class WebSocketService {
       WebSocketService.clientInfo.set(ws, {
         userId: userInfo.userId,
         username: userInfo.username,
+        // the full name follows (setClientName); until then a neutral label, never the username
+        name: userInfo.name || 'Team member',
         role: userInfo.role,
         projectId: null,
         editingField: null,
@@ -213,18 +217,27 @@ export class WebSocketService {
     WebSocketService.broadcastPresence(projectId, info.dbName);
   }
 
+  /** The person's full name, once looked up; anyone already in the project's room sees it at once */
+  static setClientName(ws: WebSocket, name: string) {
+    const info = WebSocketService.clientInfo.get(ws);
+    if (!info || info.name === name) return;
+    info.name = name;
+    if (info.projectId) WebSocketService.broadcastPresence(info.projectId, info.dbName);
+  }
+
   /** Who is viewing / editing a project — sent only to the same project in the same company. */
   static broadcastPresence(projectId: string, dbName: string | null) {
     // Collect unique viewers for this project
-    const viewers: { userId: string; username: string }[] = [];
-    const editors: { userId: string; username: string; field: string }[] = [];
+    // full names only — no usernames or emails go to other people's screens
+    const viewers: { userId: string; name: string }[] = [];
+    const editors: { userId: string; name: string; field: string }[] = [];
     const seen = new Set<string>();
     for (const [, info] of WebSocketService.clientInfo) {
       if (inRoom(info, projectId, dbName) && !seen.has(info.userId)) {
         seen.add(info.userId);
-        viewers.push({ userId: info.userId, username: info.username });
+        viewers.push({ userId: info.userId, name: info.name });
         if (info.editingField) {
-          editors.push({ userId: info.userId, username: info.username, field: info.editingField });
+          editors.push({ userId: info.userId, name: info.name, field: info.editingField });
         }
       }
     }

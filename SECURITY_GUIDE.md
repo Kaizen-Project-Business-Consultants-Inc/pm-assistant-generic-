@@ -391,6 +391,12 @@ Keep the query client in `src/client/src/queryClient.ts` and the watcher in plac
 
 ---
 
+### @mentions stay inside the project (Oct 2026)
+
+A comment's `@handle` is matched only against the people on the task's project who are still in this company (members with a login and its creator, `utils/mentionablePeople.ts`; someone removed from the company keeps their project rows, so the company is checked too; company unknown on a multi-company server → nobody), never against all accounts. The "new comment on your task" notice also checks the assignee's login is in this company (`inCurrentCompany`). The old lookup the old lookup (`findByUsernames`, now removed) could notify a person in another company and show them the task's name. Live presence sends user id and full name only ("Team member" until the name is looked up) — no usernames or emails.
+
+---
+
 ## 10. Input Validation
 
 All API endpoints use **Zod v4** schemas for runtime request validation:

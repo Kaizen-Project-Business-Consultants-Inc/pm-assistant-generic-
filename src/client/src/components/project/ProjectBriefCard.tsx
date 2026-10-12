@@ -16,7 +16,7 @@ interface ProjectBriefCardProps {
   description: string | null | undefined;
   canEdit: boolean;
   cardClass: string;
-  presenceEditors?: { userId: string; username: string; field: string }[];
+  presenceEditors?: { userId: string; name: string; field: string }[];
   currentUserId?: string;
   updatedAt?: string;
 }

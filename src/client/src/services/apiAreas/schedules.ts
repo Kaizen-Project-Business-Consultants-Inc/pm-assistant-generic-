@@ -197,6 +197,12 @@ export class SchedulesApi extends ApiBase {
   // Comments & Activity
   // -------------------------------------------------------------------------
 
+  /** Who can be @mentioned in this schedule's project: name + the @handle a comment carries (no emails) */
+  async getMentionable(scheduleId: string): Promise<{ people: { userId: string; name: string; handle: string }[] }> {
+    const response = await this.api.get(`/schedules/${scheduleId}/mentionable`);
+    return response.data;
+  }
+
   async getTaskComments(scheduleId: string, taskId: string) {
     const response = await this.api.get(`/schedules/${scheduleId}/tasks/${taskId}/comments`);
     return response.data;
