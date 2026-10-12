@@ -8,6 +8,7 @@ export const PublicFooter: React.FC = () => (
         <Link to="/terms" className="hover:text-gray-900 dark:hover:text-white">Terms of Service</Link>
         <Link to="/privacy" className="hover:text-gray-900 dark:hover:text-white">Privacy Policy</Link>
         <Link to="/features" className="hover:text-gray-900 dark:hover:text-white">Features</Link>
+        <Link to="/compare/ms-project" className="hover:text-gray-900 dark:hover:text-white">Kovarti vs MS Project</Link>
         <Link to="/about" className="hover:text-gray-900 dark:hover:text-white">About</Link>
         <Link to="/roadmap" className="hover:text-gray-900 dark:hover:text-white">Roadmap</Link>
       </div>

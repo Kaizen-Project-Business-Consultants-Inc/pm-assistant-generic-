@@ -2385,7 +2385,8 @@ When a user deletes their account (via `DELETE /api/v1/auth/delete-account`), th
 
 All entry points route users through plan selection before registration:
 
-- **Landing page hero** — "Get Started" button anchor-scrolls to the pricing section on the same page (no page navigation)
+- **Landing page hero** (Oct 2026: "Real schedules. Without the MS Project weight." — for consultants and small PM teams; "From $19 a month" is read from the pricing settings, `hooks/useFromPrice.ts`; AI is said to come with Pro, since the lowest plan has none) — "Start your free 7-day trial" anchor-scrolls to the pricing section; "See how it compares" opens the comparison page
+- **Comparison page** `/compare/ms-project` (Oct 2026) — Kovarti vs Microsoft Project (Plan 3) vs Asana: who each is for, list prices (ours: the lowest yearly price ÷ 12, to compare like with like), a 13-row table of what a PM needs, "Choose them if…" boxes and our own gaps (no .mpp — MS Project XML instead; few integrations). Anything not found on the other product's own page says "Not listed on its plan page", never "not built in". Facts about the other products come only from microsoft.com / asana.com, dated ("as of October 2026"), re-checked every quarter; a row that can't be confirmed is dropped. Linked from the landing nav, the public navbar and footer; in `sitemap.xml`; its own title, description and canonical (`useSEO`)
 - **Landing page nav** — both "Pricing" and "Get Started" anchor-scroll to `#pricing`
 - **Login page** — "Sign up" link routes to `/pricing`
 

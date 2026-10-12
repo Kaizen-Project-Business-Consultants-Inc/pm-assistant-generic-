@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { PricingSection } from '../components/pricing/PricingCards';
 import { KovartiMark } from '../components/ui/KovartiMark';
 import { TourVideoButton } from '../components/landing/TourVideo';
+import { useFromPrice, formatFromPrice } from '../hooks/useFromPrice';
 
 function useReducedMotion(): boolean {
   const [reduced, setReduced] = useState(() => {
@@ -615,6 +616,7 @@ function FeatureCard({ feature, reducedMotion, onOpenScreenshot, screenshotReady
 
 export const LandingPage: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const fromPrice = useFromPrice(); // "From $19 a month", from the pricing settings
   const [screenshotModal, setScreenshotModal] = useState<string | null>(null);
   const [readyScreenshots, setReadyScreenshots] = useState<Set<string>>(new Set());
   const reducedMotion = useReducedMotion();
@@ -657,6 +659,7 @@ export const LandingPage: React.FC = () => {
             {/* Desktop nav */}
             <div className="hidden md:flex items-center space-x-4">
               <Link to="/features" className="text-sm text-slate-400 hover:text-white transition-colors">Features</Link>
+              <Link to="/compare/ms-project" className="text-sm text-slate-400 hover:text-white transition-colors">vs MS Project</Link>
               <a href="#why-kovarti" className="text-sm text-slate-400 hover:text-white transition-colors">Why Kovarti</a>
               <a href="#pricing" className="text-sm text-slate-400 hover:text-white transition-colors">Pricing</a>
               <Link to="/about" className="text-sm text-slate-400 hover:text-white transition-colors">About</Link>
@@ -691,6 +694,7 @@ export const LandingPage: React.FC = () => {
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-white/5 py-3 space-y-1">
               <Link to="/features" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Features</Link>
+              <Link to="/compare/ms-project" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">vs MS Project</Link>
               <a href="#why-kovarti" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Why Kovarti</a>
               <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">Pricing</a>
               <Link to="/about" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 rounded-lg transition-colors">About</Link>
@@ -708,32 +712,32 @@ export const LandingPage: React.FC = () => {
           <div>
             <span className="inline-flex items-center gap-2 text-[13px] font-semibold text-blue-200 px-3.5 py-1.5 rounded-full" style={{ background: 'rgba(59,130,246,0.14)', border: '1px solid rgba(59,130,246,0.3)' }}>
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_theme(colors.cyan.400)]" />
-              MS Project-grade scheduling — powered by AI
+              For consultants and small PM teams
             </span>
             <h1 className="text-4xl sm:text-5xl lg:text-[60px] font-extrabold text-white mt-5 leading-[1.04] tracking-tight">
-              Manage projects<br />
+              Real schedules.<br />
               <span className="bg-gradient-to-r from-primary-400 to-cyan-400 bg-clip-text text-transparent">
-                smarter with AI
+                Without the MS&nbsp;Project weight.
               </span>
             </h1>
-            <p className="text-lg text-slate-300 mt-5 leading-relaxed max-w-[520px]">
-              Plan smarter, predict risks, and deliver on time with intelligent scheduling,
-              Monte Carlo simulations, and natural-language project insights.
+            <p className="text-lg text-slate-300 mt-5 leading-relaxed max-w-[540px]">
+              Critical path, baselines, RAID and client-ready status reports in your browser. Schedule Review
+              checks your plan like a seasoned PM; the Mjuzi AI assistant comes with Pro.{fromPrice !== null && <> From {formatFromPrice(fromPrice)} a month.</>}
             </p>
-            <div className="flex items-center gap-3.5 mt-8">
+            <div className="flex items-center flex-wrap gap-3.5 mt-8">
               <a
                 href="#pricing"
                 className="text-[15px] font-bold text-white bg-gradient-to-br from-primary-500 to-cyan-400 hover:from-primary-600 hover:to-cyan-500 px-7 py-3.5 rounded-xl transition-all shadow-lg shadow-primary-500/35 hover:shadow-xl hover:shadow-primary-500/40 hover:-translate-y-0.5"
               >
-                Get Started
+                Start your free 7-day trial
               </a>
-              <a
-                href="#see-it-work"
+              <Link
+                to="/compare/ms-project"
                 className="text-[15px] font-semibold text-white px-6 py-3.5 rounded-xl transition-all hover:-translate-y-0.5"
                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}
               >
-                See how it works
-              </a>
+                See how it compares
+              </Link>
             </div>
             <TourVideoButton />
             {/* Launch offer banner */}
@@ -847,7 +851,7 @@ export const LandingPage: React.FC = () => {
               },
               {
                 title: 'Real scheduling, not just task lists',
-                description: 'Gantt charts with critical path, resource leveling, earned value management, and Monte Carlo simulations. Import from MS Project (MPP/MSPDI). This is project scheduling — not a dressed-up to-do list.',
+                description: 'Gantt charts with critical path, resource leveling, earned value management, and Monte Carlo simulations. Import MS Project XML (MSPDI). This is project scheduling — not a dressed-up to-do list.',
                 icon: (
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -858,7 +862,7 @@ export const LandingPage: React.FC = () => {
               },
               {
                 title: 'AI that actually does PM work',
-                description: '16 autonomous agents scan for risks, flag budget overruns, detect scope creep, and suggest mitigations — continuously, not just when you ask. Mjuzi, your AI assistant, speaks PM fluently.',
+                description: 'AI scans for risks, flags budget overruns and scope creep, and suggests mitigations from past lessons. Mjuzi, your AI assistant, speaks PM fluently.',
                 icon: (
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
