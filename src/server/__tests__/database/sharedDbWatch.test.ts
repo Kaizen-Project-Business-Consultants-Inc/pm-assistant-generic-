@@ -42,7 +42,7 @@ describe('shared-database watch', () => {
       'knowledge_base_chunks', 'memory_change_log', 'notifications', 'oauth_auth_codes',
       'oauth_clients', 'oauth_tokens', 'organizations', 'pricing_config', 'subscription_events',
       'subscriptions', 'support_sessions', 'template_marketplace', 'tier_features', 'token_top_ups',
-      'users', 'waitlist',
+      'user_identities', 'users', 'waitlist', // user_identities: a Google sign-in belongs to a person, not a company (2026-10-12)
     ]);
   });
 

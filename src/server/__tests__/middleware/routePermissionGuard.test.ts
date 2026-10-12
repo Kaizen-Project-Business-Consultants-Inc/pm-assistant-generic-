@@ -112,6 +112,12 @@ const NON_PROJECT: Record<string, string[]> = {
     "POST /change-password",
     "DELETE /delete-account"
   ],
+  "core/googleAuth.ts": [
+    "POST /google/link",
+    "POST /google/link-email",
+    "POST /google/link-preview",
+    "POST /google/link-confirm"
+  ],
   "core/feedback.ts": [
     "POST /",
     "PATCH /:id"

@@ -208,6 +208,7 @@ Key variables in `.env` (never commit secrets):
 | `ANTHROPIC_API_KEY`   | Anthropic API key (required if AI enabled)  |
 | `STRIPE_SECRET_KEY`   | Stripe billing integration                  |
 | `RESEND_API_KEY`      | Outbound email (Resend)                     |
+| `GOOGLE_AUTH_CLIENT_ID`, `GOOGLE_AUTH_CLIENT_SECRET` | "Continue with Google" sign-in; empty = button hidden. Redirect URI: `<APP_URL>/api/v1/auth/google/callback` |
 | `CORS_ORIGIN`         | Allowed CORS origins                        |
 | `APP_URL`             | Public-facing URL of the application        |
 | `MULTI_TENANT_ENABLED` | Enable database-per-customer multi-tenancy (`true`/`false`) |

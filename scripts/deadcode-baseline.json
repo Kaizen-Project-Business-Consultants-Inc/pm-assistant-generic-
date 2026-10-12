@@ -155,7 +155,6 @@
     "server|exports|src/server/dto/responses.ts|toUserDTO",
     "server|exports|src/server/middleware/tenantResolver.ts|NO_COMPANY_MESSAGE",
     "server|exports|src/server/middleware/tenantResolver.ts|PERSONAL_PREFIXES",
-    "server|exports|src/server/routes/core/auth.ts|provisionVerifiedTenant",
     "server|exports|src/server/routes/core/bulk.ts|bulkTaskSchema",
     "server|exports|src/server/routes/core/bulk.ts|bulkUpdateSchema",
     "server|exports|src/server/routes/core/projects.ts|createProjectSchema",

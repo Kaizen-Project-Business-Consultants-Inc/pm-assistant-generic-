@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 
 // Core
 import { authRoutes } from './routes/core/auth';
+import { googleAuthRoutes } from './routes/core/googleAuth';
 import { projectRoutes } from './routes/core/projects';
 import { userRoutes } from './routes/core/users';
 import { projectMemberRoutes } from './routes/core/projectMembers';
@@ -151,6 +152,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
 
   // Core
   await fastify.register(authRoutes, { prefix: '/api/v1/auth' });
+  await fastify.register(googleAuthRoutes, { prefix: '/api/v1/auth' });
   await fastify.register(projectRoutes, { prefix: '/api/v1/projects' });
   await fastify.register(userRoutes, { prefix: '/api/v1/users' });
   await fastify.register(projectMemberRoutes, { prefix: '/api/v1/projects' });

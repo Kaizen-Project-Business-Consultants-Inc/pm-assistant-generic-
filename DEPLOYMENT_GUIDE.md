@@ -113,6 +113,7 @@ When the pool is full the app now answers **503 "Kovarti is busy right now"** wi
 | `AGENT_ENABLED` | `false` | Enable autonomous agent scheduler |
 | `AGENT_CRON_SCHEDULE` | `0 2 * * *` | Cron schedule for agent runs |
 | `RESEND_API_KEY` | _(empty)_ | Resend email service API key |
+| `GOOGLE_AUTH_CLIENT_ID` / `GOOGLE_AUTH_CLIENT_SECRET` | _(empty)_ | "Continue with Google" sign-in (OAuth client, type Web application, in Google Cloud). Redirect URI to register: `<APP_URL>/api/v1/auth/google/callback`. Empty = no Google button. Leave empty until the client part (sign-in buttons and the `/link-google` page) is deployed |
 | `RESEND_FROM_EMAIL` | `noreply@kpbc.ca` | From address for emails |
 | `APP_URL` | `http://localhost:5173` | Public application URL |
 | `STRIPE_SECRET_KEY` | _(empty)_ | Stripe billing secret key |

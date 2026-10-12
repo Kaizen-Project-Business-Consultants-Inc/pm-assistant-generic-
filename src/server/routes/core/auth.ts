@@ -13,19 +13,16 @@ import { userService } from '../../services/UserService';
 import { emailService } from '../../services/EmailService';
 import { stripeService } from '../../services/StripeService';
 import { organizationService } from '../../services/OrganizationService';
-import { provisionTenantDatabase } from '../../database/tenantProvisioner';
-import { inviteService } from '../../services/InviteService';
-import { organizationRepository } from '../../database/OrganizationRepository';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { verifyTurnstile, turnstileActive } from '../../utils/turnstile';
 import { countRegistrationAttempt } from '../../utils/registrationWatch';
-import { runWithTenantContext } from '../../middleware/requestContext';
-import { resolvePriceId } from '../integrations/stripe';
-import { pricingConfigService } from '../../services/PricingConfigService';
+import { createAccount, provisionVerifiedTenant } from '../../services/accountSignup';
 import logger from '../../utils/logger';
 import { isTokenError, isDatabaseUnavailable, sendBusy, logBusy } from '../../utils/serviceBusy';
 import type { JwtPayload } from '../../types/fastify';
+import { startNewSession, setSessionCookies } from '../../utils/session';
+import { hasPassword, NO_PASSWORD_MESSAGE } from '../../utils/googleOnlyAccount';
 
 const loginSchema = z.object({
   username: z.string().min(3),
@@ -56,60 +53,6 @@ const resetPasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
-async function createOwnerResource(orgId: string, dbName: string, ownerId: string) {
-  try {
-    const owner = await userService.findById(ownerId);
-    if (!owner) return;
-    await runWithTenantContext(dbName, orgId, async () => {
-      const { resourceService } = await import('../../services/ResourceService');
-      await resourceService.createResource({
-        name: owner.fullName || owner.username || owner.email.split('@')[0],
-        role: owner.role,
-        email: owner.email,
-        capacityHoursPerWeek: 40,
-        skills: [],
-        isActive: true,
-        costRateHourly: null,
-        overtimeRateHourly: null,
-        resourceGroup: null,
-        userId: ownerId,
-        calendarTemplateId: null,
-      });
-    });
-    logger.info('Created owner resource', { orgId, userId: ownerId });
-  } catch (err) {
-    logger.error('Failed to create owner resource', {
-      orgId, userId: ownerId, error: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
-
-/**
- * A tenant database is only built once the person has verified their email.
- *
- * It used to be built during registration. That made an unverified signup cost
- * 104 tables and 12MB on disk, before anyone had proved the address was real —
- * so a script could fill the disk in about eleven hours at the registration
- * rate limit, and every junk signup left a database behind forever. Five of the
- * first six accounts on production were never verified and each had one.
- *
- * Nothing is lost by waiting: an unverified user cannot log in at all, so there
- * is nothing for them to use the database for. And if anything ever does reach a
- * tenant that was never provisioned, tenantResolver repairs it on the spot.
- */
-export async function provisionVerifiedTenant(orgId: string, dbName: string, ownerId: string): Promise<void> {
-  try {
-    await provisionTenantDatabase(orgId);
-    await createOwnerResource(orgId, dbName, ownerId);
-  } catch (err) {
-    // Never fatal: the person has verified and must be allowed to sign in.
-    // tenantResolver will provision on their first request if this failed.
-    logger.error('Deferred tenant provisioning failed', {
-      orgId, message: err instanceof Error ? err.message : String(err),
-    });
-  }
-}
-
 export async function authRoutes(fastify: FastifyInstance) {
   fastify.post('/login', {
     schema: { description: 'User login', tags: ['auth'] },
@@ -133,6 +76,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({ error: 'Invalid credentials', message: 'Username or password is incorrect' });
       }
 
+      if (!hasPassword(user)) {
+        return reply.status(401).send({ error: 'No password', message: NO_PASSWORD_MESSAGE });
+      }
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
       if (!isValidPassword) {
         return reply.status(401).send({ error: 'Invalid credentials', message: 'Username or password is incorrect' });
@@ -153,37 +99,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Previously, non-admin users received a login verification email on every sign-in.
       // Disabled to simplify the flow; re-add as opt-in MFA later.
 
-      const newVersion = (user.tokenVersion ?? 0) + 1;
-      await userService.update(user.id, {
-        tokenVersion: newVersion,
-        lastLoginAt: new Date(),
-      });
-
-      const accessToken = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, tv: newVersion },
-        config.JWT_SECRET,
-        { expiresIn: '15m', algorithm: 'HS256' }
-      );
-      const refreshToken = jwt.sign(
-        { userId: user.id, type: 'refresh', tv: newVersion },
-        config.JWT_REFRESH_SECRET,
-        { expiresIn: '24h', algorithm: 'HS256' }
-      );
-
-      reply.setCookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 15 * 60,
-      });
-      reply.setCookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 24 * 60 * 60,
-      });
+      const accessToken = await startNewSession(reply, user);
 
       // Same as /auth/me: the app needs to know straight away whether there's a company
       // (the platform admin has none — utils/platformAdmin.ts)
@@ -268,236 +184,33 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // The sign-up form asks for no username (2026-10-11): people sign in with their email, so one
-      // is made from it — at most 47 characters (usernames are capped at 50 elsewhere), and a fresh
-      // suffix if it is taken, so nobody is refused over a field they never saw.
-      let username = parsed.username || '';
-      if (!username) {
-        const base = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 40) || 'user';
-        for (let attempt = 0; attempt < 3 && !username; attempt++) {
-          const candidate = `${base}_${crypto.randomBytes(3).toString('hex')}`;
-          // eslint-disable-next-line no-await-in-loop -- at most three tries, each depends on the last
-          if (!(await userService.findByUsername(candidate))) username = candidate;
-        }
-        if (!username) username = `${base}_${crypto.randomBytes(6).toString('hex')}`;
-      }
-      // Use empty string for fullName if not provided (will be collected in onboarding)
-      const fullName = parsed.fullName || '';
-
-      // Validate invite token if provided
-      let inviteData: { valid: boolean; email?: string; orgName?: string; projectId?: string | null } | null = null;
-      if (inviteToken) {
-        inviteData = await inviteService.validateToken(inviteToken);
-        if (!inviteData.valid) {
-          return reply.status(400).send({ error: 'Invalid invite', message: 'This invitation link is invalid or has expired.' });
-        }
-      }
-
-      const existingUsername = await userService.findByUsername(username);
-      if (existingUsername) {
-        return reply.status(409).send({ error: 'User already exists', message: 'Username is already taken' });
-      }
-
-      const existingEmail = await userService.findByEmail(email);
-      if (existingEmail) {
-        return reply.status(409).send({ error: 'Email already exists', message: 'An account with this email already exists' });
-      }
-
-      // Check if this email was previously deleted (trial abuse prevention)
-      const [previousAccount] = await databaseService.query<{ email: string }>(
-        'SELECT email FROM deleted_emails WHERE email = ? LIMIT 1',
-        [email.toLowerCase()]
-      );
-      const hadPreviousAccount = !!previousAccount;
-
-      const verificationToken = crypto.randomUUID();
-      const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-
+      // One way to make an account, shared with "Sign up with Google" (services/accountSignup.ts)
       const passwordHash = await bcrypt.hash(password, 12);
-
-      const isInvitedViewer = inviteData?.valid;
-      const isPlanSignup = !!tier && !isInvitedViewer;
-
-      // Create Stripe customer (if configured) — skip for invited viewers
-      const stripeCustomerId = isInvitedViewer ? null : await stripeService.createCustomer(email, fullName || email, 'pending');
-
-      const user = await userService.create({
-        username,
+      const created = await createAccount({
         email,
+        fullName: parsed.fullName || '', // collected in onboarding if left out
         passwordHash,
-        fullName,
-        role: isInvitedViewer ? 'viewer' : 'project_manager',
         emailVerified: false,
-        emailVerificationToken: verificationToken,
-        emailVerificationExpires: verificationExpires,
-        stripeCustomerId: stripeCustomerId || undefined,
+        username: parsed.username,
+        organizationName,
+        inviteToken,
+        tier,
+        plan,
+        seats,
+      });
+      if (!created.ok) {
+        return reply.status(created.status).send({ error: created.error, message: created.message });
+      }
+      const { user, invitedTo, checkoutUrl, verificationToken } = created;
+
+      // The verification email goes in every case (a paid sign-up can verify later)
+      emailService.sendVerificationEmail(email, verificationToken!).catch((emailErr) => {
+        logger.error('Failed to send verification email', { userId: user.id, email, error: emailErr });
       });
 
-      // Fire-and-forget: link any pending project memberships + resources to this new user
-      organizationService.getAllActiveProvisioned().then(async (orgs: any[]) => {
-        for (const org of orgs) {
-          try {
-            // eslint-disable-next-line no-await-in-loop -- one company at a time: each switches the tenant database (fire-and-forget after signup)
-            await runWithTenantContext(org.dbName, org.id, async () => {
-              // Link pending project members
-              await databaseService.query(
-                'UPDATE project_members SET user_id = ?, user_name = ? WHERE LOWER(email) = LOWER(?) AND user_id LIKE ?',
-                [user.id, fullName || email.split('@')[0], email, 'pending_%'],
-              );
-              // Link resources by email (set user_id where it's NULL)
-              await databaseService.query(
-                'UPDATE resources SET user_id = ? WHERE LOWER(email) = LOWER(?) AND user_id IS NULL',
-                [user.id, email],
-              );
-            });
-          } catch {
-            // Ignore errors for individual tenants
-          }
-        }
-      }).catch((err: any) => logger.error('Failed to link pending memberships/resources', { userId: user.id, error: err }));
-
-      /**
-       * Give the account owner a resource record, so the person who signed up can
-       * actually be scheduled.
-       *
-       * Everyone they invite already gets one — `org.ts` does it in two places and
-       * `InviteService.acceptInvite` in a third, all with these same defaults. The
-       * owner was the one person who never got one, which made them the only member of
-       * their own team who could not be assigned to a task, and left them missing from
-       * workload, capacity and resource reports.
-       *
-       * Fire-and-forget and never fatal: a missing resource is a nuisance, a failed
-       * registration is not.
-       */
-
-      // Multi-tenant: create the organization and provision its database. Shared by
-      // the free-trial and awaiting-payment paths — SME checkout needs the org to
-      // exist, so a paid signup must get one too, just without a trial stamp.
-      const createOrgForNewUser = async (trialEndsAt?: Date) => {
-        if (!config.MULTI_TENANT_ENABLED) return;
-        const orgName = organizationName || fullName || email.split('@')[0];
-        try {
-          const org = await organizationService.createOrganization(orgName, user.id, stripeCustomerId || undefined, {
-            awaitingPayment: isPlanSignup,
-            trialEndsAt,
-          });
-          await userService.update(user.id, { organizationId: org.id } as any);
-          // The tenant database is NOT built here — see provisionVerifiedTenant.
-          // Building it at registration meant an unverified signup cost 104 tables
-          // and 12MB before anyone had proved the address was real. It is built
-          // when they verify, and repaired on first use if that ever misses.
-        } catch (orgError) {
-          logger.error('Organization creation failed during registration', { userId: user.id, error: orgError });
-        }
-      };
-
-      if (isInvitedViewer) {
-        // Viewer: no trial, no subscription, accept the invite
-        await userService.update(user.id, {
-          subscriptionStatus: 'none',
-        });
-
-        try {
-          await inviteService.acceptInvite(inviteToken!, user.id);
-        } catch (inviteErr) {
-          logger.error('Failed to accept invite during registration', { userId: user.id, error: inviteErr });
-        }
-      } else if (hadPreviousAccount) {
-        // Returning user: no free trial — must pick a paid plan
-        await userService.update(user.id, {
-          subscriptionStatus: 'none',
-        });
-      } else if (isPlanSignup) {
-        // Paid signup: NO TRIAL. A trial belongs to the free tier only.
-        // They are not a free-tier customer — they never chose free — so they sit in
-        // 'incomplete' (awaiting payment) with no trial date and no feature access
-        // until their payment confirms. subscriptionTier deliberately stays 'trial'
-        // (the "no paid plan" default) because that column grants features; the plan
-        // they are buying is remembered in pendingTier so we can resume their checkout.
-        await userService.update(user.id, {
-          subscriptionStatus: 'incomplete',
-          pendingTier: tier as any,
-          trialEndsAt: null,
-          trialStartedAt: null,
-        });
-
-        await createOrgForNewUser();
-      } else {
-        // Free signup: a trial on the free tier — the only place a trial belongs. Its length is the
-        // trial plan's "Duration (days)" setting (Admin → Pricing), 7 unless set (user 2026-10-10).
-        const now = new Date();
-        const trialEndsAt = new Date(now.getTime() + (await pricingConfigService.trialLengthDays()) * 24 * 60 * 60 * 1000);
-        await userService.update(user.id, {
-          subscriptionStatus: 'trialing',
-          trialStartedAt: now,
-          trialEndsAt,
-        });
-
-        await createOrgForNewUser(trialEndsAt);
-      }
-
-      // Plan signup flow: auto-login + create Stripe checkout session + return URL
-      if (isPlanSignup && stripeCustomerId) {
-        const billing = plan || 'monthly';
-        const priceId = resolvePriceId(tier, billing);
-        if (!priceId) {
-          return reply.status(500).send({ error: 'Stripe not configured', message: 'Pricing is not configured for this tier' });
-        }
-
-        let checkoutUrl: string;
-
-        if (tier === 'sme') {
-          // SME uses per-seat checkout on the organization
-          const org = await organizationRepository.findByUserId(user.id);
-          if (!org) {
-            return reply.status(500).send({ error: 'Organization not found', message: 'SME signup requires an organization' });
-          }
-
-          // Ensure org has a Stripe customer
-          let orgStripeCustomerId = org.stripeCustomerId;
-          if (!orgStripeCustomerId) {
-            orgStripeCustomerId = await stripeService.createCustomer(email, org.name, user.id);
-            if (orgStripeCustomerId) {
-              await organizationRepository.update(org.id, { stripeCustomerId: orgStripeCustomerId });
-            }
-          }
-          if (!orgStripeCustomerId) {
-            return reply.status(500).send({ error: 'Failed to create Stripe customer for organization' });
-          }
-
-          const seatCount = Math.max(3, seats || 3);
-          checkoutUrl = await stripeService.createSeatCheckoutSession(orgStripeCustomerId, priceId, seatCount, org.id);
-        } else {
-          // Flat-rate checkout for consultant tiers
-          checkoutUrl = await stripeService.createCheckoutSession(stripeCustomerId, priceId, user.id, '/onboarding');
-        }
-
-        // Auto-login: issue JWT cookies
-        const newVersion = (user.tokenVersion ?? 0) + 1;
-        await userService.update(user.id, { tokenVersion: newVersion, lastLoginAt: new Date() });
-
-        const accessToken = jwt.sign(
-          { userId: user.id, username: user.username, role: user.role, tv: newVersion },
-          config.JWT_SECRET,
-          { expiresIn: '15m', algorithm: 'HS256' }
-        );
-        const refreshToken = jwt.sign(
-          { userId: user.id, type: 'refresh', tv: newVersion },
-          config.JWT_REFRESH_SECRET,
-          { expiresIn: '24h', algorithm: 'HS256' }
-        );
-
-        reply.setCookie('access_token', accessToken, {
-          httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 15 * 60,
-        });
-        reply.setCookie('refresh_token', refreshToken, {
-          httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60,
-        });
-
-        // Send verification email even for plan signup (they can verify later)
-        emailService.sendVerificationEmail(email, verificationToken).catch((emailErr) => {
-          logger.error('Failed to send verification email', { userId: user.id, email, error: emailErr });
-        });
+      // Paid plan: signed in straight away, then to the checkout
+      if (checkoutUrl) {
+        await startNewSession(reply, user);
 
         // Same owner flag and role as login and /auth/me, so the stored user never says
         // "not the owner" before /auth/me runs. Never fatal: the account and checkout exist already.
@@ -526,14 +239,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         });
       }
 
-      // Traditional flow: send verification email, no auto-login
-      emailService.sendVerificationEmail(email, verificationToken).catch((emailErr) => {
-        logger.error('Failed to send verification email', { userId: user.id, email, error: emailErr });
-      });
-
       return reply.status(201).send({
-        message: isInvitedViewer
-          ? `Registration successful. You've been added to ${inviteData!.orgName}. Please check your email to verify your account.`
+        message: invitedTo
+          ? `Registration successful. You've been added to ${invitedTo}. Please check your email to verify your account.`
           : 'Registration successful. Please check your email to verify your account.',
       });
     } catch (error) {
@@ -615,43 +323,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.redirect('/login?error=invalid_login_token');
       }
 
-      // Increment tokenVersion to invalidate all prior sessions
-      const newVersion = (user.tokenVersion ?? 0) + 1;
-      await userService.update(user.id, {
-        tokenVersion: newVersion,
-        loginVerificationToken: null,
-        loginVerificationExpires: null,
-        lastLoginAt: new Date(),
-      });
-
-      // Issue JWT cookies
-      const accessToken = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, tv: newVersion },
-        config.JWT_SECRET,
-        { expiresIn: '15m', algorithm: 'HS256' }
-      );
-
-      const refreshToken = jwt.sign(
-        { userId: user.id, type: 'refresh', tv: newVersion },
-        config.JWT_REFRESH_SECRET,
-        { expiresIn: '24h', algorithm: 'HS256' }
-      );
-
-      reply.setCookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 15 * 60,
-      });
-
-      reply.setCookie('refresh_token', refreshToken, {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 24 * 60 * 60,
-      });
+      // A new session (every prior one ends); the one-time link is used up in the same write
+      await startNewSession(reply, user, { loginVerificationToken: null, loginVerificationExpires: null });
 
       return reply.redirect('/');
     } catch (error) {
@@ -906,34 +579,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(401).send({ error: 'Session expired', message: 'Your session has been invalidated. Please log in again.' });
       }
 
-      const accessToken = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, tv: currentVersion },
-        config.JWT_SECRET,
-        { expiresIn: '15m', algorithm: 'HS256' }
-      );
-
-      // Rotate refresh token
-      const newRefreshToken = jwt.sign(
-        { userId: user.id, type: 'refresh', tv: currentVersion },
-        config.JWT_REFRESH_SECRET,
-        { expiresIn: '24h', algorithm: 'HS256' }
-      );
-
-      reply.setCookie('access_token', accessToken, {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 15 * 60,
-      });
-
-      reply.setCookie('refresh_token', newRefreshToken, {
-        httpOnly: true,
-        secure: config.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 24 * 60 * 60,
-      });
+      // New access token, rotated refresh token, same session version
+      setSessionCookies(reply, user, currentVersion);
 
       return { message: 'Token refreshed successfully' };
     } catch (error) {
@@ -965,6 +612,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       const user = await userService.findById(userId);
       if (!user) return reply.status(404).send({ error: 'User not found' });
 
+      if (!hasPassword(user)) return reply.status(400).send({ error: 'No password', message: NO_PASSWORD_MESSAGE });
       const valid = await bcrypt.compare(currentPassword, user.passwordHash);
       if (!valid) return reply.status(400).send({ error: 'Invalid password', message: 'Current password is incorrect' });
 
@@ -972,23 +620,8 @@ export async function authRoutes(fastify: FastifyInstance) {
       const newVersion = (user.tokenVersion ?? 0) + 1;
       await userService.update(userId, { passwordHash: hash, tokenVersion: newVersion, mustChangePassword: false });
 
-      // Issue fresh tokens with new version so current session stays alive
-      const accessToken = jwt.sign(
-        { userId: user.id, username: user.username, role: user.role, tv: newVersion },
-        config.JWT_SECRET,
-        { expiresIn: '15m', algorithm: 'HS256' }
-      );
-      const refreshToken = jwt.sign(
-        { userId: user.id, type: 'refresh', tv: newVersion },
-        config.JWT_REFRESH_SECRET,
-        { expiresIn: '24h', algorithm: 'HS256' }
-      );
-      reply.setCookie('access_token', accessToken, {
-        httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 15 * 60,
-      });
-      reply.setCookie('refresh_token', refreshToken, {
-        httpOnly: true, secure: config.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 24 * 60 * 60,
-      });
+      // Fresh tokens with the new version, so this session stays alive (all others end)
+      setSessionCookies(reply, user, newVersion);
 
       return { message: 'Password changed successfully' };
     } catch (error) {

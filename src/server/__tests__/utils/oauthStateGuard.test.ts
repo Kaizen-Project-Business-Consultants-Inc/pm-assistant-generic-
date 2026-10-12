@@ -35,9 +35,10 @@ describe('sign-in state guard', () => {
   });
 
   it('every account-connect callback checks the state with oauthState (or its own one-time store)', () => {
-    const callbacks = all.filter(f => /\.get\(\s*['"]\/callback['"]/.test(f.src) && /\bstate\b/.test(f.src));
+    // includes "Sign in with Google" (/google/callback — its own one-time store in utils/googleSignIn.ts)
+    const callbacks = all.filter(f => /\.get\(\s*['"]\/(\w+\/)?callback['"]/.test(f.src) && /\bstate\b/.test(f.src));
     const unchecked = callbacks
-      .filter(f => !/finishOAuthState|handleOAuthCallback/.test(f.src))
+      .filter(f => !/finishOAuthState|handleOAuthCallback|finishGoogleSignIn/.test(f.src))
       .map(f => f.file);
     expect(callbacks.length).toBeGreaterThanOrEqual(3); // slack, teams (+ meetings), calendar; storage has its own route and one-time store
     expect(unchecked).toEqual([]);

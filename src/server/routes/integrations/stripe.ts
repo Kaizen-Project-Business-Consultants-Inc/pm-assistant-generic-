@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { config } from '../../config';
+import { resolvePriceId } from '../../utils/stripePrices';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
@@ -30,47 +31,6 @@ const checkoutSchema = z.object({
   tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   seats: z.number().int().min(3).max(100).optional(),
 });
-
-export function resolvePriceId(tier: string, billing: string): string | undefined {
-  // Consultant Basic
-  if (tier === 'consultant_basic') {
-    if (billing === 'annual' && config.STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_BASIC_ANNUAL_PRICE_ID;
-    if (config.STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_BASIC_MONTHLY_PRICE_ID;
-  }
-  // Consultant Pro
-  if (tier === 'consultant_pro') {
-    if (billing === 'annual' && config.STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_PRO_ANNUAL_PRICE_ID;
-    if (config.STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_PRO_MONTHLY_PRICE_ID;
-    // Legacy fallbacks for existing consultant subscribers
-    if (billing === 'annual' && config.STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_NEW_ANNUAL_PRICE_ID;
-    if (config.STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_NEW_MONTHLY_PRICE_ID;
-    if (billing === 'annual' && config.STRIPE_PRO_ANNUAL_PRICE_ID) return config.STRIPE_PRO_ANNUAL_PRICE_ID;
-    if (config.STRIPE_PRO_MONTHLY_PRICE_ID) return config.STRIPE_PRO_MONTHLY_PRICE_ID;
-  }
-  if (tier === 'sme') {
-    // Per-seat pricing (new default)
-    if (billing === 'annual' && config.STRIPE_SME_SEAT_ANNUAL_PRICE_ID) return config.STRIPE_SME_SEAT_ANNUAL_PRICE_ID;
-    if (config.STRIPE_SME_SEAT_MONTHLY_PRICE_ID) return config.STRIPE_SME_SEAT_MONTHLY_PRICE_ID;
-    // Legacy flat-rate fallback
-    if (billing === 'annual' && config.STRIPE_SME_ANNUAL_PRICE_ID) return config.STRIPE_SME_ANNUAL_PRICE_ID;
-    if (config.STRIPE_SME_MONTHLY_PRICE_ID) return config.STRIPE_SME_MONTHLY_PRICE_ID;
-    // Legacy business fallback
-    if (billing === 'annual' && config.STRIPE_BUSINESS_ANNUAL_PRICE_ID) return config.STRIPE_BUSINESS_ANNUAL_PRICE_ID;
-    if (config.STRIPE_BUSINESS_MONTHLY_PRICE_ID) return config.STRIPE_BUSINESS_MONTHLY_PRICE_ID;
-  }
-  if (tier === 'enterprise') {
-    if (billing === 'annual' && config.STRIPE_ENTERPRISE_ANNUAL_PRICE_ID) return config.STRIPE_ENTERPRISE_ANNUAL_PRICE_ID;
-    if (config.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID) return config.STRIPE_ENTERPRISE_MONTHLY_PRICE_ID;
-    // Legacy consultant fallback
-    if (billing === 'annual' && config.STRIPE_CONSULTANT_ANNUAL_PRICE_ID) return config.STRIPE_CONSULTANT_ANNUAL_PRICE_ID;
-    if (config.STRIPE_CONSULTANT_MONTHLY_PRICE_ID) return config.STRIPE_CONSULTANT_MONTHLY_PRICE_ID;
-  }
-
-  // Legacy fallback (single-plan era)
-  if (billing === 'annual' && config.STRIPE_ANNUAL_PRICE_ID) return config.STRIPE_ANNUAL_PRICE_ID;
-  if (config.STRIPE_MONTHLY_PRICE_ID) return config.STRIPE_MONTHLY_PRICE_ID;
-  return config.STRIPE_PRO_PRICE_ID || undefined;
-}
 
 export async function stripeRoutes(fastify: FastifyInstance) {
   // Stripe webhook — must receive raw body, no auth
