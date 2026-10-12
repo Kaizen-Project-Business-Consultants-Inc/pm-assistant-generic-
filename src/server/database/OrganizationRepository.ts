@@ -111,6 +111,17 @@ export class OrganizationRepository {
     return (await this.findById(org.id))!;
   }
 
+  /**
+   * Remove the company a sign-up made before the database got too busy to finish it — only one
+   * that was never built (no company database yet), and only this new account's (2026-10-12).
+   */
+  async deleteUnbuiltOwnedBy(ownerUserId: string): Promise<void> {
+    await databaseService.queryControlPlane(
+      'DELETE FROM organizations WHERE owner_user_id = ? AND is_provisioned = 0',
+      [ownerUserId],
+    );
+  }
+
   async update(id: string, data: Partial<Pick<Organization, 'name' | 'isActive' | 'isProvisioned' | 'subscriptionTier' | 'subscriptionStatus' | 'trialEndsAt' | 'maxUsers' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'stripeSubscriptionItemId' | 'billingModel' | 'seatCount' | 'seatPriceCents' | 'viewerLimit'>>): Promise<void> {
     const fields: string[] = [];
     const values: any[] = [];

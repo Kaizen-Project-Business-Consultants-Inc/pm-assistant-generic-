@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — A sign-up the database is too busy to finish is undone (on integrate/round3)
+- `services/accountSignup.ts`: everything after the account row (trial/plan, company, invitation, checkout lookup) runs as one step; if the database is busy part-way (`isDatabaseUnavailable`), the account and any unbuilt company of theirs (`organizationRepository.deleteUnbuiltOwnedBy`) are removed and the answer is 503 "busy, try again". Before, a busy company creation was only logged: the account stayed with no company (a dead end, and "email already exists" on the retry). Pending memberships are linked only once the account is kept.
+- Sign-up form: 503 + Retry-After 5 with the busy message. Google: `?google=busy` (the invitation page when there is one), nothing linked, no session.
+- Not undone: the Stripe customer made before the account (harmless, unused). Other company-creation errors keep the old behaviour (account kept, logged).
+- Tests: `accountSignupBusy.test.ts` (5), register busy in `registerOwnerFlag.test.ts`, Google busy sign-up in `googleAuth.test.ts`.
+
 ## 2026-10-12 — Sign in with Google, screens (branch feat/google-signin-client)
 - Follow-up (on integrate/round3): our database busy on the return from Google now says "Kovarti is busy…" (`?google=busy`, back to the invitation page when there is one) instead of "Google did not finish". Busy while joining an invitation or saving the Google link now stops before signing in (it used to sign them in half-way: not in the company / not linked). Found by the new test: errors inside the Google sign-up step skipped the error handling (`return signUp(...)` without await) and showed a bare 500.
 - `components/auth/GoogleButton.tsx` (shown only when `/auth/providers` says google) on LoginPage ("Continue with Google") and RegisterPage ("Sign up with Google", carries invite/tier/plan/seats, terms note). `utils/googleSignInMessages.ts`: plain message for every `?google=` code. New page `/link-google` (`LinkGooglePage.tsx`): `?token=` password once or email a link; `?confirm=` names both accounts, button links (POST). Server: `/auth/google/link-preview` also takes the pending `token` and says `hasPassword`.

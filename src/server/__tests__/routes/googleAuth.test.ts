@@ -242,6 +242,15 @@ describe('Sign in with Google — routes', () => {
     vi.mocked(rateLimiter.checkAsync).mockImplementation(async () => ({ allowed: true, remaining: 1, resetAt: 0 }));
   });
 
+  it('a sign-up the database was too busy to finish says "busy" (the invitation kept for the retry)', async () => {
+    google({ mode: 'signup', inviteToken: 'inv' });
+    vi.mocked(inviteService.validateToken).mockResolvedValueOnce({ valid: true, email: 'jane@example.com' } as never);
+    vi.mocked(createAccount).mockResolvedValueOnce({ ok: false, status: 503, error: 'Service busy', message: 'busy' });
+    expect((await callback()).headers.location).toBe('/register?invite=inv&google=busy');
+    expect(startNewSession).not.toHaveBeenCalled();
+    expect(userIdentityRepository.link).not.toHaveBeenCalled();
+  });
+
   it('a paid-plan sign-up goes on to the checkout', async () => {
     google({ mode: 'signup', tier: 'consultant_pro' });
     vi.mocked(createAccount).mockResolvedValueOnce({ ok: true, user: user({ id: 'u-new' }), invitedTo: null, checkoutUrl: 'https://checkout.example/s', verificationToken: null });

@@ -199,6 +199,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         seats,
       });
       if (!created.ok) {
+        if (created.status === 503) reply.header('Retry-After', '5'); // busy: try again in a moment
         return reply.status(created.status).send({ error: created.error, message: created.message });
       }
       const { user, invitedTo, checkoutUrl, verificationToken } = created;

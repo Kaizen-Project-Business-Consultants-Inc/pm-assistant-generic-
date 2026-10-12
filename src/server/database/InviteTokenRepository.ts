@@ -75,6 +75,15 @@ class InviteTokenRepository {
     );
   }
 
+  /** A sign-up that accepted this invitation was undone (database busy): the invitation works again */
+  async reopenAcceptedBy(userId: string): Promise<void> {
+    await databaseService.queryControlPlane(
+      `UPDATE invite_tokens SET status = 'pending', accepted_at = NULL, accepted_by_user_id = NULL
+        WHERE accepted_by_user_id = ? AND status = 'accepted'`,
+      [userId],
+    );
+  }
+
   async revoke(id: string): Promise<void> {
     await databaseService.queryControlPlane(
       `UPDATE invite_tokens SET status = 'revoked' WHERE id = ?`,

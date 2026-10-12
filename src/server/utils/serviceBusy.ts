@@ -28,7 +28,7 @@ export function isDatabaseUnavailable(err: unknown): boolean {
 }
 
 const BUSY_RETRY_SECONDS = 5;
-const BUSY_MESSAGE = 'Kovarti is busy right now. Please try again in a moment.';
+export const BUSY_MESSAGE = 'Kovarti is busy right now. Please try again in a moment.';
 
 export function sendBusy(reply: FastifyReply) {
   reply.header('Retry-After', String(BUSY_RETRY_SECONDS));

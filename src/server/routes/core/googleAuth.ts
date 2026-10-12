@@ -120,6 +120,7 @@ async function signUp(request: FastifyRequest, reply: FastifyReply, identity: Go
   });
   if (!created.ok) {
     logger.warn('Google sign-up refused', { status: created.status, error: created.error });
+    if (created.status === 503) return reply.redirect(intent.inviteToken ? backToInvite(intent.inviteToken, 'busy') : back('busy'));
     return reply.redirect(back(created.status === 409 ? 'account-exists' : 'failed'));
   }
   const { user, checkoutUrl, invitedTo } = created;

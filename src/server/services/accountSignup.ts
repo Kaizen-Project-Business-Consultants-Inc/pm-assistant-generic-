@@ -6,11 +6,13 @@ import { organizationService } from './OrganizationService';
 import { inviteService } from './InviteService';
 import { pricingConfigService } from './PricingConfigService';
 import { organizationRepository } from '../database/OrganizationRepository';
+import { inviteTokenRepository } from '../database/InviteTokenRepository';
 import { databaseService } from '../database/connection';
 import { provisionTenantDatabase } from '../database/tenantProvisioner';
 import { runWithTenantContext } from '../middleware/requestContext';
 import { resolvePriceId } from '../utils/stripePrices';
 import logger from '../utils/logger';
+import { isDatabaseUnavailable, BUSY_MESSAGE } from '../utils/serviceBusy';
 
 interface NewAccount {
   email: string;
@@ -87,7 +89,29 @@ async function createOrgForNewUser(user: User, input: NewAccount, stripeCustomer
     const org = await organizationService.createOrganization(orgName, user.id, stripeCustomerId || undefined, { awaitingPayment, trialEndsAt });
     await userService.update(user.id, { organizationId: org.id } as any);
   } catch (orgError) {
+    // Database busy: the whole sign-up stops (and is undone) — an account with no company is a dead end
+    if (isDatabaseUnavailable(orgError)) throw orgError;
     logger.error('Organization creation failed during registration', { userId: user.id, error: orgError });
+  }
+}
+
+/**
+ * The database was too busy to finish a sign-up: remove what was made (the account, and its company
+ * if one was started — even when making it reported a failure after the row was written — and
+ * reopen an invitation it had already used), so the
+ * person can simply try again rather than find "an account with this email already exists" with no
+ * company behind it. Best effort: logged loudly if the database refuses even that (2026-10-12).
+ */
+async function undoNewAccount(userId: string): Promise<void> {
+  try {
+    await organizationRepository.deleteUnbuiltOwnedBy(userId);
+    await inviteTokenRepository.reopenAcceptedBy(userId); // an invitation it used works again for the retry
+    await userService.delete(userId);
+    logger.warn('Sign-up stopped (database busy) and undone', { userId });
+  } catch (err) {
+    logger.error('Sign-up stopped (database busy) and could NOT be undone — half-made account', {
+      userId, message: err instanceof Error ? err.message : String(err),
+    });
   }
 }
 
@@ -157,44 +181,59 @@ export async function createAccount(input: NewAccount): Promise<NewAccountResult
     emailVerificationExpires: verificationToken ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined,
     stripeCustomerId: stripeCustomerId || undefined,
   });
-  linkPendingMemberships(user.id, email, fullName);
-
-  if (isInvitedViewer) {
-    // Viewer: no trial, no subscription, accept the invite
-    await userService.update(user.id, { subscriptionStatus: 'none' });
-    try {
-      await inviteService.acceptInvite(inviteToken!, user.id);
-    } catch (inviteErr) {
-      logger.error('Failed to accept invite during registration', { userId: user.id, error: inviteErr });
+  // Everything after the account row exists: if the database gets too busy part-way, undo it all
+  // and say "busy, try again" (the same for the sign-up form and Google)
+  let undone = false;
+  const finished = await (async (): Promise<{ checkoutUrl: string | null } | { failure: Failure }> => {
+    if (isInvitedViewer) {
+      // Viewer: no trial, no subscription, accept the invite
+      await userService.update(user.id, { subscriptionStatus: 'none' });
+      try {
+        await inviteService.acceptInvite(inviteToken!, user.id);
+      } catch (inviteErr) {
+        if (isDatabaseUnavailable(inviteErr)) throw inviteErr; // stop and undo: a viewer with no company is a dead end
+        logger.error('Failed to accept invite during registration', { userId: user.id, error: inviteErr });
+      }
+    } else if (previousAccount) {
+      // Returning user: no free trial — must pick a paid plan
+      await userService.update(user.id, { subscriptionStatus: 'none' });
+    } else if (isPlanSignup) {
+      // Paid signup: NO TRIAL. They sit in 'incomplete' (awaiting payment) with no trial date and no
+      // feature access until payment confirms. subscriptionTier stays 'trial' (the "no paid plan" default,
+      // since that column grants features); the plan being bought is remembered in pendingTier.
+      await userService.update(user.id, {
+        subscriptionStatus: 'incomplete',
+        pendingTier: tier as any,
+        trialEndsAt: null,
+        trialStartedAt: null,
+      });
+      await createOrgForNewUser(user, input, stripeCustomerId, true);
+    } else {
+      // Free signup: the trial plan's "Duration (days)" setting (Admin → Pricing), 7 unless set
+      const now = new Date();
+      const trialEndsAt = new Date(now.getTime() + (await pricingConfigService.trialLengthDays()) * 24 * 60 * 60 * 1000);
+      await userService.update(user.id, { subscriptionStatus: 'trialing', trialStartedAt: now, trialEndsAt });
+      await createOrgForNewUser(user, input, stripeCustomerId, false, trialEndsAt);
     }
-  } else if (previousAccount) {
-    // Returning user: no free trial — must pick a paid plan
-    await userService.update(user.id, { subscriptionStatus: 'none' });
-  } else if (isPlanSignup) {
-    // Paid signup: NO TRIAL. They sit in 'incomplete' (awaiting payment) with no trial date and no
-    // feature access until payment confirms. subscriptionTier stays 'trial' (the "no paid plan" default,
-    // since that column grants features); the plan being bought is remembered in pendingTier.
-    await userService.update(user.id, {
-      subscriptionStatus: 'incomplete',
-      pendingTier: tier as any,
-      trialEndsAt: null,
-      trialStartedAt: null,
-    });
-    await createOrgForNewUser(user, input, stripeCustomerId, true);
-  } else {
-    // Free signup: the trial plan's "Duration (days)" setting (Admin → Pricing), 7 unless set
-    const now = new Date();
-    const trialEndsAt = new Date(now.getTime() + (await pricingConfigService.trialLengthDays()) * 24 * 60 * 60 * 1000);
-    await userService.update(user.id, { subscriptionStatus: 'trialing', trialStartedAt: now, trialEndsAt });
-    await createOrgForNewUser(user, input, stripeCustomerId, false, trialEndsAt);
-  }
 
-  let checkoutUrl: string | null = null;
-  if (isPlanSignup && stripeCustomerId) {
-    const checkout = await checkoutFor(user, input, stripeCustomerId);
-    if (typeof checkout !== 'string') return checkout;
-    checkoutUrl = checkout;
-  }
+    let checkoutUrl: string | null = null;
+    if (isPlanSignup && stripeCustomerId) {
+      const checkout = await checkoutFor(user, input, stripeCustomerId);
+      if (typeof checkout !== 'string') return { failure: checkout };
+      checkoutUrl = checkout;
+    }
+    return { checkoutUrl };
+  })().catch(async (err: unknown) => {
+    if (!isDatabaseUnavailable(err)) throw err;
+    await undoNewAccount(user.id);
+    undone = true;
+    return { failure: fail(503, 'Service busy', BUSY_MESSAGE) };
+  });
+  // The account stays unless the sign-up was undone (busy): link pending project memberships +
+  // People records with this email to it
+  if (!undone) linkPendingMemberships(user.id, email, fullName);
+  if ('failure' in finished) return finished.failure;
+  const { checkoutUrl } = finished;
 
   return { ok: true, user, invitedTo: isInvitedViewer ? (inviteData!.orgName ?? null) : null, checkoutUrl, verificationToken };
 }

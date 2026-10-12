@@ -20,11 +20,13 @@ vi.mock('../../utils/turnstile', () => ({ verifyTurnstile: vi.fn(async () => tru
 vi.mock('../../database/connection', () => ({ databaseService: { query: vi.fn(async () => []) } }));
 vi.mock('../../database/tenantProvisioner', () => ({ provisionTenantDatabase: vi.fn() }));
 vi.mock('../../services/InviteService', () => ({ inviteService: {} }));
+vi.mock('../../database/InviteTokenRepository', () => ({ inviteTokenRepository: { reopenAcceptedBy: vi.fn(async () => {}) } }));
 vi.mock('../../services/EmailService', () => ({ emailService: { sendVerificationEmail: vi.fn(async () => {}) } }));
 vi.mock('../../services/UserService', () => ({
   userService: {
     findByUsername: vi.fn(async () => null),
     findById: vi.fn(async () => null),
+    delete: vi.fn(async () => true),
     findByEmail: vi.fn(async () => null),
     create: vi.fn(async (u: any) => ({ ...u, id: 'u-new', tokenVersion: 0 })),
     update: vi.fn(async () => {}),
@@ -43,7 +45,7 @@ vi.mock('../../services/OrganizationService', () => ({
     findByUserId: vi.fn(async (): Promise<typeof ORG | null> => ORG),
   },
 }));
-vi.mock('../../database/OrganizationRepository', () => ({ organizationRepository: {} }));
+vi.mock('../../database/OrganizationRepository', () => ({ organizationRepository: { deleteUnbuiltOwnedBy: vi.fn(async () => {}) } }));
 vi.mock('../../utils/stripePrices', () => ({ resolvePriceId: vi.fn(() => 'price_pro_monthly') }));
 
 import { authRoutes } from '../../routes/core/auth';
@@ -133,5 +135,16 @@ describe('POST /auth/login — an account made with Google has no password (2026
     const res = await app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { username: 'jane_abc123', password: 'anything' } });
     expect(res.statusCode).toBe(401);
     expect(res.json().message).toMatch(/signs in with Google.*Forgot password/);
+  });
+});
+
+describe('POST /auth/register — too busy to finish (2026-10-12)', () => {
+  it('503 "busy, try again" with Retry-After, and no account left behind', async () => {
+    vi.mocked(organizationService.createOrganization).mockRejectedValueOnce(new Error('Queue limit reached.'));
+    const res = await app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email: 'busy@acme.test', password: 'Password123!' } });
+    expect(res.statusCode).toBe(503);
+    expect(res.headers['retry-after']).toBe('5');
+    expect(res.json().message).toMatch(/busy/);
+    expect(userService.delete).toHaveBeenCalledWith('u-new');
   });
 });
