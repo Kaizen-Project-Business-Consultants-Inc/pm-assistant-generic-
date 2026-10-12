@@ -119,6 +119,26 @@ describe('NotificationService', () => {
     });
   });
 
+  describe('nobody who can no longer sign in is told anything (2026-10-12)', () => {
+    it('a guest whose access has ended gets no notice — no row, no live push, no email', async () => {
+      mockUserService.findById.mockResolvedValueOnce({ id: 'g1', isActive: true, isGuest: true, guestExpiresAt: '2026-01-01 00:00:00', email: 'g@x.test', emailNotificationsEnabled: true });
+      await service.create({ userId: 'g1', severity: 'critical', title: 'Task assigned to you', message: 'Secret task', projectId: 'p1' });
+      await new Promise<void>((resolve) => { setTimeout(resolve, 20); });
+      expect(mockRepo.insert).not.toHaveBeenCalled();
+      expect(mockWs.sendToUser).not.toHaveBeenCalled();
+      expect(mockEmail.sendNotificationEmail).not.toHaveBeenCalled();
+    });
+
+    it('a switched-off login gets no notice; a current guest does', async () => {
+      mockUserService.findById.mockResolvedValueOnce({ id: 'u-off', isActive: false });
+      await service.create({ userId: 'u-off', title: 't', message: 'm' });
+      expect(mockRepo.insert).not.toHaveBeenCalled();
+      mockUserService.findById.mockResolvedValueOnce({ id: 'g2', isActive: true, isGuest: true, guestExpiresAt: '2099-01-01 00:00:00' });
+      await service.create({ userId: 'g2', title: 't', message: 'm' });
+      expect(mockRepo.insert).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('create', () => {
     it('inserts notification with defaults and returns DTO', async () => {
       const result = await service.create({

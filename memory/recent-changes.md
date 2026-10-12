@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-12 — Expired guests and switched-off logins get no notices; expired guests can't be @mentioned (on integrate/round2)
+- Follow-up to the mentions fix: `utils/mentionablePeople.ts` left out people outside the company but kept guests whose access had ended — they could still be notified (in-app + live push carry the task name). Now `mentionablePeople` applies guestGuard's `guestExpired` rule, and — reviewer: every other notice (task assigned, deadlines, workflow send_notification, ~20 callers) still reached them — `NotificationService.create` skips switched-off logins and expired guests centrally (no row, live push, web push or email). `inCurrentCompany` also checks `is_active`. Tests in `mentionablePeople.test.ts` and `NotificationService.test.ts`. SECURITY_GUIDE updated.
+
 ## 2026-10-12 — Plan gates respect an ended plan; requireTier judges viewers by the company (branch fix/plan-gates-status)
 - `planInForce(role, userId, own, company)` in `utils/memberSubscription.ts` (built on `orgSubscriptionAllowsMembers`, the write guard's rule): paid or past due, or a trial not yet ended; never while awaiting payment; the company covers a member whose own record lags (never the owner); a viewer goes by the company only (no company: no plan).
 - `middleware/requireTier.ts`: one `callerPlan` (tier via `planTierFor`, in-force, company looked up only for viewers or lapsed records) used by `requireFeature`/`hasFeature` and `requireTier`. Before: features judged by tier only (an ended trial or cancelled company kept them on reads), and `requireTier` let every viewer through.

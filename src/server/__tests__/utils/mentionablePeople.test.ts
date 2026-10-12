@@ -10,7 +10,7 @@ import { join } from 'path';
 
 const db = vi.hoisted(() => ({
   tenantRows: [] as { user_id: string | null }[],
-  users: [] as { id: string; full_name: string | null; username: string; is_active: number; organization_id: string | null }[],
+  users: [] as { id: string; full_name: string | null; username: string; is_active: number; organization_id: string | null; is_guest?: number; guest_expires_at?: string | null }[],
   org: 'org-a' as string | undefined,
   cpSql: [] as { sql: string; params: unknown[] }[],
 }));
@@ -20,7 +20,7 @@ vi.mock('../../database/connection', () => ({
     queryControlPlane: vi.fn(async (sql: string, params: unknown[]) => {
       db.cpSql.push({ sql, params });
       const byOrg = sql.includes('organization_id = ?');
-      const ids = (byOrg ? params.slice(0, -1) : params) as string[];
+      const ids = (byOrg ? params.slice(0, -1) : params) as string[]; // "id IN (…)" or "id = ?"
       const org = byOrg ? params.at(-1) : undefined;
       return db.users.filter((u) => ids.includes(u.id) && (!byOrg || u.organization_id === org));
     }),
@@ -94,5 +94,29 @@ describe('who can be @mentioned', () => {
     cfg.MULTI_TENANT_ENABLED = false;
     expect((await mentionablePeople('p1')).map((p) => p.userId)).toEqual(['u-jane']);
     expect(await inCurrentCompany('u-jane')).toBe(true);
+  });
+
+  it("a guest whose access has ended is neither mentionable nor told (guestGuard's rule); a current guest is", async () => {
+    db.users.push(
+      { id: 'u-guest-old', full_name: 'Old Guest', username: 'guest_old', is_active: 1, organization_id: 'org-a', is_guest: 1, guest_expires_at: '2026-01-01 00:00:00' },
+      { id: 'u-guest-now', full_name: 'Current Guest', username: 'guest_now', is_active: 1, organization_id: 'org-a', is_guest: 1, guest_expires_at: '2099-01-01 00:00:00' },
+    );
+    db.tenantRows = [{ user_id: 'u-guest-old' }, { user_id: 'u-guest-now' }];
+    expect((await mentionablePeople('p1')).map((p) => p.userId)).toEqual(['u-guest-now']);
+    expect(await inCurrentCompany('u-guest-old')).toBe(false);
+    expect(await inCurrentCompany('u-guest-now')).toBe(true);
+  });
+
+  it('a guest with no end date stays; a switched-off login is not told; single-company: a login that is not found is not told', async () => {
+    db.users.push({ id: 'u-guest-open', full_name: 'Open Guest', username: 'guest_open', is_active: 1, organization_id: 'org-a', is_guest: 1, guest_expires_at: null });
+    db.tenantRows = [{ user_id: 'u-guest-open' }];
+    expect((await mentionablePeople('p1')).map((p) => p.userId)).toEqual(['u-guest-open']);
+    expect(await inCurrentCompany('u-guest-open')).toBe(true);
+    expect(await inCurrentCompany('u-gone')).toBe(false); // switched off
+    db.org = undefined;
+    cfg.MULTI_TENANT_ENABLED = false;
+    expect(await inCurrentCompany('nobody')).toBe(false);
+    db.users.push({ id: 'u-guest-old2', full_name: 'Old', username: 'g2', is_active: 1, organization_id: null, is_guest: 1, guest_expires_at: '2026-01-01 00:00:00' });
+    expect(await inCurrentCompany('u-guest-old2')).toBe(false);
   });
 });

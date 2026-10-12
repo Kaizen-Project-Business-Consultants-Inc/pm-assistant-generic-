@@ -1,3 +1,4 @@
+import { guestExpired } from '../middleware/guestGuard';
 import { v4 as uuidv4 } from 'uuid';
 import { notificationPath } from '../utils/notificationLink';
 import { notificationRepository, NotificationDTO } from '../database/NotificationRepository';
@@ -127,6 +128,9 @@ export class NotificationService {
     } catch (err) {
       logger.error('[NotificationService] Failed to look up user preferences:', err);
     }
+    // nothing for a switched-off login or a guest whose access has ended (guestGuard's rule): every
+    // notice names a task or project, and push and email reach them though they can't sign in
+    if (user && (user.isActive === false || guestExpired(user))) return this.skipped(data, type, severity);
     const category = NOTIFICATION_TYPE_TO_CATEGORY[type];
     const catPref = user?.notificationTypePreferences?.[category] ?? DEFAULT_CATEGORY_PREF;
 
