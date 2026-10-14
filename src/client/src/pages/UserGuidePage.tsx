@@ -58,6 +58,7 @@ const sections: Section[] = [
       'Create your account, sign in, and get oriented with the dashboard.',
     items: [
       'Sign up with email and verify your account — or click "Sign up with Google" and go straight in (when it is switched on)',
+      'Email link not working? Use the newest email — or click "Send me a new link" on the page that opens',
       'Continue with Google signs you in; the first time, an existing Kovarti account asks for its password once (or emails you a link) — it is never linked automatically',
       'No Kovarti account for your Google address yet? Continue with Google takes you to Pricing: choose the trial or a plan, then Sign up with Google',
       'Log in and explore the main dashboard',
@@ -320,6 +321,7 @@ const sections: Section[] = [
     items: [
       'Who: project managers, PMOs and executives (Manage → Meeting Intelligence)',
       'Upload or paste meeting transcripts — or pick a Teams meeting under From Teams',
+      'Choose the project and schedule first — Analyze stays greyed out until they and the transcript are there',
       'From Teams: connect your Microsoft account once (your IT admin approves Kovarti one time); Kovarti reads the Teams transcript and never joins the call',
       "Check who's who: speakers are matched to project members, and your choices are remembered",
       'AI extracts action items, decisions, and risks — showing who said each one and when',

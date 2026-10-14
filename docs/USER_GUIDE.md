@@ -65,7 +65,8 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
    - Check the **Terms of Service** checkbox — the **Start my free trial** button stays disabled until you accept.
    - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
    - **Or click Sign up with Google** at the top of the form (when your company's Kovarti has it switched on). Pick your Google account; Google has already confirmed your email, so you go straight in — no form, no confirmation email. It follows the same rules as the form: the free trial, your chosen paid plan's checkout, or an invitation (which must be opened with the Google account of the invited address; if you already have a Kovarti account, Continue with Google from the invitation signs you in and adds you to the inviting company). You have no Kovarti password; to connect Claude, which needs one, set a password with **Forgot password?** on the sign-in page.
-5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? In Gmail look in the **Updates** tab, then Spam or Promotions.
+5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? In Gmail look in the **Updates** tab, then Spam or Promotions. Always use the **newest** email: an older link stops working once a newer one is sent. If a link doesn't work, the page tells you why and offers **Send me a new link** — type your email and a fresh one arrives.
+6. **Set up your workspace.** Everyone who signs up for their own company goes through the short setup screens once — about you, then your first project (with the option **Explore a sample project first**). Your name is already filled in if you gave it at sign-up.
 
 > **Note:** Each email address is eligible for one free 7-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
@@ -1812,8 +1813,10 @@ Navigate to **Meeting Intelligence** in the sidebar (under Manage, Brain icon) t
 Choose one of three input modes at the top of the page:
 
 - **Paste** -- Type or paste a transcript directly into the text area. Click the microphone icon to use voice recording (browser Speech Recognition) and dictate into the field.
-- **Upload** -- Drag and drop a transcript file, or click to browse. Supported formats: `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt`. The system auto-detects the format, extracts speaker names and timestamps, and prepares the text for analysis.
+- **Upload** -- Drag and drop a transcript file, or click to browse. Supported formats: `.txt` (Otter.ai), `.vtt` (Teams/Zoom), `.srt`, up to 2 MB. The system auto-detects the format, extracts speaker names and timestamps, and prepares the text for analysis.
 - **From Teams** -- Bring in the transcript Teams made of one of your meetings, with who said what. See below.
+
+Choose the **project** and its **schedule** first — the schedule is picked for you when the project has only one. **Analyze** stays greyed out, with a note saying what's missing, until the project, schedule and transcript are all there. If something goes wrong, the message says what happened (for example a file that is too big) rather than "try again". Meeting Intelligence is part of plans with AI; each analysis counts as an AI request (at most 10 a minute).
 
 #### From Teams: meeting transcripts with speaker names
 
@@ -4116,7 +4119,8 @@ Upload and manage project documents. When you ask for it, AI classifies and summ
 3. You'll see the Document Hub with a search bar, upload area, and filters
 
 ### Uploading Documents
-- **Drag & drop** files onto the upload area, or click **browse** to select files
+- **Drag & drop** files onto the upload area, or click **Choose files**
+- If a file can't be uploaded, the message says why — for example "This is too big to send. Files can be up to 10 MB." Choosing the same file again after a failure works.
 - Supported formats: PDF, DOCX, DOC, TXT, CSV, MD (max 10MB each)
 - Optionally enter a **description** before uploading (e.g., "vendor response for LMS phase 2")
 - Multiple files can be uploaded at once (hold Ctrl/Cmd)

@@ -7,12 +7,12 @@ import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { apiService } from '../services/api';
 import { refreshProjectLists } from '../utils/projectListCache';
 import { KovartiMark } from '../components/ui/KovartiMark';
+import { needsSetup } from '../utils/needsSetup';
 
 const ROLE_OPTIONS = [
   { value: 'project_manager', label: 'Project Manager', icon: Briefcase, description: 'Plan, schedule, and deliver projects' },
   { value: 'team_member', label: 'Team Member', icon: User, description: 'Execute tasks and track progress' },
   { value: 'executive', label: 'Executive', icon: BarChart3, description: 'Monitor portfolio and KPIs' },
-  { value: 'viewer', label: 'Viewer', icon: Users, description: 'View projects and dashboards' },
 ] as const;
 
 const METHODOLOGY_OPTIONS = [
@@ -47,7 +47,7 @@ export const OnboardingPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   const [step, setStep] = useState(1);
-  const [fullName, setFullName] = useState('');
+  const [fullName, setFullName] = useState(user?.fullName || ''); // free-trial and Google sign-ups already gave it
   const [username, setUsername] = useState('');
   const [organizationName, setOrganizationName] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
@@ -79,8 +79,8 @@ export const OnboardingPage: React.FC = () => {
   const [inviteRole, setInviteRole] = useState('team_member');
   const [invitesSent, setInvitesSent] = useState(0);
 
-  // Track whether the user already had a name when they arrived
-  const hadNameOnMount = useRef(!!user?.fullName);
+  // Track whether the user had already finished setup when they arrived
+  const finishedOnMount = useRef(!needsSetup(user));
 
   // Detect abandoned Stripe checkout
   const [searchParams] = useSearchParams();
@@ -108,7 +108,7 @@ export const OnboardingPage: React.FC = () => {
 
   // Only redirect if they arrived already onboarded — not when they complete step 1
   useEffect(() => {
-    if (hadNameOnMount.current && user?.fullName) {
+    if (finishedOnMount.current && !needsSetup(user)) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
@@ -125,6 +125,7 @@ export const OnboardingPage: React.FC = () => {
         username: username !== user?.username ? username : undefined,
         organizationName: (canNameCompany && organizationName) || undefined,
         role: roleToSubmit,
+        completeOnboarding: true,
       });
 
       const data = await apiService.getMe();
@@ -154,8 +155,7 @@ export const OnboardingPage: React.FC = () => {
         setStep(STEP_PROJECT);
       }
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Failed to save profile. Please try again.');
+      setError(getApiErrorMessage(err, 'Your details could not be saved. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -219,8 +219,7 @@ export const OnboardingPage: React.FC = () => {
       setCreatedProjectId(pid || null);
       setStep(STEP_DONE);
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || 'Failed to create project. You can create one later from the dashboard.');
+      setError(getApiErrorMessage(err, 'The project could not be created. You can create one later from the dashboard.'));
     } finally {
       setIsLoading(false);
     }
@@ -273,8 +272,7 @@ export const OnboardingPage: React.FC = () => {
       }
       setStep(STEP_PROJECT);
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
-      setError(axiosError.response?.data?.message || `Sent ${sent} of ${pendingInvites.length} invites. Some failed.`);
+      setError(getApiErrorMessage(err, `Sent ${sent} of ${pendingInvites.length} invites. Some failed.`));
     } finally {
       setIsLoading(false);
     }

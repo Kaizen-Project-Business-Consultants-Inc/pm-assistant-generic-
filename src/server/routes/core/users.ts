@@ -19,6 +19,8 @@ const profileUpdateSchema = z.object({
   role: z.enum(SELF_ASSIGNABLE_ROLES).optional(),
   // needed to change your email or username (audit 2026-10-09 H2)
   currentPassword: z.string().max(200).optional(),
+  // sent by the setup screens when "About you" is saved: setup is finished (2026-10-14)
+  completeOnboarding: z.literal(true).optional(),
 });
 
 const categoryPrefSchema = z.object({
@@ -65,6 +67,13 @@ const ownSettings = [requireScope('read')];
 const keyNeedsWrite = keyChangesNeed('write');
 
 type ProfileInput = z.infer<typeof profileUpdateSchema>;
+
+/** Setup's "your role" choice: the person who signed up for their own company (or has none yet) */
+async function maySetOwnRole(userId: string, current: { role: string; isGuest?: boolean }): Promise<boolean> {
+  if (current.isGuest || current.role === 'viewer') return false;
+  const org = await organizationRepository.findByUserId(userId);
+  return !org || org.ownerUserId === userId;
+}
 
 /** Why a profile save is refused — checked before anything is written — or null */
 async function profileRefusal(
@@ -152,7 +161,9 @@ export async function userRoutes(fastify: FastifyInstance) {
       }
       const current = await userService.findById(userId);
       if (!current) return reply.status(404).send({ error: 'User not found' });
-      const onboarding = !current.fullName;
+      // In setup until the setup screens are saved — not "until they have a name": free-trial and
+      // Google sign-ups arrive with a name and used to skip setup entirely (2026-10-14)
+      const onboarding = !current.onboardingCompletedAt;
       const emailChanges = parsed.email !== undefined && parsed.email !== current.email;
       const usernameChanges = parsed.username !== undefined && parsed.username !== current.username;
       const org = parsed.organizationName ? await organizationRepository.findByUserId(userId) : null;
@@ -163,8 +174,10 @@ export async function userRoutes(fastify: FastifyInstance) {
       if (parsed.fullName !== undefined) updateData.fullName = parsed.fullName;
       if (emailChanges) updateData.email = parsed.email;
       if (usernameChanges) updateData.username = parsed.username;
-      // Role self-assignment — only allowed during onboarding (when fullName is null)
-      if (parsed.role !== undefined && onboarding) updateData.role = parsed.role;
+      // Role self-assignment — only during setup, and only for someone who signed up for their own
+      // company: never an invited member, viewer or guest (their role was given to them)
+      if (parsed.role !== undefined && onboarding && await maySetOwnRole(userId, current)) updateData.role = parsed.role;
+      if (parsed.completeOnboarding && onboarding) updateData.onboardingCompletedAt = new Date();
 
       let updated = current;
       if (Object.keys(updateData).length > 0) {
@@ -186,6 +199,7 @@ export async function userRoutes(fastify: FastifyInstance) {
         fullName: updated?.fullName,
         email: updated?.email,
         username: updated?.username,
+        onboardingCompleted: !!updated?.onboardingCompletedAt,
       };
     } catch (error) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });

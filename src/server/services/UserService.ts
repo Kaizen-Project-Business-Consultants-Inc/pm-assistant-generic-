@@ -47,6 +47,8 @@ export interface User {
   tokenVersion: number;
   aiMonthlyTokenBudget: number | null;
   mustChangePassword: boolean;
+  /** When the person finished the setup screens; null = send them to setup (2026-10-14) */
+  onboardingCompletedAt: Date | null;
   isFounder: boolean;
   founderAt: Date | null;
   refundCount: number;

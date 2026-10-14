@@ -162,7 +162,7 @@ export class AuthApi extends ApiBase {
     return response.data;
   }
 
-  async updateProfile(data: { fullName?: string; email?: string; username?: string; organizationName?: string; role?: string; currentPassword?: string }) {
+  async updateProfile(data: { fullName?: string; email?: string; username?: string; organizationName?: string; role?: string; currentPassword?: string; completeOnboarding?: true }) {
     const response = await this.api.put('/users/me/profile', data);
     return response.data;
   }

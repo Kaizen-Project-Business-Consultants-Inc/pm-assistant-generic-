@@ -30,6 +30,7 @@ import { ChairsCard } from '../components/meeting/ChairsCard';
 import { mapAnalysisToRaidCandidates, RaidCandidate, toSendToRaidPayload } from '../utils/meetingToRaidMapper';
 import { useProjectRole } from '../hooks/useProjectRole';
 import { ViewOnlyNote } from '../components/ui/ViewOnlyNote';
+import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -246,6 +247,19 @@ export const MeetingMinutesPage: React.FC = () => {
 
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
   const schedules: Schedule[] = schedulesData?.schedules || [];
+
+  // A project with a single schedule needs no choice — pick it (people analysed with none chosen
+  // and got a bare "Failed to analyze", 2026-10-14)
+  useEffect(() => {
+    const list: Schedule[] = schedulesData?.schedules || [];
+    if (!selectedScheduleId && list.length === 1) setSelectedScheduleId(list[0].id);
+  }, [schedulesData, selectedScheduleId]);
+
+  /** What is still missing before Analyse can run (the server needs all three); null = ready */
+  const analyzeMissing = !selectedProjectId ? 'Choose a project'
+    : !selectedScheduleId ? 'Choose a schedule'
+    : transcript.trim().length < 10 ? 'Paste the meeting transcript'
+    : null;
   const history: HistoryEntry[] = historyData?.data || historyData?.history || historyData?.analyses || [];
 
   const filteredHistory = historySearch.trim()
@@ -313,7 +327,7 @@ export const MeetingMinutesPage: React.FC = () => {
       }).catch(() => {});
     },
     onError: (err: any) => {
-      setUploadError(err?.response?.data?.error || 'Failed to process transcript');
+      setUploadError(getApiErrorMessage(err, 'The transcript could not be processed.'));
     },
   });
 
@@ -364,7 +378,7 @@ export const MeetingMinutesPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['project-risks-stats', selectedProjectId] });
     },
     onError: (err: any) => {
-      setSyncError(err?.response?.data?.error || err?.message || 'Failed to import meeting');
+      setSyncError(getApiErrorMessage(err, 'The meeting could not be imported.'));
     },
   });
 
@@ -377,7 +391,7 @@ export const MeetingMinutesPage: React.FC = () => {
   };
 
   const handleAnalyze = () => {
-    if (!transcript.trim()) return;
+    if (analyzeMissing) return;
     analyzeMutation.mutate();
   };
 
@@ -385,11 +399,18 @@ export const MeetingMinutesPage: React.FC = () => {
     applyMutation.mutate(indices);
   };
 
+  /** Upload a transcript file — only once the project and schedule are chosen (the server needs both) */
+  const uploadTranscript = (file: File) => {
+    if (!selectedProjectId || !selectedScheduleId) {
+      setUploadError(!selectedProjectId ? 'Choose a project first.' : 'Choose a schedule first.');
+      return;
+    }
+    uploadTranscriptMutation.mutate(file);
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      uploadTranscriptMutation.mutate(file);
-    }
+    if (file) uploadTranscript(file);
     e.target.value = '';
   };
 
@@ -640,7 +661,7 @@ export const MeetingMinutesPage: React.FC = () => {
                     e.preventDefault();
                     e.stopPropagation();
                     const file = e.dataTransfer.files?.[0];
-                    if (file) uploadTranscriptMutation.mutate(file);
+                    if (file) uploadTranscript(file);
                   }}
                   className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-10 text-center cursor-pointer hover:border-primary-400 dark:hover:border-primary-500 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                   aria-label="Upload transcript file"
@@ -702,7 +723,8 @@ export const MeetingMinutesPage: React.FC = () => {
                 <div className="sm:col-span-2 flex items-end">
                   <button
                     onClick={handleAnalyze}
-                    disabled={!transcript.trim() || analyzeMutation.isPending}
+                    disabled={!!analyzeMissing || analyzeMutation.isPending}
+                    aria-describedby={analyzeMissing && transcript.trim() ? 'analyze-missing' : undefined}
                     className="btn btn-primary flex items-center gap-2 w-full sm:w-auto justify-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {analyzeMutation.isPending ? (
@@ -717,6 +739,9 @@ export const MeetingMinutesPage: React.FC = () => {
                       </>
                     )}
                   </button>
+                  {analyzeMissing && transcript.trim() && (
+                    <p id="analyze-missing" className="ml-3 text-xs text-gray-600 dark:text-gray-300">{analyzeMissing} first.</p>
+                  )}
                 </div>
               </div>
             )}
@@ -749,7 +774,7 @@ export const MeetingMinutesPage: React.FC = () => {
 
             {analyzeMutation.isError && (
               <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                Failed to analyze transcript. Please try again.
+                {getApiErrorMessage(analyzeMutation.error, 'The transcript could not be analysed. Please try again.')}
               </div>
             )}
 
@@ -821,7 +846,7 @@ export const MeetingMinutesPage: React.FC = () => {
               )}
               {applyMutation.isError && (
                 <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
-                  Failed to apply changes. Please try again.
+                  {getApiErrorMessage(applyMutation.error, 'The changes could not be applied. Please try again.')}
                 </div>
               )}
             </div>
@@ -956,7 +981,7 @@ export const MeetingMinutesPage: React.FC = () => {
       {/* Send to RAID error toast */}
       {sendToRaidMutation.isError && (
         <div role="alert" className="fixed bottom-4 right-4 z-50 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-300 shadow-lg">
-          Failed to import items to RAID log
+          {getApiErrorMessage(sendToRaidMutation.error, 'The items could not be added to the RAID log.')}
         </div>
       )}
 
@@ -1015,7 +1040,7 @@ export const MeetingMinutesPage: React.FC = () => {
             />
             {sendMinutesMutation.isError && (
               <p className="text-xs text-red-600 mb-2">
-                {(sendMinutesMutation.error as any)?.response?.data?.error || 'Failed to send minutes'}
+                {getApiErrorMessage(sendMinutesMutation.error, 'The minutes could not be sent.')}
               </p>
             )}
             {sendMinutesMutation.isSuccess && (

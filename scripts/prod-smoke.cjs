@@ -43,6 +43,14 @@ const fs = require('fs');
   await page.waitForTimeout(3000);
   await browser.close();
 
+  // Uploads: the web server must pass files up to the app's 10 MB limit. Without its own
+  // client_max_body_size nginx refuses anything over 1 MB with 413 (2026-10-14). Sent without a
+  // login to a project that doesn't exist, so the app refuses it and nothing is stored.
+  const upload = await fetch(`${cred.site}/api/v1/projects/00000000-0000-0000-0000-000000000000/documents`, {
+    method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: Buffer.alloc(2 * 1024 * 1024),
+  });
+  if (upload.status === 413) failures.push('uploads: the web server refuses a 2 MB file (413) — set client_max_body_size in nginx');
+
   if (failures.length) { console.log('SMOKE FAILED\n' + failures.join('\n')); process.exit(1); }
-  console.log(`SMOKE OK — dashboard, project "${list[0]?.name}", schedule, notifications; no server errors`);
+  console.log(`SMOKE OK — dashboard, project "${list[0]?.name}", schedule, notifications, 2 MB upload passes the web server; no server errors`);
 })().catch((e) => { console.log('SMOKE FAILED', e.message); process.exit(1); });

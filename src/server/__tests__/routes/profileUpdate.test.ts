@@ -13,7 +13,7 @@ vi.mock('../../middleware/auth', () => ({
 }));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('bcryptjs', () => ({ default: { compare: vi.fn(async (pw: string) => pw === 'right-password') } }));
-const me = { id: 'u-me', username: 'me', email: 'me@co.test', fullName: 'Me', passwordHash: 'h' };
+const me = { id: 'u-me', username: 'me', email: 'me@co.test', fullName: 'Me', passwordHash: 'h', role: 'team_member', onboardingCompletedAt: new Date('2026-10-01') };
 const users = vi.hoisted(() => ({ findById: vi.fn(), findByUsername: vi.fn(), findByEmail: vi.fn(), update: vi.fn() }));
 vi.mock('../../services/UserService', () => ({ userService: users }));
 const orgs = vi.hoisted(() => ({ findByUserId: vi.fn(), update: vi.fn() }));
@@ -90,10 +90,41 @@ describe('PUT /users/me/profile', () => {
     });
 
     it('picking a username during onboarding needs no password', async () => {
-      users.findById.mockResolvedValue({ ...me, fullName: null });
+      users.findById.mockResolvedValue({ ...me, fullName: null, role: 'project_manager', onboardingCompletedAt: null });
+      orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-me' }); // signed up for their own company
       const res = await put({ fullName: 'New Person', username: 'newperson', role: 'project_manager' });
       expect(res.statusCode).toBe(200);
       expect(users.update).toHaveBeenCalledWith('u-me', { fullName: 'New Person', username: 'newperson', role: 'project_manager' });
+    });
+  });
+
+  describe('setup screens (2026-10-14): finished by saving setup, not by having a name', () => {
+    it('a free-trial sign-up who already gave a name is still in setup, and saving it finishes setup', async () => {
+      users.findById.mockResolvedValue({ ...me, role: 'project_manager', onboardingCompletedAt: null });
+      orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-me' });
+      const res = await put({ fullName: 'Me', role: 'executive', completeOnboarding: true });
+      expect(res.statusCode).toBe(200);
+      const saved = users.update.mock.calls[0][1];
+      expect(saved.role).toBe('executive');
+      expect(saved.onboardingCompletedAt).toBeInstanceOf(Date);
+      expect(res.json().onboardingCompleted).toBe(true);
+    });
+
+    it('an invited member or viewer in setup cannot give themselves a role', async () => {
+      for (const role of ['team_member', 'viewer']) {
+        users.update.mockClear();
+        users.findById.mockResolvedValue({ ...me, role, onboardingCompletedAt: null });
+        orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-owner' });
+        const res = await put({ fullName: 'Invited', role: 'project_manager', completeOnboarding: true });
+        expect(res.statusCode, role).toBe(200);
+        expect(users.update.mock.calls[0][1].role, role).toBeUndefined();
+      }
+    });
+
+    it('someone who finished setup can neither pick a role nor "finish" again', async () => {
+      const res = await put({ fullName: 'Me', role: 'executive', completeOnboarding: true });
+      expect(res.statusCode).toBe(200);
+      expect(users.update).toHaveBeenCalledWith('u-me', { fullName: 'Me' });
     });
   });
 

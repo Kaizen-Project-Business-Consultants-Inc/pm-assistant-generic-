@@ -310,15 +310,15 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <div className="flex items-center gap-2">
             <Upload className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-300">
-              Drop files or{' '}
-              <button
-                className="text-primary-600 dark:text-primary-400 hover:underline font-medium"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                browse
-              </button>
-            </span>
+            {/* A real button, not the word "browse": people clicked the dashed box and nothing opened (2026-10-14) */}
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 min-h-[40px] px-4 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Choose files
+            </button>
+            <span className="text-sm text-gray-600 dark:text-gray-300">or drop them here</span>
           </div>
           <input
             className="text-sm border rounded-md px-2 py-1 bg-white dark:bg-gray-800 dark:border-gray-600 w-64"
@@ -350,7 +350,8 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           className="hidden"
           accept=".pdf,.docx,.doc,.txt,.csv,.md"
           multiple
-          onChange={(e) => handleFiles(e.target.files)}
+          // cleared after each pick so choosing the same file again still uploads
+          onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
         />
         {uploadMutation.isPending && (
           <div className="flex items-center justify-center gap-2 mt-2 text-sm text-primary-600">
@@ -358,7 +359,7 @@ export function DocumentsTab({ projectId }: DocumentsTabProps) {
           </div>
         )}
         {uploadMutation.isError && (
-          <p className="text-sm text-red-500 mt-2">Upload failed. Please try again.</p>
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400 mt-2">{getApiErrorMessage(uploadMutation.error, 'The document could not be uploaded.')}</p>
         )}
       </div>
       )}

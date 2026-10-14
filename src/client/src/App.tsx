@@ -15,6 +15,7 @@ import { RoleRouteGuard } from './components/layout/RoleRouteGuard';
 // Eagerly loaded (part of initial bundle — needed immediately)
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
+import { needsSetup } from './utils/needsSetup';
 
 const isPrelaunch = import.meta.env.VITE_PRELAUNCH === 'true';
 
@@ -119,7 +120,7 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user && user.emailVerified === false) return <Navigate to={ROUTES.verifyEmailPending} replace />;
   if (user?.mustChangePassword) return <Navigate to="/change-password" replace />;
-  if (!skipOnboardingCheck && !user?.fullName) return <Navigate to="/onboarding" replace />;
+  if (!skipOnboardingCheck && needsSetup(user)) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
   // Admin pages are the Kovarti platform admin's only — admin role AND no company
   if (requiredRole === 'admin' && !isPlatformAdmin(user)) return <Navigate to="/dashboard" replace />;

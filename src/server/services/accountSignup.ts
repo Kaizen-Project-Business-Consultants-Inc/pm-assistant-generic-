@@ -186,8 +186,8 @@ export async function createAccount(input: NewAccount): Promise<NewAccountResult
   let undone = false;
   const finished = await (async (): Promise<{ checkoutUrl: string | null } | { failure: Failure }> => {
     if (isInvitedViewer) {
-      // Viewer: no trial, no subscription, accept the invite
-      await userService.update(user.id, { subscriptionStatus: 'none' });
+      // Viewer: no trial, no subscription, accept the invite; no setup screens (their role is given)
+      await userService.update(user.id, { subscriptionStatus: 'none', onboardingCompletedAt: new Date() });
       try {
         await inviteService.acceptInvite(inviteToken!, user.id);
       } catch (inviteErr) {

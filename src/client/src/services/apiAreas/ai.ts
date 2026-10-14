@@ -1,4 +1,5 @@
 import { ApiBase } from './http';
+import { uploadForm } from '../../utils/uploadForm';
 
 /**
  * AI chat, briefing, predictions, intelligence, NL query, agents and autonomy, narratives, documents, context engineering, memory, dreaming and skills.
@@ -382,9 +383,7 @@ export class AiApi extends ApiBase {
   // -------------------------------------------------------------------------
 
   async uploadProjectDocument(projectId: string, file: File, description?: string) {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (description) formData.append('description', description);
+    const formData = uploadForm(file, { description });
     const response = await this.api.post(`/projects/${projectId}/documents/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

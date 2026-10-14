@@ -314,6 +314,9 @@ redis-cli info keyspace
 # Nginx
 sudo vi /etc/nginx/sites-available/pm-app
 sudo nginx -t && sudo systemctl reload nginx
+# Uploads: pm-app must set `client_max_body_size 12m;` in the server block that has `location /api/` — the app allows
+# 10 MB files (MAX_UPLOAD_SIZE_MB) and nginx's default is 1 MB, which refused every larger upload
+# with 413 until 2026-10-14. scripts/prod-smoke.cjs fails if a 2 MB body is refused.
 
 # SSL
 sudo certbot renew                    # Auto-renews via cron

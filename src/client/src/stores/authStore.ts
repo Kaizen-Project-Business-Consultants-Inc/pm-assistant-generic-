@@ -18,6 +18,8 @@ export interface User {
   isFounder?: boolean;
   emailVerified?: boolean;
   mustChangePassword?: boolean;
+  /** false = still in setup (sent to /onboarding). Undefined on an older payload: fall back to the name. */
+  onboardingCompleted?: boolean;
   isGuest?: boolean;
   guestExpiresAt?: string | null;
   /** The user's company; null = none (the platform admin). Undefined until /me has answered. */

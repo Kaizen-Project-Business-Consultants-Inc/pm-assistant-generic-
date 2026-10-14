@@ -8,6 +8,7 @@ import { ConfirmModal } from '../ui/ConfirmModal';
 import { useProjectRole } from '../../hooks/useProjectRole';
 
 import { AccessibleModal } from '../ui/AccessibleModal';
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 interface AttachmentPanelProps {
   entityType: 'task' | 'project';
   entityId: string;
@@ -130,13 +131,17 @@ export function AttachmentPanel({ entityType, entityId, projectId }: AttachmentP
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {uploadMutation.isPending ? 'Uploading…' : 'Drop files here or click to upload'}
         </p>
+        {uploadMutation.isError && (
+          <p role="alert" className="text-xs text-red-600 dark:text-red-400 mt-1">{getApiErrorMessage(uploadMutation.error, 'The file could not be uploaded.')}</p>
+        )}
         <input
           id={`file-input-${entityId}`}
           type="file"
           aria-label="Upload files"
           multiple
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          // cleared after each pick so choosing the same file again still uploads
+          onChange={(e) => { handleFiles(e.target.files); e.target.value = ''; }}
         />
       </div>
       )}

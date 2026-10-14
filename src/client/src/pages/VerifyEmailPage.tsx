@@ -3,12 +3,31 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { ROUTES } from '../routes';
+import { CheckYourEmail } from '../components/auth/CheckYourEmail';
+import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 
 export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
-  const { isAuthenticated, setUser } = useAuthStore();
+  const { isAuthenticated, setUser, user } = useAuthStore();
+  // A dead link (an older email, or past 24 hours) offers a new one instead of a dead end (2026-10-14)
+  const [resendEmail, setResendEmail] = useState(user?.email ?? '');
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [resendError, setResendError] = useState<string | null>(null);
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    setResendError(null);
+    setResendState('sending');
+    try {
+      await apiService.resendVerificationEmail(resendEmail.trim());
+      setResendState('sent');
+    } catch (err) {
+      setResendState('idle');
+      setResendError(getApiErrorMessage(err, 'The new link could not be sent. Please try again in a few minutes.'));
+    }
+  }
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,7 +93,10 @@ export const VerifyEmailPage: React.FC = () => {
           </>
         )}
 
-        {status === 'error' && (
+        {status === 'error' && resendState === 'sent' && (
+          <CheckYourEmail email={resendEmail.trim()} />
+        )}
+        {status === 'error' && resendState !== 'sent' && (
           <>
             <div className="mx-auto w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center mb-4">
               <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,10 +104,34 @@ export const VerifyEmailPage: React.FC = () => {
               </svg>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Verification Failed</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
+            <p className="text-gray-600 dark:text-gray-300 mb-2">{message}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+              A link stops working after 24 hours, or when a newer email was sent — always use the newest one.
+              Already confirmed? Just sign in.
+            </p>
+            <form onSubmit={handleResend} className="flex flex-col gap-2 text-left mb-4">
+              <label htmlFor="resend-email" className="text-sm font-medium text-gray-700 dark:text-gray-200">Your email</label>
+              <input
+                id="resend-email"
+                type="email"
+                required
+                autoComplete="email"
+                value={resendEmail}
+                onChange={(e) => setResendEmail(e.target.value)}
+                className="input"
+              />
+              {resendError && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{resendError}</p>}
+              <button
+                type="submit"
+                disabled={resendState === 'sending' || !resendEmail.trim()}
+                className="px-6 py-2.5 text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors disabled:opacity-60"
+              >
+                {resendState === 'sending' ? 'Sending…' : 'Send me a new link'}
+              </button>
+            </form>
             <Link
               to="/login"
-              className="inline-block px-6 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+              className="inline-block text-sm font-medium text-primary-700 dark:text-primary-300 hover:underline"
             >
               Back to Sign In
             </Link>

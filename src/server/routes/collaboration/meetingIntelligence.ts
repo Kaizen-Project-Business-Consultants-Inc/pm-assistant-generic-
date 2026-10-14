@@ -10,6 +10,7 @@ import {
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { projectMemberService } from '../../services/ProjectMemberService';
 import { fileAttachmentService } from '../../services/FileAttachmentService';
 import { meetingRepository } from '../../database/MeetingRepository';
@@ -40,6 +41,17 @@ const sendToRaidPM = requireProjectAccess('manager', {
   },
 });
 
+/** Each analysis is an AI call: the plan must include Meeting Intelligence, and at most 10 a minute */
+const analysisAllowed = [requireFeature('meeting_intelligence'), heavyActionLimit('meeting-analyze', 10)];
+
+/** A meeting the analysis is attached to must be one of this project's meetings */
+async function meetingOutsideProject(meetingId: string | undefined, projectId: string): Promise<boolean> {
+  if (!meetingId) return false;
+  const meeting = await meetingRepository.findById(meetingId); // a database error goes to the route's normal handling
+  return !meeting || meeting.projectId !== projectId;
+}
+const MEETING_MISMATCH = { error: 'mismatch', message: "That meeting isn't in this project." };
+
 export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -48,12 +60,13 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   // ---------------------------------------------------------------------------
 
   fastify.post('/analyze', {
-    preHandler: [requireScope('write'), analyzePM],
+    preHandler: [requireScope('write'), ...analysisAllowed, analyzePM],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
 
       const parsed = AnalyzeRequestSchema.parse(request.body);
+      if (await meetingOutsideProject(parsed.meetingId, parsed.projectId)) return reply.status(400).send(MEETING_MISMATCH);
 
       const analysis = await meetingIntelligenceService.analyzeTranscript(
         parsed.transcript,
@@ -106,7 +119,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
   // ---------------------------------------------------------------------------
 
   fastify.post('/upload-transcript', {
-    preHandler: [requireScope('write')], // project check is in the handler (checkProjectRole) — multipart
+    preHandler: [requireScope('write'), ...analysisAllowed], // project check is in the handler (checkProjectRole) — multipart
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
@@ -149,6 +162,7 @@ export async function meetingIntelligenceRoutes(fastify: FastifyInstance) {
       }
       const access = await checkProjectRole(request, projectId, 'manager');
       if (!access.ok) return reply.status(access.status).send(access.body);
+      if (await meetingOutsideProject(meetingId, projectId)) return reply.status(400).send(MEETING_MISMATCH);
 
       // Parse transcript
       const { format, segments, transcript } = parseTranscriptFile(file.filename, content);

@@ -8,6 +8,7 @@ import { useSEO } from '../hooks/useSEO';
 import { KovartiMark } from '../components/ui/KovartiMark';
 import { GoogleButton } from '../components/auth/GoogleButton';
 import { googleSignInMessage } from '../utils/googleSignInMessages';
+import { needsSetup } from '../utils/needsSetup';
 
 export const LoginPage: React.FC = () => {
   useSEO({
@@ -79,7 +80,7 @@ export const LoginPage: React.FC = () => {
       if (response.mustChangePassword || response.user?.mustChangePassword) {
         navigate('/change-password');
       } else {
-        navigate(response.user?.fullName ? '/dashboard' : '/onboarding');
+        navigate(needsSetup(response.user) ? '/onboarding' : '/dashboard');
       }
     } catch (err: unknown) {
       const axiosError = err as { response?: { status?: number; data?: { message?: string; requiresVerification?: boolean } } };

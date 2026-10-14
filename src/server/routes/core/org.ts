@@ -184,6 +184,9 @@ export async function orgRoutes(fastify: FastifyInstance) {
         await userService.update(newUser.id, {
           mustChangePassword: true,
           organizationId: org.id,
+          // invited: their role and company are given, so no setup screens (those are for people
+          // signing up for their own company — 2026-10-14)
+          onboardingCompletedAt: new Date(),
           // Team members use the organisation's plan (they were created with 'none' and
           // then refused every change: "Your trial has ended")
           ...(role !== 'viewer' ? memberSubscriptionFromOrg(org) : { subscriptionStatus: 'none' }),
@@ -415,6 +418,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
         await userService.update(guestUser.id, {
           mustChangePassword: true,
           organizationId: org.id,
+          onboardingCompletedAt: new Date(), // a guest: no setup screens
           isGuest: true,
           guestInvitedBy: inviterId,
           guestExpiresAt: expiresAt || null,

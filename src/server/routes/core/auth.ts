@@ -125,6 +125,8 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
+          // false = send them to the setup screens (App.tsx) — finishing setup decides, not having a name
+          onboardingCompleted: !!user.onboardingCompletedAt,
           mustChangePassword: user.mustChangePassword || false,
           isGuest: user.isGuest || false,
           guestExpiresAt: user.guestExpiresAt ? String(user.guestExpiresAt) : null,
@@ -381,6 +383,8 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
+          // false = send them to the setup screens (App.tsx) — finishing setup decides, not having a name
+          onboardingCompleted: !!user.onboardingCompletedAt,
           emailVerified: user.emailVerified || false,
           mustChangePassword: user.mustChangePassword || false,
           isGuest: user.isGuest || false,
