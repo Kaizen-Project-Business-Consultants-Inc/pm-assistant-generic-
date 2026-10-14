@@ -8,6 +8,10 @@
  * Needs the SSH tunnel to the test bed (see testbed.sh) — and SSH for two database steps the
  * app can't do by itself in a test: reading the email-verification token (no email is sent),
  * and putting the QA companies on paid plans (so trials don't expire or lock features).
+ *
+ * Staging (after a reset, 2026-10-14): tunnel to the staging app and name its database and cache:
+ *   ssh -L 8091:127.0.0.1:3001 ubuntu@147.5.127.99   then
+ *   SEED_DB=pmassist SEED_REDIS_DB=<staging REDIS_DB> node scripts/testbed/seed.cjs http://localhost:8091
  */
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -18,10 +22,13 @@ const BASE = (process.argv[2] || 'http://localhost:8081').replace(/\/$/, '');
 if (!/localhost|127\.0\.0\.1/.test(BASE)) { console.error('The seed only runs against the test bed (through the tunnel).'); process.exit(1); }
 const API = `${BASE}/api/v1`;
 const PW = 'Test1234!';
+const DB = process.env.SEED_DB || 'pmtb';
+const REDIS_DB = process.env.SEED_REDIS_DB || '5';
+if (!/^[a-z_]+$/.test(DB) || !/^\d+$/.test(REDIS_DB)) { console.error('SEED_DB / SEED_REDIS_DB look wrong'); process.exit(1); }
 const KEY = path.join(os.homedir(), '.ssh', 'ssh-key-2026-07-08 (1).key');
 
 function sql(query) {
-  return execFileSync('ssh', ['-i', KEY, 'ubuntu@147.5.127.99', `sudo mariadb pmtb -N -e "${query.replace(/"/g, '\\"')}"`], { encoding: 'utf8' }).trim();
+  return execFileSync('ssh', ['-i', KEY, 'ubuntu@147.5.127.99', `sudo mariadb ${DB} -N -e "${query.replace(/"/g, '\\"')}"`], { encoding: 'utf8' }).trim();
 }
 
 async function req(method, url, body, cookie) {
@@ -47,7 +54,11 @@ async function signUp(email, username, fullName, company) {
   await signUp('qa.pm@pm.kpbc.ca', 'qa_pm', 'QA Project Manager', 'QA Staging Co');
   await signUp('qa.outsider@pm.kpbc.ca', 'qa_outsider', 'QA Outsider', 'QA Outsider Co');
   sql(`UPDATE organizations SET subscription_tier='enterprise', subscription_status='active', trial_ends_at=NULL WHERE name='QA Staging Co'; UPDATE organizations SET subscription_tier='sme', subscription_status='active', trial_ends_at=NULL WHERE name='QA Outsider Co'; UPDATE users SET subscription_tier=IF(email='qa.outsider@pm.kpbc.ca','sme','enterprise'), subscription_status='active', trial_ends_at=NULL WHERE email LIKE 'qa.%'`);
-  execFileSync('ssh', ['-i', KEY, 'ubuntu@147.5.127.99', 'redis-cli -n 5 FLUSHDB >/dev/null']); // drop cached plans
+  // QA logins skip the setup screens (since 2026-10-14 setup is shown until it is finished)
+  if (sql(`SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB}' AND TABLE_NAME='users' AND COLUMN_NAME='onboarding_completed_at'`) === '1') {
+    sql(`UPDATE users SET onboarding_completed_at=NOW() WHERE email LIKE 'qa.%' AND onboarding_completed_at IS NULL`);
+  }
+  execFileSync('ssh', ['-i', KEY, 'ubuntu@147.5.127.99', `redis-cli -n ${REDIS_DB} FLUSHDB >/dev/null`]); // drop cached plans
   const pm = await login('qa.pm@pm.kpbc.ca');
 
   // 2. The team member, invited the normal way
@@ -57,6 +68,11 @@ async function signUp(email, username, fullName, company) {
   await req('POST', '/auth/change-password', { currentPassword: temp, newPassword: PW }, t0);
   const team = await login('qa.team@pm.kpbc.ca');
   const teamId = (await req('GET', '/auth/me', undefined, team)).json.user.id;
+
+  // 2b. A second invited member with a login (people-rights spec: a PM can't change logins)
+  const inv2 = await req('POST', '/org/invite', { email: 'qa.member2@pm.kpbc.ca', role: 'team_member' }, pm);
+  const m2 = await login('qa.member2@pm.kpbc.ca', inv2.json.tempPassword);
+  await req('POST', '/auth/change-password', { currentPassword: inv2.json.tempPassword, newPassword: PW }, m2);
 
   // 3. A project the team member is on (as a Viewer), with a plan and a RAID item
   const ids = {};

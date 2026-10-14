@@ -1,11 +1,23 @@
 import { test, expect } from '@playwright/test';
+import { signedIn } from './qa-data';
+import { STAGING_USER } from './staging-helpers';
 
 // "QA – team member checks" in the QA Staging Co company, owned by the QA PM login
 // (e2e/staging-helpers.ts). The old TechStart project belonged to mike_todo, who no longer exists.
-const PROJECT_ID = '94dbbc5a-a9d4-4113-b7d5-e0761b142bc4';
+// Found by name, not a fixed id: a staging reset re-creates the QA data with new ids (2026-10-14)
+let PROJECT_ID = '';
 const PROJECT_NAME = 'QA . team member checks';
 
 test.describe('Pre-Launch Staging Tests', () => {
+  test.beforeAll(async ({ browser }) => {
+    const page = await signedIn(browser, STAGING_USER);
+    const body = await (await page.request.get('/api/v1/projects?limit=200')).json();
+    const list: any[] = body.projects ?? body.data ?? [];
+    PROJECT_ID = list.find((p) => /^QA . team member checks$/i.test(p.name))?.id ?? '';
+    await page.context().close();
+    expect(PROJECT_ID, 'the QA "team member checks" project exists (scripts/testbed/seed.cjs)').not.toBe('');
+  });
+
   // Auth is handled by globalSetup — storageState is injected automatically
 
   test('Auth: dashboard loads with saved session', async ({ page }) => {
