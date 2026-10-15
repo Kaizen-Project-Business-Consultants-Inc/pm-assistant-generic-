@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, LineChart, Calendar, CalendarRange, FileInput } from 'lucide-react';
+import { Users, AlertTriangle, ChevronDown, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, LineChart, Calendar, CalendarRange, FileInput, DollarSign } from 'lucide-react';
 import { apiService } from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { UtilizationTrendChart } from '../components/resources/UtilizationTrendChart';
@@ -64,6 +64,8 @@ interface ForecastData {
 
 interface Resource {
   id: string;
+  /** The pool: a client's id, or null = My resources (U8) */
+  clientId?: string | null;
   name: string;
   role: string;
   email: string;
@@ -99,13 +101,17 @@ import { PlaceholderEmailBadge, GenericBadge } from '../components/resources/Res
 import { isPlaceholderEmail } from '../utils/placeholderEmail';
 import { ALLOCATION_LEVELS, allocationCell, getAllocationLevel } from '../components/resources/workloadHeatColors';
 import { plansOnly } from '../hooks/useOnlySchedule';
+import { usesClientPools, MY_RESOURCES } from '../utils/clientPools';
+import { PoolSwitcher } from '../components/resources/PoolSwitcher';
+import { PoolHolidays } from '../components/resources/PoolHolidays';
+import { RateCardTab } from './settings/RateCardTab';
 
 /** "12 Oct"-style label for a week-start calendar day — never shifted by the viewer's time zone */
 function formatWeek(dateStr: string): string {
   return formatCalendarDate(dateStr, { month: 'short', day: 'numeric' });
 }
 
-type TabKey = 'team' | 'planner' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templates' | 'requests';
+type TabKey = 'team' | 'rates' | 'holidays' | 'planner' | 'workload' | 'histogram' | 'forecast' | 'trends' | 'templates' | 'requests';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -124,8 +130,18 @@ export function ResourceManagementPage() {
   const [selectedProjectId, setSelectedProjectId] = useState(tabFromUrl === 'workload' ? '__all__' : '');
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>(
-    tabFromUrl && ['team', 'planner', 'workload', 'histogram', 'forecast', 'trends', 'templates', 'requests'].includes(tabFromUrl) ? tabFromUrl as TabKey : 'team',
+    tabFromUrl && ['team', 'rates', 'holidays', 'planner', 'workload', 'histogram', 'forecast', 'trends', 'templates', 'requests'].includes(tabFromUrl) ? tabFromUrl as TabKey : 'team',
   );
+  // Client pools (U8, consultant plans): each client's people, rates and holidays apart, plus My resources
+  const pools = usesClientPools(me);
+  const [pool, setPool] = useState<string>(() => (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('pool') : null) || MY_RESOURCES);
+  const { data: clientsData } = useQuery<{ groups: Array<{ id: string; name: string; holidayCalendarId: string | null }> }>({
+    queryKey: ['project-groups'], queryFn: () => apiService.getProjectGroups(), enabled: pools, staleTime: 60_000,
+  });
+  const clients = clientsData?.groups ?? [];
+  const poolClient = pool === MY_RESOURCES ? null : clients.find(c => c.id === pool) ?? null;
+  /** The pool a new person joins, and whose rate card applies: a client's id, or null / '' = My resources */
+  const poolClientId = pools && poolClient ? poolClient.id : null;
   const [showResourceForm, setShowResourceForm] = useState(false);
   // Generic roles ("Generic Developer") have their own small form: a name and a role, no email
   const [genericForm, setGenericForm] = useState<{ id?: string; name: string; role: string } | null>(null);
@@ -195,8 +211,8 @@ export function ResourceManagementPage() {
 
   // Resource CRUD
   const { data: resourcesData, isLoading: resourcesLoading } = useQuery({
-    queryKey: ['resources'],
-    queryFn: () => apiService.getResources(),
+    queryKey: ['resources', pools ? pool : 'all'],
+    queryFn: () => apiService.getResources(pools ? pool : undefined),
   });
   const resources: Resource[] = resourcesData?.resources || [];
 
@@ -357,6 +373,8 @@ export function ResourceManagementPage() {
       ...(seesPay ? { costRateHourly: costRate, useRateCard: formUseRateCard } : {}),
       resourceGroup: formGroup || null,
       skills: formSkills,
+      // a new person joins the pool being shown (editing keeps their pool)
+      ...(pools && !editingResource ? { clientId: poolClientId } : {}),
     };
     // A PM doesn't touch the line manager, or the email of someone who signs in (the server
     // refuses it; new people get the owner as line manager by default)
@@ -460,12 +478,17 @@ export function ResourceManagementPage() {
         </div>
       )}
 
+      {pools && <PoolSwitcher clients={clients} value={pool} onChange={(p) => setPool(p)} />}
+
       {/* Top-level tabs */}
       <div className="border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         {/* Wraps on wide screens (the last tab used to be cut off at 1440 px); scrolls on phones */}
         <div className="flex gap-4 sm:gap-6 min-w-max lg:min-w-0 lg:flex-wrap" role="group" aria-label="Resources views">
           {([
-            { key: 'team' as const, label: 'Team', icon: Users },
+            { key: 'team' as const, label: pools ? 'People' : 'Team', icon: Users },
+            // a pool's rate card and holiday calendar live with its people (U8; Settings has them for other plans)
+            ...(pools && seesPay ? [{ key: 'rates' as const, label: 'Rates', icon: DollarSign }] : []),
+            ...(pools ? [{ key: 'holidays' as const, label: 'Holidays', icon: Calendar }] : []),
             // Team Planner moves work, so it's only for people who can change things (hide, don't disable)
             ...(canChange ? [{ key: 'planner' as const, label: 'Team Planner', icon: CalendarRange, isNew: true }] : []),
             { key: 'workload' as const, label: 'Workload Heatmap', icon: BarChart3 },
@@ -606,7 +629,7 @@ export function ResourceManagementPage() {
                   <input type="number" aria-label="Hours per week" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="1" max="80" />
                 </div>
                 {seesPay && (
-                <RateSourceField role={formRole} useRateCard={formUseRateCard} onChange={setFormUseRateCard}>
+                <RateSourceField role={formRole} useRateCard={formUseRateCard} onChange={setFormUseRateCard} poolId={(editingResource ? editingResource.clientId : poolClientId) ?? ''}>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Cost Rate ($/hr)</label>
                   <input type="number" aria-label="Cost rate ($/hr)" value={formCostRate} onChange={(e) => setFormCostRate(e.target.value)} className="input w-full text-sm dark:bg-gray-700 dark:text-gray-100" min="0" step="0.01" placeholder="Optional" />
@@ -1254,6 +1277,11 @@ export function ResourceManagementPage() {
           )}
         </div>
       )}
+
+      {activeTab === 'rates' && pools && seesPay && (
+        <RateCardTab canChange={canChange} poolId={poolClientId ?? ''} />
+      )}
+      {activeTab === 'holidays' && pools && <PoolHolidays client={poolClient} />}
 
       {/* Team Planner tab */}
       {activeTab === 'planner' && canChange && <TeamPlanner />}

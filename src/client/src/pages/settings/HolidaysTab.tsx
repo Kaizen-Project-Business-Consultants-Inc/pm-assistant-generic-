@@ -13,9 +13,10 @@ import { CalendarChangePreview, fmtDay } from '../../components/schedule/calenda
  */
 interface Pending { change: CompanyHolidayChange; label: string; preview: Preview | null }
 
-export function HolidaysTab() {
+/** calendarId: which holiday calendar (U8); left out = the home calendar (Company holidays) */
+export function HolidaysTab({ calendarId }: { calendarId?: string } = {}) {
   const queryClient = useQueryClient();
-  const q = useQuery({ queryKey: ['company-holidays'], queryFn: () => apiService.getCompanyHolidays() });
+  const q = useQuery({ queryKey: ['company-holidays', calendarId ?? 'home'], queryFn: () => apiService.getCompanyHolidays(calendarId) });
   const [pending, setPending] = useState<Pending | null>(null);
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +67,7 @@ export function HolidaysTab() {
   const add = () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setError('Pick a date first.'); return; }
     const n = name.trim() || undefined;
-    propose({ add: { date, name: n } }, `${fmtDay(date)}${n ? ` (${n})` : ''} becomes a company holiday`);
+    propose({ calendarId, add: { date, name: n } }, `${fmtDay(date)}${n ? ` (${n})` : ''} becomes a company holiday`);
   };
 
   return (
@@ -99,7 +100,7 @@ export function HolidaysTab() {
                   <span className="w-36 shrink-0 font-mono text-xs tabular-nums text-gray-900 dark:text-gray-100">{fmtDay(h.date)}</span>
                   <span className="flex-1 min-w-0 break-words text-gray-800 dark:text-gray-200">{h.name || '—'}</span>
                   {canEdit && (
-                    <button type="button" disabled={busy} onClick={() => propose({ removeId: h.id }, `${fmtDay(h.date)} is no longer a company holiday`)}
+                    <button type="button" disabled={busy} onClick={() => propose({ calendarId, removeId: h.id }, `${fmtDay(h.date)} is no longer a company holiday`)}
                       aria-label={`Remove ${fmtDay(h.date)}`} title="Remove"
                       className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50">
                       <Trash2 className="w-3.5 h-3.5" />

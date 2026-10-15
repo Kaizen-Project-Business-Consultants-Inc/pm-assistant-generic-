@@ -19,9 +19,10 @@ interface Form { id: string | null; role: string; hourly: string; overtime: stri
 const EMPTY = (): Form => ({ id: null, role: '', hourly: '', overtime: '', from: todayYmd() });
 
 /** `canChange` false: a finance officer — they see the rates, without the change controls */
-export function RateCardTab({ canChange }: { canChange: boolean }) {
+/** poolId: whose card — a client's id, or '' = My resources (U8). Settings shows My resources'. */
+export function RateCardTab({ canChange, poolId = '' }: { canChange: boolean; poolId?: string }) {
   const queryClient = useQueryClient();
-  const q = useQuery({ queryKey: ['rate-card'], queryFn: () => apiService.getRateCard(), retry: false });
+  const q = useQuery({ queryKey: ['rate-card', poolId], queryFn: () => apiService.getRateCard(poolId), retry: false });
   const [form, setForm] = useState<Form>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export function RateCardTab({ canChange }: { canChange: boolean }) {
     if (!Number.isFinite(hourly) || hourly < 0) { setError('Enter the hourly rate as a number, e.g. 95.'); return; }
     if (overtime != null && (!Number.isFinite(overtime) || overtime < 0)) { setError('Enter the overtime rate as a number, or leave it empty.'); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.from)) { setError('Pick the date this rate starts.'); return; }
-    const input: RateInput = { role: form.role.trim(), hourlyRate: hourly, overtimeRate: overtime, effectiveFrom: form.from };
+    const input: RateInput = { poolId, role: form.role.trim(), hourlyRate: hourly, overtimeRate: overtime, effectiveFrom: form.from };
     setSaving(true);
     try {
       if (form.id) await apiService.updateRate(form.id, input);

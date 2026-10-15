@@ -13,6 +13,7 @@ import { AttachmentPanel } from '../attachments/AttachmentPanel';
 import { TaskChecklistPanel } from '../sprints/TaskChecklistPanel';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { apiService } from '../../services/api';
+import { useInProjectPool } from '../../hooks/useInProjectPool';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { firstByKey } from '../../utils/lookup';
 import { useModal } from '../../hooks/useModal';
@@ -102,7 +103,9 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
 
   const current = findResourceForAssignee(resources, value);
 
-  const filtered = resources.filter(r =>
+  // only this project's client's people and My resources (U8)
+  const inPool = useInProjectPool();
+  const filtered = resources.filter(r => inPool(r as { clientId?: string | null })).filter(r =>
     search === '' ||
     r.name.toLowerCase().includes(search.toLowerCase()) ||
     r.role.toLowerCase().includes(search.toLowerCase())
@@ -353,6 +356,10 @@ export function TaskFormModal({
   const resourceList = useMemo<{ id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[]>(
     () => resourceData?.resources || [], [resourceData]);
   const resourceById = useMemo(() => firstByKey(resourceList, r => r.id), [resourceList]);
+  // who can be picked: this project's client's people and My resources (U8)
+  const inPool = useInProjectPool();
+  const poolList = useMemo(() => resourceList.filter(r => inPool(r as { clientId?: string | null })), [resourceList, inPool]);
+  const poolIds = useMemo(() => new Set(poolList.map(r => r.id)), [poolList]);
   const assignedResource = findResourceForAssignee(resourceList, form.assignedTo);
   // % complete on a task with planned hours comes from approved hours: shown, not typed. The
   // server's answer while dates and people are as saved; the screen's own guess once they change.
@@ -696,8 +703,8 @@ export function TaskFormModal({
                   className="input flex-1 text-xs"
                 >
                   <option value="">Select resource...</option>
-                  {a.resourceId && !resourceById.has(a.resourceId) && <option value={a.resourceId}>{a.resourceId}</option>}
-                  <ResourceOptionGroups resources={resourceList} />
+                  {a.resourceId && !poolIds.has(a.resourceId) && <option value={a.resourceId}>{resourceById.get(a.resourceId)?.name ?? a.resourceId}</option>}
+                  <ResourceOptionGroups resources={poolList} />
                 </select>
                 <input
                   type="number"

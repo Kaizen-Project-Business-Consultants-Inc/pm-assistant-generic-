@@ -1574,6 +1574,15 @@ If it fails: load the new code only where it's needed (`lazy()` / `await import(
 - E2E: `e2e/landing.spec.ts` checks the hero copy and that "See how it compares" opens the page.
 - By hand, every quarter: re-check each Microsoft Project / Asana cell on microsoft.com and asana.com, then update `CHECKED_ON`. A claim you can't find there says "Not listed on its plan page".
 
+## Client resource pools (Oct 2026, U8)
+
+Unit: `resourcesViewerScope.test.ts` (a viewer or guest sees only their projects' people), `raidOwnerResource.test.ts` (an assigned client staff member can change only the status, and only while on the project), `ProjectTeamService.test.ts` (other clients' people refused; leaving removes only the viewing the team gave), `rateCard.test.ts` (pool-scoped rates), `clientPools.test.ts` (which plans use pools), `poolFit.test.ts` (another client's person can't be put on a task), `TaskBudgetService.test.ts` (placeholder roles costed on the client's card).
+Manual, on staging, as qa.pm on a consultant plan:
+1. Resources → switch to a client → add a person, a rate and a holiday calendar.
+2. Open one of that client's projects → Team → the pickers list only that client's pool and My resources.
+3. Change the client's calendar → the preview lists the tasks that move → apply → check Schedule History.
+4. Sign in as the client's staff member → only the projects whose team they are on show, and the Resources list shows only those projects' people.
+
 ## Production smoke tests (Oct 2026)
 
 `SMOKE_CREDENTIALS=path/to/prod-smoke-account.json npx playwright test -c playwright.prod.config.ts` — 10 read-only page checks on kovarti.com. `scripts/prod-smoke.cjs` also sends a 2 MB body (no login, to a project that doesn't exist, so nothing is stored) and fails if the web server refuses it with 413 (2026-10-14). The login comes from the same credentials file as `scripts/prod-smoke.cjs` (kept outside the repository); the checks reuse the session the setup step saves. Staging tests use the QA logins (qa.pm / qa.team / qa.outsider @pm.kpbc.ca, see `e2e/staging-helpers.ts`).

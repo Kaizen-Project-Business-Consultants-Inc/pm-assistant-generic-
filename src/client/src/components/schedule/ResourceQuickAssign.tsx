@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useInProjectPool } from '../../hooks/useInProjectPool';
 import { getInitials } from '../ui/Avatar';
 import { ResourcePickList } from '../resources/ResourcePickList';
 
@@ -18,6 +19,7 @@ interface Resource {
   name: string;
   role: string;
   isGeneric?: boolean;
+  clientId?: string | null;
 }
 
 interface ResourceQuickAssignProps {
@@ -44,8 +46,10 @@ export function ResourceQuickAssign({ taskId, assignments, onUpdate }: ResourceQ
 
   // Resources not yet assigned
   const assignedIds = new Set(assignments.map(a => a.resourceId));
+  // only this project's client's people and My resources (U8)
+  const inPool = useInProjectPool();
   const available = resources.filter(r =>
-    !assignedIds.has(r.id) &&
+    !assignedIds.has(r.id) && inPool(r) &&
     (search === '' || r.name.toLowerCase().includes(search.toLowerCase()) || r.role.toLowerCase().includes(search.toLowerCase()))
   );
 

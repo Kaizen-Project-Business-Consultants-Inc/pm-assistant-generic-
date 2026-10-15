@@ -22,7 +22,11 @@ export interface CalendarException {
   createdAt: string;
 }
 
-export interface CompanyHoliday { id: string; date: string; name: string }
+export interface CompanyHoliday { id: string; date: string; name: string; calendarId?: string }
+/** A named holiday list (U8); every client uses one, 'home' (Company holidays) by default */
+interface HolidayCalendar { id: string; name: string }
+export const HOME_CALENDAR = 'home';
+export class CalendarNameError extends Error {}
 
 /** What decides whether a day is worked in a project (see CalendarService.isWorking) */
 export interface CalendarSpec {
@@ -151,29 +155,51 @@ export class CalendarService {
     return (result.affectedRows ?? 0) > 0;
   }
 
-  // --- Company holidays (one list per company, every project picks them up) ---
+  // --- Holiday calendars (U8): named lists; each client uses one ('home' = Company holidays) ---
 
-  async listCompanyHolidays(): Promise<CompanyHoliday[]> {
-    const rows = await databaseService.query('SELECT * FROM company_holidays ORDER BY holiday_date');
-    return rows.map((r: any) => ({ id: r.id, date: String(r.holiday_date).slice(0, 10), name: r.name ?? '' }));
+  async listCalendars(): Promise<HolidayCalendar[]> {
+    const rows = await databaseService.query('SELECT id, name FROM holiday_calendars ORDER BY (id = ?) DESC, name', [HOME_CALENDAR]);
+    return rows.map((r: any) => ({ id: r.id, name: r.name }));
   }
 
-  async addCompanyHoliday(date: string, name: string | undefined, createdBy: string | null): Promise<CompanyHoliday> {
+  async createCalendar(name: string, createdBy: string | null): Promise<HolidayCalendar> {
+    const trimmed = name.trim();
+    const clash = await databaseService.query('SELECT id FROM holiday_calendars WHERE name = ?', [trimmed]);
+    if (clash.length) throw new CalendarNameError(`There is already a calendar called "${trimmed}".`);
+    const id = uuidv4();
+    await databaseService.query('INSERT INTO holiday_calendars (id, name, created_by) VALUES (?, ?, ?)', [id, trimmed, createdBy]);
+    return { id, name: trimmed };
+  }
+
+  /** The calendar a project's holidays come from: its client's, else the home calendar */
+  async calendarIdForProject(projectId: string): Promise<string> {
+    const rows = await databaseService.query(
+      `SELECT COALESCE(g.holiday_calendar_id, ?) AS cal FROM projects p
+         LEFT JOIN project_groups g ON g.id = p.group_id WHERE p.id = ?`, [HOME_CALENDAR, projectId]);
+    return rows[0]?.cal ?? HOME_CALENDAR;
+  }
+
+  async listCompanyHolidays(calendarId: string = HOME_CALENDAR): Promise<CompanyHoliday[]> {
+    const rows = await databaseService.query('SELECT * FROM company_holidays WHERE calendar_id = ? ORDER BY holiday_date', [calendarId]);
+    return rows.map((r: any) => ({ id: r.id, date: String(r.holiday_date).slice(0, 10), name: r.name ?? '', calendarId: r.calendar_id ?? HOME_CALENDAR }));
+  }
+
+  async addCompanyHoliday(date: string, name: string | undefined, createdBy: string | null, calendarId: string = HOME_CALENDAR): Promise<CompanyHoliday> {
     const id = uuidv4();
     await databaseService.query(
-      `INSERT INTO company_holidays (id, holiday_date, name, created_by) VALUES (?, ?, ?, ?)
+      `INSERT INTO company_holidays (id, calendar_id, holiday_date, name, created_by) VALUES (?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE name = VALUES(name)`,
-      [id, date, name || null, createdBy],
+      [id, calendarId, date, name || null, createdBy],
     );
-    const rows = await databaseService.query('SELECT * FROM company_holidays WHERE holiday_date = ?', [date]);
-    return { id: rows[0].id, date, name: rows[0].name ?? '' };
+    const rows = await databaseService.query('SELECT * FROM company_holidays WHERE calendar_id = ? AND holiday_date = ?', [calendarId, date]);
+    return { id: rows[0].id, date, name: rows[0].name ?? '', calendarId };
   }
 
   async removeCompanyHoliday(id: string): Promise<CompanyHoliday | null> {
     const rows = await databaseService.query('SELECT * FROM company_holidays WHERE id = ?', [id]);
     if (!rows.length) return null;
     await databaseService.query('DELETE FROM company_holidays WHERE id = ?', [id]);
-    return { id, date: String(rows[0].holiday_date).slice(0, 10), name: rows[0].name ?? '' };
+    return { id, date: String(rows[0].holiday_date).slice(0, 10), name: rows[0].name ?? '', calendarId: rows[0].calendar_id ?? HOME_CALENDAR };
   }
 
   // --- Working day logic ---
@@ -186,7 +212,9 @@ export class CalendarService {
   async calendarSpec(projectId: string): Promise<CalendarSpec> {
     const calendar = await this.getOrCreateDefault(projectId);
     const exceptions = await this.getExceptions(calendar.id);
-    const company = await this.listCompanyHolidays().catch(() => [] as CompanyHoliday[]);
+    // the holidays of the project's client's calendar (U8), not every list in the company
+    const calendarId = await this.calendarIdForProject(projectId).catch(() => HOME_CALENDAR);
+    const company = await this.listCompanyHolidays(calendarId).catch(() => [] as CompanyHoliday[]);
     return {
       workingDays: calendar.workingDays,
       holidays: new Set(exceptions.filter(e => e.type === 'holiday').map(e => e.exceptionDate)),

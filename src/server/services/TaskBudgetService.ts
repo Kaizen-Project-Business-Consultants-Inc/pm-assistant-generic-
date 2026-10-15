@@ -13,7 +13,7 @@ import { chunksOf } from '../utils/chunksOf';
  * typed. For each person (or generic role) booked on the task: their hours a day (weekly hours
  * ÷ 5) × the task's working days on the plan's calendar × their rate on the task's start day.
  * People use their own rate or the rate card; a generic role always uses the rate card for its
- * role, so unstaffed work still gets a planned cost. No booking or no rate → no budget.
+ * role (on a client's project, that client's card first), so unstaffed work still gets a planned cost. No booking or no rate → no budget.
  * Summary tasks roll up their children. Run ~20 s after a plan changes (with Schedule Review)
  * and when rates change.
  */
@@ -28,15 +28,25 @@ export class TaskBudgetService {
     const bookings = await resourceService.findEffectiveAssignments({ scheduleIds: [scheduleId], includeDone: true });
     const resourceIds = [...new Set(bookings.map(b => b.resourceId))];
     const people = resourceIds.length === 0 ? [] : await databaseService.query<any>(
-      `SELECT id, role, cost_rate_hourly, overtime_rate_hourly, use_rate_card, is_generic FROM resources WHERE id IN (${ph(resourceIds.length)})`, resourceIds);
+      `SELECT id, role, cost_rate_hourly, overtime_rate_hourly, use_rate_card, is_generic, client_id FROM resources WHERE id IN (${ph(resourceIds.length)})`, resourceIds);
     const byId = new Map(people.map((r: any) => [r.id, {
       role: r.role,
       costRateHourly: r.cost_rate_hourly != null ? Number(r.cost_rate_hourly) : null,
       overtimeRateHourly: r.overtime_rate_hourly != null ? Number(r.overtime_rate_hourly) : null,
       // A generic role has no rate of its own: the rate card for its role
       useRateCard: !!r.use_rate_card || !!r.is_generic,
+      clientId: r.client_id || null, // their pool's card (U8)
+      isGeneric: !!r.is_generic,
     }]));
     const rateCard = await rateCardService.listSafe();
+    // A generic role belongs to no pool: on a client's project it is costed on that client's card,
+    // falling back to My resources' card when the client's has no rate for the role (U8)
+    const [proj] = await databaseService.query<{ group_id: string | null }>(
+      'SELECT p.group_id FROM schedules s JOIN projects p ON p.id = s.project_id WHERE s.id = ?', [scheduleId]);
+    const projectClient = proj?.group_id ?? null;
+    const rateFor = (person: { isGeneric: boolean; clientId: string | null } & Parameters<typeof ratesOn>[0], day: string) =>
+      (person.isGeneric && projectClient ? ratesOn({ ...person, clientId: projectClient }, day, rateCard).standard : null)
+      ?? ratesOn(person, day, rateCard).standard;
     const isWorking = (await calendarsFor([scheduleId], (id) => scheduleService.workingDayTest(id)))(scheduleId);
 
     const parents = new Set<string>();
@@ -52,7 +62,7 @@ export class TaskBudgetService {
         // A booking with no working day in it plans no hours: it prices nothing and does not make
         // the budget "0" instead of empty; the rate is the one on its first WORKING day (audit 2026-10-09)
         const days = person ? workingDaysBetween(b.startDate, b.endDate, isWorking) : 0;
-        const rate = days > 0 ? ratesOn(person!, ymdOf(onOrAfterWorking(utcDay(b.startDate), isWorking)), rateCard).standard : null;
+        const rate = days > 0 ? rateFor(person!, ymdOf(onOrAfterWorking(utcDay(b.startDate), isWorking))) : null;
         if (!rate) continue;
         cost += (b.hoursPerWeek / 5) * days * rate;
         priced = true;

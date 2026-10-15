@@ -18,8 +18,22 @@ export class SchedulingApi extends ApiBase {
     return (await this.api.post(`/projects/${projectId}/working-calendar/apply`, change)).data;
   }
 
-  async getCompanyHolidays(): Promise<{ holidays: CompanyHoliday[]; canEdit: boolean }> {
-    return (await this.api.get('/company-holidays')).data;
+  /** calendarId left out = the home calendar (Company holidays) (U8) */
+  async getCompanyHolidays(calendarId?: string): Promise<{ holidays: CompanyHoliday[]; canEdit: boolean }> {
+    return (await this.api.get('/company-holidays', { params: calendarId ? { calendarId } : {} })).data;
+  }
+
+  async getHolidayCalendars(): Promise<{ calendars: HolidayCalendar[]; canEdit: boolean }> {
+    return (await this.api.get('/holiday-calendars')).data;
+  }
+
+  async createHolidayCalendar(name: string): Promise<{ calendar: HolidayCalendar }> {
+    return (await this.api.post('/holiday-calendars', { name })).data;
+  }
+
+  /** A client switches holiday calendar: preview the moves, then apply */
+  async changeClientCalendar(clientId: string, calendarId: string, step: 'preview' | 'apply'): Promise<CalendarChangePreview> {
+    return (await this.api.post(`/project-groups/${clientId}/holiday-calendar/${step}`, { calendarId })).data;
   }
 
   async previewCompanyHoliday(change: CompanyHolidayChange): Promise<CalendarChangePreview> {
@@ -201,7 +215,8 @@ export class SchedulingApi extends ApiBase {
   }
 }
 
-export interface CompanyHoliday { id: string; date: string; name: string }
+export interface CompanyHoliday { id: string; date: string; name: string; calendarId?: string }
+interface HolidayCalendar { id: string; name: string }
 export interface WorkingCalendarData {
   workingDays: number[];
   exceptions: Array<{ id: string; date: string; type: 'holiday' | 'working'; name: string }>;
@@ -211,7 +226,7 @@ export type WorkingCalendarChange =
   | { workingDays: number[] }
   | { add: { date: string; type: 'holiday' | 'working'; name?: string } }
   | { removeId: string };
-export type CompanyHolidayChange = { add: { date: string; name?: string } } | { removeId: string };
+export type CompanyHolidayChange = { calendarId?: string; add: { date: string; name?: string } } | { calendarId?: string; removeId: string };
 export interface CalendarChangePreview {
   moves: Array<{ taskId: string; name: string; scheduleName: string; oldStart: string | null; oldEnd: string | null; newStart: string; newEnd: string }>;
   tasksMoved: number;

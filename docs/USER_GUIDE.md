@@ -905,6 +905,19 @@ The **Financials** tab within each project provides comprehensive expense tracki
 
 ## 8. Resources
 
+### Client resource pools (consultant plans and the free trial, October 2026)
+
+A consultant works for several clients, and each client has its own people. Kovarti keeps them apart:
+
+- **Every client has its own pool** of people, its own **rate card** and its own **holiday calendar**. Your own people (you, your subcontractors) are in **My resources**, usable on every client's projects.
+- **Manage › Resources** has a **Pool** switcher at the top (each client, then My resources) and, for the pool shown, the tabs **People**, **Rates**, **Holidays** and the workload views. A person you add joins the pool being shown. On **Clients**, each client's **People, rates & holidays** link opens its pool.
+- **Can sign in?** — each person shows whether they have a login. **Invite to log in** gives one (the invitation links their existing record — no duplicate person).
+- **A project's team** (the project's **Team** tab) is picked from its client's pool and My resources only — another client's people never appear, and the same goes for every *Assigned to* and *Resources* list on the project's tasks and the Team Planner. Someone on the team who can sign in sees **that project only** (and any other project whose team they're on). They can view it and update **their own RAID items** (status, notes, comments) — nothing else. Removing them from the team removes the access the team gave them (a role you gave them separately on the project stays).
+- **Rates:** a person is costed on their own pool's rate card — a Developer can cost $95 at one client and $120 at another. A placeholder role (e.g. *Developer — to be hired*) is costed on the project's client card, or on My resources' card if that client has no rate for the role. When pools started, every existing client got a copy of your rate card, so no costs changed.
+- **Holidays:** each client uses a named holiday calendar (e.g. *Ontario 2027*; create one on the Holidays tab). Its projects' dates follow it; switching a client's calendar, or moving a project to another client, shows / re-fits the task dates (undo in Schedule History). Your old company holidays became the first calendar, *Company holidays*, used by every client at the start — no dates moved. Personal days off reduce a person's available hours. (Tasks following each assignee's own calendar is planned for later.)
+- **Settings** no longer shows Company holidays or Rate card on these plans — they live per client in Resources. **Settings → Team** stays: that is where you remove a login or a guest. Team and Enterprise plans keep holidays and the rate card in Settings.
+- A client whose pool still has people can't be deleted — move or remove them first.
+
 ### Managing Team Members
 
 1. Navigate to the project's **Resources** section.

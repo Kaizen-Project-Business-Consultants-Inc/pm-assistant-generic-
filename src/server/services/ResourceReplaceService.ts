@@ -1,4 +1,5 @@
 import { databaseService } from '../database/connection';
+import { assertInProjectPool } from './poolFit';
 import { resourceRepository } from '../database/ResourceRepository';
 import { changeHistoryService } from './ChangeHistoryService';
 import { auditLedgerService } from './AuditLedgerService';
@@ -52,6 +53,7 @@ export class ResourceReplaceService {
     const [from, to] = await Promise.all([resourceRepository.findById(input.fromId), resourceRepository.findById(input.toId)]);
     if (!from || !to) throw new ResourceValidationError('That resource no longer exists. Refresh and try again.');
     if (to.isGeneric) throw new ResourceValidationError('Replace with a real person, not another generic role.');
+    await assertInProjectPool([to.id], input.scheduleId);
 
     const onPlan = await this.tasksOf(from.id, input.scheduleId);
     const wanted = input.taskIds ? new Set(input.taskIds) : null;

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
 import { type RaidType, normalizeRaidStatus, normalizeResponseStrategy, parseLevel, severityFromScore, parseRegisterDate, NOTE_FIELD_LABELS, describeWithRegisterDetails } from '../../utils/raidImport';
 import { riskService } from '../../services/RiskService';
+import { resourceService } from '../../services/ResourceService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess, checkProjectRole } from '../../middleware/requireProjectAccess';
@@ -113,6 +114,10 @@ async function raidItemGate(request: FastifyRequest, reply: FastifyReply): Promi
   const pm = await checkProjectRole(request, projectId, 'manager');
   if (pm.ok) return { item, asManager: true };
   if (item.ownerId && item.ownerId === request.user!.userId) return { item, asManager: false };
+  // assigned to a person (resource) whose login this is — e.g. a client's staff member (U8)
+  // — and only while they can still see the project (taken off its team = no more updates)
+  if (item.ownerResourceId && await resourceService.isOwnedBy(item.ownerResourceId, request.user!.userId)
+    && (await checkProjectRole(request, projectId, 'viewer')).ok) return { item, asManager: false };
   reply.status(403).send({
     error: 'not_owner',
     message: "Only the project's Manager or Owner, or the person this item is assigned to, can update it.",

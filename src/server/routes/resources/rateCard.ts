@@ -13,6 +13,8 @@ const rateSchema = z.object({
   hourlyRate: z.number({ error: 'Enter the hourly rate as a number.' }).min(0, "The hourly rate can't be negative.").max(100000),
   overtimeRate: z.number().min(0, "The overtime rate can't be negative.").max(100000).nullable().optional(),
   effectiveFrom: ymd,
+  // whose card: a client's id, or '' / missing = My resources (U8)
+  poolId: z.string().max(36).optional(),
 });
 
 /**
@@ -32,8 +34,10 @@ async function rateCardManagerOnly(request: FastifyRequest, reply: FastifyReply)
 export async function rateCardRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
-  fastify.get('/', { preHandler: [requireScope('read'), rateCardReaders] }, async () => {
-    return { rates: await rateCardService.list() };
+  fastify.get('/', { preHandler: [requireScope('read'), rateCardReaders] }, async (request) => {
+    // ?poolId=<client id> or ?poolId= (My resources); no poolId = every pool's card
+    const { poolId } = request.query as { poolId?: string };
+    return { rates: await rateCardService.list(typeof poolId === 'string' ? poolId : undefined) };
   });
 
   fastify.post('/', { preHandler: [requireScope('write'), requireFeature('resources'), rateCardManagerOnly] }, async (request, reply) => {

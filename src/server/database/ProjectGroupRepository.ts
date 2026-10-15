@@ -8,6 +8,8 @@ export interface ProjectGroup {
   color: string;
   icon: string | null;
   sortOrder: number;
+  /** The client's holiday calendar; null = the home calendar (U8) */
+  holidayCalendarId: string | null;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -20,6 +22,7 @@ function mapRow(row: any): ProjectGroup {
     color: row.color,
     icon: row.icon,
     sortOrder: row.sort_order,
+    holidayCalendarId: row.holiday_calendar_id ?? null,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

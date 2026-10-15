@@ -7,6 +7,7 @@ import { deadLetterService } from './DeadLetterService';
 import { timeEntryRepository } from '../database/TimeEntryRepository';
 import { rateCardService, ratesOn } from './RateCardService';
 import { databaseService } from '../database/connection';
+import { assertInProjectPool } from './poolFit';
 import { getRequestContext, getActorSource } from '../middleware/requestContext';
 import { hoursInWeek, calendarsFor, bookedHoursByWeek } from './weeklyLoad';
 import { type IsWorking, weekdaysOnly, mondayOf } from '../utils/workingDays';
@@ -32,6 +33,8 @@ export interface Resource {
   overtimeRateHourly: number | null;
   /** Costed from the company rate card for this resource's role (dated rates), not its own rate */
   useRateCard?: boolean;
+  /** The pool: a client's id, or null = My resources (U8) */
+  clientId?: string | null;
   resourceGroup: string | null;
   userId: string | null;
   calendarTemplateId: string | null;
@@ -141,8 +144,9 @@ export class ResourceService {
     limit = 50,
     offset = 0,
     group?: string,
+    pool?: string,
   ): Promise<{ resources: Resource[]; total: number }> {
-    return resourceRepository.findAllPaginated(limit, offset, group);
+    return resourceRepository.findAllPaginated(limit, offset, group, pool);
   }
 
   /** The company owner — the default line manager */
@@ -186,14 +190,64 @@ export class ResourceService {
         data = { ...data, lineManagerUserId: await this.companyOwnerId(), lineManagerIsDefault: true };
       }
     }
+    await this.assertPool(data.clientId);
     const resource = await resourceRepository.create(data);
     this.autoLinkUser(resource.id, resource.email).catch(() => {});
     return resource;
   }
 
+  /**
+   * Link a login to the person's existing resource (same email, a real person, no login yet).
+   * True when one was linked — then no new resource is needed.
+   */
+  async linkLoginByEmail(email: string, userId: string): Promise<boolean> {
+    const rows = await databaseService.query<{ id: string }>(
+      `SELECT id FROM resources WHERE LOWER(email) = LOWER(?) AND COALESCE(is_generic, 0) = 0
+          AND (user_id IS NULL OR user_id = ?) ORDER BY (user_id = ?) DESC, created_at LIMIT 1`, [email, userId, userId]);
+    if (!rows[0]) return false;
+    await databaseService.query('UPDATE resources SET user_id = ? WHERE id = ?', [userId, rows[0].id]);
+    return true;
+  }
+
+  /**
+   * The people a restricted login (an org viewer — e.g. a client's staff member — or a guest) may
+   * see (U8): their own record, and the people on the teams and plans of the projects they can
+   * read. Never another client's pool.
+   */
+  async visiblePeopleIds(userId: string, readable: Set<string> | 'all'): Promise<Set<string> | 'all'> {
+    if (readable === 'all') return 'all';
+    const ids = new Set<string>();
+    const own = await databaseService.query<{ id: string }>('SELECT id FROM resources WHERE user_id = ?', [userId]);
+    own.forEach(r => ids.add(r.id));
+    const projectIds = [...readable];
+    if (projectIds.length) {
+      const ph = projectIds.map(() => '?').join(',');
+      const rows = await databaseService.query<{ id: string }>(
+        `SELECT resource_id AS id FROM project_team WHERE project_id IN (${ph})
+         UNION SELECT ra.resource_id AS id FROM resource_assignments ra JOIN schedules s ON s.id = ra.schedule_id WHERE s.project_id IN (${ph})`,
+        [...projectIds, ...projectIds]);
+      rows.forEach(r => ids.add(r.id));
+    }
+    return ids;
+  }
+
+  /** Is this resource the signed-in person's own record (its login)? */
+  async isOwnedBy(resourceId: string, userId: string): Promise<boolean> {
+    const rows = await databaseService.query<{ user_id: string | null }>('SELECT user_id FROM resources WHERE id = ?', [resourceId]);
+    return !!rows[0]?.user_id && rows[0].user_id === userId;
+  }
+
+  /** A pool is a client that exists (U8); null/undefined = My resources */
+  private async assertPool(clientId: string | null | undefined): Promise<void> {
+    if (!clientId) return;
+    const rows = await databaseService.query('SELECT id FROM project_groups WHERE id = ?', [clientId]);
+    if (!rows.length) throw new ResourceValidationError("That client doesn't exist — pick another, or My resources.");
+  }
+
   async updateResource(id: string, data: Partial<Omit<Resource, 'id'>>): Promise<Resource | null> {
     const existing = await resourceRepository.findById(id);
     if (!existing) return null;
+    if (data.clientId !== undefined) await this.assertPool(data.clientId);
 
     // Whether a resource is a person or a generic role is fixed when it's created
     const { isGeneric: _ignored, ...rest } = data;
@@ -220,8 +274,13 @@ export class ResourceService {
     }
 
     // A different rate (or role, for the rate card) re-prices the plans they're on
-    if (['costRateHourly', 'overtimeRateHourly', 'useRateCard', 'role', 'capacityHoursPerWeek'].some(k => k in data && (data as any)[k] !== (existing as any)[k])) {
+    if (['costRateHourly', 'overtimeRateHourly', 'useRateCard', 'role', 'capacityHoursPerWeek', 'clientId'].some(k => k in data && (data as any)[k] !== (existing as any)[k])) {
       personRatesChanged(id);
+    }
+    // moved to another client's pool: off the teams of projects outside it (U8)
+    if ('clientId' in data && (data.clientId ?? null) !== (existing.clientId ?? null)) {
+      const { projectTeamService } = await import('./ProjectTeamService');
+      await projectTeamService.dropPersonOutsidePool(id);
     }
 
     auditLedgerService.append({
@@ -238,11 +297,19 @@ export class ResourceService {
   }
 
   async deleteResource(id: string): Promise<boolean> {
+    await this.leaveTeams([id]);
     return resourceRepository.deleteResource(id);
   }
 
   async deleteResources(ids: string[]): Promise<number> {
+    await this.leaveTeams(ids);
     return resourceRepository.deleteResources(ids);
+  }
+
+  /** Deleted people leave every project team, with the viewing the team gave them (U8) */
+  private async leaveTeams(ids: string[]): Promise<void> {
+    const { projectTeamService } = await import('./ProjectTeamService');
+    await projectTeamService.dropPeople(ids);
   }
 
   // --- Skill-based search ---
@@ -385,6 +452,7 @@ export class ResourceService {
   }
 
   async createAssignment(data: Omit<ResourceAssignment, 'id'>): Promise<{ assignment: ResourceAssignment; warnings: string[] }> {
+    await assertInProjectPool([data.resourceId], data.scheduleId);
     const { warnings } = await this.checkAssignmentConflicts(data);
 
     const assignment = await resourceRepository.createAssignment(data);

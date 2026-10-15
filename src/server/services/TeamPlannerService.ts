@@ -1,4 +1,5 @@
 import { databaseService } from '../database/connection';
+import { assertInProjectPool } from './poolFit';
 import { resourceRepository } from '../database/ResourceRepository';
 import { scheduleService } from './ScheduleService';
 import { resourceAvailabilityService } from './ResourceAvailabilityService';
@@ -313,6 +314,7 @@ export class TeamPlannerService {
       if (to.isGeneric) throw new ResourceValidationError('Give work to a real person. A generic role only holds work nobody has yet.');
       if (to.isActive === false) throw new ResourceValidationError(`${to.name} is no longer active, so they can't take on work.`);
       if (onTask.some(a => a.resourceId === toId)) throw new ResourceValidationError(`${to.name} is already on this task.`);
+      await assertInProjectPool([to.id], task.schedule_id);
     }
 
     // Dates: the same working-day length, starting N weeks later (on a working day)
@@ -402,7 +404,7 @@ export class TeamPlannerService {
     let cost: MovePreview['cost'] = null;
     if (reassign && to) {
       const card = await rateCardService.listSafe();
-      const priced = (r: any) => ({ role: r.role, costRateHourly: r.costRateHourly ?? null, overtimeRateHourly: r.overtimeRateHourly ?? null, useRateCard: !!r.useRateCard || !!r.isGeneric });
+      const priced = (r: any) => ({ role: r.role, costRateHourly: r.costRateHourly ?? null, overtimeRateHourly: r.overtimeRateHourly ?? null, useRateCard: !!r.useRateCard || !!r.isGeneric, clientId: r.clientId ?? null });
       const rows = fromId ? onTask.filter(a => a.resourceId === fromId) : [{ hoursPerWeek: to.capacityHoursPerWeek, startDate: task.start_date, endDate: task.end_date } as ResourceAssignment];
       const value = (r: any) => rows.reduce((s, a) => s + (a.hoursPerWeek / 5) * workingDaysBetween(a.startDate, a.endDate, isWorking) * (ratesOn(priced(r), a.startDate.slice(0, 10), card).standard ?? 0), 0);
       const now = task.budget_allocated != null ? Number(task.budget_allocated) : 0;

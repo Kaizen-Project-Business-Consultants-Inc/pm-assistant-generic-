@@ -22,6 +22,7 @@ import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
 import { taskRepository } from '../../database/TaskRepository';
 import { isUnderItself, PARENT_LOOP_MESSAGE } from '../../utils/parentLoop';
 import { findDependencyCycle } from '../../utils/dependencyCycle';
+import { outsidePool, PoolMismatchError } from '../../services/poolFit';
 const FIELD_LABEL: Record<string, string> = {
   name: 'name', startDate: 'start', endDate: 'finish', estimatedDays: 'duration', progressPercentage: 'progress',
   status: 'status', priority: 'priority', assignedTo: 'owner', dependency: 'predecessor', dependencyType: 'link type',
@@ -298,6 +299,9 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const body = bulkCreateSchema.parse(request.body);
       const loop = batchLoopRefusal(body.tasks);
       if (loop) return reply.status(400).send({ error: 'Validation error', message: loop });
+      // only this project's client's people and My resources (U8)
+      const misfits = await outsidePool(body.tasks.map(t => t.assignedTo), body.scheduleId);
+      if (misfits.size) return reply.status(400).send({ error: 'Validation error', message: new PoolMismatchError([...misfits.values()]).message });
       // A parent given by id must be a task in this same plan (2026-10-10 audit: any id was written)
       const outsideParents = [...new Set(body.tasks
         .filter((t, i) => t.parentTaskId && batchDependencyIndex(t.parentTaskId, i, body.tasks) === undefined)
@@ -525,6 +529,16 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       body.updates = body.updates.filter(u => {
         if (!u.id || planOfTask.get(u.id) === u.scheduleId) return true;
         failed.push({ id: u.id, error: 'Task not found in this schedule' });
+        return false;
+      });
+      // An assignee from another client's pool fails on its own (U8): one look-up per plan
+      const assigning = groupBy(body.updates.filter(u => u.assignedTo && u.scheduleId), u => u.scheduleId);
+      const misfitsOf = new Map(await Promise.all([...assigning].map(async ([sid, ups]) =>
+        [sid, await outsidePool(ups.map(u => u.assignedTo), sid)] as const)));
+      body.updates = body.updates.filter(u => {
+        const name = u.assignedTo ? misfitsOf.get(u.scheduleId)?.get(u.assignedTo) : undefined;
+        if (!name) return true;
+        failed.push({ id: u.id, error: new PoolMismatchError([name]).message });
         return false;
       });
       if (body.updates.length === 0) return { succeeded, failed };

@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { taskDatesOf, moveBookingsWithTasks } from '../database/bookingDates';
 import { databaseService } from '../database/connection';
+import { assertInProjectPool } from './poolFit';
 import { syncDependencyMirror } from '../database/dependencyMirror';
 import { scheduleRepository } from '../database/ScheduleRepository';
 import { taskRepository, TaskRepository } from '../database/TaskRepository';
@@ -725,6 +726,8 @@ export class ScheduleService {
   // -------------------------------------------------------------------------
 
   async createTask(data: CreateTaskData): Promise<Task> {
+    // only this project's client's people and My resources (U8) — checked before anything is written
+    await assertInProjectPool([data.assignedTo, ...(data.assignments ?? []).map(a => a.resourceId)], data.scheduleId);
     const id = uuidv4();
     const toDateStr = TaskRepository.toDateStr;
 
@@ -945,6 +948,14 @@ export class ScheduleService {
   async updateTask(id: string, data: Partial<Omit<Task, 'id' | 'scheduleId' | 'createdAt' | 'updatedAt'>>): Promise<Task | null> {
     const oldTask = await this.findTaskById(id);
     if (!oldTask) return null;
+    // only this project's client's people and My resources (U8) — checked before anything is
+    // written, and only for people being ADDED: those already on the task (e.g. from before the
+    // project moved client) don't block an edit of its name or dates
+    const newPeople = [data.assignedTo, ...(((data as any).assignments ?? []) as Array<{ resourceId: string }>).map(a => a.resourceId)];
+    if (newPeople.some(Boolean)) {
+      const already = new Set<string>([oldTask.assignedTo ?? '', ...(await taskAssignmentService.getForTask(id)).map(a => a.resourceId)]);
+      await assertInProjectPool(newPeople.filter(p => p && !already.has(p)), oldTask.scheduleId);
+    }
 
     if (data.dependencies !== undefined) {
       const deps = data.dependencies;

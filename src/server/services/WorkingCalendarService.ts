@@ -1,5 +1,5 @@
 import { databaseService } from '../database/connection';
-import { calendarService, CalendarService, type CalendarSpec, type CompanyHoliday } from './CalendarService';
+import { HOME_CALENDAR, calendarService, CalendarService, type CalendarSpec, type CompanyHoliday } from './CalendarService';
 import { scheduleService } from './ScheduleService';
 import { scheduleRecomputeService, type DateDelta, type RescheduleReason } from './ScheduleRecomputeService';
 import { changeHistoryService } from './ChangeHistoryService';
@@ -21,9 +21,10 @@ export type ProjectCalendarChange =
   | { add: { date: string; type: 'holiday' | 'working'; name?: string } }
   | { removeId: string };
 
+/** A change to one holiday calendar (U8: 'home' = Company holidays when calendarId is left out) */
 export type CompanyHolidayChange =
-  | { add: { date: string; name?: string } }
-  | { removeId: string };
+  | { calendarId?: string; add: { date: string; name?: string } }
+  | { calendarId?: string; removeId: string };
 
 export interface CalendarMove extends DateDelta { projectId: string; scheduleId: string; scheduleName: string }
 
@@ -58,7 +59,9 @@ export class WorkingCalendarService {
   async get(projectId: string) {
     const calendar = await calendarService.getOrCreateDefault(projectId);
     const exceptions = await calendarService.getExceptions(calendar.id);
-    const companyHolidays = await calendarService.listCompanyHolidays().catch(() => [] as CompanyHoliday[]);
+    // the holidays of the project's client's calendar (U8)
+    const calendarId = await calendarService.calendarIdForProject(projectId).catch(() => HOME_CALENDAR);
+    const companyHolidays = await calendarService.listCompanyHolidays(calendarId).catch(() => [] as CompanyHoliday[]);
     return {
       workingDays: calendar.workingDays,
       exceptions: exceptions.map(e => ({ id: e.id, date: e.exceptionDate, type: e.type, name: e.name ?? '' })),
@@ -142,16 +145,22 @@ export class WorkingCalendarService {
     return this.summarise(moves, moves.length ? 1 : 0);
   }
 
-  /** Active projects, for company-wide changes */
-  private async activeProjectIds(): Promise<string[]> {
-    const rows = await databaseService.query<any>('SELECT id FROM projects WHERE archived_at IS NULL');
+  /** Active projects that use a holiday calendar (their client's, or the home one) */
+  private async activeProjectIds(calendarId: string): Promise<string[]> {
+    const rows = await databaseService.query<any>(
+      `SELECT p.id FROM projects p LEFT JOIN project_groups g ON g.id = p.group_id
+        WHERE p.archived_at IS NULL AND COALESCE(g.holiday_calendar_id, ?) = ?`, [HOME_CALENDAR, calendarId]);
     return rows.map((r: any) => r.id);
   }
 
   private async companyRun(change: CompanyHolidayChange, dryRun: boolean, userId: string | null): Promise<CalendarPreview> {
     let date: string;
     let label: string;
-    const current = await calendarService.listCompanyHolidays();
+    const calendarId = change.calendarId || HOME_CALENDAR;
+    if (!(await calendarService.listCalendars()).some(c => c.id === calendarId)) {
+      throw new CalendarChangeError('That holiday calendar no longer exists — refresh and try again');
+    }
+    const current = await calendarService.listCompanyHolidays(calendarId);
     if ('add' in change) {
       date = change.add.date;
       label = `Company holiday added: ${fmt(date)}${change.add.name ? ` (${change.add.name})` : ''}`;
@@ -162,12 +171,12 @@ export class WorkingCalendarService {
       label = `Company holiday removed: ${fmt(date)}`;
     }
     if (!dryRun) {
-      if ('add' in change) await calendarService.addCompanyHoliday(date, change.add.name, userId);
+      if ('add' in change) await calendarService.addCompanyHoliday(date, change.add.name, userId, calendarId);
       else await calendarService.removeCompanyHoliday(change.removeId);
     }
     const moves: CalendarMove[] = [];
     let projects = 0;
-    for (const projectId of await this.activeProjectIds()) {
+    for (const projectId of await this.activeProjectIds(calendarId)) {
       // Before/after for this project, whichever way round the saved state now is
       // eslint-disable-next-line no-await-in-loop -- a company holiday change (rare, admin) re-fits each active project on its own calendar, one after another
       const spec = await calendarService.calendarSpec(projectId);
@@ -180,6 +189,47 @@ export class WorkingCalendarService {
       moves.push(...m);
     }
     return this.summarise(moves, projects);
+  }
+
+  /**
+   * A client switches holiday calendar (U8): its active projects' dates are re-fitted from the
+   * old calendar's holidays to the new one's. Preview first (dryRun), then apply.
+   */
+  async clientCalendarRun(clientId: string, calendarId: string, dryRun: boolean): Promise<CalendarPreview> {
+    const rows = await databaseService.query<any>('SELECT holiday_calendar_id FROM project_groups WHERE id = ?', [clientId]);
+    if (!rows.length) throw new CalendarChangeError('That client no longer exists — refresh and try again');
+    const known = await calendarService.listCalendars();
+    if (!known.some(c => c.id === calendarId)) throw new CalendarChangeError('That calendar no longer exists — refresh and try again');
+    const fromId = rows[0].holiday_calendar_id || HOME_CALENDAR;
+    const [fromDays, toDays] = await Promise.all([calendarService.listCompanyHolidays(fromId), calendarService.listCompanyHolidays(calendarId)]);
+    const label = `Holiday calendar changed to ${known.find(c => c.id === calendarId)!.name}`;
+    if (!dryRun) await databaseService.query('UPDATE project_groups SET holiday_calendar_id = ? WHERE id = ?', [calendarId === HOME_CALENDAR ? null : calendarId, clientId]);
+    const projectIds = (await databaseService.query<any>('SELECT id FROM projects WHERE archived_at IS NULL AND group_id = ?', [clientId])).map((r: any) => r.id);
+    const moves: CalendarMove[] = [];
+    let projects = 0;
+    for (const projectId of projectIds) {
+      // eslint-disable-next-line no-await-in-loop -- a client's calendar change (rare) re-fits each of its projects on its own calendar
+      const spec = await calendarService.calendarSpec(projectId);
+      const before = cloneSpec(spec); before.company = new Set(fromDays.map(h => h.date));
+      const after = cloneSpec(spec); after.company = new Set(toDays.map(h => h.date));
+      // eslint-disable-next-line no-await-in-loop -- as above
+      const m = await this.refit(projectId, checker(before), checker(after), { dryRun, reason: 'calendar_change', label });
+      if (m.length) projects++;
+      moves.push(...m);
+    }
+    return this.summarise(moves, projects);
+  }
+
+  /**
+   * A project moved to another client (U8): if that client uses a different holiday calendar, its
+   * dates are re-fitted from the old calendar's holidays to the new one's. `before` is the
+   * project's calendar read before the move.
+   */
+  async refitAfterClientMove(projectId: string, before: CalendarSpec): Promise<void> {
+    const after = await calendarService.calendarSpec(projectId);
+    const same = before.company.size === after.company.size && [...before.company].every(d => after.company.has(d));
+    if (same) return;
+    await this.refit(projectId, checker(before), checker(after), { dryRun: false, reason: 'calendar_change', label: 'Moved to another client with a different holiday calendar' });
   }
 
   previewCompanyChange(change: CompanyHolidayChange): Promise<CalendarPreview> {

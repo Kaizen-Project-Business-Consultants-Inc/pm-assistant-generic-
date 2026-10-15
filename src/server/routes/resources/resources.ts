@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { parse as csvParse } from 'csv-parse/sync';
 import { resourceService, normalizeSkills, ResourceValidationError } from '../../services/ResourceService';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
+import { PoolMismatchError } from '../../services/poolFit';
 import { authMiddleware } from '../../middleware/auth';
 import { maySeePayRates, maySetPayRates, peopleFor, withoutPay, withoutPayInput } from '../../utils/payRates';
 import { requireScope } from '../../middleware/requireScope';
@@ -56,6 +57,8 @@ export const createResourceSchema = z.object({
   overtimeRateHourly: z.number().min(0).nullable().default(null),
   useRateCard: z.boolean().default(false),
   resourceGroup: z.string().max(100).nullable().default(null),
+  // the pool: a client's id, or null = My resources (U8)
+  clientId: z.string().max(36).nullable().default(null),
   userId: z.string().uuid().nullable().default(null),
   calendarTemplateId: z.string().uuid().nullable().default(null),
 });
@@ -73,6 +76,7 @@ export const updateResourceSchema = createResourceSchema.partial().extend({
   overtimeRateHourly: z.number().min(0).nullable().optional(),
   useRateCard: z.boolean().optional(),
   resourceGroup: z.string().max(100).nullable().optional(),
+  clientId: z.string().max(36).nullable().optional(),
   userId: z.string().uuid().nullable().optional(),
   calendarTemplateId: z.string().uuid().nullable().optional(),
 });
@@ -185,24 +189,44 @@ const plannerMoveSchema = z.object({
   weeks: z.number().int().min(-52).max(52),
 });
 
+/**
+ * An org viewer (e.g. a client's staff member who signs in) or a guest sees only the people on
+ * the projects they can read, and themselves — never the whole company, never another client's
+ * pool (U8, 2026-10-14). Null = no limit (everyone else in the company).
+ */
+async function restrictedPeople(request: FastifyRequest): Promise<Set<string> | null> {
+  const user = request.user!;
+  if (user.role !== 'viewer' && !user.isGuest) return null;
+  const visible = await resourceService.visiblePeopleIds(user.userId, await readableProjectIds(user));
+  return visible === 'all' ? null : visible;
+}
+
 export async function resourceRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
   // GET /resources - List resources (paginated, optional group filter)
   fastify.get('/', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
-    const { limit, offset, group } = request.query as { limit?: string; offset?: string; group?: string };
+    // ?pool=<client id> | mine (My resources) — one client's people never show in another's list (U8)
+    const { limit, offset, group, pool } = request.query as { limit?: string; offset?: string; group?: string; pool?: string };
+    const visible = await restrictedPeople(request);
+    if (visible) {
+      const people = visible.size ? await resourceService.findResourcesByIds([...visible]) : [];
+      return { resources: await peopleFor(request, people), total: people.length };
+    }
     const result = await resourceService.findAllResourcesPaginated(
       // text or negative values fall back to the defaults (a negative offset reached SQL — 2026-10-07)
       clampPagination({ limit, offset }).limit,
       clampPagination({ limit, offset }).offset,
       group || undefined,
+      pool || undefined,
     );
     // pay rates for cost managers only; emails not for guests (2026-10-09 audit M11)
     return { ...result, resources: await peopleFor(request, result.resources) };
   });
 
   // GET /resources/skills — Distinct skill names for autocomplete
-  fastify.get('/skills', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/skills', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
+    if (await restrictedPeople(request)) return { skills: [] }; // the company's skill list isn't theirs to see
     const skills = await resourceService.findAllDistinctSkillNames();
     return { skills };
   });
@@ -212,7 +236,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
     const { skill, minLevel } = request.query as { skill?: string; minLevel?: string };
     if (!skill || !skill.trim()) return reply.status(400).send({ error: 'skill query parameter is required' });
     const min = minLevel ? Math.min(Math.max(parseInt(minLevel) || 1, 1), 5) : undefined;
-    const resources = await peopleFor(request, await resourceService.findBySkill(skill.trim(), min));
+    const visible = await restrictedPeople(request);
+    const found = await resourceService.findBySkill(skill.trim(), min);
+    const resources = await peopleFor(request, visible ? found.filter(r => visible.has(r.id)) : found);
     return { resources };
   });
 
@@ -373,8 +399,10 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /resources/:id/delete-impact — Preview what will be affected by deleting this resource
-  fastify.get('/:id/delete-impact', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/:id/delete-impact', { preHandler: [requireScope('write')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    // a preview for whoever can delete people — never for a client's staff member or a guest (U8)
+    if (await restrictedPeople(request)) return reply.status(404).send({ error: 'Resource not found' });
     const resource = await resourceService.findResourceById(id);
     if (!resource) return reply.status(404).send({ error: 'Resource not found' });
 
@@ -465,6 +493,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
       const { assignment, warnings } = await resourceService.createAssignment(data);
       return reply.status(201).send({ assignment, warnings });
     } catch (error) {
+      if (error instanceof PoolMismatchError) return reply.status(400).send({ error: 'Not assigned', message: error.message });
       logger.error('Create assignment error', { error });
       return reply.status(400).send({ error: 'Invalid assignment data' });
     }
@@ -480,7 +509,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
   // GET /resources/workload - Global cross-project workload (#2)
   fastify.get('/workload', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
-    const workload = await resourceService.computeGlobalWorkload();
+    const seen = await restrictedPeople(request);
+    const workload = (await resourceService.computeGlobalWorkload()).filter(w => !seen || seen.has(w.resourceId));
     const totalProjectCost = Math.round(workload.reduce((sum, w) => sum + w.totalCost, 0) * 100) / 100;
     // Hours across all projects are shown to everyone (how busy is this person?); the money is
     // other projects' business — admin/PMO/executive only
@@ -534,8 +564,10 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /resources/:id/utilization-history (#6)
-  fastify.get('/:id/utilization-history', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/:id/utilization-history', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
+    const seen = await restrictedPeople(request);
+    if (seen && !seen.has(id)) return reply.status(404).send({ error: 'Resource not found' });
     const { weeks } = request.query as { weeks?: string };
     const numWeeks = Math.min(Math.max(Number(weeks) || 12, 4), 52);
     return resourceService.computeUtilizationHistory(id, numWeeks);
@@ -604,6 +636,7 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
       return reply.status(201).send({ assignment, warnings });
     } catch (error) {
+      if (error instanceof PoolMismatchError) return reply.status(400).send({ error: 'Not assigned', message: error.message });
       logger.error('Quick-assign error', { error });
       return reply.status(400).send({ error: 'Invalid quick-assign data' });
     }
@@ -680,7 +713,8 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   // GET /resources/:id/profile — Resource profile with assignments (#3)
   fastify.get('/:id/profile', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
-    const resource = await resourceService.findResourceById(id);
+    const seen = await restrictedPeople(request);
+    const resource = seen && !seen.has(id) ? null : await resourceService.findResourceById(id);
     if (!resource) return reply.status(404).send({ error: 'Resource not found' });
 
     const assignments = await resourceService.findEffectiveAssignments({ resourceId: id });
@@ -746,7 +780,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
   });
 
   // GET /resources/capacity-by-role — Capacity planning by role (#5)
-  fastify.get('/capacity-by-role', { preHandler: [requireScope('read')] }, async (_request: FastifyRequest, _reply: FastifyReply) => {
+  fastify.get('/capacity-by-role', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, reply: FastifyReply) => {
+    // company-wide capacity: not for a client's staff or a guest (U8)
+    if (await restrictedPeople(request)) return reply.status(403).send({ error: 'Forbidden', message: "Company capacity isn't shown to viewers or guests." });
     // People only — a generic role adds no capacity (its work is unfilled demand), nor do the
     // sample project's example people
     const resources = (await resourceService.findAllResources()).filter((r) => !r.isGeneric && !isExamplePerson(r));
@@ -810,7 +846,9 @@ export async function resourceRoutes(fastify: FastifyInstance) {
 
   // GET /resources/project-allocations — Enhancement A: project allocations for all resources
   fastify.get('/project-allocations', { preHandler: [requireScope('read')] }, async (request: FastifyRequest, _reply: FastifyReply) => {
-    const allocations = await taskAssignmentService.getProjectAllocationsForAllResources();
+    const seen = await restrictedPeople(request);
+    const all = await taskAssignmentService.getProjectAllocationsForAllResources();
+    const allocations = seen ? Object.fromEntries(Object.entries(all).filter(([rid]) => seen.has(rid))) : all;
     // Other projects' names are merged into one "Other projects" line (hours still add up)
     const readable = await readableProjectIds(request.user!);
     if (readable === 'all') return { allocations };

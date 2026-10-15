@@ -114,6 +114,16 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
     return result.affectedRows > 0;
   }
 
+  /** Remove these people's Viewer memberships (only Viewer: a raised role stays) */
+  async deleteViewers(pairs: Array<{ projectId: string; userId: string }>): Promise<void> {
+    if (pairs.length === 0) return;
+    await this.queryRaw(
+      `DELETE FROM project_members WHERE role = 'viewer' AND (project_id, user_id) IN (${pairs.map(() => '(?, ?)').join(',')})`,
+      pairs.flatMap(p => [p.projectId, p.userId]),
+    );
+    forgetReadableProjects();
+  }
+
   async findByEmail(projectId: string, email: string): Promise<ProjectMember | undefined> {
     const rows = await this.queryRaw(
       'SELECT * FROM project_members WHERE project_id = ? AND LOWER(email) = LOWER(?)',

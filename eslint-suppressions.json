@@ -679,11 +679,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/schedule/ResourcePickerDropdown.tsx": {
-    "react-hooks/exhaustive-deps": {
-      "count": 2
-    }
-  },
   "src/client/src/components/schedule/ScheduleHistoryPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 5

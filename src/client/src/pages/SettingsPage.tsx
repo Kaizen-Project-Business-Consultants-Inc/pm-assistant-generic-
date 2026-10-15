@@ -31,6 +31,7 @@ import { RateCardTab } from './settings/RateCardTab';
 import { canSeePayRates } from '../utils/rateCard';
 import { SupportVisitsTab } from './settings/SupportVisitsTab';
 import { SampleProjectTab } from './settings/SampleProjectTab';
+import { usesClientPools } from '../utils/clientPools';
 
 type Tab = 'profile' | 'team' | 'holidays' | 'sample-project' | 'rate-card' | 'support-visits' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
 
@@ -70,8 +71,11 @@ export const SettingsPage: React.FC = () => {
   const canManageSample = !!user && !user.isGuest && (user.organization?.isOwner === true || ['admin', 'pmo'].includes(user.role));
   // Webhooks: making, changing and removing one needs a role that may change data (server: 'write')
   const canUseWebhooks = canChangeData(user);
+  // Consultant plans manage rates and holidays per client in Resources (U8); logins stay in Team here
+  const pools = usesClientPools(user);
   const tabs = ALL_TABS.filter(t =>
-    t.id === 'support-visits' ? canSeeSupportVisits
+    pools && (t.id === 'holidays' || t.id === 'rate-card') ? false
+      : t.id === 'support-visits' ? canSeeSupportVisits
       : t.id === 'webhooks' ? canUseWebhooks
       : t.id === 'sample-project' ? canManageSample
       : t.id === 'rate-card' ? seesRateCard
@@ -117,9 +121,9 @@ export const SettingsPage: React.FC = () => {
       <div id={`settings-panel-${activeTab}`} role="tabpanel" aria-labelledby={`settings-tab-${activeTab}`}>
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'team' && canManageTeam && <TeamTab />}
-        {activeTab === 'holidays' && <HolidaysTab />}
+        {activeTab === 'holidays' && !pools && <HolidaysTab />}
         {activeTab === 'sample-project' && canManageSample && <SampleProjectTab />}
-        {activeTab === 'rate-card' && seesRateCard && <RateCardTab canChange={changesRateCard} />}
+        {activeTab === 'rate-card' && seesRateCard && !pools && <RateCardTab canChange={changesRateCard} />}
         {activeTab === 'support-visits' && canSeeSupportVisits && <SupportVisitsTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'display' && <DisplayTab />}

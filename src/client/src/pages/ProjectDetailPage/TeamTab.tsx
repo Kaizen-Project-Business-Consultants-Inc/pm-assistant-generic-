@@ -12,6 +12,9 @@ import { ResourceUsageView } from '../../components/resources/ResourceUsageView'
 import { PeopleWithoutLogin } from '../../components/resources/PeopleWithoutLogin';
 import { UnfilledDemand, type DemandRow } from '../../components/resources/UnfilledDemand';
 import { ReplaceResourceDialog } from '../../components/resources/ReplaceResourceDialog';
+import { ProjectTeamPicker } from '../../components/project/ProjectTeamPicker';
+import { usesClientPools } from '../../utils/clientPools';
+import { useAuthStore } from '../../stores/authStore';
 
 function SectionSpinner() {
   return (
@@ -103,6 +106,7 @@ function ResourceOptimizerSection({ projectId }: { projectId: string }) {
 }
 
 export function TeamTab({ projectId }: { projectId: string }) {
+  const pools = usesClientPools(useAuthStore(s => s.user));
   const queryClient = useQueryClient();
 
   const { data: workloadData, isLoading: workloadLoading } = useQuery({
@@ -180,6 +184,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-6">
+      {/* The project team from the client's pool and My resources (consultant plans, U8) */}
+      {pools && <ProjectTeamPicker projectId={projectId} />}
+
       {/* Team Members Section */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
         <div className="flex items-center justify-between mb-4">

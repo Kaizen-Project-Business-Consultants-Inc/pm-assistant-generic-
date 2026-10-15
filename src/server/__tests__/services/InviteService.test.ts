@@ -57,6 +57,8 @@ vi.mock('../../services/PricingConfigService', () => ({
 vi.mock('../../services/ResourceService', () => ({
   resourceService: {
     createResource: vi.fn().mockResolvedValue(undefined),
+    // no existing record with that email: a new one is made (U8 links an existing one instead)
+    linkLoginByEmail: vi.fn().mockResolvedValue(false),
   },
 }));
 

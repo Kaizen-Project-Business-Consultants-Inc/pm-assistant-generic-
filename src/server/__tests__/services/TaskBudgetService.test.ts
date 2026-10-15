@@ -15,6 +15,7 @@ vi.mock('../../services/RateCardService', async () => {
   const real = await vi.importActual<any>('../../services/RateCardService');
   return { ratesOn: real.ratesOn, rateCardService: { listSafe: async () => [
     { id: 'rc1', role: 'Developer', hourlyRate: 70, overtimeRate: null, effectiveFrom: '2026-01-01' },
+    { id: 'rc2', poolId: 'acme', role: 'Developer', hourlyRate: 100, overtimeRate: null, effectiveFrom: '2026-01-01' },
   ] } };
 });
 const planChanged = vi.fn();
@@ -63,6 +64,22 @@ describe('TaskBudgetService — budget = planned hours × rate, never typed', ()
   it("prices each person's planned hours at their rate; generic roles at the rate card for their role", async () => {
     await taskBudgetService.recalcSchedule('s1');
     expect(budgetOf('t-api')).toBe(2000);
+    expect(budgetOf('t-gen')).toBe(2800);
+  });
+
+  it("on a client's project a generic role is costed on that client's card (U8); with no rate there, on My resources' card", async () => {
+    const onClient = (client: string) => query.mockImplementation((sql: string) => {
+      if (sql.includes('FROM tasks WHERE schedule_id')) return Promise.resolve(tasks);
+      if (sql.includes('FROM resources WHERE id IN')) return Promise.resolve(people);
+      if (sql.includes('SELECT p.group_id FROM schedules')) return Promise.resolve([{ group_id: client }]);
+      return Promise.resolve([]);
+    });
+    onClient('acme');
+    await taskBudgetService.recalcSchedule('s1');
+    expect(budgetOf('t-gen')).toBe(4000); // 40 h × $100 (Acme's card)
+    expect(budgetOf('t-api')).toBe(2000); // a real person keeps their own rate
+    query.mockClear(); onClient('globex'); // Globex's card has no Developer rate
+    await taskBudgetService.recalcSchedule('s1');
     expect(budgetOf('t-gen')).toBe(2800);
   });
 

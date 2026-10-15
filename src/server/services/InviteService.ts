@@ -137,8 +137,12 @@ export class InviteService {
       const user = await userService.findById(userId);
       const orgForResource = org || await organizationRepository.findById(invite.organizationId);
       if (orgForResource?.dbName && user) {
-        await runWithTenantContext(orgForResource.dbName, invite.organizationId, () =>
-          resourceService.createResource({
+        await runWithTenantContext(orgForResource.dbName, invite.organizationId, async () => {
+          // The person may already be a resource — e.g. invited from Resources ("Give login"):
+          // link that record instead of making a second one (it kept the old one unlinked, U8)
+          const linked = await resourceService.linkLoginByEmail(user.email, userId);
+          if (linked) return;
+          await resourceService.createResource({
             name: user.fullName || user.username || user.email.split('@')[0],
             role: invite.role,
             email: user.email,
@@ -150,8 +154,8 @@ export class InviteService {
             resourceGroup: null,
             userId,
             calendarTemplateId: null,
-          }),
-        );
+          });
+        });
       }
     } catch (resErr) {
       logger.warn('Failed to create resource for invited user', { userId, error: resErr });

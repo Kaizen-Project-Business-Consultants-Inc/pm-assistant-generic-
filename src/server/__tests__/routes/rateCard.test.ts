@@ -100,9 +100,10 @@ describe('rate card routes', () => {
       sql.startsWith('SELECT * FROM rate_card WHERE id') ? [{ id: 'n', role: 'Developer', hourly_rate: '100.00', overtime_rate: null, effective_from: '2026-10-01' }] : []);
     const res = await app.inject({ method: 'POST', url: '/api/v1/rate-card', payload: { role: ' Developer ', hourlyRate: 100, effectiveFrom: '2026-10-01' } });
     expect(res.statusCode).toBe(201);
-    expect(res.json().rate).toEqual({ id: 'n', role: 'Developer', hourlyRate: 100, overtimeRate: null, effectiveFrom: '2026-10-01' });
+    // poolId '' = My resources' card (U8)
+    expect(res.json().rate).toEqual({ id: 'n', poolId: '', role: 'Developer', hourlyRate: 100, overtimeRate: null, effectiveFrom: '2026-10-01' });
     const insert = db.query.mock.calls.find(c => String(c[0]).startsWith('INSERT'))!;
-    expect(insert[1].slice(1, 5)).toEqual(['Developer', 100, null, '2026-10-01']);
+    expect(insert[1].slice(1, 6)).toEqual(['', 'Developer', 100, null, '2026-10-01']);
   });
 
   it('a missing role or date says what is missing', async () => {
@@ -117,7 +118,7 @@ describe('rate card routes', () => {
 
   it('a second rate for the same role and start date is refused with a clear message', async () => {
     db.query.mockImplementation(async (sql: string) =>
-      sql.startsWith('SELECT * FROM rate_card ORDER') ? [{ id: 'a', role: 'Developer', hourly_rate: 95, overtime_rate: null, effective_from: '2026-10-01' }] : []);
+      sql.startsWith('SELECT * FROM rate_card WHERE pool_id') ? [{ id: 'a', pool_id: '', role: 'Developer', hourly_rate: 95, overtime_rate: null, effective_from: '2026-10-01' }] : []);
     const res = await app.inject({ method: 'POST', url: '/api/v1/rate-card', payload: { role: 'developer', hourlyRate: 100, effectiveFrom: '2026-10-01' } });
     expect(res.statusCode).toBe(409);
     expect(res.json().message).toMatch(/already has a rate starting 2026-10-01/);

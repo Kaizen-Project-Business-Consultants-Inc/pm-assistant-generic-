@@ -5,7 +5,9 @@ import { Building2, Folder } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ProjectGroupManager } from '../../components/projects/ProjectGroupManager';
 import { useCanManageClients } from '../../hooks/useCanManageClients';
-import { routeTo } from '../../routes';
+import { routeTo, ROUTES } from '../../routes';
+import { usesClientPools } from '../../utils/clientPools';
+import { useAuthStore } from '../../stores/authStore';
 
 interface Client {
   id: string;
@@ -20,6 +22,7 @@ const CLOSED_STATUSES = new Set(['completed', 'cancelled']);
  * they get reports. From here: a client's risks & issues across its projects, and its client report.
  */
 export function ClientsPage() {
+  const pools = usesClientPools(useAuthStore(st => st.user));
   const canManageClients = useCanManageClients();
   const queryClient = useQueryClient();
   const [managerOpen, setManagerOpen] = useState(false);
@@ -90,6 +93,12 @@ export function ClientsPage() {
                   {n} live project{n !== 1 ? 's' : ''}
                 </span>
                 <span className="ml-auto flex items-center gap-4">
+                  {pools && (
+                    // the client's own people, rate card and holidays (U8)
+                    <Link to={`${ROUTES.resources}?pool=${encodeURIComponent(c.id)}`} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                      People, rates &amp; holidays
+                    </Link>
+                  )}
                   <Link to={routeTo.clientRaid(c.id)} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
                     Risks &amp; issues
                   </Link>

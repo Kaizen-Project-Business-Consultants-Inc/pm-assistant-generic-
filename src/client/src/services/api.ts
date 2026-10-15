@@ -38,7 +38,7 @@ export type {
   CompanyHolidayChange,
   CalendarChangePreview,
 } from './apiAreas/scheduling';
-export type { RateCardEntry, RateInput } from './apiAreas/resources';
+export type { RateCardEntry, RateInput, ProjectTeamPool, TeamPerson } from './apiAreas/resources';
 
 /** Every area, in the order their methods appeared in the original single-file ApiService. */
 export const API_AREAS = [

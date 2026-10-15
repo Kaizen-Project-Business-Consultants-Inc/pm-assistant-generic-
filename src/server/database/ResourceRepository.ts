@@ -32,6 +32,8 @@ function rowToResource(row: any): Resource {
     isGeneric: Boolean(row.is_generic),
     lineManagerUserId: row.line_manager_user_id || null,
     lineManagerIsDefault: Boolean(row.line_manager_default),
+    // the pool: a client's id, or null = My resources (U8)
+    clientId: row.client_id || null,
   };
 }
 
@@ -69,9 +71,14 @@ export class ResourceRepository extends BaseRepository<Resource> {
     return this.mapRows(rows);
   }
 
-  async findAllPaginated(limit: number, offset: number, group?: string): Promise<{ resources: Resource[]; total: number }> {
-    const where = group ? ' WHERE resource_group = ?' : '';
-    const params = group ? [group] : [];
+  /** `pool`: a client's id, 'mine' = My resources (no client), undefined = everyone (U8) */
+  async findAllPaginated(limit: number, offset: number, group?: string, pool?: string): Promise<{ resources: Resource[]; total: number }> {
+    const conds: string[] = [];
+    const params: any[] = [];
+    if (group) { conds.push('resource_group = ?'); params.push(group); }
+    if (pool === 'mine') conds.push('client_id IS NULL');
+    else if (pool) { conds.push('client_id = ?'); params.push(pool); }
+    const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
     const [[{ cnt }], rows] = await Promise.all([
       this.queryRaw(`SELECT COUNT(*) AS cnt FROM resources${where}`, params),
       this.queryRaw(`SELECT * FROM resources${where} ORDER BY name LIMIT ? OFFSET ?`, [...params, limit, offset]),
@@ -82,12 +89,12 @@ export class ResourceRepository extends BaseRepository<Resource> {
   async create(data: Omit<Resource, 'id'>): Promise<Resource> {
     const id = uuidv4();
     await this.queryRaw(
-      `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly, overtime_rate_hourly, use_rate_card, resource_group, user_id, calendar_template_id, is_generic, line_manager_user_id, line_manager_default)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, cost_rate_hourly, overtime_rate_hourly, use_rate_card, resource_group, user_id, calendar_template_id, is_generic, line_manager_user_id, line_manager_default, client_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       // role/email are optional at the schema level (matching the column's own
       // NOT NULL DEFAULT '') — mysql2 rejects an undefined bind param outright,
       // so an omitted value must become '' here, not null.
-      [id, data.name, data.role || '', data.email || '', data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.overtimeRateHourly ?? null, data.useRateCard ? 1 : 0, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null, data.isGeneric ? 1 : 0, data.lineManagerUserId ?? null, data.lineManagerIsDefault ? 1 : 0],
+      [id, data.name, data.role || '', data.email || '', data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.overtimeRateHourly ?? null, data.useRateCard ? 1 : 0, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null, data.isGeneric ? 1 : 0, data.lineManagerUserId ?? null, data.lineManagerIsDefault ? 1 : 0, data.clientId ?? null],
     );
     return (await this.findById(id))!;
   }
@@ -108,6 +115,7 @@ export class ResourceRepository extends BaseRepository<Resource> {
       userId: 'user_id',
       calendarTemplateId: 'calendar_template_id',
       isGeneric: 'is_generic',
+      clientId: 'client_id',
       lineManagerUserId: 'line_manager_user_id',
       lineManagerIsDefault: 'line_manager_default',
     };

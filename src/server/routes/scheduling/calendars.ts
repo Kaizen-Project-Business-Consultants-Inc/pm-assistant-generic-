@@ -31,10 +31,14 @@ const projectChangeSchema = z.union([
   z.object({ add: z.object({ date: ymd, type: z.enum(['holiday', 'working']), name: z.string().max(255).optional() }) }),
   z.object({ removeId: z.string().min(1).max(64) }),
 ]);
+// calendarId: which holiday calendar (U8); left out = 'home' (Company holidays)
+const calendarIdField = z.string().min(1).max(36).optional();
 const companyChangeSchema = z.union([
-  z.object({ add: z.object({ date: ymd, name: z.string().max(255).optional() }) }),
-  z.object({ removeId: z.string().min(1).max(64) }),
+  z.object({ calendarId: calendarIdField, add: z.object({ date: ymd, name: z.string().max(255).optional() }) }),
+  z.object({ calendarId: calendarIdField, removeId: z.string().min(1).max(64) }),
 ]);
+const newCalendarSchema = z.object({ name: z.string().trim().min(1, 'Name the calendar, e.g. "Ontario 2027".').max(120) });
+const clientCalendarSchema = z.object({ calendarId: z.string().min(1).max(36) });
 
 function badChange(reply: any, err: any) {
   if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: err.issues[0]?.message ?? 'Check the date and try again' });
@@ -184,8 +188,35 @@ export async function companyHolidayRoutes(fastify: FastifyInstance) {
 
   fastify.get('/api/v1/company-holidays', { preHandler: [requireScope('read')] }, async (req) => {
     const { calendarService } = await import('../../services/CalendarService');
-    return { holidays: await calendarService.listCompanyHolidays(), canEdit: await canEditCompanyHolidays(req) };
+    const { calendarId } = req.query as { calendarId?: string };
+    return { holidays: await calendarService.listCompanyHolidays(calendarId || undefined), canEdit: await canEditCompanyHolidays(req) };
   });
+
+  // Named holiday calendars (U8): e.g. "Ontario 2027"; each client uses one
+  fastify.get('/api/v1/holiday-calendars', { preHandler: [requireScope('read')] }, async (req) => {
+    const { calendarService } = await import('../../services/CalendarService');
+    return { calendars: await calendarService.listCalendars(), canEdit: await canEditCompanyHolidays(req) };
+  });
+
+  fastify.post('/api/v1/holiday-calendars', { preHandler: [requireScope('write'), orgAdminOnly] }, async (req, reply) => {
+    const { calendarService, CalendarNameError } = await import('../../services/CalendarService');
+    try {
+      return reply.status(201).send({ calendar: await calendarService.createCalendar(newCalendarSchema.parse(req.body).name, req.user!.userId) });
+    } catch (err) {
+      if (err instanceof CalendarNameError) return reply.status(409).send({ error: 'Conflict', message: err.message });
+      return badChange(reply, err);
+    }
+  });
+
+  // A client switches calendar: preview which tasks move, then apply
+  for (const step of ['preview', 'apply'] as const) {
+    fastify.post(`/api/v1/project-groups/:id/holiday-calendar/${step}`, { preHandler: [requireScope('write'), orgAdminOnly] }, async (req, reply) => {
+      try {
+        const { id } = req.params as { id: string };
+        return await workingCalendarService.clientCalendarRun(id, clientCalendarSchema.parse(req.body).calendarId, step === 'preview');
+      } catch (err) { return badChange(reply, err); }
+    });
+  }
 
   fastify.post('/api/v1/company-holidays/preview', { preHandler: [requireScope('write'), orgAdminOnly] }, async (req, reply) => {
     try {

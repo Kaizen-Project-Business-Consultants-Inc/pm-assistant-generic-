@@ -368,12 +368,13 @@ describe('CalendarService', () => {
     });
   });
 
-  /** calendarSpec reads: default calendar, its exceptions, company holidays */
+  /** calendarSpec reads: default calendar, its exceptions, its client's holiday calendar id, that calendar's holidays */
   function mockSpec(opts: { exceptions?: any[]; company?: Array<{ id: string; holiday_date: string; name: string }>; workingDays?: number[] } = {}) {
     const calId = uniqueCalId();
     mockQuery
       .mockResolvedValueOnce([makeCalendarRow({ id: calId, working_days: JSON.stringify(opts.workingDays ?? [1, 2, 3, 4, 5]) })])
       .mockResolvedValueOnce((opts.exceptions ?? []).map(e => makeExceptionRow({ calendar_id: calId, ...e })))
+      .mockResolvedValueOnce([{ cal: 'home' }]) // which holiday calendar: the project's client's (U8)
       .mockResolvedValueOnce(opts.company ?? []);
   }
 
@@ -414,11 +415,12 @@ describe('CalendarService', () => {
   describe('company holidays', () => {
     it('lists them as plain dates', async () => {
       mockQuery.mockResolvedValueOnce([{ id: 'h1', holiday_date: '2026-12-25', name: 'Christmas Day' }]);
-      expect(await service.listCompanyHolidays()).toEqual([{ id: 'h1', date: '2026-12-25', name: 'Christmas Day' }]);
+      expect(await service.listCompanyHolidays()).toEqual([{ id: 'h1', date: '2026-12-25', name: 'Christmas Day', calendarId: 'home' }]);
+      expect(mockQuery.mock.calls.at(-1)![1]).toEqual(['home']); // one calendar's holidays (U8)
     });
     it('remove returns what was removed, or null', async () => {
       mockQuery.mockResolvedValueOnce([{ id: 'h1', holiday_date: '2026-12-25', name: 'Christmas Day' }]).mockResolvedValueOnce({ affectedRows: 1 });
-      expect(await service.removeCompanyHoliday('h1')).toEqual({ id: 'h1', date: '2026-12-25', name: 'Christmas Day' });
+      expect(await service.removeCompanyHoliday('h1')).toEqual({ id: 'h1', date: '2026-12-25', name: 'Christmas Day', calendarId: 'home' });
       mockQuery.mockResolvedValueOnce([]);
       expect(await service.removeCompanyHoliday('nope')).toBeNull();
     });

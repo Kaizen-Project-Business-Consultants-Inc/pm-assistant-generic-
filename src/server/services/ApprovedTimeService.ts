@@ -30,7 +30,7 @@ import type { CostTimeline } from './costTimeline';
 const ph = (n: number) => Array.from({ length: n }, () => '?').join(',');
 const money = (n: number) => Math.round(n * 100) / 100;
 
-interface Rated { costRateHourly: number | null; overtimeRateHourly: number | null; useRateCard: boolean; role: string }
+interface Rated { costRateHourly: number | null; overtimeRateHourly: number | null; useRateCard: boolean; role: string; clientId: string | null }
 
 /** The people (with their rates) behind these logins */
 async function ratedPeople(userIds: string[]): Promise<Map<string, Rated>> {
@@ -41,7 +41,7 @@ async function ratedPeople(userIds: string[]): Promise<Map<string, Rated>> {
   for (const r of rows) if (!out.has(r.user_id)) out.set(r.user_id, {
     costRateHourly: r.cost_rate_hourly != null ? Number(r.cost_rate_hourly) : null,
     overtimeRateHourly: r.overtime_rate_hourly != null ? Number(r.overtime_rate_hourly) : null,
-    useRateCard: !!r.use_rate_card, role: r.role,
+    useRateCard: !!r.use_rate_card, role: r.role, clientId: r.client_id || null,
   });
   return out;
 }

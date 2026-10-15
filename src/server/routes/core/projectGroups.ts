@@ -75,6 +75,8 @@ function handleGroupError(reply: FastifyReply, err: unknown) {
   if (message === 'Group not found' || err instanceof ClientNotFoundError) {
     return reply.status(404).send({ error: 'Not found', message: 'That client no longer exists.' });
   }
+  // by name: the service is replaced in some tests, so its class may not be the one thrown
+  if (err instanceof Error && err.name === 'ClientHasPeopleError') return reply.status(409).send({ error: 'Conflict', message: err.message });
   if (message === 'A group with this name already exists') {
     return reply.status(409).send({ error: 'Conflict', message: 'A client with this name already exists — choose another name.' });
   }

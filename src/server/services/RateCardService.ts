@@ -10,6 +10,8 @@ import { databaseService } from '../database/connection';
  */
 export interface RateCardEntry {
   id: string;
+  /** Whose card: a client's id, or '' = My resources (U8) */
+  poolId?: string;
   role: string;
   hourlyRate: number;
   overtimeRate: number | null;
@@ -17,6 +19,8 @@ export interface RateCardEntry {
 }
 
 export interface RateInput {
+  /** A client's id, or '' / missing = My resources */
+  poolId?: string;
   role: string;
   hourlyRate: number;
   overtimeRate?: number | null;
@@ -31,6 +35,8 @@ export interface RatedResource {
   costRateHourly: number | null;
   overtimeRateHourly: number | null;
   useRateCard?: boolean;
+  /** The person's pool: their client's card applies, or My resources' when null (U8) */
+  clientId?: string | null;
 }
 
 export class RateCardError extends Error {}
@@ -40,6 +46,7 @@ export const roleKey = (role: string | null | undefined) => (role ?? '').trim().
 
 const toEntry = (r: any): RateCardEntry => ({
   id: r.id,
+  poolId: r.pool_id ?? '',
   role: r.role,
   hourlyRate: Number(r.hourly_rate),
   overtimeRate: r.overtime_rate != null ? Number(r.overtime_rate) : null,
@@ -58,12 +65,28 @@ function ymdLocal(d: Date): string {
  * The screen picks the card rate the same way (src/client/src/utils/rateCard.ts cardRateOn) —
  * __tests__/utils/rulesParity.test.ts fails until both match.
  */
+/** The card grouped by pool + role, built once per card (ratesOn runs per time entry) */
+const cardIndex = new WeakMap<RateCardEntry[], Map<string, RateCardEntry[]>>();
+function entriesFor(card: RateCardEntry[], pool: string, key: string): RateCardEntry[] {
+  let index = cardIndex.get(card);
+  if (!index) {
+    index = new Map();
+    for (const e of card) {
+      const k = `${e.poolId ?? ''}|${roleKey(e.role)}`;
+      const list = index.get(k);
+      if (list) list.push(e); else index.set(k, [e]);
+    }
+    cardIndex.set(card, index);
+  }
+  return index.get(`${pool}|${key}`) ?? [];
+}
+
 export function ratesOn(resource: RatedResource, day: string, card: RateCardEntry[]): Rates {
   if (resource.useRateCard) {
-    const key = roleKey(resource.role);
+    // only the person's own pool's card: a Developer at one client isn't costed at another's rate
     let best: RateCardEntry | null = null;
-    for (const e of card) {
-      if (roleKey(e.role) !== key || e.effectiveFrom > day) continue;
+    for (const e of entriesFor(card, resource.clientId ?? '', roleKey(resource.role))) {
+      if (e.effectiveFrom > day) continue;
       if (!best || e.effectiveFrom > best.effectiveFrom) best = e;
     }
     if (best) return { standard: best.hourlyRate, overtime: best.overtimeRate ?? best.hourlyRate * 1.5 };
@@ -73,8 +96,11 @@ export function ratesOn(resource: RatedResource, day: string, card: RateCardEntr
 }
 
 export class RateCardService {
-  async list(): Promise<RateCardEntry[]> {
-    const rows = await databaseService.query('SELECT * FROM rate_card ORDER BY role, effective_from');
+  /** Every pool's card, or one pool's ('' = My resources) */
+  async list(poolId?: string): Promise<RateCardEntry[]> {
+    const rows = poolId === undefined
+      ? await databaseService.query('SELECT * FROM rate_card ORDER BY role, effective_from')
+      : await databaseService.query('SELECT * FROM rate_card WHERE pool_id = ? ORDER BY role, effective_from', [poolId]);
     return rows.map(toEntry);
   }
 
@@ -85,20 +111,26 @@ export class RateCardService {
 
   async create(input: RateInput, userId: string): Promise<RateCardEntry> {
     const role = input.role.trim();
-    await this.assertFree(role, input.effectiveFrom, null);
+    const poolId = input.poolId ?? '';
+    if (poolId && !(await databaseService.query('SELECT id FROM project_groups WHERE id = ?', [poolId]))[0]) {
+      throw new RateCardError("That client doesn't exist, so its rate card can't be changed.");
+    }
+    await this.assertFree(poolId, role, input.effectiveFrom, null);
     const id = uuidv4();
     await databaseService.query(
-      'INSERT INTO rate_card (id, role, hourly_rate, overtime_rate, effective_from, created_by) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, role, input.hourlyRate, input.overtimeRate ?? null, input.effectiveFrom, userId],
+      'INSERT INTO rate_card (id, pool_id, role, hourly_rate, overtime_rate, effective_from, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, poolId, role, input.hourlyRate, input.overtimeRate ?? null, input.effectiveFrom, userId],
     );
     this.repriceLater();
     return (await this.find(id))!;
   }
 
   async update(id: string, input: RateInput): Promise<RateCardEntry | null> {
-    if (!(await this.find(id))) return null;
+    const existing = await this.find(id);
+    if (!existing) return null;
     const role = input.role.trim();
-    await this.assertFree(role, input.effectiveFrom, id);
+    // a rate stays in its pool
+    await this.assertFree(existing.poolId ?? '', role, input.effectiveFrom, id);
     await databaseService.query(
       'UPDATE rate_card SET role = ?, hourly_rate = ?, overtime_rate = ?, effective_from = ? WHERE id = ?',
       [role, input.hourlyRate, input.overtimeRate ?? null, input.effectiveFrom, id],
@@ -123,8 +155,8 @@ export class RateCardService {
     return rows[0] ? toEntry(rows[0]) : null;
   }
 
-  private async assertFree(role: string, from: string, exceptId: string | null) {
-    const clash = (await this.list()).find(e => e.id !== exceptId && roleKey(e.role) === roleKey(role) && e.effectiveFrom === from);
+  private async assertFree(poolId: string, role: string, from: string, exceptId: string | null) {
+    const clash = (await this.list(poolId)).find(e => e.id !== exceptId && roleKey(e.role) === roleKey(role) && e.effectiveFrom === from);
     if (clash) throw new RateCardError(`${clash.role} already has a rate starting ${from}. Change that one instead.`);
   }
 }

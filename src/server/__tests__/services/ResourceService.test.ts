@@ -186,14 +186,14 @@ describe('ResourceService', () => {
     it('passes default limit and offset', async () => {
       mockRepo.findAllPaginated.mockResolvedValueOnce({ resources: [sampleResource], total: 1 });
       const result = await service.findAllResourcesPaginated();
-      expect(mockRepo.findAllPaginated).toHaveBeenCalledWith(50, 0, undefined);
+      expect(mockRepo.findAllPaginated).toHaveBeenCalledWith(50, 0, undefined, undefined);
       expect(result.total).toBe(1);
     });
 
     it('passes custom limit, offset, and group', async () => {
       mockRepo.findAllPaginated.mockResolvedValueOnce({ resources: [], total: 0 });
       await service.findAllResourcesPaginated(10, 20, 'Engineering');
-      expect(mockRepo.findAllPaginated).toHaveBeenCalledWith(10, 20, 'Engineering');
+      expect(mockRepo.findAllPaginated).toHaveBeenCalledWith(10, 20, 'Engineering', undefined);
     });
   });
 

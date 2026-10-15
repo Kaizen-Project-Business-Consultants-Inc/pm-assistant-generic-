@@ -58,6 +58,9 @@ vi.mock('../../services/ChangeHistoryService', async (importOriginal) => ({
   ...(await importOriginal<any>()), changeHistoryService: { record, readPrevious: vi.fn(async () => []) },
 }));
 
+const outside = vi.hoisted(() => vi.fn(async (..._a: any[]) => new Map<string, string>()));
+vi.mock('../../services/poolFit', async (importOriginal) => ({ ...(await importOriginal<any>()), outsidePool: outside }));
+
 import { bulkRoutes } from '../../routes/core/bulk';
 
 const sent = (re: RegExp) => db.sql.filter(s => re.test(s.sql));
@@ -65,7 +68,7 @@ const PARENT_LOOP = "A task can't be moved under one of its own sub-tasks.";
 
 let app: any;
 beforeAll(async () => { app = Fastify(); await app.register(bulkRoutes, { prefix: '/api/v1/bulk' }); }, 60_000);
-beforeEach(() => { db.sql = []; db.parents = {}; db.links = []; db.inPlan = []; vi.clearAllMocks(); });
+beforeEach(() => { db.sql = []; db.parents = {}; db.links = []; db.inPlan = []; vi.clearAllMocks(); outside.mockResolvedValue(new Map()); });
 const put = (updates: any[]) => app.inject({ method: 'PUT', url: '/api/v1/bulk/tasks', payload: { updates } });
 const post = (tasks: any[]) => app.inject({ method: 'POST', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', tasks } });
 
@@ -228,5 +231,27 @@ describe('a task can\'t go under one of its own sub-tasks (H3)', () => {
     db.inPlan = ['phase-1'];
     const inside = await post([{ name: 'A', parentTaskId: 'phase-1' }]);
     expect(inside.statusCode).toBe(200);
+  });
+});
+
+describe("bulk: nobody from another client's pool goes on a task (U8)", () => {
+  it('bulk edit: that task fails with a plain message; the others save', async () => {
+    outside.mockResolvedValue(new Map([['r-other', 'Ann Lee']]));
+    const res = await put([
+      { id: 'a', scheduleId: 's1', assignedTo: 'r-other' },
+      { id: 'b', scheduleId: 's1', assignedTo: 'r-mine' },
+    ]);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().succeeded.map((x: any) => x.id)).toEqual(['b']);
+    expect(res.json().failed).toEqual([{ id: 'a', error: expect.stringMatching(/^Ann Lee is in another client's resource pool/) }]);
+    expect(outside).toHaveBeenCalledWith(['r-other', 'r-mine'], 's1');
+  });
+
+  it('bulk create: refused whole with a 400, nothing written', async () => {
+    outside.mockResolvedValue(new Map([['r-other', 'Ann Lee']]));
+    const res = await post([{ name: 'Build', assignedTo: 'r-other' }]);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/Ann Lee is in another client's resource pool/);
+    expect(sent(/^INSERT INTO tasks/)).toHaveLength(0);
   });
 });

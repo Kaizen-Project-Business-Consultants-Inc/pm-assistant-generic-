@@ -698,6 +698,7 @@ Hybrid algorithmic + AI structural risk analysis that examines a project's plan 
 - Projects page renders collapsible group headers with color dots when groups exist
 - Group filter dropdown in header for single-group filtering
 - Migration T022: `project_groups` table + `group_id` on `projects`
+- **October 2026 (U8), consultant plans: each client has its own resource pool.** Its own people, rate card and holiday calendar (e.g. "Ontario 2027"), managed under Resources with a pool switcher. The consultant's own people are "My resources", usable on every client's projects. A project's team is picked from its client's pool and My resources, never another client's. A client's staff member who signs in sees only the projects whose team they are on. Switching a client's calendar shows which tasks move before anything changes, and each move can be undone in Schedule History.
 - **Benchmark:** ClickUp Spaces/Folders, Monday.com Workspaces, Asana Teams
 
 ### 5.11 Resource Request/Approval Workflow

@@ -11,8 +11,10 @@ import { cardRateOn, money, nextCardRate, todayYmd } from '../../utils/rateCard'
  * Shared by the Resources page and a project's Resources tab. People who can't see the
  * rate card (it's pay information) just get the own-rate inputs, as before.
  */
-export function RateSourceField({ role, useRateCard, onChange, children }: {
+export function RateSourceField({ role, useRateCard, onChange, children, poolId = '' }: {
   role: string;
+  /** The person's pool — their client's id, or '' = My resources: that pool's card applies (U8) */
+  poolId?: string;
   useRateCard: boolean;
   onChange: (useRateCard: boolean) => void;
   /** The own-rate inputs */
@@ -20,7 +22,7 @@ export function RateSourceField({ role, useRateCard, onChange, children }: {
 }) {
   const userRole = useAuthStore(s => s.user?.role);
   const canSeeCard = !!userRole && ['admin', 'project_manager', 'pmo'].includes(userRole);
-  const q = useQuery({ queryKey: ['rate-card'], queryFn: () => apiService.getRateCard(), enabled: canSeeCard, retry: false });
+  const q = useQuery({ queryKey: ['rate-card', poolId], queryFn: () => apiService.getRateCard(poolId), enabled: canSeeCard, retry: false });
 
   if (!canSeeCard || !q.data) return <>{children}</>;
 

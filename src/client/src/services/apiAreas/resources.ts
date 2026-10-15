@@ -6,8 +6,9 @@ import { ApiBase } from './http';
  */
 export class ResourcesApi extends ApiBase {
   // Rate card: hourly rates by role, each from a date (admin / PMO / PM / company owner only)
-  async getRateCard(): Promise<{ rates: RateCardEntry[] }> {
-    return (await this.api.get('/rate-card')).data;
+  /** poolId: a client's id, '' = My resources, left out = every pool's card (U8) */
+  async getRateCard(poolId?: string): Promise<{ rates: RateCardEntry[] }> {
+    return (await this.api.get('/rate-card', { params: poolId === undefined ? {} : { poolId } })).data;
   }
 
   async addRate(rate: RateInput): Promise<{ rate: RateCardEntry }> {
@@ -26,9 +27,23 @@ export class ResourcesApi extends ApiBase {
   // Resources
   // -------------------------------------------------------------------------
 
-  async getResources() {
-    const response = await this.api.get('/resources');
+  /** pool: a client's id, 'mine' = My resources, left out = everyone (U8) */
+  async getResources(pool?: string) {
+    const response = await this.api.get('/resources', { params: pool ? { pool } : {} });
     return response.data;
+  }
+
+  // A project's team (U8): picked from its client's pool and My resources
+  async getProjectTeamPool(projectId: string): Promise<ProjectTeamPool> {
+    return (await this.api.get(`/projects/${projectId}/team-pool`)).data;
+  }
+
+  async addToProjectTeam(projectId: string, resourceId: string, roleOnProject?: string | null): Promise<ProjectTeamPool> {
+    return (await this.api.post(`/projects/${projectId}/team`, { resourceId, roleOnProject: roleOnProject ?? null })).data;
+  }
+
+  async removeFromProjectTeam(projectId: string, resourceId: string): Promise<ProjectTeamPool> {
+    return (await this.api.delete(`/projects/${projectId}/team/${resourceId}`)).data;
   }
 
   async getResourceSkills() {
@@ -506,9 +521,15 @@ export class ResourcesApi extends ApiBase {
 
 export interface RateCardEntry {
   id: string;
+  /** Whose card: a client's id, or '' = My resources (U8) */
+  poolId?: string;
   role: string;
   hourlyRate: number;
   overtimeRate: number | null;
   effectiveFrom: string;
 }
-export interface RateInput { role: string; hourlyRate: number; overtimeRate?: number | null; effectiveFrom: string }
+export interface RateInput { poolId?: string; role: string; hourlyRate: number; overtimeRate?: number | null; effectiveFrom: string }
+
+/** A project's team and who can be added (U8) */
+export interface TeamPerson { id: string; name: string; role: string; clientId: string | null; isGeneric: boolean; canSignIn: boolean; capacityHoursPerWeek: number; roleOnProject?: string | null }
+export interface ProjectTeamPool { client: { id: string | null; name: string | null }; team: TeamPerson[]; clientPool: TeamPerson[]; mine: TeamPerson[] }

@@ -242,9 +242,15 @@ export function ProjectDetailPage() {
 
   const updateProjectMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) => apiService.updateProject(id!, data),
-    onSuccess: () => {
+    onSuccess: (_result, data) => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
       refreshProjectLists(queryClient);
+      // a new client can mean a different holiday calendar: its days off and task dates may move (U8)
+      if ('clientId' in data) {
+        void queryClient.invalidateQueries({ queryKey: ['nonWorkingDates', id] });
+        void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        void queryClient.invalidateQueries({ queryKey: ['project-team-pool', id] });
+      }
       setShowEditProject(false);
     },
   });

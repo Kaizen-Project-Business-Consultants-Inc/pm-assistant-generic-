@@ -22,6 +22,7 @@ const CHECKED: Record<string, RegExp> = {
   'collaboration/sponsor.ts': /item\.projectId|projectId !==/,
   'collaboration/raidReview.ts': /raidReviewService/,
   'collaboration/weeklyReview.ts': /weeklyReviewService/,
+  'core/projectTeam.ts': /projectTeamService\.remove\(projectId, resourceId\)/, // DELETE … WHERE project_id = ? AND resource_id = ?; 'not on this team' otherwise
 };
 
 describe('a child id in the URL belongs to the project in the URL', () => {

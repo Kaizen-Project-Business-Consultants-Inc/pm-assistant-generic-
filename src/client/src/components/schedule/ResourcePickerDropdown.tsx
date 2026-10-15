@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useInProjectPool } from '../../hooks/useInProjectPool';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { ResourcePickList } from '../resources/ResourcePickList';
 import { PROFICIENCY_LABELS } from '../../constants/proficiency';
@@ -19,6 +20,7 @@ interface Resource {
   userId?: string | null;
   skills?: SkillWithProficiency[];
   isGeneric?: boolean;
+  clientId?: string | null;
 }
 
 interface ResourcePickerDropdownProps {
@@ -49,7 +51,9 @@ export function ResourcePickerDropdown({ value, onSelect, onClear, onClose, floa
     queryFn: () => apiService.getResources(),
     staleTime: 60_000,
   });
-  const resources: Resource[] = data?.resources || [];
+  // only this project's client's people and My resources (U8)
+  const inPool = useInProjectPool();
+  const resources: Resource[] = useMemo(() => (data?.resources || []).filter(inPool), [data, inPool]);
 
   const allSkills = useMemo(() => {
     const names = new Set<string>();
