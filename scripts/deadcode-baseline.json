@@ -105,7 +105,6 @@
     "client|types|src/types/teamPlanner.ts|PlannerPreview",
     "client|types|src/types/timesheet.ts|PendingTimesheet",
     "client|types|src/types/timesheet.ts|ProjectPending",
-    "client|types|src/utils/methodology.ts|ReadinessStepConfig",
     "client|types|src/utils/mspdiParser.ts|MspdiTask",
     "client|types|src/utils/notificationLink.ts|NotificationTarget",
     "client|types|src/utils/plannerLayout.ts|Placed",

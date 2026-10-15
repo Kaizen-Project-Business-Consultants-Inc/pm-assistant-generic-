@@ -1268,7 +1268,7 @@
       "count": 11
     },
     "react-hooks/exhaustive-deps": {
-      "count": 3
+      "count": 1
     }
   },
   "src/client/src/pages/ProjectDetailPage/ScheduleTab.tsx": {

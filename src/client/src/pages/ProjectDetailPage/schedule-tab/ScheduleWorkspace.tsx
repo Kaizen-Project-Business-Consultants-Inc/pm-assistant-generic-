@@ -20,6 +20,7 @@ import { KanbanBoard } from '../../../components/schedule/KanbanBoard';
 import { TableView } from '../../../components/schedule/TableView';
 import { CalendarView } from '../../../components/schedule/CalendarView';
 import { NetworkDiagramView } from '../../../components/network/NetworkDiagramView';
+import { CriticalPathView } from '../../../components/schedule/CriticalPathView';
 import { BurndownPanel } from '../../../components/burndown/BurndownPanel';
 import { SCurveView } from '../../../components/evm/SCurveView';
 import { AutoReschedulePanel } from '../../../components/schedule/AutoReschedulePanel';
@@ -51,7 +52,7 @@ import { isCalendarOverdue, toCalendarDate, formatCalendarDate } from '../../../
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
-export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
+export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'critical' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
   const uid = useId();
   const queryClient = useQueryClient();
   // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
@@ -782,6 +783,9 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       )}
       {viewMode === 'network' && (
         <NetworkDiagramView scheduleId={schedule.id} />
+      )}
+      {viewMode === 'critical' && (
+        <CriticalPathView scheduleId={schedule.id} tasks={filteredTasks} />
       )}
       {viewMode === 'burndown' && (
         <BurndownPanel scheduleId={schedule.id} />

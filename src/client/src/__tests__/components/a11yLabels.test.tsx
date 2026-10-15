@@ -41,7 +41,6 @@ import { TableView } from '../../components/schedule/TableView';
 import { TableBulkActionBar } from '../../components/schedule/table/TableBulkActionBar';
 import { useColumnState } from '../../hooks/useColumnState';
 import { FilterBarPM } from '../../components/pm/FilterBarPM';
-import { SetupChecklist } from '../../components/project/SetupChecklist';
 import { RAIDTab } from '../../pages/ProjectDetailPage/RAIDTab';
 import { ProfileTab } from '../../pages/settings/ProfileTab';
 import { useAuthStore } from '../../stores/authStore';
@@ -117,7 +116,7 @@ describe('Risks & Issues', () => {
     const box = await screen.findByRole('checkbox', { name: 'Select Vendor delay' });
     expect(screen.getByRole('checkbox', { name: 'Select all items' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Filters/ }));
-    expect(screen.getByRole('combobox', { name: 'Filter by type' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'RAID sections' })).toBeTruthy(); // the sections replaced the Type dropdown (U20)
     expect(screen.getByRole('combobox', { name: 'Filter by severity' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Search RAID items' })).toBeTruthy();
     fireEvent.click(box);
@@ -147,15 +146,6 @@ describe('Projects page filters', () => {
     expect(screen.getByRole('textbox', { name: 'Search projects or clients' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Filter by health' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Filter by status' })).toBeTruthy();
-  });
-});
-
-describe('Project Overview setup checklist', () => {
-  it('the close (X) button has a name and still hides the checklist', async () => {
-    wrap(<SetupChecklist project={{ id: 'p-a11y', progress: 0 }} onNavigate={vi.fn()} />);
-    const close = screen.getByRole('button', { name: 'Hide setup checklist' });
-    fireEvent.click(close);
-    expect(screen.queryByText('Get Started')).toBeNull();
   });
 });
 

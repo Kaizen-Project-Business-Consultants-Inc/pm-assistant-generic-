@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2, Circle, X } from 'lucide-react';
-import { getReadinessSteps, type Methodology } from '../../utils/methodology';
+import { getReadinessSteps, type Methodology, type ReadinessStepConfig } from '../../utils/methodology';
 
 interface ReadinessStep {
   key: string;
@@ -13,10 +13,16 @@ interface ReadinessStep {
 interface ProjectReadinessBarProps {
   projectId: string;
   tasks: any[];
-  resources: any[];
+  /** people on this project besides its creator (team list + members) */
+  teamCount: number;
+  budgetSet: boolean;
+  /** risks and issues logged on this project */
+  riskCount: number;
   methodology?: Methodology;
   sprintCount?: number;
   onTabChange: (tab: string) => void;
+  /** opens the Edit project form (the Budget step) */
+  onEditProject?: () => void;
 }
 
 const STORAGE_PREFIX = 'readiness-dismissed-';
@@ -24,25 +30,24 @@ const STORAGE_PREFIX = 'readiness-dismissed-';
 const remembered = (key: string) => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
 const remember = (key: string) => { try { localStorage.setItem(key, '1'); } catch { /* not kept */ } };
 
-export function ProjectReadinessBar({ projectId, tasks, resources, methodology = 'waterfall', sprintCount = 0, onTabChange }: ProjectReadinessBarProps) {
+export function ProjectReadinessBar({ projectId, tasks, teamCount, budgetSet, riskCount, methodology = 'waterfall', sprintCount = 0, onTabChange, onEditProject }: ProjectReadinessBarProps) {
   const [dismissed, setDismissed] = useState(() => remembered(`${STORAGE_PREFIX}${projectId}`));
 
   const hasTasks = tasks.length > 0;
   const hasDependencies = tasks.some((t: any) => t.dependency || t.predecessors?.length > 0);
-  const hasResources = resources.length > 0;
-  const hasSprints = sprintCount > 0;
+  const doneFor: Record<ReadinessStepConfig['doneKey'], boolean> = {
+    tasks: hasTasks,
+    dependencies: hasDependencies,
+    team: teamCount > 0,
+    sprints: sprintCount > 0,
+    budget: budgetSet,
+    risks: riskCount > 0,
+  };
 
-  const stepConfigs = getReadinessSteps(methodology);
-
-  const steps: ReadinessStep[] = stepConfigs.map((cfg) => {
-    let done = false;
-    if (cfg.doneKey === 'tasks') done = hasTasks;
-    else if (cfg.doneKey === 'dependencies') done = hasDependencies;
-    else if (cfg.doneKey === 'resources') done = hasResources;
-    else if (cfg.doneKey === 'sprints') done = hasSprints;
-
-    return { key: cfg.key, label: cfg.label, tooltip: cfg.tooltip, done, action: () => onTabChange(cfg.targetTab) };
-  });
+  const steps: ReadinessStep[] = getReadinessSteps(methodology).map((cfg) => ({
+    key: cfg.key, label: cfg.label, tooltip: cfg.tooltip, done: doneFor[cfg.doneKey],
+    action: () => (cfg.targetTab === 'edit' ? onEditProject?.() : onTabChange(cfg.targetTab)),
+  }));
 
   const completedCount = steps.filter(s => s.done).length;
   const allComplete = completedCount === steps.length;

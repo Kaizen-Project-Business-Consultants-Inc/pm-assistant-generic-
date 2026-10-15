@@ -302,7 +302,7 @@ The project detail page shows a few **primary tabs** plus a single **More** menu
 
 **More menu (all methodologies):** Hours, Files, Forecast, Resources, Agent Activity, Automations, Doc Intelligence — followed by the methodology's extra tabs above. (Until October 2026 Hours was called *Time* and Forecast *Insights*.)
 
-**Set up this project.** A new project shows a short checklist above its tabs — *Set up this project: 1 of 3 done* — with its steps: **Tasks**, **Link tasks** (tasks that wait for others; this builds the critical path) and **Resources** (Agile: Backlog, Sprint, Team; Hybrid adds Sprint). Click a step to go and do it. It hides itself once every step is done, or with its ✕.
+**Set up this project.** The project's PM sees one short checklist above the tabs — *Set up this project: 1 of 5 done* — with its steps: **Tasks**, **Link tasks** (tasks that wait for others; this builds the critical path), **Team** (people on this project), **Budget** (opens Edit project) and **Risks** (the first risks or issues). Agile projects start with Backlog and Sprint instead of Tasks and Link tasks; Hybrid adds Sprint. Click a step to go and do it. It hides itself once every step is done, or with its ✕. (Until October 2026 there was also a separate "Get Started" card on Overview; the two are now one list.)
 
 **Forecast** has two parts: **Performance** (earned value and cost forecast) and **AI Predictions** (what is likely to happen: task priorities, tasks likely to slip, scope creep, risk outlook, budget forecast — and weather impact on construction, infrastructure and roads projects only). The S-curve is on the Schedule tab, not repeated here. The **Weekly review** opens from its card on the Overview tab (project's PM only).
 
@@ -757,6 +757,10 @@ A node-and-edge graph showing task dependencies. Each task appears as a node, wi
 The critical path identifies the longest chain of dependent tasks that determines the minimum project duration.
 
 ### Viewing the Critical Path
+
+**Critical path view.** On the Schedule tab, the **Critical path** view (beside Network) shows it on one page: a summary line (*Ends … · N working days · N critical · N near-critical*), **What to watch** (critical tasks that are late or have nobody on them), the **critical tasks in order** with their dates, owner and status, and the **near-critical** tasks — 5 working days of slack or less — in amber, least slack first.
+
+On the Gantt:
 
 1. Open a project schedule.
 2. Press the red-outlined **Critical path** button in the Gantt toolbar (it turns solid red while on).
@@ -2790,7 +2794,7 @@ Destructive actions throughout the application (deleting integrations, change re
 
 ### User Roles
 
-Buttons that change company-wide things — New Project, Start, Add person, New Change Request, New Workflow, portal links, availability blocks and the project's Get Started checklist — are shown only to roles that can make changes (Admin, PMO, Project Manager, Scrum Master, Risk Manager, BA, QA, DevOps) and, inside a project, to its Owner or Manager. Read-only people simply don't see them, rather than seeing buttons that fail.
+Buttons that change company-wide things — New Project, Start, Add person, New Change Request, New Workflow, portal links, availability blocks and the project's setup steps — are shown only to roles that can make changes (Admin, PMO, Project Manager, Scrum Master, Risk Manager, BA, QA, DevOps) and, inside a project, to its Owner or Manager. Read-only people simply don't see them, rather than seeing buttons that fail.
 
 | Role | Permissions |
 |------|-------------|
@@ -3423,13 +3427,26 @@ Use checkboxes to select multiple RAID items, then use the sticky bulk action ba
 - **Set Severity** — Change the severity of all selected items at once.
 - Click **Clear** to deselect all.
 
+### Sections
+
+Above the list, the log is split into sections, each with its count: **Needs attention · Risks · Issues · Actions · Decisions · Assumptions · Dependencies · All** (Dependencies shows once the project has one).
+
+**Needs attention** gathers, across every type, what to look at now — each item says why:
+- a risk that has been **triggered**, or a high/critical risk with **no response plan** (no mitigation and no response strategy);
+- an open **high or critical issue**;
+- an **overdue** action;
+- a decision **waiting** to be made;
+- an assumption **not confirmed yet**, or due to be confirmed within a week;
+- a dependency **at risk** or past its needed-by date.
+
+Finished items (closed, mitigated, resolved, completed, decided, validated, deferred…) never appear there. The tab opens on Needs attention when something needs it, otherwise on All.
+
 ### Searching and Filtering
 
 A collapsible filter panel in the toolbar provides:
 
 - **Search box** — Filters records by title or description as you type.
 - **Filter toggle** — Click the Filter button to reveal/hide filter dropdowns. A badge shows how many filters are active.
-- **Type** dropdown — Show all types or filter to Risks, Issues, Actions, Decisions, Assumptions, or Dependencies only.
 - **Status** dropdown — Filter by a specific status.
 - **Severity** dropdown — Filter to a specific severity level.
 - **Source** dropdown — Filter by how the record was created (manual, ai_scan, agent, import).

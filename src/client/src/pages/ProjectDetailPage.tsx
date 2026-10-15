@@ -26,7 +26,6 @@ import { useAuthStore } from '../stores/authStore';
 import { SaveAsTemplateModal } from '../components/templates/SaveAsTemplateModal';
 import { usePresence } from '../hooks/usePresence';
 import { useProjectStatusChange } from '../hooks/useProjectStatusChange';
-import { SetupChecklist } from '../components/project/SetupChecklist';
 import { WeeklyReviewCard } from '../components/weeklyReview/WeeklyReviewCard';
 import { ProjectReadinessBar } from '../components/onboarding/ProjectReadinessBar';
 import { EditProjectModal } from '../components/project/EditProjectModal';
@@ -193,12 +192,17 @@ export function ProjectDetailPage() {
 
   const readinessTasks: any[] = tasksData?.data ?? summaryData?.tasks ?? [];
 
-  const { data: readinessResourcesData } = useQuery({
-    queryKey: ['resources'],
-    queryFn: () => apiService.getResources(),
+  // Setup steps: people on THIS project (its team list, or members besides the creator) — it
+  // used to count the whole company's people, so "Resources" was ticked on every new project
+  const { data: teamPoolData } = useQuery({
+    queryKey: ['project-team-pool', id],
+    queryFn: () => apiService.getProjectTeamPool(id!),
+    enabled: !!id && canEditStatus,
     staleTime: 120_000,
   });
-  const readinessResources: any[] = readinessResourcesData?.resources || [];
+  const { data: membersForSetup } = useQuery<{ members?: Array<{ role?: string }> }>({ queryKey: ['project-members', id], queryFn: () => apiService.getProjectMembers(id!), enabled: !!id && canEditStatus && seeded(['project-members', id]), staleTime: 120_000 });
+  // people added to do the work: the team list, or members other than those running the project
+  const setupTeamCount = (teamPoolData?.team?.length ?? 0) + (membersForSetup?.members ?? []).filter(m => m.role !== 'owner' && m.role !== 'manager').length;
 
   // Proactive lessons — fetch relevant lessons when a new project is created
   const { data: projectLessonsData } = useQuery({
@@ -624,15 +628,20 @@ export function ProjectDetailPage() {
       </div>
       )}
 
-      {/* Readiness Bar */}
-      <ProjectReadinessBar
-        projectId={id!}
-        tasks={readinessTasks}
-        resources={readinessResources}
-        methodology={methodology}
-        sprintCount={sprintCount}
-        onTabChange={(tab) => setActiveTab(tab as Tab)}
-      />
+      {/* Setup steps — for whoever sets the project up (its PM); others can't act on them */}
+      {canEditStatus && !isDemo && (
+        <ProjectReadinessBar
+          projectId={id!}
+          tasks={readinessTasks}
+          teamCount={setupTeamCount}
+          budgetSet={Number(project.budgetAllocated ?? 0) > 0}
+          riskCount={Number(riskStats?.totalRisks ?? 0) + Number(riskStats?.totalIssues ?? 0)}
+          methodology={methodology}
+          sprintCount={sprintCount}
+          onTabChange={(tab) => setActiveTab(tab as Tab)}
+          onEditProject={() => setShowEditProject(true)}
+        />
+      )}
 
       {/* Proactive Lessons Banner — shown after project creation */}
       {showLessonsBanner && projectLessons.length > 0 && (
@@ -710,8 +719,6 @@ export function ProjectDetailPage() {
         </nav>
       </div>
 
-      {/* Setup Checklist */}
-      {activeTab === 'overview' && canEditStatus && <SetupChecklist project={project} onNavigate={(tab) => setActiveTab(tab as Tab)} />}
 
       {/* Weekly PM review — the project's PM only (hidden from team, viewers, executives) */}
       {activeTab === 'overview' && isManager && <WeeklyReviewCard projectId={id!} canEdit={canEditStatus} onOpen={() => setActiveTab('weekly-review')} />}

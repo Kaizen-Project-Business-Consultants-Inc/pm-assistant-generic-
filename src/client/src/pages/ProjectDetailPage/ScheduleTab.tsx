@@ -10,8 +10,7 @@ import {
   Kanban,
   GanttChartSquare,
   Table2,
-  MapPin,
-} from 'lucide-react';
+  MapPin, Route } from 'lucide-react';
 import { apiService } from '../../services/api';
 import type { Methodology } from '../../utils/methodology';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
@@ -25,10 +24,10 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   const breakpoint = useBreakpoint();
   const isMobile = breakpoint === 'mobile';
   const viewModeKey = `schedule-view-mode-${projectId}`;
-  const [viewModeRaw, setViewModeRaw] = useState<'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'burndown' | 'scurve'>(() => {
+  const [viewModeRaw, setViewModeRaw] = useState<'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'critical' | 'burndown' | 'scurve'>(() => {
     try {
       const saved = localStorage.getItem(viewModeKey);
-      if (saved && ['gantt', 'kanban', 'table', 'calendar', 'network', 'burndown', 'scurve'].includes(saved)) return saved as any;
+      if (saved && ['gantt', 'kanban', 'table', 'calendar', 'network', 'critical', 'burndown', 'scurve'].includes(saved)) return saved as any;
     } catch { /* noop */ }
     return defaultViewMode as any;
   });
@@ -183,6 +182,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
             { mode: 'table' as const, icon: Table2, label: 'Table' },
             { mode: 'calendar' as const, icon: CalendarDays, label: 'Calendar' },
             { mode: 'network' as const, icon: MapPin, label: 'Network' },
+            { mode: 'critical' as const, icon: Route, label: 'Critical path' },
             ...(offered.includes('burndown') ? [{ mode: 'burndown' as const, icon: TrendingUp, label: 'Burndown' }] : []),
             ...(offered.includes('scurve') ? [{ mode: 'scurve' as const, icon: TrendingUp, label: 'S-curve' }] : []),
           ]).map(({ mode, icon: Icon, label }) => (

@@ -120,29 +120,17 @@ describe('getOverflowTabs', () => {
 });
 
 describe('getReadinessSteps', () => {
-  it('waterfall: 3 data-verifiable steps', () => {
-    const steps = getReadinessSteps('waterfall');
-    expect(steps).toHaveLength(3);
-    expect(steps[0].key).toBe('tasks');
-    expect(steps[1].key).toBe('dependencies');
-    expect(steps[2].key).toBe('resources');
+  // one setup list since 2026-10-15 (the separate "Get Started" card was removed): plan, people, budget, risks
+  it('waterfall: tasks, link tasks, team, budget, risks', () => {
+    expect(getReadinessSteps('waterfall').map(s => s.key)).toEqual(['tasks', 'dependencies', 'team', 'budget', 'risks']);
   });
 
-  it('agile: 3 data-verifiable steps', () => {
-    const steps = getReadinessSteps('agile');
-    expect(steps).toHaveLength(3);
-    expect(steps[0].key).toBe('backlog');
-    expect(steps[1].key).toBe('sprint');
-    expect(steps[2].key).toBe('team');
+  it('agile: backlog, sprint, team, budget, risks', () => {
+    expect(getReadinessSteps('agile').map(s => s.key)).toEqual(['backlog', 'sprint', 'team', 'budget', 'risks']);
   });
 
-  it('hybrid: 4 data-verifiable steps', () => {
-    const steps = getReadinessSteps('hybrid');
-    expect(steps).toHaveLength(4);
-    expect(steps[0].key).toBe('tasks');
-    expect(steps[1].key).toBe('sprint');
-    expect(steps[2].key).toBe('resources');
-    expect(steps[3].key).toBe('dependencies');
+  it('hybrid: tasks, sprint, link tasks, team, budget, risks', () => {
+    expect(getReadinessSteps('hybrid').map(s => s.key)).toEqual(['tasks', 'sprint', 'dependencies', 'team', 'budget', 'risks']);
   });
 
   it('agile sprint step uses sprints doneKey', () => {
@@ -153,10 +141,15 @@ describe('getReadinessSteps', () => {
 
   it('no clicked steps exist — all steps are data-verifiable', () => {
     for (const m of ['waterfall', 'agile', 'hybrid'] as const) {
-      const steps = getReadinessSteps(m);
-      for (const step of steps) {
-        expect(['tasks', 'dependencies', 'resources', 'sprints']).toContain(step.doneKey);
+      for (const step of getReadinessSteps(m)) {
+        expect(['tasks', 'dependencies', 'team', 'sprints', 'budget', 'risks']).toContain(step.doneKey);
       }
     }
+  });
+
+  it('the Budget step opens the Edit project form; Risks goes to the RAID log', () => {
+    const steps = getReadinessSteps('waterfall');
+    expect(steps.find(s => s.key === 'budget')?.targetTab).toBe('edit');
+    expect(steps.find(s => s.key === 'risks')?.targetTab).toBe('raid');
   });
 });

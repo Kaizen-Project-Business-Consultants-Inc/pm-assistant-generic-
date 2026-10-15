@@ -106,7 +106,8 @@ const sections: Section[] = [
       'Timeline: the whole project on one line (phases, milestones, today) — click to jump, export as an image for reports',
       'The summary cards show on Overview; other tabs show one line (Show details brings the cards back) so the work area starts higher',
       'Fewer tabs show in the bar; the rest (Hours, Files, Forecast, Resources, Agent Activity, Changes and more) are under More at the end of the tab bar',
-      'A new project shows "Set up this project: 1 of 3 done" with its steps (Tasks, Link tasks, Resources) — click a step to do it; it hides once all are done',
+      'The PM sees "Set up this project: 1 of 5 done" with its steps (Tasks, Link tasks, Team, Budget, Risks) — click a step to do it; it hides once all are done',
+      'Risks & Issues opens on Needs attention (triggered or unplanned high risks, high issues, overdue actions, waiting decisions, assumptions to confirm, dependencies at risk), then a section per type, each with its count',
       'The Overview has a Critical path card (length in working days, critical tasks, end date); in the Gantt, the red Critical path button highlights them',
       'Project Details on the Overview is grouped: Who (client, sponsor, PM), When (dates, working days, time left, holiday calendar), Money (budget, spent, currency), What (type, methodology, priority, category, location)',
       'An empty Project Brief offers "Start from an outline" (purpose, objectives, scope, stakeholders, constraints) or "Write my own"',
@@ -440,6 +441,7 @@ const sections: Section[] = [
     description:
       'Visualize task dependencies as an interactive network (precedence) diagram with critical path highlighting.',
     items: [
+      'On the project Schedule tab, the Critical path view lists the chain in order, near-critical tasks (≤ 5 days slack) and what to watch (late or unassigned critical tasks)',
       'On the project Schedule tab, switch to the Network view (works when tasks are linked)',
       'Critical path tasks and edges are highlighted in red',
       'Hover over any node to see ES, EF, LS, LF, and total float values',

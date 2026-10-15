@@ -70,16 +70,28 @@ export interface ReadinessStepConfig {
   key: string;
   label: string;
   tooltip: string;
-  doneKey: 'tasks' | 'dependencies' | 'resources' | 'sprints';
+  doneKey: 'tasks' | 'dependencies' | 'team' | 'sprints' | 'budget' | 'risks';
+  /** a project tab, or 'edit' = the Edit project form */
   targetTab: string;
 }
 
+const TEAM_STEP = (label: string, tooltip: string): ReadinessStepConfig => ({ key: 'team', label, tooltip, doneKey: 'team', targetTab: 'team' });
+const BUDGET_STEP: ReadinessStepConfig = { key: 'budget', label: 'Budget', tooltip: 'Set the project budget (Edit project)', doneKey: 'budget', targetTab: 'edit' };
+const RISKS_STEP: ReadinessStepConfig = { key: 'risks', label: 'Risks', tooltip: 'Log the first risks or issues', doneKey: 'risks', targetTab: 'raid' };
+const LINK_STEP: ReadinessStepConfig = { key: 'dependencies', label: 'Link tasks', tooltip: 'Link tasks that depend on each other (predecessors) to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' };
+
+/**
+ * The project's setup steps (U14; one list since 2026-10-15 — the separate "Get Started" card
+ * was removed): build the plan, people, budget, first risks — per methodology.
+ */
 export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
   if (m === 'agile') {
     return [
       { key: 'backlog', label: 'Backlog', tooltip: 'Create user stories in your backlog', doneKey: 'tasks', targetTab: 'schedule' },
       { key: 'sprint', label: 'Sprint', tooltip: 'Create your first sprint to start iterating', doneKey: 'sprints', targetTab: 'sprints' },
-      { key: 'team', label: 'Team', tooltip: 'Add team members for capacity planning', doneKey: 'resources', targetTab: 'resources' },
+      TEAM_STEP('Team', 'Add the people on this project'),
+      BUDGET_STEP,
+      RISKS_STEP,
     ];
   }
 
@@ -87,16 +99,20 @@ export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
     return [
       { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
       { key: 'sprint', label: 'Sprint', tooltip: 'Create sprints for iterative delivery', doneKey: 'sprints', targetTab: 'sprints' },
-      { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload forecasting', doneKey: 'resources', targetTab: 'resources' },
-      { key: 'dependencies', label: 'Link tasks', tooltip: 'Link tasks that depend on each other (predecessors) to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
+      LINK_STEP,
+      TEAM_STEP('Team', 'Add the people on this project, for workload and cost'),
+      BUDGET_STEP,
+      RISKS_STEP,
     ];
   }
 
   // Waterfall (default)
   return [
     { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
-    { key: 'dependencies', label: 'Link tasks', tooltip: 'Link tasks that depend on each other (predecessors) to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
-    { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload and cost forecasting', doneKey: 'resources', targetTab: 'resources' },
+    LINK_STEP,
+    TEAM_STEP('Team', 'Add the people on this project, for workload and cost'),
+    BUDGET_STEP,
+    RISKS_STEP,
   ];
 }
 

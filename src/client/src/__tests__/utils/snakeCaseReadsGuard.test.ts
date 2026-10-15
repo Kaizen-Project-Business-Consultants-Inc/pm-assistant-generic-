@@ -50,7 +50,6 @@ const BASELINE: Record<string, number> = {
   'components/sprints/SprintBoard.tsx': 1, // snake-first, camelCase fallback
   'components/settings/ViewerInvitePanel.tsx': 1, // camelCase-first fallback
   'components/resources/ResourceUsageView.tsx': 1, // local style map keyed by status VALUE
-  'components/project/SetupChecklist.tsx': 1, // camelCase-first fallback
   'components/project/ProjectBriefCard.tsx': 1, // camelCase-first fallback
   'components/dashboard/widgets/GoalsWidget.tsx': 1, // local style map keyed by status VALUE
 };

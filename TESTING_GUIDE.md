@@ -1454,7 +1454,7 @@ It switches itself off after an hour. Never point the checker or seed at prod.
 2. Key result 3 / 10 → 30%; the objective shows the average of its key results; edit to 7 → 70% and the average moves.
 3. Each goal shows "Owner: You" or the owner's name.
 
-**Read-only buttons:** as qa.team (or during a support visit) there is no New Project, Start, Add Resource, New Change Request, New Workflow, Create Link, Add Block or Get Started card; as qa.pm they are all there.
+**Read-only buttons:** as qa.team (or during a support visit) there is no New Project, Start, Add Resource, New Change Request, New Workflow, Create Link, Add Block or project setup steps; as qa.pm they are all there.
 
 **Automated guards added this round:** `planFeatures.test`, `retiredSharedTables.test`, `collationGuard.test`, `momentVsDayGuard.test`, `adminFieldNames.test`, `snakeCaseReadsGuard.test`, `canChangeDataRoles.test`, `runCronJobRecord.test`, `goalKeyResultProgress.test`, `contextConfigIdentity.test`, `serverKeys.test`.
 

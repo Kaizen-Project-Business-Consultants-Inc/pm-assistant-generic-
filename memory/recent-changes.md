@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Batch D3: one setup list, RAID sections, critical-path page
+- One setup list (user "yes" 2026-10-15): `ProjectReadinessBar` gains Team / Budget / Risks steps with real per-project signals (team list + members, budgetAllocated, risks + issues) and shows only to the project's PM; `SetupChecklist` ("Get Started") removed with its a11y test and guard-baseline entry; the company-wide `['resources']` fetch on the project page is gone.
+- U20 RAID sections: pills Needs attention · Risks · Issues · Actions · Decisions · Assumptions · Dependencies · All with counts; Type dropdown removed; `utils/raidAttention` (tested) gives each item's reason, shown beside its title.
+- U17 Critical path view on the Schedule (beside Network): summary, What to watch, critical chain in order, near-critical ≤ 5 days slack (`CriticalPathView`, tested `criticalPathRows`).
+
 ## 2026-10-15 — Batch D2: Project Details card, brief outline
 - U15 `ProjectDetailsCard` replaces the flat details list on Overview: Who / When / Money / What groups (client, sponsor, PM; dates, weeks + working days, time left, holiday calendar; budget, spent %, currency; type, methodology, priority, category, location in words); Edit pencil for whoever may edit the project. Old `priorityColors` + flat markup removed.
 - U16 empty Project Brief: PM gets "Start from an outline" (six headings) or "Write my own"; the empty state is no longer a role=button wrapping buttons.

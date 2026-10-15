@@ -6,6 +6,7 @@ import {
   ArrowUpDown, AlertTriangle, FileText, Upload, ClipboardCheck, Flag,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { RaidSectionBar, useRaidSections, sectionCounts } from '../../components/risks/RaidSectionBar';
 import { announce } from '../../utils/announce';
 import { severityColor } from '../../utils/severityColors';
 import { RiskFormModal } from '../../components/risks/RiskFormModal';
@@ -91,7 +92,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   if (filterSource) filters.source = filterSource;
   if (searchText.trim()) filters.search = searchText.trim();
 
-  const activeFilterCount = [filterType, filterStatus, filterSeverity, filterSource].filter(Boolean).length;
+  const activeFilterCount = [filterStatus, filterSeverity, filterSource].filter(Boolean).length;
 
   const { data: risksData, isLoading } = useQuery({
     queryKey: ['project-risks', projectId, filters],
@@ -111,9 +112,12 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
     enabled: !!projectId,
   });
 
-  const risks: any[] = risksData?.data || [];
+  // Every item (the unfiltered list — the same query, and cache, as the list with no filters): the
+  // "Needs attention" count and section
+  const { shownSection, chooseSection, reasonOf, risks, attentionCount } = useRaidSections(projectId, risksData?.data || [], (type) => { setFilterType(type); setSelectedIds(new Set()); });
   const [showMoreTypes, setShowMoreTypes] = useState(false);
   const stats = statsData?.data || {};
+  const sectionCount = sectionCounts(stats, attentionCount);
   const members: any[] = membersData?.members || [];
 
   const invalidateRaid = useCallback(() => {
@@ -211,7 +215,7 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
   const openAdd = (type: RaidType) => { setEditRisk(null); setDefaultType(type); setShowForm(true); };
   const openEdit = (risk: any) => { setEditRisk(risk); setDefaultType(risk.type); setShowForm(true); };
 
-  const clearFilters = () => { setFilterType(''); setFilterStatus(''); setFilterSeverity(''); setFilterSource(''); setSearchText(''); };
+  const clearFilters = () => { setFilterStatus(''); setFilterSeverity(''); setFilterSource(''); setSearchText(''); };
 
   // Bulk actions
   const toggleSelect = (id: string) => {
@@ -556,15 +560,6 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         {/* Collapsible filter row */}
         {showFilters && (
           <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
-            <select aria-label="Filter by type" value={filterType} onChange={e => setFilterType(e.target.value)} className={selectClass}>
-              <option value="">All Types</option>
-              <option value="risk">Risks</option>
-              <option value="issue">Issues</option>
-              <option value="action">Actions</option>
-              <option value="decision">Decisions</option>
-              <option value="assumption">Assumptions</option>
-              <option value="dependency">Dependencies</option>
-            </select>
             <select aria-label="Filter by status" value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectClass}>
               <option value="">All Statuses</option>
               <option value="open">Open</option>
@@ -644,10 +639,18 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
         </div>
       )}
 
+      {/* Sections (U20) */}
+      <RaidSectionBar shown={shownSection} counts={sectionCount} onChoose={chooseSection} />
+
       {/* Main content */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
+        </div>
+      ) : risks.length === 0 && shownSection === 'attention' && activeFilterCount === 0 && !searchText.trim() ? (
+        <div className={`${cardClass} p-8 text-center`}>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Nothing needs attention</h3>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">No high risk without a plan, overdue action, waiting decision, assumption to confirm or dependency at risk.</p>
         </div>
       ) : risks.length === 0 ? (
         <div className={`${cardClass} p-8 text-center`}>
@@ -715,6 +718,9 @@ export function RAIDTab({ projectId, projectName }: { projectId: string; project
                       {risk.title}
                     </button>
                     {risk.triggered && <span className="text-amber-500 dark:text-amber-400 flex-shrink-0" title="Triggered">⚡</span>}
+                    {reasonOf.has(risk.id) && (
+                      <span className="flex-shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-900 dark:text-amber-100">{reasonOf.get(risk.id)}</span>
+                    )}
                     {due && (
                       <span className={`flex items-center gap-0.5 text-xs font-medium flex-shrink-0 ${due.color}`}>
                         {due.icon && <AlertTriangle className="w-3 h-3" />}
