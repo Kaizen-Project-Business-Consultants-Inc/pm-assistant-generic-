@@ -245,10 +245,11 @@ export class ProjectsApi extends ApiBase {
   // Templates
   // -------------------------------------------------------------------------
 
-  async getTemplates(projectType?: string, category?: string) {
+  async getTemplates(projectType?: string, category?: string, limit?: number) {
     const params: Record<string, string> = {};
     if (projectType) params.projectType = projectType;
     if (category) params.category = category;
+    if (limit) params.limit = String(limit);
     const response = await this.api.get('/templates', { params });
     return response.data;
   }

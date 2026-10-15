@@ -2095,14 +2095,34 @@ After selecting a template, the **Template Customize Form** lets you:
 
 ### Built-In Templates
 
-PM Assistant ships with **18 built-in templates** (14 project templates and 4 consulting engagements) across 8 categories. Templates used during onboarding, by Claude or through the API bring all their starter RAID items (there is no review step there; delete any you don't need from Risks & Issues). Four templates were added in August 2026:
+PM Assistant ships with **33 built-in templates** (29 project templates and 4 consulting engagements) across 8 categories. Templates used during onboarding, by Claude or through the API bring all their starter RAID items (there is no review step there; delete any you don't need from Risks & Issues). Four templates were added in August 2026:
 
 | Template | Category | Duration |
 |----------|----------|----------|
-| Agile/Scrum Sprint Project | IT | 90 days (4 sprints) |
-| Marketing Campaign | Marketing | 60 days |
-| Product Launch | Marketing | 120 days |
-| Office Relocation | Operations | 90 days |
+| Agile/Scrum Sprint Project | IT | 90 working days (4 sprints) |
+| Marketing Campaign | Marketing | 60 working days |
+| Product Launch | Marketing | 120 working days |
+| Office Relocation | Operations | 90 working days |
+
+Fifteen everyday IT templates were added in October 2026, each with sign-off milestones and 6 starter RAID items (find them under **IT & Software**):
+
+| Template | Category | Duration |
+|----------|----------|----------|
+| Mobile App Development | IT (app development) | 100 working days |
+| Website Design / Redesign | IT (web design) | 64 working days |
+| Software Selection (RFP) | IT | 77 working days |
+| Data & BI Reporting | IT | 59 working days |
+| Cybersecurity / Compliance Readiness (SOC 2 / ISO 27001) — reaches a SOC 2 Type 1 report or an ISO 27001 Stage 2 audit; Type 2 needs 3–12 months of operating controls first | IT | 99 working days |
+| Training & Change Rollout | IT | 77 working days |
+| Microsoft Dynamics Migration to the Cloud | IT | 106 working days |
+| Server Installation | IT | 48 working days |
+| Microsoft 365 / Email Migration | IT | 51 working days |
+| Backup & Disaster Recovery Setup (with a real restore test) | IT | 52 working days |
+| Laptop / Desktop Rollout | IT | 64 working days |
+| Network or Wi-Fi Upgrade | IT | 56 working days |
+| New Office IT Setup | IT | 42 working days |
+| CRM / SaaS Rollout | IT | 56 working days |
+| AI / Chatbot Pilot | IT | 65 working days |
 
 ### Template Marketplace
 

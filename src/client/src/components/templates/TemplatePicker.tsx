@@ -44,6 +44,9 @@ type Step =
   | 'file-map'    // NEW: column mapping for "From File"
   | 'file-details'; // NEW: project details for "From File"
 
+/** The project types shown under IT & Software */
+const IT_TYPES = ['it', 'web_design', 'web_application', 'app_development'];
+
 const categories = [
   { key: 'consulting', label: 'Consulting', icon: Briefcase, color: 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800' },
   { key: 'it', label: 'IT & Software', icon: Monitor, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
@@ -206,6 +209,9 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     queryFn: () => {
       // consulting engagements span project types: they are their own category
       if (selectedCategory === 'consulting') return apiService.getTemplates(undefined, 'engagement');
+      // IT & Software covers the software project types too (web design, web application, app
+      // development), which the Schedule Review checks against their own profiles
+      if (selectedCategory === 'it') return apiService.getTemplates(undefined, undefined, 200);
       if (selectedCategory === 'marketing' || selectedCategory === 'operations') {
         return apiService.getTemplates('other', selectedCategory);
       }
@@ -264,7 +270,8 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
 
   // consulting engagements live in their own Consulting group, not also under IT or General
   const allInCategory: any[] = templatesData?.data || templatesData?.templates || [];
-  const templates = selectedCategory === 'consulting' ? allInCategory : allInCategory.filter(t => t.category !== 'engagement');
+  const templates = selectedCategory === 'consulting' ? allInCategory
+    : allInCategory.filter(t => t.category !== 'engagement' && (selectedCategory !== 'it' || IT_TYPES.includes(t.projectType)));
   const template = templateDetail?.template;
   const marketplaceTemplates = marketplaceData?.data || [];
 

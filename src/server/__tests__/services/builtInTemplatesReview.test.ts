@@ -112,6 +112,22 @@ describe('built-in templates pass Schedule Review', () => {
       'Marketing Campaign': 94,
       'Product Launch': 94,
       'Office Relocation': 94,
+      // the 15 IT templates added 2026-10-15 (UAT U10)
+      'Mobile App Development': 94,
+      'Website Design / Redesign': 94,
+      'Software Selection (RFP)': 94,
+      'Data & BI Reporting': 94,
+      'Cybersecurity / Compliance Readiness (SOC 2 / ISO 27001)': 94,
+      'Training & Change Rollout': 94,
+      'Microsoft Dynamics Migration to the Cloud': 94,
+      'Server Installation': 94,
+      'Microsoft 365 / Email Migration': 94,
+      'Backup & Disaster Recovery Setup': 94,
+      'Laptop / Desktop Rollout': 94,
+      'Network or Wi-Fi Upgrade': 94,
+      'New Office IT Setup': 94,
+      'CRM / SaaS Rollout': 94,
+      'AI / Chatbot Pilot': 94,
     };
     for (const t of templates) {
       const min = FLOOR[t.name] ?? 50;

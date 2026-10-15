@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Batch E2: 15 new IT templates
+- `services/templates/itTemplates.ts` (15 templates, each scoring 94 in the Schedule Review, floors locked) + 6 starter RAID items each; picker IT & Software group now also lists web design / web app / app development types.
+
 ## 2026-10-15 — Batch E1: starter RAID for every template, review step, Consulting group, Marketplace off
 - `services/templates/starterRaid.ts`: 4–6 starter RAID items for each of the 14 built-in templates; the create form lists them (all ticked, untick to drop); apply takes `selectedRaidIndexes`.
 - Picker: Consulting category (engagement templates, not repeated under IT/General); Marketplace hidden while empty; publish refused (409) until shared templates are reviewed — bring back later (todo U11).

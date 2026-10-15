@@ -4,6 +4,7 @@ import { STARTER_RAID } from './templates/starterRaid';
 import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
 import { consultingEngagementTemplates } from './templates/consultingEngagements';
+import { itTemplates } from './templates/itTemplates';
 import logger from '../utils/logger';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, finishFor, utcDay, ymdOf } from '../utils/workingDays';
 
@@ -522,6 +523,7 @@ export class TemplateService {
       marketingCampaignTemplate,
       productLaunchTemplate,
       officeRelocationTemplate,
+      ...itTemplates,
     ].map(t => ({ ...t, raidItems: t.raidItems ?? STARTER_RAID[t.id] })),
   ];
 
