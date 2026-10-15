@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { sendValidationError } from '../../utils/validationError';
 import { z } from 'zod';
 import { sprintService } from '../../services/SprintService';
 import { standupEntryService } from '../../services/StandupEntryService';
@@ -140,6 +141,8 @@ export async function sprintRoutes(fastify: FastifyInstance) {
       const page = Math.floor(offset / limit) + 1;
       return paginate(enriched, total, page, limit);
     } catch (error) {
+      // a page size or offset out of range is the caller's mistake: 400 with the reason, not 500
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Get sprints error', { error });
       return reply.status(500).send({ error: 'Failed to fetch sprints' });
     }

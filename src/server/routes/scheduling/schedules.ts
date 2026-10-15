@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { sendValidationError } from '../../utils/validationError';
 import { loginForAssignee } from '../../utils/assigneeLogins';
 import { mentionablePeople, mentionedHandles, inCurrentCompany } from '../../utils/mentionablePeople';
 import { z } from 'zod';
@@ -237,6 +238,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const page = Math.floor(offset / limit) + 1;
       return paginate(rows, total, page, limit);
     } catch (error) {
+      // a page size or offset out of range is the caller's mistake: 400 with the reason, not 500
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Get tasks error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch tasks' });
     }

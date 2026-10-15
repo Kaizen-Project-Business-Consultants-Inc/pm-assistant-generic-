@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { sendValidationError } from '../../utils/validationError';
 import { readableProjectIds } from '../../utils/readableProjects';
 import { z } from 'zod';
 import { projectService } from '../../services/ProjectService';
@@ -145,6 +146,8 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const page = Math.floor(offset / limit) + 1;
       return paginate(enriched, total, page, limit);
     } catch (error) {
+      // a page size or offset out of range is the caller's mistake: 400 with the reason, not 500
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Get projects error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch projects' });
     }

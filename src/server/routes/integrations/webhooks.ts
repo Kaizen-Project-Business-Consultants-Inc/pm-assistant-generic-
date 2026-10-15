@@ -103,6 +103,8 @@ export async function webhookRoutes(fastify: FastifyInstance) {
       const deliveries = await webhookService.getDeliveries(id, limit, offset);
       return deliveries;
     } catch (error) {
+      // a page size or offset out of range is the caller's mistake: 400 with the reason, not 500
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('Get webhook deliveries error', { error });
       return reply.status(500).send({ error: 'Failed to fetch webhook deliveries' });
     }

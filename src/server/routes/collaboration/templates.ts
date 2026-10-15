@@ -84,6 +84,8 @@ export async function templateRoutes(fastify: FastifyInstance) {
       const page = Math.floor(offset / limit) + 1;
       return paginate(summaries, total, page, limit);
     } catch (error) {
+      // a page size or offset out of range is the caller's mistake: 400 with the reason, not 500
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('List templates error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch templates' });
     }
@@ -240,6 +242,8 @@ export async function templateRoutes(fastify: FastifyInstance) {
       }));
       return paginate(summaries, total, page, limit);
     } catch (error) {
+      // a page size or offset out of range is the caller's mistake: 400 with the reason, not 500
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       logger.error('List marketplace templates error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to fetch marketplace templates' });
     }
