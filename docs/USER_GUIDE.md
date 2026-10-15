@@ -330,6 +330,17 @@ Available cards:
 - **Attachments** -- Recent file uploads with version info.
 - **Latest Meeting** -- Most recent meeting analysis summary with action items and decisions.
 
+#### Project Details
+
+The **Project Details** card on Overview is grouped so it reads at a glance (October 2026):
+
+- **Who** — the client, the sponsor and the project manager with their email.
+- **When** — start and end, the length in weeks and working days, how long until it starts or how many working days are left, and which holiday calendar the project follows.
+- **Money** — the budget, what has been spent (with the % of budget) and the currency.
+- **What** — project type, methodology, priority (a coloured label), category and location, in plain words.
+
+The project's PM sees an **Edit** pencil on the card; it opens the same form as the Edit button at the top of the page.
+
 #### Project Brief
 
 The **Project Brief** card is part of the reorderable overview card grid — drag it to reposition alongside KPI, milestones, and other cards (it always spans full width). The brief displays the project description with full markdown rendering (headings, bold, italic, lists, links, and inline code) powered by the `marked` GFM parser.
@@ -340,7 +351,7 @@ The **Project Brief** card is part of the reorderable overview card grid — dra
 - **Escape to cancel** -- Pressing **Escape** while editing discards your changes and reverts the draft to the pre-edit description. Because nothing is saved while you type, Escape is always a clean cancel — no partial saves to worry about.
 - **Conflict detection** -- If another user saves the brief while you are editing, your next save will detect the conflict and show an amber "Someone else saved" message with a **Refresh** link. Click Refresh to load their changes. This prevents silently overwriting another user's work.
 - **Collaborative editing** -- When another user is editing the brief at the same time, an amber indicator with a pulsing dot shows their username (e.g., "jsmith editing"), truncated on narrow screens. The indicator is screen-reader accessible (`role="status"`, `aria-live="polite"`) and respects reduced-motion preferences.
-- **Empty state** -- When no description exists, a placeholder ("Click to add a project brief...") is shown. Editors can click or press Enter to start writing. Read-only users see "No project brief yet."
+- **Empty state** -- When no description exists, the project's PM sees two buttons: **Start from an outline** fills in the usual headings — *Purpose*, *Objectives and success criteria*, *In scope*, *Out of scope*, *Key stakeholders*, *Key constraints* — for you to complete, and **Write my own** opens a blank page. (Press Escape to back out; nothing is saved until you change it.) Everyone else sees "No project brief yet."
 - **Markdown support** -- `# Headings`, `**bold**`, `*italic*`, `- lists`, `[links](url)`, and `` `inline code` `` are all rendered.
 - **Reading level badge** -- Next to the "Project Brief" heading, a color-coded badge displays the Flesch-Kincaid readability score (e.g., "Grade 8 · Score 65"). The badge color indicates difficulty: green for easy reading (score ≥ 60), amber for moderate (30–59), red for difficult (< 30). The score is computed client-side — no API call required. Descriptions shorter than 20 characters do not show a badge.
 

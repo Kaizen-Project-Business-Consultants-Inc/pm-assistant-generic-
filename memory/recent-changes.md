@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Batch D2: Project Details card, brief outline
+- U15 `ProjectDetailsCard` replaces the flat details list on Overview: Who / When / Money / What groups (client, sponsor, PM; dates, weeks + working days, time left, holiday calendar; budget, spent %, currency; type, methodology, priority, category, location in words); Edit pencil for whoever may edit the project. Old `priorityColors` + flat markup removed.
+- U16 empty Project Brief: PM gets "Start from an outline" (six headings) or "Write my own"; the empty state is no longer a role=button wrapping buttons.
+
 ## 2026-10-15 — Batch D1: setup row, Hours / Forecast tabs, progress charts, critical path, DATETIME writes
 - U14 `ProjectReadinessBar`: heading "Set up this project: N of M done", step pills with ✓/○ and accessible labels, "Predecessors" → "Link tasks"; localStorage wrapped (blocked storage = just shows).
 - U19 tab "Time" → "Hours" (heading + link to My timesheet; "Burndown" sub-view → "Hours forecast"). U23 "Insights" → "Forecast": weather only for construction/infrastructure/roads (query not made otherwise; banner sentence lists only what's shown), duplicate S-curve removed (link to Schedule). Tab ids unchanged.

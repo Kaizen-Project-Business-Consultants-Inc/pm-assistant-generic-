@@ -21,6 +21,33 @@ interface ProjectBriefCardProps {
   updatedAt?: string;
 }
 
+/** A starter outline for an empty brief (U16): the PM fills it in; nothing is saved until they do */
+const BRIEF_OUTLINE = `## Purpose
+Why this project exists and the problem it solves.
+
+## Objectives and success criteria
+- What will be true when the project is done (measurable where possible)
+
+## In scope
+-
+
+## Out of scope
+-
+
+## Key stakeholders
+- Sponsor:
+- Client contact:
+- Users affected:
+
+## Key constraints
+- Dates:
+- Budget:
+- Regulation / standards:
+`;
+
+/** No change to save: the same as the saved brief, or the starter outline left untouched */
+const unchanged = (draft: string, saved: string) => draft === saved || draft === BRIEF_OUTLINE;
+
 export function ProjectBriefCard({ projectId, description, canEdit, cardClass, presenceEditors, currentUserId, updatedAt }: ProjectBriefCardProps) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
@@ -107,7 +134,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
       // closed by a sign-out: nobody to save it for, and the next person must not be offered it
       if (!useAuthStore.getState().user) return;
-      if (draftRef.current !== descriptionRef.current) {
+      if (!unchanged(draftRef.current, descriptionRef.current)) {
         sessionStorage.setItem(STORAGE_KEY, draftRef.current);
         const payload: Record<string, string> = { description: draftRef.current };
         if (updatedAtRef.current) payload.expectedUpdatedAt = updatedAtRef.current;
@@ -122,7 +149,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
   useEffect(() => {
     if (!editing) return;
     const handler = (e: BeforeUnloadEvent) => {
-      if (draftRef.current !== descriptionRef.current) {
+      if (!unchanged(draftRef.current, descriptionRef.current)) {
         e.preventDefault();
       }
     };
@@ -167,7 +194,7 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
     setDraft(value);
     if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
     checkpointTimerRef.current = setTimeout(() => {
-      if (value !== (description ?? '')) {
+      if (!unchanged(value, description ?? '')) {
         sessionStorage.setItem(STORAGE_KEY, value);
       } else {
         sessionStorage.removeItem(STORAGE_KEY);
@@ -182,9 +209,11 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
       return;
     }
     setEditing(false);
-    if (draft !== (description ?? '')) {
-      doSave(draft);
+    if (unchanged(draft, description ?? '')) {
+      setDraft(description ?? ''); // an outline nobody filled in is not a brief
+      return;
     }
+    doSave(draft);
   };
 
   // F2: Escape cancels — honest revert, nothing was saved mid-edit
@@ -358,20 +387,29 @@ export function ProjectBriefCard({ projectId, description, canEdit, cardClass, p
         />
       )}
 
-      {/* Empty state */}
+      {/* Empty state: the PM can start from an outline (U16) or a blank page */}
       {!editing && isEmpty && (
-        <div
-          className={`flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400 ${canEdit ? 'cursor-pointer hover:text-gray-500 dark:hover:text-gray-400' : ''}`}
-          onClick={canEdit ? enterEdit : undefined}
-          tabIndex={canEdit ? 0 : undefined}
-          role={canEdit ? 'button' : undefined}
-          aria-label={canEdit ? 'Add project brief' : undefined}
-          onKeyDown={canEdit ? handleViewKeyDown : undefined}
-        >
-          <FileText className="w-8 h-8 mb-2" />
-          <span className="text-sm">
-            {canEdit ? 'Click to add a project brief...' : 'No project brief yet.'}
-          </span>
+        <div className="flex flex-col items-center justify-center gap-3 py-8 text-center text-gray-600 dark:text-gray-300">
+          <FileText aria-hidden="true" className="w-8 h-8" />
+          {canEdit ? (
+            <>
+              <p className="text-sm max-w-prose">
+                A brief says why the project exists and what &ldquo;done&rdquo; means: purpose, objectives, what is in and out of scope, who matters, and the limits.
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button type="button" onClick={() => { setDraft(BRIEF_OUTLINE); setEditing(true); }}
+                  className="min-h-[36px] px-4 rounded-lg bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold">
+                  Start from an outline
+                </button>
+                <button type="button" onClick={enterEdit}
+                  className="min-h-[36px] px-4 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+                  Write my own
+                </button>
+              </div>
+            </>
+          ) : (
+            <span className="text-sm">No project brief yet.</span>
+          )}
         </div>
       )}
     </div>

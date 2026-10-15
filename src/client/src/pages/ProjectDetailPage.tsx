@@ -719,7 +719,7 @@ export function ProjectDetailPage() {
       {/* Tab Content */}
       <h2 className="sr-only">{[...getPrimaryTabs(methodology), ...getOverflowTabs(methodology)].find(t => t.id === activeTab)?.label ?? activeTab}</h2>
       <Suspense fallback={<SectionSpinner />}>
-        {activeTab === 'overview' && <OverviewTab project={project} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} canEdit={canEditStatus} presenceEditors={presenceEditors} currentUserId={user?.id} />}
+        {activeTab === 'overview' && <OverviewTab project={project} onNavigateToTab={(tab) => setActiveTab(tab as Tab)} canEdit={canEditStatus} presenceEditors={presenceEditors} currentUserId={user?.id} onEditProject={canEditStatus && !isDemo ? () => setShowEditProject(true) : undefined} />}
         {activeTab === 'raid' && <RAIDTab projectId={id!} projectName={project.name} />}
         {activeTab === 'schedule' && <ScheduleTab projectId={id!} projectName={project.name} projectStartDate={project.startDate || project.start_date} defaultViewMode={getDefaultViewMode(methodology)} methodology={methodology} />}
         {(activeTab === 'insights' || activeTab === 'ai-insights' || activeTab === 'performance') && <InsightsTab projectId={id!} onNavigate={(tab) => setActiveTab(tab as Tab)} />}

@@ -108,6 +108,8 @@ const sections: Section[] = [
       'Fewer tabs show in the bar; the rest (Hours, Files, Forecast, Resources, Agent Activity, Changes and more) are under More at the end of the tab bar',
       'A new project shows "Set up this project: 1 of 3 done" with its steps (Tasks, Link tasks, Resources) — click a step to do it; it hides once all are done',
       'The Overview has a Critical path card (length in working days, critical tasks, end date); in the Gantt, the red Critical path button highlights them',
+      'Project Details on the Overview is grouped: Who (client, sponsor, PM), When (dates, working days, time left, holiday calendar), Money (budget, spent, currency), What (type, methodology, priority, category, location)',
+      'An empty Project Brief offers "Start from an outline" (purpose, objectives, scope, stakeholders, constraints) or "Write my own"',
       'Finished with a project? Archive it from its card in the Projects list — nothing is lost and you can unarchive it. Team plans cannot delete projects',
       'Add, edit, and delete tasks with dependencies',
       'Assign resources and track progress percentages',

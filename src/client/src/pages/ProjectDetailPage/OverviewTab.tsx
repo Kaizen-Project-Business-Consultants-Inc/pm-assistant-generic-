@@ -6,7 +6,6 @@ import {
   ShieldAlert,
   AlertTriangle,
   CheckCircle2,
-  MapPin,
   BarChart3,
   Kanban,
   Users,
@@ -32,6 +31,7 @@ import {
   Route,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { formatCurrency } from '../../utils/formatCurrency';
 import { Avatar } from '../../components/ui/Avatar';
 import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
 import { CustomFieldsSection } from '../../components/customfields/CustomFieldsSection';
@@ -40,6 +40,7 @@ import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
 import { ScheduleHealthCard } from '../../components/schedule/review/ScheduleHealthCard';
 import { CriticalPathCard } from '../../components/schedule/CriticalPathCard';
+import { ProjectDetailsCard } from '../../components/project/ProjectDetailsCard';
 import { plansOnly } from '../../hooks/useOnlySchedule';
 import { formatCalendarDate, isCalendarOverdue, toCalendarDate } from '../../utils/dateUtils';
 
@@ -62,6 +63,10 @@ interface ProjectOverview {
   end_date?: string;
   updatedAt?: string;
   updated_at?: string;
+  projectType?: string;
+  statusDate?: string | null;
+  clientId?: string | null;
+  groupId?: string | null;
 }
 
 type CardId = 'brief' | 'links' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'schedule-health' | 'critical-path' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
@@ -75,7 +80,7 @@ const DEFAULT_CARD_ORDER: CardId[] = [
   'goals', 'attachments', 'latest-meeting',
 ];
 
-export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors, currentUserId }: { project: ProjectOverview; onNavigateToTab?: (tab: string) => void; canEdit?: boolean; presenceEditors?: { userId: string; name: string; field: string }[]; currentUserId?: string }) {
+export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors, currentUserId, onEditProject }: { project: ProjectOverview; onNavigateToTab?: (tab: string) => void; canEdit?: boolean; presenceEditors?: { userId: string; name: string; field: string }[]; currentUserId?: string; onEditProject?: () => void }) {
   const { data: membersData, isLoading: membersLoading } = useQuery({
     queryKey: ['project-members', project.id],
     queryFn: () => apiService.getProjectMembers(project.id),
@@ -200,12 +205,6 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const formatDate = (d: string | undefined) =>
     d ? formatCalendarDate(d, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : null;
 
-  const priorityColors: Record<string, string> = {
-    urgent: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-    high: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-    medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-    low: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  };
 
   const startDate = project.startDate || project.start_date;
   const endDate = project.endDate || project.end_date;
@@ -1069,59 +1068,8 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={`lg:col-span-2 space-y-6`}>
           <div className={cardClass}>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Project Details</h3>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {project.priority && (
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500 dark:text-gray-400">Priority</span>
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium capitalize ${priorityColors[project.priority] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'}`}>
-                    {project.priority}
-                  </span>
-                </span>
-              )}
-              {project.category && (
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500 dark:text-gray-400">Category</span>
-                  <span className="font-medium text-gray-900 dark:text-white capitalize">{project.category}</span>
-                </span>
-              )}
-              {project.type && (
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500 dark:text-gray-400">Type</span>
-                  <span className="font-medium text-gray-900 dark:text-white capitalize">{project.type}</span>
-                </span>
-              )}
-              {project.location && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-gray-500" />
-                  <span className="font-medium text-gray-900 dark:text-white">{project.location}</span>
-                </span>
-              )}
-              <span className="flex items-center gap-1.5">
-                <span className="text-gray-500 dark:text-gray-400">PM</span>
-                <span className="font-medium text-gray-900 dark:text-white">
-                  {membersLoading ? <span className={`inline-block h-4 w-20 ${skeletonPulse}`} /> : managerName}
-                </span>
-              </span>
-              {startDate && (
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500 dark:text-gray-400">Start</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatDate(startDate)}</span>
-                </span>
-              )}
-              {endDate && (
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500 dark:text-gray-400">End</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatDate(endDate)}</span>
-                </span>
-              )}
-              {project.currency && (
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500 dark:text-gray-400">Currency</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{project.currency.toUpperCase()}</span>
-                </span>
-              )}
-            </div>
+            <ProjectDetailsCard project={project} onEdit={onEditProject} managerLoading={membersLoading}
+              manager={manager ? { name: managerName, email: manager.user?.email || manager.email } : null} />
           </div>
         </div>
 
@@ -1349,14 +1297,6 @@ function cpiSpiColor(val: number | null): string {
   if (val >= 1.0) return 'text-green-600 dark:text-green-400';
   if (val >= 0.85) return 'text-amber-600 dark:text-amber-400';
   return 'text-red-600 dark:text-red-400';
-}
-
-function formatCurrency(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
-  } catch {
-    return `$${amount.toLocaleString()}`;
-  }
 }
 
 function HealthSparkline({ data }: { data: number[] }) {
