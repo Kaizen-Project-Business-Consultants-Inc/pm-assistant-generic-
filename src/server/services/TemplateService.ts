@@ -1,4 +1,5 @@
 import { ProjectTemplate, TemplateTask, CreateFromTemplate, SaveAsTemplate } from '../schemas/templateSchemas';
+import { getTenantContext } from '../middleware/requestContext';
 import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
 import { consultingEngagementTemplates } from './templates/consultingEngagements';
@@ -491,8 +492,16 @@ const officeRelocationTemplate: ProjectTemplate = {
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
+/** A template as kept: a custom one remembers which company saved it */
+type StoredTemplate = ProjectTemplate & { ownerOrgId?: string | null };
+
+/** The signed-in company (null outside a company — tests, platform tools) */
+function currentOrg(): string | null {
+  return getTenantContext()?.orgId ?? null;
+}
+
 export class TemplateService {
-  private static templates: ProjectTemplate[] = [
+  private static templates: StoredTemplate[] = [
     // Engagement scaffolds first: this is a consultant's product, so these are what the
     // buyer should see at the top of the list.
     ...consultingEngagementTemplates,
@@ -512,7 +521,21 @@ export class TemplateService {
     officeRelocationTemplate,
   ];
 
-  private get templates() { return TemplateService.templates; }
+  /** Where a template the current company may see sits in the store (-1 when it can't see it) */
+  private storedIndex(id: string): number {
+    const org = currentOrg();
+    return TemplateService.templates.findIndex(t => t.id === id && (t.isBuiltIn || t.ownerOrgId === org));
+  }
+
+  /**
+   * The templates this company may see: every built-in one, and only the custom templates its own
+   * people saved (2026-10-15 — custom templates were shared by every company: anyone could see,
+   * edit or delete another company's, which can carry its clients' details).
+   */
+  private get templates() {
+    const org = currentOrg();
+    return TemplateService.templates.filter(t => t.isBuiltIn || t.ownerOrgId === org);
+  }
 
   async findAll(projectType?: string, category?: string): Promise<ProjectTemplate[]> {
     let result = [...this.templates];
@@ -535,27 +558,28 @@ export class TemplateService {
   }
 
   async create(data: Omit<ProjectTemplate, 'id' | 'usageCount'>): Promise<ProjectTemplate> {
-    const template: ProjectTemplate = {
+    const template: StoredTemplate = {
       ...data,
       id: `tpl-${Math.random().toString(36).substr(2, 9)}`,
       usageCount: 0,
+      ownerOrgId: currentOrg(),
     };
     TemplateService.templates.push(template);
     return template;
   }
 
   async update(id: string, data: Partial<Omit<ProjectTemplate, 'id' | 'isBuiltIn'>>): Promise<ProjectTemplate | null> {
-    const index = this.templates.findIndex(t => t.id === id);
+    const index = this.storedIndex(id);
     if (index === -1) return null;
-    if (this.templates[index].isBuiltIn) return null; // Cannot edit built-in templates
-    TemplateService.templates[index] = { ...this.templates[index], ...data };
+    if (TemplateService.templates[index].isBuiltIn) return null; // Cannot edit built-in templates
+    TemplateService.templates[index] = { ...TemplateService.templates[index], ...data };
     return TemplateService.templates[index];
   }
 
   async delete(id: string): Promise<boolean> {
-    const index = this.templates.findIndex(t => t.id === id);
+    const index = this.storedIndex(id);
     if (index === -1) return false;
-    if (this.templates[index].isBuiltIn) return false; // Cannot delete built-in templates
+    if (TemplateService.templates[index].isBuiltIn) return false; // Cannot delete built-in templates
     TemplateService.templates.splice(index, 1);
     return true;
   }
@@ -575,7 +599,7 @@ export class TemplateService {
     if (!template) throw new Error('Template not found');
 
     // Increment usage count
-    const idx = this.templates.findIndex(t => t.id === input.templateId);
+    const idx = this.storedIndex(input.templateId);
     if (idx !== -1) TemplateService.templates[idx].usageCount++;
 
     // Template offsets and durations are WORKING days. The new project has no calendar

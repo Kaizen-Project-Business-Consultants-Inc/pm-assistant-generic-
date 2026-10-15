@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Saved templates scoped to their company (found in the E1 review)
+- `TemplateService`: custom templates carry `ownerOrgId`; findAll / findById / update / delete / apply see built-ins + the company's own only (they were one list for every company — see, edit, delete). Still in memory (lost on restart) — follow-up: store per company in the database.
+
 ## 2026-10-15 — Batch D3: one setup list, RAID sections, critical-path page
 - One setup list (user "yes" 2026-10-15): `ProjectReadinessBar` gains Team / Budget / Risks steps with real per-project signals (team list + members, budgetAllocated, risks + issues) and shows only to the project's PM; `SetupChecklist` ("Get Started") removed with its a11y test and guard-baseline entry; the company-wide `['resources']` fetch on the project page is gone.
 - U20 RAID sections: pills Needs attention · Risks · Issues · Actions · Decisions · Assumptions · Dependencies · All with counts; Type dropdown removed; `utils/raidAttention` (tested) gives each item's reason, shown beside its title.

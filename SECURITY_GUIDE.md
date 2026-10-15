@@ -619,6 +619,10 @@ On the Trial, Consultant Basic and Consultant Pro plans each client has its own 
 - Known limit: moving from a Consultant plan to a Team plan leaves the people in their client pools. On a Team plan the Resources screen shows everyone, but the per-client rate cards and calendars are not shown there.
 - Tests: `resourcesViewerScope.test.ts`, `raidOwnerResource.test.ts`, `ProjectTeamService.test.ts`, `poolFit.test.ts`, `rateCard.test.ts`, `TaskBudgetService.test.ts`.
 
+## 14f. Saved project templates are the company's own (2026-10-15)
+
+Custom templates (Save as template, a new template, an imported marketplace template) were kept in one in-memory list for every company: any signed-in user could list, open, edit or delete another company's templates — and a template saved from a project can carry that company's clients' names and task details. Now each custom template remembers the company that saved it (`TemplateService`, `ownerOrgId` from the request's tenant context) and every read, change, delete and apply only sees the company's own plus the built-in templates. Test: `templateCompanyScope.test.ts`. Known limit (unchanged): custom templates are still held in memory, so a server restart clears them — moving them into the company's database is a follow-up.
+
 ## 15. Stakeholder Portal Access
 
 The stakeholder portal (`PortalService.ts`, `src/server/routes/portal.ts`) provides limited external access:
