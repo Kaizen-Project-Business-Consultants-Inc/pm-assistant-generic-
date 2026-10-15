@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Batch D1: setup row, Hours / Forecast tabs, progress charts, critical path, DATETIME writes
+- U14 `ProjectReadinessBar`: heading "Set up this project: N of M done", step pills with ✓/○ and accessible labels, "Predecessors" → "Link tasks"; localStorage wrapped (blocked storage = just shows).
+- U19 tab "Time" → "Hours" (heading + link to My timesheet; "Burndown" sub-view → "Hours forecast"). U23 "Insights" → "Forecast": weather only for construction/infrastructure/roads (query not made otherwise; banner sentence lists only what's shown), duplicate S-curve removed (link to Schedule). Tab ids unchanged.
+- U18 Hybrid shows Burndown and S-curve; empty burndown / S-curve say what they need (S-curve text was stale: budgets come from people × rate).
+- U17 Gantt "Critical path" button stands out (red); CPM result adds `hasLinks` + `finishDate`; strip says "Link your tasks first" when nothing is linked; Overview `CriticalPathCard`. Overview's primary schedule skips What-If copies (`plansOnly`).
+- DATETIME: `utils/sqlDateTime` (ISO → 'YYYY-MM-DD HH:MM:SS' UTC; unreadable throws, never "now") used for lessons_learned / lesson_patterns, meetings.scheduled_date (routes refuse an unreadable date with a 400 — `isReadableMoment`) and integration sync log / last_sync_at (Slack's last-sync time never updated). Log sweep of both servers: 4 meeting errors on staging, none on prod.
+- Review fixes: `?tab=` links now switch tabs on an open project page (S-curve's Team link, sidebar); the Gantt paints no critical path when nothing is linked; CPM `finishDate` = origin + length on the plan's calendar; error states on the critical-path card and burndown; Forecast/Hours tabs use the plan, not a What-If copy; chart rule in `utils/methodology.progressViews/fitView` (tested).
+
 ## 2026-10-14 — Batch C2: client resource pools (U8 A–I, consultant plans + trial)
 - T091: `resources.client_id` (NULL = My resources); `rate_card.pool_id` ('' = My resources; unique (pool_id, role, effective_from)), every existing client got a copy of the card; `holiday_calendars` + `company_holidays.calendar_id` ('home' = old list), `project_groups.holiday_calendar_id`; `project_team` (project, resource, role on project).
 - Rates: `ratesOn` uses only the person's pool card (callers pass `clientId`); `/rate-card?poolId=`, create checks the client exists; client `RateCardTab`/`RateSourceField` take `poolId`.

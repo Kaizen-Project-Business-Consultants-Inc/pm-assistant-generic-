@@ -27,6 +27,8 @@ vi.mock('../../services/EmailService', () => ({ emailService: {}, EmailRejectedE
 vi.mock('../../middleware/checkEntityProjectAccess', () => ({ checkEntityProjectAccess: vi.fn() }));
 
 import { meetingRoutes } from '../../routes/collaboration/meetings';
+import { ZodError } from 'zod';
+import { sendValidationError } from '../../utils/validationError';
 
 const body = {
   projectId: 'p-1',
@@ -43,6 +45,8 @@ describe('Import Meeting → actions go to RAID', () => {
   let app: any;
   beforeAll(async () => {
     app = Fastify();
+    // the app's error handler (plugins.ts): a body that fails its schema is a 400 with its message
+    app.setErrorHandler((err: unknown, _req: any, reply: any) => err instanceof ZodError ? sendValidationError(reply, err) : reply.status(500).send({ error: 'Internal Server Error' }));
     await app.register(meetingRoutes, { prefix: '/api/v1/meetings' });
   });
   beforeEach(() => {
@@ -62,6 +66,15 @@ describe('Import Meeting → actions go to RAID', () => {
     expect(res.json().message).toBe("Only the project's Manager or Owner can change this.");
     expect(meetings.createMeeting).not.toHaveBeenCalled();
     expect(risks.create).not.toHaveBeenCalled();
+  });
+
+  it('a meeting date the server cannot read is refused plainly, and nothing is created', async () => {
+    who.user = { userId: 'u-pm', role: 'team_member' };
+    membership.findMembership.mockResolvedValue({ projectId: 'p-1', userId: 'u-pm', role: 'manager' });
+    const res = await app.inject({ method: 'POST', url: '/api/v1/meetings/sync-external', payload: { ...body, scheduledDate: 'next Tuesday' } });
+    expect(res.statusCode).toBe(400);
+    expect(JSON.stringify(res.json())).toMatch(/Give the meeting date and time as a date/);
+    expect(meetings.createMeeting).not.toHaveBeenCalled();
   });
 
   it("the project's manager adds each action to RAID, traced to the meeting", async () => {

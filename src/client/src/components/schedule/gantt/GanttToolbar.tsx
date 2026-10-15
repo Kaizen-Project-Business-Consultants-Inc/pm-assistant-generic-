@@ -170,14 +170,15 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             role="switch"
             aria-checked={!!showCriticalPath}
             onClick={() => onCriticalPathChange(!showCriticalPath)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md transition-colors ml-2 ${
+            title="Show the chain of tasks that sets the end date — any delay to them delays the project"
+            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border transition-colors ml-2 ${
               showCriticalPath
-                ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                ? 'bg-red-600 border-red-600 text-white hover:bg-red-700'
+                : 'border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${showCriticalPath ? 'bg-primary-500' : 'bg-gray-400 dark:bg-gray-500'}`} />
-            Critical Path
+            <span aria-hidden="true" className={`w-2 h-2 rounded-full ${showCriticalPath ? 'bg-white' : 'bg-red-500'}`} />
+            Critical path
           </button>
         )}
         {parentTaskCount > 0 && (

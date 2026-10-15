@@ -1,4 +1,5 @@
 import { databaseService } from '../../database/connection';
+import { sqlDateTime } from '../../utils/sqlDateTime';
 import { ragService } from '../RagService';
 import { embeddingService } from '../EmbeddingService';
 import logger from '../../utils/logger';
@@ -102,7 +103,7 @@ export class LessonsLearnedService {
           lesson.tags ? JSON.stringify(lesson.tags) : null,
           lesson.appliedCount ?? 0,
           lesson.effectivenessRating ?? null,
-          lesson.createdAt,
+          sqlDateTime(lesson.createdAt), // DATETIME, not an ISO string
         ]),
       );
       // Index + recurrence check (fire-and-forget), for each piece as soon as it is saved — if a
@@ -126,7 +127,7 @@ export class LessonsLearnedService {
       await databaseService.query(
         `INSERT INTO lesson_patterns (id, title, description, frequency, project_types, category, recommendation, confidence, detected_at)
          VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?)').join(', ')}`,
-        chunk.flatMap(p => [p.id, p.title, p.description, p.frequency, JSON.stringify(p.projectTypes), p.category, p.recommendation, p.confidence, p.detectedAt || new Date().toISOString()]),
+        chunk.flatMap(p => [p.id, p.title, p.description, p.frequency, JSON.stringify(p.projectTypes), p.category, p.recommendation, p.confidence, sqlDateTime(p.detectedAt)]),
       );
     }
   }

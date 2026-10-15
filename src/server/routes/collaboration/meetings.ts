@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { isReadableMoment } from '../../utils/sqlDateTime';
 import { z } from 'zod';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -19,11 +20,14 @@ const agendaItemSchema = z.object({
   durationMinutes: z.number().int().min(1).max(480).optional(),
 });
 
+// when the meeting is: a date-time the server can read (an ISO moment) — "next Tuesday" is refused
+const meetingMoment = z.string().min(1).max(40).refine(isReadableMoment, 'Give the meeting date and time as a date (e.g. 2026-10-20T14:00:00Z).');
+
 const createSchema = z.object({
   projectId: z.string().min(1),
   title: z.string().min(1).max(255),
   meetingType: z.enum(['standup', 'sprint_review', 'sprint_retro', 'planning', 'steering', 'kickoff', 'ad_hoc']).optional(),
-  scheduledDate: z.string().min(1),
+  scheduledDate: meetingMoment,
   durationMinutes: z.number().int().min(1).max(1440).optional(),
   location: z.string().max(255).optional(),
   attendees: z.array(z.string().max(255)).max(100).optional(),
@@ -34,7 +38,7 @@ const createSchema = z.object({
 const updateSchema = z.object({
   title: z.string().min(1).max(255).optional(),
   meetingType: z.enum(['standup', 'sprint_review', 'sprint_retro', 'planning', 'steering', 'kickoff', 'ad_hoc']).optional(),
-  scheduledDate: z.string().min(1).optional(),
+  scheduledDate: meetingMoment.optional(),
   durationMinutes: z.number().int().min(1).max(1440).optional(),
   location: z.string().max(255).optional(),
   attendees: z.array(z.string().max(255)).max(100).optional(),
@@ -170,7 +174,7 @@ export async function meetingRoutes(fastify: FastifyInstance) {
     const syncSchema = z.object({
       projectId: z.string().min(1),
       title: z.string().min(1).max(255),
-      scheduledDate: z.string().min(1),
+      scheduledDate: meetingMoment,
       durationMinutes: z.number().int().min(1).max(1440).optional(),
       location: z.string().max(255).optional(),
       attendees: z.array(z.string().max(255)).max(100).optional(),

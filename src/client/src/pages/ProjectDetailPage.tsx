@@ -93,6 +93,11 @@ export function ProjectDetailPage() {
     setActiveTabState(tab);
     setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
   };
+  // a link to another tab of this project (?tab=…) while the page is open switches to it
+  useEffect(() => {
+    if (tabParam && validTabs.includes(tabParam)) setActiveTabState(tabParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- validTabs is a fixed list
+  }, [tabParam]);
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
   // The four cards: always on Overview; on other tabs only after "Show details" (remembered here)
   const [showDetails, setShowDetailsState] = useState<boolean>(() => {

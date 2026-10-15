@@ -6,7 +6,6 @@ import {
   ShieldAlert,
   CloudRain,
   PieChart,
-  BarChart3,
   Bot,
   AlertTriangle,
   CheckCircle2,
@@ -17,7 +16,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
-import { SCurveChart } from '../../components/evm/SCurveChart';
+import { plansOnly } from '../../hooks/useOnlySchedule';
 import { TaskPrioritizationPanel } from '../../components/ai/TaskPrioritizationPanel';
 import { severityColor as sharedSeverityColor } from '../../utils/severityColors';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -141,23 +140,29 @@ const PREDICTION_QUERY: Record<PredictionKind, { key: string; fetch: (projectId:
 };
 
 /** `ai` false: no AI call (an AI answer kept for the project, else the rules'); true: ask the AI */
-function usePrediction(kind: PredictionKind, projectId: string, ai: boolean) {
+function usePrediction(kind: PredictionKind, projectId: string, ai: boolean, wanted = true) {
   const q = PREDICTION_QUERY[kind];
   return useQuery({
     queryKey: [q.key, projectId, ai],
     queryFn: () => q.fetch(projectId, ai),
-    enabled: !!projectId,
+    enabled: !!projectId && wanted,
   });
 }
 
+/** Weather matters to work done outside (U23): construction, infrastructure, roads — not IT */
+const OUTDOOR_PROJECT_TYPES = ['construction', 'infrastructure', 'roads'];
+
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-/** Which source each prediction shows: "AI answer from 14:32" or the rules */
-export function sourceSentence(aiTimes: Partial<Record<PredictionKind, string>>, loaded: boolean): string {
-  const kinds = Object.keys(PREDICTION_LABEL) as PredictionKind[];
+const listed = (words: string[]) => words.length < 2 ? words.join('') : `${words.slice(0, -1).join(', ')} and ${words[words.length - 1]}`;
+
+/** Which source each prediction shows: "AI answer from 14:32" or the rules (weather only when shown) */
+export function sourceSentence(aiTimes: Partial<Record<PredictionKind, string>>, loaded: boolean,
+  kinds: PredictionKind[] = Object.keys(PREDICTION_LABEL) as PredictionKind[]): string {
   const fromAI = kinds.filter((k) => aiTimes[k]);
-  if (!loaded) return 'Working out risk, weather and budget from your plan…';
-  if (fromAI.length === 0) return 'Risk, weather and budget below are worked out from your plan by rules.';
+  const names = listed(kinds.map(k => PREDICTION_LABEL[k].toLowerCase()));
+  if (!loaded) return `Working out ${names} from your plan…`;
+  if (fromAI.length === 0) return `${names.charAt(0).toUpperCase()}${names.slice(1)} below ${kinds.length === 1 ? 'is' : 'are'} worked out from your plan by rules.`;
   const aiPart = fromAI.map((k) => `${PREDICTION_LABEL[k]}: AI answer from ${timeOf(aiTimes[k]!)}`).join('; ');
   const rules = kinds.filter((k) => !aiTimes[k]).map((k) => PREDICTION_LABEL[k]);
   return rules.length ? `${aiPart}. ${rules.join(' and ')}: worked out by rules.` : `${aiPart}.`;
@@ -167,7 +172,7 @@ export function sourceSentence(aiTimes: Partial<Record<PredictionKind, string>>,
 // Main AIInsightsTab
 // ---------------------------------------------------------------------------
 
-export function AIInsightsTab({ projectId }: { projectId: string }) {
+export function AIInsightsTab({ projectId, onNavigate }: { projectId: string; onNavigate?: (tab: string) => void }) {
   const { data: schedulesData } = useQuery({
     queryKey: ['schedules', projectId],
     queryFn: () => apiService.getSchedules(projectId),
@@ -175,27 +180,33 @@ export function AIInsightsTab({ projectId }: { projectId: string }) {
   });
 
   const schedules: any[] = schedulesData?.schedules || [];
-  const firstScheduleId = schedules.length > 0 ? schedules[0].id : null;
+  // the project page has loaded it: this only reads it (type → weather; methodology → S-curve link)
+  const { data: projectData } = useQuery<{ project?: { projectType?: string | null; methodology?: string | null } }>({
+    queryKey: ['project', projectId], queryFn: () => apiService.getProject(projectId), enabled: false,
+  });
+  const outdoor = OUTDOOR_PROJECT_TYPES.includes(projectData?.project?.projectType ?? '');
+  const kinds: PredictionKind[] = outdoor ? ['risk', 'weather', 'budget'] : ['risk', 'budget'];
+  const firstScheduleId = plansOnly(schedules)[0]?.id ?? null; // the plan, never a What-If copy
   // Opening the tab asks no AI: risk, weather and budget show the rules' answer (or an AI answer
   // already worked out for this project). The AI is asked only when the person presses the button.
   const [askAI, setAskAI] = useState(false);
   // The same queries as the sections (shared by key): the banner says which source each shows
   const risk = usePrediction('risk', projectId, askAI);
-  const weather = usePrediction('weather', projectId, askAI);
+  const weather = usePrediction('weather', projectId, askAI, outdoor);
   const budget = usePrediction('budget', projectId, askAI);
   const aiTimes: Partial<Record<PredictionKind, string>> = {
     risk: risk.data?.aiPowered ? risk.data.aiGeneratedAt : undefined,
     weather: weather.data?.aiPowered ? weather.data.aiGeneratedAt : undefined,
     budget: budget.data?.aiPowered ? budget.data.aiGeneratedAt : undefined,
   };
-  const loaded = !risk.isLoading && !weather.isLoading && !budget.isLoading;
-  const allFromAI = !!(aiTimes.risk && aiTimes.weather && aiTimes.budget);
+  const loaded = !risk.isLoading && !(outdoor && weather.isLoading) && !budget.isLoading;
+  const allFromAI = kinds.every(k => !!aiTimes[k]);
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <div className="lg:col-span-2 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-4 py-3">
         <p className="text-sm text-gray-700 dark:text-gray-200" aria-live="polite">
-          {sourceSentence(aiTimes, loaded)}
+          {sourceSentence(aiTimes, loaded, kinds)}
         </p>
         {!askAI && !allFromAI && (
           <button
@@ -216,13 +227,17 @@ export function AIInsightsTab({ projectId }: { projectId: string }) {
       <TaskSlipPredictionSection projectId={projectId} />
       <ScopeCreepSection projectId={projectId} />
       <RiskAssessmentSection projectId={projectId} ai={askAI} />
-      <WeatherImpactSection projectId={projectId} ai={askAI} />
+      {outdoor && <WeatherImpactSection projectId={projectId} ai={askAI} />}
       <div className="lg:col-span-2">
         <BudgetForecastSection projectId={projectId} ai={askAI} />
       </div>
-      <div className="lg:col-span-2">
-        <EVMSCurveSection projectId={projectId} />
-      </div>
+      {/* the S-curve lives on the Schedule (U23: one place, not two) */}
+      {projectData?.project?.methodology !== 'agile' && onNavigate && (
+        <p className="lg:col-span-2 text-sm text-gray-600 dark:text-gray-300">
+          Planned vs earned vs actual cost over time (the S-curve) is on the{' '}
+          <button type="button" onClick={() => onNavigate('schedule')} className="font-semibold text-primary-700 dark:text-primary-300 underline">Schedule tab</button>.
+        </p>
+      )}
     </div>
   );
 }
@@ -343,84 +358,6 @@ function ScopeCreepSection({ projectId }: { projectId: string }) {
             </div>
           )}
         </>
-      )}
-    </div>
-  );
-}
-
-function EVMSCurveSection({ projectId }: { projectId: string }) {
-  const { data: sCurveData, isLoading: sCurveLoading } = useQuery({
-    queryKey: ['sCurve', projectId],
-    queryFn: () => apiService.getSCurveData(projectId),
-    enabled: !!projectId,
-  });
-
-  // EVM figures only: the rules' answer, never an AI call
-  const { data: budgetData } = usePrediction('budget', projectId, false);
-
-  const evm = budgetData?.data?.evmMetrics;
-  const sCurve = sCurveData?.data || [];
-
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <BarChart3 className="h-5 w-5 text-primary-500" />
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white">Earned Value Management — S-Curve</h3>
-      </div>
-
-      {evm && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7 mb-4">
-          <MetricCard
-            label="PV"
-            value={formatDollar(evm.plannedValue)}
-            color="text-gray-900 dark:text-white"
-            tooltip="Planned Value"
-          />
-          <MetricCard
-            label="EV"
-            value={formatDollar(evm.earnedValue)}
-            color="text-blue-600"
-            tooltip="Earned Value"
-          />
-          <MetricCard
-            label="AC"
-            value={formatDollar(evm.actualCost)}
-            color="text-red-600"
-            tooltip="Actual Cost"
-          />
-          <MetricCard
-            label="CV"
-            value={formatDollar(evm.cv)}
-            color={evm.cv >= 0 ? 'text-green-600' : 'text-red-600'}
-            tooltip="Cost Variance (EV - AC)"
-          />
-          <MetricCard
-            label="SV"
-            value={formatDollar(evm.sv)}
-            color={evm.sv >= 0 ? 'text-green-600' : 'text-red-600'}
-            tooltip="Schedule Variance (EV - PV)"
-          />
-          <MetricCard
-            label="TCPI (BAC)"
-            value={evm.tcpiBAC != null ? evm.tcpiBAC.toFixed(2) : 'N/A'}
-            color={evm.tcpiBAC != null && evm.tcpiBAC <= 1 ? 'text-green-600' : 'text-red-600'}
-            tooltip="To-Complete Performance Index (BAC)"
-          />
-          <MetricCard
-            label="TCPI (EAC)"
-            value={evm.tcpiEAC != null ? evm.tcpiEAC.toFixed(2) : 'N/A'}
-            color="text-gray-900 dark:text-white"
-            tooltip="To-Complete Performance Index (EAC)"
-          />
-        </div>
-      )}
-
-      {sCurveLoading && <SectionSpinner />}
-      {!sCurveLoading && sCurve.length > 0 && (
-        <SCurveChart data={sCurve} height={280} />
-      )}
-      {!sCurveLoading && sCurve.length === 0 && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-4">No S-Curve data available for this project.</p>
       )}
     </div>
   );

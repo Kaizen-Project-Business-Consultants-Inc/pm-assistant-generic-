@@ -26,8 +26,14 @@ describe('ProjectReadinessBar', () => {
     expect(container.textContent).toBe('');
   });
 
-  it('shows progress while steps remain', () => {
-    render(<ProjectReadinessBar projectId="p2" tasks={[{ id: 't1' }]} resources={[]} onTabChange={() => {}} />);
-    expect(screen.getByText(/1\/3/)).toBeTruthy();
+  it('says what it is and how far along, so it is not read as a menu (U14)', () => {
+    const onTabChange = vi.fn();
+    render(<ProjectReadinessBar projectId="p2" tasks={[{ id: 't1' }]} resources={[]} onTabChange={onTabChange} />);
+    expect(screen.getByRole('heading', { name: 'Set up this project: 1 of 3 done' })).toBeTruthy();
+    // plain words for the linking step; each step says whether it's done
+    expect(screen.getByRole('button', { name: /^Tasks: done/ })).toBeTruthy();
+    screen.getByRole('button', { name: /^Link tasks: not done yet/ }).click();
+    expect(onTabChange).toHaveBeenCalledWith('schedule');
+    expect(screen.queryByText('Predecessors')).toBeNull();
   });
 });

@@ -300,11 +300,13 @@ The project detail page shows a few **primary tabs** plus a single **More** menu
 | **Agile** | Overview, Sprints, Backlog, Schedule, Risks & Issues, Team | Financials, Changes, What-If |
 | **Hybrid** | Overview, Schedule, Sprints, Backlog, Risks & Issues, Team | Financials, Changes, What-If |
 
-**More menu (all methodologies):** Time, Files, Insights, Resources, Agent Activity, Automations, Doc Intelligence — followed by the methodology's extra tabs above.
+**More menu (all methodologies):** Hours, Files, Forecast, Resources, Agent Activity, Automations, Doc Intelligence — followed by the methodology's extra tabs above. (Until October 2026 Hours was called *Time* and Forecast *Insights*.)
 
-**Insights** has two parts: **Performance** (earned value and cost forecast) and **AI Predictions**. The **Weekly review** opens from its card on the Overview tab (project's PM only).
+**Set up this project.** A new project shows a short checklist above its tabs — *Set up this project: 1 of 3 done* — with its steps: **Tasks**, **Link tasks** (tasks that wait for others; this builds the critical path) and **Resources** (Agile: Backlog, Sprint, Team; Hybrid adds Sprint). Click a step to go and do it. It hides itself once every step is done, or with its ✕.
 
-Opening Insights doesn't ask the AI anything. Performance shows the figures, with an **Ask AI** box for the AI's forecast; AI Predictions shows risk, weather and budget worked out from your plan, with an **Ask AI** button at the top for the AI's view. An AI answer someone asked for in the last 30 minutes shows straight away, and the banner says which source each part shows — for example "Risk: AI answer from 14:32. Weather and Budget: worked out by rules."
+**Forecast** has two parts: **Performance** (earned value and cost forecast) and **AI Predictions** (what is likely to happen: task priorities, tasks likely to slip, scope creep, risk outlook, budget forecast — and weather impact on construction, infrastructure and roads projects only). The S-curve is on the Schedule tab, not repeated here. The **Weekly review** opens from its card on the Overview tab (project's PM only).
+
+Opening Forecast doesn't ask the AI anything. Performance shows the figures, with an **Ask AI** box for the AI's forecast; AI Predictions shows risk and budget (and weather, on outdoor projects) worked out from your plan, with an **Ask AI** button at the top for the AI's view. An AI answer someone asked for in the last 30 minutes shows straight away, and the banner says which source each part shows — for example "Risk: AI answer from 14:32. Weather and Budget: worked out by rules."
 
 > **Note:** The RAID log is labelled **Risks & Issues** in the tab bar. The tab badge shows the **critical-item count only** (not the total of all open items) to surface the most urgent items at a glance.
 
@@ -316,7 +318,7 @@ Available cards:
 - **Timeline Progress** -- Elapsed vs complete percentage with on-track/behind/overdue indicator and progress bar.
 - **Key Milestones** -- Up to 5 milestones sorted by date with status icons and dates. Click to navigate to the Schedule tab.
 - **Health Score** -- Current project health score with a 30-day **sparkline trend chart** (SVG) showing health history. Trend arrow (up/down/stable) with colour coding.
-- **EVM Metrics** -- CPI and SPI gauges with earned value, planned value, and cost/schedule variance. Click to open **Insights → Performance**.
+- **EVM Metrics** -- CPI and SPI gauges with earned value, planned value, and cost/schedule variance. Click to open **Forecast → Performance**.
 - **Budget** -- Budget allocated vs spent with utilization percentage bar, currency formatting, and over-budget warning.
 - **Due Soon** -- Tasks due within the next 7 days, sorted by urgency.
 - **RAID Summary** -- Grid showing open risks, open issues, open actions, pending decisions, open assumptions, and open dependencies with critical/triggered badges. Click to navigate to the RAID tab.
@@ -526,7 +528,7 @@ Select multiple tasks to perform bulk operations:
 
 ## 4. Views
 
-The schedule page offers multiple visualization modes: Gantt, Kanban, Table, Calendar, Network, and a progress chart that depends on the project's methodology — **Burndown** for Agile and Hybrid projects, **S-curve** for Waterfall projects. Burndown tracks a fixed sprint scope towards zero, which doesn't fit a months-long waterfall plan; the S-curve shows planned value, earned value and actual cost added up over time (it needs task budgets). A view you last used on another kind of project switches to the right one automatically.
+The schedule page offers multiple visualization modes: Gantt, Kanban, Table, Calendar, Network, and a progress chart that depends on the project's methodology — **Burndown** for Agile projects, **S-curve** for Waterfall projects, and both for Hybrid projects. An empty chart says what it needs (tasks for the burndown; people on tasks, for planned costs, for the S-curve). Burndown tracks a fixed sprint scope towards zero, which doesn't fit a months-long waterfall plan; the S-curve shows planned value, earned value and actual cost added up over time (it needs task budgets). A view you last used on another kind of project switches to the right one automatically.
 
 ### Gantt Chart
 
@@ -746,9 +748,12 @@ The critical path identifies the longest chain of dependent tasks that determine
 ### Viewing the Critical Path
 
 1. Open a project schedule.
-2. Toggle the **Critical Path** checkbox in the schedule toolbar.
-3. Tasks on the critical path are highlighted with red borders on the Gantt chart.
-4. A **Critical Path info banner** appears below the toolbar showing the total project duration (in days) and the number of critical tasks.
+2. Press the red-outlined **Critical path** button in the Gantt toolbar (it turns solid red while on).
+3. Tasks on the critical path are highlighted with red borders on the Gantt chart, and a strip above the chart shows its length in working days, how many tasks are critical and when it ends.
+
+If no tasks are linked yet, the strip says **Link your tasks first** — the critical path is the chain of linked tasks, so there is none until tasks wait for each other.
+
+The project's **Overview** also has a **Critical path** card with the same three figures and a link to the Gantt, so you can see it without opening the schedule.
 
 ### Key Information
 
@@ -866,7 +871,7 @@ The EVM Forecast Dashboard shows:
 - **Cost at completion forecasts** based on current CPI.
 - **Forecast comparison charts** showing optimistic, most likely, and pessimistic scenarios.
 - **AI-generated alerts** when metrics indicate critical or warning thresholds.
-- **When the AI part loads:** the AI analysis of a project's cost forecast is asked for only when you open that project's **Insights → Performance** view — opening the project or another tab doesn't use AI credit. If the AI can't be reached, the panel says "AI analysis is unavailable right now" and the numbers still show.
+- **When the AI part loads:** the AI analysis of a project's cost forecast is asked for only when you open that project's **Forecast → Performance** view — opening the project or another tab doesn't use AI credit. If the AI can't be reached, the panel says "AI analysis is unavailable right now" and the numbers still show.
 - **Management Reserve (MR) tracking** -- Enter a Management Reserve amount in the Forecast Comparison section header. A purple "BAC+MR" dashed reference line appears on the forecast bar chart, showing the total authorized budget ceiling. A summary row in the forecast table shows the MR amount and whether the worst-case forecast stays within the reserve. The value is remembered per project in your browser.
 
 ### EVM Trend Chart
@@ -1374,6 +1379,8 @@ Additional responsive improvements were made across several pages:
 
 ## 11. Time Tracking
 
+Two places show hours: a project's **Hours** tab (More menu) is *everyone's hours on that project*; **Timesheets** in the sidebar is *your own hours across all your projects*. The Hours tab says so at the top, with a link to your timesheet.
+
 ### My Timesheet (one week, all your projects)
 
 1. Navigate to **Timesheets** in the sidebar. **My Timesheet** shows one week — Monday to Sunday — with a line for every task you're planned on that week or have logged time on, grouped by project.
@@ -1442,11 +1449,11 @@ Only approved hours count — hours still waiting for approval aren't in any cos
 
 ### Hours waiting for approval (PMs)
 
-On a project's **Time** tab, its PM sees **Waiting for approval**: who has hours on this project waiting, by week, against the hours planned. Only this project's hours are shown — never the person's other projects. Hours waiting aren't in the project's costs until approved. Click **Flag this line** to send the line manager a note (e.g. "these 2 h belong to Data cleanup") before they decide.
+On a project's **Hours** tab, its PM sees **Waiting for approval**: who has hours on this project waiting, by week, against the hours planned. Only this project's hours are shown — never the person's other projects. Hours waiting aren't in the project's costs until approved. Click **Flag this line** to send the line manager a note (e.g. "these 2 h belong to Data cleanup") before they decide.
 
 ### Time Anomalies (Managers/Owners)
 
-Project managers and owners see a **Time Anomalies** panel at the top of the Time tab on the project page. This panel flags suspicious time entry patterns automatically:
+Project managers and owners see a **Time Anomalies** panel at the top of the Hours tab on the project page. This panel flags suspicious time entry patterns automatically:
 
 - **Excessive Hours** (red) — someone logged more than 10 hours in a single day or 50 hours in a week.
 - **Duplicate Entries** (amber) — the same user has multiple entries for the same task on the same date.
@@ -1470,9 +1477,9 @@ Below the anomalies panel, a **Weekly Review** card summarizes the current week:
 
 Use the date picker to view reviews for previous weeks. The review is generated on-demand from existing time data.
 
-### Burndown Forecast
+### Hours forecast
 
-The **Burndown** sub-tab on the Time tab shows a visual projection of project hours consumption:
+The **Hours forecast** sub-tab on the Hours tab (called *Burndown* until October 2026 — renamed so it isn't confused with the sprint Burndown on the Schedule) shows a visual projection of project hours consumption:
 
 - **SVG line chart** with three lines: ideal burn (dashed gray), actual cumulative (green/red), and projected extension (dashed).
 - **Summary cards** show budget hours, actual hours, daily burn rate, and projected finish date.

@@ -51,6 +51,20 @@ describe('CriticalPathService', () => {
     expect(result.projectDuration).toBe(0);
   });
 
+  it('says whether any task is linked, and when the critical chain ends (U17)', async () => {
+    mockFindTasks.mockResolvedValue([
+      makeTask('a', 'Design', { estimatedDays: 3, startDate: '2026-10-12', endDate: '2026-10-14' }),
+      makeTask('b', 'Build', { estimatedDays: 4, startDate: '2026-10-15', endDate: '2026-10-20', dependencies: [{ dependencyId: 'a' }] }),
+    ]);
+    const linked = await service.calculateCriticalPath('sch-1');
+    expect(linked.hasLinks).toBe(true);
+    expect(linked.finishDate).toBe('2026-10-20');
+    mockFindTasks.mockResolvedValue([makeTask('a', 'Design', { estimatedDays: 3, startDate: '2026-10-12', endDate: '2026-10-14' })]);
+    expect((await service.calculateCriticalPath('sch-1')).hasLinks).toBe(false);
+    mockFindTasks.mockResolvedValue([]);
+    expect(await service.calculateCriticalPath('sch-1')).toMatchObject({ hasLinks: false, finishDate: null });
+  });
+
   it('single task is always critical', async () => {
     mockFindTasks.mockResolvedValue([
       makeTask('t1', 'Task 1', { estimatedDays: 5 }),

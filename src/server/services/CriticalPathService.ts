@@ -1,5 +1,5 @@
 import { scheduleService, Task } from './ScheduleService';
-import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, taskWorkingDuration } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, taskWorkingDuration, finishFor } from '../utils/workingDays';
 
 /**
  * All numbers are WORKING days on the project calendar (weekends and holidays off unless
@@ -25,14 +25,19 @@ export interface CPMTaskResult {
 export interface CriticalPathResult {
   criticalPathTaskIds: string[];
   tasks: CPMTaskResult[];
+  /** working days from the first start to the last finish */
   projectDuration: number;
+  /** any task linked to another? With none there is no real critical path (U17: the screen says so) */
+  hasLinks: boolean;
+  /** the last critical task's finish (YYYY-MM-DD), or null */
+  finishDate: string | null;
 }
 
 export class CriticalPathService {
   async calculateCriticalPath(scheduleId: string): Promise<CriticalPathResult> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
     if (tasks.length === 0) {
-      return { criticalPathTaskIds: [], tasks: [], projectDuration: 0 };
+      return { criticalPathTaskIds: [], tasks: [], projectDuration: 0, hasLinks: false, finishDate: null };
     }
     const isWorking = await projectCalendar(scheduleId);
 
@@ -253,10 +258,14 @@ export class CriticalPathService {
       });
     }
 
+    // the last working day of the chain: origin + (length − 1) working days, on the plan's calendar
+    const finishDate = origin && projectDuration > 0 ? ymdOf(finishFor(origin, projectDuration, isWorking)) : null;
     return {
       criticalPathTaskIds: criticalIds,
       tasks: results,
       projectDuration,
+      hasLinks: edgeMap.size > 0,
+      finishDate,
     };
   }
 }

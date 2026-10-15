@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { SCurveChart } from './SCurveChart';
@@ -30,7 +31,9 @@ export function SCurveView({ projectId }: { projectId: string }) {
       {!isLoading && !isError && (hasValues
         ? <SCurveChart data={points} />
         : <p className="text-sm text-gray-600 dark:text-gray-300 rounded-md border border-dashed border-gray-300 dark:border-gray-600 px-4 py-6 text-center">
-            The S-curve needs task budgets. Give tasks a <b>Budget</b> (Table view → Columns → Cost) and record actual cost as work is done.
+            The S-curve needs planned costs. Put people on the tasks — each task's budget is their planned hours × their rate — then
+            {' '}progress and approved hours fill in earned value and actual cost.{' '}
+            <Link to={`/project/${projectId}?tab=team`} className="font-semibold text-primary-700 dark:text-primary-300 underline">Add people on the Team tab</Link>
           </p>)}
     </div>
   );

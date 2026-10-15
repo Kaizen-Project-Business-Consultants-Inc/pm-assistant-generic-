@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { sqlDateTime } from '../utils/sqlDateTime';
 import { BaseRepository } from './BaseRepository';
 import { databaseService } from './connection';
 import logger from '../utils/logger';
@@ -193,7 +194,7 @@ export class IntegrationRepository extends BaseRepository<Integration> {
     await this.queryRaw(
       `INSERT INTO integration_sync_log (id, integration_id, direction, status, items_synced, started_at)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, integrationId, direction, 'running', 0, new Date().toISOString()],
+      [id, integrationId, direction, 'running', 0, sqlDateTime()],
     );
     return id;
   }
@@ -201,14 +202,14 @@ export class IntegrationRepository extends BaseRepository<Integration> {
   async completeSyncLog(logId: string, status: string, itemsSynced: number, errorMessage?: string): Promise<void> {
     await this.queryRaw(
       `UPDATE integration_sync_log SET status = ?, items_synced = ?, error_message = ?, completed_at = ? WHERE id = ?`,
-      [status, itemsSynced, errorMessage || null, new Date().toISOString(), logId],
+      [status, itemsSynced, errorMessage || null, sqlDateTime(), logId],
     );
   }
 
   async updateLastSyncAt(integrationId: string): Promise<void> {
     await this.queryRaw(
       `UPDATE integrations SET last_sync_at = ? WHERE id = ?`,
-      [new Date().toISOString(), integrationId],
+      [sqlDateTime(), integrationId],
     );
   }
 
@@ -217,11 +218,11 @@ export class IntegrationRepository extends BaseRepository<Integration> {
       const q = (sql: string, params: any[] = []) => databaseService.queryOn(conn, sql, params);
       await q(
         `UPDATE integration_sync_log SET status = ?, items_synced = ?, completed_at = ? WHERE id = ?`,
-        ['success', itemsSynced, new Date().toISOString(), logId],
+        ['success', itemsSynced, sqlDateTime(), logId],
       );
       await q(
         `UPDATE integrations SET last_sync_at = ? WHERE id = ?`,
-        [new Date().toISOString(), integrationId],
+        [sqlDateTime(), integrationId],
       );
     });
   }

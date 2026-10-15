@@ -41,9 +41,9 @@ export function getPrimaryTabs(m: Methodology): { id: Tab; label: string }[] {
 
 export function getOverflowTabs(m: Methodology): { id: Tab; label: string }[] {
   const allOverflow: { id: Tab; label: string }[] = [
-    { id: 'time', label: 'Time' },
+    { id: 'time', label: 'Hours' },
     { id: 'files', label: 'Files' },
-    { id: 'insights', label: 'Insights' },
+    { id: 'insights', label: 'Forecast' },
     { id: 'resources', label: 'Resources' },
     { id: 'agent-activity', label: 'Agent Activity' },
     { id: 'automations', label: 'Automations' },
@@ -88,15 +88,33 @@ export function getReadinessSteps(m: Methodology): ReadinessStepConfig[] {
       { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
       { key: 'sprint', label: 'Sprint', tooltip: 'Create sprints for iterative delivery', doneKey: 'sprints', targetTab: 'sprints' },
       { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload forecasting', doneKey: 'resources', targetTab: 'resources' },
-      { key: 'dependencies', label: 'Predecessors', tooltip: 'Link predecessor tasks to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
+      { key: 'dependencies', label: 'Link tasks', tooltip: 'Link tasks that depend on each other (predecessors) to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
     ];
   }
 
   // Waterfall (default)
   return [
     { key: 'tasks', label: 'Tasks', tooltip: 'Import or create tasks to build your schedule', doneKey: 'tasks', targetTab: 'schedule' },
-    { key: 'dependencies', label: 'Predecessors', tooltip: 'Link predecessor tasks to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
+    { key: 'dependencies', label: 'Link tasks', tooltip: 'Link tasks that depend on each other (predecessors) to build your critical path', doneKey: 'dependencies', targetTab: 'schedule' },
     { key: 'resources', label: 'Resources', tooltip: 'Add team members for workload and cost forecasting', doneKey: 'resources', targetTab: 'resources' },
   ];
 }
 
+
+type ProgressView = 'burndown' | 'scurve';
+
+/**
+ * The schedule's progress charts (U18): Agile = Burndown (fixed sprint scope), Waterfall =
+ * S-curve (planned / earned / actual cost), Hybrid = both.
+ */
+export function progressViews(m: string | undefined): ProgressView[] {
+  if (m === 'agile') return ['burndown'];
+  if (m === 'waterfall' || !m) return ['scurve'];
+  return ['burndown', 'scurve'];
+}
+
+/** A remembered view that this project's methodology doesn't offer becomes the one it does */
+export function fitView<T extends string>(m: string | undefined, view: T): T | ProgressView {
+  const offered = progressViews(m);
+  return (view === 'burndown' || view === 'scurve') && !offered.includes(view as ProgressView) ? offered[0] : view;
+}

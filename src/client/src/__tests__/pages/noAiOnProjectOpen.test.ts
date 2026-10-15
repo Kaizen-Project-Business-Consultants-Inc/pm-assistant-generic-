@@ -34,8 +34,10 @@ describe('no AI call just for opening a project', () => {
     for (const call of ['getProjectRisks', 'getProjectWeather', 'getProjectBudget']) {
       expect(src).not.toMatch(new RegExp(`${call}\\(projectId\\)`)); // every call passes the ai flag
     }
-    expect(src).toMatch(/usePrediction\('budget', projectId, false\)/); // the S-curve's EVM figures never ask the AI
-    for (const kind of ['risk', 'weather', 'budget']) expect(src).toMatch(new RegExp(`usePrediction\\('${kind}', projectId, askAI\\)`));
+    // (its S-curve, which read EVM figures with ai=false, moved to the Schedule — U23)
+    for (const kind of ['risk', 'budget']) expect(src).toMatch(new RegExp(`usePrediction\\('${kind}', projectId, askAI\\)`));
+    // weather: asked for only on an outdoor project (U23), still only with the ai flag
+    expect(src).toMatch(/usePrediction\('weather', projectId, askAI, outdoor\)/);
   });
 
   it('the banner says which source each prediction shows', async () => {
@@ -46,5 +48,8 @@ describe('no AI call just for opening a project', () => {
     expect(mixed).toMatch(/Risk: AI answer from .*Budget: AI answer from/);
     expect(mixed).toMatch(/Weather: worked out by rules/);
     expect(sourceSentence({ risk: t, weather: t, budget: t }, true)).not.toMatch(/rules/);
+    // no weather on an IT project (U23): the sentence leaves it out
+    expect(sourceSentence({}, true, ['risk', 'budget'])).toBe('Risk and budget below are worked out from your plan by rules.');
+    expect(sourceSentence({}, false, ['risk', 'budget'])).toBe('Working out risk and budget from your plan…');
   });
 });

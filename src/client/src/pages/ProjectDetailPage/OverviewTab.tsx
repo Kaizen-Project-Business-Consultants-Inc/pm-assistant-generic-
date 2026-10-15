@@ -29,6 +29,7 @@ import {
   FileText,
   BookOpen,
   X,
+  Route,
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { Avatar } from '../../components/ui/Avatar';
@@ -38,6 +39,8 @@ import { CustomFieldManager } from '../../components/customfields/CustomFieldMan
 import { PortalLinkManager } from '../../components/portal/PortalLinkManager';
 import { ProjectLinksCard } from '../../components/project/ProjectLinksCard';
 import { ScheduleHealthCard } from '../../components/schedule/review/ScheduleHealthCard';
+import { CriticalPathCard } from '../../components/schedule/CriticalPathCard';
+import { plansOnly } from '../../hooks/useOnlySchedule';
 import { formatCalendarDate, isCalendarOverdue, toCalendarDate } from '../../utils/dateUtils';
 
 interface ProjectOverview {
@@ -61,12 +64,12 @@ interface ProjectOverview {
   updated_at?: string;
 }
 
-type CardId = 'brief' | 'links' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'schedule-health' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
+type CardId = 'brief' | 'links' | 'task-summary' | 'timeline' | 'milestones' | 'health' | 'schedule-health' | 'critical-path' | 'evm' | 'budget' | 'due-soon' | 'raid' | 'sprint' | 'activity' | 'blocked' | 'comments' | 'goals' | 'attachments' | 'latest-meeting';
 
 const DEFAULT_CARD_ORDER: CardId[] = [
   'brief', 'links',
   'task-summary', 'timeline', 'milestones',
-  'health', 'schedule-health', 'evm', 'budget',
+  'health', 'schedule-health', 'critical-path', 'evm', 'budget',
   'due-soon', 'raid', 'sprint',
   'activity', 'blocked', 'comments',
   'goals', 'attachments', 'latest-meeting',
@@ -91,7 +94,8 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     enabled: !!project.id,
   });
   const schedules: any[] = schedulesData?.schedules || [];
-  const primaryScheduleId = schedules.length > 0 ? schedules[0].id : null;
+  // the project's plan — never a What-If copy (U26: one plan per project)
+  const primaryScheduleId = plansOnly(schedules)[0]?.id ?? null;
 
   const { data: tasksData, isLoading: tasksLoading } = useQuery({
     queryKey: ['tasks', primaryScheduleId, 'overview'],
@@ -399,6 +403,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     'milestones': { icon: <Target className="w-4 h-4" />, title: 'Key Milestones' },
     'health': { icon: <Heart className="w-4 h-4" />, title: 'Project Health' },
     'schedule-health': { icon: <CalendarClock className="w-4 h-4" />, title: 'Schedule Health' },
+    'critical-path': { icon: <Route className="w-4 h-4 text-red-600 dark:text-red-400" />, title: 'Critical path' },
     'evm': { icon: <TrendingUp className="w-4 h-4" />, title: 'Earned Value' },
     'budget': { icon: <DollarSign className="w-4 h-4" />, title: 'Budget' },
     'due-soon': { icon: <CalendarClock className="w-4 h-4" />, title: 'Due This Week' },
@@ -415,6 +420,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const isCardVisible = (id: CardId): boolean => {
     switch (id) {
       case 'schedule-health': return !!primaryScheduleId;
+      case 'critical-path': return !!primaryScheduleId;
       case 'sprint': return methodology !== 'waterfall';
       case 'blocked': return blockedTasks.length > 0;
       case 'comments': return recentComments.length > 0;
@@ -446,6 +452,9 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     ),
     'schedule-health': primaryScheduleId ? (
       <ScheduleHealthCard scheduleId={primaryScheduleId} onOpen={() => onNavigateToTab?.('schedule')} />
+    ) : null,
+    'critical-path': primaryScheduleId ? (
+      <CriticalPathCard scheduleId={primaryScheduleId} onOpen={onNavigateToTab ? () => onNavigateToTab('schedule') : undefined} />
     ) : null,
     'task-summary': analyticsLoading ? (
       <div className="grid grid-cols-2 gap-3">

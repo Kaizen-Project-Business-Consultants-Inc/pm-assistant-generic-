@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { Clock, Plus, Trash2, BarChart3, X, Users, User, TrendingDown, TrendingUp, Grid3X3, Sparkles, CalendarDays } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { toLocalDate } from '../../utils/dateUtils';
@@ -138,7 +139,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
   const entries = categoryFilter === 'all' ? allEntries : allEntries.filter(e => e.category === categoryFilter);
 
   // Actual vs estimated for first schedule
-  const primaryScheduleId = schedules[0]?.id;
+  const primaryScheduleId = plansOnly(schedules)[0]?.id; // the plan, never a What-If copy
   const { data: comparisonData, isLoading: comparisonLoading } = useQuery({
     queryKey: ['actual-vs-estimated', primaryScheduleId],
     queryFn: () => apiService.getActualVsEstimated(primaryScheduleId),
@@ -182,13 +183,21 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="mt-6 space-y-6">
+      {/* whose hours these are (U19): this project's, everyone's — not "my week" */}
+      <div>
+        <h2 className="text-base font-bold text-gray-900 dark:text-white">Hours on this project</h2>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Everyone's hours on this project. Your own hours across all projects are in{' '}
+          <Link to="/timesheet" className="font-semibold text-primary-700 dark:text-primary-300 underline">My timesheet</Link>.
+        </p>
+      </div>
       {/* Hours waiting for the line manager's approval — the project's PM can flag a line */}
       {canManageTime && <ProjectPendingTime projectId={projectId} />}
 
       {/* Sub-tab navigation */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="border-b border-gray-200 dark:border-gray-700">
-          <div className="flex gap-4 flex-wrap" role="group" aria-label="Time views">
+          <div className="flex gap-4 flex-wrap" role="group" aria-label="Hours views">
             <button
               onClick={() => setSubTab('timesheet')}
               aria-pressed={subTab === 'timesheet'}
@@ -215,7 +224,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
               aria-pressed={subTab === 'burndown'}
               className={`flex items-center gap-1.5 pb-3 text-sm font-medium border-b-2 transition-colors ${subTab === 'burndown' ? 'border-primary-500 text-primary-600' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
             >
-              <TrendingDown className="w-4 h-4" /> Burndown
+              <TrendingDown className="w-4 h-4" /> Hours forecast
             </button>
             <button
               onClick={() => setSubTab('trends')}
@@ -466,10 +475,10 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* Burndown sub-tab */}
+      {/* Hours forecast sub-tab (was "Burndown") */}
       {subTab === 'burndown' && (
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Burndown Forecast</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Hours forecast — remaining estimated hours over time</h3>
           <TimeBurndownChart projectId={projectId} />
         </div>
       )}

@@ -66,7 +66,7 @@ describe('lessons learned', () => {
     expect(ins.map(s => s.params.length / 22)).toEqual([100, 50]);
     expect(ins[1].params.slice(0, 22)).toEqual([
       'll100', 'p1', 'P', 'it', 'schedule', 'L100', 'd', 'negative', 'r',
-      null, null, 0, 0, null, 70, 'approved', null, 'manual', null, 0, null, '2026-10-09T00:00:00Z',
+      null, null, 0, 0, null, 70, 'approved', null, 'manual', null, 0, null, '2026-10-09 00:00:00', // DATETIME, not ISO
     ]);
   });
 
@@ -81,6 +81,6 @@ describe('lessons learned', () => {
     expect(db.sql[0].sql).toMatch(/^DELETE FROM lesson_patterns/);
     const ins = stmts(/^INSERT INTO lesson_patterns/);
     expect(ins).toHaveLength(1);
-    expect(ins[0].params.slice(9, 18)).toEqual(['pat1', 't', 'd', 2, '["it"]', 'c', 'r', 60, '2026-10-09']);
+    expect(ins[0].params.slice(9, 18)).toEqual(['pat1', 't', 'd', 2, '["it"]', 'c', 'r', 60, '2026-10-09 00:00:00']);
   });
 });

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { progressViews, fitView } from '../../utils/methodology';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
@@ -36,12 +37,10 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
     try { localStorage.setItem(viewModeKey, mode); } catch { /* noop */ }
   }, [viewModeKey]);
   // Burndown is an Agile chart (fixed sprint scope); a waterfall project gets the S-curve in
-  // its place. A remembered view that doesn't fit this project's methodology is swapped.
-  const isWaterfall = methodology === 'waterfall';
-  const viewMode: typeof viewModeRaw =
-    isWaterfall && viewModeRaw === 'burndown' ? 'scurve'
-    : !isWaterfall && viewModeRaw === 'scurve' ? 'burndown'
-    : viewModeRaw;
+  // its place, and a hybrid project both (U18). A remembered view that doesn't fit this
+  // project's methodology is swapped.
+  const offered = progressViews(methodology);
+  const viewMode = fitView(methodology, viewModeRaw);
   const [uploadingSchedule, setUploadingSchedule] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -184,10 +183,9 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
             { mode: 'table' as const, icon: Table2, label: 'Table' },
             { mode: 'calendar' as const, icon: CalendarDays, label: 'Calendar' },
             { mode: 'network' as const, icon: MapPin, label: 'Network' },
-            isWaterfall
-              ? { mode: 'scurve' as const, icon: TrendingUp, label: 'S-curve' }
-              : { mode: 'burndown' as const, icon: TrendingUp, label: 'Burndown' },
-          ] as const).map(({ mode, icon: Icon, label }) => (
+            ...(offered.includes('burndown') ? [{ mode: 'burndown' as const, icon: TrendingUp, label: 'Burndown' }] : []),
+            ...(offered.includes('scurve') ? [{ mode: 'scurve' as const, icon: TrendingUp, label: 'S-curve' }] : []),
+          ]).map(({ mode, icon: Icon, label }) => (
             <button
               key={mode}
               type="button"

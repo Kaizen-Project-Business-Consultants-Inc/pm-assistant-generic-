@@ -47,7 +47,7 @@ import { useAuthStore } from '../../../stores/authStore';
 import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
 import { ROUTES } from '../../../routes';
 import { announce } from '../../../utils/announce';
-import { isCalendarOverdue, toCalendarDate } from '../../../utils/dateUtils';
+import { isCalendarOverdue, toCalendarDate, formatCalendarDate } from '../../../utils/dateUtils';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
@@ -627,13 +627,19 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         </div>
       )}
 
-      {showCriticalPath && cpmData && (
-        <div className="flex items-center gap-4 px-3 py-1.5 mb-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg text-xs">
-          <span className="font-medium text-red-700 dark:text-red-400">Critical Path</span>
-          <span className="text-red-600 dark:text-red-300">{cpmData.projectDuration} days</span>
-          <span className="text-red-600 dark:text-red-300">{cpmData.criticalPathTaskIds?.length || 0} critical tasks</span>
+      {showCriticalPath && cpmData && (cpmData.hasLinks === false ? (
+        <div role="status" className="px-3 py-2 mb-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg text-sm text-amber-900 dark:text-amber-100">
+          <b>Link your tasks first to see the critical path.</b> It is the chain of linked tasks that sets the end date. Open a task and add a
+          {' '}<b>Predecessor</b> (the task it waits for), or drag from the end of one bar to the start of the next.
         </div>
-      )}
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 mb-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg text-xs">
+          <span className="font-semibold text-red-700 dark:text-red-400">Critical path</span>
+          <span className="text-red-700 dark:text-red-300">{cpmData.projectDuration} working days</span>
+          <span className="text-red-700 dark:text-red-300">{cpmData.criticalPathTaskIds?.length || 0} critical tasks</span>
+          {cpmData.finishDate && <span className="text-red-700 dark:text-red-300">ends {formatCalendarDate(cpmData.finishDate)}</span>}
+        </div>
+      ))}
 
       {focusNotice && (
         <div role="status" className="mb-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
@@ -689,8 +695,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           redoDescription={redoDescription}
           onUndo={undo}
           onRedo={redo}
-          criticalPathTaskIds={showCriticalPath ? cpmData?.criticalPathTaskIds : undefined}
-          taskFloatMap={showCriticalPath && cpmData?.tasks ? Object.fromEntries(cpmData.tasks.map((t: any) => [t.taskId, t.totalFloat])) : undefined}
+          criticalPathTaskIds={showCriticalPath && cpmData?.hasLinks !== false ? cpmData?.criticalPathTaskIds : undefined}
+          taskFloatMap={showCriticalPath && cpmData?.hasLinks !== false && cpmData?.tasks ? Object.fromEntries(cpmData.tasks.map((t: any) => [t.taskId, t.totalFloat])) : undefined}
           baselineTasks={selectedBaseline?.tasks?.map((bt: any) => ({
             taskId: bt.taskId,
             startDate: bt.startDate,

@@ -20,11 +20,12 @@ interface ProjectReadinessBarProps {
 }
 
 const STORAGE_PREFIX = 'readiness-dismissed-';
+// a per-browser convenience: storage can be blocked (private window) — the bar then just shows
+const remembered = (key: string) => { try { return localStorage.getItem(key) === '1'; } catch { return false; } };
+const remember = (key: string) => { try { localStorage.setItem(key, '1'); } catch { /* not kept */ } };
 
 export function ProjectReadinessBar({ projectId, tasks, resources, methodology = 'waterfall', sprintCount = 0, onTabChange }: ProjectReadinessBarProps) {
-  const [dismissed, setDismissed] = useState(() =>
-    localStorage.getItem(`${STORAGE_PREFIX}${projectId}`) === '1'
-  );
+  const [dismissed, setDismissed] = useState(() => remembered(`${STORAGE_PREFIX}${projectId}`));
 
   const hasTasks = tasks.length > 0;
   const hasDependencies = tasks.some((t: any) => t.dependency || t.predecessors?.length > 0);
@@ -53,7 +54,7 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
   useEffect(() => {
     if (!allComplete || dismissed) return;
     const timer = setTimeout(() => {
-      localStorage.setItem(`${STORAGE_PREFIX}${projectId}`, '1');
+      remember(`${STORAGE_PREFIX}${projectId}`);
       setDismissed(true);
     }, 3000);
     return () => clearTimeout(timer);
@@ -62,7 +63,7 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
   if (dismissed) return null;
 
   const handleDismiss = () => {
-    localStorage.setItem(`${STORAGE_PREFIX}${projectId}`, '1');
+    remember(`${STORAGE_PREFIX}${projectId}`);
     setDismissed(true);
   };
 
@@ -76,40 +77,43 @@ export function ProjectReadinessBar({ projectId, tasks, resources, methodology =
   }
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
-      {steps.map((step, i) => (
-        <span key={step.key} className="contents">
-          {i > 0 && <span className="text-gray-300 dark:text-gray-600 text-xs mx-0.5 flex-shrink-0 hidden sm:inline">&middot;</span>}
-          <button
-            onClick={step.action}
-            title={step.tooltip}
-            className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0 ${
-              step.done
-                ? 'text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
-          >
-            {step.done ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-            ) : (
-              <Circle className="w-3.5 h-3.5 text-gray-300 dark:text-gray-600 flex-shrink-0" />
-            )}
-            {step.label}
-          </button>
-        </span>
-      ))}
-      <span className="ml-auto flex items-center gap-2 flex-shrink-0">
-        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-          {completedCount}/{steps.length} ready
-        </span>
-        <button
-          onClick={handleDismiss}
-          className="p-0.5 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          title="Dismiss"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </span>
-    </div>
+    <section aria-label="Set up this project" className="card-stripe stripe-teal flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+        Set up this project: <span className="text-primary-700 dark:text-primary-300">{completedCount} of {steps.length} done</span>
+      </h2>
+      <ol className="flex flex-wrap items-center gap-1">
+        {steps.map((step) => (
+          <li key={step.key}>
+            <button
+              type="button"
+              onClick={step.action}
+              title={step.tooltip}
+              aria-label={`${step.label}: ${step.done ? 'done' : 'not done yet'}. ${step.tooltip}`}
+              className={`inline-flex items-center gap-1.5 min-h-[32px] px-2.5 py-1 rounded-full border text-xs font-semibold whitespace-nowrap transition-colors ${
+                step.done
+                  ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/40'
+                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+              }`}
+            >
+              {step.done ? (
+                <CheckCircle2 aria-hidden="true" className="w-4 h-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+              ) : (
+                <Circle aria-hidden="true" className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
+              )}
+              {step.label}
+            </button>
+          </li>
+        ))}
+      </ol>
+      <button
+        type="button"
+        onClick={handleDismiss}
+        className="ml-auto p-1 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+        title="Hide the setup steps"
+        aria-label="Hide the setup steps"
+      >
+        <X aria-hidden="true" className="w-4 h-4" />
+      </button>
+    </section>
   );
 }

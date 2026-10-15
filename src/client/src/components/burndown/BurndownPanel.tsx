@@ -9,7 +9,7 @@ interface BurndownPanelProps {
 }
 
 export function BurndownPanel({ scheduleId }: BurndownPanelProps) {
-  const { data: burndownData, isLoading: burndownLoading } = useQuery({
+  const { data: burndownData, isLoading: burndownLoading, isError: burndownError } = useQuery({
     queryKey: ['burndown', scheduleId],
     queryFn: () => apiService.getBurndownData(scheduleId),
     enabled: !!scheduleId,
@@ -29,7 +29,19 @@ export function BurndownPanel({ scheduleId }: BurndownPanelProps) {
     );
   }
 
+  if (burndownError) {
+    return <p className="text-sm text-red-600 dark:text-red-400">Could not load the burndown. Refresh the page to try again.</p>;
+  }
   const totalScope = burndownData?.totalScope || 0;
+  // nothing to burn down yet: say what the chart needs instead of an empty chart (U18)
+  if (totalScope === 0) {
+    return (
+      <p className="text-sm text-gray-600 dark:text-gray-300 rounded-xl border border-dashed border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-8 text-center">
+        The burndown needs work to count down. Add tasks to the plan, or start a sprint with estimated stories,
+        and it shows how fast the work is getting done.
+      </p>
+    );
+  }
   const completedCount = burndownData?.completedCount || 0;
   const percentComplete = burndownData?.percentComplete || 0;
   const avgVelocity = velocityData?.averageVelocity || 0;

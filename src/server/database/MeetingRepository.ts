@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import { sqlDateTime } from '../utils/sqlDateTime';
 import { databaseService } from './connection';
 
 export interface Meeting {
@@ -102,7 +103,7 @@ class MeetingRepository {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id, data.projectId, data.title, data.meetingType || 'ad_hoc',
-        data.scheduledDate, data.durationMinutes ?? 60,
+        sqlDateTime(data.scheduledDate), data.durationMinutes ?? 60,
         data.location || null,
         data.attendees ? JSON.stringify(data.attendees) : null,
         data.agendaItems ? JSON.stringify(data.agendaItems) : null,
@@ -127,7 +128,7 @@ class MeetingRepository {
     const params: any[] = [];
     if (data.title !== undefined) { sets.push('title = ?'); params.push(data.title); }
     if (data.meetingType !== undefined) { sets.push('meeting_type = ?'); params.push(data.meetingType); }
-    if (data.scheduledDate !== undefined) { sets.push('scheduled_date = ?'); params.push(data.scheduledDate); }
+    if (data.scheduledDate !== undefined) { sets.push('scheduled_date = ?'); params.push(sqlDateTime(data.scheduledDate)); }
     if (data.durationMinutes !== undefined) { sets.push('duration_minutes = ?'); params.push(data.durationMinutes); }
     if (data.location !== undefined) { sets.push('location = ?'); params.push(data.location || null); }
     if (data.attendees !== undefined) { sets.push('attendees = ?'); params.push(JSON.stringify(data.attendees)); }
