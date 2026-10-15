@@ -29,15 +29,17 @@ export interface CriticalPathResult {
   projectDuration: number;
   /** any task linked to another? With none there is no real critical path (U17: the screen says so) */
   hasLinks: boolean;
-  /** the last critical task's finish (YYYY-MM-DD), or null */
+  /** when the critical chain ends (YYYY-MM-DD): its tasks' latest planned finish, or null */
   finishDate: string | null;
+  /** working days from the plan's start to finishDate — what screens show as the length */
+  lengthWorkingDays: number;
 }
 
 export class CriticalPathService {
   async calculateCriticalPath(scheduleId: string): Promise<CriticalPathResult> {
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
     if (tasks.length === 0) {
-      return { criticalPathTaskIds: [], tasks: [], projectDuration: 0, hasLinks: false, finishDate: null };
+      return { criticalPathTaskIds: [], tasks: [], projectDuration: 0, hasLinks: false, finishDate: null, lengthWorkingDays: 0 };
     }
     const isWorking = await projectCalendar(scheduleId);
 
@@ -258,14 +260,20 @@ export class CriticalPathService {
       });
     }
 
-    // the last working day of the chain: origin + (length − 1) working days, on the plan's calendar
-    const finishDate = origin && projectDuration > 0 ? ymdOf(finishFor(origin, projectDuration, isWorking)) : null;
+    // when the chain ends: the latest planned finish of its tasks (what the Gantt shows — the
+    // calculation alone ignores gaps between dated tasks); with no dates, origin + length
+    const planned = criticalIds.map(id => taskMap.get(id)?.endDate).filter(Boolean).map(d => ymdOf(utcDay(d))).sort().at(-1) ?? null;
+    const finishDate = planned ?? (origin && projectDuration > 0 ? ymdOf(finishFor(origin, projectDuration, isWorking)) : null);
+    // the same span in working days: plan start to that finish, on the plan's calendar (counts the
+    // gaps between dated tasks, so it agrees with "ends"); the calculated length when undated
+    const lengthWorkingDays = origin && finishDate ? workingDaysAfter(origin, utcDay(finishDate), isWorking) + 1 : projectDuration;
     return {
       criticalPathTaskIds: criticalIds,
       tasks: results,
       projectDuration,
       hasLinks: edgeMap.size > 0,
       finishDate,
+      lengthWorkingDays,
     };
   }
 }

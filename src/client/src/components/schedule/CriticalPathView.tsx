@@ -85,7 +85,7 @@ export function CriticalPathView({ scheduleId, tasks }: { scheduleId: string; ta
   return (
     <div className="space-y-4">
       <p className="text-sm font-semibold text-gray-900 dark:text-white">
-        Ends {cpm.finishDate ? formatCalendarDate(cpm.finishDate) : '—'} · {cpm.projectDuration} working days · {critical.length} critical · {near.length} near-critical
+        Ends {cpm.finishDate ? formatCalendarDate(cpm.finishDate) : '—'} · {cpm.lengthWorkingDays ?? cpm.projectDuration} working days · {critical.length} critical · {near.length} near-critical
       </p>
       <section aria-label="What to watch" className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-4">
         <h3 className="text-sm font-bold text-red-800 dark:text-red-200">What to watch</h3>

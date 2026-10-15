@@ -636,7 +636,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       ) : (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-1.5 mb-2 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg text-xs">
           <span className="font-semibold text-red-700 dark:text-red-400">Critical path</span>
-          <span className="text-red-700 dark:text-red-300">{cpmData.projectDuration} working days</span>
+          <span className="text-red-700 dark:text-red-300">{cpmData.lengthWorkingDays ?? cpmData.projectDuration} working days</span>
           <span className="text-red-700 dark:text-red-300">{cpmData.criticalPathTaskIds?.length || 0} critical tasks</span>
           {cpmData.finishDate && <span className="text-red-700 dark:text-red-300">ends {formatCalendarDate(cpmData.finishDate)}</span>}
         </div>

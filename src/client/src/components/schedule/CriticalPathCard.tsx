@@ -14,7 +14,7 @@ export function CriticalPathCard({ scheduleId, onOpen }: { scheduleId: string; o
   });
   if (isLoading) return <div className="animate-pulse h-16 bg-gray-200 dark:bg-gray-700 rounded" />;
   if (isError) return <p className="text-sm text-red-600 dark:text-red-400">Could not work out the critical path. Refresh the page to try again.</p>;
-  const cpm = data as { projectDuration: number; criticalPathTaskIds?: string[]; hasLinks?: boolean; finishDate?: string | null } | undefined;
+  const cpm = data as { projectDuration: number; lengthWorkingDays?: number; criticalPathTaskIds?: string[]; hasLinks?: boolean; finishDate?: string | null } | undefined;
   const open = onOpen && (
     <button type="button" onClick={onOpen} className="text-sm font-semibold text-primary-700 dark:text-primary-300 underline">
       Show it on the Gantt
@@ -40,7 +40,7 @@ export function CriticalPathCard({ scheduleId, onOpen }: { scheduleId: string; o
       <dl className="grid grid-cols-3 gap-3">
         <div>
           <dt className="text-xs text-gray-600 dark:text-gray-300">Length</dt>
-          <dd className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{cpm.projectDuration}<span className="text-sm font-medium"> working days</span></dd>
+          <dd className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">{cpm.lengthWorkingDays ?? cpm.projectDuration}<span className="text-sm font-medium"> working days</span></dd>
         </div>
         <div>
           <dt className="text-xs text-gray-600 dark:text-gray-300">Critical tasks</dt>

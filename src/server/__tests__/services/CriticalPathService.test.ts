@@ -59,6 +59,14 @@ describe('CriticalPathService', () => {
     const linked = await service.calculateCriticalPath('sch-1');
     expect(linked.hasLinks).toBe(true);
     expect(linked.finishDate).toBe('2026-10-20');
+    // a gap before the last task: the end is its planned finish, as on the Gantt
+    mockFindTasks.mockResolvedValue([
+      makeTask('a', 'Design', { estimatedDays: 3, startDate: '2026-10-12', endDate: '2026-10-14' }),
+      makeTask('b', 'Build', { estimatedDays: 4, startDate: '2026-10-21', endDate: '2026-10-26', dependencies: [{ dependencyId: 'a' }] }),
+    ]);
+    const gap = await service.calculateCriticalPath('sch-1');
+    expect(gap.finishDate).toBe('2026-10-26');
+    expect(gap.lengthWorkingDays).toBe(11); // 12–26 Oct, weekdays: the gap counts, so it agrees with "ends"
     mockFindTasks.mockResolvedValue([makeTask('a', 'Design', { estimatedDays: 3, startDate: '2026-10-12', endDate: '2026-10-14' })]);
     expect((await service.calculateCriticalPath('sch-1')).hasLinks).toBe(false);
     mockFindTasks.mockResolvedValue([]);
