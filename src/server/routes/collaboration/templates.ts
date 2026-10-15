@@ -55,6 +55,9 @@ export const updateTemplateSchema = createTemplateSchema.partial().extend({
   tags: z.array(z.string()).optional(),
 });
 
+/** Publishing to the cross-company template marketplace (U11): off until shared templates are reviewed — bring back per todo U11 */
+const TEMPLATE_SHARING_OPEN = false;
+
 export async function templateRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -177,6 +180,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
         ...data,
         userId,
         selectedTaskRefIds: data.selectedTaskRefIds,
+        selectedRaidIndexes: data.selectedRaidIndexes,
       });
       if (clientId && result?.project?.id) await projectGroupService.assignProject(result.project.id, clientId);
       return reply.status(201).send(result);
@@ -253,6 +257,12 @@ export async function templateRoutes(fastify: FastifyInstance) {
   fastify.post('/:id/publish', {
     preHandler: [requireScope('write')],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
+    // Sharing templates with other companies is off until Kovarti reviews what is shared (a
+    // customer's template can carry client details) — UAT U11, 2026-10-14. The marketplace is
+    // hidden while empty; this stops anything reaching it by the API meanwhile.
+    if (!TEMPLATE_SHARING_OPEN) {
+      return reply.status(409).send({ error: 'Not available yet', message: "Sharing templates with other companies isn't open yet." });
+    }
     try {
       const { id } = request.params as { id: string };
       const userId = request.user!.userId;

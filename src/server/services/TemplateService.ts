@@ -1,5 +1,6 @@
 import { ProjectTemplate, TemplateTask, CreateFromTemplate, SaveAsTemplate } from '../schemas/templateSchemas';
 import { getTenantContext } from '../middleware/requestContext';
+import { STARTER_RAID } from './templates/starterRaid';
 import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
 import { consultingEngagementTemplates } from './templates/consultingEngagements';
@@ -505,20 +506,23 @@ export class TemplateService {
     // Engagement scaffolds first: this is a consultant's product, so these are what the
     // buyer should see at the top of the list.
     ...consultingEngagementTemplates,
-    webAppTemplate,
-    cloudMigrationTemplate,
-    erpUpgradeTemplate,
-    commercialBuildingTemplate,
-    residentialTemplate,
-    utilitiesTemplate,
-    telecomTemplate,
-    highwayTemplate,
-    bridgeTemplate,
-    genericTemplate,
-    agileScrumTemplate,
-    marketingCampaignTemplate,
-    productLaunchTemplate,
-    officeRelocationTemplate,
+    // every built-in template brings its starter RAID (U10)
+    ...[
+      webAppTemplate,
+      cloudMigrationTemplate,
+      erpUpgradeTemplate,
+      commercialBuildingTemplate,
+      residentialTemplate,
+      utilitiesTemplate,
+      telecomTemplate,
+      highwayTemplate,
+      bridgeTemplate,
+      genericTemplate,
+      agileScrumTemplate,
+      marketingCampaignTemplate,
+      productLaunchTemplate,
+      officeRelocationTemplate,
+    ].map(t => ({ ...t, raidItems: t.raidItems ?? STARTER_RAID[t.id] })),
   ];
 
   /** Where a template the current company may see sits in the store (-1 when it can't see it) */
@@ -593,6 +597,8 @@ export class TemplateService {
     methodology?: 'waterfall' | 'agile' | 'hybrid';
     location?: string;
     selectedTaskRefIds?: string[];
+    /** starter RAID items to keep, by position; undefined = all (U10 review step) */
+    selectedRaidIndexes?: number[];
     userId: string;
   }): Promise<{ project: any; schedule: any; tasks: any[]; raidItemIds: string[]; reportTaskId: string | null }> {
     const template = await this.findById(input.templateId);
@@ -730,9 +736,11 @@ export class TemplateService {
     // project at all, so a failure here is logged and swallowed rather than losing the
     // whole apply.
     const raidCreated: string[] = [];
-    if (template.raidItems?.length) {
+    const keep = input.selectedRaidIndexes ? new Set(input.selectedRaidIndexes) : null;
+    const raidItems = (template.raidItems ?? []).filter((_, i) => !keep || keep.has(i));
+    if (raidItems.length) {
       const { riskService } = await import('./RiskService');
-      for (const item of template.raidItems) {
+      for (const item of raidItems) {
         try {
           // eslint-disable-next-line no-await-in-loop -- a template carries only a handful of RAID items; each goes through riskService.create for its own validation and audit
           const created = await riskService.create({

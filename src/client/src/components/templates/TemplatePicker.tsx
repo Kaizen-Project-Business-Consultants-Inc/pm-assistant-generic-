@@ -45,6 +45,7 @@ type Step =
   | 'file-details'; // NEW: project details for "From File"
 
 const categories = [
+  { key: 'consulting', label: 'Consulting', icon: Briefcase, color: 'bg-cyan-50 dark:bg-cyan-900/20 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800' },
   { key: 'it', label: 'IT & Software', icon: Monitor, color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800' },
   { key: 'construction', label: 'Construction', icon: Building2, color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400 border-orange-200 dark:border-orange-800' },
   { key: 'infrastructure', label: 'Infrastructure', icon: Landmark, color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800' },
@@ -203,6 +204,8 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   const { data: templatesData, isError: isTemplatesError } = useQuery({
     queryKey: ['templates', selectedCategory],
     queryFn: () => {
+      // consulting engagements span project types: they are their own category
+      if (selectedCategory === 'consulting') return apiService.getTemplates(undefined, 'engagement');
       if (selectedCategory === 'marketing' || selectedCategory === 'operations') {
         return apiService.getTemplates('other', selectedCategory);
       }
@@ -214,7 +217,8 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
   const { data: marketplaceData, isError: isMarketplaceError } = useQuery({
     queryKey: ['templates-marketplace'],
     queryFn: () => apiService.getMarketplaceTemplates(),
-    enabled: isMarketplace,
+    // also on the category step: the Marketplace shows only once something is in it (U11)
+    enabled: isMarketplace || step === 'category',
   });
 
   const { data: templateDetail, isError: isTemplateDetailError } = useQuery({
@@ -241,6 +245,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
       priority?: string;
       location?: string;
       selectedTaskRefIds?: string[];
+      selectedRaidIndexes?: number[];
       clientId?: string;
     }) => {
       // the server puts the project under its client in the same step (an unknown client is a 400)
@@ -257,7 +262,9 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     },
   });
 
-  const templates = templatesData?.data || templatesData?.templates || [];
+  // consulting engagements live in their own Consulting group, not also under IT or General
+  const allInCategory: any[] = templatesData?.data || templatesData?.templates || [];
+  const templates = selectedCategory === 'consulting' ? allInCategory : allInCategory.filter(t => t.category !== 'engagement');
   const template = templateDetail?.template;
   const marketplaceTemplates = marketplaceData?.data || [];
 
@@ -321,6 +328,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     methodology?: string;
     location?: string;
     selectedTaskRefIds?: string[];
+    selectedRaidIndexes?: number[];
     clientId?: string;
   }) => {
     setErrorMessage(null);
@@ -744,7 +752,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                 &larr; Back
               </button>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {categories.map((cat) => {
+                {categories.filter(cat => cat.key !== 'marketplace' || marketplaceTemplates.length > 0).map((cat) => {
                   const Icon = cat.icon;
                   return (
                     <button
@@ -813,7 +821,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
                 </div>
               ) : marketplaceTemplates.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No marketplace templates yet. Publish your custom templates to share them!</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No marketplace templates yet.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -867,6 +875,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
               phaseCount={template.tasks.filter((t: any) => t.isSummary).length}
               taskCount={template.tasks.filter((t: any) => !t.isSummary).length}
               tasks={template.tasks}
+              raidItems={template.raidItems ?? []}
               defaultMethodology={template.defaultMethodology}
               onBack={() => setStep('template')}
               onSubmit={handleCustomize}

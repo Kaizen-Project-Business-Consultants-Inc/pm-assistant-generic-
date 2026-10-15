@@ -241,7 +241,9 @@ Click **Create New Project** from the Dashboard or Projects page. You'll see thr
 3. Review the data preview, then click **Next: Project Details**.
 4. Fill in project name, start date, methodology, and budget. Click **Create Project** -- the project, schedule, and all imported tasks are created in one action.
 
-**From Template** -- Choose from pre-built project templates organized by category (IT & Software, Construction, Infrastructure, Roads & Bridges, Marketing, Operations, General, or Marketplace).
+**From Template** -- Choose from pre-built project templates organized by category (Consulting, IT & Software, Construction, Infrastructure, Roads & Bridges, Marketing, Operations, General; Marketplace appears once it has templates). Consulting holds the engagement templates (system implementation, discovery and assessment, process improvement, PMO support).
+
+**Starter RAID: review.** Every built-in template brings 4–6 typical risks, assumptions, dependencies and actions for that kind of project (for example, on a cloud migration: "Hidden dependencies between systems", "Write and test the rollback plan"). On the create form they are listed under **Starter RAID: review**, all ticked — untick any that don't apply, and only the ticked ones go into the new project's Risks & Issues log.
 
 ### Editing a Project
 
@@ -2093,7 +2095,7 @@ After selecting a template, the **Template Customize Form** lets you:
 
 ### Built-In Templates
 
-PM Assistant ships with **14 built-in templates** across three categories. Four templates were added in August 2026:
+PM Assistant ships with **18 built-in templates** (14 project templates and 4 consulting engagements) across 8 categories. Templates used during onboarding, by Claude or through the API bring all their starter RAID items (there is no review step there; delete any you don't need from Risks & Issues). Four templates were added in August 2026:
 
 | Template | Category | Duration |
 |----------|----------|----------|
@@ -2104,11 +2106,9 @@ PM Assistant ships with **14 built-in templates** across three categories. Four 
 
 ### Template Marketplace
 
-The **New Project** wizard includes a **Marketplace** tab where you can discover templates shared by other organizations.
+**Not open yet (October 2026).** Sharing templates between companies is switched off until Kovarti reviews what is shared — a company's template can carry its clients' details. The Marketplace category is hidden while it has no templates, and publishing is refused with a plain message. (Your saved templates are only ever visible to your own company.)
 
-- **Browse** community templates — each card shows the template name, description, category, and download count.
-- **Import** a marketplace template — creates an independent copy in your organization's library that you can customize freely.
-- **Publish** your own templates — once you have saved a custom template, use the Publish action to share it with the community.
+When it opens, the **New Project** wizard's **Marketplace** lets you browse templates (name, description, category, downloads) and **Import** one as an independent copy in your company's library.
 
 ---
 

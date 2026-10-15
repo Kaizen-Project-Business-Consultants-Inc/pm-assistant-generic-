@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Batch E1: starter RAID for every template, review step, Consulting group, Marketplace off
+- `services/templates/starterRaid.ts`: 4–6 starter RAID items for each of the 14 built-in templates; the create form lists them (all ticked, untick to drop); apply takes `selectedRaidIndexes`.
+- Picker: Consulting category (engagement templates, not repeated under IT/General); Marketplace hidden while empty; publish refused (409) until shared templates are reviewed — bring back later (todo U11).
+
 ## 2026-10-15 — Saved templates scoped to their company (found in the E1 review)
 - `TemplateService`: custom templates carry `ownerOrgId`; findAll / findById / update / delete / apply see built-ins + the company's own only (they were one list for every company — see, edit, delete). Still in memory (lost on restart) — follow-up: store per company in the database.
 

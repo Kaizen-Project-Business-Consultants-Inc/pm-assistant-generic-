@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useId } from 'react';
+import { StarterRaidReview, type StarterRaidItem } from './StarterRaidReview';
 import { ArrowLeft, Calendar, DollarSign, MapPin, ChevronDown, Lock } from 'lucide-react';
 
 interface TemplateTask {
@@ -28,9 +29,12 @@ interface TemplateCustomizeFormProps {
     methodology?: string;
     location?: string;
     selectedTaskRefIds?: string[];
+    selectedRaidIndexes?: number[];
     clientId?: string;
   }) => void;
   isSubmitting: boolean;
+  /** the template's starter RAID items, reviewed before creating (U10) */
+  raidItems?: StarterRaidItem[];
   extraContent?: React.ReactNode;
   /** The company's clients; the Client picker shows only when there is at least one */
   clients?: Array<{ id: string; name: string }>;
@@ -48,6 +52,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   isSubmitting,
   extraContent,
   clients = [],
+  raidItems = [],
 }) => {
   const uid = useId();
   const today = new Date().toISOString().split('T')[0];
@@ -60,6 +65,8 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   const [clientId, setClientId] = useState('');
   const [selectedRefIds, setSelectedRefIds] = useState<Set<string>>(() => new Set(tasks.map(t => t.refId)));
   const [taskSectionExpanded, setTaskSectionExpanded] = useState(false);
+  const [keptRaid, setKeptRaid] = useState<Set<number>>(() => new Set(raidItems.map((_, i) => i)));
+  const toggleRaid = (i: number) => setKeptRaid(prev => { const next = new Set(prev); if (next.has(i)) next.delete(i); else next.add(i); return next; });
   const [cascadeWarning, setCascadeWarning] = useState<string | null>(null);
 
   // Lookup maps
@@ -189,6 +196,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
       methodology,
       location: location || undefined,
       selectedTaskRefIds: allSelected ? undefined : [...selectedRefIds],
+      selectedRaidIndexes: keptRaid.size === raidItems.length ? undefined : [...keptRaid].sort((a, b) => a - b),
       clientId: clientId || undefined,
     });
   };
@@ -387,6 +395,8 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
             )}
           </div>
         )}
+
+        <StarterRaidReview items={raidItems} selected={keptRaid} onToggle={toggleRaid} />
 
         {extraContent}
 

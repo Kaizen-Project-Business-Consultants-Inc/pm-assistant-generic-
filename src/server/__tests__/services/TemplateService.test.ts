@@ -26,7 +26,12 @@ vi.mock('../../services/ScheduleService', () => ({
   },
 }));
 
+// Starter RAID items go through the RAID log's own create (U10)
+const mockRiskCreate = vi.fn(async (d: any) => ({ id: `raid-${d.title}` }));
+vi.mock('../../services/RiskService', () => ({ riskService: { create: (d: any) => mockRiskCreate(d) } }));
+
 import { TemplateService } from '../../services/TemplateService';
+import { templateRaidSchema } from '../../schemas/templateSchemas';
 import { weekdaysOnly } from '../../utils/workingDays';
 
 const ymd = (d: any) => new Date(d).toISOString().slice(0, 10);
@@ -246,6 +251,23 @@ describe('TemplateService', () => {
         scheduleId: data.scheduleId,
         dependencies: data.dependencies,
       }));
+    });
+
+    it('every built-in template brings 4–6 valid starter RAID items (U10)', async () => {
+      for (const t of (await service.findAll()).filter((x: any) => x.isBuiltIn)) {
+        expect(t.raidItems?.length, t.id).toBeGreaterThanOrEqual(4);
+        expect(t.raidItems!.length, t.id).toBeLessThanOrEqual(6);
+        for (const item of t.raidItems!) expect(() => templateRaidSchema.parse(item), `${t.id}: ${item.title}`).not.toThrow();
+      }
+    });
+
+    it('creates only the starter RAID items the PM kept; all of them when nothing was unticked', async () => {
+      await service.applyTemplate({ ...baseInput, selectedRaidIndexes: [0, 2] });
+      const tpl: any = await service.findById('tpl-generic-pmi');
+      expect(mockRiskCreate.mock.calls.map(c => c[0].title)).toEqual([tpl.raidItems[0].title, tpl.raidItems[2].title]);
+      mockRiskCreate.mockClear();
+      await service.applyTemplate(baseInput);
+      expect(mockRiskCreate).toHaveBeenCalledTimes(tpl.raidItems.length);
     });
 
     it('creates project, schedule, and tasks from template', async () => {
