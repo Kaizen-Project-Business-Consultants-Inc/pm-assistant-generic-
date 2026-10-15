@@ -48,7 +48,7 @@ export const OnboardingPage: React.FC = () => {
 
   const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState(user?.fullName || ''); // free-trial and Google sign-ups already gave it
-  const [username, setUsername] = useState('');
+  const [phone, setPhone] = useState(user?.phone || ''); // required to finish setup (U5)
   const [organizationName, setOrganizationName] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [methodology, setMethodology] = useState('');
@@ -100,12 +100,6 @@ export const OnboardingPage: React.FC = () => {
     return localStorage.getItem('pendingCheckout') === 'true';
   });
 
-  useEffect(() => {
-    if (user?.username && !username) {
-      setUsername(user.username);
-    }
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Only redirect if they arrived already onboarded — not when they complete step 1
   useEffect(() => {
     if (finishedOnMount.current && !needsSetup(user)) {
@@ -122,10 +116,10 @@ export const OnboardingPage: React.FC = () => {
       const roleToSubmit = selectedRole && selectedRole !== 'other' ? selectedRole : undefined;
       await apiService.updateProfile({
         fullName,
-        username: username !== user?.username ? username : undefined,
         organizationName: (canNameCompany && organizationName) || undefined,
         role: roleToSubmit,
         completeOnboarding: true,
+        phone: phone.trim(),
       });
 
       const data = await apiService.getMe();
@@ -349,10 +343,10 @@ export const OnboardingPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Username</label>
-                  <input id="username" type="text" required autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
-                    className="input" placeholder="johndoe" minLength={3} pattern="[a-zA-Z0-9_]+" />
-                  <p className="text-xs text-gray-500 mt-1">Letters, numbers, and underscores only</p>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Phone number</label>
+                  <input id="phone" type="tel" required autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                    className="input" placeholder="+1 416 555 0100" aria-describedby="phone-help" />
+                  <p id="phone-help" className="text-xs text-gray-500 mt-1">So we can help you get set up. We never share it and never send texts.</p>
                 </div>
 
                 {canNameCompany && <div>
@@ -415,7 +409,7 @@ export const OnboardingPage: React.FC = () => {
                   </div>
                 </div>
 
-                <button type="submit" disabled={isLoading || !fullName.trim() || !username.trim() || (companyNameRequired && !organizationName.trim())}
+                <button type="submit" disabled={isLoading || !fullName.trim() || !phone.trim() || (companyNameRequired && !organizationName.trim())}
                   className="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   {isLoading ? (
                     <div className="flex items-center">

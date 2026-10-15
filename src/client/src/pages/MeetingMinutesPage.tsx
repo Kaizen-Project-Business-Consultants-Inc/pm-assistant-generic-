@@ -31,6 +31,7 @@ import { mapAnalysisToRaidCandidates, RaidCandidate, toSendToRaidPayload } from 
 import { useProjectRole } from '../hooks/useProjectRole';
 import { ViewOnlyNote } from '../components/ui/ViewOnlyNote';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
+import { useOnlySchedule } from '../hooks/useOnlySchedule';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -248,16 +249,13 @@ export const MeetingMinutesPage: React.FC = () => {
   const projects: Project[] = projectsData?.data || projectsData?.projects || [];
   const schedules: Schedule[] = schedulesData?.schedules || [];
 
-  // A project with a single schedule needs no choice — pick it (people analysed with none chosen
-  // and got a bare "Failed to analyze", 2026-10-14)
-  useEffect(() => {
-    const list: Schedule[] = schedulesData?.schedules || [];
-    if (!selectedScheduleId && list.length === 1) setSelectedScheduleId(list[0].id);
-  }, [schedulesData, selectedScheduleId]);
+  // A project has one schedule: pick it (people analysed with none chosen and got a bare "Failed
+  // to analyze", 2026-10-14)
+  const plans = useOnlySchedule(schedules, selectedScheduleId, setSelectedScheduleId);
 
   /** What is still missing before Analyse can run (the server needs all three); null = ready */
   const analyzeMissing = !selectedProjectId ? 'Choose a project'
-    : !selectedScheduleId ? 'Choose a schedule'
+    : !selectedScheduleId ? (schedulesLoading || plans.length > 1 ? 'Choose a schedule' : "Create the project's schedule (Schedule tab)")
     : transcript.trim().length < 10 ? 'Paste the meeting transcript'
     : null;
   const history: HistoryEntry[] = historyData?.data || historyData?.history || historyData?.analyses || [];
@@ -697,6 +695,7 @@ export const MeetingMinutesPage: React.FC = () => {
             {/* Schedule selector + Analyze button (paste mode only) */}
             {inputMode === 'paste' && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {plans.length > 1 && (
                 <div>
                   <label htmlFor="meeting-schedule" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                     Schedule
@@ -712,13 +711,14 @@ export const MeetingMinutesPage: React.FC = () => {
                       <option value="">
                         {!selectedProjectId ? 'Select a project first' : schedulesLoading ? 'Loading...' : 'Select a schedule...'}
                       </option>
-                      {schedules.map((s) => (
+                      {plans.map((s) => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                       ))}
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400" />
                   </div>
                 </div>
+                )}
 
                 <div className="sm:col-span-2 flex items-end">
                   <button
@@ -746,8 +746,8 @@ export const MeetingMinutesPage: React.FC = () => {
               </div>
             )}
 
-            {/* Upload mode: schedule selector row */}
-            {inputMode === 'upload' && (
+            {/* Upload mode: schedule selector row — only when an older project still has several (U26) */}
+            {inputMode === 'upload' && plans.length > 1 && (
               <div className="max-w-xs">
                 <label htmlFor="upload-schedule" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
                   Schedule
@@ -763,7 +763,7 @@ export const MeetingMinutesPage: React.FC = () => {
                     <option value="">
                       {schedulesLoading ? 'Loading...' : 'Select a schedule...'}
                     </option>
-                    {schedules.map((s) => (
+                    {plans.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>

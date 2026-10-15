@@ -66,7 +66,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
    - If you were invited to join an organization, the form shows **"Join [organization name]"** and pre-fills the organization context automatically.
    - **Or click Sign up with Google** at the top of the form (when your company's Kovarti has it switched on). Pick your Google account; Google has already confirmed your email, so you go straight in — no form, no confirmation email. It follows the same rules as the form: the free trial, your chosen paid plan's checkout, or an invitation (which must be opened with the Google account of the invited address; if you already have a Kovarti account, Continue with Google from the invitation signs you in and adds you to the inviting company). You have no Kovarti password; to connect Claude, which needs one, set a password with **Forgot password?** on the sign-in page.
 5. Verify your email address using the link sent to your inbox. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? In Gmail look in the **Updates** tab, then Spam or Promotions. Always use the **newest** email: an older link stops working once a newer one is sent. If a link doesn't work, the page tells you why and offers **Send me a new link** — type your email and a fresh one arrives.
-6. **Set up your workspace.** Everyone who signs up for their own company goes through the short setup screens once — about you, then your first project (with the option **Explore a sample project first**). Your name is already filled in if you gave it at sign-up.
+6. **Set up your workspace.** Everyone who signs up for their own company goes through the short setup screens once — about you, then your first project (with the option **Explore a sample project first**). Your name is already filled in if you gave it at sign-up. **Your phone number is required** on the first screen — Kovarti uses it only to help you with your account, never shares it and never sends texts. You can change it later in **Settings › Profile**.
 
 > **Note:** Each email address is eligible for one free 7-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
@@ -76,7 +76,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
 
 ### Logging In
 
-1. Go to the login page (`/login`) and enter your email (or username) and password.
+1. Go to the login page (`/login`) and enter your **email** and password. (There are no usernames any more; an older account that had one can still sign in with it.)
 2. Click **Sign In**. You will be redirected to the **Dashboard**.
    - **Continue with Google** (when shown) signs you in with your Google account instead. The first time, if you already have a Kovarti account with that address, the **You already have a Kovarti account** page asks for your Kovarti password **once** (or click **Forgot your password? Email me a link to link Google instead** and use the button on the page the email opens). This proves the account is yours — Google is never linked to an existing account automatically. After that, Continue with Google signs you straight in.
    - If Google sign-in can't go ahead, the sign-in page says why and what to do (for example "You cancelled at Google. Nothing was changed."). A Google address with no Kovarti account is sent to the **Pricing** page with a note — choose the free trial or a plan there, then click **Sign up with Google** on the next page. (From an invitation, you stay on the invitation's sign-up page instead.)
@@ -376,11 +376,11 @@ Presence automatically re-joins after a WebSocket reconnect (e.g., if your conne
 2. If no schedules exist, you'll see two options:
    - **Create Schedule** -- creates a blank schedule ready for adding tasks manually.
    - **Upload Schedule (.xlsx / .csv)** -- import tasks from a spreadsheet file.
-3. You can have multiple schedules per project (e.g., baseline schedule, revised schedule).
+3. **A project has one schedule** (since October 2026). Separate streams of work, such as a cutover, are phases (summary tasks) inside it, and imports add to it. Kovarti never asks which schedule to use — Meeting Intelligence, Log Time, Monte Carlo and the timesheet comparison use the project's schedule. Trying to create a second one says the project already has its schedule.
 
 ### Switching Between Schedules
 
-When a project has more than one schedule, a **pill/tab strip** appears at the top of the Schedule tab, letting you switch between them without leaving the page. Only the selected schedule is rendered — there are no duplicate toolbars or overlapping views. On mobile, the strip is replaced by a **dropdown (`<select>`)** for touch-friendly switching.
+This shows for the plan and its What-If copies (see What-If), and for older projects created with more than one schedule. When a project has more than one schedule, a **pill/tab strip** appears at the top of the Schedule tab, letting you switch between them without leaving the page. Only the selected schedule is rendered — there are no duplicate toolbars or overlapping views. On mobile, the strip is replaced by a **dropdown (`<select>`)** for touch-friendly switching.
 
 ### Schedule Toolbar
 

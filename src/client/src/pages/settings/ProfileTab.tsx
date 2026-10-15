@@ -8,6 +8,7 @@ import { roleLabel } from '../../constants/branding';
 export const ProfileTab: React.FC = () => {
   const { user, setUser } = useAuthStore();
   const [fullName, setFullName] = useState(user?.fullName ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   // A new email needs the current password (the server refuses without it)
   const [emailPassword, setEmailPassword] = useState('');
@@ -27,11 +28,13 @@ export const ProfileTab: React.FC = () => {
   const handleSave = async () => {
     if (nameInvalid) { setError('Full name is required.'); return; }
     if (emailChanged && !emailPassword) { setError('Enter your current password to change your email.'); return; }
+    // a kept phone number can be changed but not emptied (it's required at setup, U5)
+    if (user?.phone && !phone.trim()) { setError('Enter your phone number — it can be changed but not removed.'); return; }
     setSaving(true);
     setError('');
     try {
-      const result = await apiService.updateProfile({ fullName, email: email.trim(), currentPassword: emailChanged ? emailPassword : undefined });
-      if (user) setUser({ ...user, fullName: result.fullName ?? fullName, email: result.email ?? email });
+      const result = await apiService.updateProfile({ fullName, email: email.trim(), currentPassword: emailChanged ? emailPassword : undefined, phone: phone.trim() || undefined });
+      if (user) setUser({ ...user, fullName: result.fullName ?? fullName, email: result.email ?? email, phone: result.phone ?? (phone.trim() || null) });
       setEmailPassword('');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -48,10 +51,6 @@ export const ProfileTab: React.FC = () => {
       <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Profile Information</h2>
       <div className="space-y-4 max-w-lg">
         <div>
-          <label htmlFor="profile-username" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
-          <input id="profile-username" type="text" value={user?.username ?? ''} readOnly className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
-        </div>
-        <div>
           <label htmlFor="profile-role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
           <input id="profile-role" type="text" value={user?.role ? roleLabel(user.accountRole ?? user.role) : ''} readOnly className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed" />
         </div>
@@ -63,6 +62,10 @@ export const ProfileTab: React.FC = () => {
           <label htmlFor="profile-full-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name *</label>
           <input id="profile-full-name" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required className={`w-full rounded-md border ${nameInvalid && error ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'} bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500`} />
           {nameInvalid && error && <p className="text-xs text-red-500 mt-1">Full name cannot be empty.</p>}
+        </div>
+        <div>
+          <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone number</label>
+          <input id="profile-phone" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 416 555 0100" className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
         </div>
         <div>
           <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>

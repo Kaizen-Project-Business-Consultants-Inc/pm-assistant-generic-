@@ -21,6 +21,11 @@ const profileUpdateSchema = z.object({
   currentPassword: z.string().max(200).optional(),
   // sent by the setup screens when "About you" is saved: setup is finished (2026-10-14)
   completeOnboarding: z.literal(true).optional(),
+  // a phone number: digits with the usual + ( ) - . and spaces, 7 to 15 digits (U5)
+  phone: z.string().trim().max(32)
+    .refine(v => /^\+?[0-9()\-.\s]+$/.test(v) && (v.match(/[0-9]/g)?.length ?? 0) >= 7 && (v.match(/[0-9]/g)?.length ?? 0) <= 15,
+      'Enter a phone number, e.g. +1 416 555 0100')
+    .optional(),
 });
 
 const categoryPrefSchema = z.object({
@@ -73,6 +78,23 @@ async function maySetOwnRole(userId: string, current: { role: string; isGuest?: 
   if (current.isGuest || current.role === 'viewer') return false;
   const org = await organizationRepository.findByUserId(userId);
   return !org || org.ownerUserId === userId;
+}
+
+/** The setup screens' part of a save (only while in setup): role, and finishing setup */
+async function addSetupFields(
+  updateData: Record<string, any>,
+  parsed: ProfileInput,
+  current: { role: string; isGuest?: boolean; phone?: string | null },
+  userId: string,
+): Promise<{ error: string; message: string } | null> {
+  // Role self-assignment — only for someone who signed up for their own company: never an invited
+  // member, viewer or guest (their role was given to them)
+  if (parsed.role !== undefined && await maySetOwnRole(userId, current)) updateData.role = parsed.role;
+  if (!parsed.completeOnboarding) return null;
+  // Finishing setup needs a phone number (required there, U5) — this save's or one already kept
+  if (!(parsed.phone ?? current.phone)) return { error: 'Phone required', message: 'Add your phone number to finish setting up.' };
+  updateData.onboardingCompletedAt = new Date();
+  return null;
 }
 
 /** Why a profile save is refused — checked before anything is written — or null */
@@ -174,10 +196,11 @@ export async function userRoutes(fastify: FastifyInstance) {
       if (parsed.fullName !== undefined) updateData.fullName = parsed.fullName;
       if (emailChanges) updateData.email = parsed.email;
       if (usernameChanges) updateData.username = parsed.username;
-      // Role self-assignment — only during setup, and only for someone who signed up for their own
-      // company: never an invited member, viewer or guest (their role was given to them)
-      if (parsed.role !== undefined && onboarding && await maySetOwnRole(userId, current)) updateData.role = parsed.role;
-      if (parsed.completeOnboarding && onboarding) updateData.onboardingCompletedAt = new Date();
+      if (parsed.phone !== undefined) updateData.phone = parsed.phone;
+      if (onboarding) {
+        const setupRefusal = await addSetupFields(updateData, parsed, current, userId);
+        if (setupRefusal) return reply.status(400).send(setupRefusal);
+      }
 
       let updated = current;
       if (Object.keys(updateData).length > 0) {
@@ -200,9 +223,10 @@ export async function userRoutes(fastify: FastifyInstance) {
         email: updated?.email,
         username: updated?.username,
         onboardingCompleted: !!updated?.onboardingCompletedAt,
+        phone: updated?.phone ?? null,
       };
     } catch (error) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: error.issues[0]?.message ?? 'Check the details you entered.', details: error.issues });
       logger.error('Update profile error', { error });
       return reply.status(500).send({ error: 'Internal server error' });
     }

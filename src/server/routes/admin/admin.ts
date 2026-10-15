@@ -93,6 +93,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
       const rows = await databaseService.queryControlPlane(
         `SELECT
           u.id, u.username, u.email, u.full_name, u.role, u.is_active,
+          u.phone, -- for Kovarti's support / onboarding follow-up (U5); admin pages are Kovarti's only
           u.created_at, u.last_login_at, u.subscription_tier,
           u.ai_monthly_token_budget,
           u.email_verified,

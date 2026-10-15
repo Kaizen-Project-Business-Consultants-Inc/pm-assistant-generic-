@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-14 — Batch C1: one schedule per project (U26), email-only sign-in (U7), phone number (U5)
+- **U26:** `ScheduleService.create` refuses a project's second plan (`ScheduleRepository.countPlans` leaves What-If scenario copies out) → `ProjectHasScheduleError`, 409 from POST /schedules; the app, API, Claude (`create-schedule` tool text says so) and AI actions all create through it. `hooks/useOnlySchedule` picks the project's schedule; pickers show only for older projects with several (Monte Carlo, Meeting Intelligence paste + upload, Timesheet comparison; Time, Backlog, Resources, Sprints and Resource Management already did). Import "update in place keeping hours" is left for the MS Project import work (imports today only add tasks). Prod: check for projects with >1 schedule before the release.
+- **U7:** sign-in label "Email" (usernames still accepted for older accounts); username removed from setup and Settings › Profile.
+- **U5:** migration 138 `users.phone`; profile route validates (7–15 digits, + ( ) - . spaces) and refuses finishing setup without one; setup screen asks for it (required), Settings › Profile edits it; login and /me send it; privacy page says what it is for. Existing accounts are not forced.
+
 ## 2026-10-14 — Batch B: the new look's building blocks (U2 part 1, mock accepted)
 - Colours: `accent` palette in tailwind.config (teal / amber / coral / blue-grey bars, -soft fills, -text shades at 4.5:1+); side menu navy `#1e2a3b` with cool-grey text (faint opacities floored at 0.65). Stale `--color-sidebar-*` CSS variables removed (unused).
 - Card bar: `card-stripe` + `stripe-<tone>` (index.css, utilities layer) drawn as its own 4px strip (::before) — recolouring the border-top was repainted grey in dark mode. Dashboard widgets get a bar from `WidgetDef.stripe` (`STRIPE_CLASS` map keeps the class names in the build) via `.widget-stripe`.

@@ -117,6 +117,7 @@ describe('ScheduleService', () => {
   describe('create', () => {
     it('creates schedule and returns it', async () => {
       mockQuery
+        .mockResolvedValueOnce([{ n: 0 }]) // countPlans: the project has no schedule yet (one per project)
         .mockResolvedValueOnce([]) // INSERT
         .mockResolvedValueOnce([{ ...sampleScheduleRow, id: 'test-schedule-id' }]); // findById
 

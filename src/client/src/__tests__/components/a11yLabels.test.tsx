@@ -163,7 +163,8 @@ describe('Settings profile', () => {
   it('every field, read-only ones included, is tied to its label', () => {
     useAuthStore.setState({ user: { id: 'u1', username: 'pat', email: 'pat@example.com', fullName: 'Pat', role: 'project_manager' } as never });
     wrap(<ProfileTab />);
-    expect((screen.getByLabelText('Username') as HTMLInputElement).value).toBe('pat');
+    expect(screen.queryByLabelText('Username')).toBeNull(); // email only (U7)
+    expect(screen.getByLabelText('Phone number')).toBeTruthy(); // U5
     expect((screen.getByLabelText('Role') as HTMLInputElement).readOnly).toBe(true);
     expect(screen.getByLabelText('Account Created')).toBeTruthy();
     expect(screen.getByLabelText('Full Name *')).toBeTruthy();

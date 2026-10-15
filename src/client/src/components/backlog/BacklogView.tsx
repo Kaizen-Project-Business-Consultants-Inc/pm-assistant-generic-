@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Inbox, Plus, ArrowRight, Shield } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { plansOnly } from '../../hooks/useOnlySchedule';
 
 interface BacklogTask {
   id: string;
@@ -66,7 +67,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
     enabled: !!projectId,
   });
 
-  const schedules: any[] = schedulesData?.schedules || [];
+  const schedules: any[] = plansOnly(schedulesData?.schedules || []); // the plan only, not What-If copies (U26)
 
   React.useEffect(() => {
     if (schedules.length > 0 && !selectedScheduleId) {

@@ -156,7 +156,7 @@
       "count": 2
     },
     "react-hooks/exhaustive-deps": {
-      "count": 2
+      "count": 1
     }
   },
   "src/client/src/components/customfields/CustomFieldEditorModal.tsx": {
@@ -462,7 +462,7 @@
       "count": 1
     },
     "react-hooks/exhaustive-deps": {
-      "count": 4
+      "count": 3
     },
     "sonarjs/cognitive-complexity": {
       "count": 1
@@ -473,7 +473,7 @@
       "count": 4
     },
     "react-hooks/exhaustive-deps": {
-      "count": 2
+      "count": 1
     }
   },
   "src/client/src/components/projects/ProjectGroupManager.tsx": {
@@ -1286,7 +1286,7 @@
   },
   "src/client/src/pages/ProjectDetailPage/SprintsTab.tsx": {
     "react-hooks/exhaustive-deps": {
-      "count": 2
+      "count": 1
     }
   },
   "src/client/src/pages/ProjectDetailPage/StatusReportModal.tsx": {
@@ -1385,7 +1385,7 @@
       "count": 2
     },
     "react-hooks/exhaustive-deps": {
-      "count": 6
+      "count": 5
     },
     "sonarjs/cognitive-complexity": {
       "count": 1

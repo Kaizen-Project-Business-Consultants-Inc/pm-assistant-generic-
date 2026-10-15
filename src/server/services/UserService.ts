@@ -49,6 +49,8 @@ export interface User {
   mustChangePassword: boolean;
   /** When the person finished the setup screens; null = send them to setup (2026-10-14) */
   onboardingCompletedAt: Date | null;
+  /** Asked on the setup screen (required there) and in Settings › Profile (U5) */
+  phone: string | null;
   isFounder: boolean;
   founderAt: Date | null;
   refundCount: number;

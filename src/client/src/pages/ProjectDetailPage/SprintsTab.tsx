@@ -17,6 +17,7 @@ import { EpicBoard } from '../../components/sprints/EpicBoard';
 import { EpicList } from '../../components/sprints/EpicList';
 import { useProjectRole } from '../../hooks/useProjectRole';
 import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
+import { plansOnly } from '../../hooks/useOnlySchedule';
 
 interface SprintSummary {
   id: string;
@@ -54,7 +55,7 @@ export function SprintsTab({ projectId }: { projectId: string }) {
     enabled: !!projectId,
   });
 
-  const schedules: any[] = schedulesData?.schedules || [];
+  const schedules: any[] = plansOnly(schedulesData?.schedules || []); // the plan only, not What-If copies (U26)
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [selectedSprintId, setSelectedSprintId] = useState<string | undefined>();
   const [sprintView, setSprintView] = useState<'list' | 'planning' | 'board' | 'burndown' | 'burnup' | 'flow' | 'metrics' | 'capacity' | 'standup' | 'retro' | 'definitions' | 'epics' | 'epic-list'>('list');

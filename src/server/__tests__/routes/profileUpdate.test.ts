@@ -102,7 +102,7 @@ describe('PUT /users/me/profile', () => {
     it('a free-trial sign-up who already gave a name is still in setup, and saving it finishes setup', async () => {
       users.findById.mockResolvedValue({ ...me, role: 'project_manager', onboardingCompletedAt: null });
       orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-me' });
-      const res = await put({ fullName: 'Me', role: 'executive', completeOnboarding: true });
+      const res = await put({ fullName: 'Me', role: 'executive', completeOnboarding: true, phone: '+1 416 555 0100' });
       expect(res.statusCode).toBe(200);
       const saved = users.update.mock.calls[0][1];
       expect(saved.role).toBe('executive');
@@ -115,10 +115,26 @@ describe('PUT /users/me/profile', () => {
         users.update.mockClear();
         users.findById.mockResolvedValue({ ...me, role, onboardingCompletedAt: null });
         orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-owner' });
-        const res = await put({ fullName: 'Invited', role: 'project_manager', completeOnboarding: true });
+        const res = await put({ fullName: 'Invited', role: 'project_manager', completeOnboarding: true, phone: '416-555-0100' });
         expect(res.statusCode, role).toBe(200);
         expect(users.update.mock.calls[0][1].role, role).toBeUndefined();
       }
+    });
+
+    it('setup cannot be finished without a phone number, and nothing is saved', async () => {
+      users.findById.mockResolvedValue({ ...me, role: 'project_manager', onboardingCompletedAt: null, phone: null });
+      orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-me' });
+      const res = await put({ fullName: 'Me', completeOnboarding: true });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/phone number/);
+      expect(users.update).not.toHaveBeenCalled();
+    });
+
+    it('a phone number that is not one is refused with a plain message', async () => {
+      const res = await put({ phone: 'call me maybe' });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().message).toMatch(/Enter a phone number/);
+      expect(users.update).not.toHaveBeenCalled();
     });
 
     it('someone who finished setup can neither pick a role nor "finish" again', async () => {

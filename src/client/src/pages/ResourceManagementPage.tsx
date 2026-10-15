@@ -98,6 +98,7 @@ import { useCanChangeData } from '../hooks/useCanChangeData';
 import { PlaceholderEmailBadge, GenericBadge } from '../components/resources/ResourceBadges';
 import { isPlaceholderEmail } from '../utils/placeholderEmail';
 import { ALLOCATION_LEVELS, allocationCell, getAllocationLevel } from '../components/resources/workloadHeatColors';
+import { plansOnly } from '../hooks/useOnlySchedule';
 
 /** "12 Oct"-style label for a week-start calendar day — never shifted by the viewer's time zone */
 function formatWeek(dateStr: string): string {
@@ -165,7 +166,7 @@ export function ResourceManagementPage() {
     queryFn: () => apiService.getSchedules(selectedProjectId),
     enabled: !!selectedProjectId && selectedProjectId !== '__all__',
   });
-  const schedules: Schedule[] = schedulesData?.schedules || [];
+  const schedules: Schedule[] = plansOnly<Schedule & { isScenario?: boolean }>(schedulesData?.schedules || []); // the plan only, not What-If copies (U26)
 
   const isGlobalWorkload = selectedProjectId === '__all__';
 

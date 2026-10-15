@@ -20,6 +20,8 @@ export interface User {
   mustChangePassword?: boolean;
   /** false = still in setup (sent to /onboarding). Undefined on an older payload: fall back to the name. */
   onboardingCompleted?: boolean;
+  /** Asked on the setup screen and in Settings › Profile (U5) */
+  phone?: string | null;
   isGuest?: boolean;
   guestExpiresAt?: string | null;
   /** The user's company; null = none (the platform admin). Undefined until /me has answered. */

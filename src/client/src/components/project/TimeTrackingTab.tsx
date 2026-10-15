@@ -14,6 +14,7 @@ import { useProjectRole } from '../../hooks/useProjectRole';
 import { TimeAnomalyPanel } from './TimeAnomalyPanel';
 import { WeeklyReviewPanel } from './WeeklyReviewPanel';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { plansOnly } from '../../hooks/useOnlySchedule';
 
 interface TimeEntry {
   id: string;
@@ -78,7 +79,7 @@ export function TimeTrackingTab({ projectId }: { projectId: string }) {
     queryFn: () => apiService.getSchedules(projectId),
     enabled: !!projectId,
   });
-  const schedules: any[] = schedulesData?.schedules || [];
+  const schedules: any[] = plansOnly(schedulesData?.schedules || []); // the plan only, not What-If copies (U26)
 
   // Auto-select first schedule
   React.useEffect(() => {

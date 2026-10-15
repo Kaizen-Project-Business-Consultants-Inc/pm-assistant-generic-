@@ -9,7 +9,7 @@ export function registerScheduleTools(server: McpServer) {
     jsonResult(await getApiClientFromExtra(extra).get(`/schedules/project/${projectId}`))
   );
 
-  server.tool('create-schedule', 'Create a new schedule', {
+  server.tool('create-schedule', "Create the project's schedule. A project has ONE schedule: this is refused (409) when it already has one — add phases or tasks to that schedule instead", {
     projectId: z.string().describe('Project ID'),
     name: z.string().describe('Schedule name'),
     description: z.string().optional().describe('Description'),

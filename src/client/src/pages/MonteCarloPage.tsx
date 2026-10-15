@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useId, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
@@ -19,6 +19,7 @@ import { MonteCarloHistogram } from '../components/montecarlo/MonteCarloHistogra
 import { TornadoDiagram } from '../components/montecarlo/TornadoDiagram';
 import { CriticalityIndex } from '../components/montecarlo/CriticalityIndex';
 import { formatCalendarDate } from '../utils/dateUtils';
+import { useOnlySchedule } from '../hooks/useOnlySchedule';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -150,7 +151,7 @@ const SummaryCard: React.FC<SummaryCardProps> = ({
 
 export function MonteCarloPage() {
   const uid = useId();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   // --- Config state ---
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedScheduleId, setSelectedScheduleId] = useState<string>('');
@@ -179,9 +180,15 @@ export function MonteCarloPage() {
   });
 
   const schedules: Schedule[] = schedulesData?.schedules || schedulesData?.data || [];
+  // a link's own schedule (?scheduleId=) is found first; no auto-pick while it is being looked for
+  const plans = useOnlySchedule(schedules, selectedScheduleId, setSelectedScheduleId, !searchParams.get('scheduleId'));
 
   // --- Preselect from query param ---
   const qsScheduleId = searchParams.get('scheduleId');
+  /** The link's schedule is settled (found, gone, or the person chose another project): forget it */
+  const dropLink = useCallback(() => {
+    setSearchParams((prev) => { const next = new URLSearchParams(prev); next.delete('scheduleId'); return next; }, { replace: true });
+  }, [setSearchParams]);
   useEffect(() => {
     if (!qsScheduleId || projects.length === 0) return;
     // Find which project owns this schedule by trying each project
@@ -192,19 +199,19 @@ export function MonteCarloPage() {
         break;
       }
     }
-    if (schedules.length > 0 && !selectedScheduleId) {
+    if (selectedProjectId && !schedulesLoading && !selectedScheduleId) {
       const match = schedules.find(s => s.id === qsScheduleId);
       if (match) {
         setSelectedScheduleId(match.id);
-      } else if (selectedProjectId && projects.length > 0) {
-        // Try next project
+        dropLink(); // found: the page works as usual from here
+      } else {
+        // Try next project; none left = the linked schedule is gone, so stop looking
         const idx = projects.findIndex(p => p.id === selectedProjectId);
-        if (idx < projects.length - 1) {
-          setSelectedProjectId(projects[idx + 1].id);
-        }
+        if (idx >= 0 && idx < projects.length - 1) setSelectedProjectId(projects[idx + 1].id);
+        else dropLink();
       }
     }
-  }, [qsScheduleId, projects, schedules, selectedProjectId, selectedScheduleId]);
+  }, [qsScheduleId, projects, schedules, schedulesLoading, selectedProjectId, selectedScheduleId, dropLink]);
 
   // --- Simulation mutation ---
   const simulation = useMutation({
@@ -222,6 +229,7 @@ export function MonteCarloPage() {
 
   // --- Handlers ---
   function handleProjectChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    if (qsScheduleId) dropLink(); // their own choice now, not the link's
     setSelectedProjectId(e.target.value);
     setSelectedScheduleId('');
     simulation.reset();
@@ -289,7 +297,8 @@ export function MonteCarloPage() {
             </div>
           </div>
 
-          {/* Schedule selector */}
+          {/* Schedule selector — only when an older project still has several (one per project, U26) */}
+          {plans.length > 1 && (
           <div>
             <label htmlFor={`${uid}-schedule`} className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">
               Schedule
@@ -309,7 +318,7 @@ export function MonteCarloPage() {
                     ? 'Loading schedules…'
                     : 'Select a schedule...'}
                 </option>
-                {schedules.map((s: Schedule) => (
+                {plans.map((s: Schedule) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
@@ -318,6 +327,7 @@ export function MonteCarloPage() {
               <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
             </div>
           </div>
+          )}
 
           {/* Iterations */}
           <div>

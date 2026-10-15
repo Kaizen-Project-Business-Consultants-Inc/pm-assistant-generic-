@@ -16,6 +16,7 @@ import type { Methodology } from '../../utils/methodology';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { MobileScheduleView } from './schedule-tab/MobileScheduleView';
 import { ScheduleGantt } from './schedule-tab/ScheduleWorkspace';
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
 
 export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt', methodology = 'waterfall' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string; methodology?: Methodology }) {
@@ -104,6 +105,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
         <div className="mt-4 flex flex-col items-center gap-3">
           <button
             onClick={async () => {
+              setUploadingSchedule(true); // one click = one schedule (a double click made two, U26)
               try {
                 const startDate = projectStartDate || new Date().toISOString().split('T')[0];
                 const endDate = new Date(startDate);
@@ -115,11 +117,14 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
                   endDate: endDate.toISOString().split('T')[0],
                 });
                 queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-              } catch {
-                setUploadError('Failed to create schedule.');
+              } catch (err) {
+                setUploadError(getApiErrorMessage(err, 'The schedule could not be created.'));
+              } finally {
+                setUploadingSchedule(false);
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors"
+            disabled={uploadingSchedule}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-60 rounded-lg transition-colors"
           >
             <Calendar className="w-4 h-4" />
             Create Schedule
@@ -140,8 +145,8 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
                 });
                 setOpenImportOnLoad(true);
                 queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
-              } catch {
-                setUploadError('Failed to create schedule.');
+              } catch (err) {
+                setUploadError(getApiErrorMessage(err, 'The schedule could not be created.'));
               } finally {
                 setUploadingSchedule(false);
               }

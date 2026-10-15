@@ -21,7 +21,7 @@ export const PrivacyPage: React.FC = () => {
           <p><strong>Last updated:</strong> July 2026</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">1. Information We Collect</h2>
-          <p><strong>Account information:</strong> Name, email address, username, and password (hashed) when you register.</p>
+          <p><strong>Account information:</strong> Name, email address, phone number, and password (hashed) when you register. We use your phone number only to help you with your account (support and onboarding); we never sell or share it and never send text messages.</p>
           <p><strong>Project data:</strong> Projects, tasks, schedules, and other content you create within the Service.</p>
           <p><strong>Payment information:</strong> Billing details are processed by Stripe. We do not store your credit card numbers.</p>
           <p><strong>Waitlist information:</strong> If you join our pre-launch waitlist, we collect your email address. Waitlist emails are stored securely and used solely to notify you when the Service launches. Waitlist data is deleted within 30 days of launch. To request removal from the waitlist before launch, contact {PRIVACY_EMAIL}.</p>

@@ -45,6 +45,15 @@ export class ScheduleRepository extends BaseRepository<Schedule> {
     super('schedules', rowToSchedule);
   }
 
+  /** How many plans the project has (What-If scenario copies are not plans) */
+  async countPlans(projectId: string): Promise<number> {
+    const rows = await this.queryRaw(
+      'SELECT COUNT(*) AS n FROM schedules WHERE project_id = ? AND (is_scenario = 0 OR is_scenario IS NULL)',
+      [projectId],
+    );
+    return Number((rows as any[])[0]?.n) || 0;
+  }
+
   async findByProjectId(projectId: string): Promise<Schedule[]> {
     const rows = await this.queryRaw(
       'SELECT * FROM schedules WHERE project_id = ? ORDER BY created_at DESC',

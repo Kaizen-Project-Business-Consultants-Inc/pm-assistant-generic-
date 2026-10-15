@@ -311,6 +311,8 @@ Routes without a project context (e.g., `GET /projects` list, `GET /timesheet` f
 
 ---
 
+**Phone numbers (Oct 2026, U5):** `users.phone` (control plane, migration 138) is personal data, asked on the setup screen and in Settings › Profile, and used only by Kovarti for support/onboarding follow-up — never shown to other customers, not logged (the profile route logs no request body), removed with the account. Validated server-side (7–15 digits).
+
 ## 5. Password Security
 
 - Passwords are hashed with **bcrypt** before storage (`UserService.ts`).

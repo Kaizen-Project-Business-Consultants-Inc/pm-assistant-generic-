@@ -31,6 +31,7 @@ interface AdminUser {
   username: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   role: string;
   isActive: number | boolean;
   createdAt: string;
@@ -489,6 +490,7 @@ export function AdminUsersPage() {
                       <td className="py-3 pr-3">
                         <div className="font-medium text-gray-900 dark:text-white">{u.fullName}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{u.email}</div>
+                        {u.phone && <div className="text-xs text-gray-500 dark:text-gray-400">{u.phone}</div>}
                         <div className="text-xs text-gray-500 dark:text-gray-400">@{u.username}</div>
                       </td>
                       <td className="py-3 pr-3">

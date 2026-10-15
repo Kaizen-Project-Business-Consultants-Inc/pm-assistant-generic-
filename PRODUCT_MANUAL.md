@@ -27,7 +27,9 @@ Each project contains one or more schedules. A schedule groups tasks into a logi
 
 #### Schedule Selector (Multi-Schedule Navigation)
 
-When a project has more than one schedule, a **pill/tab strip** renders at the top of the Schedule tab. Only the selected schedule is rendered — no duplicate toolbars or simultaneous views. On mobile, the strip collapses to a native `<select>` dropdown for touch-friendly switching.
+**One schedule per project (Oct 2026, U26):** creating a second schedule is refused (409 "This project already has its schedule") by `ScheduleService.create`; What-If scenario copies are separate and don't count. Screens use the project's plan without asking (`hooks/useOnlySchedule`); pickers list plans only and appear only for older projects with several. Sign-in is by email (usernames still accepted for older accounts); the setup screen requires a phone number (`users.phone`, migration 138), editable in Settings › Profile.
+
+When a project has more than one schedule (an older project, or the plan and its What-If copies), a **pill/tab strip** renders at the top of the Schedule tab. Only the selected schedule is rendered — no duplicate toolbars or simultaneous views. On mobile, the strip collapses to a native `<select>` dropdown for touch-friendly switching.
 
 #### Schedule Toolbar
 

@@ -7,6 +7,7 @@ import { TimesheetGrid } from '../components/timetracking/TimesheetGrid';
 import { TimesheetApprovalPanel } from '../components/timetracking/TimesheetApprovalPanel';
 import { ActualVsEstimatedChart } from '../components/timetracking/ActualVsEstimatedChart';
 import { useBreakpoint } from '../hooks/useBreakpoint';
+import { useOnlySchedule } from '../hooks/useOnlySchedule';
 
 type Tab = 'my-timesheet' | 'project-summary' | 'approvals';
 
@@ -43,6 +44,7 @@ export function TimesheetPage() {
     enabled: !!selectedProjectId,
   });
   const schedules: any[] = schedulesData?.schedules || [];
+  const plans = useOnlySchedule(schedules, selectedScheduleId, setSelectedScheduleId);
 
   const { data: comparisonData } = useQuery({
     queryKey: ['actual-vs-estimated', selectedScheduleId],
@@ -227,7 +229,8 @@ export function TimesheetPage() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            {selectedProjectId && (
+            {/* only when an older project still has several schedules (one per project, U26) */}
+            {selectedProjectId && plans.length > 1 && (
               <select
                 aria-label="Schedule"
                 value={selectedScheduleId}
@@ -235,7 +238,7 @@ export function TimesheetPage() {
                 className="input text-sm"
               >
                 <option value="">Select a schedule...</option>
-                {schedules.map((s: any) => (
+                {plans.map((s: any) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
               </select>
@@ -251,7 +254,7 @@ export function TimesheetPage() {
 
           {!selectedScheduleId && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center text-gray-500 dark:text-gray-400">
-              Select a project and schedule to view time comparison
+              {!selectedProjectId ? "Select a project to view its time comparison" : plans.length === 0 ? "This project has no schedule yet" : "Select a schedule to view time comparison"}
             </div>
           )}
         </div>

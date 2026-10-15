@@ -64,7 +64,8 @@ test.describe('Onboarding Wizard', () => {
   test('step 1 has profile, role, and methodology fields', async ({ page }) => {
     // Profile fields
     await expect(page.locator('#fullName')).toBeVisible();
-    await expect(page.locator('#username')).toBeVisible();
+    // no username: people sign in with their email (U7, 2026-10-14)
+    await expect(page.locator('#username')).toHaveCount(0);
     await expect(page.locator('#organizationName')).toBeVisible();
 
     // Role selector
@@ -106,9 +107,10 @@ test.describe('Onboarding Wizard', () => {
     // Empty fullName should keep button disabled
     await expect(continueBtn).toBeDisabled();
 
-    // Fill fullName and username
+    // Fill fullName — still disabled until the phone number is there (required, U5); no username (U7)
     await page.fill('#fullName', 'Test User');
-    await page.fill('#username', 'testuser');
+    await expect(continueBtn).toBeDisabled();
+    await page.fill('#phone', '+1 416 555 0100');
     await expect(continueBtn).toBeEnabled();
   });
 

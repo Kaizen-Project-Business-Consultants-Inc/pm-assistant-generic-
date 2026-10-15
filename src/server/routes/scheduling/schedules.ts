@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { loginForAssignee } from '../../utils/assigneeLogins';
 import { mentionablePeople, mentionedHandles, inCurrentCompany } from '../../utils/mentionablePeople';
 import { z } from 'zod';
-import { scheduleService, DependencyValidationError, GroupValidationError } from '../../services/ScheduleService';
+import { scheduleService, DependencyValidationError, GroupValidationError, ProjectHasScheduleError } from '../../services/ScheduleService';
 import { flowMetricsService } from '../../services/FlowMetricsService';
 import { criticalPathService } from '../../services/CriticalPathService';
 import { baselineService } from '../../services/BaselineService';
@@ -176,6 +176,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
           issues: error.issues.map(i => ({ field: i.path.join('.'), message: i.message })),
         });
       }
+      if (error instanceof ProjectHasScheduleError) return reply.status(409).send({ error: 'Schedule exists', message: error.message });
       logger.error('Create schedule error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to create schedule' });
     }

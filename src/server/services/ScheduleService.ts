@@ -24,6 +24,14 @@ import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
 
 
+/** A project already has its schedule — a project has exactly one (U26) */
+export class ProjectHasScheduleError extends Error {
+  constructor() {
+    super('This project already has its schedule. A project has one schedule: add phases to it, or import into it.');
+    this.name = 'ProjectHasScheduleError';
+  }
+}
+
 /** Rows per statement when copying a plan */
 const CLONE_CHUNK = 200;
 
@@ -277,7 +285,10 @@ export class ScheduleService {
     return scheduleRepository.findById(id);
   }
 
+  /** A project has ONE schedule (user 2026-10-14, U26): a second one is refused everywhere — the
+   *  app, the API, Claude and AI actions. What-If scenario copies are separate and unaffected. */
   async create(data: CreateScheduleData): Promise<Schedule> {
+    if (await scheduleRepository.countPlans(data.projectId) > 0) throw new ProjectHasScheduleError();
     return scheduleRepository.create(data);
   }
 

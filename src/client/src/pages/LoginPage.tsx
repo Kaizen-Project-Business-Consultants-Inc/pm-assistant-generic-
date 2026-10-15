@@ -179,7 +179,7 @@ export const LoginPage: React.FC = () => {
 
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                Username or Email
+                Email
               </label>
               <input
                 id="username"
@@ -190,7 +190,7 @@ export const LoginPage: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input"
-                placeholder="Enter your username or email"
+                placeholder="you@company.com"
                 aria-invalid={!!error}
                 {...(error ? { 'aria-describedby': 'login-error' } : {})}
               />

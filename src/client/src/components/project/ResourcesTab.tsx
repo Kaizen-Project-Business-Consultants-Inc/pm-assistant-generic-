@@ -106,6 +106,7 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 import { RESOURCE_ROLES } from '../../constants/resourceRoles';
 import { RateSourceField } from '../resources/RateSourceField';
 import { ALLOCATION_LEVELS, allocationCell, getAllocationLevel } from '../resources/workloadHeatColors';
+import { plansOnly } from '../../hooks/useOnlySchedule';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -142,7 +143,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     queryFn: () => apiService.getSchedules(projectId),
     enabled: !!projectId,
   });
-  const schedules: { id: string; name: string }[] = schedulesData?.schedules || [];
+  const schedules: { id: string; name: string }[] = plansOnly<{ id: string; name: string; isScenario?: boolean }>(schedulesData?.schedules || []); // the plan only, not What-If copies (U26)
 
   const { data: workloadData, isLoading: workloadLoading } = useQuery({
     queryKey: ['workload', projectId],
