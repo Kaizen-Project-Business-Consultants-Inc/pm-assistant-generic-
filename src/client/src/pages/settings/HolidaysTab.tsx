@@ -13,8 +13,13 @@ import { CalendarChangePreview, fmtDay } from '../../components/schedule/calenda
  */
 interface Pending { change: CompanyHolidayChange; label: string; preview: Preview | null }
 
-/** calendarId: which holiday calendar (U8); left out = the home calendar (Company holidays) */
-export function HolidaysTab({ calendarId }: { calendarId?: string } = {}) {
+/**
+ * calendarId: which holiday calendar (U8); left out = the home calendar (Company holidays).
+ * calendarName: shown when this is a client's calendar (Resources › a client's pool) — its days
+ * off apply to that client's projects, not every project.
+ */
+export function HolidaysTab({ calendarId, calendarName }: { calendarId?: string; calendarName?: string } = {}) {
+  const what = calendarName ? `a holiday on ${calendarName}` : 'a company holiday';
   const queryClient = useQueryClient();
   const q = useQuery({ queryKey: ['company-holidays', calendarId ?? 'home'], queryFn: () => apiService.getCompanyHolidays(calendarId) });
   const [pending, setPending] = useState<Pending | null>(null);
@@ -67,16 +72,18 @@ export function HolidaysTab({ calendarId }: { calendarId?: string } = {}) {
   const add = () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { setError('Pick a date first.'); return; }
     const n = name.trim() || undefined;
-    propose({ calendarId, add: { date, name: n } }, `${fmtDay(date)}${n ? ` (${n})` : ''} becomes a company holiday`);
+    propose({ calendarId, add: { date, name: n } }, `${fmtDay(date)}${n ? ` (${n})` : ''} becomes ${what}`);
   };
 
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Company holidays</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{calendarName ?? 'Company holidays'}</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 max-w-prose">
-            Every project treats these as days off. A project can still add its own days off, or work through a company holiday, in its Working calendar.
+            {calendarName
+              ? `${!calendarId || calendarId === 'home' ? 'Projects with no client, and those' : 'The projects'} of every client using this calendar treat these as days off. A project can still add its own days off, or work through a holiday, in its Working calendar.`
+              : 'Every project treats these as days off. A project can still add its own days off, or work through a company holiday, in its Working calendar.'}
             {!canEdit && ' Only the company owner or a PMO can change this list.'}
           </p>
         </div>
@@ -100,7 +107,7 @@ export function HolidaysTab({ calendarId }: { calendarId?: string } = {}) {
                   <span className="w-36 shrink-0 font-mono text-xs tabular-nums text-gray-900 dark:text-gray-100">{fmtDay(h.date)}</span>
                   <span className="flex-1 min-w-0 break-words text-gray-800 dark:text-gray-200">{h.name || '—'}</span>
                   {canEdit && (
-                    <button type="button" disabled={busy} onClick={() => propose({ calendarId, removeId: h.id }, `${fmtDay(h.date)} is no longer a company holiday`)}
+                    <button type="button" disabled={busy} onClick={() => propose({ calendarId, removeId: h.id }, `${fmtDay(h.date)} is no longer ${what}`)}
                       aria-label={`Remove ${fmtDay(h.date)}`} title="Remove"
                       className="p-1 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50">
                       <Trash2 className="w-3.5 h-3.5" />

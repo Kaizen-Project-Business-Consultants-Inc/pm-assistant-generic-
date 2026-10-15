@@ -82,4 +82,29 @@ describe('ProjectTeamService', () => {
     await projectTeamService.dropPersonOutsidePool('r1');
     expect(members.deleteViewers).toHaveBeenCalledWith([]);
   });
+
+  it("the lists to add from hold only active real people: never generic roles or another client's", async () => {
+    db.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM projects p LEFT JOIN project_groups')) return [{ group_id: 'c1', name: 'Acme' }];
+      if (sql.startsWith('SELECT resource_id, role_on_project')) return [];
+      if (sql.startsWith('SELECT id FROM resources')) return [{ id: 'r-a' }, { id: 'r-mine' }, { id: 'g-dev' }, { id: 'r-gone' }];
+      return [];
+    });
+    resources.findByIds.mockResolvedValue([
+      { id: 'r-a', name: 'Ann', role: 'BA', clientId: 'c1', isActive: true, isGeneric: false, userId: null, capacityHoursPerWeek: 40 },
+      { id: 'r-mine', name: 'Me', role: 'PM', clientId: null, isActive: true, isGeneric: false, userId: 'u1', capacityHoursPerWeek: 40 },
+      { id: 'g-dev', name: 'Generic Developer', role: 'Developer', clientId: null, isActive: true, isGeneric: true, userId: null, capacityHoursPerWeek: 40 },
+      { id: 'r-gone', name: 'Left', role: 'Dev', clientId: null, isActive: false, isGeneric: false, userId: null, capacityHoursPerWeek: 40 },
+    ]);
+    const pools = await projectTeamService.pools('p1');
+    expect(pools.clientPool.map(p => p.id)).toEqual(['r-a']);
+    expect(pools.mine.map(p => p.id)).toEqual(['r-mine']);
+  });
+
+  it('refuses a generic role or someone inactive', async () => {
+    resources.findById.mockResolvedValue({ id: 'g', clientId: null, isGeneric: true, isActive: true, name: 'Generic Developer' });
+    await expect(projectTeamService.add('p1', 'g', null, 'u-pm')).rejects.toThrow(/generic role/);
+    resources.findById.mockResolvedValue({ id: 'r', clientId: null, isGeneric: false, isActive: false, name: 'Left' });
+    await expect(projectTeamService.add('p1', 'r', null, 'u-pm')).rejects.toThrow(/no longer active/);
+  });
 });

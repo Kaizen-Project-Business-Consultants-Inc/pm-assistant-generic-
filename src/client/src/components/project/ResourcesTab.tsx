@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Users, AlertTriangle, TrendingUp, Clock, BarChart3, Plus, Edit2, Trash2, X, SlidersHorizontal, DollarSign, LineChart, Upload, Layers } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useInProjectPool } from '../../hooks/useInProjectPool';
 import { ConfirmModal } from '../ui/ConfirmModal';
 import { ResourceLevelingPanel } from '../resources/ResourceLevelingPanel';
 import { ResourceForecastPanel } from '../resources/ResourceForecastPanel';
@@ -72,6 +73,7 @@ interface Resource {
   overtimeRateHourly?: number | null;
   useRateCard?: boolean;
   resourceGroup?: string | null;
+  clientId?: string | null;
   userId?: string | null;
   calendarTemplateId?: string | null;
 }
@@ -170,7 +172,9 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
     queryKey: ['resources'],
     queryFn: () => apiService.getResources(),
   });
-  const resources: Resource[] = resourcesData?.resources || [];
+  // this project's client's people and My resources only — never another client's (U8)
+  const inPool = useInProjectPool();
+  const resources: Resource[] = useMemo(() => ((resourcesData?.resources || []) as Resource[]).filter(inPool), [resourcesData, inPool]);
 
   // Auto-select first schedule
   React.useEffect(() => {

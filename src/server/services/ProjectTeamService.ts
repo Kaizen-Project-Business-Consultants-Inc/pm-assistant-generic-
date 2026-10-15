@@ -55,7 +55,8 @@ class ProjectTeamService {
     const ids = [...new Set([...poolRows.map((r: any) => r.id as string), ...onTeam.keys()])];
     const people = ids.length ? await resourceRepository.findByIds(ids) : [];
     const team = people.filter(p => onTeam.has(p.id)).map(p => person(p, onTeam.get(p.id) ?? null));
-    const free = people.filter(p => !onTeam.has(p.id) && p.isActive);
+    // generic roles hold unstaffed work: never on a team (add() refuses them too)
+    const free = people.filter(p => !onTeam.has(p.id) && p.isActive && !p.isGeneric);
     return {
       client,
       team,

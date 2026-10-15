@@ -100,7 +100,7 @@ export function PoolHolidays({ client }: { client: { id: string; name: string; h
       )}
       {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
-      <HolidaysTab calendarId={current} />
+      <HolidaysTab calendarId={current} calendarName={calendars.find(c => c.id === current)?.name ?? 'Company holidays'} />
     </div>
   );
 }
