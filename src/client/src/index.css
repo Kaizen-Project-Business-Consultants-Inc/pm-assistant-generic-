@@ -194,14 +194,6 @@
   }
 }
 
-.dark {
-  --color-sidebar-bg: #1c1917;
-  --color-sidebar-text: #a8a29e;
-  --color-sidebar-hover: #292524;
-  --color-sidebar-active: #0f766e;
-  --color-sidebar-text-active: #ffffff;
-}
-
 
 /* High contrast mode */
 .high-contrast body {
@@ -292,4 +284,31 @@
   .dark [class*="text-gray-500"], .dark [class*="text-gray-500"] { color: #d6d3d1; /* stone-300 */ }
   .dark [class*="border-gray-600"], .dark [class*="border-gray-700"] { border-color: #a8a29e; /* stone-400 */ }
   .dark ::placeholder { color: #d6d3d1; }
+}
+
+/* Utilities layer: the bar's 4px top border must win over the `border` utility on the same card */
+@layer utilities {
+  /* The new look (U2, 2026-10-14): a coloured bar across the top of a card. Put stripe-<tone>
+     on any bordered card; inside .widget-stripe the first card in the widget gets it. */
+  .stripe-teal  { --stripe: theme('colors.accent.teal');  }
+  .stripe-amber { --stripe: theme('colors.accent.amber'); }
+  .stripe-coral { --stripe: theme('colors.accent.coral'); }
+  .stripe-blue  { --stripe: theme('colors.accent.blue');  }
+  .stripe-gray  { --stripe: theme('colors.accent.gray');  }
+  /* Drawn as its own strip inside the card's top edge, not by recolouring the border: border
+     colour rules (dark mode, high contrast) repainted a border-top bar grey. */
+  .card-stripe, .widget-stripe > :first-child {
+    position: relative;
+  }
+  .card-stripe::before, .widget-stripe > :first-child::before {
+    content: '';
+    position: absolute;
+    /* inside the border, not over it: -1px made a scrolling card (Projects table) 1px wider */
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--stripe, theme('colors.accent.gray'));
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+    pointer-events: none;
+  }
 }

@@ -22,7 +22,7 @@ export function MyWeeklyReviews() {
   if (!data || data.length === 0) return null;
 
   return (
-    <section aria-labelledby="my-weekly-reviews" className="rounded-xl border-2 border-primary-200 dark:border-primary-800 bg-white dark:bg-gray-800 p-4">
+    <section aria-labelledby="my-weekly-reviews" className="card-stripe stripe-teal rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm">
       <div className="flex items-center gap-2 mb-2">
         <ClipboardCheck className="w-5 h-5 text-primary-600 dark:text-primary-400" aria-hidden="true" />
         <h2 id="my-weekly-reviews" className="text-sm font-semibold text-gray-900 dark:text-gray-100">This week's reviews</h2>

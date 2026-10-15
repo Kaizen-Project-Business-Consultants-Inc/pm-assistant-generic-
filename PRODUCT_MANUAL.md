@@ -3252,7 +3252,7 @@ The Dashboard and Projects pages provide a lean, action-oriented project managem
 
 A monitoring cockpit with read-only scope toggle:
 
-- **6 KPI Tiles** — Portfolio Health, Overdue Tasks, Open Risks, At-Risk Projects, Budget Variance, Budget Utilization. Each tile has a colored status dot, semantic color chip, hover lift animation, and click-through to drill-in pages (`/kpi/:type`). Health and Overdue tiles display 7-day trend arrows (green up = improving, red down = declining, gray dash = stable).
+- **4 KPI cards** — Portfolio Health, Overdue Tasks, Open Risks (at-risk projects in its subtitle) and Budget. Each card has a coloured bar across the top and its number in the same colour (teal fine, amber watch, coral only for a problem — Oct 2026 look), hover lift animation, and click-through to drill-in pages (`/kpi/:type`). Health and Overdue tiles display 7-day trend arrows (green up = improving, red down = declining, gray dash = stable).
 - **KPI Drill-In Pages** (`/kpi/:type`) — Clicking any KPI tile opens an enriched drill-in page with:
   - **Summary Cards** — 2–4 stat cards above the table (e.g., Avg Health / Healthy / At Risk / Critical for health; Total Overdue / Avg Days / Most Affected Project / Critical Priority for overdue; Total Elevated / Critical / High / Medium for risks; Over Budget / Avg Overrun / Worst Overrun for budget types).
   - **Trend Badge** — Health and Overdue pages show an "Improving", "Declining", or "Stable" badge next to the title, derived from `trendIndicators`.

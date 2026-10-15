@@ -190,7 +190,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - **Benchmark:** Monday.com, Smartsheet
 
 **Dashboard & Projects**
-- **Dashboard** (`/dashboard`) — 6 KPI tiles with status dots, 7-day trend arrows, and enriched drill-in pages (summary cards, trend badges, distribution bars, health sparklines + sub-scores). Portfolio Intelligence banner with trend context, AI Suggestions (confidence/risk/health badges on actions), Projects Table, Issues Trend, Milestones, Budget Watch (portfolio summary + burn-rate indicators), Sprint Velocity (delta % + commitment ratio), Activity Feed with filter pills and date grouping. Customizable via widget dropdown (includes opt-in Sprint Snapshot, Goals Progress, Team Workload with overallocation warnings).
+- **Dashboard** (`/dashboard`) — 4 KPI cards with a coloured top bar and number, and enriched drill-in pages (summary cards, trend badges, distribution bars, health sparklines + sub-scores). Portfolio Intelligence banner with trend context, AI Suggestions (confidence/risk/health badges on actions), Projects Table, Issues Trend, Milestones, Budget Watch (portfolio summary + burn-rate indicators), Sprint Velocity (delta % + commitment ratio), Activity Feed with filter pills and date grouping. Customizable via widget dropdown (includes opt-in Sprint Snapshot, Goals Progress, Team Workload with overallocation warnings).
 - **Projects** (`/projects`) — Filterable card grid with health-based borders. Cards link to `/project/:id` for full Gantt/Kanban/Calendar/EVM detail.
 
 ### 2.4 Real-Time Collaboration

@@ -1,6 +1,6 @@
 import { useState, useCallback, type ReactNode } from 'react';
 import { GripVertical, ChevronUp, ChevronDown, Maximize2, Columns2, LayoutGrid } from 'lucide-react';
-import type { WidgetDef } from './WidgetRegistry';
+import { STRIPE_CLASS, type WidgetDef } from './WidgetRegistry';
 
 type WidgetSize = 'full' | 'half' | 'third';
 
@@ -36,6 +36,12 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
   const getSize = (id: string): WidgetSize => {
     if (widgetSizes?.[id]) return widgetSizes[id];
     return widgetMap.get(id)?.size || 'full';
+  };
+
+  /** The widget's column, with its card's coloured top bar when it has one */
+  const stripeOf = (id: string) => {
+    const tone = widgets.find(w => w.id === id)?.stripe;
+    return tone ? `pl-6 widget-stripe ${STRIPE_CLASS[tone]}` : 'pl-6';
   };
 
   // Order widgets: use widgetOrder first, then append any enabled widgets not in order
@@ -158,7 +164,7 @@ export function WidgetGrid({ widgets, enabledIds, widgetOrder, onReorder, render
             <SizeIcon className="w-3.5 h-3.5" />
           </button>
         )}
-        <div className="pl-6">
+        <div className={stripeOf(id)}>
           {renderWidget(id)}
         </div>
       </div>

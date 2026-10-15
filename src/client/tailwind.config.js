@@ -119,20 +119,38 @@ export default {
           8: '#1e40af',  // blue-800
         },
         sidebar: {
-          bg: '#1c1917',
-          hover: '#292524',
-          // Active item: white text on teal-700 = 5.5:1 (teal-600 was 3.7:1, below WCAG AA).
+          // Navy (the accepted new look, 2026-10-14 — U2); was warm stone #1c1917
+          bg: '#1e2a3b',
+          hover: '#2a3a50',
+          // Active item: white text on teal-700 = 5.3:1 on this navy too.
           active: '#0f766e',
-          // Sidebar text is used at faint opacities (/40 section labels, /50 account link)
-          // that fell below WCAG AA (2.9:1, 3.9:1) on the dark sidebar. Readable opacities
-          // are floored at 0.6 (5.0:1). /30 stays: it marks disabled items, which are exempt.
+          // Cool grey text (199 210 224) is 10:1 on the navy. Faint opacities (/40 section labels,
+          // /50 account link) are floored at 0.65 (4.9:1, WCAG AA); /30 stays for disabled items.
           text: ({ opacityValue }) => {
-            if (opacityValue === undefined) return 'rgb(214 211 209)';
+            if (opacityValue === undefined) return 'rgb(199 210 224)';
             const n = Number(opacityValue);
-            if (Number.isNaN(n)) return `rgb(214 211 209 / ${opacityValue})`;
-            return `rgb(214 211 209 / ${n > 0.3 && n < 0.6 ? 0.6 : n})`;
+            if (Number.isNaN(n)) return `rgb(199 210 224 / ${opacityValue})`;
+            return `rgb(199 210 224 / ${n > 0.3 && n < 0.65 ? 0.65 : n})`;
           },
           'text-active': '#ffffff',
+        },
+        // The new look's card stripes and soft labels (Kovarti PM Dashboard spec, 2026-10-14 — U2).
+        // Stripe colours are for bars only; text uses the -text shade (4.5:1 on white and on the
+        // -soft fill), and dark mode uses the light shades on dark fills.
+        accent: {
+          teal: '#008c8c',
+          'teal-soft': '#e3f4f4',
+          'teal-text': '#007070',
+          amber: '#f5a623',
+          'amber-soft': '#fdf1dc',
+          'amber-text': '#8f5208',
+          coral: '#e94e3c',
+          'coral-soft': '#fde7e4',
+          'coral-text': '#b8321f',
+          blue: '#a7c7e7',
+          'blue-soft': '#e8f1fa',
+          'blue-text': '#2f5a86',
+          gray: '#cbd2d9',
         },
       },
       textColor: {

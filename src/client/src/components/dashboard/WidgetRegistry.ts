@@ -4,7 +4,16 @@ export interface WidgetDef {
   group: string;
   defaultOn: boolean;
   size: 'full' | 'half' | 'third';
+  /** The coloured bar across the top of the widget's card (the new look, U2). Only for a widget whose
+   *  root element IS its bordered card: the bar is drawn on the widget's first element. */
+  stripe?: StripeTone;
 }
+
+export type StripeTone = 'teal' | 'amber' | 'coral' | 'blue' | 'gray';
+/** Full class names (not built from strings) so the CSS build keeps them */
+export const STRIPE_CLASS: Record<StripeTone, string> = {
+  teal: 'stripe-teal', amber: 'stripe-amber', coral: 'stripe-coral', blue: 'stripe-blue', gray: 'stripe-gray',
+};
 
 // Unified dashboard widgets — fixed layout order, togglable visibility
 export const UNIFIED_WIDGETS: WidgetDef[] = [

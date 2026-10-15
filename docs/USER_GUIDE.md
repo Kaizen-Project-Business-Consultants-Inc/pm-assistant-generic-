@@ -146,7 +146,7 @@ The wizard only appears once. After you complete or dismiss it, it will not show
 
 All users see a single **Unified Dashboard** with customizable widgets:
 
-- **KPI Tiles** -- 6 tiles showing Portfolio Health, Overdue Tasks, Open Risks, At-Risk Projects, Budget Variance, and Budget Utilization.
+- **KPI Tiles** -- 4 cards: Portfolio Health, Overdue Tasks, Open Risks (with how many projects are at risk) and Budget. Each has a coloured bar across the top and its number in the same colour — teal when things are fine, amber to watch, coral (red) only when something is wrong. Click a card to see the detail. The dashboard's other cards carry a coloured bar too, and labels (status, priority) are soft coloured tags.
 - **Portfolio Intelligence** -- AI-generated health score, risk summary, budget status, and key insights.
 - **Projects Table** -- Sortable table with health score, status, priority, progress, budget, and end date. Click any row to open the project. If you have no projects yet, the table shows a **New Project** button in place of the empty list — click it to create your first project.
 - **Issues Trend** -- Chart showing issues created vs resolved per week.

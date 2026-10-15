@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-14 — Batch B: the new look's building blocks (U2 part 1, mock accepted)
+- Colours: `accent` palette in tailwind.config (teal / amber / coral / blue-grey bars, -soft fills, -text shades at 4.5:1+); side menu navy `#1e2a3b` with cool-grey text (faint opacities floored at 0.65). Stale `--color-sidebar-*` CSS variables removed (unused).
+- Card bar: `card-stripe` + `stripe-<tone>` (index.css, utilities layer) drawn as its own 4px strip (::before) — recolouring the border-top was repainted grey in dark mode. Dashboard widgets get a bar from `WidgetDef.stripe` (`STRIPE_CLASS` map keeps the class names in the build) via `.widget-stripe`.
+- `MetaPill` = the soft labels (pale fill, same-hue text, rounded-md, semibold); `KpiTilePM` = bar + big coloured number + label + divider detail (green shows as teal; red only for problems); weekly-reviews bar restyled. Font stays Plus Jakarta Sans (close to the mock's Manrope).
+- Checked on a local preview against staging data, light and dark.
+
 ## 2026-10-14 — Batch A of the UAT fixes (U22, U24, U25, U6, U4)
 - **Uploads over 1 MB (U22):** nginx had no `client_max_body_size`, so its 1 MB default refused every larger upload (Doc Intelligence, attachments, imports) with 413 while the app promises 10 MB. Staging set to 12m 2026-10-14 (prod on the user's yes). `getApiErrorMessage` turns 413 into "This file is too big. Files can be up to 10 MB." and reads `{ error }`-only answers; Doc Intelligence and attachments show the real reason; file inputs clear after each pick; Doc Intelligence has a "Choose files" button. `scripts/prod-smoke.cjs` fails if a 2 MB body gets 413.
 - **Transcript upload always failed (U24):** the form sent the file before projectId/scheduleId and the server's `request.file()` only sees fields ahead of the file → 400 every time; Doc Intelligence lost the description the same way. `utils/uploadForm.ts` puts fields first; a test fails if any API call appends a field after the file.

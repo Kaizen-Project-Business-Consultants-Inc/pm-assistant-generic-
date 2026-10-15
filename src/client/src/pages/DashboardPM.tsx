@@ -36,20 +36,21 @@ import { ChangeRequestWidget } from '../components/dashboard/widgets/ChangeReque
 const PM_WIDGETS: WidgetDef[] = [
   // Above the fold — essentials only (progressive disclosure: opt-in the rest)
   { id: 'kpi',           label: 'KPI Tiles',              group: 'Overview', defaultOn: true,  size: 'full' },
-  { id: 'projects',      label: 'Projects Table',         group: 'Overview', defaultOn: true,  size: 'full' },
-  { id: 'briefing',      label: 'Morning Briefing',       group: 'Overview', defaultOn: true,  size: 'full' },
+  { id: 'projects',      label: 'Projects Table',         group: 'Overview', defaultOn: true,  size: 'full', stripe: 'teal' },
+  { id: 'briefing',      label: 'Morning Briefing',       group: 'Overview', defaultOn: true,  size: 'full', stripe: 'teal' },
   // Below the fold — opt-in via Customize dropdown
-  { id: 'intel',         label: 'Portfolio Intelligence',  group: 'AI',       defaultOn: false, size: 'full' },
-  { id: 'trend',         label: 'Issues Trend',           group: 'Charts',   defaultOn: false, size: 'full' },
-  { id: 'velocity',      label: 'Sprint Velocity',        group: 'Charts',   defaultOn: false, size: 'full' },
-  { id: 'milestones',    label: 'Milestones',             group: 'Details',  defaultOn: false, size: 'third' },
-  { id: 'budget',        label: 'Budget Watch',           group: 'Details',  defaultOn: false, size: 'third' },
-  { id: 'activity',      label: 'Activity Feed',          group: 'Details',  defaultOn: false, size: 'third' },
-  { id: 'sprint',        label: 'Sprint Snapshot',        group: 'Details',  defaultOn: false, size: 'full' },
-  { id: 'goals',         label: 'Goals Progress',         group: 'Details',  defaultOn: false, size: 'full' },
-  { id: 'workload',      label: 'Team Workload',          group: 'Details',  defaultOn: false, size: 'full' },
-  { id: 'standup',       label: 'Standup Summary',        group: 'AI',       defaultOn: false, size: 'full' },
-  { id: 'lessons',       label: 'Lessons & Insights',     group: 'AI',       defaultOn: false, size: 'full' },
+  { id: 'intel',         label: 'Portfolio Intelligence',  group: 'AI',       defaultOn: false, size: 'full', stripe: 'blue' },
+  { id: 'trend',         label: 'Issues Trend',           group: 'Charts',   defaultOn: false, size: 'full', stripe: 'coral' },
+  { id: 'velocity',      label: 'Sprint Velocity',        group: 'Charts',   defaultOn: false, size: 'full', stripe: 'teal' },
+  { id: 'milestones',    label: 'Milestones',             group: 'Details',  defaultOn: false, size: 'third', stripe: 'blue' },
+  { id: 'budget',        label: 'Budget Watch',           group: 'Details',  defaultOn: false, size: 'third', stripe: 'blue' },
+  { id: 'activity',      label: 'Activity Feed',          group: 'Details',  defaultOn: false, size: 'third', stripe: 'gray' },
+  { id: 'sprint',        label: 'Sprint Snapshot',        group: 'Details',  defaultOn: false, size: 'full', stripe: 'teal' },
+  { id: 'goals',         label: 'Goals Progress',         group: 'Details',  defaultOn: false, size: 'full', stripe: 'teal' },
+  { id: 'workload',      label: 'Team Workload',          group: 'Details',  defaultOn: false, size: 'full', stripe: 'amber' },
+  { id: 'standup',       label: 'Standup Summary',        group: 'AI',       defaultOn: false, size: 'full', stripe: 'blue' },
+  { id: 'lessons',       label: 'Lessons & Insights',     group: 'AI',       defaultOn: false, size: 'full', stripe: 'blue' },
+  // no stripe: its root is a list of cards, not one card (WidgetDef.stripe)
   { id: 'change-requests', label: 'Change Requests',     group: 'Details',  defaultOn: false, size: 'third' },
 ];
 
