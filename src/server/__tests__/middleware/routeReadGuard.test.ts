@@ -34,6 +34,8 @@ const READ_OK: Record<string, string[]> = {
   'agent/agentHealth.ts': ['/health', '/costs'],
   'agent/autonomy.ts': ['/', '/:agentId/eligibility'],
   'agent/killSwitch.ts': ['/kill-switch'],
+  // the caller's own AI inbox: every suggestion is filtered by the manager role on its project (AiInboxService.managed)
+  'agent/aiInbox.ts': ['/', '/count'],
   // company PMO (the owner works as PMO, and sees every project) or a read-only support visit;
   // a person's own 'role'/'session' memories only to that person (audit 2, 2026-10-11)
   'agent/memory.ts': ['/', '/reflections'],

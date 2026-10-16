@@ -19,6 +19,9 @@ export function useRunWeeklyReview(projectId: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(weeklyReviewKey(projectId), data.review);
       queryClient.invalidateQueries({ queryKey: ['pm-weekly-reviews-mine'] });
+      // a run also refreshes the AI inbox's ready-made fixes (Phase 2)
+      void queryClient.invalidateQueries({ queryKey: ['ai-inbox'] });
+      void queryClient.invalidateQueries({ queryKey: ['ai-inbox-count'] });
     },
   });
 }

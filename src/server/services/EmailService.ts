@@ -42,7 +42,7 @@ export class EmailService {
     return this.resend;
   }
 
-  private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; attachments?: any[] }): Promise<void> {
+  private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; attachments?: any[]; replyTo?: string }): Promise<void> {
     // Placeholder addresses (name@example.com) belong to people whose real email isn't known
     // yet, and staging's test logins have no mailbox — never send to them, whichever feature
     // is sending (utils/placeholderEmail.ts)
@@ -284,6 +284,26 @@ export class EmailService {
       to,
       subject,
       html: this.wrapHtml(title, bodyHtml),
+    });
+  }
+
+  /**
+   * A short message a PM approved in the AI inbox (a reminder to an action's owner or an approver):
+   * plain text as written, sent from Kovarti with replies going to the PM.
+   */
+  async sendMessageEmail(input: { to: string; subject: string; body: string; replyTo?: string | null; sentFor: string }): Promise<void> {
+    if (!this.isConfigured) {
+      logger.info(`[EmailService] Message email would be sent to ${maskPii(input.to)}: ${input.subject}`);
+      return;
+    }
+    const paragraphs = input.body.split(/\n{2,}/).map(p => `<p style="color: #374151; line-height: 1.6; white-space: pre-line;">${escapeHtml(p)}</p>`).join('');
+    const footer = `<p style="color: #6b7280; font-size: 12px; margin-top: 24px;">Sent by Kovarti for ${escapeHtml(input.sentFor)}. Reply to this email to answer them directly.</p>`;
+    await this.sendEmail({
+      from: config.RESEND_FROM_EMAIL,
+      to: input.to,
+      subject: input.subject,
+      html: this.wrapHtml(input.subject, paragraphs + footer),
+      ...(input.replyTo && !isUndeliverableEmail(input.replyTo) ? { replyTo: input.replyTo } : {}),
     });
   }
 

@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 663,
+  "count": 669,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -400,6 +400,12 @@
     "getSeatInfo",
     "getSimilarProjects",
     "getSkillDetail",
+    "getAiInbox",
+    "getAiInboxCount",
+    "getProjectAiInboxCount",
+    "acceptAiSuggestion",
+    "rejectAiSuggestion",
+    "undoAiSuggestion",
     "getSkillMatch",
     "getSlackChannels",
     "getSlackInstallUrl",

@@ -3587,6 +3587,29 @@ Below the decisions: **Fine this week** (on track, on budget, plan quality and i
 
 The review uses no AI: the same facts always give the same result.
 
+### AI inbox (October 2026)
+
+**For the project's Manager and Owner only** (and the company's PMO) — open **AI inbox** at the top of the side menu; the number beside it is how many suggestions are waiting for you.
+
+When the Weekly PM review runs (Friday morning, or when you press **Run my weekly review**), the **Weekly review agent** turns what it found into **ready-made fixes**. Each one shows exactly what would change and **Why?** — the facts it is based on. **Nothing changes and nothing is sent until you press Accept or Send.**
+
+| What the review found | The fix it suggests |
+|---|---|
+| Finish date at risk / a task slipping | Move the late tasks and the ones linked after them (the AI Reschedule plan, worked out by rules), with the old and new dates and the new finish date |
+| Someone is overloaded | Give one of their tasks that week to someone with the **same role, in the same client pool, who has room** — with how loaded both are afterwards; no dates change |
+| Plan quality dropped | Link the tasks that have nothing before or after them (Schedule Review's own fixes) |
+| A high risk has no response | Add an action "Decide the response… and who owns it", owned by you, due in 5 working days, **linked to the risk** |
+| A RAID item is overdue | A short reminder email to its owner — you can **Edit first**, then **Send** |
+| A change request waits a week or more | A reminder email to the people with the approver's role |
+
+- **Accept / Send** runs the change. A moved plan, a reassigned task or new links are recorded in **Schedule History**; **Undo** on the suggestion (under **Decided**) puts it back. Undo works on the newest change to a plan — for an older one use Schedule History. An added action is cancelled by Undo (RAID items are never deleted). An email that was sent can't be unsent.
+- Before a change is made, Kovarti checks the plan is still as the card shows. If you moved those tasks yourself in the meantime, or the colleague no longer has room, nothing is changed and the suggestion is marked out of date — run the review again for a fresh one.
+- **Change it myself** opens the place to do it by hand instead.
+- **Reject…** asks why (*Not a problem*, *I'll handle it myself*, *The facts are wrong*); like Dismiss in the review, it won't be suggested again for four weeks unless it gets worse.
+- Reminder emails come from Kovarti, are signed with the name of whoever sends them, and **replies go to you**. A change-request reminder goes only to people who can approve it on this project (managers with the approver's role, or the PMO). They count toward the free trial's email allowance. People without a real email address are never emailed.
+- A newer review replaces the older suggestions still waiting. The Weekly PM review card on Overview shows **N fixes ready in the AI inbox**.
+- The agent uses no AI (no AI allowance is used) and can be stopped for a project or the whole company with the agent stop switch.
+
 ### RAID Review (quality check of the log)
 
 **For the project's Manager and Owner only** (and admins/PMO): team members, viewers and executives don't see the Review button, the score or the flags — it's the PM's working tool, and the fixes are theirs to make. Sponsors get the RAID Report instead.

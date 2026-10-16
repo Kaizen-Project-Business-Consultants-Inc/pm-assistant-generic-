@@ -1,4 +1,8 @@
-import { ClipboardCheck, Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { ClipboardCheck, Loader2, Inbox } from 'lucide-react';
+import { apiService } from '../../services/api';
+import { ROUTES } from '../../routes';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { announce } from '../../utils/announce';
 import { useWeeklyReview, useRunWeeklyReview } from './useWeeklyReview';
@@ -27,6 +31,13 @@ function lastRun(iso: string): string {
 export function WeeklyReviewCard({ projectId, onOpen, canEdit }: Props) {
   const { data: review, isLoading } = useWeeklyReview(projectId);
   const run = useRunWeeklyReview(projectId);
+  // the review's ready-made fixes waiting in the AI inbox (Phase 2)
+  const { data: inbox } = useQuery({
+    queryKey: ['ai-inbox', 'project', projectId],
+    queryFn: () => apiService.getProjectAiInboxCount(projectId),
+    staleTime: 30_000,
+  });
+  const fixes = inbox?.waiting ?? 0;
 
   const open = review ? openDecisions(review).length : 0;
   const status = !review
@@ -61,7 +72,16 @@ export function WeeklyReviewCard({ projectId, onOpen, canEdit }: Props) {
           <p role="alert" className="text-sm text-red-700 dark:text-red-300 mt-1">{getApiErrorMessage(run.error, 'The review could not run. Please try again.')}</p>
         )}
       </div>
-      <div className="flex gap-2 flex-shrink-0">
+      <div className="flex flex-wrap gap-2 flex-shrink-0">
+        {fixes > 0 && (
+          <Link
+            to={ROUTES.aiInbox}
+            className="h-10 px-4 rounded-lg bg-accent-amber text-gray-900 text-sm font-bold inline-flex items-center gap-2 hover:brightness-95"
+          >
+            <Inbox className="w-4 h-4" aria-hidden="true" />
+            {fixes} fix{fixes === 1 ? '' : 'es'} ready in the AI inbox
+          </Link>
+        )}
         {review && (
           <button
             type="button"

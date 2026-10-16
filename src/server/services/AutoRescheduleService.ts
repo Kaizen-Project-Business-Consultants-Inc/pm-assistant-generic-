@@ -219,7 +219,7 @@ export class AutoRescheduleService {
   // Generate Proposal
   // ---------------------------------------------------------------------------
 
-  async generateProposal(scheduleId: string, userId?: string, source: 'manual' | 'agent' = 'manual'): Promise<RescheduleProposal> {
+  async generateProposal(scheduleId: string, userId?: string, source: 'manual' | 'agent' = 'manual', opts: { useAi?: boolean } = {}): Promise<RescheduleProposal> {
     const delayedTasks = await this.detectDelays(scheduleId);
     const criticalPathResult = await this.criticalPathService.calculateCriticalPath(scheduleId);
     const allTasks = await this.scheduleService.findTasksByScheduleId(scheduleId);
@@ -253,7 +253,8 @@ export class AutoRescheduleService {
     let rationale: string;
     let estimatedImpact: RescheduleProposal['estimatedImpact'];
 
-    if (config.AI_ENABLED && claudeService.isAvailable() && delayedTasks.length > 0) {
+    // the AI inbox's weekly agent asks for the rules-based plan (no AI cost, the same answer every time)
+    if (opts.useAi !== false && config.AI_ENABLED && claudeService.isAvailable() && delayedTasks.length > 0) {
       // Use AI to generate intelligent rescheduling proposal
       const systemPrompt = `You are an expert project scheduling AI. Your role is to analyze delayed tasks in a project schedule and propose minimal-disruption date changes to get the project back on track.
 
@@ -637,6 +638,11 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       logger.warn('[AutoReschedule] Could not read proposals from DB');
       return [];
     }
+  }
+
+  /** A proposal as stored (the AI inbox checks its "current" dates are still the plan's before applying it) */
+  async getProposal(proposalId: string): Promise<RescheduleProposal | null> {
+    return this.getProposalById(proposalId);
   }
 
   /** For access checks: which schedule a proposal belongs to */

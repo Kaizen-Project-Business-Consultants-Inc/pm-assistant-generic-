@@ -15,7 +15,7 @@ import { matchPath } from 'react-router-dom';
 import {
   FileText, Settings, Layers, Search, Clock, BarChart3, Target, Bell, Gauge, Briefcase, Building2,
   UserCog, BookOpen, GitPullRequest, TrendingUp, MessageCircleHeart, Dices, FlaskConical, Workflow,
-  FileBarChart, ClipboardList, Plug, Bot, Brain,
+  FileBarChart, ClipboardList, Plug, Bot, Brain, Inbox,
 } from 'lucide-react';
 import { ROUTES, ROUTE_PATTERNS } from '../routes';
 import { isPersonalPath } from '../stores/authStore';
@@ -29,6 +29,8 @@ export interface NavItem {
   path: string;
   /** Only these roles may open the page; no list = everyone */
   roles?: Role[];
+  /** a number shown beside it (the AI inbox's suggestions waiting) */
+  count?: 'aiInbox';
 }
 
 export interface NavSection {
@@ -44,6 +46,8 @@ export const PM_NAV_SECTIONS: NavSection[] = [
     titleKey: 'section.work',
     items: [
       { labelKey: 'nav.dashboard', icon: Gauge, path: ROUTES.dashboard },
+      // Phase 2: the agents' suggestions waiting for the PM (only a project's PM sees its suggestions)
+      { labelKey: 'nav.aiInbox', icon: Inbox, path: ROUTES.aiInbox, roles: ['project_manager', 'pmo'], count: 'aiInbox' },
       { labelKey: 'nav.projects', icon: Briefcase, path: ROUTES.projects },
       { labelKey: 'nav.clients', icon: Building2, path: ROUTES.clients, roles: NON_VIEWER_ROLES },
       { labelKey: 'nav.portfolio', icon: Layers, path: ROUTES.portfolio, roles: ['admin', 'executive', 'pmo'] },

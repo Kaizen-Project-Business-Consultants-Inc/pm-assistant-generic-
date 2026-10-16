@@ -623,6 +623,10 @@ On the Trial, Consultant Basic and Consultant Pro plans each client has its own 
 
 Custom templates (Save as template, a new template, an imported marketplace template) were kept in one in-memory list for every company: any signed-in user could list, open, edit or delete another company's templates — and a template saved from a project can carry that company's clients' names and task details. Since 2026-10-16 custom templates are kept in the company's own database (tenant migration T092 `custom_templates`, `CustomTemplateRepository`), so every read, change, delete and apply sees only that company's own plus the built-in templates (in code), and a restart or deploy no longer loses them. Built-in templates can't be changed or deleted. Test: `templateCompanyScope.test.ts`.
 
+## 14g. AI inbox: agents only suggest (2026-10-16)
+
+The Weekly review agent writes suggestions to the company's own database (`ai_suggestions`, T093); it never changes project data or sends anything itself. A suggestion is listed, counted, accepted, rejected or undone only by a manager of its project (`checkProjectRoleFor(..., 'manager')` per suggestion — another project's or company's id answers 404); deciding needs the `write` scope. Accept claims the row first (`waiting → working`) so a double click can't apply a change twice, then runs the existing feature's own checked change (AI Reschedule accept, Team Planner move with its pool check, Schedule Review fixes, RAID create). Reminder emails go only to the item's owner or the people with the approver role in the same company, never to placeholder or staging addresses, from Kovarti with reply-to the PM, inside the trial email allowance (`checkBackgroundSend`). The agent can be stopped per project or company (`weekly_review` in the kill switch). Tests: `AiInboxService.test.ts`, `aiInboxWeeklyAgent.test.ts`.
+
 ## 15. Stakeholder Portal Access
 
 The stakeholder portal (`PortalService.ts`, `src/server/routes/portal.ts`) provides limited external access:

@@ -1,6 +1,6 @@
 import React from 'react';
 
-type StripeTone = 'teal' | 'amber' | 'coral' | 'blue' | 'gray';
+export type StripeTone = 'teal' | 'amber' | 'coral' | 'blue' | 'gray';
 
 // literal class names, so the build keeps them
 const STRIPE: Record<StripeTone, string> = {

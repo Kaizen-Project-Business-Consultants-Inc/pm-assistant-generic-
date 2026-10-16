@@ -18,6 +18,7 @@
     "agent": "Agent",
     "aiQuery": "AI Query",
     "aiProposals": "AI Proposals",
+    "aiInbox": "AI inbox",
     "timesheets": "Timesheets",
     "integrations": "Integrations",
     "goals": "Goals",

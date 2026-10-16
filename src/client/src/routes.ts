@@ -55,6 +55,7 @@ export const ROUTES = {
   resources: '/resources',
   evm: '/evm',
   agent: '/agent',
+  aiInbox: '/ai-inbox',
   adminUsers: '/admin/users',
   adminTenants: '/admin/tenants',
   adminSystem: '/admin/system',

@@ -187,6 +187,8 @@ const sections: Section[] = [
       "Dismiss asks why; it won't come back for four weeks unless it gets worse",
       "Also shows what's fine, what's uncertain, and the status colour — then Write the status report to edit and send it yourself",
       'Status reports include the schedule Timeline strip (phases, milestones, today) after the milestone table — on screen, in PDF/Word and in email',
+      'AI inbox (side menu): the Weekly review agent turns what the review found into ready-made fixes — move late tasks, give an overloaded person’s task to a colleague with room, link unlinked tasks, add an action for an unhandled risk, or a reminder email you can edit and send',
+      'Nothing changes and nothing is sent until you press Accept or Send; Undo puts a change back; Reject asks why and it won’t come back for four weeks unless it gets worse',
     ],
   },
   {

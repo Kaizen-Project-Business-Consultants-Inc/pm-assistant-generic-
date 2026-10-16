@@ -67,6 +67,7 @@ const AdminPricingPage = lazy(() => import('./pages/admin/AdminPricingPage').the
 const AdminSchedulesPage = lazy(() => import('./pages/admin/AdminSchedulesPage').then(m => ({ default: m.AdminSchedulesPage })));
 const AdminWaitlistPage = lazy(() => import('./pages/admin/AdminWaitlistPage').then(m => ({ default: m.AdminWaitlistPage })));
 const AgentProposalsPage = lazy(() => import('./pages/AgentProposalsPage').then(m => ({ default: m.AgentProposalsPage })));
+const AiInboxPage = lazy(() => import('./pages/AiInboxPage').then(m => ({ default: m.AiInboxPage })));
 const ChangeRequestsPage = lazy(() => import('./pages/ChangeRequestsPage').then(m => ({ default: m.ChangeRequestsPage })));
 const GoalsPage = lazy(() => import('./pages/GoalsPage').then(m => ({ default: m.GoalsPage })));
 const MyFeedbackPage = lazy(() => import('./pages/MyFeedbackPage').then(m => ({ default: m.MyFeedbackPage })));
@@ -225,6 +226,7 @@ function App() {
         <Route path={ROUTES.evm} element={<PrivateRoute><EVMDashboardPage /></PrivateRoute>} />
         <Route path={ROUTE_PATTERNS.kpi} element={<PrivateRoute><KPIDrillInPage /></PrivateRoute>} />
         <Route path={ROUTES.agent} element={<PrivateRoute><AgentProposalsPage /></PrivateRoute>} />
+        <Route path={ROUTES.aiInbox} element={<PrivateRoute><AiInboxPage /></PrivateRoute>} />
         <Route path={ROUTES.adminUsers} element={<PrivateRoute requiredRole="admin"><AdminUsersPage /></PrivateRoute>} />
         <Route path={ROUTES.adminTenants} element={<PrivateRoute requiredRole="admin"><AdminTenantsPage /></PrivateRoute>} />
         <Route path={ROUTES.adminSystem} element={<PrivateRoute requiredRole="admin"><AdminSystemPage /></PrivateRoute>} />

@@ -543,4 +543,51 @@ export class AiApi extends ApiBase {
     const response = await this.api.get(`/skills/${id}`);
     return response.data;
   }
+
+  // ── AI inbox (Phase 2): the agents' suggestions waiting for the PM ──
+  async getAiInbox(view: 'waiting' | 'done' = 'waiting'): Promise<{ suggestions: AiSuggestion[] }> {
+    return (await this.api.get('/ai-inbox', { params: { view } })).data;
+  }
+
+  async getAiInboxCount(): Promise<{ waiting: number }> {
+    return (await this.api.get('/ai-inbox/count')).data;
+  }
+
+  async getProjectAiInboxCount(projectId: string): Promise<{ waiting: number }> {
+    return (await this.api.get(`/ai-inbox/projects/${projectId}/count`)).data;
+  }
+
+  async acceptAiSuggestion(id: string, edits: { subject?: string; body?: string } = {}): Promise<{ suggestion: AiSuggestion }> {
+    return (await this.api.post(`/ai-inbox/${id}/accept`, edits)).data;
+  }
+
+  async rejectAiSuggestion(id: string, reason: AiRejectReason): Promise<{ suggestion: AiSuggestion }> {
+    return (await this.api.post(`/ai-inbox/${id}/reject`, { reason })).data;
+  }
+
+  async undoAiSuggestion(id: string): Promise<{ suggestion: AiSuggestion }> {
+    return (await this.api.post(`/ai-inbox/${id}/undo`, {})).data;
+  }
+}
+
+export type AiRejectReason = 'not_a_problem' | 'already_handled' | 'facts_wrong';
+
+/** One suggestion in the AI inbox (server: database/AiSuggestionRepository.ts) */
+export interface AiSuggestion {
+  id: string;
+  projectId: string;
+  projectName: string;
+  scheduleId: string | null;
+  agent: string;
+  kind: 'reschedule' | 'reassign' | 'add_links' | 'add_mitigation' | 'remind_raid' | 'remind_cr' | string;
+  title: string;
+  detail: string | null;
+  payload: any;
+  evidence: string[];
+  status: 'waiting' | 'working' | 'accepted' | 'rejected' | 'undone' | 'stale';
+  reason: string | null;
+  resultSummary: string | null;
+  undoRef: unknown;
+  decidedAt: string | null;
+  createdAt: string;
 }

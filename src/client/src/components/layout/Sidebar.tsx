@@ -211,6 +211,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
     .map(s => ({ ...s, items: s.items.filter(i => (user ? canOpenPath(user, i.path) && !(user.isGuest && GUEST_HIDDEN_PATHS.has(i.path)) : !i.roles)) }))
     .filter(s => s.items.length > 0);
 
+  // The AI inbox's count beside its menu entry (only for someone who sees the entry)
+  const inboxWaiting = useAiInboxCount(navSections, noCompany);
+
   const userInitials = user?.fullName
     ? user.fullName
         .split(' ')
@@ -319,6 +322,8 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
                     >
                       {t(item.labelKey)}
                     </span>
+
+                    <NavCount kind={item.count} counts={{ aiInbox: inboxWaiting }} collapsed={collapsed} />
 
                     {/* Active indicator bar */}
                     {active && (
@@ -527,5 +532,34 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
     </>
   );
 };
+
+/** How many AI inbox suggestions wait for this person (refreshed every few minutes) */
+function useAiInboxCount(sections: NavSection[], noCompany: boolean): number {
+  const enabled = !noCompany && showsCount(sections, 'aiInbox');
+  const { data } = useQuery({
+    queryKey: ['ai-inbox-count'],
+    queryFn: () => apiService.getAiInboxCount(),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    enabled,
+  });
+  return data?.waiting ?? 0;
+}
+
+/** Does the menu as shown have an entry with this count */
+const showsCount = (sections: NavSection[], kind: 'aiInbox') => sections.some(s => s.items.some(i => i.count === kind));
+
+/** The count beside a menu entry (nothing for an entry without one, or when 0) */
+function NavCount({ kind, counts, collapsed }: { kind?: 'aiInbox'; counts: Record<'aiInbox', number>; collapsed: boolean }) {
+  const n = kind ? counts[kind] : 0;
+  if (n <= 0) return null;
+  return (
+    <span
+      className={`ml-auto rounded-full bg-accent-amber px-1.5 text-xs font-extrabold leading-[18px] text-gray-900 ${collapsed ? 'absolute -top-0.5 right-0.5' : ''}`}
+    >
+      {n}<span className="sr-only"> waiting</span>
+    </span>
+  );
+}
 
 export default Sidebar;

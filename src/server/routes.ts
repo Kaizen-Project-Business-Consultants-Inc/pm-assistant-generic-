@@ -104,6 +104,7 @@ import { agentActivityLogRoutes } from './routes/agent/agentActivityLog';
 import { alertRoutes } from './routes/agent/alerts';
 import { policyRoutes } from './routes/agent/policies';
 import { proposalRoutes } from './routes/agent/proposals';
+import { aiInboxRoutes } from './routes/agent/aiInbox';
 import { agentHealthRoutes } from './routes/agent/agentHealth';
 import { killSwitchRoutes } from './routes/agent/killSwitch';
 import { autonomyRoutes } from './routes/agent/autonomy';
@@ -256,6 +257,7 @@ export async function registerRoutes(fastify: FastifyInstance) {
   await fastify.register(alertRoutes, { prefix: '/api/v1/alerts' });
   await fastify.register(policyRoutes, { prefix: '/api/v1/policies' });
   await fastify.register(proposalRoutes, { prefix: '/api/v1/agent/proposals' });
+  await fastify.register(aiInboxRoutes, { prefix: '/api/v1/ai-inbox' });
   await fastify.register(agentHealthRoutes, { prefix: '/api/v1/agent' });
   await fastify.register(killSwitchRoutes, { prefix: '/api/v1/agent' });
   await fastify.register(autonomyRoutes, { prefix: '/api/v1/agent/autonomy' });

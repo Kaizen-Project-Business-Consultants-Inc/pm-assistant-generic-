@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-16 — Phase 2 step 1: AI inbox + Weekly review agent
+- T093 `ai_suggestions` + `agent_settings`; `services/aiInbox/` (weeklyAgent builders, AiInboxService accept/reject/undo), routes `/api/v1/ai-inbox`, `AiInboxPage`, side-menu count, review card link. Rules only; nothing changes or is sent without the PM; reminders reply-to the PM.
+
 ## 2026-10-16 — Saved templates kept; Claude connection tools fixed
 - Custom templates now live in each company's database (T092 `custom_templates`, `CustomTemplateRepository`) — they were in server memory and vanished on every restart/deploy.
 - 13 MCP tools sent bodies the app refused (apply-template, submit-for-approval, act-on-approval, create-change-request, get-meeting-summary, run-monte-carlo, set-custom-field-values, submit-intake-form, review-submission, create-integration, sync-integration, bulk-status-update, log-time, create-workflow); fixed + guard `mcp/mcpToolBodies.test.ts`.

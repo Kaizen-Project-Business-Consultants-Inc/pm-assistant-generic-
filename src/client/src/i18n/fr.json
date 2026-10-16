@@ -18,6 +18,7 @@
     "agent": "Agent",
     "aiQuery": "Requête IA",
     "aiProposals": "Propositions IA",
+    "aiInbox": "Boîte IA",
     "timesheets": "Feuilles de temps",
     "integrations": "Intégrations",
     "goals": "Objectifs",

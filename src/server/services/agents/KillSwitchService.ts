@@ -19,7 +19,7 @@ export interface KillSwitchStatus {
  * Monte Carlo checks; the first two capability ids are also what AgentRegistryService invokes).
  * The API refuses any other name, so a typo can't look like a stop that never applies.
  */
-export const STOPPABLE_AGENTS = ['scan_orchestrator', 'auto-reschedule-v1', 'budget-burn-rate', 'monte-carlo-v1'] as const;
+export const STOPPABLE_AGENTS = ['scan_orchestrator', 'auto-reschedule-v1', 'budget-burn-rate', 'monte-carlo-v1', 'weekly_review'] as const;
 
 /**
  * How a project's stop is saved: with its company, because project ids repeat across companies
