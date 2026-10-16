@@ -245,6 +245,8 @@ Click **Create New Project** from the Dashboard or Projects page. You'll see thr
 
 **Starter RAID: review.** Every built-in template brings 4–6 typical risks, assumptions, dependencies and actions for that kind of project (for example, on a cloud migration: "Hidden dependencies between systems", "Write and test the rollback plan"). On the create form they are listed under **Starter RAID: review**, all ticked — untick any that don't apply, and only the ticked ones go into the new project's Risks & Issues log.
 
+**Placeholder roles.** Each built-in template knows the roles its work needs — a commercial building needs a *Structural Engineer*, *Surveyor* and *Construction Trades*; a cloud migration a *Cloud Engineer* and *Network Engineer*. The create form lists them under **Placeholder roles**. When the project is made, every work task is assigned to the generic role for its kind of work: a generic role your company already has is reused (your client's own first, when the project is for a client), and any it doesn't have yet is added once to **My resources** (e.g. *Generic Structural Engineer*), costed from your rate card for that role. Swap in real people later with **Replace…** on the Resources page. If you switched a generic role off, it isn't added back — its tasks are left for you to staff. The list on the form follows the tasks you keep ticked.
+
 ### Editing a Project
 
 Open a project from the Dashboard or Projects page. Edit any field (name, description, status, priority, methodology, budget, dates, assigned PM) and save your changes. Changing the methodology immediately updates the tab ordering, readiness bar, and context cards.
@@ -957,7 +959,7 @@ Every person on the Resources list has a **line manager** — the one person who
 Every resource is either a **person** or a **generic role**.
 
 - **People** always have an email. Click **Add person** on the Resources page; the email is required. Saving does **not** email them — when you want them to log in, click **Invite** next to their name (Resources page, or the project's **Team** tab).
-- **Generic roles** are stand-ins for work you haven't staffed yet: *Generic Developer, Generic Business Analyst, Generic QA / Tester, Generic Designer, Generic Architect, Generic Project Manager* are there from the start. Click **Add generic role** to make your own (e.g. *Generic Mobile Developer*). A generic role has no email and no login, never appears on a Team list, and is never shown as over-booked.
+- **Generic roles** are stand-ins for work you haven't staffed yet: *Generic Developer, Generic Business Analyst, Generic QA / Tester, Generic Designer, Generic Architect, Generic Project Manager* are there from the start. Click **Add generic role** to make your own (e.g. *Generic Mobile Developer*). Creating a project from a template adds the generic roles it needs (see *Placeholder roles* under Templates). A generic role has no email and no login, never appears on a Team list, and is never shown as over-booked.
 - **Placeholder emails.** People whose real email isn't known yet (for example names that came in with an imported plan) have an email like `firstname.lastname@example.com`, shown with an orange **Placeholder email** tag. Nothing is ever sent to these addresses. Click **Add real email** to fix one; then you can invite them.
 
 **On a project's Team tab:**

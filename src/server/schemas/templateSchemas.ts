@@ -24,6 +24,8 @@ export const templateTaskSchema = z.object({
   mandatory: z.boolean().optional(),
   /** A gate or decision point: zero duration, and the schedule review expects it. */
   isMilestone: z.boolean().optional(),
+  /** Served, never stored: the generic role this task is assigned to on apply (U13, from its skills) */
+  placeholderRole: z.string().nullable().optional(),
 });
 
 export type TemplateTask = z.infer<typeof templateTaskSchema>;

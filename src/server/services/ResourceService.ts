@@ -1,3 +1,4 @@
+import type { PoolConnection } from 'mysql2/promise';
 import { resourceRepository } from '../database/ResourceRepository';
 import { planChanged, personRatesChanged } from './domainEvents';
 import { scheduleService } from './ScheduleService';
@@ -175,6 +176,11 @@ export class ResourceService {
 
   async findResourceById(id: string): Promise<Resource | null> {
     return resourceRepository.findById(id);
+  }
+
+  /** Generic roles for a new project's template tasks (U13), on its transaction: role → new id */
+  async addGenericRolesOn(conn: PoolConnection, roles: readonly string[]): Promise<Map<string, string>> {
+    return resourceRepository.createGenericRolesOn(conn, roles);
   }
 
   async createResource(data: Omit<Resource, 'id'>): Promise<Resource> {

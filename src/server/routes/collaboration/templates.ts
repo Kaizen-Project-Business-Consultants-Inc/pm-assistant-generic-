@@ -181,6 +181,7 @@ export async function templateRoutes(fastify: FastifyInstance) {
         userId,
         selectedTaskRefIds: data.selectedTaskRefIds,
         selectedRaidIndexes: data.selectedRaidIndexes,
+        clientId,
       });
       if (clientId && result?.project?.id) await projectGroupService.assignProject(result.project.id, clientId);
       return reply.status(201).send(result);

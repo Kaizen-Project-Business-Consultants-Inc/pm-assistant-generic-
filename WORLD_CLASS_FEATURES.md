@@ -446,7 +446,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Template library with categories
 - One-click project creation from template
 - Include tasks, dependencies, roles, and milestones
-- **33 built-in templates** (October 2026): 14 project templates, 4 consulting engagements and 15 everyday IT templates (mobile app, website, software selection, BI, security readiness, training, Dynamics and Microsoft 365 migrations, server, backup & DR, devices, network, new office, CRM, AI pilot) — each with sign-off milestones and starter risks/assumptions/actions the PM reviews before creating
+- **33 built-in templates** (October 2026): 14 project templates, 4 consulting engagements and 15 everyday IT templates (mobile app, website, software selection, BI, security readiness, training, Dynamics and Microsoft 365 migrations, server, backup & DR, devices, network, new office, CRM, AI pilot) — each with sign-off milestones and starter risks/assumptions/actions the PM reviews before creating, and placeholder roles per template (structural engineer, surveyor, cloud engineer…) that its tasks are assigned to, added to My resources when the company lacks them
 - **Template Marketplace** — closed for now (October 2026): hidden while empty and publishing refused until Kovarti reviews shared templates; templates a company saves are visible only to that company
 - **Benchmark:** Monday.com, Asana, Smartsheet
 

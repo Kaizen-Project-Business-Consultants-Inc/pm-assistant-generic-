@@ -107,6 +107,7 @@ const sections: Section[] = [
       'The summary cards show on Overview; other tabs show one line (Show details brings the cards back) so the work area starts higher',
       'Fewer tabs show in the bar; the rest (Hours, Files, Forecast, Resources, Agent Activity, Changes and more) are under More at the end of the tab bar',
       'The PM sees "Set up this project: 1 of 5 done" with its steps (Tasks, Link tasks, Team, Budget, Risks) — click a step to do it; it hides once all are done',
+      'Each template assigns its tasks to placeholder roles (e.g. Generic Structural Engineer); any your company lacks are added to My resources — swap in real people later with Replace… on the Resources page',
       'Templates under IT & Software include mobile apps, website redesigns, software selection, BI reporting, security readiness, Dynamics and Microsoft 365 migrations, servers, backup & DR, laptop rollouts, networks, new office IT, CRM rollouts and AI pilots',
       'New project from a template: the template brings starter risks, assumptions and actions — review them on the create form (all ticked) and untick any that don\'t apply',
       'Risks & Issues opens on Needs attention (triggered or unplanned high risks, high issues, overdue actions, waiting decisions, assumptions to confirm, dependencies at risk), then a section per type, each with its count',

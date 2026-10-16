@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-15 — Batch E3: placeholder roles per template (U13)
+- `services/templates/placeholderRoles.ts` (skill → role, ~45 roles) + `staffPlaceholders.ts`: applying a template assigns each work task to a generic role, reusing the company's (client pool first) and adding missing ones to My resources; create form lists "Placeholder roles"; guard test: every built-in skill has a role.
+
 ## 2026-10-15 — Batch E2: 15 new IT templates
 - `services/templates/itTemplates.ts` (15 templates, each scoring 94 in the Schedule Review, floors locked) + 6 starter RAID items each; picker IT & Software group now also lists web design / web app / app development types.
 

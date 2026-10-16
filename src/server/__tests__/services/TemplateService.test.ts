@@ -30,6 +30,10 @@ vi.mock('../../services/ScheduleService', () => ({
 const mockRiskCreate = vi.fn(async (d: any) => ({ id: `raid-${d.title}` }));
 vi.mock('../../services/RiskService', () => ({ riskService: { create: (d: any) => mockRiskCreate(d) } }));
 
+// Placeholder roles (U13) are staffed in one step after the tasks exist
+const mockStaff = vi.fn(async (..._a: any[]) => ({ added: ['Generic role'], reused: [], skipped: [] }));
+vi.mock('../../services/templates/staffPlaceholders', () => ({ staffWithPlaceholders: (...a: any[]) => mockStaff(...a) }));
+
 import { TemplateService } from '../../services/TemplateService';
 import { templateRaidSchema } from '../../schemas/templateSchemas';
 import { weekdaysOnly } from '../../utils/workingDays';
@@ -268,6 +272,26 @@ describe('TemplateService', () => {
       mockRiskCreate.mockClear();
       await service.applyTemplate(baseInput);
       expect(mockRiskCreate).toHaveBeenCalledTimes(tpl.raidItems.length);
+    });
+
+    it('serves each template with its placeholder roles and staffs the new tasks for the chosen client (U13)', async () => {
+      const tpl: any = await service.findById('tpl-it-webapp');
+      expect(tpl.tasks.find((t: any) => t.name === 'Requirements Gathering').placeholderRole).toBe('Business Analyst');
+      expect(tpl.tasks.find((t: any) => t.name === 'Infrastructure Setup').placeholderRole).toBe('DevOps Engineer');
+      expect(tpl.tasks.filter((t: any) => t.isSummary || t.isMilestone).every((t: any) => t.placeholderRole === null)).toBe(true);
+      const result = await service.applyTemplate({ ...baseInput, templateId: 'tpl-it-webapp', clientId: 'client-9' });
+      expect(result.placeholderRoles).toEqual({ added: ['Generic role'], reused: [], skipped: [] });
+      const [scheduleId, clientId, tasks] = mockStaff.mock.calls[0];
+      expect([scheduleId, clientId]).toEqual(['sched-1', 'client-9']);
+      expect(tasks).toHaveLength(tpl.tasks.length);
+      expect(tasks.find((t: any) => t.name === 'Requirements Gathering')).toMatchObject({ skills: ['business-analysis'], taskId: expect.stringMatching(/^task-/) });
+    });
+
+    it('a failure adding placeholder roles still leaves the project made', async () => {
+      mockStaff.mockRejectedValueOnce(new Error('db down'));
+      const result = await service.applyTemplate(baseInput);
+      expect(result.project.id).toBe('proj-1');
+      expect(result.placeholderRoles).toEqual({ added: [], reused: [], skipped: [] });
     });
 
     it('creates project, schedule, and tasks from template', async () => {

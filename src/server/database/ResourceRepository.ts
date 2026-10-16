@@ -1,5 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
+import type { PoolConnection } from 'mysql2/promise';
 import { BaseRepository } from './BaseRepository';
+import { databaseService } from './connection';
 import { toDateString } from '../utils/calendarDate';
 import type { Resource, ResourceAssignment, SkillWithProficiency } from '../services/ResourceService';
 
@@ -97,6 +99,21 @@ export class ResourceRepository extends BaseRepository<Resource> {
       [id, data.name, data.role || '', data.email || '', data.capacityHoursPerWeek, JSON.stringify(data.skills || []), data.isActive ? 1 : 0, data.costRateHourly ?? null, data.overtimeRateHourly ?? null, data.useRateCard ? 1 : 0, data.resourceGroup ?? null, data.userId ?? null, data.calendarTemplateId ?? null, data.isGeneric ? 1 : 0, data.lineManagerUserId ?? null, data.lineManagerIsDefault ? 1 : 0, data.clientId ?? null],
     );
     return (await this.findById(id))!;
+  }
+
+  /**
+   * Generic roles ("Generic <role>") in My resources, on the caller's transaction (template
+   * placeholder roles, U13): no email, no login, priced from the rate card for the role.
+   */
+  async createGenericRolesOn(conn: PoolConnection, roles: readonly string[]): Promise<Map<string, string>> {
+    const fresh = roles.map(role => ({ id: uuidv4(), role }));
+    if (fresh.length) {
+      await databaseService.queryOn(conn,
+        `INSERT INTO resources (id, name, role, email, capacity_hours_per_week, skills, is_active, is_generic, use_rate_card, client_id)
+         VALUES ${fresh.map(() => "(?, ?, ?, '', 40, '[]', 1, 1, 1, NULL)").join(', ')}`,
+        fresh.flatMap(f => [f.id, `Generic ${f.role}`, f.role]));
+    }
+    return new Map(fresh.map(f => [f.role, f.id]));
   }
 
   async updateResource(id: string, data: Partial<Omit<Resource, 'id'>>): Promise<boolean> {

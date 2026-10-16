@@ -5,6 +5,8 @@ import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
 import { consultingEngagementTemplates } from './templates/consultingEngagements';
 import { itTemplates } from './templates/itTemplates';
+import { isWorkTask, roleForSkills } from './templates/placeholderRoles';
+import { staffWithPlaceholders, type PlaceholderStaffing } from './templates/staffPlaceholders';
 import logger from '../utils/logger';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, shiftWorking, workingDaysAfter, finishFor, utcDay, ymdOf } from '../utils/workingDays';
 
@@ -336,7 +338,7 @@ const genericTemplate: ProjectTemplate = {
     { refId: 'plan-schedule', name: 'Schedule & Budget', description: 'Create schedule and cost estimates', estimatedDays: 4, priority: 'high', parentRefId: 'plan', dependencyRefId: 'plan-scope', dependencyType: 'FS', offsetDays: 0, skills: ['project-management'], isSummary: false },
     { refId: 'plan-risk', name: 'Risk Planning', description: 'Identify risks and plan responses', estimatedDays: 3, priority: 'medium', parentRefId: 'plan', dependencyRefId: 'plan-scope', dependencyType: 'SS', lagDays: 2, offsetDays: 0, skills: ['risk-management'], isSummary: false },
     { refId: 'exec', name: 'Execution', description: 'Project work execution', estimatedDays: 30, priority: 'high', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true },
-    { refId: 'exec-work', name: 'Direct & Manage Project Work', description: 'Execute project deliverables', estimatedDays: 25, priority: 'high', parentRefId: 'exec', dependencyRefId: 'plan-schedule', dependencyType: 'FS', moreDependencies: [{ refId: 'plan-risk', dependencyType: 'FS', lagDays: 0 }], offsetDays: 0, skills: [], isSummary: false },
+    { refId: 'exec-work', name: 'Direct & Manage Project Work', description: 'Execute project deliverables', estimatedDays: 25, priority: 'high', parentRefId: 'exec', dependencyRefId: 'plan-schedule', dependencyType: 'FS', moreDependencies: [{ refId: 'plan-risk', dependencyType: 'FS', lagDays: 0 }], offsetDays: 0, skills: ['project-management'], isSummary: false },
     { refId: 'exec-qa', name: 'Quality Assurance', description: 'Ensure quality standards are met', estimatedDays: 15, priority: 'medium', parentRefId: 'exec', dependencyRefId: 'exec-work', dependencyType: 'SS', lagDays: 10, offsetDays: 0, skills: ['quality-control'], isSummary: false },
     { refId: 'close', name: 'Closing', description: 'Project closing activities', estimatedDays: 10, priority: 'high', parentRefId: null, dependencyRefId: null, dependencyType: 'FS', offsetDays: 0, skills: [], isSummary: true, mandatory: true },
     { refId: 'close-deliver', name: 'Final Deliverables Review', description: 'Hand over the final outputs and walk the sponsor through them', estimatedDays: 5, priority: 'high', parentRefId: 'close', dependencyRefId: 'exec-work', dependencyType: 'FS', moreDependencies: [{ refId: 'exec-qa', dependencyType: 'FS', lagDays: 0 }], offsetDays: 0, skills: ['project-management'], isSummary: false, mandatory: true },
@@ -502,6 +504,12 @@ function currentOrg(): string | null {
   return getTenantContext()?.orgId ?? null;
 }
 
+/** A template as served: each work task with the generic role it will be assigned to (U13), from its skills */
+const withPlaceholderRoles = (t: ProjectTemplate): ProjectTemplate => ({
+  ...t,
+  tasks: t.tasks.map(task => ({ ...task, placeholderRole: isWorkTask(task) ? roleForSkills(task.skills) : null })),
+});
+
 export class TemplateService {
   private static templates: StoredTemplate[] = [
     // Engagement scaffolds first: this is a consultant's product, so these are what the
@@ -551,7 +559,7 @@ export class TemplateService {
     if (category) {
       result = result.filter(t => t.category === category);
     }
-    return result;
+    return result.map(withPlaceholderRoles);
   }
 
   async findAllPaginated(limit: number, offset: number, projectType?: string, category?: string): Promise<{ rows: ProjectTemplate[]; total: number }> {
@@ -560,7 +568,8 @@ export class TemplateService {
   }
 
   async findById(id: string): Promise<ProjectTemplate | null> {
-    return this.templates.find(t => t.id === id) || null;
+    const template = this.templates.find(t => t.id === id);
+    return template ? withPlaceholderRoles(template) : null;
   }
 
   async create(data: Omit<ProjectTemplate, 'id' | 'usageCount'>): Promise<ProjectTemplate> {
@@ -601,8 +610,10 @@ export class TemplateService {
     selectedTaskRefIds?: string[];
     /** starter RAID items to keep, by position; undefined = all (U10 review step) */
     selectedRaidIndexes?: number[];
+    /** the client the project is for: its pool's generic roles are used first (U13) */
+    clientId?: string;
     userId: string;
-  }): Promise<{ project: any; schedule: any; tasks: any[]; raidItemIds: string[]; reportTaskId: string | null }> {
+  }): Promise<{ project: any; schedule: any; tasks: any[]; raidItemIds: string[]; reportTaskId: string | null; placeholderRoles: PlaceholderStaffing }> {
     const template = await this.findById(input.templateId);
     if (!template) throw new Error('Template not found');
 
@@ -728,6 +739,19 @@ export class TemplateService {
       createdById.set(task.id, task);
     }
 
+    // ── 4b. Placeholder roles (U13): each work task goes to a generic resource for its role ──
+    // Best-effort like the scaffold below: a plan with unassigned tasks beats no project.
+    let placeholderRoles: PlaceholderStaffing = { added: [], reused: [], skipped: [] };
+    try {
+      const byRef = new Map(tasksToCreate.map(t => [t.refId, t]));
+      placeholderRoles = await staffWithPlaceholders(schedule.id, input.clientId,
+        [...refIdToTaskId].map(([refId, taskId]) => ({ taskId, ...byRef.get(refId)! })));
+    } catch (err) {
+      logger.warn('[TemplateService] Could not add placeholder roles', {
+        templateId: template.id, error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     // ── 5. The governance scaffold ──
     //
     // A template that produces only a task list leaves the governance to be remembered.
@@ -809,7 +833,7 @@ export class TemplateService {
       }
     }
 
-    return { project, schedule, tasks: createdTasks, raidItemIds: raidCreated, reportTaskId };
+    return { project, schedule, tasks: createdTasks, raidItemIds: raidCreated, reportTaskId, placeholderRoles };
   }
 
   async saveFromProject(input: {

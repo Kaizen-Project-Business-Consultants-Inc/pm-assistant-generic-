@@ -11,6 +11,8 @@ interface TemplateTask {
   dependencyRefId: string | null;
   isSummary: boolean;
   mandatory?: boolean;
+  /** the generic role it is assigned to when the project is made (U13) */
+  placeholderRole?: string | null;
 }
 
 interface TemplateCustomizeFormProps {
@@ -185,6 +187,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   // What the person sees counts work items only, like "4 phases, 11 tasks" above it
   const workTasks = tasks.filter(t => !t.isSummary);
   const selectedWork = workTasks.filter(t => selectedRefIds.has(t.refId)).length;
+  const placeholderRoles = [...new Set(workTasks.filter(t => t.placeholderRole && selectedRefIds.has(t.refId)).map(t => t.placeholderRole!))];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -397,6 +400,17 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
         )}
 
         <StarterRaidReview items={raidItems} selected={keptRaid} onToggle={toggleRaid} />
+
+        {/* the generic roles the ticked tasks will be assigned to (U13) */}
+        {placeholderRoles.length > 0 && (
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50">
+            <p className="text-xs font-semibold text-gray-800 dark:text-gray-100">Placeholder roles ({placeholderRoles.length})</p>
+            <p className="mt-0.5 text-xs text-gray-600 dark:text-gray-300">
+              Tasks are assigned to these generic roles. Any your company doesn&rsquo;t have yet are added to My resources; swap in real people later.
+            </p>
+            <p className="mt-1.5 text-xs text-gray-900 dark:text-white">{placeholderRoles.join(' · ')}</p>
+          </div>
+        )}
 
         {extraContent}
 

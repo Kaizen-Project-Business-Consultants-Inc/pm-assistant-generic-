@@ -89,6 +89,19 @@ describe('built-in templates pass Schedule Review', () => {
     expect(realFindings(t)).toEqual([]);
   });
 
+  it('every skill a built-in template uses names a placeholder role, so no work task is left unstaffed (U13)', async () => {
+    const { SKILL_ROLE, isWorkTask, roleForSkills } = await import('../../services/templates/placeholderRoles');
+    const missing = new Set<string>();
+    for (const t of await new TemplateService().findAll()) {
+      if (!t.isBuiltIn) continue;
+      for (const task of t.tasks) {
+        for (const s of task.skills ?? []) if (!SKILL_ROLE[s]) missing.add(`${t.id}: skill ${s}`);
+        if (isWorkTask(task) && !roleForSkills(task.skills)) missing.add(`${t.id}: "${task.name}" has no role`);
+      }
+    }
+    expect([...missing]).toEqual([]);
+  });
+
   it('no built-in template gets worse than it is today (ratchet — raise as templates are fixed)', () => {
     // Score floors on 2026-10-01, after every template was fixed: links on tasks not phases,
     // every task feeds something (extra predecessors), milestones are zero-day outcomes. What
