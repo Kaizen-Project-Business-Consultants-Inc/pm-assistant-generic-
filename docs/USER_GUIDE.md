@@ -931,7 +931,7 @@ The **Financials** tab within each project provides comprehensive expense tracki
 
 ## 8. Resources
 
-**The people list (October 2026).** Each person is one line: name with their email under it, role in words (*Team member*, not *team_member*), line manager — with a **Default — check** label when it was set to the company owner automatically (click it to confirm or change) —, status, hours per week, rate, what they're booked on, department and skills. **Generic roles** are listed below it in their own table: how many tasks each is on and, for people who see pay, what it costs from — a role priced from the rate card that has no rate there yet says **No rate for this role yet**.
+**The people list (October 2026).** Each person is one line: name with their email under it, role in words (*Team Member*, not *team_member*) with the department under it, line manager — with a **Default — check** label when it was set to the company owner automatically (click it to confirm or change) —, status, hours per week, rate, what they're booked on and skills. **Generic roles** are listed below it in their own table: how many tasks each is on and, for people who see pay, what it costs from — a role priced from the rate card that has no rate there yet says **No rate for this role yet**.
 
 ### Client resource pools (consultant plans and the free trial, October 2026)
 

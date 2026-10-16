@@ -741,13 +741,12 @@ export function ResourceManagementPage() {
                       />
                     </th>
                     <th scope="col" className={TH}>Name</th>
-                    <th scope="col" className={TH}>Role</th>
+                    <th scope="col" className={TH}>Role · department</th>
                     <th scope="col" className={TH}>Line manager</th>
                     <th scope="col" className={TH}>Status</th>
                     <th scope="col" className={`${TH} text-right`}>Hours / week</th>
                     <th scope="col" className={`${TH} text-right`}>Rate</th>
                     <th scope="col" className={TH}>Booked</th>
-                    <th scope="col" className={TH}>Department</th>
                     <th scope="col" className={TH}>Skills</th>
                     <th scope="col" className={TH}><span className="sr-only">Actions</span></th>
                   </tr>
@@ -780,7 +779,10 @@ export function ResourceManagementPage() {
                           </div>
                         </div>
                       </td>
-                      <td className={`${TD} whitespace-nowrap`}>{roleLabel(r.role) || '—'}</td>
+                      <td className={`${TD} whitespace-nowrap`}>
+                        <div>{roleLabel(r.role) || '—'}</div>
+                        {r.resourceGroup && <div className="max-w-[12rem] truncate text-xs text-gray-600 dark:text-gray-400" title={r.resourceGroup}>{r.resourceGroup}</div>}
+                      </td>
                       <td className={`${TD} whitespace-nowrap`}>
                         <span className="inline-flex items-center gap-1.5">
                           <span>{managerName(r.lineManagerUserId) || '—'}</span>
@@ -854,11 +856,6 @@ export function ResourceManagementPage() {
                             </div>
                           );
                         })()}
-                      </td>
-                      <td className={TD}>
-                        {r.resourceGroup ? (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{r.resourceGroup}</span>
-                        ) : <span className="text-gray-300 dark:text-gray-600">--</span>}
                       </td>
                       <td className={TD}>
                         <div className="flex flex-wrap gap-1 max-w-[200px]">
