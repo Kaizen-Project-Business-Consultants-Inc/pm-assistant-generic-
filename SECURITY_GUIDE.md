@@ -465,6 +465,8 @@ Rate limiting operates at two levels:
 
 2. **Global / security middleware** -- The `securityMiddleware` hook runs on every request for additional request-level checks.
 
+**Which address a per-IP limit counts (2026-10-16).** The sign-in, sign-up, verify-email and resend limits count by `request.ip`. Until 2026-10-16 the app had `trustProxy: true`, which takes the LEFT-most `X-Forwarded-For` entry — the one the visitor writes — so sending a different fake header on each try got round the limits (12 wrong passwords, no 429). Now both servers trust only the loopback hop (`src/server/utils/trustProxy.ts`; the MCP server `app.set('trust proxy', 'loopback')`), so the address is the entry nginx on the same machine appended. Every nginx `location` that proxies sends `X-Real-IP` and `X-Forwarded-For` (`deploy/nginx/add-forwarded-headers.py`; the MCP sign-in token, register and revoke locations sent none, so every visitor looked like 127.0.0.1 there). When kovarti.com is proxied through Cloudflare, `/etc/nginx/conf.d/cloudflare-realip.conf` (`deploy/nginx/`) replaces nginx's own visitor address with `CF-Connecting-IP` for requests from Cloudflare's ranges only. Guard: `__tests__/security/trustProxy.test.ts`.
+
 ---
 
 ## 12. Audit Ledger

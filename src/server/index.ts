@@ -15,6 +15,7 @@ import { emailService } from './services/EmailService';
 import { serviceContainer } from './container';
 import { checkTurnstileSecret } from './utils/turnstile';
 import { quietPrematureClose } from './utils/logHooks';
+import { TRUST_PROXY } from './utils/trustProxy';
 
 const fastify = Fastify({
   logger: {
@@ -22,7 +23,7 @@ const fastify = Fastify({
     // "Premature close" (a browser left mid-answer) is info, not error — utils/logHooks.ts
     hooks: { logMethod: quietPrematureClose },
   },
-  trustProxy: true
+  trustProxy: TRUST_PROXY,
 });
 
 async function start() {

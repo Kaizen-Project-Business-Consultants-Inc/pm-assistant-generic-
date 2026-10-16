@@ -63,6 +63,9 @@ export async function mcpProxyRoutes(fastify: FastifyInstance) {
     if (request.headers['authorization']) {
       headers['authorization'] = request.headers['authorization'] as string;
     }
+    // the visitor's address as this server worked it out (utils/trustProxy.ts) — the MCP server
+    // trusts this loopback hop, so its req.ip is the visitor, not 127.0.0.1
+    headers['x-forwarded-for'] = request.ip;
 
     const body = request.body as Buffer | undefined;
     if (body && body.length > 0) {

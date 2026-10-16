@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-16 — Sign-in limits count the real visitor (bot plan step 0)
+- A fake `X-Forwarded-For` got round every per-IP limit (`trustProxy: true` read the visitor's own entry). App and MCP server now trust the loopback hop only (`utils/trustProxy.ts`); nginx sends the visitor address from every proxied location (MCP token/register/revoke sent none) and has Cloudflare's real-IP list ready (`deploy/nginx/`). kovarti.com nameservers moved to Cloudflare the same day, all records DNS-only.
+
 ## 2026-10-16 — Phase 2 step 1: AI inbox + Weekly review agent
 - T093 `ai_suggestions` + `agent_settings`; `services/aiInbox/` (weeklyAgent builders, AiInboxService accept/reject/undo), routes `/api/v1/ai-inbox`, `AiInboxPage`, side-menu count, review card link. Rules only; nothing changes or is sent without the PM; reminders reply-to the PM.
 

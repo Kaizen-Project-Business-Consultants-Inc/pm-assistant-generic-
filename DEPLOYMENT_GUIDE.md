@@ -317,6 +317,12 @@ sudo nginx -t && sudo systemctl reload nginx
 # Uploads: pm-app must set `client_max_body_size 12m;` in the server block that has `location /api/` — the app allows
 # 10 MB files (MAX_UPLOAD_SIZE_MB) and nginx's default is 1 MB, which refused every larger upload
 # with 413 until 2026-10-14. scripts/prod-smoke.cjs fails if a 2 MB body is refused.
+# Visitor address (2026-10-16): every proxied location must send X-Real-IP and X-Forwarded-For —
+#   sudo python3 deploy/nginx/add-forwarded-headers.py /etc/nginx/sites-available/pm-app  (idempotent)
+# Cloudflare (kovarti.com nameservers on Cloudflare since 2026-10-16): /etc/nginx/conf.d/cloudflare-realip.conf
+#   from deploy/nginx/ — refresh its ranges from https://www.cloudflare.com/ips-v4 and /ips-v6.
+#   HARD ORDER: install that file + reload nginx BEFORE switching any record to Proxied (orange).
+#   Without it every visitor arrives from a Cloudflare address and shares one sign-in limit.
 
 # SSL
 sudo certbot renew                    # Auto-renews via cron

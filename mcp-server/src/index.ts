@@ -232,8 +232,9 @@ async function startHttp() {
     next();
   });
 
-  // Trust reverse proxy (LiteSpeed) for X-Forwarded-For
-  app.set('trust proxy', 1);
+  // The visitor's address is the X-Forwarded-For entry nginx (same machine) appended — trust the
+  // loopback hop only, as the app does (src/server/utils/trustProxy.ts)
+  app.set('trust proxy', 'loopback');
 
   // Request logging: the method and path only. Headers, query and body used to be written to the
   // journal — that is every bearer key (Authorization), the sign-in password and the token
