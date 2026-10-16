@@ -1,5 +1,6 @@
+import { randomUUID } from 'crypto';
 import { ProjectTemplate, TemplateTask, CreateFromTemplate, SaveAsTemplate } from '../schemas/templateSchemas';
-import { getTenantContext } from '../middleware/requestContext';
+import { customTemplateRepository } from '../database/CustomTemplateRepository';
 import { STARTER_RAID } from './templates/starterRaid';
 import { projectService } from './ProjectService';
 import { scheduleService } from './ScheduleService';
@@ -496,14 +497,6 @@ const officeRelocationTemplate: ProjectTemplate = {
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
-/** A template as kept: a custom one remembers which company saved it */
-type StoredTemplate = ProjectTemplate & { ownerOrgId?: string | null };
-
-/** The signed-in company (null outside a company — tests, platform tools) */
-function currentOrg(): string | null {
-  return getTenantContext()?.orgId ?? null;
-}
-
 /** A template as served: each work task with the generic role it will be assigned to (U13), from its skills */
 const withPlaceholderRoles = (t: ProjectTemplate): ProjectTemplate => ({
   ...t,
@@ -511,7 +504,8 @@ const withPlaceholderRoles = (t: ProjectTemplate): ProjectTemplate => ({
 });
 
 export class TemplateService {
-  private static templates: StoredTemplate[] = [
+  /** Built-in templates live in the code; a company's own are in its database (T092) */
+  private static templates: ProjectTemplate[] = [
     // Engagement scaffolds first: this is a consultant's product, so these are what the
     // buyer should see at the top of the list.
     ...consultingEngagementTemplates,
@@ -535,24 +529,17 @@ export class TemplateService {
     ].map(t => ({ ...t, raidItems: t.raidItems ?? STARTER_RAID[t.id] })),
   ];
 
-  /** Where a template the current company may see sits in the store (-1 when it can't see it) */
-  private storedIndex(id: string): number {
-    const org = currentOrg();
-    return TemplateService.templates.findIndex(t => t.id === id && (t.isBuiltIn || t.ownerOrgId === org));
+  private builtIn(id: string): ProjectTemplate | undefined {
+    return TemplateService.templates.find(t => t.id === id);
   }
 
   /**
-   * The templates this company may see: every built-in one, and only the custom templates its own
-   * people saved (2026-10-15 — custom templates were shared by every company: anyone could see,
-   * edit or delete another company's, which can carry its clients' details).
+   * The templates this company may see: every built-in one, and the ones its own people saved —
+   * kept in the company's own database, so no other company ever sees them (2026-10-15 they were
+   * one in-memory list for every company) and a restart no longer loses them (2026-10-16).
    */
-  private get templates() {
-    const org = currentOrg();
-    return TemplateService.templates.filter(t => t.isBuiltIn || t.ownerOrgId === org);
-  }
-
   async findAll(projectType?: string, category?: string): Promise<ProjectTemplate[]> {
-    let result = [...this.templates];
+    let result = [...TemplateService.templates, ...await customTemplateRepository.list()];
     if (projectType) {
       result = result.filter(t => t.projectType === projectType);
     }
@@ -568,35 +555,37 @@ export class TemplateService {
   }
 
   async findById(id: string): Promise<ProjectTemplate | null> {
-    const template = this.templates.find(t => t.id === id);
+    const template = this.builtIn(id) ?? await customTemplateRepository.find(id);
     return template ? withPlaceholderRoles(template) : null;
   }
 
   async create(data: Omit<ProjectTemplate, 'id' | 'usageCount'>): Promise<ProjectTemplate> {
-    const template: StoredTemplate = {
+    const template: ProjectTemplate = {
       ...data,
-      id: `tpl-${Math.random().toString(36).substr(2, 9)}`,
+      // what a template is served with is never stored
+      tasks: data.tasks.map(({ placeholderRole: _r, ...task }) => task),
+      // kept for good now (T092): a full random id, never a short one that could repeat
+      id: `tpl-${randomUUID()}`,
+      isBuiltIn: false,
       usageCount: 0,
-      ownerOrgId: currentOrg(),
     };
-    TemplateService.templates.push(template);
+    await customTemplateRepository.insert(template);
     return template;
   }
 
   async update(id: string, data: Partial<Omit<ProjectTemplate, 'id' | 'isBuiltIn'>>): Promise<ProjectTemplate | null> {
-    const index = this.storedIndex(id);
-    if (index === -1) return null;
-    if (TemplateService.templates[index].isBuiltIn) return null; // Cannot edit built-in templates
-    TemplateService.templates[index] = { ...TemplateService.templates[index], ...data };
-    return TemplateService.templates[index];
+    if (this.builtIn(id)) return null; // Cannot edit built-in templates
+    const current = await customTemplateRepository.find(id);
+    if (!current) return null;
+    const updated: ProjectTemplate = { ...current, ...data, id, isBuiltIn: false };
+    if (data.tasks) updated.tasks = data.tasks.map(({ placeholderRole: _r, ...task }) => task);
+    await customTemplateRepository.replace(updated);
+    return updated;
   }
 
   async delete(id: string): Promise<boolean> {
-    const index = this.storedIndex(id);
-    if (index === -1) return false;
-    if (TemplateService.templates[index].isBuiltIn) return false; // Cannot delete built-in templates
-    TemplateService.templates.splice(index, 1);
-    return true;
+    if (this.builtIn(id)) return false; // Cannot delete built-in templates
+    return customTemplateRepository.remove(id);
   }
 
   async applyTemplate(input: {
@@ -617,9 +606,10 @@ export class TemplateService {
     const template = await this.findById(input.templateId);
     if (!template) throw new Error('Template not found');
 
-    // Increment usage count
-    const idx = this.storedIndex(input.templateId);
-    if (idx !== -1) TemplateService.templates[idx].usageCount++;
+    // Count the use (a built-in's count is this server's, a company's own template's is kept)
+    const builtIn = this.builtIn(input.templateId);
+    if (builtIn) builtIn.usageCount++;
+    else await customTemplateRepository.countUse(input.templateId);
 
     // Template offsets and durations are WORKING days. The new project has no calendar
     // of its own yet (it defaults to Mon–Fri), so the project's target finish is counted

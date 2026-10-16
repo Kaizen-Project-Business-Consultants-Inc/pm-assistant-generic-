@@ -621,7 +621,7 @@ On the Trial, Consultant Basic and Consultant Pro plans each client has its own 
 
 ## 14f. Saved project templates are the company's own (2026-10-15)
 
-Custom templates (Save as template, a new template, an imported marketplace template) were kept in one in-memory list for every company: any signed-in user could list, open, edit or delete another company's templates — and a template saved from a project can carry that company's clients' names and task details. Now each custom template remembers the company that saved it (`TemplateService`, `ownerOrgId` from the request's tenant context) and every read, change, delete and apply only sees the company's own plus the built-in templates. Test: `templateCompanyScope.test.ts`. Known limit (unchanged): custom templates are still held in memory, so a server restart clears them — moving them into the company's database is a follow-up.
+Custom templates (Save as template, a new template, an imported marketplace template) were kept in one in-memory list for every company: any signed-in user could list, open, edit or delete another company's templates — and a template saved from a project can carry that company's clients' names and task details. Since 2026-10-16 custom templates are kept in the company's own database (tenant migration T092 `custom_templates`, `CustomTemplateRepository`), so every read, change, delete and apply sees only that company's own plus the built-in templates (in code), and a restart or deploy no longer loses them. Built-in templates can't be changed or deleted. Test: `templateCompanyScope.test.ts`.
 
 ## 15. Stakeholder Portal Access
 

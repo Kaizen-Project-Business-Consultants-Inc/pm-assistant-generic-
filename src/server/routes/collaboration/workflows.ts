@@ -32,7 +32,7 @@ const edgeSchema = z.object({
   sortOrder: z.number().int().optional(),
 });
 
-const createDefinitionSchema = z.object({
+export const createDefinitionSchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().optional(),
   projectId: z.string().optional().nullable(),

@@ -13,7 +13,7 @@ export function registerApprovalTools(server: McpServer) {
     projectId: z.string().describe('Project ID'),
     title: z.string().describe('Change request title'),
     description: z.string().optional().describe('Description of the change'),
-    category: z.string().describe('Category (e.g. scope, schedule, budget, resource, technical, requirement)'),
+    category: z.enum(['scope', 'schedule', 'budget', 'resource', 'other']).describe('Category'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).describe('Priority'),
     impactSummary: z.string().optional().describe('Impact assessment summary'),
   }, async ({ projectId, ...data }, extra) =>
@@ -22,14 +22,15 @@ export function registerApprovalTools(server: McpServer) {
 
   server.tool('submit-for-approval', 'Submit a change request for approval', {
     changeRequestId: z.string().describe('Change request ID'),
-  }, async ({ changeRequestId }, extra) =>
-    jsonResult(await getApiClientFromExtra(extra).post(`/approvals/change-requests/${changeRequestId}/submit`))
+    workflowId: z.string().describe('The approval workflow to send it through (an approval workflow ID of the project)'),
+  }, async ({ changeRequestId, workflowId }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).post(`/approvals/change-requests/${changeRequestId}/submit`, { workflowId }))
   );
 
   server.tool('act-on-approval', 'Approve or reject a change request', {
     changeRequestId: z.string().describe('Change request ID'),
-    action: z.enum(['approve', 'reject']).describe('Action to take'),
-    comments: z.string().optional().describe('Comments'),
+    action: z.enum(['approve', 'reject', 'return']).describe('Action to take (return = send back for changes)'),
+    comment: z.string().optional().describe('Comment'),
   }, async ({ changeRequestId, ...data }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post(`/approvals/change-requests/${changeRequestId}/action`, data))
   );

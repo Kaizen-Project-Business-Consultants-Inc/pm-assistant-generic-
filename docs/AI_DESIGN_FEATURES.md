@@ -572,6 +572,8 @@ Model Context Protocol server for Claude Desktop and Claude Web integration:
 | `search` | Search projects and tasks by keyword |
 | `get-portfolio` | Full portfolio overview |
 
+**Tool bodies match the app (2026-10-16).** A sweep found 13 tools the app refused on every call or that dropped a field (e.g. `apply-template` sent `name` instead of `projectName` and no start date; `log-time` lacked schedule and project; `create-workflow` sent trigger/actions instead of nodes/edges; `act-on-approval` sent `comments` instead of `comment`). All fixed; `src/server/__tests__/mcp/mcpToolBodies.test.ts` runs each tool with sample input and parses the body it sends with the route's own schema.
+
 **Authentication:** API key (stdio transport); OAuth 2.1 with PKCE (HTTP transport)
 **Transport:** stdio (MCP SDK); HTTP reverse proxy via `/mcp` route with OAuth 2.1 authorization server
 

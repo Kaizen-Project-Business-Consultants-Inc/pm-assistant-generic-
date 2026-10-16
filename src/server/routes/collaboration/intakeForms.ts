@@ -27,12 +27,12 @@ const updateFormSchema = createFormSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
 
-const reviewSubmissionSchema = z.object({
+export const reviewSubmissionSchema = z.object({
   status: z.string({ message: 'Choose a review decision (status).' }).min(1, 'Choose a review decision (status).'),
   notes: z.string().max(5000, 'Keep the review notes under 5000 characters.').optional(),
 });
 
-const submitFormSchema = z.object({
+export const submitFormSchema = z.object({
   values: z.record(z.string(), z.unknown(), { message: 'Fill in the form before submitting it (values).' }),
 });
 

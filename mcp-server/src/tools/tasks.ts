@@ -102,6 +102,7 @@ export function registerTaskTools(server: McpServer) {
   );
 
   server.tool('bulk-status-update', 'Batch status change for multiple tasks', {
+    scheduleId: z.string().describe('Schedule ID the tasks are in'),
     taskIds: z.array(z.string()).max(100).describe('Task IDs to update (max 100)'),
     status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).describe('New status'),
   }, async (params, extra) =>

@@ -30,6 +30,19 @@ vi.mock('../../services/ScheduleService', () => ({
 const mockRiskCreate = vi.fn(async (d: any) => ({ id: `raid-${d.title}` }));
 vi.mock('../../services/RiskService', () => ({ riskService: { create: (d: any) => mockRiskCreate(d) } }));
 
+// A company's own templates are kept in its database (T092): an in-memory stand-in here
+const customStore = new Map<string, any>();
+vi.mock('../../database/CustomTemplateRepository', () => ({
+  customTemplateRepository: {
+    list: async () => [...customStore.values()],
+    find: async (id: string) => customStore.get(id) ?? null,
+    insert: async (t: any) => { customStore.set(t.id, t); },
+    replace: async (t: any) => { customStore.set(t.id, t); },
+    remove: async (id: string) => customStore.delete(id),
+    countUse: async (id: string) => { const t = customStore.get(id); if (t) t.usageCount++; },
+  },
+}));
+
 // Placeholder roles (U13) are staffed in one step after the tasks exist
 const mockStaff = vi.fn(async (..._a: any[]) => ({ added: ['Generic role'], reused: [], skipped: [] }));
 vi.mock('../../services/templates/staffPlaceholders', () => ({ staffWithPlaceholders: (...a: any[]) => mockStaff(...a) }));

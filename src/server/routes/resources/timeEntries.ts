@@ -37,7 +37,7 @@ const rejectTimesheetSchema = z.object({
 });
 
 const HOURS_MESSAGE = 'Enter the hours worked — more than 0 and at most 24.';
-const createTimeEntrySchema = z.object({
+export const createTimeEntrySchema = z.object({
   taskId: z.string({ message: 'Choose the task you worked on.' }).min(1, 'Choose the task you worked on.'),
   scheduleId: z.string({ message: "Say which schedule the task is in (scheduleId)." }).min(1, "Say which schedule the task is in (scheduleId)."),
   projectId: z.string({ message: 'Say which project the time is for (projectId).' }).min(1, 'Say which project the time is for (projectId).'),

@@ -45,7 +45,7 @@ export function registerAIInsightTools(server: McpServer) {
 
   server.tool('run-monte-carlo', 'Run Monte Carlo simulation for schedule risk', {
     scheduleId: z.string().describe('Schedule ID'),
-    iterations: z.number().optional().describe('Number of iterations (default 1000)'),
+    iterations: z.number().int().min(100).max(100000).optional().describe('Number of iterations, 100–100,000 (default 10,000)'),
   }, async ({ scheduleId, ...params }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post(`/monte-carlo/${scheduleId}/simulate`, params))
   );
@@ -78,7 +78,7 @@ export function registerAIInsightTools(server: McpServer) {
   server.tool('get-meeting-summary', 'Analyze a meeting transcript to extract summary, action items, decisions, and task suggestions', {
     transcript: z.string().describe('Full meeting transcript text'),
     projectId: z.string().describe('Project ID to associate the analysis with'),
-    scheduleId: z.string().optional().describe('Schedule ID for task creation context'),
+    scheduleId: z.string().describe("The project's schedule ID (for suggested tasks)"),
   }, async ({ transcript, projectId, scheduleId }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post('/meeting-intelligence/analyze', { transcript, projectId, scheduleId }))
   );

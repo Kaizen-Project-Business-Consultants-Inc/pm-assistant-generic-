@@ -5,7 +5,9 @@ import { getApiClientFromExtra, jsonResult } from '../api-client.js';
 export function registerTimeTrackingTools(server: McpServer) {
   server.tool('log-time', 'Log a time entry for a task', {
     taskId: z.string().describe('Task ID'),
-    hours: z.number().describe('Hours worked'),
+    scheduleId: z.string().describe('Schedule ID the task is in'),
+    projectId: z.string().describe('Project ID'),
+    hours: z.number().positive().max(24).describe('Hours worked (more than 0, at most 24)'),
     date: z.string().describe('Date (YYYY-MM-DD)'),
     description: z.string().optional().describe('Description of work done'),
   }, async (params, extra) =>

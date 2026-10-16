@@ -5,7 +5,7 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import logger from '../../utils/logger';
 
-const createIntegrationSchema = z.object({
+export const createIntegrationSchema = z.object({
   provider: z.string().min(1),
   config: z.record(z.string(), z.any()),
   projectId: z.string().optional(),
@@ -20,7 +20,7 @@ const updateIntegrationSchema = z.object({
   projectId: z.string().nullable().optional(),
 });
 
-const syncIntegrationSchema = z.object({
+export const syncIntegrationSchema = z.object({
   direction: z.enum(['push', 'pull']),
 });
 

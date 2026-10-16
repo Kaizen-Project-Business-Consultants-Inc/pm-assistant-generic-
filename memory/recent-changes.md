@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-16 — Saved templates kept; Claude connection tools fixed
+- Custom templates now live in each company's database (T092 `custom_templates`, `CustomTemplateRepository`) — they were in server memory and vanished on every restart/deploy.
+- 13 MCP tools sent bodies the app refused (apply-template, submit-for-approval, act-on-approval, create-change-request, get-meeting-summary, run-monte-carlo, set-custom-field-values, submit-intake-form, review-submission, create-integration, sync-integration, bulk-status-update, log-time, create-workflow); fixed + guard `mcp/mcpToolBodies.test.ts`.
+
 ## 2026-10-16 — Batch F: new look on the rest of the app, Settings list, archived rows (U2/U9/U1)
 - Shared `SectionCard` + `TH`/`TD`; Projects Cards/List switch + `ArchivedProjectsList` (folded, 25/page, Restore); Settings grouped left list + plain names (AI assistant, Connections & API keys, Can read/Can change, webhook events in words, Precise ↔ Creative); Resources people + generic-role tables restyled (`roleLabel`, cost source); Change Requests, Lessons, Portfolio, Clients, client RAID restyled.
 

@@ -11,7 +11,7 @@ export function registerIntakeTools(server: McpServer) {
     formId: z.string().describe('Form ID'),
     data: z.record(z.unknown()).describe('Form field values as key-value pairs'),
   }, async ({ formId, data }, extra) =>
-    jsonResult(await getApiClientFromExtra(extra).post(`/intake/forms/${formId}/submit`, data))
+    jsonResult(await getApiClientFromExtra(extra).post(`/intake/forms/${formId}/submit`, { values: data }))
   );
 
   server.tool('list-intake-submissions', 'List intake form submissions', {}, async (_args, extra) =>
@@ -20,8 +20,8 @@ export function registerIntakeTools(server: McpServer) {
 
   server.tool('review-submission', 'Review an intake form submission', {
     submissionId: z.string().describe('Submission ID'),
-    action: z.enum(['approve', 'reject']).describe('Review action'),
-    comments: z.string().optional().describe('Review comments'),
+    status: z.enum(['approved', 'rejected', 'under_review']).describe('Review decision'),
+    notes: z.string().optional().describe('Review notes'),
   }, async ({ submissionId, ...data }, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post(`/intake/submissions/${submissionId}/review`, data))
   );

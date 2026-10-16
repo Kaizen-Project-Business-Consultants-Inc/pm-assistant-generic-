@@ -28,8 +28,15 @@ export function registerCustomFieldTools(server: McpServer) {
   server.tool('set-custom-field-values', 'Set custom field values on an entity', {
     entityType: z.string().describe('Entity type (e.g. "task", "project")'),
     entityId: z.string().describe('Entity ID'),
-    values: z.record(z.unknown()).describe('Field values as key-value pairs'),
-  }, async ({ entityType, entityId, values }, extra) =>
-    jsonResult(await getApiClientFromExtra(extra).post(`/custom-fields/values/${entityType}/${entityId}`, { values }))
+    projectId: z.string().optional().describe('Project ID (for a task or project field)'),
+    values: z.array(z.object({
+      fieldId: z.string().describe('Custom field ID (from list-custom-fields)'),
+      text: z.string().optional(),
+      number: z.number().optional(),
+      date: z.string().optional().describe('YYYY-MM-DD'),
+      boolean: z.boolean().optional(),
+    })).describe('One entry per field, with the value in the slot that matches the field type'),
+  }, async ({ entityType, entityId, ...body }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).post(`/custom-fields/values/${entityType}/${entityId}`, body))
   );
 }

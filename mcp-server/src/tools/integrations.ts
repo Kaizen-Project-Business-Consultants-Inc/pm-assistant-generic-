@@ -8,17 +8,18 @@ export function registerIntegrationTools(server: McpServer) {
   );
 
   server.tool('create-integration', 'Create a new integration', {
-    type: z.string().describe('Integration type (e.g. jira, github, slack)'),
-    name: z.string().describe('Integration name'),
+    provider: z.string().describe('Integration type (e.g. jira, github, slack)'),
     config: z.record(z.unknown()).describe('Integration configuration'),
+    projectId: z.string().optional().describe('Limit it to one project (leave out for all projects)'),
   }, async (params, extra) =>
     jsonResult(await getApiClientFromExtra(extra).post('/integrations', params))
   );
 
   server.tool('sync-integration', 'Trigger a sync for an integration', {
     integrationId: z.string().describe('Integration ID'),
-  }, async ({ integrationId }, extra) =>
-    jsonResult(await getApiClientFromExtra(extra).post(`/integrations/${integrationId}/sync`))
+    direction: z.enum(['push', 'pull']).describe('push = send Kovarti changes out; pull = bring the other system\'s changes in'),
+  }, async ({ integrationId, direction }, extra) =>
+    jsonResult(await getApiClientFromExtra(extra).post(`/integrations/${integrationId}/sync`, { direction }))
   );
 
   server.tool('send-slack-message', 'Send a message to all Slack channels configured for a project', {

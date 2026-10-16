@@ -257,7 +257,7 @@ export const bulkUpdateSchema = z.object({
       { message: 'Each task may appear only once in a bulk edit — combine its changes into one entry.' }),
 });
 
-const bulkStatusSchema = z.object({
+export const bulkStatusSchema = z.object({
   scheduleId: z.string().min(1),
   taskIds: z.array(z.string().min(1)).min(1).max(MAX_BULK),
   status: z.string().min(1),

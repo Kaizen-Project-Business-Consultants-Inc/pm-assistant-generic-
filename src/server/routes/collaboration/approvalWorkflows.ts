@@ -31,7 +31,7 @@ const updateWorkflowSchema = createWorkflowSchema.partial();
 
 const VALID_CATEGORIES = ['scope', 'schedule', 'budget', 'resource', 'other'] as const;
 
-const createChangeRequestSchema = z.object({
+export const createChangeRequestSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).optional(),
   category: z.enum(VALID_CATEGORIES),
@@ -41,11 +41,11 @@ const createChangeRequestSchema = z.object({
 
 const updateChangeRequestSchema = createChangeRequestSchema.partial();
 
-const submitForApprovalSchema = z.object({
+export const submitForApprovalSchema = z.object({
   workflowId: z.string().min(1),
 });
 
-const actOnStepSchema = z.object({
+export const actOnStepSchema = z.object({
   action: z.enum(['approve', 'reject', 'return', 'approved', 'rejected', 'returned']),
   comment: z.string().max(2000).optional(),
 });

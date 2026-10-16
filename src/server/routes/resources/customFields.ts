@@ -9,7 +9,7 @@ import { checkEntityProjectAccess } from '../../middleware/checkEntityProjectAcc
 import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 
-const bulkValuesSchema = z.object({
+export const bulkValuesSchema = z.object({
   projectId: z.string().optional(),
   values: z.array(z.object({
     fieldId: z.string({ message: 'Each value must say which custom field it is for (fieldId).' })
