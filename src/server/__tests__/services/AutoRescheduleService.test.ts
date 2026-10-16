@@ -152,6 +152,7 @@ function makeTask(id: string, name: string, opts: {
   priority?: string;
   dependency?: string | null;
   estimatedDays?: number;
+  isSummary?: boolean;
 } = {}): Task {
   return {
     id,
@@ -166,6 +167,7 @@ function makeTask(id: string, name: string, opts: {
     dependencies: opts.dependencies ?? [],
     dependency: opts.dependency ?? null,
     estimatedDays: opts.estimatedDays ?? undefined,
+    isSummary: opts.isSummary ?? false,
   } as Task;
 }
 
@@ -619,6 +621,31 @@ describe('AutoRescheduleService', () => {
       const depChange = proposal.proposedChanges.find(c => c.taskId === 't2');
       expect(depChange).toBeDefined();
       expect(depChange!.reason).toContain('dependency');
+    });
+
+    it('a task that is late itself AND linked after a late task has ONE row (the later dates); phases are never moved', async () => {
+      // 2026-10-16: the AI inbox showed "Architecture Design" twice with different dates, and the phase rows too
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(60) });
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('phase', 'Design', { startDate: daysAgo(20), endDate: daysAgo(2), progressPercentage: 0, isSummary: true }),
+        makeTask('t1', 'Requirements', { startDate: daysAgo(20), endDate: daysAgo(10), progressPercentage: 0 }),
+        makeTask('t2', 'Architecture', {
+          startDate: daysAgo(9), endDate: daysAgo(2), progressPercentage: 0,
+          dependencies: [{ dependencyId: 't1', dependencyType: 'FS', lagDays: 0 }],
+        }),
+        // and the task after it still moves (the merged row's finish carries on down the chain)
+        makeTask('t3', 'Build', {
+          startDate: daysFromNow(1), endDate: daysFromNow(10), progressPercentage: 0,
+          dependencies: [{ dependencyId: 't2', dependencyType: 'FS', lagDays: 0 }],
+        }),
+      ]);
+      const proposal = await service.generateProposal('sch-1');
+      const ids = proposal.proposedChanges.map(c => c.taskId);
+      expect(ids).toContain('t3');
+      expect(ids.filter(id => id === 't2')).toHaveLength(1);
+      expect(ids).not.toContain('phase');
+      const t2 = proposal.proposedChanges.find(c => c.taskId === 't2')!;
+      expect(t2.proposedEndDate > t2.currentEndDate).toBe(true);
     });
 
     it('moves dates in working days: never onto a weekend, dependents keep their working-day length and lag', async () => {

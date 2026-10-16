@@ -352,17 +352,27 @@ Please propose date changes to reschedule affected tasks with minimal disruption
         }
       }
 
+      // a task moved twice (late itself and after another late task) keeps one row: the later finish
+      const rowOf = new Map<string, ProposedChange>();
       for (const delayed of delayedTasks) {
         const task = taskById.get(delayed.taskId);
-        if (!task || !task.startDate || !task.endDate) continue;
+        // a phase rolls up from its tasks when the plan is recalculated — never moved by hand
+        if (!task || task.isSummary || !task.startDate || !task.endDate) continue;
 
         const currentStart = toDateStr(new Date(task.startDate));
         const currentEnd = toDateStr(new Date(task.endDate));
         // The finish moves out by the delay, in working days
         const newEndDate = shiftWorking(utcDay(task.endDate), delayed.delayDays, isWorking);
 
+        // the finish its dependents follow: the later of this delay and an earlier push (one row per task)
+        let effEnd = newEndDate;
+        const already = rowOf.get(task.id);
+        if (already) {
+          if (toDateStr(newEndDate) > already.proposedEndDate) already.proposedEndDate = toDateStr(newEndDate);
+          effEnd = utcDay(already.proposedEndDate);
+        } else {
         proposedIds.add(task.id);
-        proposedChanges.push({
+        const row: ProposedChange = {
           taskId: task.id,
           taskName: task.name,
           currentStartDate: currentStart,
@@ -370,12 +380,15 @@ Please propose date changes to reschedule affected tasks with minimal disruption
           proposedStartDate: currentStart,
           proposedEndDate: toDateStr(newEndDate),
           reason: `Task is ${delayed.delayDays} working days behind schedule (${delayed.currentProgress}% complete vs expected progress). Extending end date to accommodate current velocity.`,
-        });
+        };
+        rowOf.set(task.id, row);
+        proposedChanges.push(row);
+        }
 
         // Also shift dependent tasks
         const dependents = dependentsOf.get(task.id) ?? [];
         for (const dep of dependents) {
-          if (!dep.startDate || !dep.endDate) continue;
+          if (!dep.startDate || !dep.endDate || dep.isSummary) continue;
           if (dep.status === 'completed' || dep.status === 'cancelled') continue;
 
           const depCurrentStart = utcDay(dep.startDate);
@@ -386,13 +399,19 @@ Please propose date changes to reschedule affected tasks with minimal disruption
           const lag = dep.dependencies.find(d => d.dependencyId === task.id)?.lagDays ?? 0;
 
           // New start: the working day after the delayed task's new finish (plus lag)
-          const depNewStart = onOrAfterWorking(shiftWorking(newEndDate, lag + 1, isWorking), isWorking);
+          const depNewStart = onOrAfterWorking(shiftWorking(effEnd, lag + 1, isWorking), isWorking);
           const depNewEnd = shiftWorking(depNewStart, depDuration, isWorking);
 
-          // Only push later, and only once
+          // Only push later; a task already moved keeps one row, now the later of the two
+          const moved = rowOf.get(dep.id);
+          if (moved && depNewStart > depCurrentStart) {
+            if (toDateStr(depNewStart) > moved.proposedStartDate) moved.proposedStartDate = toDateStr(depNewStart);
+            if (toDateStr(depNewEnd) > moved.proposedEndDate) moved.proposedEndDate = toDateStr(depNewEnd);
+            continue;
+          }
           if (depNewStart > depCurrentStart && !proposedIds.has(dep.id)) {
             proposedIds.add(dep.id);
-            proposedChanges.push({
+            const depRow: ProposedChange = {
               taskId: dep.id,
               taskName: dep.name,
               currentStartDate: toDateStr(depCurrentStart),
@@ -400,7 +419,9 @@ Please propose date changes to reschedule affected tasks with minimal disruption
               proposedStartDate: toDateStr(depNewStart),
               proposedEndDate: toDateStr(depNewEnd),
               reason: `Shifted due to delay in dependency "${task.name}".`,
-            });
+            };
+            rowOf.set(dep.id, depRow);
+            proposedChanges.push(depRow);
           }
         }
       }
@@ -414,8 +435,10 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       // In working days from the project calendar
       const daysChange = workingDaysAfter(utcDay(originalEndDate), latestProposedEnd, isWorking);
 
-      rationale = delayedTasks.length > 0
-        ? `Detected ${delayedTasks.length} delayed task(s). Proposed date adjustments extend delayed tasks to match current velocity and shift dependent tasks accordingly.`
+      // phases are rolled up, not counted
+      const lateTasks = delayedTasks.filter(d => !taskById.get(d.taskId)?.isSummary).length;
+      rationale = lateTasks > 0
+        ? `Detected ${lateTasks} delayed task(s). Proposed date adjustments extend delayed tasks to match current velocity and shift dependent tasks accordingly.`
         : 'No delays detected. Schedule is on track.';
 
       estimatedImpact = {
