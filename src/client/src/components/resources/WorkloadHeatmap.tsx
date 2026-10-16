@@ -1,6 +1,7 @@
 import { Avatar } from '../ui/Avatar';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { getHeatColor, getAvgTextColor } from './workloadHeatColors';
+import { roleLabel } from '../../constants/branding';
 // WorkloadHeatmap component
 
 interface WeeklyUtilization {
@@ -182,7 +183,7 @@ export function WorkloadHeatmap({ workload, resources }: WorkloadHeatmapProps) {
                     <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">Inactive</span>
                   )}
                 </div>
-                <div className="text-xs text-gray-500">{res.role}</div>
+                <div className="text-xs text-gray-500">{roleLabel(res.role)}</div>
               </div>
               <div className="text-right flex-shrink-0">
                 <div className="text-xs text-gray-500 dark:text-gray-400">{res.capacityHoursPerWeek}h/week</div>

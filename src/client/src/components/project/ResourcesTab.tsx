@@ -11,6 +11,7 @@ import { UtilizationTrendChart } from '../resources/UtilizationTrendChart';
 import { ResourceImportModal } from '../resources/ResourceImportModal';
 import { ResourceProfileModal } from '../resources/ResourceProfileModal';
 import { RoleCapacityView } from '../resources/RoleCapacityView';
+import { roleLabel } from '../../constants/branding';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -541,7 +542,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
                           {r.name}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.role}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{roleLabel(r.role)}</td>
                       <td className="px-4 py-3">
                         {r.resourceGroup ? (
                           <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{r.resourceGroup}</span>
@@ -891,7 +892,7 @@ export function ResourcesTab({ projectId }: { projectId: string }) {
               className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select a resource...</option>
-              {resources.map(r => <option key={r.id} value={r.id}>{r.name} — {r.role}</option>)}
+              {resources.map(r => <option key={r.id} value={r.id}>{r.name} — {roleLabel(r.role)}</option>)}
             </select>
           </div>
           {trendResourceId ? (

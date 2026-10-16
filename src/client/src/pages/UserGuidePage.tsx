@@ -135,6 +135,7 @@ const sections: Section[] = [
     items: [
       'Pick the client when you create a project, or later in the project’s Edit (Client)',
       'The Projects page groups projects by client and can filter by client',
+      'Cards / List switch on the Projects page; Show archived lists archived projects as compact rows below the active ones, with Open and Restore',
       'Risks & issues for a client: every open risk and issue across its projects in one read-only list — open an item to change it in its project. Only projects you can open are included',
       'Client report: one report across the client’s projects — save it as PDF or Word, or email it to the client',
       'Clients are added by the company owner, PMOs and project managers (Clients page → Manage clients); they can also email the client report',
@@ -595,7 +596,7 @@ const sections: Section[] = [
     description:
       'Manage your profile, notification preferences, display options, API keys, and webhooks.',
     items: [
-      'You see only the tabs for your role (up to 13)',
+      'Sections are listed down the left in groups: You, Company, Advanced, and Danger zone at the bottom; you see only the ones for your role (up to 13)',
       'Profile tab: update your display name, email, and password — a new email needs your current password',
       'Team tab: the company owner invites members, changes roles and removes members; the owner and project managers invite guests and viewers',
       'Company holidays tab: everyone sees the list; the owner or a PMO changes it',
@@ -605,10 +606,10 @@ const sections: Section[] = [
       'Notifications tab: which email and in-app notifications you get, and your digest; the digest send hour is in your own time zone',
       'Display tab: dark mode, language, time zone and interface preferences',
       'Accessibility tab: your own accessibility preferences',
-      'AI Context tab: how Mjuzi answers you; everyone saves their own AI Preferences',
-      'API Keys tab: PMs, PMOs and the owner create keys; everyone sees and can revoke their own keys (e.g. a Claude connection)',
-      'Webhooks tab (roles that may change data, e.g. PMs, PMOs and the owner): register webhook URLs to receive real-time event notifications',
-      'Danger Zone: delete your account (irreversible)',
+      'AI assistant (was AI Context): how Mjuzi answers you, including Answers: Precise ↔ Creative; everyone saves their own',
+      'Connections & API keys: PMs, PMOs and the owner create keys that Can read or also Can change; everyone sees and can revoke their own keys (e.g. a Claude connection)',
+      'Webhooks (roles that may change data, e.g. PMs, PMOs and the owner): register a URL and tick when to send, in plain words ("A change request is approved")',
+      'Danger zone: delete your account (irreversible)',
     ],
   },
   {
@@ -618,7 +619,7 @@ const sections: Section[] = [
     description:
       'Create API keys so external AI agents or scripts can authenticate and interact with the application programmatically.',
     items: [
-      'Project managers, PMOs and the company owner (free trial and paid plans): Settings → API Keys → create a key with read or read + write rights',
+      'Project managers, PMOs and the company owner (free trial and paid plans): Settings → Connections & API keys → create a key that Can read, or Can read and Can change',
       'A key can never do more than your own role, and changes only projects you manage; "admin" is for the Kovarti platform team only and is refused',
       'Team members, viewers and executives can\'t create keys or webhooks; connecting Claude gives them read-only access',
       'The full API key (kpm_...) is shown only once — copy it immediately',

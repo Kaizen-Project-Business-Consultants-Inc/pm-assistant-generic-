@@ -5,6 +5,7 @@ import { AccessibleModal } from '../ui/AccessibleModal';
 import { apiService } from '../../services/api';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import type { PlannerBlock, PlannerPerson } from '../../types/teamPlanner';
+import { roleLabel } from '../../constants/branding';
 
 const day = (d: string | null | undefined) => (d ? formatCalendarDate(d, { day: 'numeric', month: 'short' }) : '—');
 const money = (n: number) => `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -64,7 +65,7 @@ export function PlannerMoveDialog({ block, people, initialTo, initialWeeks, onCl
             <span className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Person</span>
             <select value={toId} onChange={e => setToId(e.target.value)} className="w-full h-10 px-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
               {block.resourceId ? <option value={block.resourceId}>Keep {people.find(p => p.id === block.resourceId)?.name ?? 'as is'}</option> : <option value="">No one yet — pick a person</option>}
-              {candidates.map(p => <option key={p.id} value={p.id}>{p.name}{p.role ? ` (${p.role})` : ''}</option>)}
+              {candidates.map(p => <option key={p.id} value={p.id}>{p.name}{p.role ? ` (${roleLabel(p.role)})` : ''}</option>)}
             </select>
           </label>
           {block.started ? (

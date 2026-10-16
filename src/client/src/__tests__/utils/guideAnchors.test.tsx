@@ -81,7 +81,7 @@ describe('docs/USER_GUIDE.md links (in-app reader /help/guide)', () => {
  * everyone uses (their own settings) are never hidden from them.
  */
 const READER_ROLES = ['admin', 'pmo', 'project_manager', 'executive', 'team_member', 'viewer'];
-const EVERYONE_SEES = ['settings', 'ai-context-settings', 'viewer-invites', 'reversing-a-decision-project-manager-or-owner-and-pmo'];
+const EVERYONE_SEES = ['settings', 'ai-assistant-settings', 'viewer-invites', 'reversing-a-decision-project-manager-or-owner-and-pmo'];
 
 describe('docs/USER_GUIDE.md as each role reads it', () => {
   it.each(READER_ROLES)('every link a %s can see lands', role => {

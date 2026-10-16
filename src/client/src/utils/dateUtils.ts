@@ -37,6 +37,23 @@ export function formatCalendarDate(
 }
 
 /**
+ * The day a real moment fell on, in the viewer's own zone (e.g. when a project was archived).
+ * The server sends DATETIME columns as "YYYY-MM-DD HH:mm:ss" in UTC with no zone, which a
+ * browser would read as local time; this reads it as UTC first, so an evening archive in
+ * Toronto shows that evening's date, not tomorrow's.
+ */
+export function formatMomentDay(
+  value: string | null | undefined,
+  options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' },
+  locale = 'en-US',
+): string {
+  if (!value) return '';
+  const iso = /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}$/.test(value) ? `${value.replace(' ', 'T')}Z` : value;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(locale, options);
+}
+
+/**
  * Parse a stored calendar date into a Date at LOCAL midnight, so local getters
  * (`getDay`, `getDate`) report the day that was actually stored. Returns null for
  * anything unparseable rather than an Invalid Date.

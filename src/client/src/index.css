@@ -131,6 +131,13 @@
   }
 }
 
+/* New-look table cells (U2, Batch F): in the components layer, so a page's own utility classes
+   (a colour, a size, text-right) always win over these defaults. Used through SectionCard's TH / TD. */
+@layer components {
+  .nl-th { @apply px-4 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300 whitespace-nowrap border-b border-gray-200 dark:border-gray-700; }
+  .nl-td { @apply px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200 border-b border-gray-100 dark:border-gray-700/70 align-middle; }
+}
+
 @layer components {
   /* A document that stays light in dark mode (the client report preview: it is what the client
      gets by email and PDF). Its inline colours are kept; text without one is dark, and the

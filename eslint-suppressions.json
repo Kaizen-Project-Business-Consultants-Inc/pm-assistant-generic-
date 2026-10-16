@@ -1467,9 +1467,6 @@
   "src/client/src/pages/settings/ApiKeysTab.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
-    },
-    "jsx-a11y/label-has-associated-control": {
-      "count": 1
     }
   },
   "src/client/src/pages/settings/HolidaysTab.tsx": {
@@ -1500,9 +1497,6 @@
   "src/client/src/pages/settings/WebhooksTab.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
-    },
-    "jsx-a11y/label-has-associated-control": {
-      "count": 1
     }
   },
   "src/client/src/services/api.ts": {

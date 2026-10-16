@@ -10,7 +10,11 @@ import { ResourceRequestApprovalPanel } from '../components/resources/ResourceRe
 import { TeamPlanner } from '../components/resources/TeamPlanner';
 import { useCanManagePeople } from '../hooks/useCanManagePeople';
 import { useAuthStore } from '../stores/authStore';
-import { canSeePayRates } from '../utils/rateCard';
+import { canSeePayRates, cardRateOn, todayYmd } from '../utils/rateCard';
+import { roleLabel } from '../constants/branding';
+import { SectionCard, TH, TD } from '../components/ui/SectionCard';
+import { MetaPill } from '../components/ui/MetaPill';
+import { Avatar } from '../components/ui/Avatar';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -142,6 +146,10 @@ export function ResourceManagementPage() {
   const poolClient = pool === MY_RESOURCES ? null : clients.find(c => c.id === pool) ?? null;
   /** The pool a new person joins, and whose rate card applies: a client's id, or null / '' = My resources */
   const poolClientId = pools && poolClient ? poolClient.id : null;
+  // the pool's rate card: what a generic role on the rate card costs (the same query the person form uses)
+  const { data: rateCard } = useQuery({
+    queryKey: ['rate-card', poolClientId ?? ''], queryFn: () => apiService.getRateCard(poolClientId ?? ''), enabled: seesPay, retry: false,
+  });
   const [showResourceForm, setShowResourceForm] = useState(false);
   // Generic roles ("Generic Developer") have their own small form: a name and a role, no email
   const [genericForm, setGenericForm] = useState<{ id?: string; name: string; role: string } | null>(null);
@@ -702,7 +710,7 @@ export function ResourceManagementPage() {
           )}
 
           {/* Resource list */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <SectionCard flush aria-label="People">
             {resourcesLoading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
@@ -716,8 +724,8 @@ export function ResourceManagementPage() {
               <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-700">
-                    <th className="w-10 px-4 py-3">
+                  <tr>
+                    <th scope="col" className={`${TH} w-10`}>
                       <input
                         type="checkbox"
                         checked={filteredResources.length > 0 && filteredResources.every(r => selectedIds.has(r.id))}
@@ -732,23 +740,22 @@ export function ResourceManagementPage() {
                         className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                       />
                     </th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Name</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Role</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Department</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Skills</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Line manager</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Allocations</th>
-                    <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
-                    <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Hours/Wk</th>
-                    <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Actions</th>
+                    <th scope="col" className={TH}>Name</th>
+                    <th scope="col" className={TH}>Role</th>
+                    <th scope="col" className={TH}>Line manager</th>
+                    <th scope="col" className={TH}>Status</th>
+                    <th scope="col" className={`${TH} text-right`}>Hours / week</th>
+                    <th scope="col" className={`${TH} text-right`}>Rate</th>
+                    <th scope="col" className={TH}>Booked</th>
+                    <th scope="col" className={TH}>Department</th>
+                    <th scope="col" className={TH}>Skills</th>
+                    <th scope="col" className={TH}><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredResources.map(r => (
-                    <tr key={r.id} className={`border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 ${selectedIds.has(r.id) ? 'bg-primary-50 dark:bg-primary-900/20' : ''}`}>
-                      <td className="w-10 px-4 py-3">
+                    <tr key={r.id} className={`hover:bg-gray-50 dark:hover:bg-gray-700/40 ${selectedIds.has(r.id) ? 'bg-primary-50 dark:bg-primary-900/20' : ''}`}>
+                      <td className={`${TD} w-10`}>
                         <input
                           type="checkbox"
                           checked={selectedIds.has(r.id)}
@@ -761,61 +768,32 @@ export function ResourceManagementPage() {
                           className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                         />
                       </td>
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{r.name}</td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{r.role}</td>
-                      <td className="px-4 py-3">
-                        {r.resourceGroup ? (
-                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{r.resourceGroup}</span>
-                        ) : <span className="text-gray-300 dark:text-gray-600">--</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {(r.skills || []).slice(0, 4).map((s, i) => (
-                            <span key={i} className="inline-block px-1.5 py-0.5 rounded text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300" title={`${s.name} (${PROFICIENCY_LABELS[s.level] || s.level})`}>
-                              {s.name}
-                              <span className="ml-0.5 opacity-60">{s.level}</span>
-                            </span>
-                          ))}
-                          {(r.skills || []).length > 4 && <span className="text-xs text-gray-500">+{(r.skills || []).length - 4}</span>}
+                      <td className={TD}>
+                        <div className="flex items-center gap-2.5 min-w-[200px]">
+                          <Avatar name={r.name} size="sm" />
+                          <div className="min-w-0">
+                            <div className="font-semibold text-gray-900 dark:text-white">{r.name}</div>
+                            <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                              <span>{r.email}</span>
+                              {isPlaceholderEmail(r.email) && <PlaceholderEmailBadge />}
+                            </div>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <span>{r.email}</span>
-                          {isPlaceholderEmail(r.email) && <PlaceholderEmailBadge />}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                        <div className="flex flex-wrap items-center gap-1.5">
+                      <td className={`${TD} whitespace-nowrap`}>{roleLabel(r.role) || '—'}</td>
+                      <td className={`${TD} whitespace-nowrap`}>
+                        <span className="inline-flex items-center gap-1.5">
                           <span>{managerName(r.lineManagerUserId) || '—'}</span>
                           {r.lineManagerIsDefault && (
                             canManagePeople
-                              ? <button onClick={() => openEdit(r)} className="inline-flex items-center rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-500/70 dark:bg-amber-900/30 dark:text-amber-200" title="Given the company owner automatically. Open to confirm or change.">Set by default — check</button>
-                              : <span className="inline-flex items-center rounded-full border border-amber-500 bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:border-amber-500/70 dark:bg-amber-900/30 dark:text-amber-200">Set by default</span>
+                              ? <button type="button" onClick={() => openEdit(r)} className="rounded-md hover:ring-2 hover:ring-amber-300" title="Given the company owner automatically. Open to confirm or change."><MetaPill variant="warning">Default — check</MetaPill></button>
+                              : <MetaPill variant="warning">Default</MetaPill>
                           )}
-                        </div>
+                        </span>
                       </td>
-                      <td className="px-4 py-3">
-                        {(() => {
-                          const allocs = allocationsMap[r.id];
-                          if (!allocs || allocs.length === 0) return <span className="text-gray-300 dark:text-gray-600">--</span>;
-                          const totalHours = allocs.reduce((s, a) => s + a.totalHoursPlanned, 0);
-                          return (
-                            <div className="flex flex-wrap gap-1 items-center max-w-[260px]">
-                              {allocs.slice(0, 3).map((a, i) => (
-                                <span key={i} className="inline-block px-1.5 py-0.5 rounded text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 whitespace-nowrap" title={`${a.projectName} — ${a.scheduleName}: ${a.taskCount} tasks, ${a.totalHoursPlanned}h`}>
-                                  {a.projectName.length > 15 ? a.projectName.slice(0, 15) + '...' : a.projectName} {a.totalHoursPlanned}h
-                                </span>
-                              ))}
-                              {allocs.length > 3 && <span className="text-xs text-gray-500">+{allocs.length - 3}</span>}
-                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">{totalHours}/{r.capacityHoursPerWeek || 40}h</span>
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className={`${TD} whitespace-nowrap`}>
                         {r.userId ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Confirmed</span>
+                          <MetaPill variant="success">Confirmed</MetaPill>
                         ) : r.email && inviteStatusMap[r.email.toLowerCase()] ? (
                           (() => {
                             const inv = inviteStatusMap[r.email.toLowerCase()];
@@ -823,9 +801,9 @@ export function ResourceManagementPage() {
                             return (
                               <div className="inline-flex items-center gap-1.5">
                                 {inv.status === 'pending' ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">Pending</span>
+                                  <MetaPill variant="warning">Pending</MetaPill>
                                 ) : inv.status === 'expired' ? (
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">Expired</span>
+                                  <MetaPill variant="danger">Expired</MetaPill>
                                 ) : null}
                                 {(inv.status === 'pending' || inv.status === 'expired') && (
                                   <button
@@ -857,9 +835,43 @@ export function ResourceManagementPage() {
                           </button>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.capacityHoursPerWeek || 40}</td>
-                      <td className="px-4 py-3 text-center text-gray-600 dark:text-gray-400">{r.useRateCard ? 'Rate card' : r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '--'}</td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`${TD} text-right tabular-nums`}>{r.capacityHoursPerWeek || 40}</td>
+                      <td className={`${TD} text-right whitespace-nowrap tabular-nums`}>{r.useRateCard ? 'Rate card' : r.costRateHourly != null ? `$${r.costRateHourly.toFixed(2)}` : '—'}</td>
+                      <td className={TD}>
+                        {(() => {
+                          const allocs = allocationsMap[r.id];
+                          if (!allocs || allocs.length === 0) return <span className="text-gray-300 dark:text-gray-600">--</span>;
+                          const totalHours = allocs.reduce((s, a) => s + a.totalHoursPlanned, 0);
+                          return (
+                            <div className="flex flex-wrap gap-1 items-center max-w-[260px]">
+                              {allocs.slice(0, 3).map((a, i) => (
+                                <span key={i} className="inline-block px-1.5 py-0.5 rounded text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 whitespace-nowrap" title={`${a.projectName} — ${a.scheduleName}: ${a.taskCount} tasks, ${a.totalHoursPlanned}h`}>
+                                  {a.projectName.length > 15 ? a.projectName.slice(0, 15) + '...' : a.projectName} {a.totalHoursPlanned}h
+                                </span>
+                              ))}
+                              {allocs.length > 3 && <span className="text-xs text-gray-500">+{allocs.length - 3}</span>}
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">{totalHours}/{r.capacityHoursPerWeek || 40}h</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className={TD}>
+                        {r.resourceGroup ? (
+                          <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{r.resourceGroup}</span>
+                        ) : <span className="text-gray-300 dark:text-gray-600">--</span>}
+                      </td>
+                      <td className={TD}>
+                        <div className="flex flex-wrap gap-1 max-w-[200px]">
+                          {(r.skills || []).slice(0, 4).map((s, i) => (
+                            <span key={i} className="inline-block px-1.5 py-0.5 rounded text-xs bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300" title={`${s.name} (${PROFICIENCY_LABELS[s.level] || s.level})`}>
+                              {s.name}
+                              <span className="ml-0.5 opacity-60">{s.level}</span>
+                            </span>
+                          ))}
+                          {(r.skills || []).length > 4 && <span className="text-xs text-gray-500">+{(r.skills || []).length - 4}</span>}
+                        </div>
+                      </td>
+                      <td className={`${TD} text-right`}>
                         {canChange && <div className="flex items-center justify-end gap-1">
                           <button onClick={() => openEdit(r)} className="p-1.5 rounded text-gray-500 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Edit resource"><Edit2 className="w-3.5 h-3.5" /></button>
                           {/* removing someone who signs in is the owner's or a PMO's call; the owner's own record never */}
@@ -877,14 +889,15 @@ export function ResourceManagementPage() {
               </table>
               </div>
             )}
-          </div>
+          </SectionCard>
 
           {/* Generic roles — stand-ins for work not yet staffed: no email, no login, never on a Team list */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <h2 className="text-sm font-bold text-gray-900 dark:text-white">Generic roles</h2>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Stand-ins for work you haven't staffed yet. No email, no login, never on a Team list — replace them with real people from a project's Team tab.</p>
-            </div>
+          <SectionCard
+            tone="gray"
+            flush
+            title={`Generic roles (${genericResources.length})`}
+            subtitle="Stand-ins for work nobody has yet. Templates add the ones they need. No email, no login, never on a Team list — replace them with real people from a project's Team tab."
+          >
             {genericForm && (
               <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-primary-50/40 dark:bg-primary-900/10 flex flex-wrap items-end gap-3">
                 <div>
@@ -909,35 +922,60 @@ export function ResourceManagementPage() {
             {genericResources.length === 0 ? (
               <p className="px-5 py-4 text-sm text-gray-500 dark:text-gray-400">No generic roles yet.</p>
             ) : (
-              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-5">
-                {genericResources.map(g => {
-                  const taskCount = (allocationsMap[g.id] || []).reduce((n, a) => n + a.taskCount, 0);
-                  return (
-                    <li key={g.id} className="rounded-lg border border-dashed border-gray-400 dark:border-gray-500 px-3.5 py-3 flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">{g.name}</span>
-                          <GenericBadge />
-                        </div>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">{g.role || 'No role'} · {taskCount ? `on ${taskCount} task${taskCount === 1 ? '' : 's'}` : 'not used'}</p>
-                      </div>
-                      {canChange && (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button onClick={() => openEdit(g)} className="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Edit ${g.name}`}><Edit2 className="w-3.5 h-3.5" /></button>
-                          <button onClick={() => {
-                            setDeleteConfirmId(g.id);
-                            setDeleteImpact(null);
-                            setDeleteImpactLoading(true);
-                            apiService.getResourceDeleteImpact(g.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
-                          }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label={`Delete ${g.name}`}><Trash2 className="w-3.5 h-3.5" /></button>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <table className="min-w-full">
+                <thead>
+                  <tr>
+                    <th scope="col" className={TH}>Role</th>
+                    <th scope="col" className={`${TH} text-right`}>On tasks</th>
+                    {seesPay && <th scope="col" className={TH}>Cost from</th>}
+                    <th scope="col" className={TH}><span className="sr-only">Actions</span></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {genericResources.map(g => {
+                    const taskCount = (allocationsMap[g.id] || []).reduce((n, a) => n + a.taskCount, 0);
+                    const cardRate = g.useRateCard ? cardRateOn(g.role, todayYmd(), rateCard?.rates ?? []) : null;
+                    return (
+                      <tr key={g.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                        <td className={TD}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900 dark:text-white">{g.name}</span>
+                            <GenericBadge />
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400">{roleLabel(g.role) || 'No role'}</div>
+                        </td>
+                        <td className={`${TD} text-right tabular-nums`}>{taskCount || <span className="text-gray-500 dark:text-gray-400">not used</span>}</td>
+                        {seesPay && (
+                          <td className={`${TD} whitespace-nowrap`}>
+                            {g.useRateCard
+                              ? (cardRate
+                                ? <>Rate card · ${Number(cardRate.hourlyRate).toFixed(2)} / h</>
+                                : rateCard
+                                  ? <span className="inline-flex items-center gap-1.5">Rate card <MetaPill variant="warning">No rate for this role yet</MetaPill></span>
+                                  : 'Rate card')
+                              : g.costRateHourly != null ? `$${g.costRateHourly.toFixed(2)} / h` : '—'}
+                          </td>
+                        )}
+                        <td className={`${TD} text-right`}>
+                          {canChange && (
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => openEdit(g)} className="p-1.5 rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label={`Edit ${g.name}`}><Edit2 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => {
+                                setDeleteConfirmId(g.id);
+                                setDeleteImpact(null);
+                                setDeleteImpactLoading(true);
+                                apiService.getResourceDeleteImpact(g.id).then(setDeleteImpact).catch(() => setDeleteImpact(null)).finally(() => setDeleteImpactLoading(false));
+                              }} className="p-1.5 rounded text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20" aria-label={`Delete ${g.name}`}><Trash2 className="w-3.5 h-3.5" /></button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
-          </div>
+          </SectionCard>
         </div>
       )}
 
@@ -1265,7 +1303,7 @@ export function ResourceManagementPage() {
               className="rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary-500"
             >
               <option value="">Select a resource...</option>
-              {resources.map(r => <option key={r.id} value={r.id}>{r.name} — {r.role}</option>)}
+              {resources.map(r => <option key={r.id} value={r.id}>{r.name} — {roleLabel(r.role)}</option>)}
             </select>
           </div>
           {trendResourceId ? (

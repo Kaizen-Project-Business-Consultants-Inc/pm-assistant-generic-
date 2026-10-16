@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-16 — Batch F: new look on the rest of the app, Settings list, archived rows (U2/U9/U1)
+- Shared `SectionCard` + `TH`/`TD`; Projects Cards/List switch + `ArchivedProjectsList` (folded, 25/page, Restore); Settings grouped left list + plain names (AI assistant, Connections & API keys, Can read/Can change, webhook events in words, Precise ↔ Creative); Resources people + generic-role tables restyled (`roleLabel`, cost source); Change Requests, Lessons, Portfolio, Clients, client RAID restyled.
+
 ## 2026-10-15 — Batch E3: placeholder roles per template (U13)
 - `services/templates/placeholderRoles.ts` (skill → role, ~45 roles) + `staffPlaceholders.ts`: applying a template assigns each work task to a generic role, reusing the company's (client pool first) and adding missing ones to My resources; create form lists "Placeholder roles"; guard test: every built-in skill has a role.
 

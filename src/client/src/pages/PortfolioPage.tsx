@@ -6,6 +6,9 @@ import { HealthTrendsWidget } from '../components/dashboard/widgets/HealthTrends
 import { apiService } from '../services/api';
 import { GanttChart, type GanttTask } from '../components/schedule/GanttChart';
 import { formatCalendarDate } from '../utils/dateUtils';
+import { roleLabel } from '../constants/branding';
+import { TH, TD } from '../components/ui/SectionCard';
+import { MetaPill } from '../components/ui/MetaPill';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,6 +71,10 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
   on_hold: { bg: 'bg-amber-50 dark:bg-amber-900/20', text: 'text-amber-700 dark:text-amber-400', dot: 'bg-amber-500' },
   completed: { bg: 'bg-gray-50 dark:bg-gray-900', text: 'text-gray-600 dark:text-gray-300', dot: 'bg-gray-400' },
   cancelled: { bg: 'bg-red-50 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400', dot: 'bg-red-400' },
+};
+
+const STATUS_PILL: Record<string, 'success' | 'info' | 'warning' | 'default' | 'danger' | 'muted'> = {
+  active: 'success', planning: 'info', on_hold: 'warning', completed: 'default', cancelled: 'muted',
 };
 
 function formatCurrency(amount: number): string {
@@ -230,7 +237,7 @@ export function PortfolioPage() {
       </div>
 
       {portfolioItems.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
+        <div className="card-stripe stripe-gray rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-8 text-center">
           <Layers className="mx-auto mb-3 h-12 w-12 text-gray-300" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No Projects</h3>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">No projects found in your portfolio.</p>
@@ -275,7 +282,7 @@ export function PortfolioPage() {
             <>
               {/* Budget Overview Bar */}
               {kpis.totalBudget > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+                <div className="card-stripe stripe-teal bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Portfolio Budget</h3>
                     <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -308,21 +315,19 @@ export function PortfolioPage() {
                 {filtered.map(item => {
                   const health = healthLabel(item);
                   const budgetPct = item.budgetAllocated > 0 ? Math.round((item.budgetSpent / item.budgetAllocated) * 100) : 0;
-                  const sc = STATUS_COLORS[item.status] || STATUS_COLORS.active;
                   return (
                     <div
                       key={item.projectId}
                       onClick={() => navigate(`/project/${item.projectId}`)}
-                      className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:shadow-md transition-shadow cursor-pointer"
+                      className="card-stripe stripe-teal bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5 hover:shadow-md transition-shadow cursor-pointer"
                     >
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">{item.projectName}</h3>
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${sc.bg} ${sc.text}`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                            <MetaPill variant={STATUS_PILL[item.status] || 'default'} className="capitalize">
                               {item.status.replace('_', ' ')}
-                            </span>
+                            </MetaPill>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                             <span>{item.completedTasks}/{item.totalTasks} tasks</span>
@@ -418,7 +423,7 @@ function PortfolioResourcesView() {
 
   if (resources.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center">
+      <div className="card-stripe stripe-gray rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-8 text-center">
         <Users className="mx-auto mb-3 h-12 w-12 text-gray-300" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No Resource Data</h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">No resources are assigned across your projects.</p>
@@ -438,7 +443,7 @@ function PortfolioResourcesView() {
 
       {/* Cross-project contention */}
       {contentions.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-red-200 dark:border-red-800 p-5">
+        <div className="card-stripe stripe-coral bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-5">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-4 h-4 text-red-500" />
             <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">Cross-Project Contention</h3>
@@ -448,31 +453,31 @@ function PortfolioResourcesView() {
             <table className="w-full text-sm">
               <caption className="sr-only">Cross-project resource contention</caption>
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-700">
-                  <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Resource</th>
-                  <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Role</th>
-                  <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Projects</th>
-                  <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Combined</th>
+                <tr>
+                  <th scope="col" className={TH}>Resource</th>
+                  <th scope="col" className={TH}>Role</th>
+                  <th scope="col" className={TH}>Projects</th>
+                  <th scope="col" className={`${TH} text-center`}>Combined</th>
                 </tr>
               </thead>
               <tbody>
                 {contentions.map(c => (
-                  <tr key={c.resourceId} className="border-t border-gray-100 dark:border-gray-700">
-                    <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{c.resourceName}</td>
-                    <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{c.role}</td>
-                    <td className="px-4 py-2">
+                  <tr key={c.resourceId}>
+                    <td className={`${TD} font-medium text-gray-900 dark:text-white`}>{c.resourceName}</td>
+                    <td className={`${TD} text-gray-600 dark:text-gray-400`}>{roleLabel(c.role)}</td>
+                    <td className={TD}>
                       <div className="flex flex-wrap gap-1">
                         {c.projects.map(p => (
-                          <span key={p.projectId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                          <MetaPill key={p.projectId}>
                             {p.projectName} ({p.averageUtilization}%)
-                          </span>
+                          </MetaPill>
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white ${c.combinedUtilization > 150 ? 'bg-red-500' : 'bg-amber-500'}`}>
+                    <td className={`${TD} text-center`}>
+                      <MetaPill variant={c.combinedUtilization > 150 ? 'danger' : 'warning'}>
                         {c.combinedUtilization}%
-                      </span>
+                      </MetaPill>
                     </td>
                   </tr>
                 ))}
@@ -483,40 +488,38 @@ function PortfolioResourcesView() {
       )}
 
       {/* All resources table */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="card-stripe stripe-teal bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Resource Utilization</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[600px]">
             <caption className="sr-only">Resource utilization</caption>
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-700">
-                <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Resource</th>
-                <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Role</th>
-                <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">$/hr</th>
-                <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300"># Projects</th>
-                <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Utilization</th>
-                <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Projects</th>
+              <tr>
+                <th scope="col" className={TH}>Resource</th>
+                <th scope="col" className={TH}>Role</th>
+                <th scope="col" className={`${TH} text-center`}>$/hr</th>
+                <th scope="col" className={`${TH} text-center`}># Projects</th>
+                <th scope="col" className={`${TH} text-center`}>Utilization</th>
+                <th scope="col" className={TH}>Projects</th>
               </tr>
             </thead>
             <tbody>
               {resources.map(r => (
-                <tr key={r.resourceId} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <td className="px-4 py-2 font-medium text-gray-900 dark:text-white">{r.resourceName}</td>
-                  <td className="px-4 py-2 text-gray-600 dark:text-gray-400">{r.role}</td>
-                  <td className="px-4 py-2 text-center text-gray-600 dark:text-gray-400">
+                <tr key={r.resourceId} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                  <td className={`${TD} font-medium text-gray-900 dark:text-white`}>{r.resourceName}</td>
+                  <td className={`${TD} text-gray-600 dark:text-gray-400`}>{roleLabel(r.role)}</td>
+                  <td className={`${TD} text-center text-gray-600 dark:text-gray-400`}>
                     {r.costRateHourly != null ? `$${r.costRateHourly.toFixed(0)}` : '--'}
                   </td>
-                  <td className="px-4 py-2 text-center text-gray-600 dark:text-gray-400">{r.projects.length}</td>
-                  <td className="px-4 py-2 text-center">
-                    <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold text-white ${
-                      r.combinedUtilization > 120 ? 'bg-red-500' : r.combinedUtilization > 100 ? 'bg-amber-500' : r.combinedUtilization > 80 ? 'bg-blue-500' : 'bg-green-500'
-                    }`}>
+                  <td className={`${TD} text-center text-gray-600 dark:text-gray-400`}>{r.projects.length}</td>
+                  <td className={`${TD} text-center`}>
+                    <MetaPill variant={r.combinedUtilization > 120 ? 'danger' : r.combinedUtilization > 100 ? 'warning' : r.combinedUtilization > 80 ? 'info' : 'success'}>
                       {r.combinedUtilization}%
-                    </span>
+                    </MetaPill>
                   </td>
-                  <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
+                  <td className={`${TD} text-xs text-gray-500 dark:text-gray-400`}>
                     {r.projects.map(p => p.projectName).join(', ')}
                   </td>
                 </tr>
@@ -563,10 +566,10 @@ function BurndownSparkline({ data, width = 100, height = 24 }: { data: Array<{ i
 // ---------------------------------------------------------------------------
 
 function cpiSpiColor(val: number | null): string {
-  if (val === null) return 'text-gray-500';
-  if (val >= 1.0) return 'text-green-600';
-  if (val >= 0.85) return 'text-amber-600';
-  return 'text-red-600';
+  if (val === null) return '!text-gray-500';
+  if (val >= 1.0) return '!text-green-600';
+  if (val >= 0.85) return '!text-amber-600';
+  return '!text-red-600';
 }
 
 function cpiSpiSparklineColor(val: number | null): string {
@@ -601,34 +604,34 @@ function CPISPIComparison({ projects, onProjectClick }: { projects: PortfolioAna
   if (sorted.length === 0) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+    <div className="card-stripe stripe-teal bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">CPI / SPI Comparison</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[600px]">
           <caption className="sr-only">CPI and SPI comparison across projects</caption>
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700">
-              <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
-              <th scope="col" aria-sort={sortKey === 'cpi' ? (sortAsc ? 'ascending' : 'descending') : 'none'} className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" onClick={() => toggleSort('cpi')}>
+            <tr>
+              <th scope="col" className={TH}>Project</th>
+              <th scope="col" aria-sort={sortKey === 'cpi' ? (sortAsc ? 'ascending' : 'descending') : 'none'} className={`${TH} text-center cursor-pointer select-none`} onClick={() => toggleSort('cpi')}>
                 <span className="inline-flex items-center gap-1">CPI {sortKey === 'cpi' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</span>
               </th>
-              <th scope="col" aria-sort={sortKey === 'spi' ? (sortAsc ? 'ascending' : 'descending') : 'none'} className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none" onClick={() => toggleSort('spi')}>
+              <th scope="col" aria-sort={sortKey === 'spi' ? (sortAsc ? 'ascending' : 'descending') : 'none'} className={`${TH} text-center cursor-pointer select-none`} onClick={() => toggleSort('spi')}>
                 <span className="inline-flex items-center gap-1">SPI {sortKey === 'spi' && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</span>
               </th>
-              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">CPI Trend</th>
-              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">SPI Trend</th>
+              <th scope="col" className={`${TH} text-center`}>CPI Trend</th>
+              <th scope="col" className={`${TH} text-center`}>SPI Trend</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map(p => (
-              <tr key={p.projectId} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => onProjectClick(p.projectId)}>
-                <td className="px-4 py-2 font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{p.projectName}</td>
-                <td className={`px-4 py-2 text-center font-bold ${cpiSpiColor(p.cpi)}`}>{p.cpi !== null ? p.cpi.toFixed(2) : '—'}</td>
-                <td className={`px-4 py-2 text-center font-bold ${cpiSpiColor(p.spi)}`}>{p.spi !== null ? p.spi.toFixed(2) : '—'}</td>
-                <td className="px-4 py-2 text-center"><Sparkline data={p.cpiTrend.map(t => t.value)} color={cpiSpiSparklineColor(p.cpi)} /></td>
-                <td className="px-4 py-2 text-center"><Sparkline data={p.spiTrend.map(t => t.value)} color={cpiSpiSparklineColor(p.spi)} /></td>
+              <tr key={p.projectId} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => onProjectClick(p.projectId)}>
+                <td className={`${TD} font-medium text-gray-900 dark:text-white truncate max-w-[200px]`}>{p.projectName}</td>
+                <td className={`${TD} text-center font-bold ${cpiSpiColor(p.cpi)}`}>{p.cpi !== null ? p.cpi.toFixed(2) : '—'}</td>
+                <td className={`${TD} text-center font-bold ${cpiSpiColor(p.spi)}`}>{p.spi !== null ? p.spi.toFixed(2) : '—'}</td>
+                <td className={`${TD} text-center`}><Sparkline data={p.cpiTrend.map(t => t.value)} color={cpiSpiSparklineColor(p.cpi)} /></td>
+                <td className={`${TD} text-center`}><Sparkline data={p.spiTrend.map(t => t.value)} color={cpiSpiSparklineColor(p.spi)} /></td>
               </tr>
             ))}
           </tbody>
@@ -647,35 +650,33 @@ function BurndownTrends({ projects }: { projects: PortfolioAnalyticsProject[] })
   if (withBurndown.length === 0) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700">
+    <div className="card-stripe stripe-teal bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Burndown Trends</h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="sr-only">Burndown trends across projects</caption>
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700">
-              <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
-              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Burndown</th>
-              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Complete</th>
-              <th scope="col" className="text-center px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Variance</th>
+            <tr>
+              <th scope="col" className={TH}>Project</th>
+              <th scope="col" className={`${TH} text-center`}>Burndown</th>
+              <th scope="col" className={`${TH} text-center`}>Complete</th>
+              <th scope="col" className={`${TH} text-center`}>Variance</th>
             </tr>
           </thead>
           <tbody>
             {withBurndown.map(p => (
-              <tr key={p.projectId} className="border-t border-gray-100 dark:border-gray-700">
-                <td className="px-4 py-2 font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{p.projectName}</td>
-                <td className="px-4 py-2 text-center">
+              <tr key={p.projectId}>
+                <td className={`${TD} font-medium text-gray-900 dark:text-white truncate max-w-[200px]`}>{p.projectName}</td>
+                <td className={`${TD} text-center`}>
                   <BurndownSparkline data={p.burndown} />
                 </td>
-                <td className="px-4 py-2 text-center font-bold text-gray-900 dark:text-white">{p.percentComplete}%</td>
-                <td className="px-4 py-2 text-center">
-                  <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-bold ${
-                    p.scheduleVariance >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                  }`}>
+                <td className={`${TD} text-center font-bold text-gray-900 dark:text-white`}>{p.percentComplete}%</td>
+                <td className={`${TD} text-center`}>
+                  <MetaPill variant={p.scheduleVariance >= 0 ? 'success' : 'danger'}>
                     {p.scheduleVariance >= 0 ? '+' : ''}{p.scheduleVariance}%
-                  </span>
+                  </MetaPill>
                 </td>
               </tr>
             ))}
@@ -718,7 +719,7 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
   }, [projects, sortKey, sortAsc]);
 
   const SortHeader = ({ label, k }: { label: string; k: ComparisonSortKey }) => (
-    <th scope="col" aria-sort={sortKey === k ? (sortAsc ? 'ascending' : 'descending') : 'none'} className="text-center px-3 py-2 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer select-none whitespace-nowrap" onClick={() => toggleSort(k)}>
+    <th scope="col" aria-sort={sortKey === k ? (sortAsc ? 'ascending' : 'descending') : 'none'} className={`${TH} text-center cursor-pointer select-none`} onClick={() => toggleSort(k)}>
       <span className="inline-flex items-center gap-1">{label} {sortKey === k && (sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}</span>
     </th>
   );
@@ -731,8 +732,8 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
+    <div className="card-stripe stripe-teal bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+      <div className="px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
         <ArrowUpDown className="w-4 h-4 text-gray-500" />
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Project Comparison</h3>
       </div>
@@ -740,37 +741,36 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
         <table className="w-full text-sm min-w-[700px]">
           <caption className="sr-only">Project comparison</caption>
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700">
-              <th scope="col" className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300">Project</th>
+            <tr>
+              <th scope="col" className={TH}>Project</th>
               <SortHeader label="Health" k="health" />
               <SortHeader label="CPI" k="cpi" />
               <SortHeader label="SPI" k="spi" />
               <SortHeader label="Budget %" k="budget" />
               <SortHeader label="Progress" k="progress" />
               <SortHeader label="Tasks" k="tasks" />
-              <th scope="col" className="text-center px-3 py-2 font-semibold text-gray-600 dark:text-gray-300">Status</th>
+              <th scope="col" className={`${TH} text-center`}>Status</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map(p => {
-              const sc = STATUS_COLORS[p.status] || STATUS_COLORS.active;
               return (
-                <tr key={p.projectId} className="border-t border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => onProjectClick(p.projectId)}>
-                  <td className="px-4 py-2 font-medium text-gray-900 dark:text-white truncate max-w-[200px]">{p.projectName}</td>
-                  <td className="px-3 py-2 text-center">
+                <tr key={p.projectId} className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onClick={() => onProjectClick(p.projectId)}>
+                  <td className={`${TD} font-medium text-gray-900 dark:text-white truncate max-w-[200px]`}>{p.projectName}</td>
+                  <td className={`${TD} text-center`}>
                     <span className="inline-flex items-center gap-1.5">
                       <span className={`w-2 h-2 rounded-full ${healthDotColor(p.healthScore)}`} aria-hidden="true" />
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{p.healthScore !== null ? p.healthScore : '—'}</span>
                     </span>
                   </td>
-                  <td className={`px-3 py-2 text-center font-bold ${cpiSpiColor(p.cpi)}`}>{p.cpi !== null ? p.cpi.toFixed(2) : '—'}</td>
-                  <td className={`px-3 py-2 text-center font-bold ${cpiSpiColor(p.spi)}`}>{p.spi !== null ? p.spi.toFixed(2) : '—'}</td>
-                  <td className="px-3 py-2 text-center">
+                  <td className={`${TD} text-center font-bold ${cpiSpiColor(p.cpi)}`}>{p.cpi !== null ? p.cpi.toFixed(2) : '—'}</td>
+                  <td className={`${TD} text-center font-bold ${cpiSpiColor(p.spi)}`}>{p.spi !== null ? p.spi.toFixed(2) : '—'}</td>
+                  <td className={`${TD} text-center`}>
                     <span className={`text-xs font-bold ${p.budgetUtilization > 100 ? 'text-red-600' : p.budgetUtilization > 90 ? 'text-amber-600' : 'text-gray-700 dark:text-gray-300'}`}>
                       {p.budgetAllocated > 0 ? `${p.budgetUtilization}%` : '—'}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-center">
+                  <td className={`${TD} text-center`}>
                     <div className="flex items-center gap-2 justify-center">
                       <div className="w-16 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div className="h-full bg-primary-500 rounded-full" style={{ width: `${p.percentComplete}%` }} />
@@ -778,12 +778,11 @@ function ProjectComparisonMatrix({ projects, onProjectClick }: { projects: Portf
                       <span className="text-xs font-medium text-gray-700 dark:text-gray-300">{p.percentComplete}%</span>
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-center text-xs text-gray-600 dark:text-gray-400">{p.completedTasks}/{p.totalTasks}</td>
-                  <td className="px-3 py-2 text-center">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${sc.bg} ${sc.text}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                  <td className={`${TD} text-center text-xs text-gray-600 dark:text-gray-400`}>{p.completedTasks}/{p.totalTasks}</td>
+                  <td className={`${TD} text-center`}>
+                    <MetaPill variant={STATUS_PILL[p.status] || 'default'} className="capitalize">
                       {p.status.replace('_', ' ')}
-                    </span>
+                    </MetaPill>
                   </td>
                 </tr>
               );

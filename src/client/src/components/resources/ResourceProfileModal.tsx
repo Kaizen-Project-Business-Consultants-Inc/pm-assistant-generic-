@@ -8,6 +8,7 @@ import { PROFICIENCY_LABELS } from '../../constants/proficiency';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
 import { AccessibleModal } from '../ui/AccessibleModal';
+import { roleLabel } from '../../constants/branding';
 interface ResourceProfileModalProps {
   resourceId: string;
   onClose: () => void;
@@ -60,7 +61,7 @@ export function ResourceProfileModal({ resourceId, onClose }: ResourceProfileMod
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{resource.name}</h3>
-                <p className="text-sm text-gray-500">{resource.role}</p>
+                <p className="text-sm text-gray-500">{roleLabel(resource.role)}</p>
                 <p className="text-xs text-gray-500">{resource.email}</p>
               </div>
             </div>

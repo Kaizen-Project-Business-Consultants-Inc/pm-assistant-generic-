@@ -82,7 +82,7 @@ export function ClientsPage() {
           </p>
         </div>
       ) : (
-        <ul className="rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800">
+        <ul className="card-stripe stripe-teal rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           {clients.map(c => {
             const n = liveCount.get(c.id) || 0;
             return (

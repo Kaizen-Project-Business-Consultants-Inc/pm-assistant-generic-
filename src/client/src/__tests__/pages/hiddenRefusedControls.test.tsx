@@ -52,27 +52,39 @@ describe('controls a role is always refused are hidden', () => {
     as('project_manager');
     show(<ApiKeysTab />);
     fireEvent.click(await screen.findByRole('button', { name: /Create Key/ }));
-    expect(screen.getByRole('button', { name: 'read' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'write' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'admin' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Can read' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Can change' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Kovarti admin' })).toBeNull();
   });
 
   it("API keys: the Kovarti platform admin is offered 'admin'", async () => {
     as('admin');
     show(<ApiKeysTab />);
     fireEvent.click(await screen.findByRole('button', { name: /Create Key/ }));
-    expect(screen.getByRole('button', { name: 'admin' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Kovarti admin' })).toBeTruthy();
   });
 
-  it('Settings: Webhooks tab only for roles that may change data; API Keys for everyone', () => {
+  it('Settings: Webhooks only for roles that may change data; Connections & API keys for everyone', () => {
     as('team_member');
     show(<SettingsPage />);
-    expect(screen.queryByRole('tab', { name: /Webhooks/ })).toBeNull();
-    expect(screen.getByRole('tab', { name: /API Keys/ })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Webhooks/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Connections & API keys/ })).toBeTruthy();
     cleanup();
     as('project_manager');
     show(<SettingsPage />);
-    expect(screen.getByRole('tab', { name: /Webhooks/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Webhooks/ })).toBeTruthy();
+  });
+
+  it('Settings: every section is in the list down the left, grouped, the open one marked (U9)', () => {
+    as('project_manager');
+    show(<SettingsPage />);
+    const nav = screen.getByRole('navigation', { name: 'Settings sections' });
+    expect(Array.from(nav.querySelectorAll('h2')).map(h => h.textContent)).toEqual(['You', 'Company', 'Advanced']);
+    for (const name of ['Profile', 'AI assistant', 'Team', 'Connections & API keys', 'Webhooks', 'Danger zone']) {
+      expect(screen.getByRole('button', { name: new RegExp(name) })).toBeTruthy();
+    }
+    expect(screen.getByRole('button', { name: /Profile/ }).getAttribute('aria-current')).toBe('page');
+    expect(screen.queryByRole('button', { name: /AI Context|API Keys/ })).toBeNull();
   });
 
   it("Change requests: Manage Workflows only for the project's Manager/Owner", () => {

@@ -376,7 +376,7 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 ## 6. API Key Management
 
 ### Generating Keys
-- **Settings > API Keys** -- create keys with `read` or `read` + `write` rights. `admin` is for the Kovarti platform admin only; anyone else asking for it gets 403 "Your role (…) cannot create API keys with scopes: admin".
+- **Settings > Connections & API keys** (called *API Keys* before October 2026) -- create keys that **Can read** (`read`) or also **Can change** (`write`). `admin` is for the Kovarti platform admin only; anyone else asking for it gets 403 "Your role (…) cannot create API keys with scopes: admin".
 - A key never gets more than its owner's role: on every request it is cut down to the role (`effectiveScopes`), and if the owner's role is lowered later, their existing keys shrink with it. Creating a key needs the `write` scope, so project managers, PMOs and the owner can create keys; executives, team members and viewers can't (their only key is a Claude connection, read-only). The tab still shows everyone the Create button and all three scope buttons (an app gap).
 - Keys are shown once at creation; store them securely.
 
@@ -384,7 +384,7 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 - Each key has its own rate limit, stored with the key (default 100 requests per minute). There are no environment variables for it.
 
 ### Revoking Keys
-- Revoke compromised or unused keys immediately from **Settings > API Keys**.
+- Revoke compromised or unused keys immediately from **Settings > Connections & API keys**.
 - Revocation is instant; in-flight requests with the revoked key will fail.
 
 ---
@@ -736,7 +736,7 @@ Not offered in the app (October 2026): agents only suggest and the project's PM 
 
 ### What a Claude connection may do (October 2026)
 - A Claude connection acts as the person who connected it, **with exactly their role's rights**: a viewer or team member can read; a project manager can read and change their projects; nobody gets admin rights through Claude except the Kovarti platform admin. When a person's role changes, their existing connection follows the new role straight away (every key is limited to its owner's role on each request), and the connection's key is re-issued with the new rights at its next renewal.
-- Revoking the connection's key (Settings → API Keys) ends it for good: its refresh token is revoked too, and a renewal is refused if the key was revoked, the person was deactivated or must change their password, or is no longer in the company they connected from (2026-10-09). Claude then has to be connected again. Needs control-plane migration 131 (`oauth_tokens.organization_id`) before the MCP server is deployed.
+- Revoking the connection's key (Settings → Connections & API keys) ends it for good: its refresh token is revoked too, and a renewal is refused if the key was revoked, the person was deactivated or must change their password, or is no longer in the company they connected from (2026-10-09). Claude then has to be connected again. Needs control-plane migration 131 (`oauth_tokens.organization_id`) before the MCP server is deployed.
 - The sign-in page Claude opens (2026-10-09): only a registered Claude client and its own registered return address get a code; 10 tries a minute per address and a 15-minute lock after 5 wrong passwords for one name; people who must change their password, haven't verified their email, or whose guest access ended are refused, as in the app. The company owner's Claude is offered a PMO's tools, as the owner has in the app.
 - **The MCP journal no longer holds secrets** (2026-10-09): it logs method and path only. Before, every request's headers (bearer keys `kpm_…`), query and body (the sign-in password, token-exchange codes and refresh tokens) went to `journalctl`. After deploying, consider rotating keys that were in use, and trimming old MCP journal entries on both servers (`sudo journalctl --vacuum-time=…`).
 - Deploying: the MCP server is separate — `bash deploy.sh <env> --mcp` deploys it (the app needs its own deploy).

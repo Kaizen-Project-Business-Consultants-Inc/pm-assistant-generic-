@@ -34,6 +34,8 @@ export interface ProjectSummaryPM {
   endDate?: string;
   daysLeft?: number;
   archivedAt?: string;
+  /** the caller may change THIS project (its Manager/Owner, or admin/PMO) — from the project list */
+  canEdit?: boolean;
 }
 
 export interface TaskPM {

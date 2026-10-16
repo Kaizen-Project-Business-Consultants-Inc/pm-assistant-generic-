@@ -6,6 +6,9 @@ import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { FilterBarPM } from '../components/pm/FilterBarPM';
 import { ProjectCardPM } from '../components/pm/ProjectCardPM';
+import { ArchivedProjectsList } from '../components/pm/ArchivedProjectsList';
+import { SectionCard, TH, TD } from '../components/ui/SectionCard';
+import { MetaPill } from '../components/ui/MetaPill';
 import { TemplatePicker } from '../components/templates/TemplatePicker';
 import { ProjectGroupManager } from '../components/projects/ProjectGroupManager';
 import { getViewPref, setViewPref } from '../hooks/useViewPreferences';
@@ -127,6 +130,7 @@ export function ProjectsPM() {
     budgetSpent: p.budgetSpent ?? p.spent ?? 0,
     endDate: p.endDate || p.plannedEndDate || '',
     archivedAt: p.archivedAt ?? undefined,
+    canEdit: p.canEdit === true,
     groupId: p.group_id || p.groupId || p.clientId || null,
     isDemo: p.isDemo || p.is_demo || false,
     daysLeft: p.daysLeft ?? (() => {
@@ -207,6 +211,13 @@ export function ProjectsPM() {
     return list;
   }, [filtered, sortKey, sortDir, favouriteSet]);
 
+  // Archived projects get their own compact section below the active ones (U1), newest first
+  const active = useMemo(() => sorted.filter(p => !p.archivedAt), [sorted]);
+  const archived = useMemo(
+    () => sorted.filter(p => p.archivedAt).sort((a, b) => (b.archivedAt || '').localeCompare(a.archivedAt || '')),
+    [sorted],
+  );
+
   function clearFilters() {
     setSearch('');
     setHealthFilter('all');
@@ -227,7 +238,7 @@ export function ProjectsPM() {
     if (groups.length === 0 || groupFilter !== 'all') return null;
     const sections: Array<{ id: string; name: string; color: string; projects: typeof sorted }> = [];
     const assigned = new Set<string>();
-    const byGroup = groupByKey(sorted, p => (p as any).groupId);
+    const byGroup = groupByKey(active, p => (p as any).groupId);
     for (const g of groups) {
       const gProjects = byGroup.get(g.id) ?? [];
       if (gProjects.length > 0) {
@@ -235,12 +246,12 @@ export function ProjectsPM() {
         for (const p of gProjects) assigned.add(p.id);
       }
     }
-    const ungrouped = sorted.filter(p => !assigned.has(p.id));
+    const ungrouped = active.filter(p => !assigned.has(p.id));
     if (ungrouped.length > 0) {
       sections.push({ id: '__ungrouped', name: 'No client', color: '#9ca3af', projects: ungrouped });
     }
     return sections;
-  }, [sorted, groups, groupFilter]);
+  }, [active, groups, groupFilter]);
 
   return (
     <div className="p-6 space-y-6">
@@ -253,7 +264,9 @@ export function ProjectsPM() {
               'Loading projects…'
             ) : (
               <>
-                {projects.length} project{projects.length !== 1 ? 's' : ''}
+                {showArchived
+                  ? `${projects.length - projects.filter(p => p.archivedAt).length} active · ${projects.filter(p => p.archivedAt).length} archived`
+                  : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
                 {ownedCount > 0 && (
                   <> · <span className="text-primary-600 dark:text-primary-400">{ownedCount} owned by you</span></>
                 )}
@@ -263,23 +276,19 @@ export function ProjectsPM() {
         </div>
         <div className="flex items-center gap-2">
           {/* View mode toggle */}
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-0.5">
-            <button
-              onClick={() => toggleViewMode('card')}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'card' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-              aria-label="Card view"
-              title="Card view"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => toggleViewMode('table')}
-              className={`p-1.5 rounded-md transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'}`}
-              aria-label="Table view"
-              title="Table view"
-            >
-              <List className="w-4 h-4" />
-            </button>
+          <div role="group" aria-label="Show projects as" className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
+            {([['card', 'Cards', LayoutGrid], ['table', 'List', List]] as const).map(([mode, label, Icon]) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => toggleViewMode(mode)}
+                aria-pressed={viewMode === mode}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold transition-colors ${viewMode === mode ? 'bg-accent-teal-soft text-accent-teal-text dark:bg-accent-teal/20 dark:text-teal-200' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+              >
+                <Icon className="w-4 h-4" aria-hidden="true" />
+                {label}
+              </button>
+            ))}
           </div>
           {/* Client filter */}
           {groups.length > 0 && (
@@ -345,7 +354,7 @@ export function ProjectsPM() {
             <div key={i} className="h-52 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : active.length === 0 && archived.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 p-12 text-center">
           <FolderKanban className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -361,6 +370,8 @@ export function ProjectsPM() {
             </button>
           )}
         </div>
+      ) : active.length === 0 ? (
+        <p className="text-sm text-gray-600 dark:text-gray-300">{hasActiveFilters ? 'No active projects match these filters.' : 'No active projects.'}</p>
       ) : viewMode === 'card' && groupedSections ? (
         <div className="space-y-6">
           {groupedSections.map(section => (
@@ -400,14 +411,14 @@ export function ProjectsPM() {
         </div>
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {sorted.map((project) => (
+          {active.map((project) => (
             <ProjectCardPM key={project.id} project={project} isFavourite={favouriteSet.has(project.id)} />
           ))}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-800">
+        <SectionCard flush aria-label="Active projects">
+          <table className="min-w-full">
+            <thead>
               <tr>
                 {([
                   { key: 'name' as SortKey, label: 'Project' },
@@ -420,27 +431,27 @@ export function ProjectsPM() {
                   <th
                     key={col.key}
                     scope="col"
-                    className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
-                    onClick={() => handleSort(col.key)}
+                    className={TH}
+                    aria-sort={sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button type="button" onClick={() => handleSort(col.key)} className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-gray-900 dark:hover:text-white">
                       {col.label}
                       {sortKey === col.key && (
-                        sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        sortDir === 'asc' ? <ChevronUp className="w-3 h-3" aria-hidden="true" /> : <ChevronDown className="w-3 h-3" aria-hidden="true" />
                       )}
-                    </span>
+                    </button>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
-              {sorted.map((p) => {
+            <tbody>
+              {active.map((p) => {
                 const healthLabel = p.healthScore >= 75 ? 'Healthy' : p.healthScore >= 50 ? 'Watch' : 'At Risk';
-                const healthColor = p.healthScore >= 75 ? 'text-green-600 dark:text-green-400' : p.healthScore >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400';
+                const healthTone = p.healthScore >= 75 ? 'success' : p.healthScore >= 50 ? 'warning' : 'danger';
                 const statusDisplay = (p.status || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 return (
                   <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className={TD}>
                       <Link to={`/project/${p.id}`} className="text-sm font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
                         {p.name}
                         {(p as any).isDemo && <span className="ml-1.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 uppercase">Sample</span>}
@@ -448,12 +459,12 @@ export function ProjectsPM() {
                       {/* eslint-disable-next-line no-restricted-syntax -- small: a two-item list */}
                       {(p.code || p.client) && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{[p.code, p.client].filter(Boolean).join(' · ')}</p>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{statusDisplay}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-sm font-medium ${healthColor}`}>{healthLabel}</span>
-                      <span className="text-xs text-gray-500 ml-1">({p.healthScore}%)</span>
+                    <td className={TD}>{statusDisplay ? <MetaPill variant="info">{statusDisplay}</MetaPill> : '—'}</td>
+                    <td className={TD}>
+                      <MetaPill variant={healthTone}>{healthLabel}</MetaPill>
+                      <span className="text-xs text-gray-600 dark:text-gray-400 ml-1.5">{p.healthScore}%</span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className={TD}>
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-1.5 bg-gray-200 dark:bg-gray-600 rounded-full overflow-hidden">
                           <div className="h-full bg-primary-500 rounded-full" style={{ width: `${Math.min(p.progress, 100)}%` }} />
@@ -461,8 +472,8 @@ export function ProjectsPM() {
                         <span className="text-xs text-gray-500 dark:text-gray-400">{Math.round(p.progress)}%</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 capitalize">{p.methodology || '—'}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                    <td className={`${TD} capitalize`}>{p.methodology || '—'}</td>
+                    <td className={TD}>
                       {p.endDate ? formatCalendarDate(p.endDate) : '—'}
                     </td>
                   </tr>
@@ -470,8 +481,10 @@ export function ProjectsPM() {
               })}
             </tbody>
           </table>
-        </div>
+        </SectionCard>
       )}
+
+      {showArchived && !isLoading && <ArchivedProjectsList projects={archived} canRestore={canChange} />}
 
       {/* Template picker modal */}
       <TemplatePicker isOpen={templatePickerOpen} onClose={() => setTemplatePickerOpen(false)} />

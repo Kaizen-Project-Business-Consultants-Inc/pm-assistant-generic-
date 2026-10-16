@@ -8,6 +8,7 @@ import { fmtDay } from '../../components/schedule/calendar/CalendarChangePreview
 import { RESOURCE_ROLES } from '../../constants/resourceRoles';
 import { cardRateOn, money, roleKey, todayYmd } from '../../utils/rateCard';
 import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
+import { roleLabel } from '../../constants/branding';
 
 /**
  * Rate card: hourly cost rates by role, each starting on a date. Resources set to "Use
@@ -124,7 +125,7 @@ export function RateCardTab({ canChange, poolId = '' }: { canChange: boolean; po
                     const status = r.id === current?.id ? 'current' : r.effectiveFrom > today ? 'upcoming' : 'past';
                     return (
                       <tr key={r.id} className={status === 'past' ? 'text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-gray-100'}>
-                        <td className="px-3 py-2">{r.role}</td>
+                        <td className="px-3 py-2">{roleLabel(r.role)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{money(r.hourlyRate)}</td>
                         <td className="px-3 py-2 text-right tabular-nums">
                           {r.overtimeRate != null ? money(r.overtimeRate) : <span className="text-gray-500 dark:text-gray-400" title="1.5 × the hourly rate">{money(r.hourlyRate * 1.5)}*</span>}

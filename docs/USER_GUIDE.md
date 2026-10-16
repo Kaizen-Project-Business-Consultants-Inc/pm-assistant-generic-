@@ -255,6 +255,8 @@ Open a project from the Dashboard or Projects page. Edit any field (name, descri
 
 When a project is finished or stopped, **archive** it: in the **Projects** list, press the **Archive project** button on its card (the project's Manager or Owner can do this). An archived project leaves your active lists and totals, and every record is kept. You can **Unarchive** it at any time.
 
+**Finding archived projects (October 2026).** Press **Show archived** on the Projects page. Your active projects stay where they are, and the archived ones appear below them in their own **Archived (N)** section, folded until you open it: one compact row each (project, client, type, the day it was archived, end date), newest first, 25 to a page. **Open** shows the project read-only; **Restore** (for people who can change data) brings it back to the active list. The **Cards / List** switch at the top chooses how active projects are shown and is remembered for you.
+
 **Deleting** is only possible on single-user plans (trial and consultant), and only for the project's Owner: **Edit project → Delete Project**, then type the project's name to confirm. This removes the project and all its schedules, tasks and data for good. On team plans (SME and Enterprise) projects can't be deleted — archive them instead. The sample project can't be deleted.
 
 ### Clients (October 2026)
@@ -928,6 +930,8 @@ The **Financials** tab within each project provides comprehensive expense tracki
 ---
 
 ## 8. Resources
+
+**The people list (October 2026).** Each person is one line: name with their email under it, role in words (*Team member*, not *team_member*), line manager — with a **Default — check** label when it was set to the company owner automatically (click it to confirm or change) —, status, hours per week, rate, what they're booked on, department and skills. **Generic roles** are listed below it in their own table: how many tasks each is on and, for people who see pay, what it costs from — a role priced from the rate card that has no rate there yet says **No rate for this role yet**.
 
 ### Client resource pools (consultant plans and the free trial, October 2026)
 
@@ -1958,7 +1962,7 @@ A searchable, filterable table at the bottom of the page lists all past analyses
 
 > **What a key or a Claude connection can do (October 2026):** never more than your own role. Project managers, PMOs and the company owner can create keys with **read** or **read + write** rights, and a key changes only projects you manage. Team members, viewers and executives can't create keys or webhooks; connecting Claude gives them read-only access. The "admin" right is for the Kovarti platform team only. Connecting Claude gives it exactly your rights. You can **Revoke** any of your own keys at any time. Revoking a Claude connection ("OAuth: Claude") ends it for good: Claude can't renew it, and you connect Claude again if you want it back. A Claude connection also ends if your account is switched off, you're asked to change your password, or you move to another company. A key or Claude connection can never change your password or delete your account (sign in to do that), and a read-only key can't invite, change or remove company members or guests. When you connect Claude, its sign-in page works like Kovarti's: after 5 wrong passwords that name is locked for 15 minutes, and if you have to change your password or verify your email, do that in Kovarti first.
 
-> **Trial accounts — API Keys:** Works fully on the free trial — the API Keys tab lists your own keys (empty until you create one), and **Create Key** is there for the roles described below.
+> **Trial accounts — API Keys:** Works fully on the free trial — the Connections & API keys section lists your own keys (empty until you create one), and **Create Key** is there for the roles described below.
 
 ### AI Summary Banner
 
@@ -2660,10 +2664,10 @@ Signed in but not the company's owner? The **Pricing** page still shows every pl
 
 ### Settings
 
-Open **Settings** from the sidebar or from your name (top right). It has up to 13 tabs, and you see only the ones for your role. Everyone has Profile, Company holidays (read-only unless you're the owner or a PMO), Notifications, Display, Accessibility, AI Context, API Keys and Danger Zone; Webhooks is hidden for team members, viewers and executives. On API Keys, team members, viewers and executives see and revoke their own keys (such as a Claude connection) but have no Create Key button. Team and Rate card are for the company owner, PMOs and project managers (finance officers also see Rate card, read-only) — on Team, only the owner sees Invite, the role boxes and Remove; project managers also invite guests; Support visits and Sample project for the owner and PMOs.
+Open **Settings** from the sidebar or from your name (top right). Its sections are listed down the left in three groups — **You** (Profile, Notifications, Display, Accessibility, AI assistant), **Company** (Team, Company holidays, Rate card, Sample project, Support visits) and **Advanced** (Connections & API keys, Webhooks) — with **Danger zone** on its own at the bottom; you see only the ones for your role (up to 13). Everyone has Profile, Company holidays (read-only unless you're the owner or a PMO), Notifications, Display, Accessibility, AI assistant, Connections & API keys and Danger zone; Webhooks is hidden for team members, viewers and executives. In Connections & API keys, team members, viewers and executives see and revoke their own keys (such as a Claude connection) but have no Create Key button. Team and Rate card are for the company owner, PMOs and project managers (finance officers also see Rate card, read-only) — on Team, only the owner sees Invite, the role boxes and Remove; project managers also invite guests; Support visits and Sample project for the owner and PMOs.
 
 - **Team** (company owner, PMOs and project managers) -- **Invite Member**: type an email, pick a role (Project Manager, Team Member, Viewer or Executive) and click **Invite**. Change a member's role from the list, or **Remove member** to take someone out of the company (they lose access to every project); there is no "deactivate". There is no "Admin" role for company members — admin is reserved for the Kovarti platform team. The company owner's own role can't be changed by anyone else. On Consultant plans the role is fixed to **Viewer**; on the Team and Enterprise plans, inviting anyone other than a viewer uses a paid seat (added to your subscription if needed). The same tab has **Guest Collaborators** and **Viewer Invites** (see [Viewer Invites](#viewer-invites) below).
-- **API keys** -- Create and revoke keys for programmatic access, with **read** or **read + write** rights. A key never does more than your own role allows. Project managers, PMOs, the company owner and other roles that may change data see **Create Key**; team members, viewers and executives don't (connecting Claude gives them read-only access instead), but they still see and can revoke their own keys. The "admin" right is offered only to the Kovarti platform team. Revoking a key shows a styled confirmation modal before the key is deleted.
+- **Connections & API keys** -- Create and revoke keys for programmatic access (such as a Claude connection). Each key **Can read**, or **Can read** and **Can change**. A key never does more than your own role allows. Project managers, PMOs, the company owner and other roles that may change data see **Create Key**; team members, viewers and executives don't (connecting Claude gives them read-only access instead), but they still see and can revoke their own keys. The "admin" right is offered only to the Kovarti platform team. Revoking a key shows a styled confirmation modal before the key is deleted.
 - **Webhooks** -- Register outbound webhook URLs (project managers, PMOs, the owner and other roles that may change data; hidden for team members, viewers and executives). You can tick any of the 18 events the app sends: tasks, projects, proposals, sprints, risks, change requests (created, approved, rejected, returned, withdrawn) and the nightly check. Deleting a webhook shows a styled confirmation modal.
 - Custom fields are not a Settings tab: they're set up per project, on the project's **Overview** tab.
 - **Notifications** -- Configure notification preferences per category (Agent & Proposals, Risks & Issues, Budget & Finance, Meetings, System Alerts, Deadlines) with independent in-app and email toggles. Includes email master toggle, digest frequency, and the following digest customization options:
@@ -2677,18 +2681,18 @@ Open **Settings** from the sidebar or from your name (top right). It has up to 1
 - **Rate card** -- Hourly cost rates by role, each with its start date (the company owner, PMOs and project managers; finance officers see it read-only). See [Rate Card](#rate-card).
 - **Support visits** (company owner and PMO) -- Every time Kovarti support looked at your workspace to help with a problem: when, how long and the reason given. Support visits are **read-only** — support can see your projects but can never change anything — and last at most 30 minutes. A visit happening right now is marked **Happening now**.
 
-### AI Context Settings
+### AI assistant settings
 
-Open **Settings > AI Context** to customize how Mjuzi AI responds to you:
+Open **Settings > AI assistant** (called *AI Context* before October 2026) to customize how Mjuzi AI responds to you:
 
-- **AI Preferences** -- Set custom instructions (up to 5,000 characters), response style (tone, length, format), forbidden topics, project methodology, and AI creativity/temperature. Your user-level settings override project and org defaults unless a setting has been locked (only Kovarti platform staff can lock one). Everyone saves their own AI Preferences, whatever their role (October 2026; team members, viewers and executives used to be refused). Only you change yours.
+- **AI Preferences** -- Set custom instructions (up to 5,000 characters), response style (tone, length, format), forbidden topics, project methodology, and **Answers: Precise ↔ Creative** (Precise sticks to your plan's facts; Creative suggests more ideas). Your user-level settings override project and org defaults unless a setting has been locked (only Kovarti platform staff can lock one). Everyone saves their own AI Preferences, whatever their role (October 2026; team members, viewers and executives used to be refused). Only you change yours.
 - **Memory Browser** (Kovarti support only since October 2026 — hidden for everyone else) -- View, search, edit, and delete all AI memories. Each memory shows its version number, permission scope (org/project/user), and source. Edit with optimistic locking (if another user changed the memory, you'll see a conflict dialog). Roll back to previous versions from the version history panel.
 - **Dreaming** -- *Switched off (September 2026).* It read users' AI conversations across the platform to suggest memory improvements. The platform doesn't read customers' conversations, so the tab has been removed.
 - **Context Preview** -- See exactly what custom context the AI receives for your current session. Each config entry shows which layer it comes from (org, project, or user) and whether it's locked. The raw prompt injection preview shows the exact text added to the AI system prompt.
 
 **Changing your email (October 2026).** On **Settings → Profile**, when you change your email a **Current Password** box appears; enter your password to save the new email. Changing only your name needs no password. Only the company owner can rename the company.
 
-All thirteen Settings tabs (Profile, Team, Company holidays, Sample project, Rate card, Support visits, Notifications, Display, Accessibility, AI Context, API Keys, Webhooks, Danger Zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The Settings tabs use a proper ARIA tablist pattern for screen reader navigation.
+All thirteen Settings sections (Profile, Team, Company holidays, Sample project, Rate card, Support visits, Notifications, Display, Accessibility, AI assistant, Connections & API keys, Webhooks, Danger zone) fully support dark mode — toggle tracks, form panels, badges, code blocks, and the danger zone section all switch correctly when dark theme is active. The list of sections is a labelled navigation list; the open section is marked as the current page for screen readers.
 
 ### Admin AI Usage (Admin Only)
 
@@ -4274,7 +4278,7 @@ Bring Your Own Storage: connect OneDrive, SharePoint, Google Drive, or Dropbox s
 - **Contextual support links** -- "Need help? Contact support" links appear on the **login page**, **404 page**, and **error pages**. These mailto links pre-fill the subject and body with your current page URL and timestamp so the support team can diagnose faster.
 - **Error reporting** -- If you encounter a crash (error boundary), a "Report this issue" link lets you email the error details directly to support.
 - **Administrators** -- System configuration and deployment are covered in the Admin Manual (ask your administrator or support for a copy).
-- **API access** -- Project managers, PMOs and the company owner can create an API key in Settings → API Keys to integrate with external tools.
+- **API access** -- Project managers, PMOs and the company owner can create an API key in Settings → Connections & API keys to integrate with external tools.
 
 ### Getting new versions
 

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Copy, Check, Send, Trash2 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
-import { WEBHOOK_EVENTS } from '../../constants/webhookEvents';
+import { WEBHOOK_EVENTS, webhookEventLabel } from '../../constants/webhookEvents';
 
 export const WebhooksTab: React.FC = () => {
   const uid = useId();
@@ -104,22 +104,25 @@ export const WebhooksTab: React.FC = () => {
                     className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Events</label>
-                  <div className="flex flex-wrap gap-2">
+                <fieldset>
+                  <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">When should we send it?</legend>
+                  <ul className="grid gap-1.5 sm:grid-cols-2">
                     {WEBHOOK_EVENTS.map((event) => (
-                      <button
-                        key={event}
-                        onClick={() => toggleEvent(event)}
-                        className={`px-2.5 py-1 rounded-md border text-xs font-medium transition-colors ${
-                          newEvents.includes(event) ? 'border-primary-600 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        {event}
-                      </button>
+                      <li key={event}>
+                        <label className="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-100 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={newEvents.includes(event)}
+                            onChange={() => toggleEvent(event)}
+                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span>{webhookEventLabel(event)}</span>
+                          <code className="text-xs text-gray-600 dark:text-gray-400">{event}</code>
+                        </label>
+                      </li>
                     ))}
-                  </div>
-                </div>
+                  </ul>
+                </fieldset>
                 <div className="flex gap-2">
                   <button onClick={handleCreate} disabled={!newUrl.trim() || newEvents.length === 0 || createMutation.isPending} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
                     {createMutation.isPending ? 'Creating…' : 'Create'}
@@ -145,7 +148,7 @@ export const WebhooksTab: React.FC = () => {
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{wh.url}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {(wh.events || []).map((e: string) => (
-                        <span key={e} className="inline-block px-1.5 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{e}</span>
+                        <span key={e} title={e} className="inline-block px-1.5 py-0.5 rounded text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">{webhookEventLabel(e)}</span>
                       ))}
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">

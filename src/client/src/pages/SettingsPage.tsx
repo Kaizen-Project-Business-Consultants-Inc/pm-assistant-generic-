@@ -32,24 +32,31 @@ import { canSeePayRates } from '../utils/rateCard';
 import { SupportVisitsTab } from './settings/SupportVisitsTab';
 import { SampleProjectTab } from './settings/SampleProjectTab';
 import { usesClientPools } from '../utils/clientPools';
+import { groupByKey } from '../utils/lookup';
 
 type Tab = 'profile' | 'team' | 'holidays' | 'sample-project' | 'rate-card' | 'support-visits' | 'notifications' | 'display' | 'accessibility' | 'ai-context' | 'api-keys' | 'webhooks' | 'danger';
 
-const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" /> },
-  { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" /> },
-  { id: 'holidays', label: 'Company holidays', icon: <CalendarDays className="w-4 h-4" /> },
-  { id: 'sample-project', label: 'Sample project', icon: <FlaskConical className="w-4 h-4" /> },
-  { id: 'rate-card', label: 'Rate card', icon: <DollarSign className="w-4 h-4" /> },
-  { id: 'support-visits', label: 'Support visits', icon: <Eye className="w-4 h-4" /> },
-  { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" /> },
-  { id: 'display', label: 'Display', icon: <Palette className="w-4 h-4" /> },
-  { id: 'accessibility', label: 'Accessibility', icon: <Accessibility className="w-4 h-4" /> },
-  { id: 'ai-context', label: 'AI Context', icon: <Brain className="w-4 h-4" /> },
-  { id: 'api-keys', label: 'API Keys', icon: <Key className="w-4 h-4" /> },
-  { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" /> },
-  { id: 'danger', label: 'Danger Zone', icon: <AlertTriangle className="w-4 h-4" /> },
+type Group = 'You' | 'Company' | 'Advanced' | 'Danger';
+
+// A list down the left in groups (UAT U9, Batch F): 13 tabs in one row hid AI assistant, API keys,
+// Webhooks and Danger zone off the right edge. Plain names: "AI Context" → "AI assistant",
+// "API Keys" → "Connections & API keys".
+const ALL_TABS: { id: Tab; label: string; icon: React.ReactNode; group: Group }[] = [
+  { id: 'profile', label: 'Profile', icon: <User className="w-4 h-4" />, group: 'You' },
+  { id: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" />, group: 'You' },
+  { id: 'display', label: 'Display', icon: <Palette className="w-4 h-4" />, group: 'You' },
+  { id: 'accessibility', label: 'Accessibility', icon: <Accessibility className="w-4 h-4" />, group: 'You' },
+  { id: 'ai-context', label: 'AI assistant', icon: <Brain className="w-4 h-4" />, group: 'You' },
+  { id: 'team', label: 'Team', icon: <Users className="w-4 h-4" />, group: 'Company' },
+  { id: 'holidays', label: 'Company holidays', icon: <CalendarDays className="w-4 h-4" />, group: 'Company' },
+  { id: 'rate-card', label: 'Rate card', icon: <DollarSign className="w-4 h-4" />, group: 'Company' },
+  { id: 'sample-project', label: 'Sample project', icon: <FlaskConical className="w-4 h-4" />, group: 'Company' },
+  { id: 'support-visits', label: 'Support visits', icon: <Eye className="w-4 h-4" />, group: 'Company' },
+  { id: 'api-keys', label: 'Connections & API keys', icon: <Key className="w-4 h-4" />, group: 'Advanced' },
+  { id: 'webhooks', label: 'Webhooks', icon: <Webhook className="w-4 h-4" />, group: 'Advanced' },
+  { id: 'danger', label: 'Danger zone', icon: <AlertTriangle className="w-4 h-4" />, group: 'Danger' },
 ];
+const GROUPS: Group[] = ['You', 'Company', 'Advanced', 'Danger'];
 
 const VALID_TABS = new Set<string>(ALL_TABS.map(t => t.id));
 
@@ -85,40 +92,52 @@ export const SettingsPage: React.FC = () => {
     setSearchParams(tab === 'profile' ? {} : { tab }, { replace: true });
   };
 
-  return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
+  const current = tabs.find(t => t.id === activeTab);
+  const byGroup = groupByKey(tabs, t => t.group);
 
-      <div
-        role="tablist"
-        aria-label="Settings"
-        className="flex space-x-1 border-b border-gray-200 dark:border-gray-700 mb-6 overflow-x-auto"
-      >
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.id;
+  return (
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Settings</h1>
+
+      <div className="grid gap-6 md:grid-cols-[230px_minmax(0,1fr)] items-start">
+      <nav aria-label="Settings sections" className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-2">
+        {GROUPS.map(group => {
+          const items = byGroup.get(group) ?? [];
+          if (items.length === 0) return null;
           return (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`settings-panel-${tab.id}`}
-              id={`settings-tab-${tab.id}`}
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'border-primary-600 text-primary-600 dark:text-primary-400'
-                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
+            <div key={group} className={group === 'Danger' ? 'mt-2 pt-2 border-t border-gray-200 dark:border-gray-700' : ''}>
+              {group !== 'Danger' && <h2 className="px-2.5 pt-2 pb-1 text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">{group}</h2>}
+              <ul>
+                {items.map(tab => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <li key={tab.id}>
+                      <button
+                        type="button"
+                        id={`settings-tab-${tab.id}`}
+                        aria-current={isActive ? 'page' : undefined}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm text-left transition-colors ${
+                          isActive
+                            ? 'bg-accent-teal-soft text-accent-teal-text dark:bg-accent-teal/20 dark:text-teal-200 font-bold'
+                            : tab.group === 'Danger'
+                              ? 'text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium'
+                              : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium'
+                        }`}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           );
         })}
-      </div>
+      </nav>
 
-      <div id={`settings-panel-${activeTab}`} role="tabpanel" aria-labelledby={`settings-tab-${activeTab}`}>
+      <section id={`settings-panel-${activeTab}`} aria-label={current?.label} className="min-w-0">
         {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'team' && canManageTeam && <TeamTab />}
         {activeTab === 'holidays' && !pools && <HolidaysTab />}
@@ -132,6 +151,7 @@ export const SettingsPage: React.FC = () => {
         {activeTab === 'api-keys' && <ApiKeysTab />}
         {activeTab === 'webhooks' && canUseWebhooks && <WebhooksTab />}
         {activeTab === 'danger' && <DangerZoneTab />}
+      </section>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { roleLabel } from '../../constants/branding';
 
 interface TaskDetail {
   taskId: string;
@@ -115,7 +116,7 @@ export function ResourceUsageView({ projectId }: { projectId: string }) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 dark:text-white">{r.resourceName}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{r.role} &middot; {r.tasks.length} task{r.tasks.length !== 1 ? 's' : ''}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{roleLabel(r.role)} &middot; {r.tasks.length} task{r.tasks.length !== 1 ? 's' : ''}</div>
                   </div>
                   <UtilBar planned={r.totalHoursPlanned} capacity={r.capacityHoursPerWeek} />
                 </button>

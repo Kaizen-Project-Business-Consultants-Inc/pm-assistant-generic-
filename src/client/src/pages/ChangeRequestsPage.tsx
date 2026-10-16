@@ -8,6 +8,8 @@ import { ChangeRequestForm } from '../components/approvals/ChangeRequestForm';
 import { ChangeRequestDetail } from '../components/approvals/ChangeRequestDetail';
 import { WorkflowEditor } from '../components/approvals/WorkflowEditor';
 import { useCanChangeData } from '../hooks/useCanChangeData';
+import { SectionCard, TH, TD } from '../components/ui/SectionCard';
+import { MetaPill } from '../components/ui/MetaPill';
 
 type Tab = 'requests' | 'workflows';
 type View = 'list' | 'detail' | 'form' | 'workflow-editor';
@@ -192,20 +194,20 @@ export const ChangeRequestsPage: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Create a workflow to define approval steps for change requests</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                <SectionCard flush aria-label="Approval workflows">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                        <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider">Name</th>
-                        <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider">Entity Type</th>
-                        <th className="text-left px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider">Steps</th>
-                        <th className="text-right px-4 py-2 font-semibold text-gray-600 dark:text-gray-300 text-xs uppercase tracking-wider">Actions</th>
+                      <tr>
+                        <th scope="col" className={TH}>Name</th>
+                        <th scope="col" className={TH}>Entity Type</th>
+                        <th scope="col" className={TH}>Steps</th>
+                        <th scope="col" className={`${TH} text-right`}>Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                    <tbody>
                       {workflows.map((wf: any) => (
                         <tr key={wf.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                          <td className="px-4 py-3">
+                          <td className={TD}>
                             <button
                               onClick={() => {
                                 setSelectedWorkflowId(wf.id);
@@ -219,15 +221,15 @@ export const ChangeRequestsPage: React.FC = () => {
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{wf.description}</p>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded capitalize">
+                          <td className={TD}>
+                            <MetaPill className="capitalize">
                               {(wf.entityType || '').replace(/_/g, ' ')}
-                            </span>
+                            </MetaPill>
                           </td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-gray-300">
+                          <td className={TD}>
                             {wf.steps?.length || 0} step{(wf.steps?.length || 0) !== 1 ? 's' : ''}
                           </td>
-                          <td className="px-4 py-3 text-right">
+                          <td className={`${TD} text-right`}>
                             <button
                               onClick={() => setConfirmDeleteWf({ id: wf.id, name: wf.name })}
                               className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-600 transition-colors"
@@ -240,7 +242,7 @@ export const ChangeRequestsPage: React.FC = () => {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </SectionCard>
               )}
             </div>
           )}

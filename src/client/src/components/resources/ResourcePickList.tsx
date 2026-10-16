@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Avatar } from '../ui/Avatar';
 import { GenericBadge } from './ResourceBadges';
+import { roleLabel } from '../../constants/branding';
 
 export interface PickableResource {
   id: string;
@@ -46,7 +47,7 @@ export function ResourcePickList<T extends PickableResource>({ resources, curren
         <Avatar name={r.name} size="xs" />
         <div className="min-w-0 flex-1">
           <div className="font-medium text-gray-900 dark:text-white truncate">{r.name}</div>
-          {r.role && <div className="text-gray-500 dark:text-gray-400 truncate">{r.role}</div>}
+          {r.role && <div className="text-gray-500 dark:text-gray-400 truncate">{roleLabel(r.role)}</div>}
         </div>
         {r.isGeneric && <GenericBadge className="shrink-0" />}
         {extra?.(r)}
@@ -67,7 +68,7 @@ export function ResourcePickList<T extends PickableResource>({ resources, curren
 /** The same grouping for a plain <select>: <optgroup>s of people and generic roles */
 export function ResourceOptionGroups<T extends PickableResource>({ resources }: { resources: T[] }) {
   const { people, generic } = splitPeopleAndGeneric(resources);
-  const option = (r: T) => <option key={r.id} value={r.id}>{r.name}{r.role ? ` — ${r.role}` : ''}</option>;
+  const option = (r: T) => <option key={r.id} value={r.id}>{r.name}{r.role ? ` — ${roleLabel(r.role)}` : ''}</option>;
   if (generic.length === 0) return <>{people.map(option)}</>;
   return (
     <>

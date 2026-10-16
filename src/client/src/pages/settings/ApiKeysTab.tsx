@@ -7,6 +7,10 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 import { useCanChangeData } from '../../hooks/useCanChangeData';
 import { useAuthStore } from '../../stores/authStore';
 
+/** Key rights in plain words (UAT U9): "Scopes: read, write" read as jargon */
+const SCOPE_LABEL: Record<string, string> = { read: 'Can read', write: 'Can change', admin: 'Kovarti admin' };
+const scopeLabel = (scope: string) => SCOPE_LABEL[scope] ?? scope;
+
 export const ApiKeysTab: React.FC = () => {
   const uid = useId();
   const queryClient = useQueryClient();
@@ -66,7 +70,7 @@ export const ApiKeysTab: React.FC = () => {
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">API Keys</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Connections &amp; API keys</h2>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Create API keys to allow external AI agents and integrations to access your data.</p>
             {!canCreate && (
               <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Your role can't create keys. Keys made for you, such as a Claude connection, are listed here and you can revoke them.</p>
@@ -113,22 +117,24 @@ export const ApiKeysTab: React.FC = () => {
                     className="w-full max-w-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scopes</label>
+                <fieldset>
+                  <legend className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">What it can do</legend>
                   <div className="flex gap-2">
                     {offeredScopes.map((scope) => (
                       <button
                         key={scope}
+                        type="button"
+                        aria-pressed={newKeyScopes.includes(scope)}
                         onClick={() => toggleScope(scope)}
                         className={`px-3 py-1.5 rounded-md border text-sm font-medium transition-colors ${
                           newKeyScopes.includes(scope) ? 'border-primary-600 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300' : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-400'
                         }`}
                       >
-                        {scope}
+                        {scopeLabel(scope)}
                       </button>
                     ))}
                   </div>
-                </div>
+                </fieldset>
                 <div className="flex gap-2">
                   <button onClick={handleCreate} disabled={!newKeyName.trim() || createMutation.isPending} className="flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-primary-700 transition-colors disabled:opacity-50">
                     {createMutation.isPending ? 'Creating…' : 'Create'}
@@ -154,7 +160,7 @@ export const ApiKeysTab: React.FC = () => {
                   <div className="flex items-center gap-3 mt-1">
                     <code className="text-xs text-gray-500 dark:text-gray-400 font-mono">{key.keyPrefix}...</code>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Scopes: {(key.scopes || []).join(', ')}
+                      {(key.scopes || []).map(scopeLabel).join(' · ')}
                     </span>
                     {key.lastUsedAt && (
                       <span className="text-xs text-gray-500 dark:text-gray-400">

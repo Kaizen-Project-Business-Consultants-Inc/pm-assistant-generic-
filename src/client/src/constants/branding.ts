@@ -49,10 +49,23 @@ export const USER_ROLE_LABELS: Record<string, string> = {
   qa_lead: 'QA Lead',
   scrum_master: 'Scrum Master',
   business_analyst: 'Business Analyst',
+  ba: 'Business Analyst',
+  qa: 'QA',
+  devops: 'DevOps',
+  risk_manager: 'Risk Manager',
+  finance_officer: 'Finance Officer',
 };
 
-export function roleLabel(role: string): string {
-  return USER_ROLE_LABELS[role] || role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+/**
+ * A role as people read it. A person made from a login carries the login's role code
+ * ("team_member"), which showed as code words on Resources (Batch F); a role someone typed
+ * ("QA / Tester", "Structural Engineer") is left exactly as typed.
+ */
+export function roleLabel(role: string | null | undefined): string {
+  const r = (role ?? '').trim();
+  if (USER_ROLE_LABELS[r]) return USER_ROLE_LABELS[r];
+  if (!/^[a-z_]+$/.test(r)) return r;
+  return r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 // ── Tier badge colors (admin pages) ──────────────────────────────────

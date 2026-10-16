@@ -6,6 +6,8 @@ import { routeTo } from '../../routes';
 import { ClientBreadcrumb } from './ClientBreadcrumb';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
+import { SectionCard, TH, TD } from '../../components/ui/SectionCard';
+import { MetaPill } from '../../components/ui/MetaPill';
 
 type Show = 'open' | 'all' | 'high';
 
@@ -31,11 +33,11 @@ interface ClientRaidResponse {
   items: ClientRaidItem[];
 }
 
-const SEVERITY_CLASS: Record<string, string> = {
-  critical: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-  medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  low: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
+const SEVERITY_VARIANT: Record<string, 'danger' | 'warning' | 'default'> = {
+  critical: 'danger',
+  high: 'warning',
+  medium: 'warning',
+  low: 'default',
 };
 
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ');
@@ -109,42 +111,42 @@ export function ClientRaidPage() {
             ))}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
+          <SectionCard flush aria-label="Risks and issues">
+            <table className="min-w-full">
+              <thead>
                 <tr>
                   {['Project', 'Type', 'Title', 'Severity', 'Owner', 'Due'].map(h => (
-                    <th key={h} scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{h}</th>
+                    <th key={h} scope="col" className={TH}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700">
+              <tbody>
                 {isLoading ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">Loading…</td></tr>
+                  <tr><td colSpan={6} className={`${TD} py-6 text-gray-500 dark:text-gray-400`}>Loading…</td></tr>
                 ) : items.length === 0 ? (
-                  <tr><td colSpan={6} className="px-4 py-6 text-sm text-gray-500 dark:text-gray-400">Nothing to show for this choice.</td></tr>
+                  <tr><td colSpan={6} className={`${TD} py-6 text-gray-500 dark:text-gray-400`}>Nothing to show for this choice.</td></tr>
                 ) : items.map(item => (
                   <tr key={`${item.projectId}-${item.id}`} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-4 py-3 text-sm text-gray-700 dark:text-gray-200">
+                    <td className={TD}>
                       {item.projectCode && <><span className="font-mono text-xs text-gray-500 dark:text-gray-400 mr-1.5">{item.projectCode}</span><span className="sr-only"> – </span></>}
                       {item.projectName}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{capitalise(item.type || '')}</td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className={TD}>{capitalise(item.type || '')}</td>
+                    <td className={TD}>
                       <Link to={routeTo.project(item.projectId, 'raid')} className="font-medium text-primary-600 dark:text-primary-400 hover:underline">
                         {item.recordId && <span className="font-mono text-xs mr-1.5">{item.recordId}</span>}
                         {item.title}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-sm">
+                    <td className={TD}>
                       {item.severity ? (
-                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_CLASS[item.severity.toLowerCase()] || SEVERITY_CLASS.low}`}>
+                        <MetaPill variant={SEVERITY_VARIANT[item.severity.toLowerCase()] || 'default'}>
                           {capitalise(item.severity)}
-                        </span>
+                        </MetaPill>
                       ) : '—'}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{item.ownerName || '—'}</td>
-                    <td className={`px-4 py-3 text-sm ${item.overdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-600 dark:text-gray-300'}`}>
+                    <td className={TD}>{item.ownerName || '—'}</td>
+                    <td className={`${TD} ${item.overdue ? '!text-red-600 dark:!text-red-400 font-medium' : ''}`}>
                       {item.dueDate ? formatCalendarDate(item.dueDate) : '—'}
                       {item.overdue && <span className="sr-only"> (overdue)</span>}
                     </td>
@@ -152,7 +154,7 @@ export function ClientRaidPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </SectionCard>
           <p className="text-xs text-gray-500 dark:text-gray-400">Only projects you can open are included.</p>
         </>
       )}

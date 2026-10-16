@@ -28,6 +28,7 @@ import { apiService } from '../services/api';
 import { PatternCard } from '../components/lessons/PatternCard';
 
 import { AccessibleModal } from '../components/ui/AccessibleModal';
+import { MetaPill } from '../components/ui/MetaPill';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -116,33 +117,31 @@ function impactDot(impact: string) {
 }
 
 function impactBadge(impact: string) {
-  const colors: Record<string, string> = {
-    positive: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-    negative: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
-    neutral: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200',
+  const variants: Record<string, 'success' | 'danger' | 'default'> = {
+    positive: 'success',
+    negative: 'danger',
+    neutral: 'default',
   };
   return (
-    <span
-      className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${colors[impact] || 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300'}`}
-    >
+    <MetaPill variant={variants[impact] || 'default'} className="capitalize">
       {impact}
-    </span>
+    </MetaPill>
   );
 }
 
 function statusBadge(status?: string) {
-  const colors: Record<string, string> = {
-    draft: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800',
-    reviewed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-    approved: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800',
-    archived: 'bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700',
-    pending_elevation: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+  const variants: Record<string, 'warning' | 'info' | 'success' | 'muted'> = {
+    draft: 'warning',
+    reviewed: 'info',
+    approved: 'success',
+    archived: 'muted',
+    pending_elevation: 'warning',
   };
   if (!status) return null;
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold uppercase border ${colors[status] || ''}`}>
-      {status}
-    </span>
+    <MetaPill variant={variants[status] || 'default'} className="uppercase">
+      {status.replace(/_/g, ' ')}
+    </MetaPill>
   );
 }
 
@@ -158,16 +157,16 @@ function sourceIcon(sourceType?: string) {
 
 function severityBadge(severity?: string | null) {
   if (!severity) return null;
-  const colors: Record<string, string> = {
-    critical: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-    high: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300',
-    medium: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-    low: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400',
+  const variants: Record<string, 'danger' | 'warning' | 'default'> = {
+    critical: 'danger',
+    high: 'warning',
+    medium: 'warning',
+    low: 'default',
   };
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold uppercase ${colors[severity] || ''}`}>
+    <MetaPill variant={variants[severity] || 'default'} className="uppercase">
       {severity}
-    </span>
+    </MetaPill>
   );
 }
 
@@ -562,7 +561,7 @@ export const LessonsLearnedPage: React.FC = () => {
 
       {/* No project selected — empty state */}
       {!selectedProjectId && (
-        <div className="card text-center py-16">
+        <div className="card rounded-xl card-stripe stripe-gray text-center py-16">
           <BookOpen className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-3" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Select a project</h3>
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -612,7 +611,7 @@ export const LessonsLearnedPage: React.FC = () => {
 
       {/* PMO Report — toggled from actions menu */}
       {selectedProjectId && showPMOReport && (
-        <div className="card">
+        <div className="card rounded-xl card-stripe stripe-teal">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
               <BarChart3 className="w-4 h-4 text-indigo-500" />
@@ -710,7 +709,7 @@ export const LessonsLearnedPage: React.FC = () => {
           <Search className="w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           <div className="relative">
             <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} aria-label="Filter by status" className="input appearance-none pr-7 text-xs py-1.5">
-              {STATUS_FILTERS.map((s) => (<option key={s} value={s}>{s === 'All' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}</option>))}
+              {STATUS_FILTERS.map((s) => (<option key={s} value={s}>{s === 'All' ? 'All Statuses' : (s.charAt(0).toUpperCase() + s.slice(1)).replace(/_/g, ' ')}</option>))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500 dark:text-gray-400" />
           </div>
@@ -737,7 +736,7 @@ export const LessonsLearnedPage: React.FC = () => {
             <div className="w-8 h-8 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin" />
           </div>
         ) : filteredLessons.length === 0 ? (
-          <div className="card text-center py-10">
+          <div className="card rounded-xl card-stripe stripe-gray text-center py-10">
             <BookOpen className="mx-auto h-10 w-10 text-gray-300 mb-2" />
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">No lessons found</h3>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -751,7 +750,7 @@ export const LessonsLearnedPage: React.FC = () => {
               return (
                 <div
                   key={lesson.id}
-                  className={`card !py-0 !px-0 overflow-hidden transition-shadow duration-200 hover:shadow-md ${lesson.status === 'draft' ? 'border-l-4 border-l-yellow-400' : lesson.status === 'archived' ? 'opacity-60' : ''}`}
+                  className={`card rounded-xl card-stripe ${lesson.status === 'archived' ? 'stripe-gray' : 'stripe-teal'} !py-0 !px-0 overflow-hidden transition-shadow duration-200 hover:shadow-md ${lesson.status === 'draft' ? 'border-l-4 border-l-yellow-400' : lesson.status === 'archived' ? 'opacity-60' : ''}`}
                 >
                   {/* Collapsed row */}
                   <div
@@ -771,9 +770,9 @@ export const LessonsLearnedPage: React.FC = () => {
                       )}
                       {statusBadge(lesson.status)}
                       {severityBadge(lesson.severity)}
-                      <span className="hidden sm:inline-block rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-xs font-medium">
+                      <MetaPill variant="info" className="hidden sm:inline-block">
                         {lesson.category}
-                      </span>
+                      </MetaPill>
                     </div>
                   </div>
 
@@ -797,9 +796,9 @@ export const LessonsLearnedPage: React.FC = () => {
                             {lesson.projectName && <span>Project: {lesson.projectName}</span>}
                             {(lesson.appliedCount ?? 0) > 0 && <span>Applied {lesson.appliedCount}x</span>}
                             {lesson.effectivenessRating != null && <span>Effectiveness: {lesson.effectivenessRating}%</span>}
-                            <span className="sm:hidden rounded-full bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 px-2 py-0.5 text-xs font-medium">
+                            <MetaPill variant="info" className="sm:hidden">
                               {lesson.category}
-                            </span>
+                            </MetaPill>
                             {impactBadge(lesson.impact)}
                           </div>
                           <div className="flex items-center gap-0.5">

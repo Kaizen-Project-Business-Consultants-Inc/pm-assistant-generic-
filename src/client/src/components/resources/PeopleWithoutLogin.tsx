@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { PlaceholderEmailBadge } from './ResourceBadges';
+import { roleLabel } from '../../constants/branding';
 
 /**
  * The project Team list's second half: people doing work on this project's tasks who aren't
@@ -53,7 +54,7 @@ export function PeopleWithoutLogin({ projectId, memberUserIds, canEdit }: {
             <div className="min-w-0">
               <div className="text-sm font-medium text-gray-900 dark:text-white">{p.name}</div>
               <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
-                <span>{p.role ? `${p.role} · ` : ''}{p.taskCount} task{p.taskCount === 1 ? '' : 's'}</span>
+                <span>{p.role ? `${roleLabel(p.role)} · ` : ''}{p.taskCount} task{p.taskCount === 1 ? '' : 's'}</span>
                 {editing?.id === p.resourceId ? null : <span>· {p.email}</span>}
                 {p.placeholderEmail && editing?.id !== p.resourceId && <PlaceholderEmailBadge />}
               </div>

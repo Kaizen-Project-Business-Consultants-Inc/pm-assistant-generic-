@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import type { ProjectSummaryPM } from '../../types/pm';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { useAuthStore } from '../../stores/authStore';
+import { useCanChangeData } from '../../hooks/useCanChangeData';
 import { refreshProjectLists } from '../../utils/projectListCache';
 
 interface ProjectCardPMProps {
@@ -73,6 +74,8 @@ function formatDate(dateStr?: string): string {
 export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMProps) {
   // Favourites are the viewer's own, but a support visit changes nothing at all
   const inSupportVisit = useAuthStore(s => !!s.user?.supportSession);
+  // archive / restore: only where the server allows it (may change data AND manages this project)
+  const canChange = useCanChangeData();
   const {
     id,
     name,
@@ -200,13 +203,13 @@ export function ProjectCardPM({ project, isFavourite = false }: ProjectCardPMPro
           <ExternalLink className="w-3.5 h-3.5" />
           View Project
         </Link>
-        <button
+        {project.canEdit && canChange && <button
           onClick={() => toggleArchive.mutate()}
           title={isArchived ? 'Unarchive project' : 'Archive project'}
           className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           {isArchived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
-        </button>
+        </button>}
       </div>
     </div>
   );
