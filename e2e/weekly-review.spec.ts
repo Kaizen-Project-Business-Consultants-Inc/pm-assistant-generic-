@@ -62,7 +62,8 @@ test('the dashboard lists this week\'s review and links to it', async () => {
   await pm.goto('/dashboard');
   const list = pm.getByRole('region', { name: "This week's reviews" });
   await expect(list).toBeVisible({ timeout: 20_000 });
-  const row = list.getByRole('link', { name: /QA – e2e weekly review/ });
+  // this run's own project (a stalled earlier run can leave another QA review on the list)
+  const row = list.locator(`a[href*="${ids.projectId}"]`);
   await expect(row).toContainText('1 decision');
   await row.click();
   await expect(pm.getByRole('heading', { name: /Your week on QA – e2e weekly review/ })).toBeVisible({ timeout: 20_000 });
