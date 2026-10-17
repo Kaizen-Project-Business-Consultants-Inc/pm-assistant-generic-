@@ -3408,6 +3408,8 @@ The RAID log header contains six **Add** buttons, one per type:
 
 All forms include a **Source** field (Manual / AI Scan / Agent / Import) that is set automatically when records are created by the AI Scan or an agent.
 
+**Owner is required for risks, issues and actions (October 2026).** A new one can't be saved without an owner — pick a project member or type a name; the form says "Choose an owner. Every risk, issue and action needs someone responsible for it." Items made without the form — an import, a template's starter items, the AI risk scan, meeting minutes sent to RAID, standup blockers, automations, or Claude through a connection — are owned by the project's PM (or, when none is set, whoever created the project) until they hand them on (no "assigned to you" note; the PM is told about new items anyway). Decisions, assumptions and dependencies keep owner optional.
+
 **Owner field:** The Owner field accepts any project member. If a name is typed that does not match an existing project member, it is saved as a free-text fallback so external contacts or names not yet in the system can still be recorded.
 
 ### Importing from CSV/Excel

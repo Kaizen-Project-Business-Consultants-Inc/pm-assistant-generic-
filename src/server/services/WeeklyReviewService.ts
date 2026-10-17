@@ -14,6 +14,7 @@ import { pickWeekly, DISMISS_QUIET_DAYS, type WeeklyFacts } from './weeklyReview
 import { mondayOf, addCalendarDays, calendarDaysBetween } from '../utils/workingDays';
 import logger from '../utils/logger';
 import { dismissReviewItem, DISMISS_REASONS, WeeklyReviewNotFoundError, type DismissReason } from './weeklyReview/dismissItem';
+import { hasRaidOwner } from '../utils/raidOwner';
 
 interface WeeklyReview extends WeeklyReviewRow {
   projectName: string;
@@ -106,7 +107,7 @@ export class WeeklyReviewService {
     const unhandled = open
       .filter(r => r.type === 'risk' && SERIOUS.includes(String(r.severity).toLowerCase()))
       .map(r => {
-        const noOwner = !r.ownerId && !r.ownerResourceId;
+        const noOwner = !hasRaidOwner(r);
         const noResponse = !r.responseStrategy && !r.mitigationPlan && !r.responsePlan;
         return noOwner || noResponse ? { id: r.id, title: r.title, why: noOwner && noResponse ? 'no owner and no response' : noOwner ? 'no owner' : 'no response chosen' } : null;
       })

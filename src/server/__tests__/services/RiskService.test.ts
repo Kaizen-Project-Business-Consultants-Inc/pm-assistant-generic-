@@ -36,6 +36,11 @@ vi.mock('../../utils/logger', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+const pm = vi.hoisted(() => ({ id: null as string | null, creator: 'u-creator' }));
+vi.mock('../../services/ProjectService', () => ({ projectService: { findById: vi.fn(async () => ({ id: 'p1', projectManagerId: pm.id, createdBy: pm.creator })) } }));
+// the real helper checks the login still exists; here: the PM, else the creator
+vi.mock('../../services/scheduling/alertRecipient', () => ({ alertRecipient: vi.fn(async (p: any) => p.projectManagerId ?? p.createdBy ?? null) }));
+
 import { riskService } from '../../services/RiskService';
 import { riskRepository } from '../../database/RiskRepository';
 import { notificationService } from '../../services/NotificationService';
@@ -1099,5 +1104,38 @@ describe('RiskService', () => {
     it('returns other when empty string', () => {
       expect(riskService.mapAICategory('')).toBe('other');
     });
+  });
+});
+
+
+describe('RAID owner (user, UAT 2026-10-17)', () => {
+  beforeEach(() => {
+    mockRepo.create.mockReset().mockImplementation(async (d: any) => ({ id: 'k1', recordId: 'R-001', status: 'open', ...d }));
+    pm.id = 'u-pm';
+    (riskService as any).pmCache.clear();
+  });
+
+  it.each(['risk', 'issue', 'action'])('a %s made without an owner (import, template, AI, meeting) is owned by the PM, with no "assigned to you" note', async (type) => {
+    await riskService.create({ projectId: 'p1', type: type as any, title: 'Imported item', createdBy: 'u-importer' });
+    expect(mockRepo.create.mock.calls[0][0].ownerId).toBe('u-pm');
+    expect(mockNotification.create.mock.calls.some((c: any[]) => /assigned/i.test(JSON.stringify(c[0])))).toBe(false);
+  });
+
+  it("a project with no PM set: its creator owns it (projects.project_manager_id is usually empty)", async () => {
+    pm.id = null;
+    await riskService.create({ projectId: 'p1', type: 'issue', title: 'Standup blocker', createdBy: 'u-team' });
+    expect(mockRepo.create.mock.calls[0][0].ownerId).toBe('u-creator');
+  });
+
+  it('a blank typed owner name is not an owner — and is not stored', async () => {
+    await riskService.create({ projectId: 'p1', type: 'risk', title: 'A', ownerName: '   ', createdBy: 'u1' });
+    expect(mockRepo.create.mock.calls[0][0]).toMatchObject({ ownerId: 'u-pm', ownerName: undefined });
+  });
+
+  it('an owner given is kept, and decisions get no default', async () => {
+    await riskService.create({ projectId: 'p1', type: 'risk', title: 'A', ownerName: 'Vendor contact', createdBy: 'u1' });
+    await riskService.create({ projectId: 'p1', type: 'decision', title: 'B', createdBy: 'u1' });
+    expect(mockRepo.create.mock.calls[0][0].ownerId).toBeUndefined();
+    expect(mockRepo.create.mock.calls[1][0].ownerId).toBeUndefined();
   });
 });

@@ -3410,6 +3410,8 @@ Old routes (`/dashboard-pm`, `/projects-pm`) redirect to the new paths for backw
 
 ## 45. RAID Management
 
+**Owner required (Oct 2026, UAT).** A risk, issue or action created from the app must name an owner — `ownerId`, `ownerResourceId` or a typed `ownerName`; otherwise `POST /projects/:id/risks` answers 400 `{ error: 'Owner required', field: 'ownerId' }` with a plain message. Calls by API key / Claude (actor source `mcp`) and every path that creates items without the form (CSV/Excel import, template starter RAID, AI risk-scan sync, meeting minutes, standups, automation actions, the AI inbox) are given an owner in `RiskService.create`: the login `alertRecipient` picks — the project's PM, else its creator, else the company owner (projects.project_manager_id is usually empty) — cached a minute per project, with no "assigned to you" notification. Decisions, assumptions and dependencies keep owner optional. Editing an existing item doesn't force an owner.
+
 RAID (Risks, Actions, Issues, Decisions) is a structured project control framework that gives project managers a single, auditable register for every threat, action item, live problem, key decision, assumption, and dependency on a project. The implementation is inspired by enterprise ITSM tooling (BMC Remedy / Helix) and enforces no-delete semantics, global sequential record IDs, and a full activity timeline on every record.
 
 ### Framework Overview

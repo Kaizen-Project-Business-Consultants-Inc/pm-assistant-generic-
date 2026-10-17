@@ -9,6 +9,7 @@
  * unowned item in a log of 200 costs less than half the log being unowned.
  */
 import { daysBetween, toDateString } from '../../utils/calendarDate';
+import { hasRaidOwner } from '../../utils/raidOwner';
 
 export const RULES_VERSION = '1.0';
 
@@ -107,7 +108,6 @@ export const RULE_IDS = RULES.map(r => r.ruleId);
 const WEIGHT: Record<RaidFindingSeverity, number> = { high: 12, medium: 6, low: 2, info: 0 };
 
 const blank = (v: unknown) => v == null || String(v).trim() === '';
-const hasOwner = (i: RaidReviewItem) => !blank(i.ownerId) || !blank(i.ownerResourceId) || !blank(i.ownerName);
 
 /** RR05: the owner name is a team, organisation or several people */
 export function isGroupOwnerName(name: string | null | undefined): boolean {
@@ -185,7 +185,7 @@ function evaluate(ruleId: string, items: RaidReviewItem[], today: string): RuleC
       return { applicable, affected: applicable.filter(i => !toDateString(i.dueDate)) };
     }
     case 'RR03':
-      return { applicable: open, affected: open.filter(i => !hasOwner(i)) };
+      return { applicable: open, affected: open.filter(i => !hasRaidOwner(i)) };
     case 'RR04':
       return {
         applicable: open,

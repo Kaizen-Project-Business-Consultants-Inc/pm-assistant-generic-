@@ -3,6 +3,8 @@ import { raidChanged } from './domainEvents';
 import { notificationService } from './NotificationService';
 import { projectMemberRepository } from '../database/ProjectMemberRepository';
 import { projectService } from './ProjectService';
+import { alertRecipient } from './scheduling/alertRecipient';
+import { hasRaidOwner } from '../utils/raidOwner';
 import { databaseService } from '../database/connection';
 import { emailService } from './EmailService';
 import logger from '../utils/logger';
@@ -15,6 +17,10 @@ const VALID_STATUSES: Record<string, string[]> = {
   assumption: ['proposed', 'open', 'validated', 'unverified', 'closed', 'cancelled'],
   dependency: ['proposed', 'open', 'pending', 'complete', 'at_risk', 'closed', 'cancelled'],
 };
+
+/** Risks, issues and actions always have an owner (user, UAT 2026-10-17): someone is responsible. */
+export const OWNER_REQUIRED_TYPES = new Set(['risk', 'issue', 'action']);
+export const OWNER_REQUIRED_MESSAGE = 'Choose an owner. Every risk, issue and action needs someone responsible for it.';
 
 // Roles that skip triage — their items go straight to 'open'
 const TRIAGE_BYPASS_ROLES = new Set([
@@ -124,6 +130,11 @@ class RiskService {
     resolvedAt?: string | null;
   }, userRole?: string): Promise<ProjectRisk> {
     assertResponseStrategy(data.responseStrategy);
+    // Made without a form (import, template, AI scan, meeting minutes, standups, automation, Claude): the
+    // project's PM owns it until they hand it on. Not an "assigned to you" note — the PM is told anyway.
+    if (data.ownerName != null && !data.ownerName.trim()) data = { ...data, ownerName: undefined };
+    const ownerDefaulted = OWNER_REQUIRED_TYPES.has(data.type) && !hasRaidOwner(data) ? await this.projectManagerOf(data.projectId) : null;
+    if (ownerDefaulted) data = { ...data, ownerId: ownerDefaulted };
     // Auto-set triage status for non-PM roles (unless caller explicitly set status)
     if (!data.status && userRole && !TRIAGE_BYPASS_ROLES.has(userRole)) {
       data.status = 'proposed';
@@ -152,7 +163,7 @@ class RiskService {
     // Notify (awaited to preserve tenant DB context, but errors are non-fatal)
     try { await this.notifyProjectManagers(data.projectId, risk, data.createdBy); } catch (error) { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); }
 
-    if (data.ownerId && data.ownerId !== data.createdBy) {
+    if (data.ownerId && data.ownerId !== data.createdBy && !ownerDefaulted) {
       try { await this.notifyAssignment(data.projectId, risk, data.ownerId); } catch (error) { logger.warn('Failed to notify RAID assignment', { raidItemId: risk.id, error }); }
     }
     if (data.ownerResourceId) {
@@ -165,6 +176,22 @@ class RiskService {
     }
 
     return risk;
+  }
+
+  /**
+   * Who owns an item made without a form: the project's PM, else its creator, else the company
+   * owner — the same login the nightly alerts go to (alertRecipient checks it still exists).
+   * Remembered for a minute so a 5,000-row import asks once, not per row.
+   */
+  private pmCache = new Map<string, { id: string | null; at: number }>();
+  private async projectManagerOf(projectId: string): Promise<string | null> {
+    const hit = this.pmCache.get(projectId);
+    if (hit && Date.now() - hit.at < 60_000) return hit.id;
+    const project = await projectService.findById(projectId).catch(() => null);
+    const id = project ? await alertRecipient(project).catch(() => null) : null;
+    if (this.pmCache.size > 2000) this.pmCache.clear(); // bounded: one small entry per recent project
+    this.pmCache.set(projectId, { id, at: Date.now() });
+    return id;
   }
 
   /**
@@ -575,6 +602,7 @@ class RiskService {
   ): Promise<{ imported: number; updated: number; skipped: number }> {
     const existing = await riskRepository.findByProject(projectId, { source: 'ai_detected' });
     const existingTitles = new Map(existing.map(r => [r.title.toLowerCase().trim(), r]));
+    const pmOwner = await this.projectManagerOf(projectId); // new AI-found risks are the PM's to triage
 
     let imported = 0;
     let updated = 0;
@@ -612,6 +640,7 @@ class RiskService {
           linkedTaskIds: aiRisk.affectedTasks,
           source: 'ai_detected',
           createdBy: userId,
+          ownerId: pmOwner ?? undefined,
         });
         imported++;
       }

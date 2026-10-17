@@ -5,6 +5,11 @@ import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
 import { MitigationSuggestions } from '../lessons/MitigationSuggestions';
 import { RESPONSE_STRATEGIES, isClosedStatus } from '../raids/review/raidReviewHelpers';
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
+
+/** A new risk, issue or action names its owner (user, UAT 2026-10-17) — the server refuses one without */
+const OWNER_REQUIRED = new Set(['risk', 'issue', 'action']);
+const OWNER_MESSAGE = 'Choose an owner. Every risk, issue and action needs someone responsible for it.';
 
 interface RiskFormModalProps {
   isOpen: boolean;
@@ -70,6 +75,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const [suggestingTrigger, setSuggestingTrigger] = useState(false);
   const [suggestingResponse, setSuggestingResponse] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ownerMissing, setOwnerMissing] = useState(false);
   const [updateText, setUpdateText] = useState('');
   const [sendingUpdate, setSendingUpdate] = useState(false);
   const [editingUpdateId, setEditingUpdateId] = useState<string | null>(null);
@@ -228,6 +234,7 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
   const mitigationSuggestions = (mitigationsData?.suggestions || []).slice(0, 5);
 
   const handleTypeChange = (newType: string) => {
+    setOwnerMissing(false);
     setForm(prev => ({
       ...prev,
       type: newType,
@@ -240,6 +247,12 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
       setError('Title is required');
       return;
     }
+    if (!editRisk && OWNER_REQUIRED.has(form.type) && !form.ownerId && !form.ownerName.trim()) {
+      setOwnerMissing(true);
+      document.getElementById(`${uid}-owner`)?.focus();
+      return;
+    }
+    setOwnerMissing(false);
     setSaving(true);
     setError(null);
     try {
@@ -284,8 +297,8 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
       }
       onSaved();
       onClose();
-    } catch {
-      setError('Failed to save. Please try again.');
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, 'Failed to save. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -571,9 +584,18 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
               </select>
             </div>
             <div>
-              <label htmlFor={`${uid}-owner`} className={labelClass}>Owner</label>
-              <select id={`${uid}-owner`} value={form.ownerId} onChange={e => setForm(prev => ({ ...prev, ownerId: e.target.value }))} className={inputClass}>
-                <option value="">Unassigned</option>
+              <label htmlFor={`${uid}-owner`} className={labelClass}>
+                Owner{OWNER_REQUIRED.has(form.type) && !editRisk && <span className="text-red-600 dark:text-red-400"> *<span className="sr-only"> (required)</span></span>}
+              </label>
+              <select
+                id={`${uid}-owner`}
+                value={form.ownerId}
+                onChange={e => { setOwnerMissing(false); setForm(prev => ({ ...prev, ownerId: e.target.value })); }}
+                aria-invalid={ownerMissing || undefined}
+                aria-describedby={ownerMissing ? `${uid}-owner-err` : undefined}
+                className={`${inputClass}${ownerMissing ? ' border-red-500 dark:border-red-400' : ''}`}
+              >
+                <option value="">{OWNER_REQUIRED.has(form.type) && !editRisk ? 'Choose who owns this…' : 'Unassigned'}</option>
                 {members.map((m: any) => (
                   <option key={m.userId || m.id} value={m.userId || m.id}>
                     {m.userName || m.user?.name || m.name || m.email}
@@ -584,12 +606,15 @@ export function RiskFormModal({ isOpen, onClose, onSaved, projectId, editRisk, d
                 <input
                   type="text"
                   aria-label="Owner name"
+                  aria-invalid={ownerMissing || undefined}
+                  aria-describedby={ownerMissing ? `${uid}-owner-err` : undefined}
                   value={form.ownerName}
-                  onChange={e => setForm(prev => ({ ...prev, ownerName: e.target.value }))}
+                  onChange={e => { setOwnerMissing(false); setForm(prev => ({ ...prev, ownerName: e.target.value })); }}
                   className={`${inputClass} mt-1`}
                   placeholder="Or type owner name..."
                 />
               )}
+              {ownerMissing && <p id={`${uid}-owner-err`} className="mt-1 text-xs text-red-600 dark:text-red-400">{OWNER_MESSAGE}</p>}
             </div>
             {editRisk?.createdBy && (
               <div>

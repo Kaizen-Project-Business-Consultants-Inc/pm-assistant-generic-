@@ -18,8 +18,8 @@ test.beforeAll(async ({ browser }) => {
   pm = await signedIn(browser, STAGING_USER);
   ids = await makeProject(pm, 'QA – e2e weekly review', plusDays(thisMonday(), -28), plusDays(thisMonday(), 60));
   await makeTask(pm, ids.scheduleId, { name: 'E2E design', startDate: plusDays(thisMonday(), 14), endDate: plusDays(thisMonday(), 18) }); // in the future: not late
-  await api(pm, 'post', `/api/v1/projects/${ids.projectId}/risks`, { type: 'risk', title: 'E2E vendor may be late', severity: 'high' });
-  await api(pm, 'post', `/api/v1/projects/${ids.projectId}/risks`, { type: 'action', title: 'E2E chase sign-off', severity: 'low', dueDate: plusDays(thisMonday(), -14) });
+  await api(pm, 'post', `/api/v1/projects/${ids.projectId}/risks`, { type: 'risk', title: 'E2E vendor may be late', severity: 'high', ownerName: 'QA PM' });
+  await api(pm, 'post', `/api/v1/projects/${ids.projectId}/risks`, { type: 'action', title: 'E2E chase sign-off', severity: 'low', dueDate: plusDays(thisMonday(), -14), ownerName: 'QA PM' });
   // A team member who can see the project but doesn't manage it
   await api(pm, 'post', `/api/v1/projects/${ids.projectId}/members`, { userName: 'QA Team Member', email: STAGING_TEAM_MEMBER.username, role: 'viewer' });
 });

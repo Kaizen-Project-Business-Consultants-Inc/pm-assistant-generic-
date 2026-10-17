@@ -21,6 +21,9 @@ import { RAID_RESPONSE_STRATEGIES } from '../../database/RiskRepository';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { aiRefusalReply } from '../../services/AIBudgetService';
 import { readableProjectIds } from '../../utils/readableProjects';
+import { getActorSource } from '../../middleware/requestContext';
+import { OWNER_REQUIRED_TYPES, OWNER_REQUIRED_MESSAGE } from '../../services/RiskService';
+import { hasRaidOwner } from '../../utils/raidOwner';
 
 /** The dashboard's risk totals take at most this many projects in one request: the most one page of
  *  the projects list can hold (200), and short enough for the address line (about 7.5 KB of ids) */
@@ -238,6 +241,10 @@ export async function riskRoutes(fastify: FastifyInstance) {
 
       if (!canPerformRaidAction(userRole, body.type, 'create')) {
         return reply.status(403).send({ error: 'Insufficient permissions to create this RAID type' });
+      }
+      // A person creating one names its owner (the form requires it); Claude/MCP calls get the PM
+      if (OWNER_REQUIRED_TYPES.has(body.type) && !hasRaidOwner(body) && getActorSource() === 'web') {
+        return reply.status(400).send({ error: 'Owner required', message: OWNER_REQUIRED_MESSAGE, field: 'ownerId' });
       }
 
       const risk = await riskService.create({ ...body, projectId, createdBy: userId }, userRole);

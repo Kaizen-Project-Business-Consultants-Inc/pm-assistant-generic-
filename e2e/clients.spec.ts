@@ -21,7 +21,7 @@ test('clients: grouping, risks together, one report; project codes; duplicate na
     expect(p.projectCode).toMatch(/^PRJ-\d+/);
 
     // a client risk shows in the client's combined list
-    await api(pm, 'post', `/api/v1/projects/${project.projectId}/risks`, { title: `QA high risk ${stamp}`, type: 'risk', severity: 'high', probability: 'high', impact: 'high' }).catch(() => undefined);
+    await api(pm, 'post', `/api/v1/projects/${project.projectId}/risks`, { title: `QA high risk ${stamp}`, type: 'risk', severity: 'high', probability: 'high', impact: 'high', ownerName: 'QA PM' }).catch(() => undefined);
     const raid = await api(pm, 'get', `/api/v1/project-groups/${client.id}/raid`);
     expect(raid.projects.map((x: any) => x.id)).toContain(project.projectId);
 

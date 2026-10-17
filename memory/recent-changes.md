@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — RAID: risks, issues and actions need an owner
+- UAT: "make owner mandatory". POST /projects/:id/risks from the app (actor 'web') refuses a risk/issue/action with no ownerId, ownerResourceId or ownerName (400 "Owner required", field ownerId); API-key/MCP calls and every non-form path (import, template starter RAID, AI scan sync, meeting minutes, standups, automation, AI inbox) get the project's PM as owner in `RiskService.create` (no assignment notification). Form marks Owner required and shows the server's message. e2e specs that create risks now pass ownerName. Tests `routes/raidOwnerRequired.test.ts`, RiskService.test.ts.
+
 ## 2026-10-17 — RAID import: a real Choose file button
 - UAT: "no file is uploaded". The picker sat inside a clickable box (re-entrant click), was never cleared (same file twice did nothing), and any error before a preview existed (too big, unreadable, wrong type) was rendered only inside the preview — so nothing showed. Now a Choose file button, the input outside the box and cleared after each pick, a plain wrong-type message, errors under the box. Test `__tests__/components/raidImportModal.test.tsx`. Also: Propose fixes panel used 11px text (font guard stopped the staging release) → text-xs.
 
