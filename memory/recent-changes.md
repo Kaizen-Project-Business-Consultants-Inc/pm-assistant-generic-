@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — Schedule Review fixes no longer feed on themselves (rules 1.9)
+- UAT: five Applies took an imported 28-task plan to 57 ("Buffer before Buffer before … Gate 1 Approved") while the problem count rose. Buffers are never milestones (`nameSaysMilestone`), no buffer for a buffer or a past/done gate, the first task of each phase links to the phase before (R01 had no fix), and the "Pre-review baseline" (`PRE_REVIEW_BASELINE_NAME`) no longer counts for R18/R19. Guard `scheduleReview/fixesConverge.test.ts`. Prod had no affected plans (checked).
+
 ## 2026-10-17 — Checkout survives a customer deleted in Stripe
 - The user cleared every customer in the Stripe test sandbox; staging accounts kept the old ids, so checkout would fail "No such customer" (and a missing id answered "contact support"). `StripeService.usableCustomer` keeps a stored customer only while Stripe has it, else makes and saves a new one — plan checkout (flat + SME org), credit top-up; the portal says "No billing account found". Staging's stale ids were cleared (backup `/home/ubuntu/backup-stripe-ids-2026-10-17.tsv`). Prod webhook secret verified = live endpoint; the hourly rejections were a sandbox endpoint pointing at kovarti.com, now deleted.
 

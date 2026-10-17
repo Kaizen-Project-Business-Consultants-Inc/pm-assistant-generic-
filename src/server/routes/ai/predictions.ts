@@ -4,6 +4,7 @@ import { PredictiveIntelligenceService } from '../../services/predictiveIntellig
 import { sCurveService } from '../../services/SCurveService';
 import { scheduleService } from '../../services/ScheduleService';
 import { baselineService } from '../../services/BaselineService';
+import { PRE_REVIEW_BASELINE_NAME } from '../../services/scheduleReview/rules';
 import { databaseService } from '../../database/connection';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -143,8 +144,9 @@ export async function predictionRoutes(fastify: FastifyInstance) {
       let comparison: any = null;
       let hasBaseline = false;
       for (const sched of schedules) {
-        // eslint-disable-next-line no-await-in-loop -- a project's plans (a handful), stopping at the first with a baseline
-        const baselines = await baselineService.findByScheduleId(sched.id);
+        // the PM's own baselines — not Propose fixes' safety copy
+        // eslint-disable-next-line no-await-in-loop, no-restricted-syntax -- a project's plans (a handful), stopping at the first with a baseline; filters that one plan's few baselines
+        const baselines = (await baselineService.findByScheduleId(sched.id)).filter(b => b.name !== PRE_REVIEW_BASELINE_NAME);
         if (baselines.length > 0) {
           hasBaseline = true;
           // eslint-disable-next-line no-await-in-loop -- runs once, then the loop stops

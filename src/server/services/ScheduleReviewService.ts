@@ -7,7 +7,7 @@ import { resourceLevelingService } from './ResourceLevelingService';
 import { resourceService } from './ResourceService';
 import { sprintService } from './SprintService';
 import { scheduleReviewRepository, type ReviewTrigger, type ScheduleReviewRecord, type ScheduleReviewSummary } from '../database/ScheduleReviewRepository';
-import { reviewSchedule, type ReviewInput, type ReviewTask } from './scheduleReview/rules';
+import { reviewSchedule, PRE_REVIEW_BASELINE_NAME, type ReviewInput, type ReviewTask } from './scheduleReview/rules';
 import logger from '../utils/logger';
 import { type IsWorking, weekdaysOnly } from '../utils/workingDays';
 
@@ -37,7 +37,9 @@ export class ScheduleReviewService {
       this.safeCalendar(scheduleId),
     ]);
 
-    const latest = baselines[0];
+    // Only the PM's own baselines count: Propose fixes' safety copy is not one (R18/R19)
+    const pmBaselines = baselines.filter(b => b.name !== PRE_REVIEW_BASELINE_NAME);
+    const latest = pmBaselines[0];
     const input: ReviewInput = {
       schedule: { id: schedule.id, startDate: schedule.startDate, endDate: schedule.endDate },
       project: project
@@ -47,7 +49,7 @@ export class ScheduleReviewService {
       sprints: sprints.map(sp => ({ id: sp.id, name: sp.name, endDate: sp.endDate, status: sp.status })),
       tasks: tasks.map(toReviewTask),
       resources: resources.map(r => ({ id: r.id, name: r.name, email: r.email, userId: r.userId, isGeneric: !!r.isGeneric })),
-      baselineCount: baselines.length,
+      baselineCount: pmBaselines.length,
       latestBaselineTasks: latest ? latest.tasks.map(t => ({ taskId: t.taskId, startDate: t.startDate, endDate: t.endDate })) : null,
       floatByTask,
       overAllocations,

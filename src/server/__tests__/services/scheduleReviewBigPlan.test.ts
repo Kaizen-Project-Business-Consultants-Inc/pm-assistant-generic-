@@ -90,11 +90,14 @@ describe('Schedule Review on a big plan', () => {
       const fixes = proposeFixesDeterministic(findings, tasks);
 
       const r02Fixes = fixes.filter(f => f.reason.includes('feeds nothing'));
-      const earlierIds = new Set(fixes.filter(f => !f.reason.includes('feeds nothing')).map(f => f.id));
+      const earlier = fixes.filter(f => !f.reason.includes('feeds nothing'));
+      const earlierIds = new Set(earlier.map(f => f.id));
+      // a task an earlier link already gives a next step gets no second one (UAT 2026-10-17)
+      const alreadyFed = new Set(earlier.filter(f => f.type === 'add_dependency' && f.defaultChecked).map(f => f.dependsOnTaskId));
       const expected: string[] = [];
       for (const [next, t] of oldR02Picks(tasks, byId, findings[0].taskIds)) {
         const id = `add_dependency:${next}:${t}`;
-        if (earlierIds.has(id)) continue;
+        if (earlierIds.has(id) || alreadyFed.has(t)) continue;
         earlierIds.add(id);
         expected.push(id);
       }

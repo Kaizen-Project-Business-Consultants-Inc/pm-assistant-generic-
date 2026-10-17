@@ -22,7 +22,7 @@ import {
   splitCandidates,
   planSplitDates,
   type ProposedFix, describeFix } from './scheduleReview/fixProposer';
-import { RULES_VERSION, findMissingPhases, type ReviewTask } from './scheduleReview/rules';
+import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, type ReviewTask } from './scheduleReview/rules';
 import { profileFor } from './scheduleReview/domainProfiles';
 import { projectService } from './ProjectService';
 import { sprintService } from './SprintService';
@@ -247,7 +247,7 @@ export class ScheduleFixProposerService {
     // Snapshot before touching anything, so the PM can fall back to it.
     let baselineId: string | null = null;
     try {
-      const baseline = await baselineService.create(scheduleId, 'Pre-review baseline', userId ?? 'system');
+      const baseline = await baselineService.create(scheduleId, PRE_REVIEW_BASELINE_NAME, userId ?? 'system');
       baselineId = baseline.id;
     } catch (err: any) {
       logger.warn('[ScheduleFix] pre-review baseline failed', { scheduleId, error: err?.message });
@@ -348,6 +348,7 @@ export class ScheduleFixProposerService {
         const buffer = await scheduleService.createTask({
           scheduleId,
           name: `Buffer before ${f.gateName ?? gate.name}`,
+          parentTaskId: gate.parentTaskId ?? undefined, // in the gate's own phase, not loose at the end of the plan
           estimatedDays: f.bufferDays ?? 1,
           startDate: bufferStart ? ymdOf(bufferStart) : undefined,
           endDate: bufferStart ? ymdOf(finishFor(bufferStart, f.bufferDays ?? 1, isWorking)) : undefined,

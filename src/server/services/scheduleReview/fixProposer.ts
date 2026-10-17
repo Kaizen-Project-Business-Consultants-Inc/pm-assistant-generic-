@@ -157,7 +157,7 @@ function durationDays(t: ReviewTask, isWorking: IsWorking): number {
  * Day counts (spans, durations, buffer sizes) are WORKING days of the project calendar
  * (`isWorking`; Mon-Fri when not given), the start day counted.
  */
-export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask[], isWorking: IsWorking = weekdaysOnly): ProposedFix[] {
+export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask[], isWorking: IsWorking = weekdaysOnly, today: Date = new Date()): ProposedFix[] {
   const fixes: ProposedFix[] = [];
   const byId = new Map(tasks.map(t => [t.id, t]));
   const hasChildren = new Set<string>();
@@ -203,6 +203,49 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         lagDays: 0,
       }));
     }
+  }
+
+  // --- the first step of each phase follows the step just before it in the plan (R01) ---
+  // The chain above only links inside a phase, so the first task of every later phase was left
+  // with no predecessor — flagged critical after Apply with no fix offered (UAT 2026-10-17). One
+  // walk in plan order: a phase's first task follows whatever comes right before it, unless that
+  // task already waits on it (a loop).
+  const inOrder = [...leaves].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const seenParents = new Set<string>();
+  const waitsOn = (from: ReviewTask, target: string): boolean => {
+    const seen = new Set<string>();
+    const stack = [from.id];
+    while (stack.length) {
+      for (const d of byId.get(stack.pop()!)?.dependencies || []) {
+        if (d.dependencyId === target) return true;
+        if (!seen.has(d.dependencyId)) { seen.add(d.dependencyId); stack.push(d.dependencyId); }
+      }
+    }
+    return false;
+  };
+  for (let i = 0; i < inOrder.length; i++) {
+    const cur = inOrder[i];
+    const key = cur.parentTaskId ?? '__root__';
+    const firstOfPhase = !seenParents.has(key);
+    seenParents.add(key);
+    if (i === 0 || !firstOfPhase || (cur.dependencies || []).length > 0) continue;
+    const prev = inOrder[i - 1];
+    if ((prev.parentTaskId ?? '__root__') === key || waitsOn(prev, cur.id)) continue;
+    const prevEnd = prev.endDate ? String(prev.endDate).slice(0, 10) : '';
+    const curStart = cur.startDate ? String(cur.startDate).slice(0, 10) : '';
+    const sequential = !!prevEnd && !!curStart && prevEnd <= curStart;
+    fixes.push(build({
+      id: `add_dependency:${cur.id}:${prev.id}`,
+      type: 'add_dependency',
+      confidence: sequential ? 0.75 : 0.5,
+      reason: `First step of its phase; it follows '${prev.name}', the step just before it in the plan.`,
+      taskId: cur.id,
+      taskName: cur.name,
+      dependsOnTaskId: prev.id,
+      dependsOnTaskName: prev.name,
+      dependencyType: 'FS',
+      lagDays: 0,
+    }));
   }
 
   // --- a "milestone" that spans days (R04/R05): split it into the work and the milestones ---
@@ -301,8 +344,12 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   }
 
   // --- insert_buffer: protect a gate/milestone that already has predecessors ---
+  // Never a buffer for a buffer, and none for a gate already passed or done: slack in the past
+  // is just a late task (R09) — both fed on each other on every Apply (UAT 2026-10-17).
+  const todayYmd = today.toISOString().slice(0, 10);
   for (const t of leaves) {
-    if (!isMilestoneLike(t)) continue;
+    if (!isMilestoneLike(t) || /^\s*(buffer|reserve|contingency|float)\b/i.test(t.name || '')) continue; // a buffer itself (starts that way)
+    if (['completed', 'cancelled'].includes((t.status || '').toLowerCase()) || (t.endDate && String(t.endDate).slice(0, 10) < todayYmd)) continue;
     // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once)
     const preds = (t.dependencies || []).map(d => byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
     if (preds.length === 0) continue;                                   // nothing feeding it yet
@@ -351,10 +398,11 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
       for (let i = lo; i < o.sorted.length; i++) if (o.days[i] > tEnd && !skip(o.sorted[i])) return o.sorted[i];
       return undefined;
     };
+    const alreadyFed = new Set(fixes.filter(f => f.type === 'add_dependency' && f.defaultChecked).map(f => f.dependsOnTaskId)); // pre-ticked only: an unticked guess leaves R02 its own fix
     for (const taskId of r02.taskIds) {
       const t = byId.get(taskId);
       const tEnd = day(t?.endDate);
-      if (!t || !tEnd) continue;
+      if (!t || !tEnd || alreadyFed.has(t.id)) continue; // a link above already gives it a next step
       // everything t already waits on, directly or not — linking one of those after t would loop
       const upstream = new Set<string>();
       const stack = [t.id];
@@ -562,13 +610,14 @@ export function nextStepName(t: ReviewTask, all: ReviewTask[]): string | null {
   const waiting = all
     .filter(x => x.id !== t.id && x.dependencies.some(d => d.dependencyId === t.id && (d.dependencyType ?? 'FS').toUpperCase() !== 'FF'))
     .sort((a, b) => String(a.startDate ?? '').localeCompare(String(b.startDate ?? '')) || byOrder(a, b));
-  const successor = usable(waiting[0]);
+  // never the split's own milestones ("… Approved") — the gate would point at itself
+  const successor = usable(waiting.find(x => !isMilestoneLike(x)));
   if (successor) return successor;
 
   const later = all
     .filter(x => (x.parentTaskId ?? null) === (t.parentTaskId ?? null) && (x.sortOrder ?? 0) > (t.sortOrder ?? 0))
     .sort(byOrder);
-  return usable(later[0]);
+  return usable(later.find(x => !isMilestoneLike(x)));
 }
 
 /**

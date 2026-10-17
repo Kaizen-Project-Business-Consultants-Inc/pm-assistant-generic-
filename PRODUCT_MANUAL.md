@@ -2920,7 +2920,8 @@ repair. From the findings panel the project's Manager or Owner clicks **Propose 
 structural changes and the PM ticks which to apply:
 
 - **Add link** — a finish-to-start dependency between two existing tasks (a sequential chain
-  within each phase, so critical path and float become available). Clears the "no logic" finding.
+  within each phase, and the first task of each phase after the last task of the phase before, so
+  critical path and float become available). Clears the "no logic" and "no predecessor" findings.
 - **Flag milestone** — mark a task named like a gate as a milestone; this also zeroes its duration
   and collapses it to a single day, so it does not then trip the "milestone with duration" rule.
 - **Group under phase** — gather ungrouped tasks that share a name prefix under a new phase parent.
@@ -2929,7 +2930,16 @@ structural changes and the PM ticks which to apply:
 - **Add buffer** — insert a protective buffer task before a gate/milestone that already has
   predecessors (sized ~15% of the feeding work), so upstream slippage does not immediately move the
   gate. The gate's incoming links move onto the buffer, and the date recompute pushes the gate out by
-  the buffer length.
+  the buffer length. Never proposed for a buffer itself (a name that starts with buffer / reserve /
+  contingency / float is slack, and one that starts with Approve / Review / Prepare / Draft / Submit is
+  work — neither is a milestone, rules 1.9), nor for a gate already done, cancelled or in the past.
+  The buffer goes into the gate's own phase.
+
+**Fixes converge (rules 1.9, 2026-10-17).** One Apply leaves nothing new for the fixes to do: before
+this, each Apply added a buffer in front of the previous buffer and split it ("Buffer before Buffer
+before … Gate 1 Approved"), so a plan grew from 28 to 57 tasks over five Applies. The "Pre-review
+baseline" is the review's own safety copy for Undo: it doesn't count as the PM's baseline (R18) or
+as the plan drift is measured against (R19), so the review no longer flags the moves its fixes made.
 
 Each proposed fix carries a confidence and a short plain-English reason; higher-confidence fixes are
 pre-ticked. **Propose fixes** returns instantly using deterministic rules; a **Draft with AI** action
@@ -2952,7 +2962,7 @@ dates (from a "Pre-review baseline" captured before apply) along with the struct
 API (under `/api/v1/schedules`): `POST /:id/review/propose`, `POST
 /:id/review/proposals/:pid/apply` (`{fixIds}`), `.../undo`, `.../reject`, `GET /:id/review/proposal`.
 
-Buffer-task insertion and the weekly living-document agent are later phases and not yet built.
+The weekly living-document agent is a later phase and not yet built.
 
 ---
 

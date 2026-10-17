@@ -13,7 +13,7 @@ import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/work
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { groupBy } from '../../utils/groupBy';
 
-export const RULES_VERSION = '1.8';
+export const RULES_VERSION = '1.9';
 
 // 1.8 (2026-10-04): checks taken over from retired agents — R38 bottleneck task (4+ open tasks
 // wait directly on it; 'info': a risk to know about, no deduction, so the score keeps meaning "is
@@ -198,6 +198,12 @@ const MILESTONE_OUTCOME = /\b(approved|accepted|signed[\s-]?off|completed?|done|
 const MILESTONE_EVENT = /\b(sign[\s-]?off|acceptance|go[\s-]?live|approval)\b/i;
 const WORK_VERB = /\b(review|test|testing|execution|cutover|preparation|remediation|configuration|migration|training|support|development|build)\b/i;
 export const BUFFER_NAME = /\b(buffer|reserve|contingency|float)\b/i;
+/** A name that begins as slack ("Buffer before …") or as a work verb ("Approve …", "Review …") */
+const SLACK_OR_WORK_FIRST = /^\s*(buffer|reserve|contingency|float|approve|review|prepare|draft|submit)\b/i;
+/** The baseline Propose fixes saves before applying, so Undo can restore dates. It is the review's
+ *  own safety copy, not the PM's: it never counts as "a baseline is saved" (R18) or as the plan to
+ *  measure drift against (R19) — that made the review flag the moves its own fixes made (UAT 2026-10-17). */
+export const PRE_REVIEW_BASELINE_NAME = 'Pre-review baseline';
 /** Level-of-effort work that runs alongside the plan (DCMA treats it separately): never "too long". */
 const LEVEL_OF_EFFORT = /\b(status report|project management|pmo|governance|recurring|weekly|meetings?|stand-?ups?|hypercare|warranty)\b/i;
 const LEGEND_WORDS = new Set(['delayed', 'ahead', 'completed', 'complete', 'not started', 'on track', 'in progress', 'pending', 'done', 'status', 'legend']);
@@ -253,6 +259,11 @@ function norm(s?: string | null): string {
 
 export function nameSaysMilestone(name?: string | null): boolean {
   const n = name || '';
+  // Slack in front of a gate ("Buffer before Gate 1 Approved") and the work a split makes ("Approve
+  // Gate 3 Deliverables") are not the gate: read as milestones they drew a buffer and a split of their
+  // own on every Apply (UAT 2026-10-17: "Buffer before Buffer before …"). Only a name that STARTS
+  // that way — "Contingency plan approved" is still a milestone.
+  if (SLACK_OR_WORK_FIRST.test(n)) return false;
   if (MILESTONE_NAME.test(n)) return true;
   return MILESTONE_EVENT.test(n) && !WORK_VERB.test(n);
 }
