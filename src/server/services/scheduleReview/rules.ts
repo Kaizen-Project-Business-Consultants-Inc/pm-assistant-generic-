@@ -556,6 +556,9 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
       // eslint-disable-next-line no-restricted-syntax -- small: one gate's own links (each read once)
       const preds = (gate.dependencies || []).map(d => g.byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
       if (preds.length === 0) return false;
+      // a gate right after another milestone ("X Approved" → "Gate 1 Approved") is protected by
+      // whatever protects that one: a second buffer between two milestones protects nothing
+      if (preds.every(p => isMilestoneLike(p))) return false;
       const allZero = preds.every(p => (input.floatByTask!.get(p.id) ?? 0) <= 0);
       const hasBuffer = preds.some(p => BUFFER_NAME.test(p.name || ''));
       return allZero && !hasBuffer;

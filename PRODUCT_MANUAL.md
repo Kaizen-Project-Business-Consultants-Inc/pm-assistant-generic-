@@ -2933,7 +2933,9 @@ structural changes and the PM ticks which to apply:
   the buffer length. Never proposed for a buffer itself (a name that starts with buffer / reserve /
   contingency / float is slack, and one that starts with Approve / Review / Prepare / Draft / Submit is
   work — neither is a milestone, rules 1.9), nor for a gate already done, cancelled or in the past.
-  The buffer goes into the gate's own phase.
+  The buffer goes into the gate's own phase, is offered only for a gate the review flags (R20, which needs
+  links and float) — not for a gate right after another milestone — and never when the buffers,
+  added up, would push the plan past the project's end date.
 
 **Fixes converge (rules 1.9, 2026-10-17).** One Apply leaves nothing new for the fixes to do: before
 this, each Apply added a buffer in front of the previous buffer and split it ("Buffer before Buffer

@@ -56,7 +56,8 @@ describe('Propose fixes', () => {
 
   it('a second Apply finds nothing new to buffer or split (the fixes converge)', () => {
     const tasks = plan();
-    const round1 = proposeFixesDeterministic([], tasks, undefined, TODAY);
+    const r20 = { ruleId: 'R20', rule: 'R20', severity: 'medium' as const, taskIds: ['g'], message: '', pointsDeducted: 0 };
+    const round1 = proposeFixesDeterministic([r20], tasks, undefined, TODAY);
     const buffers = round1.filter(f => f.type === 'insert_buffer');
     expect(buffers.map(f => f.gateTaskId)).toEqual(['g']);
 
@@ -95,6 +96,38 @@ describe('Propose fixes', () => {
     const links = proposeFixesDeterministic([], [pa, a1, g1, pb, b1, g2], undefined, TODAY).filter(f => f.type === 'add_dependency');
     expect(links.find(f => f.taskId === 'b1')?.dependsOnTaskId).toBe('g1');
     expect(links.some(f => f.taskId === 'b1' && f.dependsOnTaskId === 'g2')).toBe(false);
+  });
+
+  it('a buffer only for a gate the review flags, and never one that pushes the plan past the project end', () => {
+    const tasks = plan();
+    const r20 = { ruleId: 'R20', rule: 'R20', severity: 'medium' as const, taskIds: ['g'], message: '', pointsDeducted: 0 };
+    expect(proposeFixesDeterministic([], tasks, undefined, TODAY).filter(f => f.type === 'insert_buffer')).toEqual([]);
+    expect(proposeFixesDeterministic([r20], tasks, undefined, TODAY, '2026-10-30').filter(f => f.type === 'insert_buffer')).toEqual([]);
+    expect(proposeFixesDeterministic([r20], tasks, undefined, TODAY, '2027-06-30').filter(f => f.type === 'insert_buffer')).toHaveLength(1);
+  });
+
+  it('a gate right after another milestone gets no second buffer — from the real review findings', () => {
+    seq = 0;
+    const w = task({ id: 'w', name: 'Build', startDate: '2026-10-01', endDate: '2026-10-28' });
+    const m1 = task({ id: 'm1', name: 'Deliverables Approved', isMilestone: true, startDate: '2026-10-28', endDate: '2026-10-28', dependencies: [{ dependencyId: 'w' }] });
+    const m2 = task({ id: 'm2', name: 'Gate 1 Approved', isMilestone: true, startDate: '2026-10-28', endDate: '2026-10-28', dependencies: [{ dependencyId: 'm1' }] });
+    const tasks = [w, m1, m2];
+    const findings = reviewSchedule({ ...input(tasks), floatByTask: new Map([['w', 0], ['m1', 0], ['m2', 0]]) }).findings;
+    expect(findings.filter(f => f.ruleId === 'R20').flatMap(f => f.taskIds)).toEqual(['m1']);
+    expect(proposeFixesDeterministic(findings, tasks, undefined, TODAY, '2027-06-30').filter(f => f.type === 'insert_buffer').map(f => f.gateTaskId)).toEqual(['m1']);
+  });
+
+  it('buffers in a row are added up against the project end; one that just fits is still offered', () => {
+    seq = 0;
+    const a = task({ id: 'a', name: 'Design', startDate: '2026-10-01', endDate: '2026-10-28' });   // 20 working days → 3-day buffer
+    const g1 = task({ id: 'g1', name: 'Gate 1 Approved', isMilestone: true, startDate: '2026-10-28', endDate: '2026-10-28', dependencies: [{ dependencyId: 'a' }] });
+    const b = task({ id: 'b', name: 'Build', startDate: '2026-10-29', endDate: '2026-11-25', dependencies: [{ dependencyId: 'g1' }] }); // 20 → 3
+    const g2 = task({ id: 'g2', name: 'Gate 2 Approved', isMilestone: true, startDate: '2026-11-25', endDate: '2026-11-25', dependencies: [{ dependencyId: 'b' }] });
+    const tasks = [a, g1, b, g2];
+    const r20 = { ruleId: 'R20', rule: 'R20', severity: 'medium' as const, taskIds: ['g1', 'g2'], message: '', pointsDeducted: 0 };
+    const buffers = (end: string) => proposeFixesDeterministic([r20], tasks, undefined, TODAY, end).filter(f => f.type === 'insert_buffer').map(f => f.gateTaskId);
+    expect(buffers('2026-11-30')).toEqual(['g1']);        // plan ends Wed 25 Nov: 3 working days → Mon 30 fits one, not two
+    expect(buffers('2026-12-03')).toEqual(['g1', 'g2']);  // 6 working days → Thu 3 Dec exactly: both fit
   });
 
   it('no buffer for a gate already passed or done — it would only be a late task', () => {

@@ -132,11 +132,13 @@ export class ScheduleFixProposerService {
     // always the base. When the PM opts into AI, we ask it ONLY for phase groupings
     // and merge them in (replacing any prefix-based grouping guesses). This keeps
     // the AI reply small so it returns fast and never truncates on big schedules.
-    let fixes: ProposedFix[] = proposeFixesDeterministic(review.findings, tasks, await this.workingDayTest(scheduleId));
+    const project = await projectService.findById(schedule.projectId).catch(() => null);
+    const projectEnd = project?.endDate ? String(project.endDate).slice(0, 10) : null;
+    let fixes: ProposedFix[] = proposeFixesDeterministic(review.findings, tasks, await this.workingDayTest(scheduleId), new Date(), projectEnd);
     let source: 'ai' | 'rules' = 'rules';
     if (useAi && config.AI_ENABLED && claudeService.isAvailable() && leafCount <= 80) {
       try {
-        const ai = await this.aiSuggestions(schedule.projectId, tasks, userId);
+        const ai = await this.aiSuggestions(schedule.projectId, project, tasks, userId);
         if (ai.groupings.length > 0) fixes = [...fixes.filter(f => f.type !== 'set_parent'), ...ai.groupings];
         // A milestone-named line already has the rule-based split (review / approve / approved / gate)
         const ruleSplits = new Set(fixes.filter(f => f.type === 'split_task').map(f => f.taskId));
@@ -169,7 +171,7 @@ export class ScheduleFixProposerService {
    * splits for tasks whose names might bundle steps, a placed task for each standard
    * phase the review found missing. Nothing to ask → no call, no tokens.
    */
-  private async aiSuggestions(projectId: string, tasks: ReviewTask[], userId: string | null): Promise<{ groupings: ProposedFix[]; splits: ProposedFix[]; phases: ProposedFix[] }> {
+  private async aiSuggestions(projectId: string, project: Awaited<ReturnType<typeof projectService.findById>>, tasks: ReviewTask[], userId: string | null): Promise<{ groupings: ProposedFix[]; splits: ProposedFix[]; phases: ProposedFix[] }> {
     // Loose top-level tasks get grouped even when the plan already has some phases (a partly
     // organised plan, e.g. a contract import with a few headings); existing phases are offered.
     const hasKids = new Set(tasks.map(t => t.parentTaskId).filter(Boolean) as string[]);
@@ -178,10 +180,7 @@ export class ScheduleFixProposerService {
     const wantGroups = groupCandidates.length >= 6;
     const splitCands = splitCandidates(tasks);
 
-    const [project, sprints] = await Promise.all([
-      projectService.findById(projectId).catch(() => null),
-      sprintService.getByProject(projectId).catch(() => []),
-    ]);
+    const sprints = await sprintService.getByProject(projectId).catch(() => []);
     const profile = profileFor(project?.projectType, project?.methodology);
     const missing = profile ? findMissingPhases(tasks, profile, sprints.length) : [];
 

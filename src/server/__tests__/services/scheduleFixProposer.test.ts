@@ -77,7 +77,7 @@ describe('proposeFixesDeterministic', () => {
     seq = 0;
     const work = task({ id: 'p', name: 'Build work', startDate: '2026-10-01', endDate: '2026-10-28' }); // 20 working days
     const gate = task({ id: 'g', name: 'Gate 1', isMilestone: true, dependencies: [{ dependencyId: 'p' }] });
-    const buf = proposeFixesDeterministic([], [work, gate]).filter(f => f.type === 'insert_buffer');
+    const buf = proposeFixesDeterministic([finding('R20', ['g'])], [work, gate], undefined, new Date('2026-09-01')).filter(f => f.type === 'insert_buffer');
     expect(buf).toHaveLength(1);
     expect(buf[0]).toMatchObject({ gateTaskId: 'g', bufferDays: 3 });
     expect(buf[0].defaultChecked).toBe(false); // advisory
@@ -291,7 +291,7 @@ describe('working days (project calendar)', () => {
     seq = 0;
     const work = task({ id: 'p', name: 'Build work', startDate: '2026-10-01', endDate: '2026-10-20' });
     const gate = task({ id: 'g', name: 'Gate 1', isMilestone: true, dependencies: [{ dependencyId: 'p' }] });
-    expect(proposeFixesDeterministic([], [work, gate], () => true).find(f => f.type === 'insert_buffer')?.bufferDays).toBe(3);
+    expect(proposeFixesDeterministic([finding('R20', [gate.id])], [work, gate], () => true, new Date('2026-09-01')).find(f => f.type === 'insert_buffer')?.bufferDays).toBe(3);
   });
 });
 

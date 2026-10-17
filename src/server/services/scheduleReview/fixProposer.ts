@@ -157,7 +157,7 @@ function durationDays(t: ReviewTask, isWorking: IsWorking): number {
  * Day counts (spans, durations, buffer sizes) are WORKING days of the project calendar
  * (`isWorking`; Mon-Fri when not given), the start day counted.
  */
-export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask[], isWorking: IsWorking = weekdaysOnly, today: Date = new Date()): ProposedFix[] {
+export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask[], isWorking: IsWorking = weekdaysOnly, today: Date = new Date(), projectEnd?: string | null): ProposedFix[] {
   const fixes: ProposedFix[] = [];
   const byId = new Map(tasks.map(t => [t.id, t]));
   const hasChildren = new Set<string>();
@@ -346,16 +346,27 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   // --- insert_buffer: protect a gate/milestone that already has predecessors ---
   // Never a buffer for a buffer, and none for a gate already passed or done: slack in the past
   // is just a late task (R09) — both fed on each other on every Apply (UAT 2026-10-17).
+  // Only for the gates the review flags (R20: nothing protects it) — buffering every milestone put
+  // one before "X Approved" AND before the "Gate N Approved" right after it — and never when the
+  // extra days would push the plan past the project's end (R06 then flagged the fix's own work).
   const todayYmd = today.toISOString().slice(0, 10);
+  const unprotected = new Set(findings.filter(f => f.ruleId === 'R20').flatMap(f => f.taskIds));
+  const planEnd = leaves.reduce((m, t) => { const e = t.endDate ? String(t.endDate).slice(0, 10) : ''; return e > m ? e : m; }, '');
+  let bufferDaysUsed = 0;
   for (const t of leaves) {
+    if (!unprotected.has(t.id)) continue;
     if (!isMilestoneLike(t) || /^\s*(buffer|reserve|contingency|float)\b/i.test(t.name || '')) continue; // a buffer itself (starts that way)
     if (['completed', 'cancelled'].includes((t.status || '').toLowerCase()) || (t.endDate && String(t.endDate).slice(0, 10) < todayYmd)) continue;
     // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once)
     const preds = (t.dependencies || []).map(d => byId.get(d.dependencyId)).filter(Boolean) as ReviewTask[];
     if (preds.length === 0) continue;                                   // nothing feeding it yet
     if (preds.some(p => BUFFER_NAME.test(p.name || ''))) continue;      // already buffered
+    if (preds.every(p => isMilestoneLike(p))) continue;                 // right after another milestone (same as R20)
     const longest = Math.max(...preds.map(p => durationDays(p, isWorking)));
     const bufferDays = Math.max(1, Math.round(0.15 * longest));
+    // R20 gates sit on the critical path, so buffers in a row add up: count them all against the end
+    if (projectEnd && planEnd && ymdOf(shiftWorking(utcDay(planEnd), bufferDaysUsed + bufferDays, isWorking)) > String(projectEnd).slice(0, 10)) continue;
+    bufferDaysUsed += bufferDays;
     fixes.push(build({
       id: `insert_buffer:${t.id}`,
       type: 'insert_buffer',
