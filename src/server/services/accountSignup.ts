@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { config } from '../config';
 import { userService, type User } from './UserService';
-import { stripeService } from './StripeService';
+import { stripeService, PaymentsUnavailableError } from './StripeService';
 import { organizationService } from './OrganizationService';
 import { inviteService } from './InviteService';
 import { pricingConfigService } from './PricingConfigService';
@@ -125,12 +125,17 @@ async function checkoutFor(user: User, input: NewAccount, stripeCustomerId: stri
   }
   const org = await organizationRepository.findByUserId(user.id);
   if (!org) return fail(500, 'Organization not found', 'SME signup requires an organization');
-  let orgStripeCustomerId = org.stripeCustomerId;
-  if (!orgStripeCustomerId) {
-    orgStripeCustomerId = await stripeService.createCustomer(input.email, org.name, user.id);
-    if (orgStripeCustomerId) await organizationRepository.update(org.id, { stripeCustomerId: orgStripeCustomerId });
+  let orgStripeCustomerId: string;
+  try {
+    orgStripeCustomerId = await stripeService.usableCustomer({
+      storedId: org.stripeCustomerId, email: input.email, name: org.name, userId: user.id, ownerKey: `org:${org.id}`,
+      paying: false, // a company being signed up has no subscription yet
+      save: (id) => organizationRepository.update(org.id, { stripeCustomerId: id }),
+    });
+  } catch (err) {
+    if (err instanceof PaymentsUnavailableError) return fail(503, 'Payments unavailable', err.message);
+    throw err;
   }
-  if (!orgStripeCustomerId) return fail(500, 'Failed to create Stripe customer for organization');
   return stripeService.createSeatCheckoutSession(orgStripeCustomerId, priceId, Math.max(3, input.seats || 3), org.id);
 }
 

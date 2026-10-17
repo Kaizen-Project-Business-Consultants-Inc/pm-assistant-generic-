@@ -28,18 +28,56 @@ export class StripeService {
     return !!config.STRIPE_SECRET_KEY;
   }
 
-  async createCustomer(email: string, name: string, userId: string): Promise<string | null> {
+  async createCustomer(email: string, name: string, userId: string, idempotencyKey?: string): Promise<string | null> {
     if (!this.isConfigured) {
       logger.info(`[StripeService] Would create customer for [email_redacted]`);
       return null;
     }
 
-    const customer = await this.getClient().customers.create({
-      email,
-      name,
-      metadata: { userId },
-    });
+    const params = { email, name, metadata: { userId } };
+    const customer = idempotencyKey
+      ? await this.getClient().customers.create(params, { idempotencyKey })
+      : await this.getClient().customers.create(params);
     return customer.id;
+  }
+
+  /** Whether Stripe still has this customer — false once deleted in the dashboard or never in this mode */
+  async customerExists(id: string): Promise<boolean> {
+    try {
+      const customer = await this.getClient().customers.retrieve(id);
+      return !(customer as Stripe.DeletedCustomer).deleted;
+    } catch (error: any) {
+      if (error?.code === 'resource_missing') return false;
+      logger.error('[StripeService] Could not reach Stripe to check a customer', { error: error?.message });
+      throw new PaymentsUnavailableError('Payments are unavailable just now. Please try again in a few minutes.');
+    }
+  }
+
+  /**
+   * The Stripe customer to bill: the stored one while Stripe still has it, else a new one that
+   * `save` records. A customer deleted in Stripe made checkout fail with "No such customer", and a
+   * missing one sent people to support (2026-10-17, after the test sandbox was cleared).
+   * - Two clicks at once get the SAME new customer (idempotency key per owner and stored id), so a
+   *   payment can't land on a customer we didn't keep.
+   * - A paying owner's customer is never swapped: "missing" while they pay means a wrong key or
+   *   account, not a deletion (Stripe cancels a deleted customer's subscriptions, which ends the plan).
+   */
+  async usableCustomer(opts: {
+    storedId: string | null | undefined; email: string; name: string; userId: string;
+    ownerKey: string; paying: boolean; save: (id: string) => Promise<unknown>;
+  }): Promise<string> {
+    const { storedId, email, name, userId, ownerKey, paying, save } = opts;
+    if (!this.isConfigured) throw new PaymentsUnavailableError('Payments are not set up yet. Please contact support.');
+    if (storedId && await this.customerExists(storedId)) return storedId;
+    if (storedId && paying) {
+      logger.error('[StripeService] Paying customer not found in Stripe — check STRIPE_SECRET_KEY mode/account', { userId, stripeCustomerId: storedId });
+      throw new PaymentsUnavailableError('Billing could not be checked just now. Please try again later or contact support.');
+    }
+    if (storedId) logger.warn('[StripeService] Stored Stripe customer no longer exists — creating a new one', { userId });
+    const id = await this.createCustomer(email, name, userId, `customer:${ownerKey}:${storedId ?? 'none'}`);
+    if (!id) throw new PaymentsUnavailableError('Payments are not set up yet. Please contact support.');
+    await save(id);
+    return id;
   }
 
   async createCheckoutSession(customerId: string, priceId: string, userId: string, successPath?: string, couponId?: string): Promise<string> {
@@ -172,8 +210,7 @@ export class StripeService {
         const subId = invoice.subscription as string | undefined;
         if (subId) {
           const subscription = await stripe.subscriptions.retrieve(subId);
-          const customerId = subscription.customer as string;
-          const user = await this.userService.findByStripeCustomerId(customerId);
+          const user = await this.userByCustomerOrMetadata(subscription);
           if (user) {
             subscriptionEventRepository.create(
               user.id, 'payment_failed', null, null,
@@ -190,8 +227,7 @@ export class StripeService {
         const subId = invoice.subscription as string | undefined;
         if (subId) {
           const subscription = await stripe.subscriptions.retrieve(subId);
-          const customerId = subscription.customer as string;
-          const user = await this.userService.findByStripeCustomerId(customerId);
+          const user = await this.userByCustomerOrMetadata(subscription);
           if (user) {
             subscriptionEventRepository.create(
               user.id, 'payment_succeeded', null, null,
@@ -350,6 +386,25 @@ export class StripeService {
     return 'trial';
   }
 
+  /**
+   * Who a flat-rate subscription belongs to: by Stripe customer, else — only while the subscription
+   * is live — by the userId our checkout puts on it, whose customer is then stored, so a customer
+   * replaced since checkout began (usableCustomer) can't leave a payment unmatched. A late event for
+   * an ended subscription never matches this way: it would put back a deleted customer and end the
+   * plan someone is paying for on their new one.
+   */
+  private async userByCustomerOrMetadata(subscription: Stripe.Subscription) {
+    const customerId = subscription.customer as string;
+    const user = await this.userService.findByStripeCustomerId(customerId);
+    const metadataUserId = subscription.metadata?.userId;
+    if (user || !metadataUserId || !['active', 'trialing', 'past_due'].includes(subscription.status)) return user;
+    const owner = await this.userService.findById(metadataUserId);
+    if (!owner) return null;
+    logger.warn('[StripeService] Subscription matched by its userId; storing its Stripe customer', { userId: owner.id });
+    await this.userService.update(owner.id, { stripeCustomerId: customerId });
+    return owner;
+  }
+
   private async upsertSubscription(subscription: Stripe.Subscription, stripeEventId: string): Promise<void> {
     const customerId = subscription.customer as string;
     const metadata = subscription.metadata || {};
@@ -368,7 +423,7 @@ export class StripeService {
     }
 
     // Standard user-level subscription flow
-    const user = await this.userService.findByStripeCustomerId(customerId);
+    const user = await this.userByCustomerOrMetadata(subscription);
     if (!user) {
       logger.error(`[StripeService] No user found for Stripe customer ${customerId}`);
       return;
@@ -721,5 +776,8 @@ export class StripeService {
     }
   }
 }
+
+/** Payments can't go ahead right now (Stripe not set up, or a customer that needs a look) — a 503 */
+export class PaymentsUnavailableError extends Error {}
 
 export const stripeService = new StripeService();

@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — Checkout survives a customer deleted in Stripe
+- The user cleared every customer in the Stripe test sandbox; staging accounts kept the old ids, so checkout would fail "No such customer" (and a missing id answered "contact support"). `StripeService.usableCustomer` keeps a stored customer only while Stripe has it, else makes and saves a new one — plan checkout (flat + SME org), credit top-up; the portal says "No billing account found". Staging's stale ids were cleared (backup `/home/ubuntu/backup-stripe-ids-2026-10-17.tsv`). Prod webhook secret verified = live endpoint; the hourly rejections were a sandbox endpoint pointing at kovarti.com, now deleted.
+
 ## 2026-10-17 — First project asks "who is it for?"
 - Setup's first-project step has an optional Client box (`ClientNameField`): pick a client, type a new name to add one (created before the project, then linked), or leave blank. "Client or department" for SME/Enterprise; only owner/PMO/PMs see it. Mock https://claude.ai/artifact/R4nTFSRPSpdoP2Qn3fU7hp OK'd by the user.
 

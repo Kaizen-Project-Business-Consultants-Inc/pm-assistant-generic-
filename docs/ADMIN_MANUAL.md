@@ -365,7 +365,8 @@ Every subscription lifecycle event is persisted to the `subscription_events` tab
 
 ### Stripe Dashboard
 - Use the Stripe Dashboard for invoice management, refunds, and payment method issues.
-- Ensure `STRIPE_WEBHOOK_SECRET` is set for webhook signature verification.
+- Ensure `STRIPE_WEBHOOK_SECRET` is set for webhook signature verification. It must be the signing secret of the endpoint in the **same mode** as `STRIPE_SECRET_KEY` (live for prod). A test-sandbox endpoint that points at kovarti.com is rejected every time — that was the hourly "signature rejected" error until 2026-10-17.
+- **Deleting a customer in Stripe is safe** (since 2026-10-17): the next checkout or credit purchase sees the customer is gone and creates a new one (`StripeService.usableCustomer`); the billing portal then says "No billing account found" until they buy again. Before, checkout failed with "No such customer" and a missing customer sent people to support. Two clicks at once share one new customer (idempotency key), a payment is matched by the userId on its subscription if the customer was replaced meanwhile, and a **paying** owner's customer is never swapped — if Stripe can't find it, that usually means the wrong `STRIPE_SECRET_KEY` (test vs live): the owner gets a 503 "Billing could not be checked" and the log says to check the key. Per-seat companies open the portal on the company's customer.
 
 ### Billing Route Scope
 - Buying a plan or credits, opening the billing portal and re-checking the subscription (`create-checkout-session`, `create-topup-session`, `create-portal-session`, `reconcile`) are for the **company owner only** (`billingOwnerOnly`, since 2026-10-08). Someone with no company buys for themselves. Other members get 403: "Only the company's owner can change the plan or buy credits. Ask them to do it from Account."

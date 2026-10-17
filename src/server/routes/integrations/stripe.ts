@@ -5,7 +5,7 @@ import { resolvePriceId } from '../../utils/stripePrices';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
-import { stripeService, StripeService } from '../../services/StripeService';
+import { stripeService, StripeService, PaymentsUnavailableError } from '../../services/StripeService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { tokenTopUpRepository } from '../../database/TokenTopUpRepository';
 import { rateLimiter } from '../../middleware/rateLimiter';
@@ -31,6 +31,24 @@ const checkoutSchema = z.object({
   tier: z.enum(['consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   seats: z.number().int().min(3).max(100).optional(),
 });
+
+const LIVE = ['active', 'trialing', 'past_due'];
+
+/** The person's own Stripe customer, made or remade when needed (see StripeService.usableCustomer) */
+function userCustomer(user: { id: string; email: string; fullName?: string | null; stripeCustomerId: string | null; subscriptionTier?: string | null; subscriptionStatus?: string | null }) {
+  return stripeService.usableCustomer({
+    storedId: user.stripeCustomerId, email: user.email, name: user.fullName || user.email, userId: user.id,
+    ownerKey: `user:${user.id}`,
+    paying: !!user.subscriptionTier && user.subscriptionTier !== 'trial' && LIVE.includes(user.subscriptionStatus ?? ''),
+    save: (id) => userService.update(user.id, { stripeCustomerId: id }),
+  });
+}
+
+/** Payments that can't go ahead right now answer 503 with a plain message, not a 500 */
+function paymentsUnavailable(reply: FastifyReply, error: unknown) {
+  if (!(error instanceof PaymentsUnavailableError)) return null;
+  return reply.status(503).send({ error: 'Payments unavailable', message: error.message });
+}
 
 export async function stripeRoutes(fastify: FastifyInstance) {
   // Stripe webhook — must receive raw body, no auth
@@ -127,20 +145,12 @@ export async function stripeRoutes(fastify: FastifyInstance) {
           return reply.status(400).send({ error: 'No organization found', message: 'An organization is required for SME subscriptions' });
         }
 
-        // Ensure org has a Stripe customer
-        let orgStripeCustomerId = org.stripeCustomerId;
-        if (!orgStripeCustomerId) {
-          orgStripeCustomerId = await stripeService.createCustomer(
-            user.email, org.name, userId,
-          );
-          if (orgStripeCustomerId) {
-            await organizationRepository.update(org.id, { stripeCustomerId: orgStripeCustomerId });
-          }
-        }
-
-        if (!orgStripeCustomerId) {
-          return reply.status(500).send({ error: 'Failed to create Stripe customer for organization' });
-        }
+        // The org's Stripe customer — made (or remade, if deleted in Stripe) when needed
+        const orgStripeCustomerId = await stripeService.usableCustomer({
+          storedId: org.stripeCustomerId, email: user.email, name: org.name, userId, ownerKey: `org:${org.id}`,
+          paying: !!org.stripeSubscriptionId && LIVE.includes(org.subscriptionStatus),
+          save: (id) => organizationRepository.update(org.id, { stripeCustomerId: id }),
+        });
 
         const seatCount = Math.max(3, seats || await organizationRepository.countNonViewerUsers(org.id) || 3);
         const url = await stripeService.createSeatCheckoutSession(
@@ -150,9 +160,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       }
 
       // Flat-rate flow (consultant/enterprise)
-      if (!user.stripeCustomerId) {
-        return reply.status(400).send({ error: 'No Stripe customer', message: 'Please contact support' });
-      }
+      const customerId = await userCustomer(user);
 
       // Apply launch coupon for Pro annual subscriptions
       let couponId: string | undefined;
@@ -161,7 +169,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
       }
 
       const url = await stripeService.createCheckoutSession(
-        user.stripeCustomerId,
+        customerId,
         priceId,
         userId,
         undefined,
@@ -170,6 +178,7 @@ export async function stripeRoutes(fastify: FastifyInstance) {
 
       return { url };
     } catch (error) {
+      if (paymentsUnavailable(reply, error)) return reply;
       logger.error('Create checkout session error', { error });
       return reply.status(500).send({ error: 'Failed to create checkout session' });
     }
@@ -194,18 +203,17 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'User not found' });
       }
 
-      if (!user.stripeCustomerId) {
-        return reply.status(400).send({ error: 'No Stripe customer', message: 'Please contact support' });
-      }
+      const customerId = await userCustomer(user);
 
       const url = await stripeService.createTopUpSession(
-        user.stripeCustomerId,
+        customerId,
         userId,
         qty,
       );
 
       return { url };
     } catch (error) {
+      if (paymentsUnavailable(reply, error)) return reply;
       logger.error('Create top-up session error', { error });
       return reply.status(500).send({ error: 'Failed to create top-up session' });
     }
@@ -249,13 +257,21 @@ export async function stripeRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'User not found' });
       }
 
-      if (!user.stripeCustomerId) {
+      if (!stripeService.isConfigured) {
+        return reply.status(503).send({ error: 'Payments unavailable', message: 'Payments are not set up yet. Please contact support.' });
+      }
+      // Per-seat companies are billed on the company's customer; a customer deleted in Stripe has
+      // no billing to manage (a portal for it errors)
+      const org = await organizationRepository.findByUserId(userId);
+      const customerId = org?.billingModel === 'per_seat' && org.stripeCustomerId ? org.stripeCustomerId : user.stripeCustomerId;
+      if (!customerId || !(await stripeService.customerExists(customerId))) {
         return reply.status(400).send({ error: 'No Stripe customer', message: 'No billing account found' });
       }
 
-      const url = await stripeService.createBillingPortalSession(user.stripeCustomerId);
+      const url = await stripeService.createBillingPortalSession(customerId);
       return { url };
     } catch (error) {
+      if (paymentsUnavailable(reply, error)) return reply;
       logger.error('Create portal session error', { error });
       return reply.status(500).send({ error: 'Failed to create portal session' });
     }
