@@ -3,7 +3,7 @@ import { useId, useMemo, useState } from 'react';
 export interface ClientOption { id: string; name: string }
 
 /** What the typed text means: no client, one of the company's clients, or a new client to add. */
-export type ClientChoice = { kind: 'none' } | { kind: 'existing'; id: string } | { kind: 'new'; name: string };
+type ClientChoice = { kind: 'none' } | { kind: 'existing'; id: string } | { kind: 'new'; name: string };
 
 export function resolveClientChoice(text: string, clients: ClientOption[]): ClientChoice {
   const name = text.trim();
