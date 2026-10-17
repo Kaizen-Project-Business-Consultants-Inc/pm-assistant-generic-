@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
+import { formatUsdCost } from '../../utils/formatCurrency';
 import { Brain, Zap, DollarSign, BarChart3, Activity, MessageSquare, GitBranch, ArrowRight, Bot } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
@@ -68,10 +69,6 @@ function fmt(date: string | null) {
   return formatCalendarDate(date, { year: 'numeric', month: 'short', day: 'numeric' }, 'en-CA');
 }
 
-function fmtCost(cost: number) {
-  return `$${Number(cost).toFixed(4)}`;
-}
-
 function StatCard({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: string; color: string }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
@@ -103,7 +100,7 @@ function MiniBarChart({ data, valueKey = 'cost', label = 'Cost' }: { data: any[]
               style={{ height: `${h}%` }}
             />
             <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-              {formatCalendarDate(d.day, { month: 'short', day: 'numeric' }, 'en-CA')}: {label === 'Cost' ? fmtCost(Number(d[valueKey])) : Number(d[valueKey]).toLocaleString()}
+              {formatCalendarDate(d.day, { month: 'short', day: 'numeric' }, 'en-CA')}: {label === 'Cost' ? formatUsdCost(Number(d[valueKey])) : Number(d[valueKey]).toLocaleString()}
             </div>
           </div>
         );
@@ -150,7 +147,7 @@ function AiCostTab() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <StatCard icon={Zap} label="Total Calls" value={Number(summary?.totalCalls || 0).toLocaleString()} color="bg-blue-500" />
             <StatCard icon={Brain} label="Total Tokens" value={Number(summary?.totalTokens || 0).toLocaleString()} color="bg-purple-500" />
-            <StatCard icon={DollarSign} label="Total Cost" value={fmtCost(Number(summary?.totalCost || 0))} color="bg-emerald-500" />
+            <StatCard icon={DollarSign} label="Total Cost" value={formatUsdCost(Number(summary?.totalCost || 0))} color="bg-emerald-500" />
           </div>
 
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6 shadow-sm">
@@ -181,7 +178,7 @@ function AiCostTab() {
                     </td>
                     <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(r.callCount).toLocaleString()}</td>
                     <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{Number(r.totalTokens).toLocaleString()}</td>
-                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{fmtCost(r.totalCost)}</td>
+                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{formatUsdCost(r.totalCost)}</td>
                     <td className="py-3 text-gray-500 dark:text-gray-400">{fmt(r.lastUsed)}</td>
                   </tr>
                 ))}
@@ -393,7 +390,7 @@ function AgentCostsTab() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <StatCard icon={Brain} label="Total Agent Tokens" value={totalTokens.toLocaleString()} color="bg-purple-500" />
-            <StatCard icon={DollarSign} label="Total Agent Cost" value={fmtCost(totalCost)} color="bg-emerald-500" />
+            <StatCard icon={DollarSign} label="Total Agent Cost" value={formatUsdCost(totalCost)} color="bg-emerald-500" />
             <StatCard icon={Bot} label="Total Invocations" value={totalInvocations.toLocaleString()} color="bg-blue-500" />
           </div>
 
@@ -418,7 +415,7 @@ function AgentCostsTab() {
                     <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.inputTokens.toLocaleString()}</td>
                     <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.outputTokens.toLocaleString()}</td>
                     <td className="py-3 pr-4 text-right text-gray-700 dark:text-gray-200">{a.totalTokens.toLocaleString()}</td>
-                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{fmtCost(a.estimatedCostUsd)}</td>
+                    <td className="py-3 pr-4 text-right font-medium text-gray-900 dark:text-white">{formatUsdCost(a.estimatedCostUsd)}</td>
                     <td className="py-3 text-right text-gray-700 dark:text-gray-200">{a.invocations > 0 ? Math.round(a.totalTokens / a.invocations).toLocaleString() : '—'}</td>
                   </tr>
                 ))}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
+import { formatUsdCost } from '../../utils/formatCurrency';
 import { roleLabel } from '../../constants/branding';
 import {
   AlertTriangle,
@@ -262,7 +263,7 @@ export function AdminOperationsPage() {
                   <div className="p-2.5 bg-pink-100 dark:bg-pink-900/40 rounded-full"><Brain className="w-5 h-5 text-pink-600 dark:text-pink-400" /></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-gray-500 dark:text-gray-400">AI Budget</p>
-                    <p className="text-xl font-bold text-gray-900 dark:text-white">${data.system.ai.costThisMonth.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-gray-900 dark:text-white">{formatUsdCost(data.system.ai.costThisMonth)}</p>
                     <p className="text-xs text-gray-500">{data.system.ai.budgetUsedPercent.toFixed(0)}% of ${data.system.ai.monthlyBudget.toFixed(0)}</p>
                   </div>
                   {expandedPanel === 'ai' ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
@@ -332,7 +333,7 @@ export function AdminOperationsPage() {
                       </div>
                       <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                         <p className="text-xs text-gray-500 dark:text-gray-400">Budget Remaining</p>
-                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">${(data.system.ai.monthlyBudget - data.system.ai.costThisMonth).toFixed(2)}</p>
+                        <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{formatUsdCost(data.system.ai.monthlyBudget - data.system.ai.costThisMonth)}</p>
                       </div>
                     </div>
                     {/* Daily usage mini chart */}
@@ -348,11 +349,11 @@ export function AdminOperationsPage() {
                                 <div
                                   className="w-full bg-pink-400 dark:bg-pink-500 rounded-t hover:bg-pink-500 dark:hover:bg-pink-400 transition-colors"
                                   style={{ height: `${Math.max(heightPct, 2)}%` }}
-                                  title={`${d.date}: $${d.cost.toFixed(4)} (${d.requests} reqs)`}
+                                  title={`${d.date}: ${formatUsdCost(d.cost)} (${d.requests} reqs)`}
                                 />
                                 {/* Tooltip on hover */}
                                 <div className="absolute bottom-full mb-1 hidden group-hover:block bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
-                                  {d.date.slice(5)}: ${d.cost.toFixed(4)}
+                                  {d.date.slice(5)}: {formatUsdCost(d.cost)}
                                   <br />{d.requests} reqs, {((d.inputTokens + d.outputTokens) / 1000).toFixed(1)}k tok
                                 </div>
                               </div>
@@ -378,7 +379,7 @@ export function AdminOperationsPage() {
                                 <div className="flex-1 h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                   <div className="h-full bg-pink-400 dark:bg-pink-500 rounded-full" style={{ width: `${pct}%` }} />
                                 </div>
-                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 w-16 text-right">${t.aiCostThisMonth.toFixed(4)}</span>
+                                <span className="text-xs font-medium text-gray-600 dark:text-gray-300 w-16 text-right">{formatUsdCost(t.aiCostThisMonth)}</span>
                               </div>
                             );
                           })}
@@ -416,7 +417,7 @@ export function AdminOperationsPage() {
                               <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{t.projectCount}</td>
                               <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{t.taskCount}</td>
                               <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{t.aiTokensThisMonth.toLocaleString()}</td>
-                              <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">${t.aiCostThisMonth.toFixed(4)}</td>
+                              <td className="px-3 py-2 text-right text-gray-600 dark:text-gray-300">{formatUsdCost(t.aiCostThisMonth)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -428,7 +429,7 @@ export function AdminOperationsPage() {
                             <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{data.tenants.reduce((s, t) => s + t.projectCount, 0)}</td>
                             <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{data.tenants.reduce((s, t) => s + t.taskCount, 0)}</td>
                             <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{data.tenants.reduce((s, t) => s + t.aiTokensThisMonth, 0).toLocaleString()}</td>
-                            <td className="px-3 py-2 text-right text-gray-900 dark:text-white">${data.tenants.reduce((s, t) => s + t.aiCostThisMonth, 0).toFixed(4)}</td>
+                            <td className="px-3 py-2 text-right text-gray-900 dark:text-white">{formatUsdCost(data.tenants.reduce((s, t) => s + t.aiCostThisMonth, 0))}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -555,7 +556,7 @@ export function AdminOperationsPage() {
               />
               <GaugeCard
                 label="AI Budget"
-                value={`$${data.system.ai.costThisMonth.toFixed(2)}`}
+                value={formatUsdCost(data.system.ai.costThisMonth)}
                 max={`$${data.system.ai.monthlyBudget}`}
                 percent={data.system.ai.budgetUsedPercent}
               />
@@ -850,7 +851,7 @@ export function AdminOperationsPage() {
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{t.projectCount}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{t.taskCount}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{t.aiTokensThisMonth.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-gray-600 dark:text-gray-300">${t.aiCostThisMonth.toFixed(4)}</td>
+                        <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{formatUsdCost(t.aiCostThisMonth)}</td>
                       </tr>
                     ))}
                   </tbody>

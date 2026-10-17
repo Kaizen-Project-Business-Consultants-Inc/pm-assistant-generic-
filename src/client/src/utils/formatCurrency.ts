@@ -6,3 +6,10 @@ export function formatCurrency(amount: number, currency: string): string {
     return `$${amount.toLocaleString()}`;
   }
 }
+
+/** A US-dollar cost to the cent, e.g. "$37.27"; a tiny non-zero cost shows "< $0.01" rather than a misleading "$0.00" */
+export function formatUsdCost(amount: number): string {
+  const n = Number(amount) || 0;
+  if (n > 0 && n < 0.005) return '< $0.01';
+  return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}

@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — Dollar costs show to the cent
+- AI usage, Operations and AI inbox showed costs to 4 decimals ($37.2681). Now one shared `formatUsdCost` (`utils/formatCurrency.ts`): $37.27, and a tiny non-zero cost shows "< $0.01" instead of $0.00. Guard in `__tests__/utils/formatUsdCost.test.ts` fails if any screen formats a dollar amount with 3+ decimals.
+
 ## 2026-10-17 — Admin → System page no longer crashes
 - It read the AI budgets under the old plan names (free/pro/business/consultant) since the tier restructure, so `undefined.toLocaleString()` took the whole page down. Now shows Trial, Consultant Basic, Consultant Pro, SME, Enterprise + top-up; any missing number shows a dash (`formatCount`). Test `__tests__/pages/adminSystemPage.test.tsx`.
 

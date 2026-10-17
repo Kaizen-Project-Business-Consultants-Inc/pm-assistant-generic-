@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useProjectRole } from '../hooks/useProjectRole';
 import { apiService } from '../services/api';
+import { formatUsdCost } from '../utils/formatCurrency';
 import { timeAgo } from '../utils/timeAgo';
 import { MetaPill } from '../components/ui/MetaPill';
 import { AccessibleModal } from '../components/ui/AccessibleModal';
@@ -249,7 +250,7 @@ function HealthBanner() {
           <span className="font-medium text-amber-700 dark:text-amber-400">{data.pendingProposals} pending review</span>
         )}
         {costToday && (
-          <span>{costToday.invocations} calls / ${(costToday.estimatedCostUsd ?? costToday.estimatedUsd ?? 0).toFixed(4)}</span>
+          <span>{costToday.invocations} calls / {formatUsdCost(costToday.estimatedCostUsd ?? costToday.estimatedUsd ?? 0)}</span>
         )}
       </div>
     </div>
