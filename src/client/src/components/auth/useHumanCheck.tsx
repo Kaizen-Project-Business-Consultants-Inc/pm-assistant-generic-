@@ -16,7 +16,7 @@ export function useHumanCheck() {
   const [token, setToken] = useState<string | undefined>();
   const [unavailable, setUnavailable] = useState(false);
   const [round, setRound] = useState(0);
-  const onToken = useCallback((t: string | undefined) => setToken(t), []);
+  const onToken = useCallback((t: string | undefined) => { setToken(t); if (t) setUnavailable(false); }, []);
   const onUnavailable = useCallback(() => setUnavailable(true), []);
 
   const afterFailure = useCallback((needsHumanCheck: boolean | undefined) => {
@@ -28,7 +28,7 @@ export function useHumanCheck() {
 
   const waiting = shown && !token;
   const status = !waiting ? '' : unavailable
-    ? 'The security check could not load. Turn off ad blockers, or try again in 15 minutes.'
+    ? 'The security check could not load. Reload the page; if it keeps happening, turn off ad blockers or contact support.'
     : 'Checking you are a person…';
 
   return {

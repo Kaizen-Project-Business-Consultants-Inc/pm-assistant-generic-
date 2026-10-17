@@ -78,7 +78,9 @@ export function TurnstileWidget({ onToken, onUnavailable }: {
         widgetId = window.turnstile.render(boxRef.current, {
           sitekey: siteKey,
           callback: (token: string) => onToken(token),
-          'error-callback': () => onToken(undefined),
+          // Cloudflare's own error (e.g. 110200: this hostname is not on the widget) — say so,
+          // never leave 'Checking you are a person…' showing for ever (found on staging 2026-10-17)
+          'error-callback': () => { onToken(undefined); onUnavailable?.(); },
           'expired-callback': () => onToken(undefined),
           theme: 'auto',
         });

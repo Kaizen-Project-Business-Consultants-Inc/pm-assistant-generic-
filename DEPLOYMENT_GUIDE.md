@@ -325,7 +325,9 @@ sudo nginx -t && sudo systemctl reload nginx
 # Turnstile keys (TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY in .env) switch the check on for sign-up AND,
 #   after 3 failed tries from one address, sign-in and forgot password. Before setting them on a server,
 #   its nginx CSP must allow https://challenges.cloudflare.com in script-src and frame-src (staging does;
-#   prod did not until the 2026-10-17 release), or the box cannot load.
+#   prod did not until the 2026-10-17 release), or the box cannot load. The widget in Cloudflare
+#   (Turnstile > Kovarti PM Signup) must list the server's hostname (kovarti.com, pm.kpbc.ca) —
+#   else the box shows Cloudflare error 110200 "Unable to connect"; the secret check at startup cannot see this.
 #   Without it every visitor arrives from a Cloudflare address and shares one sign-in limit.
 
 # SSL
