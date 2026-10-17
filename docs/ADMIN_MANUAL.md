@@ -324,7 +324,7 @@ Admins can override per-user AI token budgets from the **Admin > Users** page:
 - Click the value to inline-edit. Set a custom budget or clear to revert to tier default.
 - **API:** `PATCH /api/v1/admin/users/:id/budget` with body `{ budget: number | null }`.
 
-Tier budget defaults are displayed on the **Admin > Configuration** page under "Tier Budget Defaults". These are configured via env vars (`AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_BASIC`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_SME_PER_SEAT`, `AI_TIER_BUDGET_ENTERPRISE`).
+Tier budget defaults are displayed on the **Admin > System** page under "Tier Budget Defaults" — one card per plan (Trial, Consultant Basic, Consultant Pro, SME flat, SME per seat, Enterprise) plus the top-up size and price; a setting the server doesn't send shows as a dash. They are **fallbacks**: a plan's live budget is the one set on **Admin > Pricing**, and these apply only when that is empty. These are configured via env vars (`AI_TIER_BUDGET_TRIAL`, `AI_TIER_BUDGET_CONSULTANT_BASIC`, `AI_TIER_BUDGET_CONSULTANT_PRO`, `AI_TIER_BUDGET_SME`, `AI_TIER_BUDGET_SME_PER_SEAT`, `AI_TIER_BUDGET_ENTERPRISE`, `AI_TOPUP_TOKENS`, `AI_TOPUP_PRICE_CENTS`).
 
 ### Revenue Dashboard
 

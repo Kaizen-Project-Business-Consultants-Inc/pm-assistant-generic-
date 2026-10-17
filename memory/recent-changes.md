@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — Admin → System page no longer crashes
+- It read the AI budgets under the old plan names (free/pro/business/consultant) since the tier restructure, so `undefined.toLocaleString()` took the whole page down. Now shows Trial, Consultant Basic, Consultant Pro, SME, Enterprise + top-up; any missing number shows a dash (`formatCount`). Test `__tests__/pages/adminSystemPage.test.tsx`.
+
 ## 2026-10-17 — "Are you a person" box on sign-in and forgot password (bot plan step 2)
 - Turnstile asked only after 3 wrong passwords / 3 reset requests from one address in 15 min (`utils/humanCheck.ts`, `useHumanCheck`); tests and smoke never meet it. Cloudflare: kovarti.com + www proxied, Full (strict), block rule for hacking-tool paths, 8 AI training crawlers blocked. Origin firewall lock waits until 2026-10-19 (old nameservers cached).
 

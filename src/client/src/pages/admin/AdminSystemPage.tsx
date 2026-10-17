@@ -62,8 +62,18 @@ interface ConfigData {
     uploadDir: string; maxUploadSizeMB: number;
   };
   tierBudgets?: {
-    free: number; pro: number; business: number; consultant: number;
+    trial?: number; consultant_basic?: number; consultant_pro?: number; sme?: number; smePerSeat?: number;
+    enterprise?: number; topUpTokens?: number; topUpPriceCents?: number;
   };
+}
+
+/** A missing number shows as a dash instead of crashing the page (a renamed setting once did). */
+function formatCount(n: number | undefined): string {
+  return typeof n === 'number' ? n.toLocaleString() : '—';
+}
+
+function formatCents(n: number | undefined): string {
+  return typeof n === 'number' ? `$${(n / 100).toFixed(2)}` : '—';
 }
 
 function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
@@ -225,8 +235,8 @@ export function AdminSystemPage() {
               <ConfigCard icon={Brain} label="Primary Model" value={data.aiConfig.model} color="border-l-pink-500" mono />
               <ConfigCard icon={Brain} label="Fallback Model" value={data.aiConfig.fallbackModel} color="border-l-rose-400" mono />
               <ConfigCard icon={Thermometer} label="Temperature" value={data.aiConfig.temperature} color="border-l-orange-500" />
-              <ConfigCard icon={Hash} label="Max Tokens" value={data.aiConfig.maxTokens.toLocaleString()} color="border-l-amber-500" />
-              <ConfigCard icon={Coins} label="Monthly Token Budget" value={data.aiConfig.monthlyTokenBudget.toLocaleString()} color="border-l-yellow-500" />
+              <ConfigCard icon={Hash} label="Max Tokens" value={formatCount(data.aiConfig.maxTokens)} color="border-l-amber-500" />
+              <ConfigCard icon={Coins} label="Monthly Token Budget" value={formatCount(data.aiConfig.monthlyTokenBudget)} color="border-l-yellow-500" />
               <ConfigCard icon={DollarSign} label="Input Pricing" value={`$${data.aiConfig.pricingInput}/M tokens`} color="border-l-emerald-500" />
               <ConfigCard icon={DollarSign} label="Output Pricing" value={`$${data.aiConfig.pricingOutput}/M tokens`} color="border-l-primary-500" />
             </div>
@@ -236,11 +246,16 @@ export function AdminSystemPage() {
           {data.tierBudgets && (
             <div>
               <SectionHeader icon={Coins} title="Tier Budget Defaults (tokens/month)" />
+              <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-3">Fallbacks only: a plan uses these when Admin → Pricing has no AI budget set.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <ConfigCard icon={Coins} label="Free" value={data.tierBudgets.free.toLocaleString()} color="border-l-gray-400" />
-                <ConfigCard icon={Coins} label="Pro" value={data.tierBudgets.pro.toLocaleString()} color="border-l-blue-500" />
-                <ConfigCard icon={Coins} label="Business" value={data.tierBudgets.business.toLocaleString()} color="border-l-purple-500" />
-                <ConfigCard icon={Coins} label="Consultant" value={data.tierBudgets.consultant.toLocaleString()} color="border-l-amber-500" />
+                <ConfigCard icon={Coins} label="Trial" value={formatCount(data.tierBudgets.trial)} color="border-l-gray-400" />
+                <ConfigCard icon={Coins} label="Consultant Basic" value={formatCount(data.tierBudgets.consultant_basic)} color="border-l-blue-400" />
+                <ConfigCard icon={Coins} label="Consultant Pro" value={formatCount(data.tierBudgets.consultant_pro)} color="border-l-blue-600" />
+                <ConfigCard icon={Coins} label="SME (flat)" value={formatCount(data.tierBudgets.sme)} color="border-l-purple-500" />
+                <ConfigCard icon={Coins} label="SME (per seat)" value={formatCount(data.tierBudgets.smePerSeat)} color="border-l-purple-400" />
+                <ConfigCard icon={Coins} label="Enterprise" value={formatCount(data.tierBudgets.enterprise)} color="border-l-amber-500" />
+                <ConfigCard icon={Coins} label="Top-up tokens" value={formatCount(data.tierBudgets.topUpTokens)} color="border-l-emerald-500" />
+                <ConfigCard icon={DollarSign} label="Top-up price" value={formatCents(data.tierBudgets.topUpPriceCents)} color="border-l-emerald-600" />
               </div>
             </div>
           )}

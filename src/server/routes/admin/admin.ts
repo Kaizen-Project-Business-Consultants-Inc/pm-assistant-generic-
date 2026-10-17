@@ -534,6 +534,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
         consultant_basic: config.AI_TIER_BUDGET_CONSULTANT_BASIC,
         consultant_pro: config.AI_TIER_BUDGET_CONSULTANT_PRO,
         sme: config.AI_TIER_BUDGET_SME,
+        smePerSeat: config.AI_TIER_BUDGET_SME_PER_SEAT,
         enterprise: config.AI_TIER_BUDGET_ENTERPRISE,
         topUpTokens: config.AI_TOPUP_TOKENS,
         topUpPriceCents: config.AI_TOPUP_PRICE_CENTS,
