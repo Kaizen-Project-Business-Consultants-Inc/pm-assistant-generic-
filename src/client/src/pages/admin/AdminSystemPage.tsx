@@ -62,7 +62,7 @@ interface ConfigData {
     uploadDir: string; maxUploadSizeMB: number;
   };
   tierBudgets?: {
-    trial?: number; consultant_basic?: number; consultant_pro?: number; sme?: number; smePerSeat?: number;
+    trial?: number; consultantBasic?: number; consultantPro?: number; sme?: number; smePerSeat?: number;
     enterprise?: number; topUpTokens?: number; topUpPriceCents?: number;
   };
 }
@@ -249,8 +249,8 @@ export function AdminSystemPage() {
               <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-3">Fallbacks only: a plan uses these when Admin → Pricing has no AI budget set.</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <ConfigCard icon={Coins} label="Trial" value={formatCount(data.tierBudgets.trial)} color="border-l-gray-400" />
-                <ConfigCard icon={Coins} label="Consultant Basic" value={formatCount(data.tierBudgets.consultant_basic)} color="border-l-blue-400" />
-                <ConfigCard icon={Coins} label="Consultant Pro" value={formatCount(data.tierBudgets.consultant_pro)} color="border-l-blue-600" />
+                <ConfigCard icon={Coins} label="Consultant Basic" value={formatCount(data.tierBudgets.consultantBasic)} color="border-l-blue-400" />
+                <ConfigCard icon={Coins} label="Consultant Pro" value={formatCount(data.tierBudgets.consultantPro)} color="border-l-blue-600" />
                 <ConfigCard icon={Coins} label="SME (flat)" value={formatCount(data.tierBudgets.sme)} color="border-l-purple-500" />
                 <ConfigCard icon={Coins} label="SME (per seat)" value={formatCount(data.tierBudgets.smePerSeat)} color="border-l-purple-400" />
                 <ConfigCard icon={Coins} label="Enterprise" value={formatCount(data.tierBudgets.enterprise)} color="border-l-amber-500" />

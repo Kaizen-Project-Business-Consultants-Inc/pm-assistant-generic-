@@ -10,10 +10,14 @@ vi.mock('../../pages/admin/AdminPageWrapper', () => ({
 }));
 
 import { AdminSystemPage } from '../../pages/admin/AdminSystemPage';
+import { toCamelCaseKeys } from '../../../../server/utils/caseConverter';
 
-/** The shape GET /admin/config returns (routes/admin/admin.ts) */
+/**
+ * What GET /admin/config builds (routes/admin/admin.ts), passed through the same camelCasing the
+ * server applies to every reply — the page once read `consultant_basic` and got undefined.
+ */
 function config(overrides: Record<string, unknown> = {}) {
-  return {
+  return toCamelCaseKeys({
     features: [],
     services: [],
     environment: {
@@ -28,11 +32,16 @@ function config(overrides: Record<string, unknown> = {}) {
     },
     storageConfig: { uploadDir: '/uploads', maxUploadSizeMB: 25 },
     tierBudgets: {
-      trial: 50000, consultant_basic: 0, consultant_pro: 500000, sme: 1500000, smePerSeat: 500000, enterprise: 5000000,
-      topUpTokens: 250000, topUpPriceCents: 900,
+      trial: 10000, consultant_basic: 20000, consultant_pro: 30000, sme: 40000, smePerSeat: 50000, enterprise: 60000,
+      topUpTokens: 70000, topUpPriceCents: 900,
     },
     ...overrides,
-  };
+  });
+}
+
+/** The number shown on the card with this label */
+function cardValue(label: string): string | null | undefined {
+  return screen.getByText(label).parentElement?.parentElement?.lastElementChild?.textContent;
 }
 
 function show() {
@@ -47,18 +56,18 @@ describe('Admin → System configuration', () => {
   it('shows the AI budget for each current plan and the top-up', async () => {
     api.getAdminConfig.mockResolvedValue(config());
     show();
-    expect(await screen.findByText('Consultant Pro')).toBeTruthy();
-    for (const label of ['Trial', 'Consultant Basic', 'SME (flat)', 'SME (per seat)', 'Enterprise', 'Top-up tokens']) {
-      expect(screen.getByText(label)).toBeTruthy();
-    }
-    expect(screen.getAllByText((500000).toLocaleString()).length).toBe(2);
-    expect(screen.getByText('$9.00')).toBeTruthy();
+    await screen.findByText('Consultant Pro');
+    const expected: Record<string, string> = {
+      Trial: '10,000', 'Consultant Basic': '20,000', 'Consultant Pro': '30,000', 'SME (flat)': '40,000',
+      'SME (per seat)': '50,000', Enterprise: '60,000', 'Top-up tokens': '70,000', 'Top-up price': '$9.00',
+    };
+    for (const [label, value] of Object.entries(expected)) expect(cardValue(label)).toBe(value);
   });
 
   it('a missing number shows a dash instead of crashing the page', async () => {
     api.getAdminConfig.mockResolvedValue(config({
       aiConfig: { model: 'm', fallbackModel: 'f', temperature: 0.3, pricingInput: 3, pricingOutput: 15 },
-      tierBudgets: { trial: 50000 },
+      tierBudgets: { trial: 10000 },
     }));
     show();
     expect(await screen.findByText('Trial')).toBeTruthy();
