@@ -29,6 +29,7 @@ import { resolveApiKeyOnRequest } from './middleware/auth';
 import { metricsService } from './services/MetricsService';
 import type { JwtPayload } from './types/fastify';
 import { replyIfDatabaseBusy } from './utils/serviceBusy';
+import { normalizeErrorBody } from './utils/errorReply';
 
 // Standard HTTP status text for error response normalization
 const HTTP_STATUS_TEXT: Record<number, string> = {
@@ -136,26 +137,7 @@ export async function registerPlugins(fastify: FastifyInstance) {
     const statusCode = reply.statusCode;
     const statusText = HTTP_STATUS_TEXT[statusCode] || 'Error';
 
-    const normalized: Record<string, unknown> = {
-      statusCode,
-      error: typeof body.error === 'string' ? body.error : statusText,
-      message: typeof body.message === 'string' ? body.message : (typeof body.error === 'string' ? body.error : statusText),
-      timestamp: new Date().toISOString(),
-      path: request.url,
-    };
-
-    // Preserve optional fields from route-level responses
-    if (body.details !== undefined) normalized.details = body.details;
-    if (body.retryAfter !== undefined) normalized.retryAfter = body.retryAfter;
-    if (body.retryAfterMs !== undefined) normalized.retryAfterMs = body.retryAfterMs;
-    if (body.code !== undefined) normalized.code = body.code;
-    if (body.resetDate !== undefined) normalized.resetDate = body.resetDate;
-    if (body.used !== undefined) normalized.used = body.used;
-    if (body.budget !== undefined) normalized.budget = body.budget;
-    // which field was wrong, and the project a duplicate name belongs to (the create screen's
-    // "Open it" link) — they were stripped here, so the link never showed (2026-10-07)
-    if (body.field !== undefined) normalized.field = body.field;
-    if (body.existingProjectId !== undefined) normalized.existingProjectId = body.existingProjectId;
+    const normalized = normalizeErrorBody(body, statusCode, statusText, request.url);
 
     return JSON.stringify(normalized);
   });
@@ -318,7 +300,8 @@ export async function registerPlugins(fastify: FastifyInstance) {
       path: request.url,
     };
 
-    // Preserve structured error fields (code, resetDate, etc.)
+    // Preserve structured error fields (code, resetDate, etc.). An allow-list ON PURPOSE here, unlike
+    // the onSend hook: a thrown error can be a database error carrying sql / sqlMessage.
     const errAny = error as unknown as Record<string, unknown>;
     if (errAny.code) response.code = errAny.code;
     if (errAny.resetDate) response.resetDate = errAny.resetDate;

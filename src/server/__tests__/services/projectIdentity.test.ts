@@ -88,7 +88,6 @@ describe('a duplicate name answers one plain 409', () => {
     const picker = readFileSync(join(__dirname, '..', '..', '..', 'client', 'src', 'components', 'templates', 'TemplatePicker.tsx'), 'utf-8');
     expect(picker).toMatch(/showCreateError\(err, 'Failed to create project/);
     expect(picker).toMatch(/Open it/);
-    // the reply's tidy-up keeps the id the link needs (it was stripped, so the link never showed)
-    expect(src('plugins.ts')).toMatch(/normalized\.existingProjectId = body\.existingProjectId/);
+    // the reply's tidy-up keeps every field a route sends (guard: middleware/errorReplyFields.test.ts)
   });
 });
