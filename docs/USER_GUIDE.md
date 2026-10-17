@@ -102,6 +102,7 @@ A **3-step wizard** guides you through initial setup:
 
 **Step 2 — Create Your First Project (optional)**
 - Pick a project template from the library to pre-populate tasks, milestones, and dependencies. Templates are sorted to match your methodology choice, and up to 6 are shown.
+- **Client (optional)** (October 2026): say who the project is for. Start typing to pick one of your clients; if you have none yet, type the name and choose **+ Create client "…"** — the client is added and the project linked to it in one go (add contacts and details later under **Clients**). Leave it blank, or pick **No client (internal project)**, and the project has no client; you can link one any time from **Edit project**. Only people who can add clients (company owner, PMO, project managers) see this box.
 - You can skip this step — just click **Skip** to go straight to the confirmation screen. You can always create a project manually from the Projects page later.
 - **Explore a sample project first** (company owner or PMO, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it. Nothing in the sample falls on a Saturday or Sunday (tasks, sprints, meetings, timesheets, costs).
 
@@ -128,7 +129,7 @@ SME accounts get an extended **4-step wizard** with an additional Team Setup ste
 - Click **Send Invites & Continue** to proceed, or **Skip — I'll invite later** if you prefer to set up your team after the wizard.
 
 **Step 3 — Create Your First Project (optional)**
-- Same template picker as Step 2 in the standard flow.
+- Same template picker as Step 2 in the standard flow, with the same optional box — here labelled **Client or department**, as SME and Enterprise projects are often internal.
 
 **Step 4 — You're all set**
 - A confirmation screen shows your organization name, total seats, and how many invites were sent during Step 2.

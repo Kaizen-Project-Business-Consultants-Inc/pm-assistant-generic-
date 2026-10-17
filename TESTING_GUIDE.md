@@ -841,6 +841,15 @@ On staging, as a new trial account:
 3. Email a status report to 6 people → refused ("up to 5 people"); send 5 report emails → the 6th that day is refused ("up to 5 emails a day").
 4. As a viewer (or team member) open RAID → RAID Report: no Email or Schedule tab.
 
+### 9a2. First project — "who is it for?" (Oct 2026)
+
+Sign up a new company on staging (consultant or trial plan), reach **Create your first project**, pick a template:
+1. The **Client (optional)** box shows "You have no clients yet — type a name to add one". Type `Acme Bank` → **+ Create client "Acme Bank"**; Create & Continue → the project opens and **Clients** lists Acme Bank with this project.
+2. With clients present, typing filters them; arrow keys + Enter pick one; Enter with nothing highlighted keeps the typed text.
+3. Leave it blank (or pick **No client**) → the project has no client.
+4. SME/Enterprise: the label reads **Client or department**. A team member (not PM/PMO) never sees the box.
+Unit tests: `src/client/src/__tests__/components/clientNameField.test.tsx`.
+
 ### 9b. Onboarding WelcomeModal
 
 The WelcomeModal appears on first login for new users. It is suppressed for returning users via two storage keys.

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { User, Briefcase, BarChart3, Users, CheckCircle, ArrowRight, ArrowLeft, SkipForward, CreditCard, Mail, Plus, X, Building2 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
@@ -8,6 +8,8 @@ import { apiService } from '../services/api';
 import { refreshProjectLists } from '../utils/projectListCache';
 import { KovartiMark } from '../components/ui/KovartiMark';
 import { needsSetup } from '../utils/needsSetup';
+import { ClientNameField, resolveClientChoice, type ClientOption } from '../components/project/ClientNameField';
+import { useCanManageClients } from '../hooks/useCanManageClients';
 
 const ROLE_OPTIONS = [
   { value: 'project_manager', label: 'Project Manager', icon: Briefcase, description: 'Plan, schedule, and deliver projects' },
@@ -59,6 +61,9 @@ export const OnboardingPage: React.FC = () => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [projectName, setProjectName] = useState('');
+  const [clientText, setClientText] = useState('');
+  // A client added on an earlier, failed try — reused so a retry doesn't hit "already exists"
+  const addedClient = useRef<{ name: string; id: string } | null>(null);
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   // Optional read-only sample project (Oct 2026): offered only to someone who may load it
   const [canOfferSample, setCanOfferSample] = useState(false);
@@ -66,6 +71,7 @@ export const OnboardingPage: React.FC = () => {
 
   // SME team setup state
   const isSme = user?.subscriptionTier === 'sme';
+  const clientLabel = isSme || user?.subscriptionTier === 'enterprise' ? 'Client or department' : 'Client';
   // Only the company owner names the company (the server refuses anyone else); no company yet = theirs to name
   const canNameCompany = !user?.organization || user.organization.isOwner === true;
   const companyNameRequired = isSme && canNameCompany;
@@ -73,6 +79,9 @@ export const OnboardingPage: React.FC = () => {
   const STEP_TEAM = 2; // only used when isSme
   const STEP_PROJECT = isSme ? 3 : 2;
   const STEP_DONE = isSme ? 4 : 3;
+  // Who the first project is for (Oct 2026) — only for those who may add clients (owner/PMO, PMs)
+  const canAddClient = useCanManageClients();
+  const clientsQ = useQuery<{ groups: ClientOption[] }>({ queryKey: ['project-groups'], queryFn: () => apiService.getProjectGroups(), enabled: canAddClient && step === STEP_PROJECT, staleTime: 120_000 });
   const [seatInfo, setSeatInfo] = useState<{ usedSeats: number; paidSeats: number; availableSeats: number } | null>(null);
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -202,17 +211,32 @@ export const OnboardingPage: React.FC = () => {
 
     try {
       if (!(await loadSampleIfWanted())) return;
+      // A new client is added first, so a refused name stops here, before the project exists;
+      // the template apply then creates the project already linked to it (and staffs from its people)
+      const choice = canAddClient ? resolveClientChoice(clientText, clientsQ.data?.groups ?? []) : { kind: 'none' as const };
+      let clientId: string | undefined;
+      if (choice.kind === 'existing') clientId = choice.id;
+      else if (choice.kind === 'new') {
+        if (addedClient.current?.name.toLowerCase() !== choice.name.toLowerCase()) {
+          const created = await apiService.createProjectGroup({ name: choice.name });
+          addedClient.current = { name: choice.name, id: created.id as string };
+        }
+        clientId = addedClient.current!.id;
+      }
       const result = await apiService.applyTemplate({
         templateId: selectedTemplate,
         projectName: projectName.trim(),
         startDate: new Date().toISOString().split('T')[0],
         methodology: methodology || undefined,
+        clientId,
       });
       const pid = result.projectId || result.project?.id;
+      if (clientId) void queryClient.invalidateQueries({ queryKey: ['project-groups'] });
       refreshProjectLists(queryClient);
       setCreatedProjectId(pid || null);
       setStep(STEP_DONE);
     } catch (err: unknown) {
+      if (canAddClient) void queryClient.invalidateQueries({ queryKey: ['project-groups'] });
       setError(getApiErrorMessage(err, 'The project could not be created. You can create one later from the dashboard.'));
     } finally {
       setIsLoading(false);
@@ -619,6 +643,10 @@ export const OnboardingPage: React.FC = () => {
                     </div>
                   )}
 
+                  {selectedTemplate && canAddClient && (
+                    <ClientNameField clients={clientsQ.data?.groups ?? []} listFailed={clientsQ.isError} value={clientText} onChange={setClientText} label={clientLabel} />
+                  )}
+
                   <div className="flex gap-3">
                     <button
                       type="button"
@@ -630,7 +658,7 @@ export const OnboardingPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={handleCreateProject}
-                      disabled={isLoading || !selectedTemplate || !projectName.trim()}
+                      disabled={isLoading || !selectedTemplate || !projectName.trim() || (canAddClient && clientsQ.isLoading)}
                       className="flex-1 flex justify-center items-center gap-2 py-2.5 px-4 text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {isLoading ? (

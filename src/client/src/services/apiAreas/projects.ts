@@ -273,6 +273,8 @@ export class ProjectsApi extends ApiBase {
     methodology?: string;
     location?: string;
     selectedTaskRefIds?: string[];
+    /** The client (project group) the new project is for; the server links it and staffs from its people */
+    clientId?: string;
   }) {
     const response = await this.api.post('/templates/apply', data);
     return response.data;

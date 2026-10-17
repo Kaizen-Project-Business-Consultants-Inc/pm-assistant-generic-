@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — First project asks "who is it for?"
+- Setup's first-project step has an optional Client box (`ClientNameField`): pick a client, type a new name to add one (created before the project, then linked), or leave blank. "Client or department" for SME/Enterprise; only owner/PMO/PMs see it. Mock https://claude.ai/artifact/R4nTFSRPSpdoP2Qn3fU7hp OK'd by the user.
+
 ## 2026-10-17 — Dollar costs show to the cent
 - AI usage, Operations and AI inbox showed costs to 4 decimals ($37.2681). Now one shared `formatUsdCost` (`utils/formatCurrency.ts`): $37.27, and a tiny non-zero cost shows "< $0.01" instead of $0.00. Guard in `__tests__/utils/formatUsdCost.test.ts` fails if any screen formats a dollar amount with 3+ decimals.
 
