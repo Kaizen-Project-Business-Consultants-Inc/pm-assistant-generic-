@@ -183,7 +183,7 @@ const FixRow = memo(function FixRow({ f, checked, pointed, rows, name, onToggle,
           className="mt-0.5"
         />
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1 text-xs font-medium text-gray-500 dark:text-gray-400">
             <meta.Icon className="w-3 h-3" aria-hidden="true" /> {meta.label}
           </span>
           {isRename ? (

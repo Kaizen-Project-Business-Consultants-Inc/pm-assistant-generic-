@@ -272,6 +272,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     setLoadSeq(n => n + 1);
   }, []);
 
+  const TEXT_EXTS = ['csv', 'txt'];
   const isExcelFile = (file: File) => {
     const ext = file.name.toLowerCase().split('.').pop();
     return ext === 'xlsx' || ext === 'xls' || ext === 'xlsb' ||
@@ -280,7 +281,15 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
   };
 
   const handleFile = (file: File) => {
+    setError('');
     const MAX_FILE_SIZE = 5 * 1024 * 1024;
+    const ext = file.name.toLowerCase().split('.').pop() ?? '';
+    if (!isExcelFile(file) && !TEXT_EXTS.includes(ext) && file.type !== 'text/csv') {
+      setError(`"${file.name}" can't be imported. Choose an Excel (.xlsx, .xls, .xlsb) or CSV (.csv, .txt) file.`);
+      return;
+    }
+    // e.g. an online-only OneDrive file while offline, or one moved after picking
+    const unreadable = () => setError(`Couldn't read "${file.name}". Check the file is saved on this computer and try again.`);
     if (file.size > MAX_FILE_SIZE) {
       setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 5MB.`);
       return;
@@ -310,10 +319,12 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
           setError(getApiErrorMessage(err, 'Failed to parse Excel file'));
         }
       };
+      reader.onerror = unreadable;
       reader.readAsArrayBuffer(file);
     } else {
       const reader = new FileReader();
       reader.onload = (e) => loadText(cleanCsvForImport((e.target?.result as string) ?? ''));
+      reader.onerror = unreadable;
       reader.readAsText(file);
     }
   };
@@ -501,22 +512,32 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
               {/* File drop zone */}
               {!parsed && (
                 <>
+                  {/* A real button opens the picker (UAT 2026-10-17: the box's own click, with the
+                      hidden input inside it, sometimes opened nothing). The input sits outside the
+                      box, is cleared after each pick so the same file can be chosen again, and any
+                      problem reading the file shows here — it used to show only after a file read. */}
+                  <input ref={fileRef} type="file" aria-label="Choose a file to import" accept=".csv,.txt,.xlsx,.xls,.xlsb,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) handleFile(f); }} />
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={onDrop}
-                    onClick={() => fileRef.current?.click()}
-                    className={`flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                    className={`flex flex-col items-center justify-center gap-2 p-8 border-2 border-dashed rounded-lg transition-colors ${
                       dragOver
                         ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500'
+                        : 'border-gray-300 dark:border-gray-600'
                     }`}
                   >
-                    <Upload size={32} className="text-gray-500 dark:text-gray-400" />
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Drag & drop a file here, or click to browse</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">.csv, .xlsx, .xls supported (max 5MB)</p>
-                    <input ref={fileRef} type="file" aria-label="Choose a file to import" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                    <Upload size={32} className="text-gray-500 dark:text-gray-400" aria-hidden="true" />
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      className="px-4 py-2 text-sm font-semibold rounded-lg bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                    >
+                      Choose file
+                    </button>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">or drag a file here · .xlsx, .xls, .xlsb, .csv or .txt · up to 5 MB</p>
                   </div>
+                  {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
                   <div id={`${uid}-or-paste-csv-label`} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <span className="flex-1 border-t dark:border-gray-700" />or paste CSV below<span className="flex-1 border-t dark:border-gray-700" />

@@ -3414,7 +3414,7 @@ All forms include a **Source** field (Manual / AI Scan / Agent / Import) that is
 
 Click the **Import** button in the RAID toolbar to bulk-load items from a CSV or Excel file.
 
-1. **Upload a file** — drag-and-drop or browse for a `.csv`, `.xlsx`, or `.xls` file (max 5MB). You can also paste CSV text directly.
+1. **Upload a file** — click **Choose file**, or drag an Excel (`.xlsx`, `.xls`, `.xlsb`) or comma-separated text (`.csv`, `.txt`) file onto the box (max 5MB). You can also paste CSV text directly. If the file can't be used (wrong type, too big, unreadable), the reason shows right under the box; you can pick the same file again after fixing it.
 2. **Map columns** — the column mapper automatically matches source columns to RAID fields (Type, Title, Description, Severity, Status, Owner, etc.) using alias matching, fuzzy matching, and AI suggestions. Adjust any mappings manually if needed.
 3. **Preview** — check the first 10 rows to verify the mapping looks correct.
 4. **Import** — click the Import button. The server normalises values (e.g., "High" → high, "R" → risk, "In Progress" → in_progress) and matches Owner names to project members. If an owner name does not match a project member it is saved as a free-text fallback. Dates in any common format (DD-Mon-YYYY, MM/DD/YYYY, YYYY-MM-DD, etc.) are automatically parsed. If the spreadsheet has no "Title" column but has a description column (e.g., "Risk Description"), the description is used as the title.

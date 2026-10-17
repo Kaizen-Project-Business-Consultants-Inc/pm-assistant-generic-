@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — RAID import: a real Choose file button
+- UAT: "no file is uploaded". The picker sat inside a clickable box (re-entrant click), was never cleared (same file twice did nothing), and any error before a preview existed (too big, unreadable, wrong type) was rendered only inside the preview — so nothing showed. Now a Choose file button, the input outside the box and cleared after each pick, a plain wrong-type message, errors under the box. Test `__tests__/components/raidImportModal.test.tsx`. Also: Propose fixes panel used 11px text (font guard stopped the staging release) → text-xs.
+
 ## 2026-10-17 — Propose fixes grouped by level, nothing pre-ticked, rename headings, score first
 - User-approved mock. Each fix carries the `severity` of the finding it answers (`withSeverity()` in `scheduleReview/fixProposer.ts`, set in `propose()`); the panel groups Critical → Low with "Select all in <level>", starts unticked, and the button reads "Apply N fixes (1 critical, 3 low)". New fix `rename_task` for R22-flagged headings (T1 → "Task 1 – Kick-Off Meeting", from the first child; no AI); the PM can edit the name (`names` in the apply body); undo op `restore_name`. Apply returns `afterCounts`; the result leads with "22 → 48 / 100" and "Still to do: …". Rules 1.10 (user OK): R22 also flags a heading named only by a 2–3 capital-letter code ("PG"), except real phase acronyms (`PHASE_ACRONYMS` in rules.ts: UAT, SIT, QA, PMO…); leaves unchanged. Link severity reads R01 on the waiting task and R02 on the feeder. Apply caps at 200 fixes (panel says "Apply up to 200 fixes at a time"); the route's 400s are plain sentences.
 

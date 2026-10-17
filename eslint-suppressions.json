@@ -487,13 +487,7 @@
     }
   },
   "src/client/src/components/raids/RAIDImportModal.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
     "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
   },
