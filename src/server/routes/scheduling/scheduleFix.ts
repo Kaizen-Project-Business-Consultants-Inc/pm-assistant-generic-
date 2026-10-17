@@ -11,8 +11,20 @@ import { requireScope } from '../../middleware/requireScope';
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
 import { aiRefusalReply } from '../../services/AIBudgetService';
+import { sendValidationError } from '../../utils/validationError';
 
-const applySchema = z.object({ fixIds: z.array(z.string()).min(1).max(200) });
+const applySchema = z.object({
+  fixIds: z.array(z.string(), { message: 'Choose the fixes to apply.' })
+    .min(1, 'Choose at least one fix to apply.')
+    .max(200, 'Choose up to 200 fixes at a time.'),
+  /** New names the PM typed for rename fixes, by fix id */
+  names: z.record(
+    z.string().max(300),
+    z.string({ message: 'A new name must be text.' }).trim()
+      .min(1, 'A new name cannot be empty. Type a name, or untick that rename.')
+      .max(255, 'A new name can be at most 255 characters.'),
+  ).refine(r => Object.keys(r).length <= 200, 'Rename up to 200 headings at a time.').optional(),
+});
 const rejectSchema = z.object({ feedback: z.string().max(2000).optional() });
 
 /** Map AI infra errors to their conventional status codes. */
@@ -73,10 +85,10 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId, proposalId } = request.params as { scheduleId: string; proposalId: string };
-      const { fixIds } = applySchema.parse(request.body);
-      return await scheduleFixProposerService.apply(scheduleId, proposalId, fixIds, request.user!.userId);
+      const { fixIds, names } = applySchema.parse(request.body);
+      return await scheduleFixProposerService.apply(scheduleId, proposalId, fixIds, request.user!.userId, names);
     } catch (error: any) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Proposal not found' });
       if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });
       logger.error('Schedule fix apply error', { error });
@@ -116,7 +128,7 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
       await scheduleFixProposerService.reject(scheduleId, proposalId, feedback, request.user!.userId);
       return { ok: true };
     } catch (error: any) {
-      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Proposal not found' });
       if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });
       logger.error('Schedule fix reject error', { error });

@@ -13,7 +13,7 @@ import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/work
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { groupBy } from '../../utils/groupBy';
 
-export const RULES_VERSION = '1.9';
+export const RULES_VERSION = '1.10';
 
 // 1.8 (2026-10-04): checks taken over from retired agents — R38 bottleneck task (4+ open tasks
 // wait directly on it; 'info': a risk to know about, no deduction, so the score keeps meaning "is
@@ -209,6 +209,15 @@ const LEVEL_OF_EFFORT = /\b(status report|project management|pmo|governance|recu
 const LEGEND_WORDS = new Set(['delayed', 'ahead', 'completed', 'complete', 'not started', 'on track', 'in progress', 'pending', 'done', 'status', 'legend']);
 const CELL_REF = /\b[A-Z]{1,3}\d{1,5}(:[A-Z]{1,3}\d{1,5})?\b/;
 const PHASE_CODE = /^[A-Za-z]{1,3}\d{0,3}$/;
+/** A heading named only by a 2–3 capital-letter code ("PG") is a spreadsheet leftover (R22, 1.10) */
+const HEADING_CODE = /^[A-Z]{2,3}$/;
+/** …unless the code is a real phase name people use (user, 2026-10-17): these are never flagged */
+const PHASE_ACRONYMS = new Set([
+  'UAT', 'SIT', 'QA', 'QC', 'PMO', 'PM', 'IT', 'HR', 'BA', 'DR', 'GO', 'ERP', 'CRM', 'API', 'SAP', 'CRP',
+  'POC', 'MVP', 'BAU', 'UX', 'UI', 'DEV', 'OPS', 'SOW', 'RFP', 'CAB', 'OAT', 'ORT', 'PIR', 'ETL', 'BI',
+  'AI', 'ML', 'SEO', 'FAT', 'SAT', 'IQ', 'OQ', 'PQ', 'KYC', 'AML',
+  'OCM', 'KPI', 'SLA', 'NFR', 'CI', 'CD', 'DBA', 'HSE', 'EHS', 'GIS', 'FIN',
+]);
 const HARD_CONSTRAINTS = new Set(['MSO', 'MFO', 'SNLT', 'FNLT']);
 const DONE_STATUSES = new Set(['completed', 'cancelled']);
 
@@ -611,7 +620,10 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   // R22 — Suspicious names (tasks) + resource artefacts in the message
   const suspiciousTasks = g.all.filter(t => {
     const nm = (t.name || '').trim();
-    return !nm || /^\d+$/.test(nm) || LEGEND_WORDS.has(nm.toLowerCase()) || CELL_REF.test(nm);
+    if (!nm || /^\d+$/.test(nm) || LEGEND_WORDS.has(nm.toLowerCase()) || CELL_REF.test(nm)) return true;
+    // a heading called just "PG" (leaves keep the checks above only)
+    const isHeading = !!t.isSummary || (g.childrenOf.get(t.id) || []).length > 0;
+    return isHeading && HEADING_CODE.test(nm) && !PHASE_ACRONYMS.has(nm);
   });
   const suspiciousResources = resources.filter(r => CELL_REF.test(r.name) || LEGEND_WORDS.has(r.name.trim().toLowerCase()));
   if (suspiciousTasks.length > 0 || suspiciousResources.length > 0) {

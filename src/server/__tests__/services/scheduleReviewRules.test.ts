@@ -359,6 +359,17 @@ describe('R22 / R23 / R25 / R26 / R27 — hygiene', () => {
     expect(f.message).toContain("'DBJ & JV+D9:D27'");
   });
 
+  it('R22 (1.10) flags a heading named only by a letter code ("PG"), not a real phase acronym or a leaf', () => {
+    seq = 0;
+    const pg = task({ name: 'PG', isSummary: true });
+    const uat = task({ name: 'UAT', isSummary: true });
+    const pgKids = [task({ name: 'Post-Go-Live Support', parentTaskId: pg.id, startDate: '2026-08-03', endDate: '2026-08-04' })];
+    const uatKids = [task({ name: 'Run test scripts', parentTaskId: uat.id, startDate: '2026-08-05', endDate: '2026-08-06' })];
+    const leaf = task({ name: 'PG', startDate: '2026-08-07', endDate: '2026-08-08' });
+    const { findings } = evaluateRules(input([pg, ...pgKids, uat, ...uatKids, leaf]));
+    expect(rule(findings, 'R22')[0].taskIds).toEqual([pg.id]);
+  });
+
   it('R23 fires above 8 leaf tasks with no summaries, and is high severity (raised in 1.2)', () => {
     seq = 0;
     const nine = Array.from({ length: 9 }, (_, i) => task({ name: `T${i}`, startDate: '2026-10-01', endDate: `2026-10-${String(2 + (i % 20)).padStart(2, '0')}`, dependencies: i ? [{ dependencyId: `t${i}` }] : [] }));
@@ -518,7 +529,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.9') // 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.10') // 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {

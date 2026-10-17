@@ -848,12 +848,6 @@
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
       "count": 1
-    },
-    "react-hooks/exhaustive-deps": {
-      "count": 1
-    },
-    "sonarjs/cognitive-complexity": {
-      "count": 1
     }
   },
   "src/client/src/components/schedule/review/ScheduleReviewPanel.tsx": {

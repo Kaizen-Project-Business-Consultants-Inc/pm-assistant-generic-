@@ -79,8 +79,9 @@ export class SchedulingApi extends ApiBase {
     return response.status === 204 || !response.data ? null : response.data;
   }
 
-  async applyScheduleFixes(scheduleId: string, proposalId: string, fixIds: string[]) {
-    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/apply`, { fixIds });
+  /** names: the new name the PM typed for each selected rename fix, by fix id */
+  async applyScheduleFixes(scheduleId: string, proposalId: string, fixIds: string[], names?: Record<string, string>) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/apply`, { fixIds, names });
     return response.data;
   }
 

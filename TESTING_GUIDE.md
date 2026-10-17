@@ -1416,9 +1416,18 @@ End-to-end on staging, on a schedule imported flat (no dependencies):
    on the Gantt, and the panel shows the score rising (e.g. 19 → 63) with `R03` gone on re-run.
 3. Click **Undo**: dependencies/flags/parents revert and the score returns.
 4. **Dismiss** records a negative example (`ai_feedback`, `feature='schedule_fix'`).
+5. **By level + rename (Oct 2026):** on a plan with headings named "T1" / "PG", Propose fixes shows
+   groups Critical → Low, every box unticked and "Apply 0 fixes" disabled. "Select all in High" ticks
+   only that level (its header box goes half-ticked when you untick one). Each heading has a Rename
+   row prefilled ("Task 1 – Kick-Off Meeting"); clear it and the row can't be ticked; type a name,
+   tick it, Apply — the heading has that name, its dates did not move, the result shows the score first
+   and "Still to do: …", and Undo restores "T1". Check light and dark.
+   Unit tests: `scheduleFixProposer.test.ts` (withSeverity, suggestSummaryName),
+   `ScheduleFixProposerService.test.ts` (rename + names + undo, afterCounts),
+   client `ScheduleFixProposalPanel.test.tsx`.
 
 REST: `POST /schedules/:id/review/propose` → `{ id, source, proposalData:{fixes[]} }`;
-`POST /schedules/:id/review/proposals/:pid/apply {fixIds}` → `{ beforeScore, afterScore, appliedCount, skipped }`;
+`POST /schedules/:id/review/proposals/:pid/apply {fixIds, names?}` → `{ beforeScore, afterScore, appliedCount, skipped, afterCounts }`;
 `.../undo`, `.../reject`. A Basic-tier user (zero AI budget) gets rules-based fixes with no error.
 
 ### UI checks

@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — Propose fixes grouped by level, nothing pre-ticked, rename headings, score first
+- User-approved mock. Each fix carries the `severity` of the finding it answers (`withSeverity()` in `scheduleReview/fixProposer.ts`, set in `propose()`); the panel groups Critical → Low with "Select all in <level>", starts unticked, and the button reads "Apply N fixes (1 critical, 3 low)". New fix `rename_task` for R22-flagged headings (T1 → "Task 1 – Kick-Off Meeting", from the first child; no AI); the PM can edit the name (`names` in the apply body); undo op `restore_name`. Apply returns `afterCounts`; the result leads with "22 → 48 / 100" and "Still to do: …". Rules 1.10 (user OK): R22 also flags a heading named only by a 2–3 capital-letter code ("PG"), except real phase acronyms (`PHASE_ACRONYMS` in rules.ts: UAT, SIT, QA, PMO…); leaves unchanged. Link severity reads R01 on the waiting task and R02 on the feeder. Apply caps at 200 fixes (panel says "Apply up to 200 fixes at a time"); the route's 400s are plain sentences.
+
 ## 2026-10-17 — Schedule Review fixes no longer feed on themselves (rules 1.9)
 - UAT: five Applies took an imported 28-task plan to 57 ("Buffer before Buffer before … Gate 1 Approved") while the problem count rose. Buffers are never milestones (`nameSaysMilestone`), no buffer for a buffer or a past/done gate, the first task of each phase links to the phase before (R01 had no fix), and the "Pre-review baseline" (`PRE_REVIEW_BASELINE_NAME`) no longer counts for R18/R19. Guard `scheduleReview/fixesConverge.test.ts`. Prod had no affected plans (checked).
 

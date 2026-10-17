@@ -436,6 +436,71 @@ describe('ScheduleFixProposerService', () => {
     expect(baselineService.delete).toHaveBeenCalledWith('baseline-1');
   });
 
+  it('rename_task: applies the name the PM typed, moves no dates, reports what is left; undo restores the old name', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const rename = { id: 'r1', type: 'rename_task', confidence: 0.6, reason: 'code', defaultChecked: true, taskId: 'x', taskName: 'T1 Task', newName: 'Task 1 – Kick-Off Meeting', severity: 'low' };
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL, proposalData: { fixes: [rename] } } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue(TASKS as any);
+    vi.mocked(scheduleReviewService.run).mockResolvedValueOnce({ id: 'rev-1', score: 48, counts: { critical: 1, high: 17, medium: 2, low: 3, info: 4 } } as any);
+
+    const result = await (await svc()).apply('s1', 'prop-1', ['r1'], 'u1', { r1: 'Task 1 – Kick-off' });
+
+    expect(scheduleService.updateTask).toHaveBeenCalledTimes(1);
+    expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { name: 'Task 1 – Kick-off' });
+    expect(result.appliedCount).toBe(1);
+    expect(result.afterCounts).toEqual({ critical: 1, high: 17, medium: 2, low: 7 });
+    const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(appliedLog).toEqual([{ op: 'restore_name', taskId: 'x', oldValue: 'T1 Task' }]);
+
+    vi.mocked(scheduleService.updateTask).mockClear();
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL, status: 'applied', baselineId: null, appliedData: appliedLog } as any);
+    await (await svc()).undo('s1', 'prop-1', 'u1');
+    expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { name: 'T1 Task' });
+  });
+
+  it('rename_task without an edited name uses the suggested one', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const rename = { id: 'r1', type: 'rename_task', confidence: 0.6, reason: 'code', defaultChecked: true, taskId: 'x', taskName: 'T1 Task', newName: 'Task 1 – Kick-Off Meeting' };
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL, proposalData: { fixes: [rename] } } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue(TASKS as any);
+    await (await svc()).apply('s1', 'prop-1', ['r1'], 'u1');
+    expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { name: 'Task 1 – Kick-Off Meeting' });
+  });
+
+  it('a name sent for a rename that was not chosen is ignored', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const rename = { id: 'r1', type: 'rename_task', confidence: 0.6, reason: 'code', defaultChecked: true, taskId: 'x', taskName: 'T1 Task', newName: 'Task 1' };
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL, proposalData: { fixes: [...PROPOSAL.proposalData.fixes, rename] } } as any);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue(TASKS as any);
+    const result = await (await svc()).apply('s1', 'prop-1', ['d1'], 'u1', { r1: 'Sneaky name' });
+    expect(result.appliedCount).toBe(1);
+    expect(scheduleService.updateTask).not.toHaveBeenCalled();
+    const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(appliedLog.map(a => a.op)).toEqual(['remove_dependency']);
+  });
+
+  it('propose gives every fix the level of the finding it answers', async () => {
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(scheduleReviewService.latest).mockResolvedValue({
+      id: 'rev-1',
+      findings: [{ ruleId: 'R01', rule: 'Missing predecessor', severity: 'critical', taskIds: ['b'], message: '', pointsDeducted: 5 }],
+    } as any);
+    vi.mocked(repo.insert).mockImplementation(async (r: any) => r);
+    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValue([
+      { id: 'a', name: 'Design', startDate: '2026-10-01', endDate: '2026-10-02', dependencies: [], sortOrder: 1 },
+      { id: 'b', name: 'Build', startDate: '2026-10-05', endDate: '2026-10-06', dependencies: [], sortOrder: 2 },
+    ] as any);
+    const proposal: any = await (await svc()).propose('s1', 'u1', false);
+    const link = proposal.proposalData.fixes.find((f: any) => f.type === 'add_dependency');
+    expect(link).toMatchObject({ taskId: 'b', severity: 'critical' });
+  });
+
   it('reject records negative feedback and marks the proposal rejected', async () => {
     const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
     vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL } as any);

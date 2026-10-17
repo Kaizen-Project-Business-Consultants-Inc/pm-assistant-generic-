@@ -7,11 +7,14 @@
  * when the AI proposer is unavailable, so it must stand on its own.
  */
 
-import { isMilestoneLike, BUFFER_NAME, type Finding, type ReviewTask } from './rules';
+import { isMilestoneLike, BUFFER_NAME, RULES, type Finding, type ReviewTask, type Severity } from './rules';
 import { type IsWorking, weekdaysOnly, workingDaysAfter, onOrAfterWorking, shiftWorking, utcDay, ymdOf } from '../../utils/workingDays';
 import { groupBy } from '../../utils/groupBy';
 
-export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer' | 'split_task' | 'add_task';
+export type FixType = 'add_dependency' | 'set_milestone' | 'set_parent' | 'set_duration' | 'insert_buffer' | 'split_task' | 'add_task' | 'rename_task';
+
+/** How serious the finding a fix answers is (info counts as low) — the panel groups fixes by it */
+export type FixSeverity = 'critical' | 'high' | 'medium' | 'low';
 
 export interface ProposedFix {
   id: string;
@@ -19,6 +22,8 @@ export interface ProposedFix {
   confidence: number; // 0..1
   reason: string;
   defaultChecked: boolean;
+  /** Set by the service from the review (withSeverity); proposals stored before 2026-10-17 have none */
+  severity?: FixSeverity;
   // add_dependency
   taskId?: string;
   taskName?: string;
@@ -47,6 +52,8 @@ export interface ProposedFix {
   afterTaskName?: string;
   beforeTaskId?: string;   // this one then waits on the new task
   beforeTaskName?: string;
+  // rename_task — a summary named like a spreadsheet code (R22); the PM can edit it before Apply
+  newName?: string;
 }
 
 export interface SplitPart {
@@ -72,7 +79,76 @@ export function describeFix(f: ProposedFix): string {
     const then = f.beforeTaskName ? `, before '${f.beforeTaskName}'` : '';
     return `Add ${f.phaseLabel}: '${f.newTaskName}' (${f.newTaskDays} day${f.newTaskDays === 1 ? '' : 's'})${where}${then}`;
   }
+  if (f.type === 'rename_task') return `Rename '${f.taskName}' to '${f.newName}'`;
   return `Group '${f.taskName}' under phase '${f.newParentName}'`;
+}
+
+/**
+ * The review rules each fix type answers, the main one first, and which of the fix's tasks each
+ * rule is about: a link answers R01 on the task that waits (taskId) and R02 on the feeder
+ * (dependsOnTaskId) — not either end for both. A fix takes the highest severity among those
+ * rules' findings that cover that task (a whole-plan finding — R03, R23, R31 — covers every
+ * task); with none, the main rule's own severity. An AI split of a bundled task answers no
+ * finding, so it is low rather than the milestone rule's high.
+ */
+type FixField = 'taskId' | 'dependsOnTaskId' | 'gateTaskId';
+const FIX_RULES: Record<FixType, Array<{ rule: string; on?: FixField }>> = {
+  add_dependency: [{ rule: 'R01', on: 'taskId' }, { rule: 'R02', on: 'dependsOnTaskId' }, { rule: 'R03' }],
+  set_milestone: [{ rule: 'R05', on: 'taskId' }, { rule: 'R04', on: 'taskId' }],
+  split_task: [{ rule: 'R04', on: 'taskId' }, { rule: 'R05', on: 'taskId' }],
+  set_duration: [{ rule: 'R12', on: 'taskId' }, { rule: 'R28', on: 'taskId' }],
+  insert_buffer: [{ rule: 'R20', on: 'gateTaskId' }],
+  set_parent: [{ rule: 'R23', on: 'taskId' }],
+  add_task: [{ rule: 'R31' }],
+  rename_task: [{ rule: 'R22', on: 'taskId' }],
+};
+const SEVERITY_RANK: Record<FixSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+const asFixSeverity = (s: Severity): FixSeverity => (s === 'info' ? 'low' : s);
+
+export function withSeverity(fixes: ProposedFix[], findings: Finding[]): ProposedFix[] {
+  const byRule = groupBy(findings, f => f.ruleId);
+  const covered = new Map(findings.map(f => [f, new Set(f.taskIds)]));
+  return fixes.map(fix => {
+    const rules = FIX_RULES[fix.type];
+    let best: FixSeverity | null = null;
+    for (const { rule, on } of rules) {
+      const id = on ? fix[on] : undefined;
+      for (const f of byRule.get(rule) ?? []) {
+        const set = covered.get(f)!;
+        // a whole-plan finding, or a rule not tied to one task, covers the fix
+        const applies = set.size === 0 || !on || (!!id && set.has(id));
+        const sev = asFixSeverity(f.severity);
+        if (applies && (best === null || SEVERITY_RANK[sev] < SEVERITY_RANK[best])) best = sev;
+      }
+    }
+    const fallback: FixSeverity = fix.type === 'split_task' && fix.replace !== true ? 'low' : asFixSeverity(RULES[rules[0].rule].severity);
+    return { ...fix, severity: best ?? fallback };
+  });
+}
+
+/** "T1", "T 2", "Task1" — a spreadsheet code standing in for a heading's name */
+const TASK_CODE = /^\s*(?:task|t)\s*(\d{1,4})\s*$/i;
+
+/** A child's name cut to its first idea: "Kick-Off Meeting & Project Governance" → "Kick-Off Meeting" */
+function shortLabel(name: string): string {
+  let cut = name.length;
+  for (const sep of [' & ', ' / ', ' + ', '(']) {
+    const i = name.indexOf(sep);
+    if (i >= 0 && i < cut) cut = i;
+  }
+  return name.slice(0, cut).trim().slice(0, 80);
+}
+
+/**
+ * A plain name for a heading flagged by R22, from its code and its first task (no AI):
+ * "T1" over "Kick-Off Meeting & Project Governance" → "Task 1 – Kick-Off Meeting";
+ * "PG" over "Post-Go-Live Support" → "Post-Go-Live Support". Null when there is nothing better.
+ */
+export function suggestSummaryName(name: string, firstChildName?: string | null): string | null {
+  const num = TASK_CODE.exec(name || '')?.[1];
+  const label = firstChildName ? shortLabel(firstChildName) : '';
+  const out = num ? (label ? `Task ${Number(num)} – ${label}` : `Task ${Number(num)}`) : label;
+  return out && out !== (name || '').trim() ? out : null;
 }
 
 /** Fixes at or above this confidence are pre-ticked in the UI. */
@@ -441,6 +517,32 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         dependsOnTaskName: t.name,
         dependencyType: 'FS',
         lagDays: 0,
+      }));
+    }
+  }
+
+  // --- R22 on a heading ("T1", "PG"): name it after its first task. A leaf keeps the finding only.
+  const r22 = findings.find(f => f.ruleId === 'R22');
+  if (r22) {
+    const firstChild = new Map<string, ReviewTask>();
+    for (const t of tasks) {
+      if (!t.parentTaskId) continue;
+      const cur = firstChild.get(t.parentTaskId);
+      if (!cur || (t.sortOrder ?? 0) < (cur.sortOrder ?? 0)) firstChild.set(t.parentTaskId, t);
+    }
+    for (const id of r22.taskIds) {
+      const t = byId.get(id);
+      if (!t || !(t.isSummary || hasChildren.has(t.id))) continue;
+      const newName = suggestSummaryName(t.name, firstChild.get(t.id)?.name);
+      if (!newName) continue;
+      fixes.push(build({
+        id: `rename_task:${t.id}`,
+        type: 'rename_task',
+        confidence: 0.6,
+        reason: `'${t.name}' looks like a spreadsheet code; a heading that says what it covers reads better in reports.`,
+        taskId: t.id,
+        taskName: t.name,
+        newName,
       }));
     }
   }

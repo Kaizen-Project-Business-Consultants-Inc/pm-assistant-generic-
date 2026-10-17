@@ -21,7 +21,8 @@ import {
   buildPhaseFixes,
   splitCandidates,
   planSplitDates,
-  type ProposedFix, describeFix } from './scheduleReview/fixProposer';
+  withSeverity,
+  type ProposedFix, type FixSeverity, describeFix } from './scheduleReview/fixProposer';
 import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, type ReviewTask } from './scheduleReview/rules';
 import { profileFor } from './scheduleReview/domainProfiles';
 import { projectService } from './ProjectService';
@@ -92,6 +93,8 @@ export interface ApplyResult {
   projectEndShiftDays: number;
   warning: string | null;
   dateDeltas: DateDelta[];
+  /** What the review still finds after the fixes, by level (info counted as low) */
+  afterCounts: Record<FixSeverity, number>;
 }
 
 /** Minimal ReviewTask projection the proposer needs. */
@@ -149,6 +152,9 @@ export class ScheduleFixProposerService {
         logger.warn('[ScheduleFix] AI suggestions failed, keeping deterministic fixes', { scheduleId, error: err?.message });
       }
     }
+
+    // Each fix carries the level of the finding it answers — the panel groups by it
+    fixes = withSeverity(fixes, review.findings);
 
     await scheduleFixProposalRepository.supersedePending(scheduleId);
 
@@ -228,13 +234,16 @@ export class ScheduleFixProposerService {
   }
 
   /** Apply the selected fixes, recording a reversal log, then re-score. */
-  async apply(scheduleId: string, proposalId: string, fixIds: string[], userId: string | null): Promise<ApplyResult> {
+  async apply(scheduleId: string, proposalId: string, fixIds: string[], userId: string | null, names: Record<string, string> = {}): Promise<ApplyResult> {
     const proposal = await scheduleFixProposalRepository.findById(proposalId);
     if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
     if (proposal.status !== 'pending') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not pending`);
 
     const selected = new Set(fixIds);
-    const fixes = proposal.proposalData.fixes.filter(f => selected.has(f.id));
+    // A rename takes the name the PM typed in the panel, when they changed it
+    const fixes = proposal.proposalData.fixes
+      .filter(f => selected.has(f.id))
+      .map(f => (f.type === 'rename_task' && names[f.id] ? { ...f, newName: names[f.id] } : f));
     const skipped: Array<{ fixId: string; reason: string }> = [];
 
     const before = await scheduleReviewService.latest(scheduleId);
@@ -484,6 +493,18 @@ export class ScheduleFixProposerService {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not add phase task' });
       }
     }
+    // 8) renames — a heading's name only; its dates never move
+    for (const f of ofType('rename_task')) {
+      const t = taskById.get(f.taskId!);
+      if (!t || !f.newName) { skipped.push({ fixId: f.id, reason: 'task not found or no new name' }); continue; }
+      try {
+        await scheduleService.updateTask(t.id, { name: f.newName });
+        applied.push({ op: 'restore_name', taskId: t.id, oldValue: t.name });
+        appliedCount++;
+      } catch (err: any) {
+        skipped.push({ fixId: f.id, reason: err?.message || 'could not rename task' });
+      }
+    }
     /* eslint-enable no-await-in-loop */
 
     // Re-flow dates so the schedule respects the new logic (SR1). Pinned tasks
@@ -540,6 +561,12 @@ export class ScheduleFixProposerService {
       projectEndShiftDays: recompute.projectEndShiftDays,
       warning,
       dateDeltas: recompute.deltas.slice(0, 50),
+      afterCounts: {
+        critical: after.counts?.critical ?? 0,
+        high: after.counts?.high ?? 0,
+        medium: after.counts?.medium ?? 0,
+        low: (after.counts?.low ?? 0) + (after.counts?.info ?? 0),
+      },
     };
   }
 
@@ -595,6 +622,9 @@ export class ScheduleFixProposerService {
             break;
           case 'delete_task':
             await scheduleService.deleteTask(action.taskId!);
+            break;
+          case 'restore_name':
+            await scheduleService.updateTask(action.taskId!, { name: action.oldValue as string });
             break;
           case 'restore_task': {
             const o = action.oldValue as { name: string; isMilestone: boolean; estimatedDays: number | null; startDate: string; endDate: string };

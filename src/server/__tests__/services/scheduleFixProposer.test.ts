@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates } from '../../services/scheduleReview/fixProposer';
-import type { Finding, ReviewTask } from '../../services/scheduleReview/rules';
+import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates, withSeverity, suggestSummaryName, type ProposedFix } from '../../services/scheduleReview/fixProposer';
+import { reviewSchedule, type Finding, type ReviewTask } from '../../services/scheduleReview/rules';
 import { weekdaysOnly } from '../../utils/workingDays';
 
 let seq = 0;
@@ -353,5 +353,110 @@ describe('milestone lines that span days are split, not flagged (user rule, 2026
     const { milestoneSplitParts } = await import('../../services/scheduleReview/fixProposer');
     const parts = milestoneSplitParts('UAT sign-off', 4, null);
     expect(parts.map(p => p.name)).toEqual(['Approve UAT', 'UAT Approved']);
+  });
+});
+
+describe('withSeverity', () => {
+  const f = (ruleId: string, severity: Finding['severity'], taskIds: string[] = []): Finding =>
+    ({ ruleId, rule: ruleId, severity, taskIds, message: '', pointsDeducted: 0 });
+  const fix = (over: Partial<ProposedFix>): ProposedFix =>
+    ({ id: over.id ?? 'x', type: 'add_dependency', confidence: 0.5, reason: '', defaultChecked: false, ...over });
+
+  it("takes the highest level among the findings that cover the fix's task", () => {
+    const [link] = withSeverity(
+      [fix({ type: 'add_dependency', taskId: 'b', dependsOnTaskId: 'a' })],
+      [f('R02', 'high', ['a']), f('R01', 'critical', ['b']), f('R01', 'critical', ['zzz'])],
+    );
+    expect(link.severity).toBe('critical');
+  });
+
+  it('checks the task a link starts from too (R02 on the feeder)', () => {
+    const [link] = withSeverity([fix({ taskId: 'b', dependsOnTaskId: 'a' })], [f('R02', 'high', ['a'])]);
+    expect(link.severity).toBe('high');
+  });
+
+  it('reads each rule on its own end: R01 on the feeder does not make the link critical', () => {
+    // the feeder 'a' has no predecessor (R01) and feeds nothing (R02); this link fixes R02 only
+    const [link] = withSeverity(
+      [fix({ taskId: 'b', dependsOnTaskId: 'a' })],
+      [f('R01', 'critical', ['a']), f('R02', 'high', ['a'])],
+    );
+    expect(link.severity).toBe('high');
+    // and R02 on the waiting task is not this link's business either
+    const [other] = withSeverity([fix({ taskId: 'b', dependsOnTaskId: 'a' })], [f('R02', 'high', ['b'])]);
+    expect(other.severity).toBe('critical'); // no matching finding → R01's own level
+  });
+
+  it('a whole-plan finding (R03, R23, R31) covers every task', () => {
+    const out = withSeverity([
+      fix({ id: '1', type: 'add_dependency', taskId: 'b', dependsOnTaskId: 'a' }),
+      fix({ id: '2', type: 'set_parent', taskId: 'c', newParentName: 'P' }),
+      fix({ id: '3', type: 'add_task', phaseLabel: 'Testing', newTaskName: 'UAT' }),
+    ], [f('R03', 'critical'), f('R23', 'high'), f('R31', 'medium')]);
+    expect(out.map(x => x.severity)).toEqual(['critical', 'high', 'medium']);
+  });
+
+  it('insert_buffer looks at its gate; set_duration at R12/R28', () => {
+    const out = withSeverity([
+      fix({ id: '1', type: 'insert_buffer', gateTaskId: 'g' }),
+      fix({ id: '2', type: 'set_duration', taskId: 't', newDuration: 5 }),
+    ], [f('R20', 'medium', ['g']), f('R28', 'medium', ['t'])]);
+    expect(out.map(x => x.severity)).toEqual(['medium', 'medium']);
+  });
+
+  it("falls back to the rule's own level; info counts as low; an AI split answers no rule (low)", () => {
+    const out = withSeverity([
+      fix({ id: '1', type: 'add_dependency', taskId: 'b', dependsOnTaskId: 'a' }),
+      fix({ id: '2', type: 'set_milestone', taskId: 'm' }),
+      fix({ id: '3', type: 'split_task', taskId: 's', replace: true }),
+      fix({ id: '4', type: 'split_task', taskId: 'ai' }),
+      fix({ id: '5', type: 'rename_task', taskId: 'r', newName: 'Task 1' }),
+      fix({ id: '6', type: 'set_duration', taskId: 'i' }),
+    ], [f('R12', 'info', ['i'])]);
+    expect(out.map(x => x.severity)).toEqual(['critical', 'medium', 'high', 'low', 'low', 'low']);
+  });
+});
+
+describe('rename_task (R22 on a heading)', () => {
+  it('suggests a name from the code and the first task under it', () => {
+    expect(suggestSummaryName('T1', 'Kick-Off Meeting & Project Governance')).toBe('Task 1 – Kick-Off Meeting');
+    expect(suggestSummaryName('T 2', 'Requirements / Analysis')).toBe('Task 2 – Requirements');
+    expect(suggestSummaryName('Task3', 'Design (high level)')).toBe('Task 3 – Design');
+    expect(suggestSummaryName('PG', 'Post-Go-Live Support')).toBe('Post-Go-Live Support');
+    expect(suggestSummaryName('T4', null)).toBe('Task 4');
+    expect(suggestSummaryName('PG', null)).toBeNull();
+    expect(suggestSummaryName('Build', 'Build')).toBeNull(); // nothing better
+  });
+
+  it('rules 1.10: a heading called "PG" is flagged by R22 and offered its first task\'s name', () => {
+    seq = 0;
+    const pg = task({ id: 'pg', name: 'PG', isSummary: true });
+    const kids = [
+      task({ id: 'k1', name: 'Post-Go-Live Support', parentTaskId: 'pg', startDate: '2026-11-02', endDate: '2026-11-06' }),
+      task({ id: 'k2', name: 'Hypercare, monitoring', parentTaskId: 'pg', startDate: '2026-11-09', endDate: '2026-11-13' }),
+    ];
+    const review = reviewSchedule({
+      schedule: { id: 's1', startDate: '2026-11-02', endDate: '2026-12-31' },
+      project: { startDate: '2026-11-02', endDate: '2026-12-31' },
+      tasks: [pg, ...kids], resources: [], baselineCount: 1, latestBaselineTasks: null,
+      floatByTask: null, overAllocations: null, today: new Date('2026-10-17T00:00:00Z'),
+    });
+    const renames = proposeFixesDeterministic(review.findings, [pg, ...kids]).filter(f => f.type === 'rename_task');
+    expect(renames.map(r => r.newName)).toEqual(['Post-Go-Live Support']);
+  });
+
+  it('proposes a rename for a flagged heading only; a flagged leaf keeps the finding', () => {
+    seq = 0;
+    const t1 = task({ id: 'h1', name: 'T1', isSummary: true });
+    const k1 = task({ id: 'k1', name: 'Kick-Off Meeting & Project Governance', parentTaskId: 'h1' });
+    const k2 = task({ id: 'k2', name: 'Charter', parentTaskId: 'h1' });
+    const pg = task({ id: 'h2', name: 'PG' });
+    const p1 = task({ id: 'p1', name: 'Post-Go-Live Support', parentTaskId: 'h2' });
+    const p2 = task({ id: 'p2', name: 'Hypercare, monitoring', parentTaskId: 'h2' });
+    const leaf = task({ id: 'l1', name: 'A12' });
+    const fixes = proposeFixesDeterministic([finding('R22', ['h1', 'h2', 'l1'])], [t1, k1, k2, pg, p1, p2, leaf]);
+    const renames = fixes.filter(x => x.type === 'rename_task');
+    expect(renames.map(r => [r.taskId, r.newName])).toEqual([['h1', 'Task 1 – Kick-Off Meeting'], ['h2', 'Post-Go-Live Support']]);
+    expect(renames[0]).toMatchObject({ id: 'rename_task:h1', taskName: 'T1', confidence: 0.6 });
   });
 });

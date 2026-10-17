@@ -2874,7 +2874,7 @@ Schedule Review is a deterministic quality check that tells a PM whether a sched
 | R17 | Leads and lags over 10 days | Low |
 | R18 / R19 | No baseline / baseline drift | Medium / Info |
 | R21 | Over-allocated owner (from resource leveling) | Medium |
-| R22 | Spreadsheet leftovers: legend words, cell references | Low |
+| R22 | Spreadsheet leftovers: legend words, cell references; since 1.10 also a heading named only by a 2–3 capital-letter code ("PG") — real phase acronyms (UAT, SIT, QA, PMO, IT, ERP, CRM, API…) are not flagged, and leaves keep the older checks | Low |
 | R23 | Flat hierarchy (more than 15 tasks, no phases) | Low |
 | R24 | Stale in-progress task (14+ days untouched) | Low |
 | R25 / R26 / R27 | Phase without children / duplicate task name / no description | Medium / Medium / Info |
@@ -2943,11 +2943,26 @@ before … Gate 1 Approved"), so a plan grew from 28 to 57 tasks over five Appli
 baseline" is the review's own safety copy for Undo: it doesn't count as the PM's baseline (R18) or
 as the plan drift is measured against (R19), so the review no longer flags the moves its fixes made.
 
-Each proposed fix carries a confidence and a short plain-English reason; higher-confidence fixes are
-pre-ticked. **Propose fixes** returns instantly using deterministic rules; a **Draft with AI** action
+Each proposed fix carries a confidence and a short plain-English reason. **By level, nothing
+pre-ticked (Oct 2026):** every fix carries the `severity` of the review finding it answers
+(`withSeverity()` in `scheduleReview/fixProposer.ts`: links → R01/R02/R03, milestone flag and split →
+R04/R05, duration → R12/R28, buffer → R20, phase grouping → R23, missing phase → R31, rename → R22; the
+highest level among findings that cover the fix's task — a whole-plan finding covers every task —
+else the rule's own level; info counts as low; an AI split of a bundled task answers no finding and
+is low). The panel groups fixes **Critical, High, Medium, Low** (each with "Select all in <level>"; a
+long group shows five rows and "Show N more"), starts with **nothing ticked**, and the button reads
+"Apply 4 fixes (1 critical, 3 low)". **Rename heading** (`rename_task`): a summary task flagged by R22
+as a spreadsheet code (T1, T 2, Task1, PG) gets a rule-based new name from its first task — "T1" over
+"Kick-Off Meeting & Project Governance" becomes "Task 1 – Kick-Off Meeting"; "PG" over "Post-Go-Live
+Support" becomes "Post-Go-Live Support". The PM can edit the name in the row before applying (the
+apply body's optional `names: {fixId: name}`, 1–255 characters); an empty name can't be applied. A
+rename changes the name only, never dates, and Undo restores the old name (`restore_name`). After
+Apply the panel leads with the score ("22 → 48 / 100", "Applied 4 fixes · score up 26 points"), then
+what the review still finds ("Still to do: 1 critical · 17 high · …", from `afterCounts`), then the
+moved dates and Undo. **Propose fixes** returns instantly using deterministic rules; a **Draft with AI** action
 re-drafts the same kinds of fix with richer, Claude-written reasons (slower, validated against the
 real task graph, and only for schedules small enough to draft in one pass). Every paid tier gets
-working proposals even without AI. **Apply selected** captures a "Pre-review baseline"
+working proposals even without AI. **Apply** captures a "Pre-review baseline"
 first, applies the ticked fixes, **re-flows the task dates** to respect the new logic, and re-scores
 so the jump is visible; **Undo** reverses the whole batch in one click. Dismissing a proposal records
 it as a negative example that informs future suggestions. Proposals are stored per schedule in the
