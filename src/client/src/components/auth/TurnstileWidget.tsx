@@ -42,20 +42,30 @@ function loadScript(): Promise<void> {
   });
 }
 
-export function TurnstileWidget({ onToken }: { onToken: (token: string | undefined) => void }) {
+// Asked once per page load; sign-in remounts the box after every failed try (useHumanCheck)
+let siteKeyAsked: Promise<string> | null = null;
+const askSiteKey = () => (siteKeyAsked ??= apiService.getTurnstileSiteKey().then((k: string) => k || ''));
+
+/**
+ * `onUnavailable`: the box could not appear (no key, or Cloudflare's script blocked — an ad
+ * blocker, a company proxy). Sign-up ignores it; sign-in and forgot password explain it.
+ */
+export function TurnstileWidget({ onToken, onUnavailable }: {
+  onToken: (token: string | undefined) => void;
+  onUnavailable?: () => void;
+}) {
   const boxRef = useRef<HTMLDivElement>(null);
   const [siteKey, setSiteKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    apiService
-      .getTurnstileSiteKey()
-      .then((key) => { if (!cancelled) setSiteKey(key || ''); })
+    askSiteKey()
+      .then((key) => { if (!cancelled) { setSiteKey(key); if (!key) onUnavailable?.(); } })
       // If we cannot ask, assume it is off. Blocking signup because a config
       // lookup failed would cost far more than the bots it would stop.
-      .catch(() => { if (!cancelled) setSiteKey(''); });
+      .catch(() => { siteKeyAsked = null; if (!cancelled) { setSiteKey(''); onUnavailable?.(); } });
     return () => { cancelled = true; };
-  }, []);
+  }, [onUnavailable]);
 
   useEffect(() => {
     if (!siteKey || !boxRef.current) return;
@@ -74,9 +84,10 @@ export function TurnstileWidget({ onToken }: { onToken: (token: string | undefin
         });
       })
       .catch(() => {
-        // Cloudflare unreachable. The server treats a missing token as a pass
-        // when it cannot reach Cloudflare either, so signup still works.
+        // Cloudflare unreachable from this browser. Sign-up goes on (its server check fails
+        // open when it cannot reach Cloudflare either); sign-in explains it (onUnavailable).
         onToken(undefined);
+        onUnavailable?.();
       });
 
     return () => {
@@ -85,7 +96,7 @@ export function TurnstileWidget({ onToken }: { onToken: (token: string | undefin
         try { window.turnstile.remove(widgetId); } catch { /* already gone */ }
       }
     };
-  }, [siteKey, onToken]);
+  }, [siteKey, onToken, onUnavailable]);
 
   if (!siteKey) return null;
   return <div ref={boxRef} className="mt-4 flex justify-center" data-testid="turnstile" />;

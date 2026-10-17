@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-17 — "Are you a person" box on sign-in and forgot password (bot plan step 2)
+- Turnstile asked only after 3 wrong passwords / 3 reset requests from one address in 15 min (`utils/humanCheck.ts`, `useHumanCheck`); tests and smoke never meet it. Cloudflare: kovarti.com + www proxied, Full (strict), block rule for hacking-tool paths, 8 AI training crawlers blocked. Origin firewall lock waits until 2026-10-19 (old nameservers cached).
+
 ## 2026-10-16 — Sign-in limits count the real visitor (bot plan step 0)
 - A fake `X-Forwarded-For` got round every per-IP limit (`trustProxy: true` read the visitor's own entry). App and MCP server now trust the loopback hop only (`utils/trustProxy.ts`); nginx sends the visitor address from every proxied location (MCP token/register/revoke sent none) and has Cloudflare's real-IP list ready (`deploy/nginx/`). kovarti.com nameservers moved to Cloudflare the same day, all records DNS-only.
 

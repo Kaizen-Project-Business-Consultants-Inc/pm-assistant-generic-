@@ -16,6 +16,7 @@ import { organizationService } from '../../services/OrganizationService';
 import { databaseService } from '../../database/connection';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { verifyTurnstile, turnstileActive } from '../../utils/turnstile';
+import { clearTries, countTry } from '../../utils/humanCheck';
 import { countRegistrationAttempt } from '../../utils/registrationWatch';
 import { createAccount, provisionVerifiedTenant } from '../../services/accountSignup';
 import logger from '../../utils/logger';
@@ -27,6 +28,8 @@ import { hasPassword, NO_PASSWORD_MESSAGE } from '../../utils/googleOnlyAccount'
 const loginSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(1),
+  // asked for only after 3 wrong passwords from one address (utils/humanCheck.ts)
+  turnstileToken: z.string().optional(),
 });
 
 const registerSchema = z.object({
@@ -46,6 +49,8 @@ const registerSchema = z.object({
 
 const forgotPasswordSchema = z.object({
   email: z.string().email(),
+  // asked for only after 3 requests from one address (utils/humanCheck.ts)
+  turnstileToken: z.string().optional(),
 });
 
 const resetPasswordSchema = z.object({
@@ -65,24 +70,26 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(429).send({ error: 'Too many login attempts. Please try again later.' });
       }
 
-      const { username, password } = loginSchema.parse(request.body);
+      const { username, password, turnstileToken } = loginSchema.parse(request.body);
+      // counted before it is judged; a correct sign-in wipes the count (utils/humanCheck.ts)
+      const { refusal, dueNext } = await countTry('login', ip, turnstileToken);
+      if (refusal) return reply.status(400).send(refusal);
+      const wrongPassword = () => reply.status(401).send({
+        error: 'Invalid credentials', message: 'Username or password is incorrect', needsHumanCheck: dueNext,
+      });
 
       // Allow login by username or email
       let user = await userService.findByUsername(username);
       if (!user && username.includes('@')) {
         user = await userService.findByEmail(username);
       }
-      if (!user) {
-        return reply.status(401).send({ error: 'Invalid credentials', message: 'Username or password is incorrect' });
-      }
+      if (!user) return wrongPassword();
 
       if (!hasPassword(user)) {
-        return reply.status(401).send({ error: 'No password', message: NO_PASSWORD_MESSAGE });
+        return reply.status(401).send({ error: 'No password', message: NO_PASSWORD_MESSAGE, needsHumanCheck: dueNext });
       }
       const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-      if (!isValidPassword) {
-        return reply.status(401).send({ error: 'Invalid credentials', message: 'Username or password is incorrect' });
-      }
+      if (!isValidPassword) return wrongPassword();
 
       if (guestExpired(user)) {
         return reply.status(403).send({ error: 'Guest access expired', message: GUEST_EXPIRED_MESSAGE });
@@ -99,6 +106,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       // Previously, non-admin users received a login verification email on every sign-in.
       // Disabled to simplify the flow; re-add as opt-in MFA later.
 
+      await clearTries('login', ip);
       const accessToken = await startNewSession(reply, user);
 
       // Same as /auth/me: the app needs to know straight away whether there's a company
@@ -477,7 +485,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(429).send({ error: 'Too many password reset requests. Please try again later.' });
       }
 
-      const { email } = forgotPasswordSchema.parse(request.body);
+      const { email, turnstileToken } = forgotPasswordSchema.parse(request.body);
+      const { refusal } = await countTry('forgot', ip, turnstileToken);
+      if (refusal) return reply.status(400).send(refusal);
 
       // Always return 200 to prevent email enumeration
       const user = await userService.findByEmail(email);

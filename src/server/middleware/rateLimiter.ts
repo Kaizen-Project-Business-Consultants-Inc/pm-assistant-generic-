@@ -86,6 +86,12 @@ export class RateLimiter {
     return { allowed, remaining, resetAt };
   }
 
+  /** Forget `key`'s window (both stores), as if it had never been hit. */
+  async clearAsync(key: string): Promise<void> {
+    this.windows.delete(key);
+    if (redisService.isConnected()) await redisService.del(`rl:${key}`);
+  }
+
   /**
    * Remove expired entries from the map.
    * Call this periodically to prevent unbounded memory growth.

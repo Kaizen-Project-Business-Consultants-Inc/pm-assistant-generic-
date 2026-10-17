@@ -60,6 +60,7 @@ const sections: Section[] = [
       'Sign up with email and verify your account — or click "Sign up with Google" and go straight in (when it is switched on)',
       'Email link not working? Use the newest email — or click "Send me a new link" on the page that opens',
       'Sign in with your email — there are no usernames. Setup asks for your phone number once (change it in Settings › Profile)',
+      'After 3 wrong passwords a small "Verifying you are human" box appears above Sign in — it ticks itself; Sign in waits for it',
       'A project has one schedule: put separate streams of work in as phases',
       'Consultants: each client has its own people, rates and holidays — Resources › Pool; a project team comes from its client and My resources',
       'Continue with Google signs you in; the first time, an existing Kovarti account asks for its password once (or emails you a link) — it is never linked automatically',

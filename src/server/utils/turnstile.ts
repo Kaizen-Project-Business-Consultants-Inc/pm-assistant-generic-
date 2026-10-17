@@ -78,7 +78,7 @@ export async function verifyTurnstile(token: string | undefined, ip: string): Pr
   if (!turnstileActive()) return true;
 
   if (!token) {
-    logger.warn('[turnstile] Registration attempted with no token', { ip });
+    logger.warn('[turnstile] Request with no token', { ip });
     return false;
   }
 

@@ -322,6 +322,10 @@ sudo nginx -t && sudo systemctl reload nginx
 # Cloudflare (kovarti.com nameservers on Cloudflare since 2026-10-16): /etc/nginx/conf.d/cloudflare-realip.conf
 #   from deploy/nginx/ — refresh its ranges from https://www.cloudflare.com/ips-v4 and /ips-v6.
 #   HARD ORDER: install that file + reload nginx BEFORE switching any record to Proxied (orange).
+# Turnstile keys (TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY in .env) switch the check on for sign-up AND,
+#   after 3 failed tries from one address, sign-in and forgot password. Before setting them on a server,
+#   its nginx CSP must allow https://challenges.cloudflare.com in script-src and frame-src (staging does;
+#   prod did not until the 2026-10-17 release), or the box cannot load.
 #   Without it every visitor arrives from a Cloudflare address and shares one sign-in limit.
 
 # SSL

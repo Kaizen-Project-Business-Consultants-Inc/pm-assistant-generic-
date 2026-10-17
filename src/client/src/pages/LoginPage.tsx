@@ -7,6 +7,7 @@ import { SUPPORT_EMAIL } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
 import { KovartiMark } from '../components/ui/KovartiMark';
 import { GoogleButton } from '../components/auth/GoogleButton';
+import { useHumanCheck } from '../components/auth/useHumanCheck';
 import { googleSignInMessage } from '../utils/googleSignInMessages';
 import { needsSetup } from '../utils/needsSetup';
 
@@ -22,6 +23,7 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const human = useHumanCheck();
   const [awaitingVerification, setAwaitingVerification] = useState(false);
 
   const { setUser, setError: setAuthError } = useAuthStore();
@@ -54,7 +56,7 @@ export const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await apiService.login(username, password);
+      const response = await apiService.login(username, password, human.token);
 
       // 202: email verification required
       if (response.requiresVerification) {
@@ -83,7 +85,8 @@ export const LoginPage: React.FC = () => {
         navigate(needsSetup(response.user) ? '/onboarding' : '/dashboard');
       }
     } catch (err: unknown) {
-      const axiosError = err as { response?: { status?: number; data?: { message?: string; requiresVerification?: boolean } } };
+      const axiosError = err as { response?: { status?: number; data?: { message?: string; requiresVerification?: boolean; needsHumanCheck?: boolean } } };
+      human.afterFailure(axiosError.response?.data?.needsHumanCheck);
 
       // Handle 202 from fetch fallback
       if (axiosError.response?.status === 202 || axiosError.response?.data?.requiresVerification) {
@@ -230,9 +233,12 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
 
+            {human.box}
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || human.waiting}
+              aria-describedby={human.describedBy}
               className="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {isLoading ? (

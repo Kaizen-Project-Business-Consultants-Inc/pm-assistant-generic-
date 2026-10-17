@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { useHumanCheck } from '../components/auth/useHumanCheck';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const human = useHumanCheck();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -14,10 +16,11 @@ export const ForgotPasswordPage: React.FC = () => {
     setError(null);
 
     try {
-      await apiService.forgotPassword(email);
+      await apiService.forgotPassword(email, human.token);
       setSubmitted(true);
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { message?: string } } };
+      const axiosError = err as { response?: { data?: { message?: string; needsHumanCheck?: boolean } } };
+      human.afterFailure(axiosError.response?.data?.needsHumanCheck);
       setError(axiosError.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
@@ -72,7 +75,9 @@ export const ForgotPasswordPage: React.FC = () => {
                 className="input" placeholder="Enter your email address" aria-describedby={error ? 'forgot-error' : undefined} />
             </div>
 
-            <button type="submit" disabled={isLoading}
+            {human.box}
+
+            <button type="submit" disabled={isLoading || human.waiting} aria-describedby={human.describedBy}
               className="w-full flex justify-center py-2.5 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
               {isLoading ? (
                 <div className="flex items-center">

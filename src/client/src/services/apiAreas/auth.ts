@@ -9,8 +9,9 @@ export class AuthApi extends ApiBase {
   // Auth endpoints
   // -------------------------------------------------------------------------
 
-  async login(username: string, password: string) {
-    const response = await this.api.post('/auth/login', { username, password });
+  /** `turnstileToken`: only once the server has asked for the human check (3 wrong passwords). */
+  async login(username: string, password: string, turnstileToken?: string) {
+    const response = await this.api.post('/auth/login', { username, password, turnstileToken });
     return response.data;
   }
 
@@ -52,8 +53,8 @@ export class AuthApi extends ApiBase {
     return response.data;
   }
 
-  async forgotPassword(email: string) {
-    const response = await this.api.post('/auth/forgot-password', { email });
+  async forgotPassword(email: string, turnstileToken?: string) {
+    const response = await this.api.post('/auth/forgot-password', { email, turnstileToken });
     return response.data;
   }
 

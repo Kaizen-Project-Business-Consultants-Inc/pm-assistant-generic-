@@ -135,6 +135,12 @@ curl -s -b cookies.txt https://pm.kpbc.ca/api/v1/projects | jq .
 
 ---
 
+### "Are you a person" check on sign-in (Oct 2026)
+
+Unit: `src/server/__tests__/routes/humanCheck.test.ts` (no box for a correct sign-in; asked after 3 wrong passwords; forged token refused; real token passes; other visitors unaffected; forgot password after 3 requests; off when Turnstile is off), `src/client/src/__tests__/pages/humanCheck.test.tsx` (box only when asked, Sign in waits for the tick, token sent).
+
+On staging (Turnstile keys set) — Playwright cannot pass Cloudflare's box, so a person does this once: type a wrong password 3 times → the box appears above Sign in and ticks itself → sign in with the right password works. Forgot password 4 times → the box on the 4th. The quick and full suites never meet it (they sign in correctly). Cloudflare's published test keys (site `1x00000000000000000000AA` / secret `1x0000000000000000000000000000000AA` always pass; `2x…` always fail) are for a local build only — never put them in a server `.env`.
+
 ### Sign in with Google (Oct 2026)
 
 Unit: `src/server/__tests__/utils/googleSignIn.test.ts` (state, nonce, token checks), `src/server/__tests__/routes/googleAuth.test.ts` (every callback path, linking, invitations, try limits), `src/client/src/__tests__/pages/googleSignIn.test.tsx` (buttons, messages, the link page).
