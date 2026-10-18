@@ -105,6 +105,7 @@ const NON_PROJECT: Record<string, string[]> = {
     "POST /login",
     "POST /register",
     "POST /resend-verification",
+    "POST /change-pending-email",
     "POST /forgot-password",
     "POST /reset-password",
     "POST /logout",

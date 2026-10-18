@@ -955,6 +955,26 @@ describe('EmailService', () => {
     });
   });
 
+  describe('sendPendingPaymentEmail (UAT 2026-10-17)', () => {
+    it('never confirmed: the button is a fresh confirm link, then checkout', async () => {
+      await service.sendPendingPaymentEmail('u@t.com', 'Alice', 'consultant_pro', 'tok-9');
+
+      const args = mockSend.mock.calls[0][0];
+      expect(args.html).toContain('https://pm.kpbc.ca/verify-email?token=tok-9');
+      expect(args.html).toContain('Confirm email and continue');
+      expect(args.html).toContain('then finish checkout');
+    });
+
+    it('already confirmed: the button goes to checkout as before', async () => {
+      await service.sendPendingPaymentEmail('u@t.com', 'Alice', 'consultant_pro', null);
+
+      const args = mockSend.mock.calls[0][0];
+      expect(args.html).not.toContain('verify-email');
+      expect(args.html).toContain('Complete Checkout');
+      expect(args.html).toContain('https://pm.kpbc.ca/pricing');
+    });
+  });
+
   // =========================================================================
   // sendProjectInviteEmail
   // =========================================================================

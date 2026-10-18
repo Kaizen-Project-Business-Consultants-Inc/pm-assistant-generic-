@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { newVerificationToken } from '../utils/verificationToken';
 import { config } from '../config';
 import { userService, type User } from './UserService';
 import { stripeService, PaymentsUnavailableError } from './StripeService';
@@ -168,7 +169,8 @@ export async function createAccount(input: NewAccount): Promise<NewAccountResult
     [email.toLowerCase()],
   );
 
-  const verificationToken = emailVerified ? null : crypto.randomUUID();
+  const link = emailVerified ? null : newVerificationToken();
+  const verificationToken = link?.emailVerificationToken ?? null;
   const isInvitedViewer = !!inviteData?.valid;
   const isPlanSignup = !!tier && !isInvitedViewer;
 
@@ -182,8 +184,8 @@ export async function createAccount(input: NewAccount): Promise<NewAccountResult
     fullName,
     role: isInvitedViewer ? 'viewer' : 'project_manager',
     emailVerified,
-    emailVerificationToken: verificationToken ?? undefined,
-    emailVerificationExpires: verificationToken ? new Date(Date.now() + 24 * 60 * 60 * 1000) : undefined,
+    emailVerificationToken: link?.emailVerificationToken,
+    emailVerificationExpires: link?.emailVerificationExpires,
     stripeCustomerId: stripeCustomerId || undefined,
   });
   // Everything after the account row exists: if the database gets too busy part-way, undo it all

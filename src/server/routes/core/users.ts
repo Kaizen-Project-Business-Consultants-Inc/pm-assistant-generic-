@@ -1,7 +1,6 @@
-import { hasPassword, NO_PASSWORD_MESSAGE } from '../../utils/googleOnlyAccount';
+import { currentPasswordRefusal } from '../../utils/currentPassword';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
 import { keyChangesNeed, requireScope } from '../../middleware/requireScope';
 import { userService } from '../../services/UserService';
@@ -105,14 +104,8 @@ async function profileRefusal(
   c: { emailChanges: boolean; usernameChanges: boolean; onboarding: boolean; orgOwner?: string },
 ): Promise<{ status: number; body: { error: string; message: string } } | null> {
   if (c.emailChanges || (c.usernameChanges && !c.onboarding)) {
-    const what = c.emailChanges ? 'email' : 'username';
-    if (!hasPassword(current)) return { status: 400, body: { error: 'No password', message: NO_PASSWORD_MESSAGE } };
-    if (!parsed.currentPassword) {
-      return { status: 400, body: { error: 'Password required', message: `Enter your current password to change your ${what}.` } };
-    }
-    if (!(await bcrypt.compare(parsed.currentPassword, current.passwordHash))) {
-      return { status: 400, body: { error: 'Invalid password', message: `Your current password isn't right, so your ${what} wasn't changed.` } };
-    }
+    const wrong = await currentPasswordRefusal(current, parsed.currentPassword, c.emailChanges ? 'email' : 'username');
+    if (wrong) return wrong;
   }
   if (c.orgOwner !== undefined && c.orgOwner !== userId) {
     return { status: 403, body: { error: 'Forbidden', message: 'Only the company owner can rename the company.' } };

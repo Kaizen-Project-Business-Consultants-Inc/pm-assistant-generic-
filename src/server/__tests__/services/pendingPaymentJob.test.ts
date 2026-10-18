@@ -7,7 +7,7 @@ vi.mock('../../services/EmailService', () => ({
   emailService: { sendPendingPaymentEmail: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock('../../services/StripeService', () => ({
-  stripeService: { reconcileFromStripe: vi.fn() },
+  stripeService: { reconcileFromStripe: vi.fn(), sendVerificationAfterPayment: vi.fn().mockResolvedValue(undefined) },
 }));
 vi.mock('../../services/RedisService', () => ({
   redisService: { get: vi.fn().mockResolvedValue(null), set: vi.fn().mockResolvedValue(undefined) },
@@ -51,6 +51,8 @@ describe('pendingPaymentJob', () => {
     expect(result.purged).toBe(0);
     // A paying customer must never be chased or closed.
     expect(emailService.sendPendingPaymentEmail).not.toHaveBeenCalled();
+    // ...and gets the confirm-your-email link the missed webhook would have sent
+    expect(stripeService.sendVerificationAfterPayment).toHaveBeenCalledWith(pendingRow().id);
   });
 
   it('never acts on an account it could not verify with Stripe', async () => {
@@ -70,8 +72,24 @@ describe('pendingPaymentJob', () => {
     const result = await runPendingPaymentSweep();
 
     expect(result.reminded).toBe(1);
-    expect(emailService.sendPendingPaymentEmail).toHaveBeenCalledWith('someone@example.com', 'Someone', 'sme');
+    // never confirmed (a paid sign-up's link only goes after paying): the reminder carries a fresh one
+    const sent = vi.mocked(emailService.sendPendingPaymentEmail).mock.calls[0];
+    expect(sent.slice(0, 3)).toEqual(['someone@example.com', 'Someone', 'sme']);
+    expect(sent[3]).toEqual(expect.any(String));
+    const saved = vi.mocked(databaseService.queryControlPlane).mock.calls.find(c => String(c[0]).includes('email_verification_token'))!;
+    expect(String(saved[0])).toContain('WHERE id = ? AND email_verified = 0');
+    expect(saved[1]).toEqual([sent[3], expect.any(Date), 'u-1']);
     expect(redisService.set).toHaveBeenCalled();
+  });
+
+  it('an already confirmed signup gets the reminder without a confirm link', async () => {
+    (databaseService.queryControlPlane as any).mockResolvedValueOnce([pendingRow({ email_verified: 1 })]);
+    (stripeService.reconcileFromStripe as any).mockResolvedValue(false);
+
+    await runPendingPaymentSweep();
+
+    expect(emailService.sendPendingPaymentEmail).toHaveBeenCalledWith('someone@example.com', 'Someone', 'sme', null);
+    expect(vi.mocked(databaseService.queryControlPlane).mock.calls.some(c => String(c[0]).includes('email_verification_token'))).toBe(false);
   });
 
   it('does not send the reminder twice', async () => {

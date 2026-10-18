@@ -53,6 +53,12 @@ export class AuthApi extends ApiBase {
     return response.data;
   }
 
+  /** "Wrong address? Change it" — only before the email is confirmed */
+  async changePendingEmail(email: string, currentPassword: string): Promise<{ message: string; email: string }> {
+    const response = await this.api.post('/auth/change-pending-email', { email, currentPassword });
+    return response.data;
+  }
+
   async forgotPassword(email: string, turnstileToken?: string) {
     const response = await this.api.post('/auth/forgot-password', { email, turnstileToken });
     return response.data;

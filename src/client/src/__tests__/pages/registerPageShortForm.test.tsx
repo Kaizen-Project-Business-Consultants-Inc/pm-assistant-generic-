@@ -73,19 +73,32 @@ describe('sign-up form: four fields', () => {
     expect(screen.queryByText(/7-day trial/)).toBeNull();
   });
 
-  it('a paid-plan sign-up keeps "Subscribe to …", asks only email and password, sends no username', async () => {
+  it('a paid-plan sign-up keeps "Subscribe to …", asks name and an optional company, sends them (UAT 2026-10-17)', async () => {
     show('/register?tier=consultant_pro&billing=monthly');
     expect(screen.getByRole('heading', { name: /^Subscribe to/ })).toBeTruthy();
-    expect(screen.queryByLabelText('Your name')).toBeNull();
-    expect(screen.queryByLabelText(/Company/)).toBeNull();
+    const name = screen.getByLabelText('Your name') as HTMLInputElement;
+    const company = screen.getByLabelText(/Company name/) as HTMLInputElement;
+    expect(name.required).toBe(true);
+    expect(company.required).toBe(false);
+    expect(screen.getByText(/\(optional\)/)).toBeTruthy();
     expect(screen.getByText('At least 8 characters.')).toBeTruthy();
+    fireEvent.change(name, { target: { value: 'Mike Todo' } });
+    fireEvent.change(company, { target: { value: 'Todo Consulting' } });
     fireEvent.change(screen.getByLabelText('Work email'), { target: { value: 'pay@company.com' } });
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'longenough1' } });
     fireEvent.click(screen.getByLabelText(/I agree to the/));
     fireEvent.click(screen.getByRole('button', { name: 'Continue to Payment' }));
     await waitFor(() => expect(api.register).toHaveBeenCalledTimes(1));
     const sent = (api.register.mock.calls[0] as unknown[])[0] as Record<string, unknown>;
-    expect(sent).toMatchObject({ email: 'pay@company.com', tier: 'consultant_pro', plan: 'monthly' });
+    expect(sent).toMatchObject({ fullName: 'Mike Todo', organizationName: 'Todo Consulting', email: 'pay@company.com', tier: 'consultant_pro', plan: 'monthly' });
     expect(sent).not.toHaveProperty('username');
+  });
+
+  it.each(['sme', 'enterprise'])('a %s plan sign-up must name the company', (tier) => {
+    show(`/register?tier=${tier}&billing=monthly`);
+    const company = screen.getByLabelText(/Company name/) as HTMLInputElement;
+    expect(company.required).toBe(true);
+    expect(screen.queryByText(/\(optional\)/)).toBeNull();
+    expect((screen.getByLabelText('Your name') as HTMLInputElement).required).toBe(true);
   });
 });

@@ -154,6 +154,19 @@ On staging, with `GOOGLE_AUTH_CLIENT_ID`/`SECRET` set and a real Google account 
 6. **Refusals:** cancel at Google → "You cancelled at Google…"; open the callback URL in another browser → "took too long or was opened twice"; an invitation for another address → back on the invitation page with the reason.
 7. **Invitation for an existing account:** open an invitation link, Continue with Google → signed in and in the inviting company.
 
+### Paid sign-up: name, company, confirm email after payment (Oct 2026)
+
+Unit: `src/server/__tests__/routes/authPendingEmail.test.ts` (no link at a paid register, name/company used, every change-pending-email answer incl. password, the unique-key race and the old link refused), `routes/stripeCustomerRoutes.test.ts` (reconcile sends), `services/pendingPaymentJob.test.ts` + `EmailService.test.ts` (reminder carries a confirm link), `src/client/src/__tests__/pages/loginUnconfirmed.test.tsx`, `src/server/__tests__/services/StripeService.test.ts` ("confirm-your-email link after payment"), `src/client/src/__tests__/pages/verifyEmailPending.test.tsx`, `onboardingStep1.test.tsx`, `registerPageShortForm.test.tsx`.
+
+Manual check on staging (Stripe test mode, card 4242 4242 4242 4242):
+1. Pricing → Subscribe on Consultant Pro: the form asks **Your name** and **Company name (optional)**; on Team/Enterprise the company is required.
+2. Continue to Payment — **no** confirmation email arrives while on Stripe's page. Pay: the confirm page shows **Payment received · Consultant Pro** and **One last step: confirm your email**, and the email arrives (once).
+3. **Wrong address? Change it** → type another address and your password → Save: "Sent to …", the link arrives there, the old link no longer works. A wrong password → "Your current password isn't right…". An address that already has an account → "That address already has a Kovarti account". After confirming, `POST /api/v1/auth/change-pending-email` answers 403.
+4. **Never paid:** sign up for a plan, close Stripe's page. Sign in → "Please confirm your email…" with **Send me a new confirmation link** (it arrives). Run the pending-payment sweep after 2 days (or set `created_at` back on staging): the reminder's **Confirm email and continue** confirms the account, which then shows the awaiting-payment banner and checkout.
+5. Click the link → setup step 1 shows neither Full Name nor Organization Name (both given at sign-up) and no methodology question; the company shows the typed name in Settings.
+
+---
+
 ## 4. Testing the Workflow Engine
 
 The workflow engine is a DAG-based system at `/api/v1/workflows`. Workflows are composed of nodes (trigger, condition, action, approval, delay, agent) connected by edges. Workflows fire automatically on task create/update events, project budget/status changes, and via a 15-minute overdue-task scanner.

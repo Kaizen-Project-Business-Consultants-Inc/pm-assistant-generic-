@@ -38,12 +38,11 @@ function mailboxLink(email: string): { label: string; url: string } | null {
   return null;
 }
 
-export function CheckYourEmail({ email, onChangeEmail }: { email: string; onChangeEmail?: () => void }) {
+/** "Send it again" — here and on the sign-in page when an unconfirmed account tries to sign in */
+export function useResendVerification(email: string) {
   const [resending, setResending] = useState(false);
   const [resent, setResent] = useState(false);
   const [resendError, setResendError] = useState<string | null>(null);
-
-  const mailbox = mailboxLink(email);
 
   const handleResend = async () => {
     setResending(true);
@@ -63,6 +62,13 @@ export function CheckYourEmail({ email, onChangeEmail }: { email: string; onChan
       setResending(false);
     }
   };
+
+  return { resending, resent, resendError, handleResend };
+}
+
+export function CheckYourEmail({ email, onChangeEmail }: { email: string; onChangeEmail?: () => void }) {
+  const { resending, resent, resendError, handleResend } = useResendVerification(email);
+  const mailbox = mailboxLink(email);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4">

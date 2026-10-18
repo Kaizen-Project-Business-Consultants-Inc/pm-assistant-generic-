@@ -32,6 +32,8 @@ export const RegisterPage: React.FC = () => {
   const billingParam = (searchParams.get('billing') as 'monthly' | 'annual') || 'monthly';
 
   const isPlanSignup = !!tierParam && !inviteToken;
+  // A team or enterprise plan is a company: it needs its name (UAT 2026-10-17)
+  const companyRequired = isPlanSignup && (tierParam === 'sme' || tierParam === 'enterprise');
 
   const { setUser, user, logout } = useAuthStore();
 
@@ -85,12 +87,12 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
     try {
       const result = await apiService.register({
-        fullName: isPlanSignup ? undefined : fullName,
+        fullName,
         // No username: people sign in with their email and the server makes one (2026-10-11 —
         // 84 people opened this form in 11 days and 1 finished it; six fields became four)
         email,
         password,
-        organizationName: inviteToken ? undefined : (isPlanSignup ? undefined : (organizationName || undefined)),
+        organizationName: inviteToken ? undefined : (organizationName.trim() || undefined),
         inviteToken,
         tier: isPlanSignup ? tierParam! : undefined,
         plan: isPlanSignup ? billingParam : undefined,
@@ -243,14 +245,12 @@ export const RegisterPage: React.FC = () => {
               </div>
             )}
 
-            {/* Full form fields — only for traditional / invite flows */}
-            {!isPlanSignup && (
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Your name</label>
-                <input id="fullName" type="text" required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                  className="input" placeholder="Jane Smith" />
-              </div>
-            )}
+            {/* Every sign-up gives a name — a paid one too, or the company was named after the email (UAT 2026-10-17) */}
+            <div>
+              <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Your name</label>
+              <input id="fullName" type="text" required minLength={2} autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
+                className="input" placeholder="Jane Smith" />
+            </div>
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Work email</label>
@@ -260,13 +260,15 @@ export const RegisterPage: React.FC = () => {
               <p id="email-hint" className="mt-1 text-xs text-gray-500 dark:text-gray-400">You&apos;ll sign in with this.</p>
             </div>
 
-            {!isPlanSignup && !isInviteFlow && (
+            {!isInviteFlow && (
               <div>
                 <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-                  Company <span className="text-gray-500 font-normal">(optional)</span>
+                  {isPlanSignup ? 'Company name' : 'Company'}
+                  {!companyRequired && <span className="text-gray-500 font-normal"> (optional)</span>}
                 </label>
-                <input id="organizationName" type="text" autoComplete="organization" value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
-                  className="input" placeholder="Leave blank to use your name" />
+                <input id="organizationName" type="text" required={companyRequired} minLength={companyRequired ? 2 : undefined} autoComplete="organization"
+                  value={organizationName} onChange={(e) => setOrganizationName(e.target.value)}
+                  className="input" placeholder={companyRequired ? 'Your company name' : 'Leave blank to use your name'} />
               </div>
             )}
 

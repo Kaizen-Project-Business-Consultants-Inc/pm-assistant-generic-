@@ -1177,7 +1177,7 @@
       "count": 1
     },
     "jsx-a11y/label-has-associated-control": {
-      "count": 3
+      "count": 2
     }
   },
   "src/client/src/pages/PortalViewPage.tsx": {

@@ -59,6 +59,7 @@ const sections: Section[] = [
     items: [
       'Sign up with email and verify your account — or click "Sign up with Google" and go straight in (when it is switched on)',
       'Email link not working? Use the newest email — or click "Send me a new link" on the page that opens',
+      'Paid plan? Your confirm-your-email link arrives once payment goes through. Typed the wrong address? Click "Wrong address? Change it" on the confirm page',
       'Sign in with your email — there are no usernames. Setup asks for your phone number once (change it in Settings › Profile)',
       'After 3 wrong passwords a small "Verifying you are human" box appears above Sign in — it ticks itself; Sign in waits for it',
       'A project has one schedule: put separate streams of work in as phases',

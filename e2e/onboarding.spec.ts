@@ -61,7 +61,7 @@ test.describe('Onboarding Wizard', () => {
     expect(await stepCircles.count()).toBeGreaterThanOrEqual(3);
   });
 
-  test('step 1 has profile, role, and methodology fields', async ({ page }) => {
+  test('step 1 has profile and role fields, and no methodology question', async ({ page }) => {
     // Profile fields
     await expect(page.locator('#fullName')).toBeVisible();
     // no username: people sign in with their email (U7, 2026-10-14)
@@ -75,12 +75,8 @@ test.describe('Onboarding Wizard', () => {
     await expect(page.getByText('Executive')).toBeVisible();
     await expect(page.getByText('Viewer')).toBeVisible();
 
-    // Methodology selector — use exact match to avoid matching
-    // "Mix of waterfall and agile" in the Hybrid card description
-    await expect(page.getByText('Preferred Methodology')).toBeVisible();
-    await expect(page.getByText('Waterfall', { exact: true })).toBeVisible();
-    await expect(page.getByText('Agile', { exact: true })).toBeVisible();
-    await expect(page.getByText('Hybrid', { exact: true })).toBeVisible();
+    // No methodology question: a project's methodology comes from its template (UAT 2026-10-17)
+    await expect(page.getByText('Preferred Methodology')).toHaveCount(0);
   });
 
   test('role cards toggle selection on click', async ({ page }) => {
@@ -94,12 +90,6 @@ test.describe('Onboarding Wizard', () => {
     await memberCard.click();
     await expect(memberCard).toHaveClass(/border-primary-500/);
     await expect(execCard).not.toHaveClass(/border-primary-500/);
-  });
-
-  test('methodology cards toggle selection on click', async ({ page }) => {
-    const agileCard = page.getByText('Agile', { exact: true }).locator('..');
-    await agileCard.click();
-    await expect(agileCard).toHaveClass(/border-primary-500/);
   });
 
   test('continue button is disabled without required fields', async ({ page }) => {

@@ -10,6 +10,7 @@ import { GoogleButton } from '../components/auth/GoogleButton';
 import { useHumanCheck } from '../components/auth/useHumanCheck';
 import { googleSignInMessage } from '../utils/googleSignInMessages';
 import { needsSetup } from '../utils/needsSetup';
+import { useResendVerification } from '../components/auth/CheckYourEmail';
 
 export const LoginPage: React.FC = () => {
   useSEO({
@@ -25,6 +26,9 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const human = useHumanCheck();
   const [awaitingVerification, setAwaitingVerification] = useState(false);
+  // Signed in with an account whose email isn't confirmed: offer a new link right here
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const resend = useResendVerification(username.trim());
 
   const { setUser, setError: setAuthError } = useAuthStore();
   const navigate = useNavigate();
@@ -54,6 +58,7 @@ export const LoginPage: React.FC = () => {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
+    setUnconfirmed(false);
 
     try {
       const response = await apiService.login(username, password, human.token);
@@ -85,7 +90,7 @@ export const LoginPage: React.FC = () => {
         navigate(needsSetup(response.user) ? '/onboarding' : '/dashboard');
       }
     } catch (err: unknown) {
-      const axiosError = err as { response?: { status?: number; data?: { message?: string; requiresVerification?: boolean; needsHumanCheck?: boolean } } };
+      const axiosError = err as { response?: { status?: number; data?: { error?: string; message?: string; requiresVerification?: boolean; needsHumanCheck?: boolean } } };
       human.afterFailure(axiosError.response?.data?.needsHumanCheck);
 
       // Handle 202 from fetch fallback
@@ -95,7 +100,10 @@ export const LoginPage: React.FC = () => {
       }
 
       let errorMessage = 'Login failed';
-      if (axiosError.response?.status === 403) {
+      if (axiosError.response?.status === 403 && axiosError.response?.data?.error === 'Email not verified') {
+        errorMessage = 'Please confirm your email address before signing in. Check your inbox for the link, or send a new one below.';
+        setUnconfirmed(username.includes('@'));
+      } else if (axiosError.response?.status === 403) {
         errorMessage = 'Please verify your email address before logging in. Check your inbox for the verification link.';
       } else if (axiosError.response?.data?.message) {
         errorMessage = axiosError.response.data.message;
@@ -171,6 +179,19 @@ export const LoginPage: React.FC = () => {
                   </div>
                   <div className="ml-3">
                     <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                    {unconfirmed && (
+                      <div className="mt-2" role="status">
+                        {resend.resent ? (
+                          <p className="text-sm text-green-700 dark:text-green-400">Sent — check {username.trim()}. It may take a minute to arrive.</p>
+                        ) : (
+                          <button type="button" onClick={resend.handleResend} disabled={resend.resending}
+                            className="text-sm font-medium text-primary-600 dark:text-primary-400 underline hover:text-primary-700 disabled:opacity-50">
+                            {resend.resending ? 'Sending…' : 'Send me a new confirmation link'}
+                          </button>
+                        )}
+                        {resend.resendError && <p className="mt-1 text-xs text-red-700 dark:text-red-400">{resend.resendError}</p>}
+                      </div>
+                    )}
                     <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">
                       New to Kovarti?{' '}
                       <Link to="/pricing" className="underline font-medium hover:text-red-800 dark:hover:text-red-300">Create an account</Link>

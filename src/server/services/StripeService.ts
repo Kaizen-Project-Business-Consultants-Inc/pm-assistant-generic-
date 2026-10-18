@@ -7,7 +7,13 @@ import { subscriptionEventRepository } from '../database/SubscriptionEventReposi
 import { organizationRepository } from '../database/OrganizationRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { databaseService } from '../database/connection';
+import { emailService } from './EmailService';
+import { redisService } from './RedisService';
+import { newVerificationToken } from '../utils/verificationToken';
 import { v4 as uuidv4 } from 'uuid';
+
+/** Set once a paid sign-up's confirm-your-email link has gone out (24 h) */
+const VERIFY_SENT_KEY = (userId: string) => `verify-after-payment:${userId}`;
 import logger from '../utils/logger';
 
 export class StripeService {
@@ -200,6 +206,8 @@ export class StripeService {
         if (session.mode === 'subscription' && session.subscription) {
           const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
           await this.upsertSubscription(subscription, stripeEventId);
+          const payerId = await this.payingUserId(session);
+          if (payerId) this.sendVerificationAfterPayment(payerId).catch(() => { /* logged inside */ });
         } else if (session.mode === 'payment' && session.metadata?.type === 'token_topup') {
           await this.handleTopUpCompleted(session, stripeEventId);
         }
@@ -247,6 +255,69 @@ export class StripeService {
       default:
         logger.info(`[StripeService] Unhandled event type: ${event.type}`);
     }
+  }
+
+  /** Who paid for a checkout: the user (flat price) or the company owner (per seat) */
+  private async payingUserId(session: Stripe.Checkout.Session): Promise<string | null> {
+    if (session.metadata?.userId) return session.metadata.userId;
+    if (session.metadata?.orgId) {
+      const org = await organizationRepository.findById(session.metadata.orgId);
+      return org?.ownerUserId ?? null;
+    }
+    return null;
+  }
+
+  /**
+   * A paid sign-up confirms their email after paying, not while on Stripe's page (UAT
+   * 2026-10-17), so the link goes from here. A link that is still valid is reused, so an
+   * earlier one keeps working. Sent once a day at most, so a repeated webhook or the
+   * pending-payment sweep can't send it twice. Never throws: the payment is what matters.
+   */
+  async sendVerificationAfterPayment(userId: string): Promise<void> {
+    try {
+      const user = await this.userService.findById(userId);
+      if (!user || user.emailVerified) return;
+      if (await redisService.get(VERIFY_SENT_KEY(userId))) return;
+
+      const expires = user.emailVerificationExpires ? new Date(user.emailVerificationExpires).getTime() : 0;
+      let token = user.emailVerificationToken;
+      if (!token || expires <= Date.now()) {
+        const link = newVerificationToken();
+        token = link.emailVerificationToken;
+        // only while the address is still the one read above: a "Change it" in between keeps its own link
+        await databaseService.queryControlPlane(
+          'UPDATE users SET email_verification_token = ?, email_verification_expires = ? WHERE id = ? AND email = ? AND email_verified = 0',
+          [link.emailVerificationToken, link.emailVerificationExpires, user.id, user.email],
+        );
+      }
+      // Read again just before sending: if the address was changed meanwhile ("Wrong address?
+      // Change it"), that change sent its own link — never send one to the old address
+      const now = await this.userService.findById(userId);
+      if (!now || now.emailVerified || now.email !== user.email || now.emailVerificationToken !== token) return;
+      await emailService.sendVerificationEmail(now.email, token);
+      await this.noteVerificationSent(userId);
+    } catch (err) {
+      logger.error('[StripeService] Verification email after payment failed', {
+        userId, error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  /** A confirm link just went out (here, or from changing the address): no second one for a day */
+  async noteVerificationSent(userId: string): Promise<void> {
+    try {
+      await redisService.set(VERIFY_SENT_KEY(userId), '1', 24 * 60 * 60);
+    } catch (err) {
+      logger.warn('[StripeService] Could not mark the confirm link as sent', { userId, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  /** Point Stripe receipts at a corrected address. Skips empty and repeated customer ids. */
+  async updateCustomerEmail(customerIds: Array<string | null | undefined>, email: string): Promise<void> {
+    if (!this.isConfigured) return;
+    const ids = [...new Set(customerIds.filter((id): id is string => !!id))];
+    // eslint-disable-next-line no-await-in-loop -- at most two customers (the person's and their company's)
+    for (const id of ids) await this.getClient().customers.update(id, { email });
   }
 
   private async handleRefund(charge: Stripe.Charge, stripeEventId: string): Promise<void> {

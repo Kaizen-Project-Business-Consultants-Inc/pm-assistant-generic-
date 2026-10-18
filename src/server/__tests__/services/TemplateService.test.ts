@@ -367,6 +367,15 @@ describe('TemplateService', () => {
       );
     });
 
+    it("uses the template's own methodology when none is given", async () => {
+      const template = await service.findById('tpl-generic-pmi');
+      expect(template!.defaultMethodology).toBeTruthy();
+      await service.applyTemplate(baseInput);
+      expect(mockProjectCreate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ methodology: template!.defaultMethodology }),
+      );
+    });
+
     it('filters tasks by selectedTaskRefIds while keeping mandatory tasks', async () => {
       // Generic PMI template has mandatory tasks: init-charter, close-deliver, and their parents
       // Let's select only some optional tasks plus the mandatory ones

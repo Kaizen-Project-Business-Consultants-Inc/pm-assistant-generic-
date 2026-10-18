@@ -17,12 +17,6 @@ const ROLE_OPTIONS = [
   { value: 'executive', label: 'Executive', icon: BarChart3, description: 'Monitor portfolio and KPIs' },
 ] as const;
 
-const METHODOLOGY_OPTIONS = [
-  { value: 'waterfall', label: 'Waterfall', description: 'Sequential phases with milestones' },
-  { value: 'agile', label: 'Agile', description: 'Iterative sprints and backlogs' },
-  { value: 'hybrid', label: 'Hybrid', description: 'Mix of waterfall and agile' },
-] as const;
-
 interface Template {
   id: string;
   name: string;
@@ -53,7 +47,6 @@ export const OnboardingPage: React.FC = () => {
   const [phone, setPhone] = useState(user?.phone || ''); // required to finish setup (U5)
   const [organizationName, setOrganizationName] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
-  const [methodology, setMethodology] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +67,16 @@ export const OnboardingPage: React.FC = () => {
   const clientLabel = isSme || user?.subscriptionTier === 'enterprise' ? 'Client or department' : 'Client';
   // Only the company owner names the company (the server refuses anyone else); no company yet = theirs to name
   const canNameCompany = !user?.organization || user.organization.isOwner === true;
-  const companyNameRequired = isSme && canNameCompany;
+  // Asked only when sign-up didn't give it (free trial and Google sign-ups may not have):
+  // a company named after its owner's name or email was never named (UAT 2026-10-17).
+  // Fixed on arrival so a field doesn't vanish while being typed in.
+  const [askName] = useState(() => !user?.fullName?.trim());
+  const [askCompany] = useState(() => {
+    const current = user?.organization?.name?.trim().toLowerCase();
+    if (!current) return true;
+    return current === user?.fullName?.trim().toLowerCase() || current === user?.email?.split('@')[0].toLowerCase();
+  });
+  const companyNameRequired = isSme && canNameCompany && askCompany;
   const totalSteps = isSme ? 4 : 3;
   const STEP_TEAM = 2; // only used when isSme
   const STEP_PROJECT = isSme ? 3 : 2;
@@ -164,21 +166,8 @@ export const OnboardingPage: React.FC = () => {
     }
   };
 
-  // Sort templates: methodology-matching ones first, then the rest
-  const isMethodologyMatch = (cat: string): boolean => {
-    if (!methodology || methodology === 'hybrid') return true; // hybrid matches all
-    if (methodology === 'waterfall') return cat.includes('waterfall') || cat.includes('construction') || cat.includes('infrastructure');
-    if (methodology === 'agile') return cat.includes('agile') || cat.includes('software') || cat.includes('sprint');
-    return false;
-  };
-  const filteredTemplates = [...templates].sort((a, b) => {
-    if (!methodology) return 0;
-    const matchA = isMethodologyMatch((a.category || a.projectType || '').toLowerCase());
-    const matchB = isMethodologyMatch((b.category || b.projectType || '').toLowerCase());
-    if (matchA && !matchB) return -1;
-    if (!matchA && matchB) return 1;
-    return 0;
-  }).slice(0, 6);
+  // In the library's own order: the project's methodology comes from its template (changeable in Edit project)
+  const filteredTemplates = templates.slice(0, 6);
 
   useEffect(() => {
     if (step !== STEP_PROJECT) return;
@@ -227,7 +216,6 @@ export const OnboardingPage: React.FC = () => {
         templateId: selectedTemplate,
         projectName: projectName.trim(),
         startDate: new Date().toISOString().split('T')[0],
-        methodology: methodology || undefined,
         clientId,
       });
       const pid = result.projectId || result.project?.id;
@@ -329,7 +317,7 @@ export const OnboardingPage: React.FC = () => {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8">
           {stepIndicator}
 
-          {/* Step 1: Profile + Role + Methodology */}
+          {/* Step 1: Profile + Role (methodology no longer asked — it comes from the project's template, UAT 2026-10-17) */}
           {step === 1 && (
             <>
               <div className="text-center mb-6">
@@ -360,11 +348,11 @@ export const OnboardingPage: React.FC = () => {
                   </div>
                 )}
 
-                <div>
+                {askName && <div>
                   <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Full Name</label>
                   <input id="fullName" type="text" required autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
                     className="input" placeholder="John Doe" minLength={2} />
-                </div>
+                </div>}
 
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Phone number</label>
@@ -373,7 +361,7 @@ export const OnboardingPage: React.FC = () => {
                   <p id="phone-help" className="text-xs text-gray-500 mt-1">So we can help you get set up. We never share it and never send texts.</p>
                 </div>
 
-                {canNameCompany && <div>
+                {canNameCompany && askCompany && <div>
                   <label htmlFor="organizationName" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                     Organization Name {!companyNameRequired && <span className="text-gray-500 font-normal">(optional)</span>}
                   </label>
@@ -402,31 +390,6 @@ export const OnboardingPage: React.FC = () => {
                         >
                           <Icon className={`w-5 h-5 ${selected ? 'text-primary-600 dark:text-primary-400' : 'text-gray-500'}`} />
                           <span className={`text-xs font-medium ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}`}>{role.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Methodology */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Preferred Methodology</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {METHODOLOGY_OPTIONS.map((m) => {
-                      const selected = methodology === m.value;
-                      return (
-                        <button
-                          key={m.value}
-                          type="button"
-                          onClick={() => setMethodology(m.value)}
-                          className={`rounded-xl border-2 p-3 text-center transition-all ${
-                            selected
-                              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                              : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                          }`}
-                        >
-                          <span className={`text-sm font-medium block ${selected ? 'text-primary-700 dark:text-primary-300' : 'text-gray-600 dark:text-gray-300'}`}>{m.label}</span>
-                          <span className="text-xs text-gray-500 mt-0.5 block">{m.description}</span>
                         </button>
                       );
                     })}
@@ -728,7 +691,7 @@ export const OnboardingPage: React.FC = () => {
                 {isSme ? (
                   <div className="bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 rounded-lg p-4 mb-6 text-left">
                     <p className="text-sm font-medium text-primary-800 dark:text-primary-300">
-                      {organizationName || 'Your organization'} is ready
+                      {organizationName || user?.organization?.name || 'Your organization'} is ready
                     </p>
                     <div className="text-xs text-primary-600 dark:text-primary-400 mt-1 space-y-1">
                       {seatInfo && <p>{seatInfo.paidSeats} seats on your plan</p>}

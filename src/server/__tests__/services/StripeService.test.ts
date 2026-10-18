@@ -15,6 +15,10 @@ const {
   mockFindByStripeCustomerId,
   mockFindById,
   mockUserUpdate,
+  mockSendVerificationEmail,
+  mockRedisGet,
+  mockRedisSet,
+  mockStripeCustomersUpdate,
 } = vi.hoisted(() => {
   const mockConfig: Record<string, any> = {
     STRIPE_SECRET_KEY: 'sk_test_fake',
@@ -60,6 +64,10 @@ const {
     mockFindByStripeCustomerId: vi.fn(),
     mockFindById: vi.fn(),
     mockUserUpdate: vi.fn(),
+    mockSendVerificationEmail: vi.fn(),
+    mockRedisGet: vi.fn(),
+    mockRedisSet: vi.fn(),
+    mockStripeCustomersUpdate: vi.fn(),
   };
 });
 
@@ -78,7 +86,7 @@ vi.mock('../../config', () => ({
 vi.mock('stripe', () => {
   return {
     default: class FakeStripe {
-      customers = { create: mockStripeCustomersCreate };
+      customers = { create: mockStripeCustomersCreate, update: mockStripeCustomersUpdate };
       checkout = { sessions: { create: mockStripeCheckoutSessionsCreate } };
       billingPortal = { sessions: { create: mockStripeBillingPortalSessionsCreate } };
       subscriptions = {
@@ -142,6 +150,14 @@ vi.mock('../../database/connection', () => ({
   databaseService: {
     queryControlPlane: vi.fn().mockResolvedValue([]),
   },
+}));
+
+vi.mock('../../services/EmailService', () => ({
+  emailService: { sendVerificationEmail: mockSendVerificationEmail },
+}));
+
+vi.mock('../../services/RedisService', () => ({
+  redisService: { get: mockRedisGet, set: mockRedisSet },
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'test-uuid' }));
@@ -268,6 +284,22 @@ describe('StripeService', () => {
   });
 
   // ── createCheckoutSession ───────────────────────────────────────
+
+  describe('updateCustomerEmail', () => {
+    it('updates each distinct customer once and skips empty ids', async () => {
+      mockStripeCustomersUpdate.mockResolvedValue({});
+      await service.updateCustomerEmail(['cus_1', null, 'cus_1', 'cus_org'], 'new@co.test');
+      expect(mockStripeCustomersUpdate).toHaveBeenCalledTimes(2);
+      expect(mockStripeCustomersUpdate).toHaveBeenCalledWith('cus_1', { email: 'new@co.test' });
+      expect(mockStripeCustomersUpdate).toHaveBeenCalledWith('cus_org', { email: 'new@co.test' });
+    });
+
+    it('does nothing when Stripe is not configured', async () => {
+      mockConfig.STRIPE_SECRET_KEY = '';
+      await service.updateCustomerEmail(['cus_1'], 'new@co.test');
+      expect(mockStripeCustomersUpdate).not.toHaveBeenCalled();
+    });
+  });
 
   describe('createCheckoutSession', () => {
     it('creates a subscription checkout session and returns the URL', async () => {
@@ -679,6 +711,113 @@ describe('StripeService', () => {
 
         expect(mockStripeSubscriptionsRetrieve).toHaveBeenCalledWith('sub_new');
         expect(subscriptionRepository.insert).toHaveBeenCalled();
+      });
+
+      describe('confirm-your-email link after payment (UAT 2026-10-17)', () => {
+        const flush = () => new Promise<void>((r) => { setTimeout(r, 0); });
+        function paidCheckout(metadata: Record<string, string>) {
+          mockStripeWebhooksConstructEvent.mockReturnValue({
+            id: 'evt_cs_v', type: 'checkout.session.completed',
+            data: { object: { mode: 'subscription', subscription: 'sub_new', metadata } },
+          });
+          mockStripeSubscriptionsRetrieve.mockResolvedValue(makeSubscription({ id: 'sub_new' }));
+          (organizationRepository.findByStripeCustomerId as any).mockResolvedValue(null);
+          mockFindByStripeCustomerId.mockResolvedValue(makeUser());
+          (subscriptionRepository.findByStripeId as any).mockResolvedValue(null);
+          (subscriptionRepository.insert as any).mockResolvedValue(undefined);
+          mockRedisGet.mockResolvedValue(null);
+          mockSendVerificationEmail.mockResolvedValue(undefined);
+        }
+
+        it('sends it once to an unverified payer, reusing a link that is still valid', async () => {
+          paidCheckout({ userId: 'user-1' });
+          mockFindById.mockResolvedValue(makeUser({
+            emailVerified: false, emailVerificationToken: 'tok-1',
+            emailVerificationExpires: new Date(Date.now() + 60 * 60 * 1000),
+          }));
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+
+          expect(mockSendVerificationEmail).toHaveBeenCalledTimes(1);
+          expect(mockSendVerificationEmail).toHaveBeenCalledWith('test@test.com', 'tok-1');
+          expect(mockUserUpdate).not.toHaveBeenCalledWith('user-1', expect.objectContaining({ emailVerificationToken: expect.anything() }));
+          expect(mockRedisSet).toHaveBeenCalledWith('verify-after-payment:user-1', '1', 24 * 60 * 60);
+
+          // the same event again (Stripe retry): already sent, so nothing more goes
+          mockRedisGet.mockResolvedValue('1');
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+          expect(mockSendVerificationEmail).toHaveBeenCalledTimes(1);
+        });
+
+        it('makes a new 24-hour link when the stored one has expired', async () => {
+          paidCheckout({ userId: 'user-1' });
+          let stored = makeUser({
+            emailVerified: false, emailVerificationToken: 'old', emailVerificationExpires: new Date(Date.now() - 1000),
+          });
+          mockFindById.mockImplementation(async () => stored);
+          // the new link is written only while the address is unchanged (UPDATE … WHERE id = ? AND email = ?)
+          (databaseService.queryControlPlane as any).mockImplementation(async (sql: string, params: unknown[]) => {
+            if (/email_verification_token/.test(sql)) stored = { ...stored, emailVerificationToken: params[0] as string, emailVerificationExpires: params[1] as Date };
+            return [];
+          });
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+
+          const call = (databaseService.queryControlPlane as any).mock.calls.find((c: any[]) => /email_verification_token/.test(c[0]));
+          expect(call[0]).toMatch(/WHERE id = \? AND email = \?/);
+          expect(call[1][0]).not.toBe('old');
+          expect(mockSendVerificationEmail).toHaveBeenCalledWith('test@test.com', call[1][0]);
+        });
+
+        it('never sends to an old address: changed while it was being prepared', async () => {
+          paidCheckout({ userId: 'user-1' });
+          const before = makeUser({ emailVerified: false, emailVerificationToken: 'tok-1', emailVerificationExpires: new Date(Date.now() + 60_000) });
+          mockFindById
+            .mockResolvedValueOnce(before)
+            .mockResolvedValueOnce({ ...before, email: 'right@test.com', emailVerificationToken: 'tok-2' });
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+
+          expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+        });
+
+        it('sends nothing to someone already verified (an upgrade from inside the app)', async () => {
+          paidCheckout({ userId: 'user-1' });
+          mockFindById.mockResolvedValue(makeUser({ emailVerified: true }));
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+
+          expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+        });
+
+        it('per-seat checkout: sends it to the company owner', async () => {
+          paidCheckout({ orgId: 'org-1', billingModel: 'per_seat' });
+          (organizationRepository.findById as any).mockResolvedValue(makeOrg({ ownerUserId: 'owner-9' }));
+          mockFindById.mockImplementation(async (id: string) => (id === 'owner-9'
+            ? makeUser({ id: 'owner-9', email: 'owner@co.test', emailVerified: false, emailVerificationToken: 't9', emailVerificationExpires: new Date(Date.now() + 60_000) })
+            : makeUser()));
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+
+          expect(mockSendVerificationEmail).toHaveBeenCalledWith('owner@co.test', 't9');
+        });
+
+        it('a failed send never fails the webhook', async () => {
+          paidCheckout({ userId: 'user-1' });
+          mockFindById.mockResolvedValue(makeUser({ emailVerified: false, emailVerificationToken: 't', emailVerificationExpires: new Date(Date.now() + 60_000) }));
+          mockSendVerificationEmail.mockRejectedValue(new Error('provider down'));
+
+          await expect(service.handleWebhookEvent(payload, signature)).resolves.toBeUndefined();
+          await flush();
+          expect(mockRedisSet).not.toHaveBeenCalled(); // not marked sent, so a later try can still send it
+          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Verification email after payment'), expect.anything());
+        });
       });
 
       it('handles token top-up checkout completion', async () => {

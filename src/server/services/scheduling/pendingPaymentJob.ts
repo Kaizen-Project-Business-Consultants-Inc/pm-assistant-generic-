@@ -2,6 +2,7 @@ import { databaseService } from '../../database/connection';
 import { emailService } from '../EmailService';
 import { stripeService } from '../StripeService';
 import logger from '../../utils/logger';
+import { newVerificationToken } from '../../utils/verificationToken';
 
 /**
  * Looks after accounts stuck in 'incomplete' — people who chose a paid plan but whose
@@ -23,17 +24,27 @@ import logger from '../../utils/logger';
 const REMIND_AFTER_DAYS = 2;
 const PURGE_AFTER_DAYS = 14;
 
+/** A new 24-hour confirm link for a still-unconfirmed account (an older link stops working) */
+async function freshVerifyLink(userId: string): Promise<string> {
+  const link = newVerificationToken();
+  await databaseService.queryControlPlane(
+    'UPDATE users SET email_verification_token = ?, email_verification_expires = ? WHERE id = ? AND email_verified = 0',
+    [link.emailVerificationToken, link.emailVerificationExpires, userId],
+  );
+  return link.emailVerificationToken;
+}
+
 export async function runPendingPaymentSweep(): Promise<{ rescued: number; reminded: number; purged: number }> {
   const result = { rescued: 0, reminded: 0, purged: 0 };
 
   try {
     const pending = await databaseService.queryControlPlane(
-      `SELECT id, email, full_name, pending_tier, created_at
+      `SELECT id, email, full_name, pending_tier, created_at, email_verified
          FROM users
         WHERE subscription_status = 'incomplete'
           AND is_active = 1
         LIMIT 500`,
-    ) as Array<{ id: string; email: string; full_name: string | null; pending_tier: string | null; created_at: string }>;
+    ) as Array<{ id: string; email: string; full_name: string | null; pending_tier: string | null; created_at: string; email_verified?: number | boolean | null }>;
 
     if (pending.length === 0) return result;
 
@@ -48,6 +59,8 @@ export async function runPendingPaymentSweep(): Promise<{ rescued: number; remin
         if (paid) {
           result.rescued++;
           logger.warn('[pending-payment] Recovered a paid account that the webhook missed', { userId: row.id });
+          // the webhook would have sent their confirm-your-email link; it never came
+          stripeService.sendVerificationAfterPayment(row.id).catch(() => { /* logged inside */ });
           continue;
         }
       } catch (err) {
@@ -67,8 +80,12 @@ export async function runPendingPaymentSweep(): Promise<{ rescued: number; remin
         // eslint-disable-next-line no-await-in-loop -- send-once check for this user's reminder email, done only after their Stripe check
         if (!(await redisService.get(key))) {
           try {
+            // A paid sign-up gets its confirm link only after paying, so one who never paid has none
+            // that works: the reminder carries a fresh one (confirm, then finish checkout)
+            // eslint-disable-next-line no-await-in-loop -- one user's link, written just before their reminder
+            const verifyToken = row.email_verified ? null : await freshVerifyLink(row.id);
             // eslint-disable-next-line no-await-in-loop -- email provider sends go one by one (rate limits)
-            await emailService.sendPendingPaymentEmail(row.email, row.full_name || 'there', row.pending_tier);
+            await emailService.sendPendingPaymentEmail(row.email, row.full_name || 'there', row.pending_tier, verifyToken);
             // eslint-disable-next-line no-await-in-loop -- marks the reminder sent only after this user's email went out
             await redisService.set(key, '1', 30 * 24 * 60 * 60);
             result.reminded++;

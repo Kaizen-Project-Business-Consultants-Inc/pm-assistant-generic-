@@ -625,7 +625,8 @@ export class TemplateService {
       category: template.category,
       status: 'planning',
       priority: input.priority,
-      methodology: input.methodology,
+      // left out (the setup screen's first project): the template's own, changeable in Edit project
+      methodology: input.methodology ?? template.defaultMethodology,
       budgetAllocated: input.budget,
       location: input.location,
       startDate,

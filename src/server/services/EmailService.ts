@@ -704,7 +704,7 @@ export class EmailService {
    * For someone who chose a paid plan and never finished paying. Deliberately not a
    * trial email — they have no trial, and telling them one is expiring would be wrong.
    */
-  async sendPendingPaymentEmail(to: string, name: string, pendingTier: string | null): Promise<void> {
+  async sendPendingPaymentEmail(to: string, name: string, pendingTier: string | null, verifyToken?: string | null): Promise<void> {
     if (!this.isConfigured) {
       logger.info(`[EmailService] Pending payment email would be sent to ${maskPii(to)}`);
       return;
@@ -722,6 +722,8 @@ export class EmailService {
     const planLabel = pendingTier ? escapeHtml(tierLabels[pendingTier] || pendingTier) : null;
     const planPhrase = planLabel ? `your <strong style="color:#e8ecf1;">${planLabel}</strong> subscription` : 'your subscription';
     const pricingUrl = `${config.APP_URL}/pricing`;
+    // Not confirmed yet: the button confirms the email first, then they sign in and finish checkout
+    const verifyUrl = verifyToken ? `${config.APP_URL}/verify-email?token=${encodeURIComponent(verifyToken)}` : null;
 
     const html = this.buildTrialEmailHtml({
       preheader: 'Your Kovarti PM account is ready — it just needs payment to activate.',
@@ -731,11 +733,13 @@ export class EmailService {
       headline: 'Your account is waiting',
       bodyParagraphs: [
         `Hi ${escapedName}, you created a <strong style="color:#e8ecf1;">Kovarti PM</strong> account but ${planPhrase} was never completed, so it has not been activated yet.`,
-        'Nothing has been charged. Finish checkout and your account opens immediately, exactly where you left off.',
+        verifyUrl
+          ? 'Nothing has been charged. Confirm your email with the button below (the link works for 24 hours), sign in, then finish checkout, and your account opens exactly where you left off.'
+          : 'Nothing has been charged. Finish checkout and your account opens immediately, exactly where you left off.',
         'If you changed your mind, you can ignore this — we will close the empty account in a couple of weeks.',
       ],
-      ctaText: 'Complete Checkout →',
-      ctaUrl: pricingUrl,
+      ctaText: verifyUrl ? 'Confirm email and continue →' : 'Complete Checkout →',
+      ctaUrl: verifyUrl ?? pricingUrl,
       ctaGradient: 'linear-gradient(135deg,#14b8a6,#0d9488)',
       ctaShadow: 'rgba(20,184,166,0.3)',
       infoPoints: [

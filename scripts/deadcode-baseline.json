@@ -29,7 +29,6 @@
     "client|exports|src/components/schedule/tableColumns.ts|BASELINE_KEYS",
     "client|exports|src/components/schedule/tableColumns.ts|COST_KEYS",
     "client|exports|src/constants/branding.ts|USER_ROLE_LABELS",
-    "client|exports|src/constants/branding.ts|tierLabel",
     "client|exports|src/hooks/useCanManageClients.ts|canManageClients",
     "client|exports|src/hooks/useCanManagePeople.ts|canManagePeople",
     "client|exports|src/hooks/useWebSocket.ts|getPresenceEditors",

@@ -24,6 +24,8 @@ import { isTokenError, isDatabaseUnavailable, sendBusy, logBusy } from '../../ut
 import type { JwtPayload } from '../../types/fastify';
 import { startNewSession, setSessionCookies } from '../../utils/session';
 import { hasPassword, NO_PASSWORD_MESSAGE } from '../../utils/googleOnlyAccount';
+import { currentPasswordRefusal } from '../../utils/currentPassword';
+import { newVerificationToken } from '../../utils/verificationToken';
 
 const loginSchema = z.object({
   username: z.string().min(3),
@@ -215,10 +217,13 @@ export async function authRoutes(fastify: FastifyInstance) {
       }
       const { user, invitedTo, checkoutUrl, verificationToken } = created;
 
-      // The verification email goes in every case (a paid sign-up can verify later)
-      emailService.sendVerificationEmail(email, verificationToken!).catch((emailErr) => {
-        logger.error('Failed to send verification email', { userId: user.id, email, error: emailErr });
-      });
+      // A paid sign-up is on Stripe's page next: their link goes once the payment is through
+      // (StripeService.sendVerificationAfterPayment), so it doesn't arrive mid-checkout
+      if (!checkoutUrl) {
+        emailService.sendVerificationEmail(email, verificationToken!).catch((emailErr) => {
+          logger.error('Failed to send verification email', { userId: user.id, email, error: emailErr });
+        });
+      }
 
       // Paid plan: signed in straight away, then to the checkout
       if (checkoutUrl) {
@@ -443,13 +448,9 @@ export async function authRoutes(fastify: FastifyInstance) {
         // Per-email rate limit: 1 resend per 5 minutes per email address
         const emailRl = await rateLimiter.checkAsync(`auth:resend:email:${email}`, 1, 5 * 60_000);
         if (emailRl.allowed) {
-          const verificationToken = crypto.randomUUID();
-          const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-          await userService.update(user.id, {
-            emailVerificationToken: verificationToken,
-            emailVerificationExpires: verificationExpires,
-          });
+          const link = newVerificationToken();
+          const verificationToken = link.emailVerificationToken;
+          await userService.update(user.id, link);
 
           // A refused address must not become a 500. This endpoint answers the
           // same way whether or not the account exists, on purpose — reporting
@@ -471,6 +472,84 @@ export async function authRoutes(fastify: FastifyInstance) {
       if (error instanceof z.ZodError) throw error;
       logger.error('Resend verification error', { message: error?.message, stack: error?.stack });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to resend verification email' });
+    }
+  });
+
+  // POST /change-pending-email — "Wrong address? Change it" on the confirm-your-email page.
+  // Only for a signed-in account whose email is not confirmed yet (a paid sign-up is signed in
+  // before confirming); once confirmed the address is theirs and this is refused.
+  const changePendingEmailSchema = z.object({
+    email: z.string().trim().max(255).email('Enter a valid email address'),
+    // the same check as changing the email in Settings › Profile (utils/currentPassword.ts)
+    currentPassword: z.string().max(200).optional(),
+  });
+
+  fastify.post('/change-pending-email', {
+    preHandler: [authMiddleware, signedInOnly],
+    schema: { description: 'Change the email of an account that has not confirmed it yet', tags: ['auth'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const userId = request.user?.userId;
+      if (!userId) return reply.status(401).send({ error: 'Unauthorized' });
+
+      // Same limits as resending the link: each change sends an email
+      const ip = request.ip || 'unknown';
+      const ipRl = await rateLimiter.checkAsync(`auth:change-email:${ip}`, 3, 15 * 60_000);
+      const userRl = ipRl.allowed ? await rateLimiter.checkAsync(`auth:change-email:user:${userId}`, 3, 15 * 60_000) : ipRl;
+      if (!userRl.allowed) {
+        return reply.status(429).send({ error: 'Too many attempts', message: 'Too many changes. Please wait 15 minutes and try again.' });
+      }
+
+      const parsed = changePendingEmailSchema.safeParse(request.body);
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'Validation error', message: 'Enter a valid email address.' });
+      }
+      const { email, currentPassword } = parsed.data;
+
+      const user = await userService.findById(userId);
+      if (!user) return reply.status(401).send({ error: 'Unauthorized' });
+      if (user.emailVerified) {
+        return reply.status(403).send({ error: 'Forbidden', message: 'Your email is already confirmed. Change it in Settings › Profile instead.' });
+      }
+      const wrongPassword = await currentPasswordRefusal(user, currentPassword, 'email');
+      if (wrongPassword) return reply.status(wrongPassword.status).send(wrongPassword.body);
+      if (email.toLowerCase() === user.email.toLowerCase()) {
+        return reply.status(400).send({ error: 'Same address', message: 'That is the address we already have. Use Resend to get the link again.' });
+      }
+      // Sign-up already says whether an address is taken, so this tells a stranger nothing new
+      const emailTaken = () => reply.status(409).send({ error: 'Email in use', message: 'That address already has a Kovarti account. Use a different one.' });
+      if (await userService.findByEmail(email)) return emailTaken();
+
+      const link = newVerificationToken();
+      const verificationToken = link.emailVerificationToken;
+      try {
+        await userService.update(user.id, { email, ...link });
+      } catch (err) {
+        // someone took the address between the check and the save: the unique key says so
+        if ((err as { code?: string })?.code === 'ER_DUP_ENTRY') return emailTaken();
+        throw err;
+      }
+      // Not in the audit ledger: that holds project data changes, and the profile email change
+      // isn't there either; the application log records it like the other account changes.
+      logger.info('Unconfirmed email changed', { userId: user.id, ip });
+      // This link is the one to use: the after-payment send (StripeService) must not follow with
+      // a second email for it while it is still fresh
+      stripeService.noteVerificationSent(user.id).catch(() => { /* logged inside */ });
+
+      emailService.sendVerificationEmail(email, verificationToken).catch((err) => {
+        logger.error('Change pending email: verification email failed', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
+      });
+      // Receipts and invoices go to the new address too. Best-effort: the account is changed already.
+      const org = await organizationService.findByUserId(user.id).catch(() => null);
+      const ownedOrgCustomer = org?.ownerUserId === user.id ? org.stripeCustomerId : null;
+      stripeService.updateCustomerEmail([user.stripeCustomerId, ownedOrgCustomer], email).catch((err) => {
+        logger.warn('Change pending email: Stripe customer not updated', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
+      });
+
+      return { message: `Sent to ${email}`, email };
+    } catch (error) {
+      logger.error('Change pending email error', { message: error instanceof Error ? error.message : String(error) });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Your email could not be changed. Please try again.' });
     }
   });
 

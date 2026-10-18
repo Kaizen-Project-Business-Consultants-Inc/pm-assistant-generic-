@@ -301,7 +301,13 @@ export async function stripeRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const userId = request.user!.userId;
+      // Each call asks Stripe (and may send a confirm link): 10 a minute per person is plenty
+      const rl = await rateLimiter.checkAsync(`reconcile:${userId}`, 10, 60_000);
+      if (!rl.allowed) return reply.status(429).send({ error: 'Too many requests', message: 'Too many checks in a row. Please wait a minute and try again.' });
       const applied = await stripeService.reconcileFromStripe(userId);
+      // Paid but the webhook hasn't come: send the confirm-your-email link now (sent once; skips
+      // someone already confirmed)
+      if (applied) stripeService.sendVerificationAfterPayment(userId).catch(() => { /* logged inside */ });
       const status = await stripeService.getSubscriptionStatus(userId);
       return { reconciled: applied, ...status };
     } catch (error) {

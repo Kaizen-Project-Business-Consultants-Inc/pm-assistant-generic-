@@ -25,6 +25,9 @@ const h = vi.hoisted(() => {
       createCheckoutSession: vi.fn(async () => 'https://checkout'),
       createSeatCheckoutSession: vi.fn(async () => 'https://seat-checkout'),
       createBillingPortalSession: vi.fn(async () => 'https://portal'),
+      reconcileFromStripe: vi.fn(async () => false),
+      getSubscriptionStatus: vi.fn(async () => ({ tier: 'consultant_pro', status: 'active' })),
+      sendVerificationAfterPayment: vi.fn(async () => {}),
     },
     userUpdate: vi.fn(),
     orgUpdate: vi.fn(),
@@ -47,6 +50,22 @@ beforeEach(() => {
   h.user.stripeCustomerId = null;
   h.org = null;
   h.stripe.usableCustomer.mockImplementation(async (o: { save: (id: string) => Promise<unknown> }) => { await o.save('cus_new'); return 'cus_new'; });
+});
+
+describe('POST /reconcile — back from paying (UAT 2026-10-17)', () => {
+  it('paid but the webhook has not come: the confirm-your-email link is sent from here', async () => {
+    h.stripe.reconcileFromStripe.mockResolvedValueOnce(true);
+    const res = await app.inject({ method: 'POST', url: '/reconcile' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().reconciled).toBe(true);
+    expect(h.stripe.sendVerificationAfterPayment).toHaveBeenCalledWith('u1');
+  });
+
+  it('nothing paid: no link', async () => {
+    const res = await app.inject({ method: 'POST', url: '/reconcile' });
+    expect(res.statusCode).toBe(200);
+    expect(h.stripe.sendVerificationAfterPayment).not.toHaveBeenCalled();
+  });
 });
 
 describe('billing routes and the Stripe customer', () => {
