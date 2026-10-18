@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 669,
+  "count": 670,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -52,6 +52,7 @@
     "cancelResourceRequest",
     "changeClientCalendar",
     "changePassword",
+    "changePendingEmail",
     "checkPlannerMove",
     "checkRaidDuplicates",
     "checkReplaceLoad",
