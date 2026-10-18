@@ -538,6 +538,7 @@ export class AIActionExecutor {
       toolName: 'cascade_reschedule',
       summary: `Rescheduled "${target.name}" and ${affected.length} downstream task${affected.length === 1 ? '' : 's'} by ${Math.abs(deltaDays)} working day${Math.abs(deltaDays) === 1 ? '' : 's'} ${direction}${reason ? `. Reason: ${reason}` : ''}`,
       data: {
+        scheduleId: target.scheduleId,
         target: { id: taskId, name: target.name, ...targetUpdate },
         affectedTasks: affected,
         deltaDays,
@@ -576,7 +577,8 @@ export class AIActionExecutor {
       success: true,
       toolName: 'set_dependency',
       summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})`,
-      data: { taskId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType },
+      // scheduleId: the chat refreshes that plan's views (critical path, network…; U38)
+      data: { taskId, scheduleId: task.scheduleId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType },
     };
   }
 
@@ -598,7 +600,7 @@ export class AIActionExecutor {
       success: true,
       toolName: 'remove_dependency',
       summary: `Removed dependency: "${task.name}" no longer depends on "${predecessor?.name || predecessorId}"`,
-      data: { taskId, taskName: task.name, predecessorId, predecessorName: predecessor?.name },
+      data: { taskId, scheduleId: task.scheduleId, taskName: task.name, predecessorId, predecessorName: predecessor?.name },
     };
   }
 

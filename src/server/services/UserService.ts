@@ -89,14 +89,25 @@ function assertNotAdminRole(role: string | undefined): void {
 }
 
 export class UserService {
+  /** Names of many users in one query; unknown ids are left out */
+  private async nameRows(ids: string[]): Promise<Array<{ id: string; full_name: string | null; username: string }>> {
+    const unique = [...new Set(ids.filter((x): x is string => typeof x === 'string' && x.length > 0))];
+    if (unique.length === 0) return [];
+    const { databaseService } = await import('../database/connection');
+    return databaseService.queryControlPlane<{ id: string; full_name: string | null; username: string }>(
+      `SELECT id, full_name, username FROM users WHERE id IN (${unique.map(() => '?').join(',')})`, unique);
+  }
+
   /** Display names for many users in one query (id → full name, else username). Unknown ids are left out. */
   async displayNames(ids: string[]): Promise<Map<string, string>> {
-    const unique = [...new Set(ids.filter((x): x is string => typeof x === 'string' && x.length > 0))];
-    if (unique.length === 0) return new Map();
-    const { databaseService } = await import('../database/connection');
-    const rows = await databaseService.queryControlPlane<{ id: string; full_name: string | null; username: string }>(
-      `SELECT id, full_name, username FROM users WHERE id IN (${unique.map(() => '?').join(',')})`, unique);
+    const rows = await this.nameRows(ids);
     return new Map(rows.map(r => [r.id, (r.full_name && r.full_name.trim()) || r.username]));
+  }
+
+  /** Full names only (id → full name), in one query; users without one are left out */
+  async fullNames(ids: string[]): Promise<Map<string, string>> {
+    const rows = await this.nameRows(ids);
+    return new Map(rows.flatMap(r => (r.full_name?.trim() ? [[r.id, r.full_name.trim()] as [string, string]] : [])));
   }
 
   async findById(id: string): Promise<User | null> {

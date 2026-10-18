@@ -1,5 +1,6 @@
 import { projectMemberRepository, ProjectMember } from '../database/ProjectMemberRepository';
 import { databaseService } from '../database/connection';
+import { userService } from './UserService';
 
 export type { ProjectMember } from '../database/ProjectMemberRepository';
 export type ProjectRole = 'owner' | 'manager' | 'editor' | 'viewer';
@@ -19,6 +20,19 @@ export class LastOwnerError extends Error {
 export class ProjectMemberService {
   async findByProjectId(projectId: string): Promise<ProjectMember[]> {
     return projectMemberRepository.findByProjectId(projectId);
+  }
+
+  /**
+   * The members as the screens list them: userName is the person's CURRENT full name. The stored
+   * user_name is a copy taken when they were added — often their email, or a name since changed
+   * (U36). Falls back to that copy (people not signed up yet, or with no full name), then the email.
+   * One control-plane query for all of them.
+   */
+  async findByProjectIdWithNames(projectId: string): Promise<ProjectMember[]> {
+    const members = await this.findByProjectId(projectId);
+    const ids = members.map(m => m.userId).filter(id => id && !id.startsWith('pending_'));
+    const names = await userService.fullNames(ids).catch(() => new Map<string, string>());
+    return members.map(m => ({ ...m, userName: names.get(m.userId) || m.userName || m.email }));
   }
 
   async findByUserId(userId: string): Promise<ProjectMember[]> {

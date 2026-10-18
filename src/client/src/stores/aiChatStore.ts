@@ -3,6 +3,7 @@ import { apiService } from '../services/api';
 import { queryClient } from '../queryClient';
 import { announce } from '../utils/announce';
 import { refreshProjectLists } from '../utils/projectListCache';
+import { refreshAfterScheduleChange, projectOfSchedule } from '../utils/scheduleChanged';
 
 export interface ChatMessage {
   id: string;
@@ -78,6 +79,21 @@ const WELCOME_MESSAGE: ChatMessage = {
 
 /** Bumped by forgetUser: a reply or load still on its way for the previous person is then dropped */
 let userGeneration = 0;
+
+/** Mjuzi tools that change a plan's links or move its tasks; their result names the plan (data.scheduleId) */
+const PLAN_TOOLS = new Set(['set_dependency', 'remove_dependency', 'cascade_reschedule', 'clear_all_dependencies']);
+
+/**
+ * Mjuzi changed links or moved tasks: every view of that plan — critical path, network and the
+ * rest — fetches again (U38), once per plan. The project is the one that owns the plan (from the
+ * cached plan lists), not the page the chat was opened on.
+ */
+function refreshChangedPlans(actions: ActionResult[]): void {
+  const plans = new Set(actions.filter(a => a.success && PLAN_TOOLS.has(a.toolName) && typeof a.data?.scheduleId === 'string').map(a => a.data.scheduleId as string));
+  for (const scheduleId of plans) {
+    refreshAfterScheduleChange(queryClient, { scheduleId, projectId: projectOfSchedule(queryClient, scheduleId) });
+  }
+}
 
 export const useAIChatStore = create<AIChatState>()((set, get) => ({
   messages: [WELCOME_MESSAGE],
@@ -176,11 +192,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
 
       // If Mjuzi took actions that modify data, invalidate relevant caches
       if (result.actions && result.actions.length > 0) {
-        const mutatingTools = new Set([
-          'create_task', 'update_task', 'delete_task',
-          'reschedule_task', 'cascade_reschedule',
-          'set_dependency', 'remove_dependency', 'clear_all_dependencies',
-        ]);
+        const mutatingTools = new Set(['create_task', 'update_task', 'delete_task', 'reschedule_task', ...PLAN_TOOLS]);
         const projectTools = new Set(['create_project', 'update_project']);
         const hasMutation = result.actions.some((a: ActionResult) => mutatingTools.has(a.toolName));
         const hasProjectMutation = result.actions.some((a: ActionResult) => projectTools.has(a.toolName));
@@ -191,6 +203,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
           queryClient.invalidateQueries({ queryKey: ['gantt'] });
           // task changes move the dashboard numbers (progress, overdue, health) too
           refreshProjectLists(queryClient);
+          refreshChangedPlans(result.actions);
 
           // Find the last created task ID to highlight it
           const createAction = [...result.actions].reverse().find(

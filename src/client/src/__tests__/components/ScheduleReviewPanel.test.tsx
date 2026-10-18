@@ -42,7 +42,7 @@ function renderPanel(props: Partial<React.ComponentProps<typeof ScheduleReviewPa
   const onClose = vi.fn();
   const utils = render(
     <QueryClientProvider client={qc}>
-      <ScheduleReviewPanel scheduleId="s1" canEdit onClose={onClose} onShowRows={onShowRows} {...props} />
+      <ScheduleReviewPanel scheduleId="s1" canEdit onClose={onClose} onShowRows={onShowRows} {...props} projectId="p1" />
     </QueryClientProvider>,
   );
   return { ...utils, onShowRows, onClose };

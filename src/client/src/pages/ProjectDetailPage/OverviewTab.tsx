@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { formatCurrency } from '../../utils/formatCurrency';
-import { Avatar } from '../../components/ui/Avatar';
+import { TeamMemberRow, memberName } from '../../components/project/TeamMemberRow';
 import { ProjectBriefCard } from '../../components/project/ProjectBriefCard';
 import { CustomFieldsSection } from '../../components/customfields/CustomFieldsSection';
 import { CustomFieldManager } from '../../components/customfields/CustomFieldManager';
@@ -265,7 +265,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
   const methodology = project.methodology || 'waterfall';
 
   const manager = members.find((m: any) => m.role === 'owner' || m.role === 'manager');
-  const managerName = manager ? (manager.user?.name || manager.name || manager.email) : 'Not assigned';
+  const managerName = manager ? memberName(manager) : 'Not assigned';
 
   const maxVisibleMembers = 6;
   const visibleMembers = members.slice(0, maxVisibleMembers);
@@ -303,7 +303,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
     const maxCount = Math.max(1, ...Object.values(counts));
     return members.slice(0, 6).map((m: any) => {
       const userId = m.userId || m.user_id || m.user?.id || m.id;
-      const name = m.user?.name || m.name || m.email || 'Unknown';
+      const name = memberName(m);
       const count = counts[userId] || 0;
       return { name: name.split(' ')[0], count, pct: (count / maxCount) * 100 };
     });
@@ -1091,20 +1091,7 @@ export function OverviewTab({ project, onNavigateToTab, canEdit, presenceEditors
             <EmptyState icon={<Users className="w-5 h-5 text-gray-300 dark:text-gray-400" />} message="No team members assigned" cta="Invite team" onAction={() => onNavigateToTab?.('team')} />
           ) : (
             <div className="space-y-3">
-              {visibleMembers.map((m: any, idx: number) => {
-                const name = m.user?.name || m.name || m.email || 'Unknown';
-                return (
-                  <div key={m.id || idx} className="flex items-center gap-3">
-                    <Avatar name={name} size="lg" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{name}</p>
-                    </div>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 capitalize">
-                      {m.role || 'member'}
-                    </span>
-                  </div>
-                );
-              })}
+              {visibleMembers.map((m: any, idx: number) => <TeamMemberRow key={m.id || idx} member={m} />)}
               {overflowCount > 0 && (
                 <p className="text-xs text-gray-500 dark:text-gray-400">+{overflowCount} more</p>
               )}

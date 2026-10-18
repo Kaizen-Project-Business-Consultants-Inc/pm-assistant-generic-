@@ -13,9 +13,9 @@ vi.mock('../../database/RiskRepository', () => ({
 }));
 
 const mockFindByProjectId = vi.fn();
-vi.mock('../../database/ProjectMemberRepository', () => ({
-  projectMemberRepository: {
-    findByProjectId: (...args: any[]) => mockFindByProjectId(...args),
+vi.mock('../../services/ProjectMemberService', () => ({
+  projectMemberService: {
+    findByProjectIdWithNames: (...args: any[]) => mockFindByProjectId(...args),
   },
 }));
 

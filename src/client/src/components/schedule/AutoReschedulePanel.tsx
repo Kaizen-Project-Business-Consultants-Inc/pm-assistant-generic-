@@ -1,9 +1,10 @@
 import { useState, useId } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag } from 'lucide-react';
 import { severityColor } from '../../utils/severityColors';
 import { announce } from '../../utils/announce';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
@@ -12,6 +13,7 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 
 interface AutoReschedulePanelProps {
   scheduleId: string;
+  projectId: string;
   onClose: () => void;
 }
 
@@ -85,7 +87,8 @@ function dateTextClass(direction: 'later' | 'earlier' | 'same'): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanelProps) {
+export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoReschedulePanelProps) {
+  const queryClient = useQueryClient();
   const uid = useId();
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [showRejectFeedback, setShowRejectFeedback] = useState(false);
@@ -132,6 +135,8 @@ export function AutoReschedulePanel({ scheduleId, onClose }: AutoReschedulePanel
     mutationFn: (proposalId: string) => apiService.acceptRescheduleProposal(proposalId),
     onSuccess: () => {
       setAccepted(true);
+      // the new dates are in the plan: every view of it fetches again (U38)
+      refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
       announce('Reschedule proposal accepted');
     },
   });

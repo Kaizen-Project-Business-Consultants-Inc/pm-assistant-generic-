@@ -161,7 +161,7 @@ export class RaidReviewService {
   /** Project members (as login accounts) and the organisation's resources without one */
   async people(projectId: string): Promise<PersonOption[]> {
     const [members, resources] = await Promise.all([
-      projectMemberService.findByProjectId(projectId).catch(() => []),
+      projectMemberService.findByProjectIdWithNames(projectId).catch(() => []),
       resourceService.findAllResources().catch(() => []),
     ]);
     const memberIds = new Set(members.map(m => m.userId));

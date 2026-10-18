@@ -101,7 +101,7 @@ export class MeetingIntelligenceService {
 
     // 2. Gather resources for assignee matching, and the project's members (Meeting Coach owners)
     const resources = await resourceService.findAllResources();
-    const members = (await projectMemberService.findByProjectId(projectId))
+    const members = (await projectMemberService.findByProjectIdWithNames(projectId))
       .filter(m => !m.userId.startsWith('pending_'))
       .map(m => ({ userId: m.userId, name: m.userName }));
 

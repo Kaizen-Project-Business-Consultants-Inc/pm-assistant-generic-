@@ -30,7 +30,7 @@ function renderPanel() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <ScheduleFixProposalPanel scheduleId="s1" onClose={() => {}} />
+      <ScheduleFixProposalPanel scheduleId="s1" projectId="p1" onClose={() => {}} />
     </QueryClientProvider>,
   );
 }

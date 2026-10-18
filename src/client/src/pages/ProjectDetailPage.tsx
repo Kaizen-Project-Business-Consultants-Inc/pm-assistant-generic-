@@ -35,6 +35,7 @@ import { getPrimaryTabs, getOverflowTabs, getDefaultViewMode, type Methodology }
 import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 import { PROJECT_TYPE_LABELS } from '../constants/projectTypes';
 import { refreshProjectLists } from '../utils/projectListCache';
+import { seedIfOlder } from '../utils/scheduleChanged';
 
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
@@ -134,6 +135,7 @@ export function ProjectDetailPage() {
   // Single batch request replaces 5+ sequential queries
   const {
     data: summaryData,
+    dataUpdatedAt: summaryUpdatedAt,
     isLoading,
     error,
   } = useQuery({
@@ -144,20 +146,23 @@ export function ProjectDetailPage() {
   });
 
   // Seed individual caches so child components (OverviewTab, ScheduleTab, etc.)
-  // get instant cache hits instead of making their own requests
+  // get instant cache hits instead of making their own requests. A key is filled only when it is
+  // empty or older than the summary: reopening the page with a cached summary must not put back
+  // an older plan over a newer edit (U38 review)
   useEffect(() => {
     if (!summaryData || !id) return;
-    queryClient.setQueryData(['project', id], { project: summaryData.project });
-    queryClient.setQueryData(['schedules', id], { schedules: summaryData.schedules });
-    queryClient.setQueryData(['project-risks-stats', id], { data: summaryData.riskStats });
-    queryClient.setQueryData(['project-members', id], { members: summaryData.members });
-    queryClient.setQueryData(['sprints', id], { data: summaryData.sprints });
+    const seed = (key: unknown[], value: unknown) => seedIfOlder(queryClient, key, value, summaryUpdatedAt);
+    seed(['project', id], { project: summaryData.project });
+    seed(['schedules', id], { schedules: summaryData.schedules });
+    seed(['project-risks-stats', id], { data: summaryData.riskStats });
+    seed(['project-members', id], { members: summaryData.members });
+    seed(['sprints', id], { data: summaryData.sprints });
     const firstScheduleId = summaryData.schedules?.[0]?.id;
     if (firstScheduleId) {
-      queryClient.setQueryData(['tasks', firstScheduleId], { data: summaryData.tasks, total: summaryData.tasks?.length || 0, page: 1, pageSize: 1000, totalPages: 1 });
-      queryClient.setQueryData(['tasks', firstScheduleId, 'overview'], { tasks: summaryData.tasks });
+      seed(['tasks', firstScheduleId], { data: summaryData.tasks, total: summaryData.tasks?.length || 0, page: 1, pageSize: 1000, totalPages: 1 });
+      seed(['tasks', firstScheduleId, 'overview'], { tasks: summaryData.tasks });
     }
-  }, [summaryData, id, queryClient]);
+  }, [summaryData, summaryUpdatedAt, id, queryClient]);
 
   // Read what the page shows from the individual caches the summary seeds, not from the
   // summary itself. Every edit (status, Edit Project, RAID items, tasks) invalidates those

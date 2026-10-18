@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { apiService, type WorkingCalendarChange, type CalendarChangePreview as Preview } from '../../../services/api';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { announce } from '../../../utils/announce';
+import { refreshAfterPlansChange } from '../../../utils/scheduleChanged';
 import { ViewOnlyNote } from '../../ui/ViewOnlyNote';
 import { CalendarChangePreview, fmtDay } from './CalendarChangePreview';
 
@@ -86,6 +87,8 @@ export function WorkingCalendarPanel({ projectId, projectName, canEdit, onClose,
       announce(msg);
       setPending(null); setNewDate(''); setNewName('');
       await queryClient.invalidateQueries({ queryKey: ['working-calendar', projectId] });
+      // every plan of the project may have moved: the open views fetch again, the rest are dropped (U38)
+      refreshAfterPlansChange(queryClient, { projectId });
       onApplied();
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not save the change. Nothing was moved.'));

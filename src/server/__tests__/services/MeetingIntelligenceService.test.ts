@@ -42,7 +42,7 @@ vi.mock('../../services/followSuccessors', () => ({ moveSuccessorsAfter: (...a: 
 
 vi.mock('../../services/ProjectMemberService', () => ({
   projectMemberService: {
-    findByProjectId: vi.fn().mockResolvedValue([
+    findByProjectIdWithNames: vi.fn().mockResolvedValue([
       { userId: 'u-dp', userName: 'Dev Patel', email: 'dev@x.example', role: 'manager' },
       { userId: 'pending_abc', userName: 'Invited Ivy', email: 'ivy@x.example', role: 'viewer' },
     ]),

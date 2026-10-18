@@ -19,7 +19,7 @@ function renderPanel(canEdit = true) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <ScheduleHistoryPanel scheduleId="s1" canEdit={canEdit} currentUserId="u-me" onClose={() => {}} />
+      <ScheduleHistoryPanel scheduleId="s1" projectId="p1" canEdit={canEdit} currentUserId="u-me" onClose={() => {}} />
     </QueryClientProvider>,
   );
 }

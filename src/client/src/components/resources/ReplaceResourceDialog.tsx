@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { AccessibleModal } from '../ui/AccessibleModal';
 import { apiService } from '../../services/api';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 
 interface Person { id: string; name: string; role?: string; isGeneric?: boolean; isActive?: boolean }
 
@@ -58,10 +59,7 @@ export function ReplaceResourceDialog({ projectId, schedules, from, people, onCl
   const replace = useMutation({
     mutationFn: () => apiService.replaceResource({ scheduleId, fromResourceId: from.id, toResourceId: toId, taskIds: selectedIds }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['workload', projectId] });
+      refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
       queryClient.invalidateQueries({ queryKey: ['people-on-project', projectId] });
       queryClient.invalidateQueries({ queryKey: ['resource-tasks', from.id, scheduleId] });
       onClose();

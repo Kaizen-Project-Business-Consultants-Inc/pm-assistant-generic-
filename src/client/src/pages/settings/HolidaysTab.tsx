@@ -4,6 +4,7 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { apiService, type CompanyHolidayChange, type CalendarChangePreview as Preview } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { announce } from '../../utils/announce';
+import { refreshAfterPlansChange } from '../../utils/scheduleChanged';
 import { CalendarChangePreview, fmtDay } from '../../components/schedule/calendar/CalendarChangePreview';
 
 /**
@@ -61,7 +62,8 @@ export function HolidaysTab({ calendarId, calendarName }: { calendarId?: string;
       await queryClient.invalidateQueries({ queryKey: ['company-holidays'] });
       queryClient.invalidateQueries({ queryKey: ['working-calendar'] });
       queryClient.invalidateQueries({ queryKey: ['nonWorkingDates'] });
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      // tasks moved in every project: the open views fetch again, the rest are dropped (U38)
+      refreshAfterPlansChange(queryClient, { projectId: undefined });
     } catch (err) {
       setError(getApiErrorMessage(err, 'Could not save the change. Nothing was moved.'));
     } finally {

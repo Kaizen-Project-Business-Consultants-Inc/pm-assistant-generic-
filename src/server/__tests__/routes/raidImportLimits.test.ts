@@ -11,7 +11,7 @@ vi.mock('../../services/WebhookService', () => ({ webhookService: { dispatch: vi
 vi.mock('../../services/automation/AutomationEventBus', () => ({ automationEventBus: { emit: vi.fn(async () => {}) } }));
 vi.mock('../../services/integrations/SlackEventDispatcher', () => ({ slackEventDispatcher: { dispatchToSlack: vi.fn() } }));
 vi.mock('../../services/integrations/TeamsEventDispatcher', () => ({ teamsEventDispatcher: { dispatchToTeams: vi.fn() } }));
-vi.mock('../../services/ProjectMemberService', () => ({ projectMemberService: { findByProjectId: vi.fn(async () => []) } }));
+vi.mock('../../services/ProjectMemberService', () => ({ projectMemberService: { findByProjectId: vi.fn(async () => []), findByProjectIdWithNames: vi.fn(async () => []) } }));
 vi.mock('../../services/domainEvents', () => ({ raidChanged: vi.fn() }));
 const create = vi.hoisted(() => vi.fn(async (d: any) => ({ id: 'k1', ...d })));
 const notifyImported = vi.hoisted(() => vi.fn(async () => {}));

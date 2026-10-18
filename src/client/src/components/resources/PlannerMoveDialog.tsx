@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle } from 'lucide-react';
 import { AccessibleModal } from '../ui/AccessibleModal';
 import { apiService } from '../../services/api';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import type { PlannerBlock, PlannerPerson } from '../../types/teamPlanner';
 import { roleLabel } from '../../constants/branding';
 
@@ -22,8 +23,9 @@ export function PlannerMoveDialog({ block, people, initialTo, initialWeeks, onCl
   initialTo: string | null;
   initialWeeks: number;
   onClose: () => void;
-  onDone: (r: { changeId: string | null; summary: string; scheduleId: string }) => void;
+  onDone: (r: { changeId: string | null; summary: string; scheduleId: string; projectId: string | null }) => void;
 }) {
+  const queryClient = useQueryClient();
   const [toId, setToId] = useState<string>(initialTo ?? block.resourceId ?? '');
   const [weeks, setWeeks] = useState(initialWeeks);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,11 @@ export function PlannerMoveDialog({ block, people, initialTo, initialWeeks, onCl
 
   const move = useMutation({
     mutationFn: () => apiService.plannerMove(input),
-    onSuccess: r => onDone({ ...r, scheduleId: block.scheduleId }),
+    onSuccess: r => {
+      // the task moved (and its successors may have): every view of that plan fetches again (U38)
+      refreshAfterScheduleChange(queryClient, { scheduleId: block.scheduleId, projectId: block.projectId ?? undefined });
+      onDone({ ...r, scheduleId: block.scheduleId, projectId: block.projectId });
+    },
     onError: (e: any) => setError(e?.response?.data?.message ?? 'The move was not saved. Try again.'),
   });
 

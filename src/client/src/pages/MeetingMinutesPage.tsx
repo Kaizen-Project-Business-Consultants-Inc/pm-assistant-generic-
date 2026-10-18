@@ -31,6 +31,7 @@ import { mapAnalysisToRaidCandidates, RaidCandidate, toSendToRaidPayload } from 
 import { useProjectRole } from '../hooks/useProjectRole';
 import { ViewOnlyNote } from '../components/ui/ViewOnlyNote';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
+import { refreshAfterScheduleChange } from '../utils/scheduleChanged';
 import { useOnlySchedule } from '../hooks/useOnlySchedule';
 
 // ---------------------------------------------------------------------------
@@ -337,6 +338,8 @@ export const MeetingMinutesPage: React.FC = () => {
       ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meetingHistory', selectedProjectId] });
+      // the meeting's task changes are in the plan: every view of it fetches again (U38)
+      if (selectedScheduleId) refreshAfterScheduleChange(queryClient, { scheduleId: selectedScheduleId, projectId: selectedProjectId || undefined });
     },
   });
 

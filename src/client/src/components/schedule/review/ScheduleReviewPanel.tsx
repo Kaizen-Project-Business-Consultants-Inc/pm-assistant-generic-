@@ -48,6 +48,7 @@ export interface ReviewRunSummary {
 
 interface ScheduleReviewPanelProps {
   scheduleId: string;
+  projectId: string;
   canEdit: boolean;
   onClose: () => void;
   /** Filter the grid to these tasks; null clears the filter. */
@@ -89,7 +90,7 @@ function formatWhen(iso: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf }: ScheduleReviewPanelProps) {
+export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf }: ScheduleReviewPanelProps) {
   const queryClient = useQueryClient();
   const panelRef = useRef<HTMLDivElement>(null);
   const [openGroups, setOpenGroups] = useState<Set<ReviewSeverity>>(new Set(OPEN_BY_DEFAULT));
@@ -390,14 +391,10 @@ export function ScheduleReviewPanel({ scheduleId, canEdit, onClose, onShowRows, 
       {showFixes && (
         <ScheduleFixProposalPanel
           scheduleId={scheduleId}
+          projectId={projectId}
           onClose={() => { setShowFixes(false); onHighlightTasks?.(null); }}
           onHighlightTasks={onHighlightTasks}
           rowNumberOf={rowNumberOf}
-          onChanged={() => {
-            queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'latest'] });
-            queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId, 'history'] });
-            queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
-          }}
         />
       )}
     </>

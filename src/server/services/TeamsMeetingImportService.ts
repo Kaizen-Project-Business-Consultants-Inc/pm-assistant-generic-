@@ -194,7 +194,7 @@ class TeamsMeetingImportService {
   async speakers(userId: string, projectId: string, eventId: string) {
     const token = await this.token(userId);
     const { meeting, segments } = await this.loadTranscript(token, eventId);
-    const members = (await projectMemberService.findByProjectId(projectId)).filter(m => !m.userId.startsWith('pending_'));
+    const members = (await projectMemberService.findByProjectIdWithNames(projectId)).filter(m => !m.userId.startsWith('pending_'));
     const found = distinctSpeakers(segments);
     const saved = await meetingSpeakerLinkRepository.findByNames(found.map(s => s.name));
     return {
@@ -208,7 +208,7 @@ class TeamsMeetingImportService {
   async analyze(userId: string, projectId: string, scheduleId: string, eventId: string, mapping: Record<string, string | null>): Promise<MeetingAnalysis> {
     const token = await this.token(userId);
     const { meeting, segments } = await this.loadTranscript(token, eventId);
-    const members = (await projectMemberService.findByProjectId(projectId)).filter(m => !m.userId.startsWith('pending_'));
+    const members = (await projectMemberService.findByProjectIdWithNames(projectId)).filter(m => !m.userId.startsWith('pending_'));
     const memberNames = new Map(members.map(m => [m.userId, m.userName]));
     // Only names that are really in this transcript, and only this project's members
     const speakerNames = new Set(distinctSpeakers(segments).map(s => s.name));

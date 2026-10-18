@@ -68,7 +68,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { projectId } = request.params as { projectId: string };
-      const members = await projectMemberService.findByProjectId(projectId);
+      const members = await projectMemberService.findByProjectIdWithNames(projectId);
       return { members };
     } catch (error) {
       logger.error('Get members error', { error });

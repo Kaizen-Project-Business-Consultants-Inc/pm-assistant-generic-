@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { ResourceHistogram } from './ResourceHistogram';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,7 +107,7 @@ function normalizeLevelingResult(data: any): NormalizedLevelingResult {
 // ---------------------------------------------------------------------------
 
 export function ResourceLevelingPanel({
-  projectId: _projectId,
+  projectId,
   scheduleId,
 }: ResourceLevelingPanelProps) {
   const queryClient = useQueryClient();
@@ -144,6 +145,8 @@ export function ResourceLevelingPanel({
       apiService.applyResourceLeveling(scheduleId, adjustments),
     onSuccess: () => {
       setApplied(true);
+      // tasks moved: the histogram, Gantt, critical path and the rest fetch again (U38)
+      refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
     },
   });
 

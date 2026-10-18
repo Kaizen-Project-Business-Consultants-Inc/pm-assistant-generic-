@@ -38,7 +38,7 @@ vi.mock('../../../database/RaidReviewRepository', () => ({ raidReviewRepository:
 
 vi.mock('../../../services/RiskService', () => ({ riskService: { update: (...a: any[]) => (riskUpdate as any)(...a) } }));
 vi.mock('../../../services/ProjectMemberService', () => ({
-  projectMemberService: { findByProjectId: vi.fn(async () => [{ userId: 'u-marsha', userName: 'Marsha Turner', email: 'm@x' }]) },
+  projectMemberService: { findByProjectIdWithNames: vi.fn(async () => [{ userId: 'u-marsha', userName: 'Marsha Turner', email: 'm@x' }]) },
 }));
 vi.mock('../../../services/ResourceService', () => ({
   resourceService: { findAllResources: vi.fn(async () => [

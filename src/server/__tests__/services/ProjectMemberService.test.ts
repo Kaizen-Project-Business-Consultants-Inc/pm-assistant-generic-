@@ -52,6 +52,35 @@ describe('ProjectMemberService', () => {
     });
   });
 
+  // U36 (2026-10-18): Overview › Team Members showed the stored copy of the name, often the email
+  describe('findByProjectIdWithNames', () => {
+    const rows = [
+      { ...sampleRow, id: 'm1', user_id: 'u1', user_name: 'alice@example.com' }, // copy was the email
+      { ...sampleRow, id: 'm2', user_id: 'u2', user_name: 'Bob Old', email: 'bob@example.com' }, // no full name now
+      { ...sampleRow, id: 'm3', user_id: 'pending_x', user_name: '', email: 'ivy@example.com' }, // not signed up
+    ];
+
+    it("returns each person's current full name in one control-plane query, falling back to the stored copy, then the email", async () => {
+      mockQuery.mockImplementation(async (sql: string) => (sql.includes('FROM users')
+        ? [{ id: 'u1', full_name: '  Alice Walker ', username: 'alice' }, { id: 'u2', full_name: null, username: 'bob' }]
+        : rows));
+      const members = await service.findByProjectIdWithNames('p1');
+      expect(members.map(m => m.userName)).toEqual(['Alice Walker', 'Bob Old', 'ivy@example.com']);
+      const userQueries = mockQuery.mock.calls.filter(([sql]) => String(sql).includes('FROM users'));
+      expect(userQueries).toHaveLength(1);
+      expect(userQueries[0][1]).toEqual(['u1', 'u2']); // pending invitees are not looked up
+    });
+
+    it('keeps the stored names when the user lookup fails', async () => {
+      mockQuery.mockImplementation(async (sql: string) => {
+        if (sql.includes('FROM users')) throw new Error('control plane down');
+        return rows;
+      });
+      const members = await service.findByProjectIdWithNames('p1');
+      expect(members.map(m => m.userName)).toEqual(['alice@example.com', 'Bob Old', 'ivy@example.com']);
+    });
+  });
+
   describe('findMembership', () => {
     it('returns member when found', async () => {
       mockQuery.mockResolvedValue([sampleRow]);

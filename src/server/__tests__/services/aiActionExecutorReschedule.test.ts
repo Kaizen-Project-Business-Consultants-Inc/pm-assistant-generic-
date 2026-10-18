@@ -58,6 +58,7 @@ describe('Mjuzi reschedule tools — working days', () => {
       expect(r.success).toBe(true);
       expect(r.data.affectedTasks).toEqual([{ id: 't2', name: 'Test', newStart: '2026-10-19', newEnd: '2026-10-20' }]);
       expect(r.data.deltaDays).toBe(3);
+      expect(r.data.scheduleId).toBe('s1'); // the chat refreshes that plan's views (U38)
       expect(r.summary).toContain('3 working days forward');
     });
 

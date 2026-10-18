@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import type { CalendarChangePreview } from '../../services/api';
 import { HolidaysTab } from '../../pages/settings/HolidaysTab';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
+import { refreshAfterPlansChange } from '../../utils/scheduleChanged';
 
 /**
  * A pool's holidays (U8). A client uses a named holiday calendar (e.g. "Ontario 2027") — its
@@ -36,7 +37,8 @@ export function PoolHolidays({ client }: { client: { id: string; name: string; h
       await apiService.changeClientCalendar(client.id, pending.calendarId, 'apply');
       setPending(null);
       await queryClient.invalidateQueries({ queryKey: ['project-groups'] });
-      void queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      // the client's projects' tasks moved: the open views fetch again, the rest are dropped (U38)
+      refreshAfterPlansChange(queryClient, { projectId: undefined });
       void queryClient.invalidateQueries({ queryKey: ['nonWorkingDates'] });
     } catch (err) { setError(getApiErrorMessage(err, 'The calendar could not be changed.')); }
     finally { setBusy(false); }

@@ -186,7 +186,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       const [schedules, riskStats, members, sprints] = await Promise.all([
         scheduleService.findByProjectId(id),
         riskService.getStats(id),
-        projectMemberService.findByProjectId(id),
+        projectMemberService.findByProjectIdWithNames(id),
         sprintService.getByProject(id),
       ]);
 

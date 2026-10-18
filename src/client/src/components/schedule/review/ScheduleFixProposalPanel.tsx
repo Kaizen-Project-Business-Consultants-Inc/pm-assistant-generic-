@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Shield, Sparkles, Scissors, ListPlus, PencilLine } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { severityColor } from '../../../utils/severityColors';
+import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server ProposedFix / proposal shape)
@@ -72,9 +73,8 @@ interface ApplyResult {
 
 interface Props {
   scheduleId: string;
+  projectId: string;
   onClose: () => void;
-  /** Called after apply or undo so the caller can refresh the review + grid. */
-  onChanged?: () => void;
   /** Highlight (and scroll to) the rows a suggestion changes; null clears */
   onHighlightTasks?: (taskIds: string[] | null) => void;
   rowNumberOf?: (taskId: string) => number | undefined;
@@ -281,7 +281,10 @@ function AppliedSummary({ result }: { result: ApplyResult }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHighlightTasks, rowNumberOf }: Props) {
+export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf }: Props) {
+  const queryClient = useQueryClient();
+  // Apply and Undo change links, dates and tasks: every view of the plan fetches again (U38)
+  const planChanged = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
   const [pointedAt, setPointedAt] = useState<string | null>(null);
   const highlightRef = useRef(onHighlightTasks);
   highlightRef.current = onHighlightTasks;
@@ -330,7 +333,7 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHig
     onSuccess: (data: ApplyResult) => {
       setError(null);
       setResult(data);
-      onChanged?.();
+      planChanged();
       const left = stillToDo(data.afterCounts);
       announce(`Applied ${data.appliedCount} fixes. Score ${data.beforeScore ?? '?'} to ${data.afterScore}.${left ? ` ${left}` : ''}`);
     },
@@ -339,13 +342,13 @@ export function ScheduleFixProposalPanel({ scheduleId, onClose, onChanged, onHig
 
   const undoMutation = useMutation({
     mutationFn: () => apiService.undoScheduleFixProposal(scheduleId, proposal!.id),
-    onSuccess: () => { setUndone(true); onChanged?.(); announce('Fixes undone'); },
+    onSuccess: () => { setUndone(true); planChanged(); announce('Fixes undone'); },
     onError: (err: unknown) => setError(getApiErrorMessage(err, 'Undo failed')),
   });
 
   const rejectMutation = useMutation({
     mutationFn: () => apiService.rejectScheduleFixProposal(scheduleId, proposal!.id),
-    onSuccess: () => { onChanged?.(); onClose(); },
+    onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId] }); onClose(); },
     onError: (err: unknown) => setError(getApiErrorMessage(err, 'Could not dismiss')),
   });
 

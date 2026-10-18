@@ -48,6 +48,7 @@ import { useAuthStore } from '../../../stores/authStore';
 import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
 import { ROUTES } from '../../../routes';
 import { announce } from '../../../utils/announce';
+import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 import { isCalendarOverdue, toCalendarDate, formatCalendarDate } from '../../../utils/dateUtils';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
@@ -263,7 +264,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate,
     rowNumbers, handleBulkLink, handleGroupTasks, handleBulkDelete, handleDuplicateTasks,
     handleKanbanStatusChange,
-  } = useScheduleMutations({ schedule, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
+  } = useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
 
   // Unique values for filter dropdowns
   const uniqueStatuses = useMemo(() => [...new Set(tasks.map(t => t.status))].sort(), [tasks]);
@@ -863,11 +864,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         scheduleId={schedule.id}
-        onImported={() => {
-          queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-          queryClient.invalidateQueries({ queryKey: ['schedule-review', schedule.id] });
-          queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
-        }}
+        projectId={projectId}
         onOpenReview={() => { setShowImportModal(false); setShowReviewPanel(true); }}
       />
       </Suspense>
@@ -877,6 +874,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       {showHistoryPanel && (
         <ScheduleHistoryPanel
           scheduleId={schedule.id}
+          projectId={projectId}
           canEdit={canEdit}
           currentUserId={user?.id}
           onClose={() => setShowHistoryPanel(false)}
@@ -888,16 +886,15 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           canEdit={canEdit}
           onClose={() => setShowCalendarPanel(false)}
           onApplied={() => {
-            // Every plan in the project may have moved; only the open one refetches now
-            queryClient.invalidateQueries({ queryKey: ['tasks'] });
+            // the panel refreshes every plan of the project; the days off shown here change too
             queryClient.invalidateQueries({ queryKey: ['nonWorkingDates', projectId] });
-            queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
           }}
         />
       )}
       {showReviewPanel && (
         <ScheduleReviewPanel
           scheduleId={schedule.id}
+          projectId={projectId}
           canEdit={canEdit}
           onClose={() => { setShowReviewPanel(false); handleHighlightTasks(null); }}
           onShowRows={handleShowReviewRows}
@@ -911,10 +908,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       {showReschedulePanel && (
         <AutoReschedulePanel
           scheduleId={schedule.id}
-          onClose={() => {
-            setShowReschedulePanel(false);
-            queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-          }}
+          projectId={projectId}
+          onClose={() => setShowReschedulePanel(false)}
         />
       )}
 
@@ -926,7 +921,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onApply={async () => {
             try {
               await apiService.applyResourceLeveling(schedule.id, levelingResult);
-              queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+              refreshAfterScheduleChange(queryClient, { scheduleId: schedule.id, projectId });
             } catch { /* ignore */ }
             setLevelingResult(null);
           }}
@@ -1028,9 +1023,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             await apiService.promoteScenario(schedule.id, selectedScenarioId);
             setShowScenarioCompare(false);
             setSelectedScenarioId('');
-            queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-            queryClient.invalidateQueries({ queryKey: ['scenarios', schedule.id] });
-            queryClient.invalidateQueries({ queryKey: ['schedules', projectId] });
+            // the scenario's dates are now the plan's: every view of it fetches again (U38)
+            refreshAfterScheduleChange(queryClient, { scheduleId: schedule.id, projectId });
           }}
           onCancel={() => setShowPromoteConfirm(false)}
         />

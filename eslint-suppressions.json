@@ -555,7 +555,7 @@
   },
   "src/client/src/components/resources/ReplaceResourceDialog.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 6
+      "count": 2
     }
   },
   "src/client/src/components/resources/ResourceImportModal.tsx": {
@@ -583,7 +583,7 @@
   },
   "src/client/src/components/resources/TeamPlanner.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 4
+      "count": 2
     }
   },
   "src/client/src/components/resources/UtilizationTrendChart.tsx": {
@@ -675,7 +675,7 @@
   },
   "src/client/src/components/schedule/ScheduleHistoryPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 5
+      "count": 1
     },
     "jsx-a11y/no-noninteractive-element-interactions": {
       "count": 1
@@ -683,7 +683,7 @@
   },
   "src/client/src/components/schedule/TableView.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 5
+      "count": 3
     },
     "jsx-a11y/no-autofocus": {
       "count": 2
@@ -846,7 +846,7 @@
   },
   "src/client/src/components/schedule/review/ScheduleReviewPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 4
+      "count": 1
     }
   },
   "src/client/src/components/schedule/table/TableContextMenu.tsx": {
@@ -1302,7 +1302,7 @@
   },
   "src/client/src/pages/ProjectDetailPage/schedule-tab/ScheduleWorkspace.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 20
+      "count": 10
     },
     "jsx-a11y/no-autofocus": {
       "count": 1
@@ -1319,7 +1319,7 @@
   },
   "src/client/src/pages/ProjectDetailPage/schedule-tab/useScheduleMutations.ts": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 21
+      "count": 11
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 6
@@ -1459,7 +1459,7 @@
   },
   "src/client/src/pages/settings/HolidaysTab.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 4
+      "count": 3
     }
   },
   "src/client/src/pages/settings/NotificationsTab.tsx": {

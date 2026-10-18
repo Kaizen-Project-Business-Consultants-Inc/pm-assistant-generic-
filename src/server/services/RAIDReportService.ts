@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { riskRepository, type ProjectRisk } from '../database/RiskRepository';
-import { projectMemberRepository } from '../database/ProjectMemberRepository';
+import { projectMemberService } from './ProjectMemberService';
 import { emailService } from './EmailService';
 import { databaseService } from '../database/connection';
 import {
@@ -49,7 +49,8 @@ export class RAIDReportService {
 
     // Fetch all items for this project (no filter — we filter in memory for multi-value support)
     const allItems = await riskRepository.findByProject(projectId);
-    const members = await projectMemberRepository.findByProjectId(projectId);
+    // owners shown by their current full name (U36)
+    const members = await projectMemberService.findByProjectIdWithNames(projectId);
 
     // Build member lookup
     const memberMap: Record<string, string> = {};

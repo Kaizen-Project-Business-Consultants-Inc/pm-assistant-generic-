@@ -23,6 +23,7 @@ import { announce } from '../../../utils/announce';
 import { firstByKey } from '../../../utils/lookup';
 import { SHOWN_AGAIN, TRY_AGAIN, saveFailedMessage } from '../../../utils/saveFailedMessage';
 import { beginOwnTaskSave, endOwnTaskSave } from '../../../utils/ownTaskSaves';
+import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 
 /** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
 const movedSuffix = (n: number) => (n > 0 ? ` · ${n} task${n > 1 ? 's' : ''} moved later` : '');
@@ -61,6 +62,7 @@ export function savedChangedOtherTasks(
 
 export interface ScheduleMutationsArgs {
   schedule: { id: string };
+  projectId: string;
   tasks: GanttTask[];
   queryClient: QueryClient;
   setShowAddForm: Dispatch<SetStateAction<boolean>>;
@@ -76,7 +78,13 @@ export function bulkUpdateDescription(field: string, value: string, count: numbe
   return `${label[field] ?? field} changed on ${tasks}`;
 }
 
-export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask }: ScheduleMutationsArgs) {
+export function useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask }: ScheduleMutationsArgs) {
+  // A change to the plan's shape (links, deletes, grouping, a History undo): every view of the
+  // plan — critical path, network, S-curve, History, Review — fetches again, not only the task list (U38)
+  const planChanged = useCallback(
+    () => refreshAfterScheduleChange(queryClient, { scheduleId: schedule.id, projectId }),
+    [queryClient, schedule.id, projectId],
+  );
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const taskName = (taskId: string) => tasksRef.current.find(t => t.id === taskId)?.name;
@@ -328,11 +336,7 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       showSaveError(saveFailedMessage(`${name ? `"${name}"` : 'The task'} was not deleted`, error, TRY_AGAIN));
     },
     onSuccess: (res, taskId) => {
-      const refresh = () => {
-        queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-        queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
-      };
-      refresh();
+      planChanged();
       setEditingTask(null);
       setActiveTaskId(null);
       announce('Task deleted');
@@ -340,8 +344,8 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       const name = tasks.find(t => t.id === taskId)?.name;
       pushAction({
         description: name ? `Delete ${name}` : 'Delete 1 task',
-        undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
-        redo: async () => { changeId = (await apiService.deleteTask(schedule.id, taskId)).changeId; refresh(); },
+        undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); planChanged(); },
+        redo: async () => { changeId = (await apiService.deleteTask(schedule.id, taskId)).changeId; planChanged(); },
       });
     },
   });
@@ -400,9 +404,9 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       showSaveError(saveFailedMessage('Undo was not done', error, 'Open History to see what changed since.'));
       return false;
     } finally {
-      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+      planChanged();
     }
-  }, [schedule.id, queryClient, showSaveError]);
+  }, [schedule.id, planChanged, showSaveError]);
 
   // Update task with undo support. Resolves true when saved (the Table/Gantt cell flashes "saved"
   // only then), false when not.
@@ -570,10 +574,9 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       throw new Error(e?.response?.data?.message || 'Linking failed. Nothing was changed.');
     }
     if (result.added.length === 0) throw new Error('Those tasks are already linked — nothing was added');
-    queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
+    planChanged();
     const added = result.added;
     let changeId = result.changeId;
-    const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
     const description = built.description + movedSuffix((result.moved ?? []).length);
     const linkAction = {
       description,
@@ -590,11 +593,11 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
         }
         if (!(await undoThroughHistory(changeId))) dropFailedAction(linkAction);
       },
-      redo: async () => { changeId = (await apiService.bulkLinkTasks(schedule.id, added)).changeId; refresh(); },
+      redo: async () => { changeId = (await apiService.bulkLinkTasks(schedule.id, added)).changeId; planChanged(); },
     };
     pushAction(linkAction);
     return description;
-  }, [rowNumbers, schedule.id, queryClient, pushAction, showSaveError, undoThroughHistory, dropFailedAction]);
+  }, [rowNumbers, schedule.id, planChanged, pushAction, showSaveError, undoThroughHistory, dropFailedAction]);
 
   // Group the selected tasks under a new summary task; undo goes through Schedule History
   const handleGroupTasks = useCallback(async (taskIds: string[], name: string): Promise<string> => {
@@ -604,25 +607,20 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
     } catch (e: any) {
       throw new Error(e?.response?.data?.message || 'Grouping failed. Nothing was changed.');
     }
-    const refresh = () => queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-    refresh();
+    planChanged();
     let changeId = result.changeId;
     const description = `Grouped ${result.grouped} tasks under '${name}'`;
     pushAction({
       description,
-      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
-      redo: async () => { changeId = (await apiService.groupTasks(schedule.id, taskIds, name)).changeId; refresh(); },
+      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); planChanged(); },
+      redo: async () => { changeId = (await apiService.groupTasks(schedule.id, taskIds, name)).changeId; planChanged(); },
     });
     return description;
-  }, [schedule.id, queryClient, pushAction]);
+  }, [schedule.id, planChanged, pushAction]);
 
   // Bulk delete; undo goes through Schedule History, which puts the tasks back under their old
   // ids with their links, booked hours, people and comments (it used to recreate them as new tasks)
   const handleBulkDelete = useCallback(async (taskIds: string[]) => {
-    const refresh = () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks', schedule.id] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-changes', schedule.id] });
-    };
     let changeId: Awaited<ReturnType<typeof apiService.bulkDeleteTasks>>['changeId'];
     try {
       changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId;
@@ -632,14 +630,14 @@ export function useScheduleMutations({ schedule, tasks, queryClient, setShowAddF
       showSaveError(saveFailedMessage(`${n} task${n === 1 ? ' was' : 's were'} not deleted`, error, TRY_AGAIN));
       throw error;
     }
-    refresh();
+    planChanged();
 
     pushAction({
       description: `Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
-      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); refresh(); },
-      redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId; refresh(); },
+      undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); planChanged(); },
+      redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId; planChanged(); },
     });
-  }, [schedule.id, queryClient, pushAction, showSaveError]);
+  }, [schedule.id, planChanged, pushAction, showSaveError]);
 
   // Duplicate/paste tasks — creates copies with "(copy)" suffix
   const handleDuplicateTasks = useCallback(async (srcTasks: GanttTask[]) => {

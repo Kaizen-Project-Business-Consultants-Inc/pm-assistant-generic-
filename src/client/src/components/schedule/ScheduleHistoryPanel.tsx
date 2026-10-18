@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { announce } from '../../utils/announce';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 
 export interface ScheduleChange {
   id: string;
@@ -43,6 +44,7 @@ function when(iso: string): string {
 
 interface Props {
   scheduleId: string;
+  projectId: string;
   canEdit: boolean;
   currentUserId?: string;
   onClose: () => void;
@@ -52,7 +54,7 @@ interface Props {
  * Schedule History: group changes of the last 30 days with an Undo for each — including
  * changes Claude made through the connector, which never had an undo before.
  */
-export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClose }: Props) {
+export function ScheduleHistoryPanel({ scheduleId, projectId, canEdit, currentUserId, onClose }: Props) {
   const queryClient = useQueryClient();
   const { dialogRef, handleKeyDown } = useModal(true, onClose);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -72,10 +74,7 @@ export function ScheduleHistoryPanel({ scheduleId, canEdit, currentUserId, onClo
       const msg = `Undone: ${c.summary}`;
       setDone(msg);
       announce(msg);
-      queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-review', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['criticalPath', scheduleId] });
+      refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
     } catch (err: any) {
       // e.g. something else changed in the plan meanwhile — the server says why
       setError(getApiErrorMessage(err, 'The undo did not complete. Please try again.'));

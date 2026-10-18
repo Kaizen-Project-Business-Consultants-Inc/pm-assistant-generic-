@@ -14,6 +14,10 @@ import { renderHook, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, QueryObserver } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { GanttTask } from '../../components/schedule/GanttChart';
+import { SCHEDULE_DERIVED_KEYS, PROJECT_DERIVED_KEYS } from '../../utils/scheduleChanged';
+
+/** What refreshAfterScheduleChange invalidates for plan s1 of project p1 (U38) */
+const PLAN_VIEWS = [...SCHEDULE_DERIVED_KEYS.map(k => [k, 's1']), ...PROJECT_DERIVED_KEYS.map(k => [k, 'p1'])];
 
 const api = vi.hoisted(() => ({
   createTask: vi.fn(),
@@ -53,7 +57,7 @@ function setup(tasks: GanttTask[] = TASKS) {
   vi.spyOn(qc, 'invalidateQueries').mockImplementation((f?: any) => { invalidated.push(f?.queryKey); return orig(f); });
   const s = setters();
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
-  const hook = renderHook(() => useScheduleMutations({ schedule: { id: 's1' }, tasks, queryClient: qc, ...s }), { wrapper });
+  const hook = renderHook(() => useScheduleMutations({ schedule: { id: 's1' }, projectId: 'p1', tasks, queryClient: qc, ...s }), { wrapper });
   return { ...hook, s };
 }
 const cached = () => (qc.getQueryData(['tasks', 's1']) as { data: GanttTask[] }).data;
@@ -141,11 +145,11 @@ describe('create / update / delete / baseline mutations', () => {
     expect(err).toHaveBeenCalledWith('Task update failed:', 'Nope.');
   });
 
-  it('deleteMutation deletes, invalidates tasks + schedule-changes, and Undo goes through Schedule History', async () => {
+  it('deleteMutation deletes, refreshes every view of the plan, and Undo goes through Schedule History', async () => {
     const { result, s } = setup();
     await act(async () => { await result.current.deleteMutation.mutateAsync('b'); });
     expect(api.deleteTask).toHaveBeenCalledWith('s1', 'b');
-    expect(invalidated).toEqual([['tasks', 's1'], ['schedule-changes', 's1']]);
+    expect(invalidated).toEqual(PLAN_VIEWS);
     expect(s.setEditingTask).toHaveBeenCalledWith(null);
     expect(s.setActiveTaskId).toHaveBeenCalledWith(null);
     expect(result.current.undoToast).toBe('Delete Beta');
@@ -317,6 +321,8 @@ describe('edits with undo', () => {
     await act(async () => { msg = await result.current.handleBulkLink('chain', ['a', 'b']); });
     expect(api.bulkLinkTasks).toHaveBeenCalledWith('s1', [{ taskId: 'b', dependencyId: 'a', dependencyType: 'FS', lagDays: 0 }]);
     expect(msg).toBe('Linked rows 1 → 2 in order · 1 task moved later');
+    // new links change the critical path, not only the task list (U38)
+    expect(invalidated).toEqual(PLAN_VIEWS);
     await act(async () => { result.current.undo(); });
     await flush();
     expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'L1');
@@ -346,7 +352,7 @@ describe('edits with undo', () => {
     await act(async () => { msg = await result.current.handleGroupTasks(['a', 'c'], 'Phase'); });
     expect(api.groupTasks).toHaveBeenCalledWith('s1', ['a', 'c'], 'Phase');
     expect(msg).toBe("Grouped 2 tasks under 'Phase'");
-    expect(invalidated).toEqual([['tasks', 's1']]);
+    expect(invalidated).toEqual(PLAN_VIEWS);
     await act(async () => { result.current.undo(); });
     await flush();
     expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'g1');
@@ -354,12 +360,12 @@ describe('edits with undo', () => {
     await expect(result.current.handleGroupTasks(['a'], 'P')).rejects.toThrow('Grouping failed. Nothing was changed.');
   });
 
-  it('bulk delete: invalidates tasks + schedule-changes; Undo goes through Schedule History', async () => {
+  it('bulk delete: refreshes every view of the plan; Undo goes through Schedule History', async () => {
     api.bulkDeleteTasks.mockResolvedValue({ changeId: 'd1' });
     const { result } = setup();
     await act(async () => { await result.current.handleBulkDelete(['a', 'c']); });
     expect(api.bulkDeleteTasks).toHaveBeenCalledWith('s1', ['a', 'c']);
-    expect(invalidated).toEqual([['tasks', 's1'], ['schedule-changes', 's1']]);
+    expect(invalidated).toEqual(PLAN_VIEWS);
     expect(result.current.undoDescription).toBe('Deleted 2 tasks');
     await act(async () => { result.current.undo(); });
     await flush();

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useId } from 'react';
 import { X, Upload, FileText, Sparkles, Trash2, Pencil } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import * as XLSX from 'xlsx';
 import { apiService } from '../../services/api';
 import { cleanCsvForImport, sheetToCsv } from '../../utils/csvCleaner';
@@ -9,6 +10,7 @@ import { useModal } from '../../hooks/useModal';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { ScheduleScoreChip, type ReviewBand } from './review/ScheduleScoreChip';
 import { severityColor } from '../../utils/severityColors';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -18,7 +20,7 @@ interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   scheduleId: string;
-  onImported?: () => void;
+  projectId: string;
   /** Opens the Schedule Review panel (the modal closes itself first). */
   onOpenReview?: () => void;
 }
@@ -117,7 +119,10 @@ function parseCSV(text: string): ParsedCSV {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenReview }: ImportModalProps) {
+export function ImportModal({ isOpen, onClose, scheduleId, projectId, onOpenReview }: ImportModalProps) {
+  const queryClient = useQueryClient();
+  // Imported tasks (and their links) change the whole plan: every view of it fetches again (U38)
+  const onImported = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
   const a11yId = useId();
   const [csvText, setCsvText] = useState('');
   const [parsed, setParsed] = useState<ParsedCSV | null>(null);
@@ -215,7 +220,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
       }));
       const res = await apiService.importStructured(scheduleId, tasks, docFileName || undefined);
       setResult(toImportResult(res));
-      if ((res.succeeded ?? 0) > 0) onImported?.();
+      if ((res.succeeded ?? 0) > 0) onImported();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
     } finally {
@@ -250,7 +255,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
           setImporting(true);
           const res = await apiService.importStructured(scheduleId, mspdiTasks, file.name);
           setResult(toImportResult(res));
-          if ((res.succeeded ?? 0) > 0) onImported?.();
+          if ((res.succeeded ?? 0) > 0) onImported();
         } catch (err: unknown) {
           setError(getApiErrorMessage(err, 'Failed to parse XML file'));
         } finally {
@@ -323,7 +328,7 @@ export function ImportModal({ isOpen, onClose, scheduleId, onImported, onOpenRev
       const res = await apiService.importTasks(scheduleId, csvText, headerMap, fileName || undefined);
       const data = res?.data ?? res;
       setResult(toImportResult(data));
-      if ((data.succeeded ?? 0) > 0) onImported?.();
+      if ((data.succeeded ?? 0) > 0) onImported();
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Import failed'));
     } finally {

@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import { formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
 import { packLanes, shiftYmd, mondayOfYmd, grabbedWeek } from '../../utils/plannerLayout';
 import { PlannerMoveDialog } from './PlannerMoveDialog';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import type { PlannerBlock, PlannerPerson } from '../../types/teamPlanner';
 
 const WEEKS = 8;
@@ -38,7 +39,7 @@ export function TeamPlanner() {
   const [projectFilter, setProjectFilter] = useState('');
   const [pending, setPending] = useState<Pending | null>(null);
   const [hover, setHover] = useState<{ rowId: string; idx: number } | null>(null);
-  const [done, setDone] = useState<{ changeId: string | null; summary: string; scheduleId: string } | null>(null);
+  const [done, setDone] = useState<{ changeId: string | null; summary: string; scheduleId: string; projectId: string | null } | null>(null);
   const [undoMsg, setUndoMsg] = useState<string | null>(null);
   const drag = useRef<Drag | null>(null);
 
@@ -60,11 +61,10 @@ export function TeamPlanner() {
   const unassigned = (board?.unassigned ?? []).filter(b => !projectFilter || b.projectId === projectFilter);
   const weeks = board?.weeks ?? [];
 
+  // the moved plan's own views are refreshed by refreshAfterScheduleChange (move and undo)
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ['team-planner'] });
     queryClient.invalidateQueries({ queryKey: ['workload'] });
-    queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    queryClient.invalidateQueries({ queryKey: ['schedule-changes'] });
   };
 
   const weekIdxAt = (e: React.DragEvent<HTMLDivElement>) => {
@@ -81,6 +81,7 @@ export function TeamPlanner() {
       setUndoMsg('Undone.');
       setDone(null);
       refresh();
+      refreshAfterScheduleChange(queryClient, { scheduleId: done.scheduleId, projectId: done.projectId ?? undefined });
     } catch (e: any) {
       setUndoMsg(e?.response?.data?.message ?? "It couldn't be undone. Something in that plan has changed since.");
     }

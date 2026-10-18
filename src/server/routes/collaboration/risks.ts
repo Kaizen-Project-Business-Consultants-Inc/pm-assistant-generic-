@@ -644,8 +644,8 @@ export async function riskRoutes(fastify: FastifyInstance) {
         }
       }
 
-      // Load project members for owner matching
-      const members = await projectMemberService.findByProjectId(projectId);
+      // Load project members for owner matching (by their current full name or email)
+      const members = await projectMemberService.findByProjectIdWithNames(projectId);
       const memberLookup = new Map<string, string>();
       for (const m of members) {
         const name = (m as any).userName || (m as any).name || '';

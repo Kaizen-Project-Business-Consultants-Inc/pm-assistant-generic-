@@ -38,6 +38,7 @@ import { cellEditLabel } from './cellEditLabel';
 import { listenForEscapeCancel } from './shared/escapeCancel';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 import { firstByKey } from '../../utils/lookup';
+import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
 
 export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
@@ -628,12 +629,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     setBulkLoading(true);
     try {
       if (onBulkDelete) {
-        await onBulkDelete(taskIds);
+        await onBulkDelete(taskIds); // the Schedule screen's delete refreshes every view of the plan
       } else {
         await apiService.bulkDeleteTasks(scheduleId, taskIds);
+        refreshAfterScheduleChange(queryClient, { scheduleId, projectId: undefined });
       }
-      queryClient.invalidateQueries({ queryKey: ['tasks', scheduleId] });
-      queryClient.invalidateQueries({ queryKey: ['schedule-changes', scheduleId] });
       showBulkDone(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`, !!onBulkDelete);
       clearBulkState();
       focusGridOn(landOn);
