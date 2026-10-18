@@ -42,7 +42,7 @@ export class EmailService {
     return this.resend;
   }
 
-  private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; attachments?: any[]; replyTo?: string }): Promise<void> {
+  private async sendEmail(params: { from: string; to: string | string[]; subject: string; html: string; text?: string; attachments?: any[]; replyTo?: string }): Promise<void> {
     // Placeholder addresses (name@example.com) belong to people whose real email isn't known
     // yet, and staging's test logins have no mailbox — never send to them, whichever feature
     // is sending (utils/placeholderEmail.ts)
@@ -899,6 +899,7 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
     resourceName: string;
     role: string;
     inviterName: string;
+    companyName?: string | null;
     isRegistered: boolean;
     inviteToken?: string;
   }): Promise<void> {
@@ -907,33 +908,49 @@ body,table,td,a{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%}table,td
       return;
     }
 
-    const { resourceName, role, inviterName, isRegistered, inviteToken } = params;
+    const { resourceName, role, inviterName, companyName, isRegistered, inviteToken } = params;
 
     const ctaUrl = isRegistered
       ? `${config.APP_URL}/login`
       : `${config.APP_URL}/register${inviteToken ? `?invite=${inviteToken}` : ''}`;
     const ctaLabel = isRegistered ? 'Log In' : 'Create Account';
+    // Says who the invitation is for and who sent it (U40, wording approved 2026-10-18)
+    const nextStep = isRegistered
+      ? 'Click below to log in and see your work.'
+      : 'Click below to set up your login and see your work.';
+    // A subject is one line: a name with a line break in it must not split the header
+    const oneLine = (v: string) => v.replace(/[\r\n]+/g, ' ').trim();
+    const subject = companyName
+      ? `${oneLine(inviterName)} invited you to join ${oneLine(companyName)} on Kovarti`
+      : `${oneLine(inviterName)} invited you to join Kovarti`;
 
     const bodyHtml = `
+      <p style="color: #4b5563; line-height: 1.6;">Hi ${escapeHtml(resourceName)},</p>
       <p style="color: #4b5563; line-height: 1.6;">
-        ${escapeHtml(inviterName)} has added you as a resource on <strong>Kovarti PM</strong> with the role <strong>${escapeHtml(role)}</strong>.
+        ${escapeHtml(inviterName)} has added you as a resource on <strong>Kovarti PM</strong>. ${nextStep}
       </p>
-      ${isRegistered
-        ? '<p style="color: #4b5563; line-height: 1.6;">Log in to view your assignments and workload.</p>'
-        : '<p style="color: #4b5563; line-height: 1.6;">Create your free account to view your assignments and start collaborating.</p>'
-      }
+      <p style="color: #4b5563; line-height: 1.6;">Your role: <strong>${escapeHtml(role)}</strong></p>
       <div style="text-align: center; margin: 32px 0;">
         <a href="${ctaUrl}" style="background-color: #4f46e5; color: white; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
           ${ctaLabel}
         </a>
       </div>
     `;
+    const text = [
+      `Hi ${resourceName},`,
+      '',
+      `${inviterName} has added you as a resource on Kovarti PM. ${nextStep}`,
+      `Your role: ${role}`,
+      '',
+      `${ctaLabel}: ${ctaUrl}`,
+    ].join('\n');
 
     await this.sendEmail({
       from: config.RESEND_FROM_EMAIL,
       to,
-      subject: `You've been added as ${escapeHtml(role)} on Kovarti PM`,
+      subject,
       html: this.wrapHtml('You\'re on the team!', bodyHtml),
+      text,
     });
   }
 

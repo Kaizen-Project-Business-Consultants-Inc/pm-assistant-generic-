@@ -57,6 +57,8 @@ export const RegisterPage: React.FC = () => {
   const [inviteValid, setInviteValid] = useState<boolean | null>(null);
   const [inviteOrgName, setInviteOrgName] = useState<string | null>(null);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+  // Who a resource invitation is for (U40) — absent for a plain company invite
+  const [inviteResourceName, setInviteResourceName] = useState<string | null>(null);
 
   useEffect(() => {
     if (inviteToken) {
@@ -64,6 +66,12 @@ export const RegisterPage: React.FC = () => {
         setInviteValid(result.valid);
         if (result.valid) {
           setInviteOrgName(result.orgName || null);
+          if (result.resourceName) {
+            const name: string = result.resourceName;
+            setInviteResourceName(name);
+            // Prefill, but never over a name the person (or their browser's autofill) already put in
+            setFullName((current) => (current.trim() ? current : name));
+          }
           if (result.email) {
             setInviteEmail(result.email);
             setEmail(result.email);
@@ -126,8 +134,14 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  // Authenticated user arrived via invite link — show logout prompt
+  // Authenticated user arrived via invite link — say who the invite is for and offer to sign out.
+  // Signing out keeps them on this page, which then shows the invitation's sign-up form.
   if (user && inviteToken) {
+    const invitee = inviteResourceName || inviteEmail;
+    const handleSignOut = async () => {
+      try { await apiService.logout(); } catch { /* signed out locally anyway */ }
+      logout();
+    };
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
@@ -135,18 +149,24 @@ export const RegisterPage: React.FC = () => {
             <Users className="w-7 h-7 text-amber-600 dark:text-amber-400" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Already logged in</h2>
+          {invitee && (
+            <p className="text-gray-600 dark:text-gray-300 mb-2">
+              This invitation is for <strong>{inviteResourceName && inviteEmail ? `${inviteResourceName} (${inviteEmail})` : invitee}</strong>.
+            </p>
+          )}
           <p className="text-gray-600 dark:text-gray-300 mb-2">
-            You're signed in as <strong>{user.fullName || user.email}</strong>.
+            This browser is signed in as <strong>{user.fullName || user.email}</strong>.
           </p>
           <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">
-            To accept this invitation and create a new account, sign out first.
+            {invitee ? `Sign out to accept it as ${invitee}.` : 'Sign out to accept this invitation.'}
           </p>
           <div className="flex flex-col gap-3">
             <button
-              onClick={() => { logout(); }}
+              type="button"
+              onClick={() => { void handleSignOut(); }}
               className="w-full py-2.5 px-4 bg-primary-600 text-white rounded-lg font-medium hover:bg-primary-700 transition-colors"
             >
-              Sign Out &amp; Create Account
+              Sign out
             </button>
             <Link to="/dashboard" className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
               Back to Dashboard
@@ -189,7 +209,11 @@ export const RegisterPage: React.FC = () => {
             ) : isInviteFlow ? (
               <>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Join {inviteOrgName}</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">You've been invited to join this organization</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {inviteResourceName
+                    ? `This invitation is for ${inviteResourceName}${inviteEmail ? ` (${inviteEmail})` : ''}`
+                    : "You've been invited to join this organization"}
+                </p>
               </>
             ) : inviteToken ? (
               // An invite still being checked, or no longer valid: no trial promise here

@@ -156,13 +156,18 @@ async function inviteResource(
     logger.info('Resource invite skipped for a user of another company', { inviterOrgId });
     return { sent: false, message: "This person has an account with another company, so they can't be invited to yours yet." };
   }
+  // The email says who invited them to which company (U40)
+  const [company] = inviterOrgId
+    ? await databaseService.queryControlPlane<{ name: string }>('SELECT name FROM organizations WHERE id = ? LIMIT 1', [inviterOrgId])
+    : [];
+  const invited = { resourceName: resource.name, role: resource.role || 'Team Member', inviterName, companyName: company?.name ?? null };
   if (existingUser) {
-    await emailService.sendResourceInviteEmail(email, { resourceName: resource.name, role: resource.role || 'Team Member', inviterName, isRegistered: true });
+    await emailService.sendResourceInviteEmail(email, { ...invited, isRegistered: true });
     return { sent: true, message: `${resource.name} already has a login — we emailed them a link to your projects.` };
   }
   // No account yet — a company invite (seat/viewer limits and duplicates are checked there)
   const invite = await inviteService.createInvite(inviterUserId, email, null, 'viewer', { skipEmail: true });
-  await emailService.sendResourceInviteEmail(email, { resourceName: resource.name, role: resource.role || 'Team Member', inviterName, isRegistered: false, inviteToken: invite.token });
+  await emailService.sendResourceInviteEmail(email, { ...invited, isRegistered: false, inviteToken: invite.token });
   return { sent: true, message: `Invite sent to ${email}.` };
 }
 

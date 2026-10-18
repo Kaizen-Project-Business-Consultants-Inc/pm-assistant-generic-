@@ -203,6 +203,18 @@ export class ResourceService {
   }
 
   /**
+   * The person (not a generic role) with this email — the oldest such record — for an invitation
+   * sent to them: the invite page and a resent invite say who it's for (U40). The email column's
+   * collation ignores case, so a plain comparison matches any capitalisation and uses its index.
+   */
+  async personByEmail(email: string): Promise<{ name: string; role: string } | null> {
+    const rows = await databaseService.query<{ name: string; role: string }>(
+      `SELECT name, role FROM resources WHERE email = ? AND COALESCE(is_generic, 0) = 0
+          ORDER BY created_at LIMIT 1`, [email]);
+    return rows[0] ? { name: rows[0].name, role: rows[0].role } : null;
+  }
+
+  /**
    * Link a login to the person's existing resource (same email, a real person, no login yet).
    * True when one was linked — then no new resource is needed.
    */

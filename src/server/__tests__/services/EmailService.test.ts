@@ -1079,6 +1079,34 @@ describe('EmailService', () => {
       expect(html).toContain('https://pm.kpbc.ca/register');
       expect(html).not.toContain('invite=');
     });
+
+    // U40: the email says who it is for, who sent it and which company
+    it('greets the resource by name and names the inviter and company', async () => {
+      await service.sendResourceInviteEmail('u@t.com', {
+        ...baseParams, resourceName: 'Peter Pan', companyName: 'Acme Ltd', isRegistered: false, inviteToken: 'abc',
+      });
+
+      const sent = mockSend.mock.calls[0][0];
+      expect(sent.subject).toBe('Alice invited you to join Acme Ltd on Kovarti');
+      expect(sent.html).toContain('Hi Peter Pan,');
+      expect(sent.html).toContain('Alice has added you as a resource on <strong>Kovarti PM</strong>. Click below to set up your login and see your work.');
+      expect(sent.html).toContain('developer');
+      expect(sent.text).toContain('Hi Peter Pan,');
+      expect(sent.text).toContain('Alice has added you as a resource on Kovarti PM. Click below to set up your login and see your work.');
+      expect(sent.text).toContain('https://pm.kpbc.ca/register?invite=abc');
+    });
+
+    it('escapes the names in the HTML part and keeps the subject on one line', async () => {
+      await service.sendResourceInviteEmail('u@t.com', {
+        ...baseParams, resourceName: '<b>Peter</b>', inviterName: 'Al\r\nBcc: x@y.com', companyName: null,
+      });
+
+      const sent = mockSend.mock.calls[0][0];
+      expect(sent.html).toContain('Hi &lt;b&gt;Peter&lt;/b&gt;,');
+      expect(sent.html).not.toContain('<b>Peter</b>');
+      expect(sent.subject).toBe('Al Bcc: x@y.com invited you to join Kovarti');
+      expect(sent.subject).not.toMatch(/[\r\n]/);
+    });
   });
 
   // =========================================================================

@@ -38,6 +38,7 @@ vi.mock('../../database/ProjectMemberRepository', () => ({
 vi.mock('../../services/EmailService', () => ({
   emailService: {
     sendViewerInviteEmail: vi.fn().mockResolvedValue(undefined),
+    sendResourceInviteEmail: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -59,6 +60,8 @@ vi.mock('../../services/ResourceService', () => ({
     createResource: vi.fn().mockResolvedValue(undefined),
     // no existing record with that email: a new one is made (U8 links an existing one instead)
     linkLoginByEmail: vi.fn().mockResolvedValue(false),
+    // the invited person's resource name, for the invite page (U40)
+    personByEmail: vi.fn().mockResolvedValue(null),
   },
 }));
 
@@ -582,6 +585,38 @@ describe('InviteService', () => {
       // Should not throw
       await service.resendInvite('inv-1', 'user-inviter');
     });
+
+    // U40: a resent resource invite names the person, like the first one
+    it("resends a resource's invite as a resource invite, naming them and the company", async () => {
+      mockResourceService.personByEmail.mockResolvedValueOnce({ name: 'Peter Pan', role: 'Developer' });
+      await service.resendInvite('inv-1', 'user-inviter');
+
+      expect(mockRunWithTenant).toHaveBeenCalledWith('pmassist_t_org1', 'org-1', expect.any(Function));
+      expect(mockResourceService.personByEmail).toHaveBeenCalledWith('invitee@example.com');
+      expect(mockEmailService.sendResourceInviteEmail).toHaveBeenCalledWith('invitee@example.com', {
+        resourceName: 'Peter Pan', role: 'Developer', inviterName: 'Re-sender',
+        companyName: 'Test Org', isRegistered: false, inviteToken: 'mock-token-hex',
+      });
+      expect(mockEmailService.sendViewerInviteEmail).not.toHaveBeenCalled();
+    });
+
+    it('a project viewer invite stays a viewer invite (no resource lookup)', async () => {
+      mockInviteTokenRepo.findById.mockResolvedValueOnce(makeInvite({ projectId: 'proj-1' }));
+      await service.resendInvite('inv-1', 'user-inviter');
+
+      expect(mockResourceService.personByEmail).not.toHaveBeenCalled();
+      expect(mockEmailService.sendResourceInviteEmail).not.toHaveBeenCalled();
+      expect(mockEmailService.sendViewerInviteEmail).toHaveBeenCalledWith(
+        'invitee@example.com', 'Test Org', 'Re-sender', 'proj-1', 'mock-token-hex',
+      );
+    });
+
+    it('falls back to the viewer invite when the resource lookup fails', async () => {
+      mockResourceService.personByEmail.mockRejectedValueOnce(new Error('db down'));
+      await service.resendInvite('inv-1', 'user-inviter');
+      expect(mockEmailService.sendViewerInviteEmail).toHaveBeenCalledTimes(1);
+      expect(mockEmailService.sendResourceInviteEmail).not.toHaveBeenCalled();
+    });
   });
 
   // ── validateToken ─────────────────────────────────────────────────
@@ -626,6 +661,38 @@ describe('InviteService', () => {
       const result = await service.validateToken('tok-abc');
 
       expect(result.projectId).toBe('proj-42');
+    });
+
+    // U40: the invite page says who the invitation is for
+    it("returns the invited resource's name, read in the inviting company's database", async () => {
+      mockInviteTokenRepo.findByToken.mockResolvedValueOnce(makeInvite());
+      mockOrgRepo.findById.mockResolvedValueOnce(makeOrg());
+      mockResourceService.personByEmail.mockResolvedValueOnce({ name: 'Peter Pan', role: 'Developer' });
+
+      const result = await service.validateToken('tok-abc');
+
+      expect(result.resourceName).toBe('Peter Pan');
+      expect(mockResourceService.personByEmail).toHaveBeenCalledWith('invitee@example.com');
+      expect(mockRunWithTenant).toHaveBeenCalledWith('pmassist_t_org1', 'org-1', expect.any(Function));
+    });
+
+    it('leaves resourceName out when no resource has that email, or the lookup fails', async () => {
+      mockInviteTokenRepo.findByToken.mockResolvedValueOnce(makeInvite());
+      mockOrgRepo.findById.mockResolvedValueOnce(makeOrg());
+      expect(await service.validateToken('tok-abc')).not.toHaveProperty('resourceName');
+
+      mockInviteTokenRepo.findByToken.mockResolvedValueOnce(makeInvite());
+      mockOrgRepo.findById.mockResolvedValueOnce(makeOrg());
+      mockResourceService.personByEmail.mockRejectedValueOnce(new Error('db down'));
+      const result = await service.validateToken('tok-abc');
+      expect(result.valid).toBe(true);
+      expect(result).not.toHaveProperty('resourceName');
+    });
+
+    it('never looks up a name for an invalid token', async () => {
+      mockInviteTokenRepo.findByToken.mockResolvedValueOnce(null);
+      await service.validateToken('bad-token');
+      expect(mockResourceService.personByEmail).not.toHaveBeenCalled();
     });
   });
 });

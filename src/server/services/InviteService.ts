@@ -205,28 +205,51 @@ export class InviteService {
     const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
     await inviteTokenRepository.resetToken(inviteId, newToken, newExpiresAt);
 
-    // Send the invite email
+    // Send the invite email. An invite for one of the company's resources (Invite on Resources —
+    // no project) is resent as that resource's invite, naming them, not as a viewer invite (U40).
     const inviter = await userService.findById(userId);
-    emailService.sendViewerInviteEmail(
-      invite.email, org.name, inviter?.fullName || 'Team member', invite.projectId, newToken,
-    ).then(() => {
+    const inviterName = inviter?.fullName || 'Team member';
+    const person = !invite.projectId && org.dbName
+      ? await this.invitedPerson(org.dbName, org.id, invite.email)
+      : null;
+    const send = person
+      ? emailService.sendResourceInviteEmail(invite.email, {
+        resourceName: person.name, role: person.role || 'Team Member', inviterName,
+        companyName: org.name, isRegistered: false, inviteToken: newToken,
+      })
+      : emailService.sendViewerInviteEmail(invite.email, org.name, inviterName, invite.projectId, newToken);
+    send.then(() => {
       logger.info('Resend invite email sent successfully', { email: invite.email, inviteId });
     }).catch(err => {
       logger.error('Failed to send resend invite email', { email: invite.email, error: err });
     });
   }
 
-  async validateToken(token: string): Promise<{ valid: boolean; email?: string; orgName?: string; projectId?: string | null }> {
+  async validateToken(token: string): Promise<{ valid: boolean; email?: string; orgName?: string; projectId?: string | null; resourceName?: string }> {
     const invite = await inviteTokenRepository.findByToken(token);
     if (!invite) return { valid: false };
 
     const org = await organizationRepository.findById(invite.organizationId);
+    // Only the holder of a valid token gets here, and only the invited person's own name comes
+    // back — the page says who the invitation is for (U40)
+    const resourceName = org?.dbName ? (await this.invitedPerson(org.dbName, org.id, invite.email))?.name : null;
     return {
       valid: true,
       email: invite.email,
       orgName: org?.name,
       projectId: invite.projectId,
+      ...(resourceName ? { resourceName } : {}),
     };
+  }
+
+  /** The invited person's resource in the inviting company's database; null if none or unreadable */
+  private async invitedPerson(dbName: string, orgId: string, email: string): Promise<{ name: string; role: string } | null> {
+    try {
+      return await runWithTenantContext(dbName, orgId, () => resourceService.personByEmail(email));
+    } catch (err) {
+      logger.warn('Could not read the invited resource', { error: err });
+      return null;
+    }
   }
 }
 
