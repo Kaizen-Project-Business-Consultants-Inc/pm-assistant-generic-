@@ -94,7 +94,7 @@ describe('VerifyEmailPendingPage', () => {
     expect(screen.getByLabelText('New email address')).toBeTruthy();
   });
 
-  it('Cancel closes the form without saving', () => {
+  it('Cancel closes the form without saving', async () => {
     show({ subscriptionTier: 'trial', subscriptionStatus: 'incomplete' });
     fireEvent.click(screen.getByRole('button', { name: 'Change it' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
