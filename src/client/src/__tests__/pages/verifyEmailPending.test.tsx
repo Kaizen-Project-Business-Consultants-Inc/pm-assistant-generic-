@@ -56,7 +56,7 @@ describe('VerifyEmailPendingPage', () => {
     const status = screen.getByRole('status');
     expect(status.textContent).toBe(''); // mounted empty, so the change is announced
     fireEvent.click(screen.getByRole('button', { name: 'Change it' }));
-    expect(document.activeElement).toBe(screen.getByLabelText('New email address'));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('New email address')));
     fireEvent.change(screen.getByLabelText('New email address'), { target: { value: 'pat@acme.test' } });
     const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement;
     expect(save.disabled).toBe(true); // needs the password too
@@ -67,7 +67,8 @@ describe('VerifyEmailPendingPage', () => {
     expect(await screen.findByText('Sent to pat@acme.test')).toBe(status);
     expect(useAuthStore.getState().user?.email).toBe('pat@acme.test');
     expect(screen.queryByLabelText('New email address')).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change it' }));
+    // focus moves after the form closes (next frame) — wait for it instead of reading at once (failed under load)
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change it' })));
   });
 
   it('awaiting payment: asks Stripe once on arrival (the webhook may be late)', async () => {
@@ -98,7 +99,8 @@ describe('VerifyEmailPendingPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Change it' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByLabelText('New email address')).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change it' }));
+    // focus moves after the form closes (next frame) — wait for it instead of reading at once (failed under load)
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Change it' })));
     expect(api.changePendingEmail).not.toHaveBeenCalled();
   });
 });
