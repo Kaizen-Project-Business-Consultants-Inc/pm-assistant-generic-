@@ -2968,6 +2968,43 @@ so the jump is visible; **Undo** reverses the whole batch in one click. Dismissi
 it as a negative example that informs future suggestions. Proposals are stored per schedule in the
 tenant table `schedule_fix_proposals` and are never executed autonomously — a person always approves.
 
+**Date impact before Apply, overlap links, Needs your decision (2026-10-18).** UAT: "Select all in
+Critical" took 27 links, 12 of them between tasks that overlap in the imported plan; the re-flow
+pushed the finish from 15 Jan to 13 Sep 2027 and raised 26 "outside project window" findings, while
+38 high/medium findings had no fix and no mention. Now:
+- **Preview** — `POST /schedules/:id/review/proposals/:pid/preview {fixIds}` (write scope + project
+  manager, like Apply; `heavyActionLimit('schedule-fix-preview', 120)` per 10 min) returns
+  `{ tasksMoved, finishBefore, finishAfter, finishShiftDays, projectEnd, scoreBefore, scoreAfter }` and
+  saves nothing. `scheduleReview/fixPreview.ts` `PlanCopy` is the plan as the fix steps change
+  it: Apply records every saved change in it, so a later step reads what an earlier one did (a
+  buffer for a gate linked in the same Apply; a split moves a link added in the same Apply onto its
+  first part instead of leaving it on the new summary — R29), and the preview runs the same steps
+  on a copy without saving. The dates of added tasks, the loop check (`waitsOn`, shared with the
+  proposer) and the field changes live there once. The forward pass is `planReflow()` — the pure
+  part of `ScheduleRecomputeService.recompute`, which Apply also runs. Apply and preview report the
+  finish before from the saved plan. The score is `reviewSchedule()` on the copy; what the review
+  reads besides the tasks (float, over-allocation, resources, sprints, the newest PM baseline —
+  `BaselineRepository.findLatestExcept`, one baseline's tasks, not all of them — and the score now)
+  is read once per proposal and kept in-process for 5 minutes (company-scoped key, 200 proposals at
+  most), so each preview reads only the tasks. Score after is an estimate (float as it is now).
+  Speed test `performance/scheduleFixPreview.perf.test.ts`: 5,000 tasks, 200 links ≈ 1.4 s, mostly
+  the review rules. A rename's typed name is sent with the preview too; a removed plan is a 404.
+- **Overlap links** — each `add_dependency` fix carries `overlaps` (the task starts on or before the day the one
+  it would follow finishes — a same-day hand-over too, since a finish-to-start link moves it a day; confidence 0.5; older proposals fall back to confidence < 0.75). The
+  panel shows, inside each level, "N links follow your dates — no dates move" and an amber "N links
+  between tasks that run at the same time" group with its own tick ("Link these N too") and one
+  preview for the group ("…the finish moves from <before> to <after> (+N weeks)"). Neither "Select
+  all in <level>" nor "Select all" takes them.
+- **"If you apply what is ticked"** — score and finish before → after and tasks moved for the
+  current selection (preview debounced 800 ms, not asked again for a selection already answered, cached per selection; "Working out…"; hidden on error;
+  never blocks Apply). Finish amber when later, red past the project end. Apply now returns
+  `projectEnd`; the result shows the finish before → after and a red note past the end date.
+- **Needs your decision** — `proposalData.needsDecision` (`unaddressedFindings()`): per rule, the
+  tasks no fix answers (a fix answers a rule on its task per `FIX_RULES`; a whole-plan rule by any
+  fix for it; info left out). Buttons reuse existing screens only: highlight the rows, Edit project
+  (closes the review first), Save baseline (the schedule's own), and the newest History change's
+  Undo ("Undo the last Apply", for R06) when it is an undoable `review_fix` (then re-proposes). History records no finish shift, so the button names what it undoes. More than 200 overlap links in a level: the group preview covers the first 200 and says so. The live region announces one sentence per answer.
+
 **Date recompute after apply.** Once the structural fixes land, a forward pass moves each task so it
 starts after the predecessors it now depends on. Tasks that are **completed or carry actual dates are
 pinned** and never move; other tasks only move *later* to satisfy a link, never earlier. Dates are

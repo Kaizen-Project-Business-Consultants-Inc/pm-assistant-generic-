@@ -12,18 +12,27 @@ import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 import logger from '../../utils/logger';
 import { aiRefusalReply } from '../../services/AIBudgetService';
 import { sendValidationError } from '../../utils/validationError';
+import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { ScheduleReviewNotFoundError } from '../../services/ScheduleReviewService';
 
+/** New names the PM typed for rename fixes, by fix id */
+const namesSchema = z.record(
+  z.string().max(300),
+  z.string({ message: 'A new name must be text.' }).trim()
+    .min(1, 'A new name cannot be empty. Type a name, or untick that rename.')
+    .max(255, 'A new name can be at most 255 characters.'),
+).refine(r => Object.keys(r).length <= 200, 'Rename up to 200 headings at a time.').optional();
 const applySchema = z.object({
   fixIds: z.array(z.string(), { message: 'Choose the fixes to apply.' })
     .min(1, 'Choose at least one fix to apply.')
     .max(200, 'Choose up to 200 fixes at a time.'),
-  /** New names the PM typed for rename fixes, by fix id */
-  names: z.record(
-    z.string().max(300),
-    z.string({ message: 'A new name must be text.' }).trim()
-      .min(1, 'A new name cannot be empty. Type a name, or untick that rename.')
-      .max(255, 'A new name can be at most 255 characters.'),
-  ).refine(r => Object.keys(r).length <= 200, 'Rename up to 200 headings at a time.').optional(),
+  names: namesSchema,
+});
+/** Ticking nothing is a fair question too (the box then says nothing moves) */
+const previewSchema = z.object({
+  fixIds: z.array(z.string().max(300), { message: 'Choose the fixes to preview.' })
+    .max(200, 'Choose up to 200 fixes at a time.'),
+  names: namesSchema,
 });
 const rejectSchema = z.object({ feedback: z.string().max(2000).optional() });
 
@@ -93,6 +102,26 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
       if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });
       logger.error('Schedule fix apply error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to apply fixes' });
+    }
+  });
+
+  // POST /:scheduleId/review/proposals/:proposalId/preview — the date and score effect of the
+  // ticked fixes, worked out on a copy; nothing is saved. The panel asks as the PM ticks (debounced).
+  fastify.post('/:scheduleId/review/proposals/:proposalId/preview', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('schedule-fix-preview', 120)],
+    schema: { description: 'Preview the date effect of selected schedule fixes (saves nothing)', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId, proposalId } = request.params as { scheduleId: string; proposalId: string };
+      const { fixIds, names } = previewSchema.parse(request.body);
+      return await scheduleFixProposerService.preview(scheduleId, proposalId, fixIds, names);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
+      if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Proposal not found' });
+      if (error instanceof ScheduleReviewNotFoundError) return reply.status(404).send({ error: 'Schedule not found' });
+      if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });
+      logger.error('Schedule fix preview error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to work out the effect of these fixes' });
     }
   });
 

@@ -132,7 +132,9 @@ describe('ScheduleFixProposerService', () => {
 
     const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
     expect(appliedLog.map(a => a.op)).toEqual(['remove_dependency', 'restore_milestone', 'delete_task', 'restore_parent']);
-    expect(result).toMatchObject({ beforeScore: 19, afterScore: 63, appliedCount: 3, skipped: [], datesMoved: 1, projectEndShiftDays: 5, warning: null });
+    expect(result).toMatchObject({ beforeScore: 19, afterScore: 63, appliedCount: 3, skipped: [], datesMoved: 1, warning: null });
+    // the finish before is the saved plan's (Gate 1 ends 25 Oct), after is the re-flow's
+    expect(result).toMatchObject({ projectEndBefore: '2026-10-25', projectEndAfter: '2026-10-21', projectEndShiftDays: -4 });
 
     const { auditLedgerService } = await import('../../services/AuditLedgerService');
     expect(auditLedgerService.append).toHaveBeenCalledWith(expect.objectContaining({ action: 'schedule.fix.apply', entityId: 's1' }));

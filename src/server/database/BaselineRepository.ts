@@ -94,6 +94,22 @@ export class BaselineRepository {
     return { ...baseline, tasks: taskRows.map(mapTaskRow) };
   }
 
+  /**
+   * The newest baseline not named `excludeName`, with its tasks, and how many such baselines the
+   * plan has — what the Schedule Review reads (R18/R19). Reads one baseline's tasks, not every
+   * baseline's: each Apply of Propose fixes adds a safety copy, so the list only grows.
+   */
+  async findLatestExcept(scheduleId: string, excludeName: string): Promise<{ latest: Baseline | null; count: number }> {
+    const [countRows, rows] = await Promise.all([
+      databaseService.query<any>('SELECT COUNT(*) AS n FROM schedule_baselines WHERE schedule_id = ? AND name <> ?', [scheduleId, excludeName]),
+      databaseService.query<any>('SELECT * FROM schedule_baselines WHERE schedule_id = ? AND name <> ? ORDER BY created_at DESC LIMIT 1', [scheduleId, excludeName]),
+    ]);
+    const count = Number(countRows[0]?.n ?? 0);
+    if (rows.length === 0) return { latest: null, count };
+    const taskRows = await databaseService.query('SELECT * FROM baseline_tasks WHERE baseline_id = ?', [rows[0].id]);
+    return { latest: { ...mapBaselineRow(rows[0]), tasks: taskRows.map(mapTaskRow) }, count };
+  }
+
   async deleteById(id: string): Promise<boolean> {
     const result: any = await databaseService.query(
       'DELETE FROM schedule_baselines WHERE id = ?',

@@ -85,6 +85,12 @@ export class SchedulingApi extends ApiBase {
     return response.data;
   }
 
+  /** What Apply would do to the finish and the score for these fixes — worked out on a copy, nothing saved */
+  async previewScheduleFixes(scheduleId: string, proposalId: string, fixIds: string[], names?: Record<string, string>) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/preview`, { fixIds, names });
+    return response.data;
+  }
+
   async undoScheduleFixProposal(scheduleId: string, proposalId: string) {
     const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/undo`);
     return response.data;

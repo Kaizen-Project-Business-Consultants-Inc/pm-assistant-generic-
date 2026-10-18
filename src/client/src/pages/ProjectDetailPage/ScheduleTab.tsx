@@ -19,7 +19,7 @@ import { ScheduleGantt } from './schedule-tab/ScheduleWorkspace';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 
 
-export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt', methodology = 'waterfall' }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string; methodology?: Methodology }) {
+export function ScheduleTab({ projectId, projectName, projectStartDate, defaultViewMode = 'gantt', methodology = 'waterfall', onEditProject }: { projectId: string; projectName?: string; projectStartDate?: string; defaultViewMode?: string; methodology?: Methodology; onEditProject?: () => void }) {
   const queryClient = useQueryClient();
   const breakpoint = useBreakpoint();
   const isMobile = breakpoint === 'mobile';
@@ -222,7 +222,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
         )}
       </div>
 
-      <ScheduleGantt key={schedules[safeIdx].id} schedule={schedules[safeIdx]} viewMode={viewMode} projectId={projectId} openImportOnLoad={openImportOnLoad} onImportOpened={() => setOpenImportOnLoad(false)} />
+      <ScheduleGantt key={schedules[safeIdx].id} schedule={schedules[safeIdx]} viewMode={viewMode} projectId={projectId} openImportOnLoad={openImportOnLoad} onImportOpened={() => setOpenImportOnLoad(false)} onEditProject={onEditProject} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Shield, Sparkles, Scissors, ListPlus, PencilLine } from 'lucide-react';
 import { apiService } from '../../../services/api';
@@ -6,6 +6,9 @@ import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { severityColor } from '../../../utils/severityColors';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
+import { formatCalendarDate } from '../../../utils/dateUtils';
+import { useFixPreview, ImpactBox, overlapImpactText, shiftText, passesEnd } from './ScheduleFixImpact';
+import { NeedsDecision, useDecisionActions, type OpenFinding } from './NeedsDecision';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server ProposedFix / proposal shape)
@@ -41,12 +44,14 @@ interface ProposedFix {
   afterTaskName?: string;
   beforeTaskName?: string;
   newName?: string;
+  /** add_dependency: the two tasks run at the same time, so linking them moves dates (2026-10-18) */
+  overlaps?: boolean;
 }
 
 interface FixProposal {
   id: string;
   source: 'ai' | 'rules';
-  proposalData: { fixes: ProposedFix[]; summary?: string };
+  proposalData: { fixes: ProposedFix[]; summary?: string; needsDecision?: OpenFinding[] };
 }
 
 interface DateDelta {
@@ -66,6 +71,8 @@ interface ApplyResult {
   projectEndBefore?: string | null;
   projectEndAfter?: string | null;
   projectEndShiftDays?: number;
+  /** The project's own end date (results since 2026-10-18) */
+  projectEnd?: string | null;
   warning?: string | null;
   dateDeltas?: DateDelta[];
   afterCounts?: Record<FixLevel, number>;
@@ -78,6 +85,42 @@ interface Props {
   /** Highlight (and scroll to) the rows a suggestion changes; null clears */
   onHighlightTasks?: (taskIds: string[] | null) => void;
   rowNumberOf?: (taskId: string) => number | undefined;
+  /** Open Edit project (Needs your decision: move the end date); absent when the user can't edit it */
+  onEditProject?: () => void;
+  /** Save a baseline of the plan now (the schedule's own Save baseline) */
+  onSaveBaseline?: () => Promise<unknown>;
+}
+
+/** The names typed for the chosen renames, by fix id (undefined when none) — sent with Apply and the preview */
+function typedNames(chosen: ProposedFix[], names: Record<string, string>): Record<string, string> | undefined {
+  const out = Object.fromEntries(chosen.filter(f => f.type === 'rename_task').map(f => [f.id, (names[f.id] ?? '').trim()]));
+  return Object.keys(out).length ? out : undefined;
+}
+
+/** A link between tasks that run at the same time: linking puts one after the other, so dates move */
+const isOverlapLink = (f: ProposedFix) => f.type === 'add_dependency' && (f.overlaps ?? f.confidence < 0.75);
+
+interface LevelGroup {
+  level: FixLevel;
+  items: ProposedFix[];
+  /** Everything but the overlapping links — what "Select all in <level>" takes */
+  rest: ProposedFix[];
+  others: ProposedFix[];
+  links: ProposedFix[];
+  overlap: ProposedFix[];
+}
+
+/** Fixes by level, Critical first, each split into other fixes, links that follow the dates, and overlapping links (proposal order kept) */
+function groupByLevel(fixes: ProposedFix[]): LevelGroup[] {
+  const out = new Map<FixLevel, LevelGroup>(LEVELS.map(level => [level, { level, items: [], rest: [], others: [], links: [], overlap: [] }]));
+  for (const f of fixes) {
+    const g = out.get(levelOf(f))!;
+    g.items.push(f);
+    if (isOverlapLink(f)) { g.overlap.push(f); continue; }
+    g.rest.push(f);
+    (f.type === 'add_dependency' ? g.links : g.others).push(f);
+  }
+  return [...out.values()].filter(g => g.items.length > 0);
 }
 
 /** The existing tasks a suggestion touches, in reading order (the task that waits comes last) */
@@ -106,6 +149,8 @@ const LEVEL_LABEL: Record<FixLevel, string> = { critical: 'Critical', high: 'Hig
 const FIRST_ROWS = 5;
 /** The most fixes one Apply takes (the server's limit) */
 const MAX_APPLY = 200;
+/** "If you apply what is ticked" asks once the PM has stopped ticking this long (each answer reruns the review rules) */
+const PREVIEW_DEBOUNCE_MS = 800;
 
 const levelOf = (f: ProposedFix): FixLevel => f.severity ?? 'low';
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -214,6 +259,130 @@ const FixRow = memo(function FixRow({ f, checked, pointed, rows, name, onToggle,
   );
 });
 
+/** A tick for a whole group of fixes: on when all are chosen, half-on when some are */
+function GroupTick({ id, items, selected, canApply, onSet, children }: {
+  id: string;
+  items: ProposedFix[];
+  selected: Set<string>;
+  canApply: (f: ProposedFix) => boolean;
+  onSet: (items: ProposedFix[], on: boolean) => void;
+  children: ReactNode;
+}) {
+  let picked = 0;
+  let pickable = 0;
+  for (const f of items) {
+    if (!canApply(f)) continue;
+    pickable++;
+    if (selected.has(f.id)) picked++;
+  }
+  return (
+    <label htmlFor={id} className="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
+      <input
+        id={id}
+        type="checkbox"
+        checked={pickable > 0 && picked === pickable}
+        disabled={pickable === 0}
+        ref={el => { if (el) el.indeterminate = picked > 0 && picked < pickable; }}
+        onChange={() => onSet(items, picked < pickable)}
+      />
+      {children}
+    </label>
+  );
+}
+
+/**
+ * Links between tasks that overlap in the plan: their own group, with their own tick (not in
+ * "Select all"), and what linking them all does to the finish — asked once per proposal.
+ */
+function OverlapGroup({ scheduleId, proposalId, level, items, tick, children }: {
+  scheduleId: string;
+  proposalId: string;
+  level: FixLevel;
+  items: ProposedFix[];
+  tick: ReactNode;
+  children: ReactNode;
+}) {
+  // The preview takes up to 200 fixes (as Apply does): a longer group is worked out for its first 200
+  const ids = useMemo(() => items.slice(0, MAX_APPLY).map(f => f.id), [items]);
+  const capped = items.length > MAX_APPLY;
+  const impact = useFixPreview(scheduleId, proposalId, ids, 0);
+  return (
+    <div className="rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/60 dark:bg-amber-900/20 p-2" aria-label={`${LEVEL_LABEL[level]}: links between tasks that run at the same time`} role="group">
+      <div className="flex items-start gap-2 mb-1">
+        <p className="text-xs font-semibold text-amber-900 dark:text-amber-200">{plural(items.length, 'link')} between tasks that run at the same time</p>
+        {tick}
+      </div>
+      <p className="text-xs text-amber-900 dark:text-amber-200">
+        In your plan these tasks overlap. Link them only where one really has to wait for the other: the later task then moves.
+      </p>
+      {impact.data && (
+        <p className="mt-1 text-xs font-medium text-amber-900 dark:text-amber-100">
+          {capped && `For the first ${MAX_APPLY} of them: `}{overlapImpactText(impact.data)}
+        </p>
+      )}
+      {impact.working && !impact.data && <p className="mt-1 text-xs text-amber-900 dark:text-amber-200">Working out what it does to the finish…</p>}
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+/** A list of fix rows, the first few shown until "Show N more" */
+function FixList({ items, open, onMore, row }: { items: ProposedFix[]; open: boolean; onMore: () => void; row: (f: ProposedFix) => ReactNode }) {
+  if (items.length === 0) return null;
+  const all = open || items.length <= FIRST_ROWS;
+  return (
+    <>
+      <ul className="space-y-1.5">{(all ? items : items.slice(0, FIRST_ROWS)).map(row)}</ul>
+      {!all && (
+        <button type="button" onClick={onMore} className="mt-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline">
+          Show {items.length - FIRST_ROWS} more
+        </button>
+      )}
+    </>
+  );
+}
+
+/** One level: its other fixes, the links that follow the dates, and the overlapping links apart */
+function LevelSection({ group, scheduleId, proposalId, tick, list }: {
+  group: LevelGroup;
+  scheduleId: string;
+  proposalId: string;
+  tick: (id: string, items: ProposedFix[], label: ReactNode) => ReactNode;
+  list: (items: ProposedFix[], key: string) => ReactNode;
+}) {
+  const { level, items, rest, others, links, overlap } = group;
+  const label = LEVEL_LABEL[level];
+  return (
+    <section aria-label={`${label} fixes`}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(level)}`}>{label}</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{plural(items.length, 'fix', 'fixes')}</span>
+        {rest.length > 0 && tick(`fix-level-${level}`, rest, `Select all in ${label}`)}
+      </div>
+      <div className="space-y-2">
+        {list(others, level)}
+        {links.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{plural(links.length, 'link')} follow your dates — no dates move</p>
+            {list(links, `${level}:links`)}
+          </div>
+        )}
+        {overlap.length > 0 && (
+          <OverlapGroup
+            scheduleId={scheduleId}
+            proposalId={proposalId}
+            level={level}
+            items={overlap}
+            tick={tick(`fix-overlap-${level}`, overlap, `Link these ${overlap.length} too`)}
+          >
+            {list(overlap, `${level}:overlap`)}
+          </OverlapGroup>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // The result after Apply — the score first
 // ---------------------------------------------------------------------------
@@ -223,12 +392,19 @@ function AppliedSummary({ result }: { result: ApplyResult }) {
   const change = diff == null ? '' : diff === 0 ? ' · score unchanged' : ` · score ${diff > 0 ? 'up' : 'down'} ${plural(Math.abs(diff), 'point')}`;
   const left = stillToDo(result.afterCounts);
   const shift = result.projectEndShiftDays ?? 0;
+  const pastEnd = passesEnd({ finishAfter: result.projectEndAfter ?? null, projectEnd: result.projectEnd ?? null });
   return (
     <div className="space-y-2">
       <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm space-y-1">
         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {result.beforeScore ?? '—'} → {result.afterScore} <span className="text-sm font-medium text-gray-500 dark:text-gray-400">/ 100</span>
         </p>
+        {result.projectEndAfter && (
+          <p className={`text-base font-semibold ${pastEnd ? 'text-red-700 dark:text-red-300' : 'text-gray-900 dark:text-gray-100'}`}>
+            Finish {result.projectEndBefore ? formatCalendarDate(result.projectEndBefore) : '—'} → {formatCalendarDate(result.projectEndAfter)}
+            {shift !== 0 && ` (${shiftText(shift)})`}
+          </p>
+        )}
         <p className="font-medium">Applied {plural(result.appliedCount, 'fix', 'fixes')}{change}</p>
         {left && <p>{left}</p>}
         {result.datesMoved ? (
@@ -241,6 +417,12 @@ function AppliedSummary({ result }: { result: ApplyResult }) {
           <p className="text-amber-700 dark:text-amber-300">{skippedText(result.skipped)}</p>
         )}
       </div>
+
+      {pastEnd && (
+        <div role="alert" className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm">
+          The plan now finishes after the project’s end date ({formatCalendarDate(result.projectEnd!)}). Undo below, or move the end date in Edit project.
+        </div>
+      )}
 
       {result.warning && (
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm">
@@ -281,7 +463,7 @@ function AppliedSummary({ result }: { result: ApplyResult }) {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf }: Props) {
+export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline }: Props) {
   const queryClient = useQueryClient();
   // Apply and Undo change links, dates and tasks: every view of the plan fetches again (U38)
   const planChanged = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
@@ -302,7 +484,8 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
   const [selected, setSelected] = useState<Set<string>>(new Set());
   /** The name in each rename's box (prefilled with the suggestion; the PM may edit it) */
   const [names, setNames] = useState<Record<string, string>>({});
-  const [showAll, setShowAll] = useState<Set<FixLevel>>(new Set());
+  /** Lists opened past their first rows, by key ("high", "high:links", "high:overlap") */
+  const [showAll, setShowAll] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<ApplyResult | null>(null);
   const [undone, setUndone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -327,8 +510,7 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
 
   const applyMutation = useMutation({
     mutationFn: (chosen: ProposedFix[]) => {
-      const renamed = Object.fromEntries(chosen.filter(f => f.type === 'rename_task').map(f => [f.id, names[f.id].trim()]));
-      return apiService.applyScheduleFixes(scheduleId, proposal!.id, chosen.map(f => f.id), Object.keys(renamed).length ? renamed : undefined);
+      return apiService.applyScheduleFixes(scheduleId, proposal!.id, chosen.map(f => f.id), typedNames(chosen, names));
     },
     onSuccess: (data: ApplyResult) => {
       setError(null);
@@ -369,14 +551,9 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
 
   const fixes = useMemo(() => proposal?.proposalData.fixes ?? [], [proposal]);
   /** Fixes by level, Critical first; within a level they keep the proposal's order */
-  const byLevel = useMemo(() => {
-    const out = new Map<FixLevel, ProposedFix[]>();
-    for (const f of fixes) {
-      const list = out.get(levelOf(f));
-      if (list) list.push(f); else out.set(levelOf(f), [f]);
-    }
-    return LEVELS.map(level => ({ level, items: out.get(level) ?? [] })).filter(g => g.items.length > 0);
-  }, [fixes]);
+  const byLevel = useMemo(() => groupByLevel(fixes), [fixes]);
+  /** "Select all" never takes the overlapping links: each of those moves dates (UAT 2026-10-18) */
+  const selectable = useMemo(() => fixes.filter(f => !isOverlapLink(f)), [fixes]);
 
   /** A rename with an empty box can't be applied */
   const canApply = (f: ProposedFix) => f.type !== 'rename_task' || !!names[f.id]?.trim();
@@ -400,6 +577,44 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
 
   const applied = !!result;
   const busy = proposeMutation.isPending || applyMutation.isPending || undoMutation.isPending;
+
+  // What Apply would do to the score and finish, for what is ticked (never blocks Apply)
+  const impact = useFixPreview(scheduleId, proposal?.id ?? null, applied ? [] : chosen.map(f => f.id), PREVIEW_DEBOUNCE_MS, typedNames(chosen, names));
+
+  // Needs your decision — the findings no fix answers, and the existing screens that settle them
+  const decisions = useDecisionActions({
+    scheduleId,
+    projectId,
+    items: proposal?.proposalData.needsDecision,
+    hidden: applied,
+    onShowTasks: onHighlightTasks,
+    onShown: () => setPointedAt(null),
+    onEditProject,
+    onSaveBaseline,
+    onUndone: () => {
+      announce('The last Apply is undone. Working out new suggestions.');
+      proposeMutation.mutate(false);
+    },
+    onError: setError,
+  });
+
+  /** A list of fix rows, the first few shown until "Show N more" */
+  const fixRow = (f: ProposedFix) => (
+    <FixRow
+      key={f.id}
+      f={f}
+      checked={selected.has(f.id)}
+      pointed={pointedAt === f.id}
+      rows={rowsText(f)}
+      name={names[f.id] ?? ''}
+      onToggle={toggle}
+      onPoint={pointAt}
+      onName={setName}
+    />
+  );
+  const fixList = (items: ProposedFix[], key: string) => (
+    <FixList items={items} open={showAll.has(key)} onMore={() => setShowAll(prev => new Set(prev).add(key))} row={fixRow} />
+  );
 
   return (
     <>
@@ -468,7 +683,7 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
 
           {!applied && fixes.length > 0 && (
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setMany(fixes, true)} className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">
+              <button type="button" onClick={() => setMany(selectable, true)} title="Links between tasks that run at the same time are left out — tick them on their own" className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">
                 Select all
               </button>
               <button type="button" onClick={() => setSelected(new Set())} className="px-2.5 py-1 text-xs font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -478,63 +693,23 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
           )}
 
           {/* Fix list by level, Critical first (hidden once applied) */}
-          {!applied && byLevel.map(({ level, items }) => {
-            const label = LEVEL_LABEL[level];
-            let picked = 0;
-            let pickable = 0;
-            for (const f of items) {
-              if (!canApply(f)) continue;
-              pickable++;
-              if (selected.has(f.id)) picked++;
-            }
-            const open = showAll.has(level) || items.length <= FIRST_ROWS;
-            const shown = open ? items : items.slice(0, FIRST_ROWS);
-            const boxId = `fix-level-${level}`;
-            return (
-              <section key={level} aria-label={`${label} fixes`}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(level)}`}>{label}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{plural(items.length, 'fix', 'fixes')}</span>
-                  <label htmlFor={boxId} className="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300 cursor-pointer">
-                    <input
-                      id={boxId}
-                      type="checkbox"
-                      checked={pickable > 0 && picked === pickable}
-                      disabled={pickable === 0}
-                      ref={el => { if (el) el.indeterminate = picked > 0 && picked < pickable; }}
-                      onChange={() => setMany(items, picked < pickable)}
-                    />
-                    Select all in {label}
-                  </label>
-                </div>
-                <ul className="space-y-1.5">
-                  {shown.map(f => (
-                    <FixRow
-                      key={f.id}
-                      f={f}
-                      checked={selected.has(f.id)}
-                      pointed={pointedAt === f.id}
-                      rows={rowsText(f)}
-                      name={names[f.id] ?? ''}
-                      onToggle={toggle}
-                      onPoint={pointAt}
-                      onName={setName}
-                    />
-                  ))}
-                </ul>
-                {!open && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAll(prev => new Set(prev).add(level))}
-                    className="mt-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline"
-                  >
-                    Show {items.length - FIRST_ROWS} more
-                  </button>
-                )}
-              </section>
-            );
-          })}
+          {!applied && proposal && byLevel.map(group => (
+            <LevelSection
+              key={group.level}
+              group={group}
+              scheduleId={scheduleId}
+              proposalId={proposal.id}
+              tick={(id, items, label) => (
+                <GroupTick id={id} items={items} selected={selected} canApply={canApply} onSet={setMany}>{label}</GroupTick>
+              )}
+              list={fixList}
+            />
+          ))}
+
+          <NeedsDecision items={proposeMutation.isPending ? [] : decisions.items} actions={decisions.actions} />
         </div>
+
+        <ImpactBox preview={impact.data} working={impact.working} />
 
         {/* Footer actions */}
         <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-200 dark:border-gray-700">

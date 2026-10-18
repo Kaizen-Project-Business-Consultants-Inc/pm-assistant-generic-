@@ -1455,9 +1455,22 @@ End-to-end on staging, on a schedule imported flat (no dependencies):
    Unit tests: `scheduleFixProposer.test.ts` (withSeverity, suggestSummaryName),
    `ScheduleFixProposerService.test.ts` (rename + names + undo, afterCounts),
    client `ScheduleFixProposalPanel.test.tsx`.
+6. **Date impact + Needs your decision (2026-10-18):** import a plan whose tasks overlap (no links).
+   Propose fixes: each level shows "N links follow your dates — no dates move" and an amber "N links
+   between tasks that run at the same time" box saying how far the finish would move. "Select all in
+   Critical" and "Select all" leave the amber group unticked; "Link these N too" ticks it. Tick a few:
+   "If you apply what is ticked" shows score and finish before → after (red past the project end).
+   Apply: the finish before → after matches what the box said. Propose again: "Needs your decision"
+   lists R06 with Show / Edit project end date / Undo the last Apply (Undo works and new
+   suggestions appear), R10 "Assign owners…" highlights the unowned rows, R18 "Save a baseline now"
+   saves one. As qa.team the panel is not offered. Check light and dark.
+   Unit tests: server `scheduleFixPreview.test.ts` (preview = Apply on the same plan, saves nothing),
+   `routes/scheduleFix.test.ts` (gate, 400, rate limit), `scheduleFixProposer.test.ts`
+   (overlaps, unaddressedFindings); client `ScheduleFixProposalImpact.test.tsx`.
 
 REST: `POST /schedules/:id/review/propose` → `{ id, source, proposalData:{fixes[]} }`;
 `POST /schedules/:id/review/proposals/:pid/apply {fixIds, names?}` → `{ beforeScore, afterScore, appliedCount, skipped, afterCounts }`;
+`.../preview {fixIds}` → `{ tasksMoved, finishBefore, finishAfter, finishShiftDays, projectEnd, scoreBefore, scoreAfter }` (saves nothing);
 `.../undo`, `.../reject`. A Basic-tier user (zero AI budget) gets rules-based fixes with no error.
 
 ### UI checks

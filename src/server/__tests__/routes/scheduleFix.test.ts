@@ -6,20 +6,33 @@ import Fastify from 'fastify';
  * blank or over-long name, or more than 200 fixes at once, is a 400 with a plain sentence.
  */
 vi.mock('../../middleware/auth', () => ({ authMiddleware: vi.fn(async (req: any) => { req.user = { userId: 'u1', role: 'project_manager' }; }) }));
-vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
-vi.mock('../../middleware/requireProjectAccess', () => ({ requireProjectAccess: () => vi.fn(async () => {}) }));
+const gates = vi.hoisted(() => ({ scopes: [] as string[], roles: [] as string[] }));
+vi.mock('../../middleware/requireScope', () => ({ requireScope: (s: string) => { gates.scopes.push(s); return vi.fn(async () => {}); } }));
+// "x-deny" stands for a caller who is not the project's manager
+vi.mock('../../middleware/requireProjectAccess', () => ({
+  requireProjectAccess: (role: string) => {
+    gates.roles.push(role);
+    return async (req: any, reply: any) => { if (req.headers['x-deny']) return reply.status(403).send({ error: 'Forbidden' }); };
+  },
+}));
 vi.mock('../../utils/logger', () => ({ default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 vi.mock('../../services/ChangeHistoryService', () => ({
   changeHistoryService: { assertLatestByRef: vi.fn(), markUndoneByRef: vi.fn() },
   NotLatestChangeError: class extends Error {},
 }));
 vi.mock('../../services/AIBudgetService', () => ({ aiRefusalReply: () => null }));
-const svc = vi.hoisted(() => ({ apply: vi.fn(async () => ({ appliedCount: 1 })) }));
+const svc = vi.hoisted(() => ({
+  apply: vi.fn(async () => ({ appliedCount: 1 })),
+  preview: vi.fn(async () => ({ tasksMoved: 3, finishBefore: '2027-01-15', finishAfter: '2027-09-13' })),
+}));
 vi.mock('../../services/ScheduleFixProposerService', () => ({
   scheduleFixProposerService: svc,
   ScheduleFixNotFoundError: class extends Error {},
   ScheduleFixStateError: class extends Error {},
 }));
+
+const ReviewNotFound = vi.hoisted(() => class extends Error {});
+vi.mock('../../services/ScheduleReviewService', () => ({ ScheduleReviewNotFoundError: ReviewNotFound }));
 
 import { scheduleFixRoutes } from '../../routes/scheduling/scheduleFix';
 
@@ -56,5 +69,53 @@ describe('Apply schedule fixes — names', () => {
     const res = await app.inject({ method: 'POST', url: URL, payload: { fixIds: Array.from({ length: 201 }, (_, i) => `f${i}`) } });
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toBe('Choose up to 200 fixes at a time.');
+  });
+});
+
+describe('Preview schedule fixes', () => {
+  const PREVIEW = '/api/v1/schedules/s1/review/proposals/p1/preview';
+  let app: any;
+  beforeAll(async () => {
+    app = Fastify();
+    await app.register(scheduleFixRoutes, { prefix: '/api/v1/schedules' });
+  }, 60_000);
+  beforeEach(() => { svc.preview.mockClear(); svc.apply.mockClear(); });
+
+  it('returns the service\'s dry run, and does not apply', async () => {
+    const res = await app.inject({ method: 'POST', url: PREVIEW, payload: { fixIds: ['d1', 'd2'] } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ tasksMoved: 3, finishAfter: '2027-09-13' });
+    expect(svc.preview).toHaveBeenCalledWith('s1', 'p1', ['d1', 'd2'], undefined);
+    expect(svc.apply).not.toHaveBeenCalled();
+  });
+
+  it('passes the typed names on, and a plan that no longer exists is a 404', async () => {
+    await app.inject({ method: 'POST', url: PREVIEW, payload: { fixIds: ['r1'], names: { r1: ' Kick-off ' } } });
+    expect(svc.preview).toHaveBeenCalledWith('s1', 'p1', ['r1'], { r1: 'Kick-off' });
+    svc.preview.mockRejectedValueOnce(new ReviewNotFound('gone'));
+    const res = await app.inject({ method: 'POST', url: PREVIEW, payload: { fixIds: ['r1'] } });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('is gated like Apply: write scope and the project manager', async () => {
+    expect(gates.scopes).toContain('write');
+    expect(gates.roles).toContain('manager');
+    const res = await app.inject({ method: 'POST', url: PREVIEW, headers: { 'x-deny': '1' }, payload: { fixIds: ['d1'] } });
+    expect(res.statusCode).toBe(403);
+    expect(svc.preview).not.toHaveBeenCalled();
+  });
+
+  it('more than 200 fixes is a 400 in plain words', async () => {
+    const res = await app.inject({ method: 'POST', url: PREVIEW, payload: { fixIds: Array.from({ length: 201 }, (_, i) => `f${i}`) } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toBe('Choose up to 200 fixes at a time.');
+  });
+
+  it('is rate-limited', async () => {
+    let last = 200;
+    for (let i = 0; i < 125 && last !== 429; i++) {
+      last = (await app.inject({ method: 'POST', url: PREVIEW, payload: { fixIds: [] } })).statusCode;
+    }
+    expect(last).toBe(429);
   });
 });

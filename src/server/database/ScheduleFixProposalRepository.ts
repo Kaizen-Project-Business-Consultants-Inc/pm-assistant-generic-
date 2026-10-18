@@ -1,5 +1,5 @@
 import { databaseService } from './connection';
-import type { ProposedFix } from '../services/scheduleReview/fixProposer';
+import type { ProposedFix, OpenFinding } from '../services/scheduleReview/fixProposer';
 
 export type FixProposalStatus = 'pending' | 'applied' | 'rejected' | 'undone';
 export type FixProposalSource = 'ai' | 'rules';
@@ -17,6 +17,8 @@ export interface AppliedAction {
 export interface FixProposalData {
   fixes: ProposedFix[];
   summary?: string;
+  /** Review findings no fix answers (proposals made before 2026-10-18 have none) */
+  needsDecision?: OpenFinding[];
 }
 
 export interface ScheduleFixProposal {

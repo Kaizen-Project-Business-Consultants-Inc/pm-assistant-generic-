@@ -58,6 +58,9 @@ interface ScheduleReviewPanelProps {
   onHighlightTasks?: (taskIds: string[] | null) => void;
   /** Row number shown in the grid, for "rows 12 → 14" */
   rowNumberOf?: (taskId: string) => number | undefined;
+  /** Propose fixes' "Needs your decision": open Edit project, save a baseline (absent = not offered) */
+  onEditProject?: () => void;
+  onSaveBaseline?: () => Promise<unknown>;
 }
 
 const SEVERITY_ORDER: ReviewSeverity[] = ['critical', 'high', 'medium', 'low', 'info'];
@@ -90,7 +93,7 @@ function formatWhen(iso: string): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf }: ScheduleReviewPanelProps) {
+export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline }: ScheduleReviewPanelProps) {
   const queryClient = useQueryClient();
   const panelRef = useRef<HTMLDivElement>(null);
   const [openGroups, setOpenGroups] = useState<Set<ReviewSeverity>>(new Set(OPEN_BY_DEFAULT));
@@ -395,6 +398,8 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
           onClose={() => { setShowFixes(false); onHighlightTasks?.(null); }}
           onHighlightTasks={onHighlightTasks}
           rowNumberOf={rowNumberOf}
+          onEditProject={onEditProject}
+          onSaveBaseline={onSaveBaseline}
         />
       )}
     </>

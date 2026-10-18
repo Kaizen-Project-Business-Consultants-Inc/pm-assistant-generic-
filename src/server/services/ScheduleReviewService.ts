@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { scheduleService } from './ScheduleService';
+import { scheduleService, type Task } from './ScheduleService';
 import { projectService } from './ProjectService';
 import { baselineService } from './BaselineService';
 import { criticalPathService } from './CriticalPathService';
@@ -19,50 +19,13 @@ import { type IsWorking, weekdaysOnly } from '../utils/workingDays';
  */
 export class ScheduleReviewService {
   async run(scheduleId: string, trigger: ReviewTrigger, userId?: string | null, proposalId?: string | null): Promise<ScheduleReviewRecord> {
-    const schedule = await scheduleService.findById(scheduleId);
-    if (!schedule) throw new ScheduleReviewNotFoundError(scheduleId);
-
-    const [tasks, project, baselines, resources, sprints] = await Promise.all([
-      scheduleService.findTasksByScheduleId(scheduleId),
-      projectService.findById(schedule.projectId).catch(() => null),
-      baselineService.findByScheduleId(scheduleId).catch(() => []),
-      resourceService.findAllResources().catch(() => []),
-      sprintService.getByProject(schedule.projectId).catch(() => []),
-    ]);
-
-    const hasLogic = tasks.some(t => (t.dependencies || []).length > 0);
-    const [floatByTask, overAllocations, isWorking] = await Promise.all([
-      hasLogic ? this.safeFloat(scheduleId) : Promise.resolve(null),
-      this.safeOverAllocations(scheduleId),
-      this.safeCalendar(scheduleId),
-    ]);
-
-    // Only the PM's own baselines count: Propose fixes' safety copy is not one (R18/R19)
-    const pmBaselines = baselines.filter(b => b.name !== PRE_REVIEW_BASELINE_NAME);
-    const latest = pmBaselines[0];
-    const input: ReviewInput = {
-      schedule: { id: schedule.id, startDate: schedule.startDate, endDate: schedule.endDate },
-      project: project
-        ? { startDate: project.startDate, endDate: project.endDate, projectType: project.projectType, methodology: project.methodology ?? null }
-        : null,
-      sprintCount: sprints.length,
-      sprints: sprints.map(sp => ({ id: sp.id, name: sp.name, endDate: sp.endDate, status: sp.status })),
-      tasks: tasks.map(toReviewTask),
-      resources: resources.map(r => ({ id: r.id, name: r.name, email: r.email, userId: r.userId, isGeneric: !!r.isGeneric })),
-      baselineCount: pmBaselines.length,
-      latestBaselineTasks: latest ? latest.tasks.map(t => ({ taskId: t.taskId, startDate: t.startDate, endDate: t.endDate })) : null,
-      floatByTask,
-      overAllocations,
-      today: new Date(),
-      isWorking,
-    };
-
+    const { input, projectId } = await this.gatherInput(scheduleId);
     const result = reviewSchedule(input);
 
     const record = await scheduleReviewRepository.insert({
       id: randomUUID(),
       scheduleId,
-      projectId: schedule.projectId,
+      projectId,
       score: result.score,
       band: result.band,
       counts: result.counts,
@@ -80,6 +43,52 @@ export class ScheduleReviewService {
     );
 
     return record;
+  }
+
+  /**
+   * Everything the rules read, plus the saved tasks it was built from. Propose fixes' preview
+   * scores an in-memory copy of the plan with the same input (float and over-allocation as the
+   * plan stands now), and saves nothing.
+   */
+  async gatherInput(scheduleId: string): Promise<{ input: ReviewInput; tasks: Task[]; projectId: string }> {
+    const schedule = await scheduleService.findById(scheduleId);
+    if (!schedule) throw new ScheduleReviewNotFoundError(scheduleId);
+
+    // Only the PM's own baselines count: Propose fixes' safety copy is not one (R18/R19). Only the
+    // newest is read with its tasks (each Apply adds a safety copy, so reading all of them grows).
+    const [tasks, project, baselines, resources, sprints] = await Promise.all([
+      scheduleService.findTasksByScheduleId(scheduleId),
+      projectService.findById(schedule.projectId).catch(() => null),
+      baselineService.findLatestExcept(scheduleId, PRE_REVIEW_BASELINE_NAME).catch(() => ({ latest: null, count: 0 })),
+      resourceService.findAllResources().catch(() => []),
+      sprintService.getByProject(schedule.projectId).catch(() => []),
+    ]);
+
+    const hasLogic = tasks.some(t => (t.dependencies || []).length > 0);
+    const [floatByTask, overAllocations, isWorking] = await Promise.all([
+      hasLogic ? this.safeFloat(scheduleId) : Promise.resolve(null),
+      this.safeOverAllocations(scheduleId),
+      this.safeCalendar(scheduleId),
+    ]);
+
+    const latest = baselines.latest;
+    const input: ReviewInput = {
+      schedule: { id: schedule.id, startDate: schedule.startDate, endDate: schedule.endDate },
+      project: project
+        ? { startDate: project.startDate, endDate: project.endDate, projectType: project.projectType, methodology: project.methodology ?? null }
+        : null,
+      sprintCount: sprints.length,
+      sprints: sprints.map(sp => ({ id: sp.id, name: sp.name, endDate: sp.endDate, status: sp.status })),
+      tasks: tasks.map(toReviewTask),
+      resources: resources.map(r => ({ id: r.id, name: r.name, email: r.email, userId: r.userId, isGeneric: !!r.isGeneric })),
+      baselineCount: baselines.count,
+      latestBaselineTasks: latest ? latest.tasks.map(t => ({ taskId: t.taskId, startDate: t.startDate, endDate: t.endDate })) : null,
+      floatByTask,
+      overAllocations,
+      today: new Date(),
+      isWorking,
+    };
+    return { input, tasks, projectId: schedule.projectId };
   }
 
   async latest(scheduleId: string): Promise<ScheduleReviewRecord | null> {
@@ -128,7 +137,8 @@ export class ScheduleReviewNotFoundError extends Error {
   }
 }
 
-function toReviewTask(t: Awaited<ReturnType<typeof scheduleService.findTasksByScheduleId>>[number]): ReviewTask {
+/** A saved task as the rules read it */
+export function toReviewTask(t: Task): ReviewTask {
   return {
     id: t.id,
     name: t.name,

@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   applyScheduleFixes: vi.fn(),
   undoScheduleFixProposal: vi.fn(),
   rejectScheduleFixProposal: vi.fn(),
+  previewScheduleFixes: vi.fn(async () => ({ tasksMoved: 0, finishBefore: null, finishAfter: null, finishShiftDays: 0, projectEnd: null, scoreBefore: 22, scoreAfter: 30 })),
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
 vi.mock('../../utils/announce', () => ({ announce: vi.fn() }));

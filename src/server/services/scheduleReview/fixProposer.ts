@@ -31,6 +31,8 @@ export interface ProposedFix {
   dependsOnTaskName?: string;
   dependencyType?: 'FS' | 'SS' | 'FF' | 'SF';
   lagDays?: number;
+  /** The two tasks run at the same time in the plan, so the link moves the later one (2026-10-18) */
+  overlaps?: boolean;
   // set_parent
   parentTaskId?: string;   // existing task to reparent under (unused in slice A)
   newParentName?: string;  // create this phase parent and group under it
@@ -124,6 +126,81 @@ export function withSeverity(fixes: ProposedFix[], findings: Finding[]): Propose
     const fallback: FixSeverity = fix.type === 'split_task' && fix.replace !== true ? 'low' : asFixSeverity(RULES[rules[0].rule].severity);
     return { ...fix, severity: best ?? fallback };
   });
+}
+
+/**
+ * Does `from` already wait on `target`, directly or through other tasks? Linking `target` after
+ * `from` would then make a loop. One walk, each task once. Used by the proposer and by Apply and
+ * its preview (fixPreview.ts PlanCopy.canLink).
+ */
+export function waitsOn(depsOf: (id: string) => Array<{ dependencyId: string }> | null | undefined, from: string, target: string): boolean {
+  const seen = new Set<string>();
+  const stack = [from];
+  while (stack.length) {
+    for (const d of depsOf(stack.pop()!) || []) {
+      if (d.dependencyId === target) return true;
+      if (!seen.has(d.dependencyId)) { seen.add(d.dependencyId); stack.push(d.dependencyId); }
+    }
+  }
+  return false;
+}
+
+/** A review rule's findings that no proposed fix answers — "Needs your decision" in the panel */
+export interface OpenFinding {
+  ruleId: string;
+  rule: string;
+  severity: FixSeverity;
+  /** The tasks still flagged (none for a whole-plan finding) */
+  taskIds: string[];
+  /** The review's own wording, for a rule the panel has no plain sentence for */
+  message: string;
+}
+
+/**
+ * The findings the proposal leaves open, one entry per rule (UAT 2026-10-18: 38 high and medium
+ * problems had no fix and no word about them). A fix answers a rule on the task it is about
+ * (FIX_RULES); a whole-plan rule is answered by any fix for it. Info findings cost nothing and
+ * are left out.
+ */
+/** What the fixes answer: rule → the task ids a fix answers it on, and every rule some fix answers */
+function answeredBy(fixes: ProposedFix[]): { onTask: Map<string, Set<string>>; rules: Set<string> } {
+  const onTask = new Map<string, Set<string>>();
+  const rules = new Set<string>();
+  for (const fix of fixes) {
+    for (const { rule, on } of FIX_RULES[fix.type]) {
+      rules.add(rule);
+      const id = on ? fix[on] : undefined;
+      if (!id) continue;
+      const set = onTask.get(rule);
+      if (set) set.add(id); else onTask.set(rule, new Set([id]));
+    }
+  }
+  return { onTask, rules };
+}
+
+export function unaddressedFindings(fixes: ProposedFix[], findings: Finding[]): OpenFinding[] {
+  const answered = answeredBy(fixes);
+  const open = new Map<string, OpenFinding>();
+  for (const f of findings) {
+    if (f.severity === 'info') continue;
+    const wholePlan = RULES[f.ruleId]?.scope === 'schedule' || f.taskIds.length === 0;
+    if (wholePlan && answered.rules.has(f.ruleId)) continue;
+    const done = answered.onTask.get(f.ruleId);
+    // eslint-disable-next-line no-restricted-syntax -- each finding's own task ids, checked against a Set (no search)
+    const left = wholePlan ? [] : f.taskIds.filter(id => !done?.has(id));
+    if (!wholePlan && left.length === 0) continue;
+    const sev = asFixSeverity(f.severity);
+    const entry = open.get(f.ruleId);
+    if (!entry) {
+      open.set(f.ruleId, { ruleId: f.ruleId, rule: f.rule, severity: sev, taskIds: left, message: f.message });
+      continue;
+    }
+    if (SEVERITY_RANK[sev] < SEVERITY_RANK[entry.severity]) entry.severity = sev;
+    entry.taskIds.push(...left);
+  }
+  return [...open.values()]
+    .map(o => ({ ...o, taskIds: [...new Set(o.taskIds)] }))
+    .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || a.ruleId.localeCompare(b.ruleId));
 }
 
 /** "T1", "T 2", "Task1" — a spreadsheet code standing in for a heading's name */
@@ -259,11 +336,11 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
       // Only propose when the task has no logic of its own yet.
       if ((cur.dependencies || []).length > 0) continue;
       // Confidence from a task-order signal: if the dates already run in sequence
-      // (prev finishes on or before cur starts), the link is near-certain and is
+      // (prev finishes before the day cur starts — an FS link then moves nothing), the link is near-certain and is
       // pre-ticked; when they overlap it is more of a guess, so it stays unticked.
       const prevEnd = prev.endDate ? String(prev.endDate).slice(0, 10) : '';
       const curStart = cur.startDate ? String(cur.startDate).slice(0, 10) : '';
-      const alreadySequential = !!prevEnd && !!curStart && prevEnd <= curStart;
+      const alreadySequential = !!prevEnd && !!curStart && prevEnd < curStart;
       fixes.push(build({
         id: `add_dependency:${cur.id}:${prev.id}`,
         type: 'add_dependency',
@@ -277,6 +354,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         dependsOnTaskName: prev.name,
         dependencyType: 'FS',
         lagDays: 0,
+        overlaps: !alreadySequential,
       }));
     }
   }
@@ -288,17 +366,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
   // task already waits on it (a loop).
   const inOrder = [...leaves].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   const seenParents = new Set<string>();
-  const waitsOn = (from: ReviewTask, target: string): boolean => {
-    const seen = new Set<string>();
-    const stack = [from.id];
-    while (stack.length) {
-      for (const d of byId.get(stack.pop()!)?.dependencies || []) {
-        if (d.dependencyId === target) return true;
-        if (!seen.has(d.dependencyId)) { seen.add(d.dependencyId); stack.push(d.dependencyId); }
-      }
-    }
-    return false;
-  };
+  const depsOf = (id: string) => byId.get(id)?.dependencies;
   for (let i = 0; i < inOrder.length; i++) {
     const cur = inOrder[i];
     const key = cur.parentTaskId ?? '__root__';
@@ -306,10 +374,10 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
     seenParents.add(key);
     if (i === 0 || !firstOfPhase || (cur.dependencies || []).length > 0) continue;
     const prev = inOrder[i - 1];
-    if ((prev.parentTaskId ?? '__root__') === key || waitsOn(prev, cur.id)) continue;
+    if ((prev.parentTaskId ?? '__root__') === key || waitsOn(depsOf, prev.id, cur.id)) continue;
     const prevEnd = prev.endDate ? String(prev.endDate).slice(0, 10) : '';
     const curStart = cur.startDate ? String(cur.startDate).slice(0, 10) : '';
-    const sequential = !!prevEnd && !!curStart && prevEnd <= curStart;
+    const sequential = !!prevEnd && !!curStart && prevEnd < curStart;
     fixes.push(build({
       id: `add_dependency:${cur.id}:${prev.id}`,
       type: 'add_dependency',
@@ -321,6 +389,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
       dependsOnTaskName: prev.name,
       dependencyType: 'FS',
       lagDays: 0,
+      overlaps: !sequential,
     }));
   }
 
@@ -517,6 +586,7 @@ export function proposeFixesDeterministic(findings: Finding[], tasks: ReviewTask
         dependsOnTaskName: t.name,
         dependencyType: 'FS',
         lagDays: 0,
+        overlaps: false,
       }));
     }
   }

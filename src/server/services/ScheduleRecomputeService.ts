@@ -164,6 +164,162 @@ function durationOf(n: Node, isWorking: IsWorking): number {
   return 1;
 }
 
+/** What the forward pass reads from a task (a saved Task, or an in-memory copy) */
+interface ReflowTask {
+  id: string;
+  name: string;
+  status?: string | null;
+  isSummary?: boolean | null;
+  isMilestone?: boolean | null;
+  parentTaskId?: string | null;
+  estimatedDays?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
+  constraintType?: string | null;
+  constraintDate?: string | null;
+  dependencies?: Dep[] | null;
+}
+
+type ReflowOptions = Pick<RecomputeOptions, 'onlyFrom' | 'respan' | 'moves' | 'keep'> & {
+  /** The calendar task lengths were planned on (defaults to `isWorking`) */
+  wasWorking?: IsWorking;
+};
+
+/**
+ * The forward pass alone — no reads, no writes. `recompute` runs it on the saved plan and saves
+ * the moves; Propose fixes' preview runs it on an in-memory copy with the ticked fixes applied,
+ * so the two never disagree about which tasks move or where the finish lands.
+ */
+export function planReflow(tasks: ReflowTask[], isWorking: IsWorking, opts: ReflowOptions = {}): RecomputeResult {
+  // Task lengths are measured on the calendar they were planned with
+  const lengthCalendar: IsWorking = opts.wasWorking ?? isWorking;
+  const respan = !!opts.respan;
+  const keep = new Set(opts.keep ?? []);
+  const nodes = new Map<string, Node>();
+  for (const t of tasks) {
+    const constraint = String(t.constraintType || 'ASAP').toUpperCase();
+    const constraintDate = parse(t.constraintDate);
+    nodes.set(t.id, {
+      id: t.id,
+      name: t.name,
+      isSummary: !!t.isSummary,
+      isMilestone: !!t.isMilestone,
+      pinned: t.status === 'completed' || !!t.actualStartDate || !!t.actualEndDate || keep.has(t.id)
+        || (FIXED_DATE.has(constraint) && !!constraintDate),
+      latest: NO_LATER_THAN[constraint] && constraintDate ? { kind: NO_LATER_THAN[constraint], date: constraintDate } : null,
+      estimatedDays: t.estimatedDays ?? null,
+      start: parse(t.startDate),
+      end: parse(t.endDate),
+      deps: (t.dependencies || []) as Dep[],
+    });
+  }
+
+  // Schedule only leaf tasks; summaries roll up from children afterwards.
+  const leaves = [...nodes.values()].filter(n => !n.isSummary);
+  const leafIds = new Set(leaves.map(n => n.id));
+
+  const order = topoSort(leaves, leafIds);
+  const scope = opts.onlyFrom ? downstreamOf(opts.onlyFrom, [...nodes.values()]) : null;
+
+  // Computed (possibly moved) dates; predecessors resolve from here first.
+  const newStart = new Map<string, Date | null>();
+  const newEnd = new Map<string, Date | null>();
+  for (const n of nodes.values()) { newStart.set(n.id, n.start); newEnd.set(n.id, n.end); }
+  // Moved tasks: plan them from their new dates (deltas still compare with the dates they had)
+  const moved = new Map<string, { start: Date; end: Date }>();
+  for (const [id, m] of Object.entries(opts.moves ?? {})) {
+    const n = nodes.get(id);
+    const ms = parse(m.startDate); const me = parse(m.endDate);
+    if (!n || n.pinned || n.isSummary || !ms || !me) continue;
+    moved.set(id, { start: ms, end: me });
+  }
+
+  for (const id of order) {
+    const n = nodes.get(id)!;
+    if (n.pinned) continue; // anchor: keep its dates
+    if (scope && !scope.has(id)) continue; // outside the change: keep its dates
+
+    const dur = durationOf(n, lengthCalendar);
+    let required: Date | null = null;
+    for (const d of n.deps) {
+      const p = nodes.get(d.dependencyId);
+      if (!p) continue;
+      const lag = d.lagDays ?? 0;
+      const type = (d.dependencyType || 'FS').toUpperCase();
+      const back = -Math.max(0, dur - 1); // finish → start of a task this long
+      const earliest = (pStart: Date | null, pEnd: Date | null, cal: IsWorking): Date | null => {
+        let c: Date | null = null;
+        if (type === 'FS' && pEnd) c = shiftWorking(pEnd, lag + 1, cal);
+        else if (type === 'SS' && pStart) c = shiftWorking(pStart, lag, cal);
+        else if (type === 'FF' && pEnd) c = shiftWorking(shiftWorking(pEnd, lag, cal), back, cal);
+        else if (type === 'SF' && pStart) c = shiftWorking(shiftWorking(pStart, lag, cal), back, cal);
+        return c ? onOrAfterWorking(c, cal) : null;
+      };
+      // Re-spanning fits the plan to a calendar; it doesn't fix links that already
+      // overlapped (a task started before its predecessor allowed) — leave those as they are.
+      if (respan && n.start) {
+        const before = earliest(p.start, p.end, lengthCalendar);
+        if (before && before > n.start) continue;
+      }
+      const cand = earliest(newStart.get(p.id) ?? p.start, newEnd.get(p.id) ?? p.end, isWorking);
+      if (cand && (!required || cand > required)) required = cand;
+    }
+
+    // Re-spanning (calendar change / days-off clean-up): a task on a day off moves on
+    const mv = moved.get(id);
+    const cur = mv ? mv.start : n.start && respan ? onOrAfterWorking(n.start, isWorking) : n.start;
+    let ns: Date | null;
+    if (required && cur) ns = required > cur ? required : cur; // only push later
+    else if (required) ns = required;
+    else ns = cur;
+    if (!ns) continue; // nothing to anchor from
+    // "No later than": pushed at most to the latest start allowed (never pulled before where it is)
+    if (n.latest) {
+      const cap = latestStart(n.latest, dur, isWorking);
+      if (ns > cap) ns = cur && cur > cap ? cur : cap;
+    }
+    // Not pushed: keep its dates exactly as they are (unless re-spanning to a new calendar)
+    if (!respan && cur && n.end && ns.getTime() === cur.getTime()) {
+      if (mv) { newStart.set(id, mv.start); newEnd.set(id, mv.end); }
+      continue;
+    }
+
+    newStart.set(id, ns);
+    newEnd.set(id, finishFor(ns, dur, isWorking));
+  }
+
+  const deltas: DateDelta[] = [];
+  for (const n of leaves) {
+    if (n.pinned) continue;
+    const ns = newStart.get(n.id);
+    const ne = newEnd.get(n.id);
+    if (!ns || !ne) continue;
+    const oldS = n.start ? ymd(n.start) : null;
+    const oldE = n.end ? ymd(n.end) : null;
+    const newS = ymd(ns);
+    const newE = ymd(ne);
+    if (newS === oldS && newE === oldE) continue;
+    deltas.push({ taskId: n.id, name: n.name, oldStart: oldS, oldEnd: oldE, newStart: newS, newEnd: newE, movedDays: n.start ? diffDays(ns, n.start) : 0 });
+  }
+
+  const endsBefore = leaves.map(n => n.end).filter(Boolean) as Date[];
+  const endsAfter = leaves.map(n => newEnd.get(n.id)).filter(Boolean) as Date[];
+  const projectEndBefore = endsBefore.length ? ymd(new Date(Math.max(...endsBefore.map(d => d.getTime())))) : null;
+  const projectEndAfter = endsAfter.length ? ymd(new Date(Math.max(...endsAfter.map(d => d.getTime())))) : null;
+  const projectEndShiftDays = projectEndBefore && projectEndAfter ? diffDays(new Date(projectEndAfter), new Date(projectEndBefore)) : 0;
+
+  return {
+    deltas,
+    tasksMoved: deltas.length,
+    leafCount: leaves.length,
+    projectEndBefore,
+    projectEndAfter,
+    projectEndShiftDays,
+  };
+}
+
 export class ScheduleRecomputeService {
   /** Re-flow a schedule; see RecomputeOptions */
   async recompute(scheduleId: string, opts: RecomputeOptions = {}): Promise<RecomputeResult> {
@@ -183,149 +339,24 @@ export class ScheduleRecomputeService {
         logger.warn('[ScheduleRecompute] project calendar unavailable, using Mon–Fri', { scheduleId, error: err?.message });
       }
     }
-    // Task lengths are measured on the calendar they were planned with
-    const lengthCalendar: IsWorking = opts.calendar?.wasWorking ?? isWorking;
-    const respan = !!opts.respan;
-    const keep = new Set(opts.keep ?? []);
-    const nodes = new Map<string, Node>();
-    for (const t of tasks) {
-      const constraint = String(t.constraintType || 'ASAP').toUpperCase();
-      const constraintDate = parse(t.constraintDate as string | null | undefined);
-      nodes.set(t.id, {
-        id: t.id,
-        name: t.name,
-        isSummary: !!t.isSummary,
-        isMilestone: !!t.isMilestone,
-        pinned: t.status === 'completed' || !!t.actualStartDate || !!t.actualEndDate || keep.has(t.id)
-          || (FIXED_DATE.has(constraint) && !!constraintDate),
-        latest: NO_LATER_THAN[constraint] && constraintDate ? { kind: NO_LATER_THAN[constraint], date: constraintDate } : null,
-        estimatedDays: t.estimatedDays ?? null,
-        start: parse(t.startDate),
-        end: parse(t.endDate),
-        deps: (t.dependencies || []) as Dep[],
-      });
-    }
+    const result = planReflow(tasks, isWorking, { ...opts, wasWorking: opts.calendar?.wasWorking });
+    if (opts.dryRun) return result;
 
-    // Schedule only leaf tasks; summaries roll up from children afterwards.
-    const leaves = [...nodes.values()].filter(n => !n.isSummary);
-    const leafIds = new Set(leaves.map(n => n.id));
-
-    const order = topoSort(leaves, leafIds);
-    const scope = opts.onlyFrom ? downstreamOf(opts.onlyFrom, [...nodes.values()]) : null;
-
-    // Computed (possibly moved) dates; predecessors resolve from here first.
-    const newStart = new Map<string, Date | null>();
-    const newEnd = new Map<string, Date | null>();
-    for (const n of nodes.values()) { newStart.set(n.id, n.start); newEnd.set(n.id, n.end); }
-    // Moved tasks: plan them from their new dates (deltas still compare with the dates they had)
-    const moved = new Map<string, { start: Date; end: Date }>();
-    for (const [id, m] of Object.entries(opts.moves ?? {})) {
-      const n = nodes.get(id);
-      const ms = parse(m.startDate); const me = parse(m.endDate);
-      if (!n || n.pinned || n.isSummary || !ms || !me) continue;
-      moved.set(id, { start: ms, end: me });
-    }
-
-    for (const id of order) {
-      const n = nodes.get(id)!;
-      if (n.pinned) continue; // anchor: keep its dates
-      if (scope && !scope.has(id)) continue; // outside the change: keep its dates
-
-      const dur = durationOf(n, lengthCalendar);
-      let required: Date | null = null;
-      for (const d of n.deps) {
-        const p = nodes.get(d.dependencyId);
-        if (!p) continue;
-        const lag = d.lagDays ?? 0;
-        const type = (d.dependencyType || 'FS').toUpperCase();
-        const back = -Math.max(0, dur - 1); // finish → start of a task this long
-        const earliest = (pStart: Date | null, pEnd: Date | null, cal: IsWorking): Date | null => {
-          let c: Date | null = null;
-          if (type === 'FS' && pEnd) c = shiftWorking(pEnd, lag + 1, cal);
-          else if (type === 'SS' && pStart) c = shiftWorking(pStart, lag, cal);
-          else if (type === 'FF' && pEnd) c = shiftWorking(shiftWorking(pEnd, lag, cal), back, cal);
-          else if (type === 'SF' && pStart) c = shiftWorking(shiftWorking(pStart, lag, cal), back, cal);
-          return c ? onOrAfterWorking(c, cal) : null;
-        };
-        // Re-spanning fits the plan to a calendar; it doesn't fix links that already
-        // overlapped (a task started before its predecessor allowed) — leave those as they are.
-        if (respan && n.start) {
-          const before = earliest(p.start, p.end, lengthCalendar);
-          if (before && before > n.start) continue;
-        }
-        const cand = earliest(newStart.get(p.id) ?? p.start, newEnd.get(p.id) ?? p.end, isWorking);
-        if (cand && (!required || cand > required)) required = cand;
-      }
-
-      // Re-spanning (calendar change / days-off clean-up): a task on a day off moves on
-      const mv = moved.get(id);
-      const cur = mv ? mv.start : n.start && respan ? onOrAfterWorking(n.start, isWorking) : n.start;
-      let ns: Date | null;
-      if (required && cur) ns = required > cur ? required : cur; // only push later
-      else if (required) ns = required;
-      else ns = cur;
-      if (!ns) continue; // nothing to anchor from
-      // "No later than": pushed at most to the latest start allowed (never pulled before where it is)
-      if (n.latest) {
-        const cap = latestStart(n.latest, dur, isWorking);
-        if (ns > cap) ns = cur && cur > cap ? cur : cap;
-      }
-      // Not pushed: keep its dates exactly as they are (unless re-spanning to a new calendar)
-      if (!respan && cur && n.end && ns.getTime() === cur.getTime()) {
-        if (mv) { newStart.set(id, mv.start); newEnd.set(id, mv.end); }
-        continue;
-      }
-
-      newStart.set(id, ns);
-      newEnd.set(id, finishFor(ns, dur, isWorking));
-    }
-
-    // Collect deltas + write changed leaf dates via the fast raw update.
-    const deltas: DateDelta[] = [];
-    const affectedParents = new Set<string>();
+    // Save the moved leaf dates via the fast raw update, then roll up their summaries
     const parentOf = new Map(tasks.map(t => [t.id, t.parentTaskId ?? null]));
-    const writes: Array<{ id: string; startDate: string; endDate: string }> = [];
-    for (const n of leaves) {
-      if (n.pinned) continue;
-      const ns = newStart.get(n.id);
-      const ne = newEnd.get(n.id);
-      if (!ns || !ne) continue;
-      const oldS = n.start ? ymd(n.start) : null;
-      const oldE = n.end ? ymd(n.end) : null;
-      const newS = ymd(ns);
-      const newE = ymd(ne);
-      if (newS === oldS && newE === oldE) continue;
-      deltas.push({ taskId: n.id, name: n.name, oldStart: oldS, oldEnd: oldE, newStart: newS, newEnd: newE, movedDays: n.start ? diffDays(ns, n.start) : 0 });
-      if (opts.dryRun) continue;
-      writes.push({ id: n.id, startDate: newS, endDate: newE });
-      const parentId = parentOf.get(n.id) ?? null;
+    const affectedParents = new Set<string>();
+    for (const d of result.deltas) {
+      const parentId = parentOf.get(d.taskId) ?? null;
       if (parentId) affectedParents.add(parentId);
     }
-    if (!opts.dryRun) await writeDates(writes);
-
-    if (!opts.dryRun) {
-      for (const parentId of affectedParents) {
-        // eslint-disable-next-line no-await-in-loop -- each rollup walks up to shared ancestor summaries; run in parallel they would race on the same rows
-        await scheduleService.recomputeParentRollup(parentId, 0, { isWorking }).catch((err: any) =>
-          logger.warn('[ScheduleRecompute] rollup failed', { parentId, error: err?.message }));
-      }
-      auditMoves(scheduleId, deltas, opts.reason ?? (opts.onlyFrom ? 'link_added' : 'schedule_review_fix'));
+    await writeDates(result.deltas.map(d => ({ id: d.taskId, startDate: d.newStart, endDate: d.newEnd })));
+    for (const parentId of affectedParents) {
+      // eslint-disable-next-line no-await-in-loop -- each rollup walks up to shared ancestor summaries; run in parallel they would race on the same rows
+      await scheduleService.recomputeParentRollup(parentId, 0, { isWorking }).catch((err: any) =>
+        logger.warn('[ScheduleRecompute] rollup failed', { parentId, error: err?.message }));
     }
-
-    const endsBefore = leaves.map(n => n.end).filter(Boolean) as Date[];
-    const endsAfter = leaves.map(n => newEnd.get(n.id)).filter(Boolean) as Date[];
-    const projectEndBefore = endsBefore.length ? ymd(new Date(Math.max(...endsBefore.map(d => d.getTime())))) : null;
-    const projectEndAfter = endsAfter.length ? ymd(new Date(Math.max(...endsAfter.map(d => d.getTime())))) : null;
-    const projectEndShiftDays = projectEndBefore && projectEndAfter ? diffDays(new Date(projectEndAfter), new Date(projectEndBefore)) : 0;
-
-    return {
-      deltas,
-      tasksMoved: deltas.length,
-      leafCount: leaves.length,
-      projectEndBefore,
-      projectEndAfter,
-      projectEndShiftDays,
-    };
+    auditMoves(scheduleId, result.deltas, opts.reason ?? (opts.onlyFrom ? 'link_added' : 'schedule_review_fix'));
+    return result;
   }
 }
 

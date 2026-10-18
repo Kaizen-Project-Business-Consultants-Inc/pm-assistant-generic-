@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates, withSeverity, suggestSummaryName, type ProposedFix } from '../../services/scheduleReview/fixProposer';
+import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates, withSeverity, suggestSummaryName, unaddressedFindings, type ProposedFix } from '../../services/scheduleReview/fixProposer';
 import { reviewSchedule, type Finding, type ReviewTask } from '../../services/scheduleReview/rules';
 import { weekdaysOnly } from '../../utils/workingDays';
 
@@ -458,5 +458,65 @@ describe('rename_task (R22 on a heading)', () => {
     const renames = fixes.filter(x => x.type === 'rename_task');
     expect(renames.map(r => [r.taskId, r.newName])).toEqual([['h1', 'Task 1 – Kick-Off Meeting'], ['h2', 'Post-Go-Live Support']]);
     expect(renames[0]).toMatchObject({ id: 'rename_task:h1', taskName: 'T1', confidence: 0.6 });
+  });
+});
+
+describe('links between tasks that run at the same time (2026-10-18)', () => {
+  it('marks a link overlapping when the task starts before the one it would follow finishes', () => {
+    seq = 0;
+    const a = task({ id: 'a', name: 'Design', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const b = task({ id: 'b', name: 'Build', startDate: '2026-10-12', endDate: '2026-10-16' });
+    const c = task({ id: 'c', name: 'Test', startDate: '2026-10-14', endDate: '2026-10-20' });
+    const deps = proposeFixesDeterministic([], [a, b, c]).filter(f => f.type === 'add_dependency');
+    expect(deps.map(d => [d.taskId, d.overlaps, d.confidence])).toEqual([['b', false, 0.75], ['c', true, 0.5]]);
+  });
+
+  it('back to back on the same day overlaps: a finish-to-start link moves the second task a day', () => {
+    seq = 0;
+    const a = task({ id: 'a', name: 'Design', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const b = task({ id: 'b', name: 'Build', startDate: '2026-10-09', endDate: '2026-10-16' });
+    const deps = proposeFixesDeterministic([], [a, b]).filter(f => f.type === 'add_dependency');
+    expect(deps.map(d => [d.taskId, d.overlaps, d.confidence])).toEqual([['b', true, 0.5]]);
+  });
+
+  it('the first task of a phase: same rule', () => {
+    seq = 0;
+    const p1 = task({ id: 'p1', name: 'Phase 1', isSummary: true });
+    const p2 = task({ id: 'p2', name: 'Phase 2', isSummary: true });
+    const a = task({ id: 'a', name: 'Design', parentTaskId: 'p1', startDate: '2026-10-05', endDate: '2026-10-09' });
+    const b = task({ id: 'b', name: 'Build', parentTaskId: 'p2', startDate: '2026-10-09', endDate: '2026-10-16' });
+    const c = task({ id: 'c', name: 'Test', parentTaskId: 'p2', startDate: '2026-10-19', endDate: '2026-10-23' });
+    const first = proposeFixesDeterministic([], [p1, p2, a, b, c]).find(f => f.id === 'add_dependency:b:a');
+    expect(first).toMatchObject({ overlaps: true, confidence: 0.5 });
+  });
+});
+
+describe('unaddressedFindings — "Needs your decision"', () => {
+  const sev = (f: Finding, severity: Finding['severity']): Finding => ({ ...f, severity });
+  const link = { id: 'l', type: 'add_dependency', taskId: 'b', dependsOnTaskId: 'a' } as ProposedFix;
+
+  it('lists, per rule, the tasks no fix answers', () => {
+    const open = unaddressedFindings([link], [
+      sev(finding('R01', ['b']), 'critical'), // answered by the link (on the task that waits)
+      sev(finding('R01', ['c']), 'critical'), // not answered
+      sev(finding('R06', ['b', 'c']), 'high'),
+      sev(finding('R06', ['d']), 'high'),
+      sev(finding('R10', ['a']), 'medium'),
+    ]);
+    expect(open.map(o => [o.ruleId, o.severity, o.taskIds])).toEqual([
+      ['R01', 'critical', ['c']],
+      ['R06', 'high', ['b', 'c', 'd']],
+      ['R10', 'medium', ['a']],
+    ]);
+  });
+
+  it('a whole-plan finding is answered by any fix for it; info findings are left out', () => {
+    const open = unaddressedFindings([link], [sev(finding('R03'), 'critical'), sev(finding('R18'), 'medium'), sev(finding('R27', ['a']), 'info')]);
+    expect(open.map(o => o.ruleId)).toEqual(['R18']);
+  });
+
+  it('a feeder link answers R02 on the feeder only', () => {
+    const open = unaddressedFindings([link], [sev(finding('R02', ['a', 'b']), 'high')]);
+    expect(open[0].taskIds).toEqual(['b']);
   });
 });

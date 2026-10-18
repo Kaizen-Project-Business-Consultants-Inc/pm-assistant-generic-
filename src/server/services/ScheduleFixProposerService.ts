@@ -5,15 +5,15 @@ import { z } from 'zod';
 import { scheduleService } from './ScheduleService';
 import { taskRepository } from '../database/TaskRepository';
 import { baselineService } from './BaselineService';
-import { scheduleRecomputeService, type DateDelta } from './ScheduleRecomputeService';
-import { scheduleReviewService } from './ScheduleReviewService';
+import { scheduleRecomputeService, planReflow, type DateDelta } from './ScheduleRecomputeService';
+import { scheduleReviewService, toReviewTask as toFullReviewTask } from './ScheduleReviewService';
 import { claudeService } from './claudeService';
 import { config } from '../config';
 import { AILearningServiceV2 } from './aiLearningService';
 import { auditLedgerService } from './AuditLedgerService';
 import logger from '../utils/logger';
 import { groupBy } from '../utils/groupBy';
-import { type IsWorking, weekdaysOnly, shiftWorking, finishFor, utcDay, ymdOf } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, calendarDaysBetween } from '../utils/workingDays';
 import {
   proposeFixesDeterministic,
   buildGroupingFixes,
@@ -22,8 +22,11 @@ import {
   splitCandidates,
   planSplitDates,
   withSeverity,
+  unaddressedFindings,
   type ProposedFix, type FixSeverity, describeFix } from './scheduleReview/fixProposer';
-import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, type ReviewTask } from './scheduleReview/rules';
+import { applyFixesInMemory, latestFinish, rollUpSummaries, PlanCopy, milestoneUpdate, splitHeadValues, splitPartValues } from './scheduleReview/fixPreview';
+import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, reviewSchedule, type ReviewTask, type ReviewInput } from './scheduleReview/rules';
+import { companyCacheKey } from '../utils/companyCacheKey';
 import { profileFor } from './scheduleReview/domainProfiles';
 import { projectService } from './ProjectService';
 import { sprintService } from './SprintService';
@@ -91,10 +94,36 @@ export interface ApplyResult {
   projectEndBefore: string | null;
   projectEndAfter: string | null;
   projectEndShiftDays: number;
+  /** The project's own end date — the panel warns when the finish passes it */
+  projectEnd: string | null;
   warning: string | null;
   dateDeltas: DateDelta[];
   /** What the review still finds after the fixes, by level (info counted as low) */
   afterCounts: Record<FixSeverity, number>;
+}
+
+interface PreviewResult {
+  tasksMoved: number;
+  /** The plan's last finish now, and after Apply would re-flow it (YYYY-MM-DD) */
+  finishBefore: string | null;
+  finishAfter: string | null;
+  finishShiftDays: number;
+  /** The project's own end date, to warn when the finish passes it */
+  projectEnd: string | null;
+  scoreBefore: number;
+  scoreAfter: number;
+}
+
+/** How long a preview reuses what the review read for its proposal, and how many proposals it keeps */
+const PREVIEW_BASE_TTL_MS = 5 * 60_000;
+const PREVIEW_BASE_MAX = 200;
+
+/** The ticked fixes, in proposal order; a rename takes the name the PM typed, when they changed it */
+function chosenFixes(all: ProposedFix[], fixIds: string[], names: Record<string, string>): ProposedFix[] {
+  const selected = new Set(fixIds);
+  return all
+    .filter(f => selected.has(f.id))
+    .map(f => (f.type === 'rename_task' && names[f.id] ? { ...f, newName: names[f.id] } : f));
 }
 
 /** Minimal ReviewTask projection the proposer needs. */
@@ -165,7 +194,8 @@ export class ScheduleFixProposerService {
       status: 'pending',
       source,
       reviewId: review.id,
-      proposalData: { fixes },
+      // What no fix answers is listed for the PM to decide ("Needs your decision")
+      proposalData: { fixes, needsDecision: unaddressedFindings(fixes, review.findings) },
       rulesVersion: RULES_VERSION,
       createdBy: userId,
     });
@@ -239,18 +269,19 @@ export class ScheduleFixProposerService {
     if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
     if (proposal.status !== 'pending') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not pending`);
 
-    const selected = new Set(fixIds);
-    // A rename takes the name the PM typed in the panel, when they changed it
-    const fixes = proposal.proposalData.fixes
-      .filter(f => selected.has(f.id))
-      .map(f => (f.type === 'rename_task' && names[f.id] ? { ...f, newName: names[f.id] } : f));
+    const fixes = chosenFixes(proposal.proposalData.fixes, fixIds, names);
     const skipped: Array<{ fixId: string; reason: string }> = [];
 
     const before = await scheduleReviewService.latest(scheduleId);
     const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
-    const taskById = new Map(tasks.map(t => [t.id, t]));
+    const project = await projectService.findById(proposal.projectId).catch(() => null);
     // Dates the fixes pick land on working days of the project calendar
     const isWorking = await this.workingDayTest(scheduleId);
+    // The plan as each step leaves it: later steps read the links and fields earlier ones changed
+    // (a buffer in front of a gate linked in step 1; a split of a task that just got a link). The
+    // preview runs the same steps on the same copy (scheduleReview/fixPreview.ts).
+    const plan = new PlanCopy(tasks, isWorking);
+    const taskById = plan.byId;
 
     // Snapshot before touching anything, so the PM can fall back to it.
     let baselineId: string | null = null;
@@ -266,12 +297,22 @@ export class ScheduleFixProposerService {
     // The fixes of each kind, in the order they were proposed
     const fixesOfType = groupBy(fixes, f => f.type);
     const ofType = (type: ProposedFix['type']) => fixesOfType.get(type) ?? [];
+    /** Save a link and keep the copy in step */
+    const addLink = async (taskId: string, depId: string, type: 'FS' | 'SS' | 'FF' | 'SF' = 'FS', lag = 0) => {
+      await scheduleService.addDependency(taskId, depId, type, lag);
+      plan.link(taskId, depId, type, lag);
+    };
+    const removeLink = async (taskId: string, depId: string) => {
+      await scheduleService.removeDependency(taskId, depId);
+      plan.unlink(taskId, depId);
+    };
 
     /* eslint-disable no-await-in-loop -- fixes apply one by one, in order: each is logged for undo and the cycle/duplicate checks see the links earlier fixes added */
-    // 1) dependencies
+    // 1) dependencies — a duplicate or a loop is skipped, as the preview skips it
     for (const f of ofType('add_dependency')) {
+      if (!plan.canLink(f.taskId!, f.dependsOnTaskId!)) { skipped.push({ fixId: f.id, reason: 'already linked, or the link would make a loop' }); continue; }
       try {
-        await scheduleService.addDependency(f.taskId!, f.dependsOnTaskId!, f.dependencyType ?? 'FS', f.lagDays ?? 0);
+        await addLink(f.taskId!, f.dependsOnTaskId!, f.dependencyType ?? 'FS', f.lagDays ?? 0);
         applied.push({ op: 'remove_dependency', taskId: f.taskId!, dependencyId: f.dependsOnTaskId! });
         appliedCount++;
       } catch (err: any) {
@@ -288,10 +329,9 @@ export class ScheduleFixProposerService {
         estimatedDays: t?.estimatedDays ?? null,
         endDate: t?.endDate ?? null,
       };
-      const update: Record<string, unknown> = { isMilestone: true, estimatedDays: 0 };
-      if (t?.startDate) update.endDate = t.startDate.slice(0, 10);
       try {
-        await scheduleService.updateTask(f.taskId!, update as any);
+        await scheduleService.updateTask(f.taskId!, milestoneUpdate(t) as any);
+        plan.update(f.taskId, milestoneUpdate(t));
         applied.push({ op: 'restore_milestone', taskId: f.taskId!, oldValue });
         appliedCount++;
       } catch (err: any) {
@@ -309,6 +349,7 @@ export class ScheduleFixProposerService {
           if (!parentId) {
             const created = await scheduleService.createTask({ scheduleId, name: f.newParentName, createdBy: userId ?? 'system' });
             parentId = created.id;
+            plan.add({ name: f.newParentName, isSummary: true }, parentId);
             parentIdByName.set(f.newParentName, parentId);
             // Delete the created parent LAST on undo (recorded before its children's restore_parent).
             applied.push({ op: 'delete_task', taskId: parentId });
@@ -317,6 +358,8 @@ export class ScheduleFixProposerService {
         if (!parentId) { skipped.push({ fixId: f.id, reason: 'no parent target' }); continue; }
         const old = taskById.get(f.taskId!)?.parentTaskId ?? null;
         await scheduleService.updateTask(f.taskId!, { parentTaskId: parentId });
+        plan.update(f.taskId, { parentTaskId: parentId });
+        plan.update(parentId, { isSummary: true });
         applied.push({ op: 'restore_parent', taskId: f.taskId!, oldValue: old });
         appliedCount++;
       } catch (err: any) {
@@ -329,6 +372,7 @@ export class ScheduleFixProposerService {
       const old = taskById.get(f.taskId!)?.estimatedDays ?? null;
       try {
         await scheduleService.updateTask(f.taskId!, { estimatedDays: f.newDuration });
+        plan.update(f.taskId, { estimatedDays: f.newDuration });
         applied.push({ op: 'restore_duration', taskId: f.taskId!, oldValue: old });
         appliedCount++;
       } catch (err: any) {
@@ -336,42 +380,36 @@ export class ScheduleFixProposerService {
       }
     }
 
-    // 5) buffers — insert a protective task between a gate and its predecessors.
-    // Rewire: preds → buffer → gate. Record readd_dependency so undo restores the
-    // gate's original links, plus delete_task for the created buffer.
+    // 5) buffers — insert a protective task between a gate and its predecessors (its links as
+    // they are now, including any step 1 added). Rewire: preds → buffer → gate. Record
+    // readd_dependency so undo restores the gate's original links, plus delete_task for the buffer.
     for (const f of ofType('insert_buffer')) {
       try {
         const gate = taskById.get(f.gateTaskId!);
         if (!gate) { skipped.push({ fixId: f.id, reason: 'gate not found' }); continue; }
-        const preds = (gate.dependencies || []).map(d => ({ id: d.dependencyId, type: (d.dependencyType || 'FS') as 'FS' | 'SS' | 'FF' | 'SF', lag: d.lagDays ?? 0 }));
-        if (preds.length === 0) { skipped.push({ fixId: f.id, reason: 'gate has no predecessor to buffer' }); continue; }
-
-        // The buffer runs from the first working day after its latest feeder finishes, for
-        // its length in working days (the re-flow below settles the final dates).
-        // eslint-disable-next-line no-restricted-syntax -- small: one gate's own links (each read once)
-        const feederEnds = preds.map(p => taskById.get(p.id)?.endDate).filter(Boolean).map(e => ymdOf(utcDay(e)));
-        // eslint-disable-next-line no-restricted-syntax -- small: one gate's own links (each read once)
-        const latestFeederEnd = feederEnds.sort().pop();
-        const bufferStart = latestFeederEnd ? shiftWorking(utcDay(latestFeederEnd), 1, isWorking) : null;
+        const shape = plan.bufferFor(f);
+        if (!shape) { skipped.push({ fixId: f.id, reason: 'gate has no predecessor to buffer' }); continue; }
+        const preds = gate.dependencies.map(d => ({ id: d.dependencyId, type: (d.dependencyType || 'FS') as 'FS' | 'SS' | 'FF' | 'SF', lag: d.lagDays ?? 0 }));
         const buffer = await scheduleService.createTask({
           scheduleId,
-          name: `Buffer before ${f.gateName ?? gate.name}`,
-          parentTaskId: gate.parentTaskId ?? undefined, // in the gate's own phase, not loose at the end of the plan
-          estimatedDays: f.bufferDays ?? 1,
-          startDate: bufferStart ? ymdOf(bufferStart) : undefined,
-          endDate: bufferStart ? ymdOf(finishFor(bufferStart, f.bufferDays ?? 1, isWorking)) : undefined,
+          name: shape.name,
+          parentTaskId: shape.parentTaskId ?? undefined, // in the gate's own phase, not loose at the end of the plan
+          estimatedDays: shape.estimatedDays,
+          startDate: shape.startDate,
+          endDate: shape.endDate,
           createdBy: userId ?? 'system',
         });
+        plan.add({ ...shape, dependencies: [] }, buffer.id);
         applied.push({ op: 'delete_task', taskId: buffer.id });
 
         // Move the gate's incoming links onto the buffer.
         for (const p of preds) {
-          await scheduleService.addDependency(buffer.id, p.id, p.type, p.lag);
-          await scheduleService.removeDependency(f.gateTaskId!, p.id);
+          await addLink(buffer.id, p.id, p.type, p.lag);
+          await removeLink(f.gateTaskId!, p.id);
           applied.push({ op: 'readd_dependency', taskId: f.gateTaskId!, dependencyId: p.id, dependencyType: p.type, lagDays: p.lag });
         }
         // Gate now depends on the buffer.
-        await scheduleService.addDependency(f.gateTaskId!, buffer.id, 'FS', 0);
+        await addLink(f.gateTaskId!, buffer.id, 'FS', 0);
         applied.push({ op: 'remove_dependency', taskId: f.gateTaskId!, dependencyId: buffer.id });
         appliedCount++;
       } catch (err: any) {
@@ -381,81 +419,73 @@ export class ScheduleFixProposerService {
 
     // 6) splits — the bundled task becomes a summary over its parts, linked in order, with
     // the task's own dates shared across them. Its links move onto the parts (a summary
-    // shouldn't carry links — R29): predecessors to the first part, successors off the last.
-    // Looked up per split: who has tasks under it, and each task's successors (plan order, each once)
-    const parentIds = new Set(tasks.map(x => x.parentTaskId).filter(Boolean));
-    const successorsOf = new Map<string, typeof tasks>();
-    for (const x of tasks) {
-      const seen = new Set<string>();
-      for (const d of x.dependencies || []) {
-        if (seen.has(d.dependencyId)) continue;
-        seen.add(d.dependencyId);
-        const list = successorsOf.get(d.dependencyId);
-        if (list) list.push(x); else successorsOf.set(d.dependencyId, [x]);
-      }
-    }
+    // shouldn't carry links — R29): predecessors to the first part, successors off the last —
+    // its links as they are now, so one step 1 added moves too.
+    const parentIds = new Set(tasks.map(x => x.parentTaskId).filter(Boolean)); // who had tasks under it before the fixes
     for (const f of ofType('split_task')) {
       try {
         const t = taskById.get(f.taskId!);
         if (!t || !t.startDate || !t.endDate || !f.parts?.length) { skipped.push({ fixId: f.id, reason: 'task not found or has no dates' }); continue; }
         if (parentIds.has(t.id)) { skipped.push({ fixId: f.id, reason: 'task already has tasks under it' }); continue; }
+        // Who waits on it now (earlier splits may have moved links onto it) — before its own parts link to it
+        const waiting = plan.successorsOf(t.id);
         const planned = planSplitDates(String(t.startDate), String(t.endDate), f.parts, isWorking);
         const created: string[] = [];
-        let after = t.id;
         // Replace (a milestone-named line): the task itself becomes the first part, so its
         // row, predecessors and history stay; the other parts follow it at the same level.
         let toCreate = planned;
+        let after = t.id;
         if (f.replace) {
           const [head, ...rest] = planned;
           applied.push({
             op: 'restore_task', taskId: t.id,
             oldValue: { name: t.name, isMilestone: !!t.isMilestone, estimatedDays: t.estimatedDays ?? null, startDate: String(t.startDate).slice(0, 10), endDate: String(t.endDate).slice(0, 10) },
           });
-          await scheduleService.updateTask(t.id, {
-            name: head.name, isMilestone: head.isMilestone, startDate: head.startDate, endDate: head.endDate,
-            estimatedDays: head.isMilestone ? 0 : head.days,
-          } as any);
+          const headValues = splitHeadValues(head);
+          await scheduleService.updateTask(t.id, headValues as any);
+          plan.update(t.id, headValues);
           created.push(t.id);
           toCreate = rest;
         }
         for (const part of toCreate) {
+          const values = splitPartValues(t, part, !!f.replace);
           const child = await scheduleService.createTask({
             scheduleId,
-            name: part.name,
-            parentTaskId: f.replace ? (t.parentTaskId || undefined) : t.id,
+            ...values,
+            parentTaskId: values.parentTaskId || undefined,
             afterTaskId: after,
-            startDate: part.startDate,
-            endDate: part.endDate,
-            isMilestone: part.isMilestone,
-            estimatedDays: part.isMilestone ? 0 : undefined,
             assignedTo: t.assignedTo || undefined,
-            status: t.status,
             priority: t.priority,
             createdBy: userId ?? 'system',
           } as any);
+          plan.add(values, child.id);
           applied.push({ op: 'delete_task', taskId: child.id }); // undo removes parts (and their links)
           created.push(child.id);
           after = child.id;
         }
+        if (!f.replace) plan.update(t.id, { isSummary: true });
         // A milestone part (approval, sign-off) happens the day the work before it finishes,
         // so that link is finish-to-finish; finish-to-start would push it a day later and
         // stretch the summary past the task's own end.
         for (let i = 1; i < created.length; i++) {
-          await scheduleService.addDependency(created[i], created[i - 1], planned[i].isMilestone ? 'FF' : 'FS', 0);
+          await addLink(created[i], created[i - 1], planned[i].isMilestone ? 'FF' : 'FS', 0);
         }
         const first = created[0];
         const last = created[created.length - 1];
-        for (const d of f.replace ? [] : t.dependencies || []) { // replaced: the task is the first part and keeps them
-          await scheduleService.addDependency(first, d.dependencyId, (d.dependencyType || 'FS') as any, d.lagDays ?? 0);
-          await scheduleService.removeDependency(t.id, d.dependencyId);
-          applied.push({ op: 'readd_dependency', taskId: t.id, dependencyId: d.dependencyId, dependencyType: (d.dependencyType || 'FS') as any, lagDays: d.lagDays ?? 0 });
+        for (const d of f.replace ? [] : [...t.dependencies]) { // replaced: the task is the first part and keeps them
+          const type = (d.dependencyType || 'FS') as 'FS' | 'SS' | 'FF' | 'SF';
+          await addLink(first, d.dependencyId, type, d.lagDays ?? 0);
+          await removeLink(t.id, d.dependencyId);
+          applied.push({ op: 'readd_dependency', taskId: t.id, dependencyId: d.dependencyId, dependencyType: type, lagDays: d.lagDays ?? 0 });
         }
-        for (const succ of successorsOf.get(t.id) ?? []) {
+        for (const succ of waiting) {
           // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (each read once)
-          const d = succ.dependencies.find(dd => dd.dependencyId === t.id)!;
-          await scheduleService.addDependency(succ.id, last, (d.dependencyType || 'FS') as any, d.lagDays ?? 0);
-          await scheduleService.removeDependency(succ.id, t.id);
-          applied.push({ op: 'readd_dependency', taskId: succ.id, dependencyId: t.id, dependencyType: (d.dependencyType || 'FS') as any, lagDays: d.lagDays ?? 0 });
+          const d = succ.dependencies.find(dd => dd.dependencyId === t.id);
+          if (!d) continue;
+          const type = (d.dependencyType || 'FS') as 'FS' | 'SS' | 'FF' | 'SF';
+          await addLink(succ.id, last, type, d.lagDays ?? 0);
+          await removeLink(succ.id, t.id);
+          applied.push({ op: 'readd_dependency', taskId: succ.id, dependencyId: t.id, dependencyType: type, lagDays: d.lagDays ?? 0 });
           applied.push({ op: 'remove_dependency', taskId: succ.id, dependencyId: last });
         }
         appliedCount++;
@@ -468,25 +498,22 @@ export class ScheduleFixProposerService {
     // wait for it gets a link too, and the re-flow below pushes it later if needed.
     for (const f of ofType('add_task')) {
       try {
-        const anchor = f.afterTaskId ? taskById.get(f.afterTaskId) : undefined;
-        // Starts the first working day after its anchor finishes; its length is working days
-        const startDay = anchor?.endDate ? shiftWorking(utcDay(anchor.endDate), 1, isWorking) : null;
-        const start = startDay ? ymdOf(startDay) : undefined;
-        const end = startDay ? ymdOf(finishFor(startDay, f.newTaskDays ?? 5, isWorking)) : undefined;
+        const shape = plan.phaseTaskFor(f);
         const created = await scheduleService.createTask({
           scheduleId,
-          name: f.newTaskName!,
-          afterTaskId: anchor?.id,
-          parentTaskId: anchor?.parentTaskId || undefined,
-          startDate: start,
-          endDate: end,
-          estimatedDays: f.newTaskDays ?? 5,
+          name: shape.name,
+          afterTaskId: f.afterTaskId && taskById.has(f.afterTaskId) ? f.afterTaskId : undefined,
+          parentTaskId: shape.parentTaskId || undefined,
+          startDate: shape.startDate,
+          endDate: shape.endDate,
+          estimatedDays: shape.estimatedDays,
           createdBy: userId ?? 'system',
         } as any);
+        plan.add(shape, created.id);
         applied.push({ op: 'delete_task', taskId: created.id }); // undo removes it and its links
-        if (anchor) await scheduleService.addDependency(created.id, anchor.id, 'FS', 0);
-        if (f.beforeTaskId && taskById.has(f.beforeTaskId)) {
-          await scheduleService.addDependency(f.beforeTaskId, created.id, 'FS', 0).catch(() => { /* would loop — leave it unlinked */ });
+        if (f.afterTaskId && taskById.has(f.afterTaskId)) await addLink(created.id, f.afterTaskId, 'FS', 0);
+        if (f.beforeTaskId && plan.canLink(f.beforeTaskId, created.id)) {
+          await addLink(f.beforeTaskId, created.id, 'FS', 0).catch(() => { /* would loop — leave it unlinked */ });
         }
         appliedCount++;
       } catch (err: any) {
@@ -498,8 +525,10 @@ export class ScheduleFixProposerService {
       const t = taskById.get(f.taskId!);
       if (!t || !f.newName) { skipped.push({ fixId: f.id, reason: 'task not found or no new name' }); continue; }
       try {
+        const oldName = t.name;
         await scheduleService.updateTask(t.id, { name: f.newName });
-        applied.push({ op: 'restore_name', taskId: t.id, oldValue: t.name });
+        plan.update(t.id, { name: f.newName });
+        applied.push({ op: 'restore_name', taskId: t.id, oldValue: oldName });
         appliedCount++;
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not rename task' });
@@ -515,6 +544,11 @@ export class ScheduleFixProposerService {
     } catch (err: any) {
       logger.warn('[ScheduleFix] date recompute failed', { scheduleId, error: err?.message });
     }
+    // The finish before is the plan's before any fix (as the preview reports it): the re-flow only
+    // sees the plan after the fixes, with the tasks they added
+    const finishBefore = latestFinish(tasks);
+    const finishAfter = recompute.projectEndAfter ?? finishBefore;
+    const finishShiftDays = finishBefore && finishAfter ? calendarDaysBetween(finishBefore, finishAfter) : 0;
     const movedFar = recompute.deltas.filter(d => Math.abs(d.movedDays) > 10).length;
     const warning = recompute.leafCount > 0 && movedFar / recompute.leafCount > 0.30
       ? `${movedFar} of ${recompute.leafCount} tasks moved more than 10 days. Review before keeping, or undo.`
@@ -546,7 +580,7 @@ export class ScheduleFixProposerService {
       entityType: 'schedule',
       entityId: scheduleId,
       projectId: proposal.projectId,
-      payload: { proposalId, appliedCount, beforeScore: before?.score ?? null, afterScore: after.score, actions: applied, skipped, baselineId, datesMoved: recompute.tasksMoved, projectEndShiftDays: recompute.projectEndShiftDays },
+      payload: { proposalId, appliedCount, beforeScore: before?.score ?? null, afterScore: after.score, actions: applied, skipped, baselineId, datesMoved: recompute.tasksMoved, projectEndShiftDays: finishShiftDays },
       source: getActorSource(),
     }).catch(err => logger.warn('[ScheduleFix] audit append (apply) failed', { proposalId, error: err?.message }));
 
@@ -556,9 +590,10 @@ export class ScheduleFixProposerService {
       appliedCount,
       skipped,
       datesMoved: recompute.tasksMoved,
-      projectEndBefore: recompute.projectEndBefore,
-      projectEndAfter: recompute.projectEndAfter,
-      projectEndShiftDays: recompute.projectEndShiftDays,
+      projectEndBefore: finishBefore,
+      projectEndAfter: finishAfter,
+      projectEndShiftDays: finishShiftDays,
+      projectEnd: project?.endDate ? String(project.endDate).slice(0, 10) : null,
       warning,
       dateDeltas: recompute.deltas.slice(0, 50),
       afterCounts: {
@@ -568,6 +603,69 @@ export class ScheduleFixProposerService {
         low: (after.counts?.low ?? 0) + (after.counts?.info ?? 0),
       },
     };
+  }
+
+  /**
+   * What Apply would do to the dates and the score, without saving anything (2026-10-18: a
+   * "Select all in Critical" pushed a finish out eight months with no warning). The ticked fixes
+   * are applied to an in-memory copy, the same forward pass as Apply re-flows it, and the rules
+   * score the result — with float and over-allocation as the plan stands now, so the score after
+   * is an estimate; Apply's own re-run is the real one.
+   */
+  async preview(scheduleId: string, proposalId: string, fixIds: string[], names: Record<string, string> = {}): Promise<PreviewResult> {
+    const proposal = await scheduleFixProposalRepository.findById(proposalId);
+    if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
+    if (proposal.status !== 'pending') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not pending`);
+
+    const fixes = chosenFixes(proposal.proposalData.fixes, fixIds, names);
+    // Float, over-allocation, baselines, resources, calendar and the score now: read once per
+    // proposal (the panel asks on every tick). Each preview then reads only the tasks.
+    const base = await this.previewBase(scheduleId, proposalId);
+    const { input } = base;
+    const tasks = await scheduleService.findTasksByScheduleId(scheduleId);
+    const isWorking = input.isWorking ?? weekdaysOnly;
+
+    const changed = applyFixesInMemory(tasks, fixes, isWorking);
+    const flow = planReflow(changed, isWorking);
+    const moved = new Map(flow.deltas.map(d => [d.taskId, d]));
+    const after = rollUpSummaries(changed.map(t => {
+      const d = moved.get(t.id);
+      return d ? { ...t, startDate: d.newStart, endDate: d.newEnd } : t;
+    }));
+
+    const finishBefore = latestFinish(tasks);
+    const finishAfter = flow.projectEndAfter;
+    return {
+      tasksMoved: flow.tasksMoved,
+      finishBefore,
+      finishAfter,
+      finishShiftDays: finishBefore && finishAfter ? calendarDaysBetween(finishBefore, finishAfter) : 0,
+      projectEnd: input.project?.endDate ? String(input.project.endDate).slice(0, 10) : null,
+      scoreBefore: base.scoreBefore,
+      scoreAfter: reviewSchedule({ ...input, tasks: after.map(toFullReviewTask) }).score,
+    };
+  }
+
+  /** In-process (it holds the float map and the calendar test), per company and proposal, a few minutes */
+  private previewBases = new Map<string, { at: number; base: { input: ReviewInput; scoreBefore: number } }>();
+
+  private async previewBase(scheduleId: string, proposalId: string): Promise<{ input: ReviewInput; scoreBefore: number }> {
+    const key = companyCacheKey(`schedule-fix-preview:${proposalId}`);
+    const hit = this.previewBases.get(key);
+    if (hit && Date.now() - hit.at < PREVIEW_BASE_TTL_MS) return hit.base;
+    const { input } = await scheduleReviewService.gatherInput(scheduleId);
+    // Kept without the tasks: each preview reads them fresh, and a big plan's list is the bulk of it
+    const base = { input: { ...input, tasks: [] }, scoreBefore: reviewSchedule(input).score };
+    const now = Date.now();
+    this.previewBases.delete(key);
+    // Bounded: expired entries go, then the oldest past the cap (a Map keeps insertion order)
+    for (const [k, v] of this.previewBases) if (now - v.at >= PREVIEW_BASE_TTL_MS) this.previewBases.delete(k);
+    for (const k of this.previewBases.keys()) {
+      if (this.previewBases.size < PREVIEW_BASE_MAX) break;
+      this.previewBases.delete(k);
+    }
+    this.previewBases.set(key, { at: now, base });
+    return base;
   }
 
   /** The schedule's project calendar; Mon-Fri when it cannot be read */

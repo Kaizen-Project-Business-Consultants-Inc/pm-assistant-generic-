@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 670,
+  "count": 671,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -505,6 +505,7 @@
     "plannerMove",
     "previewAIContext",
     "previewCompanyHoliday",
+    "previewScheduleFixes",
     "previewWorkingCalendar",
     "promoteAgent",
     "promoteScenario",

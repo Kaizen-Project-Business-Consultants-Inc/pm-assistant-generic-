@@ -151,6 +151,11 @@ export class BaselineService {
     return baselineRepository.findById(id);
   }
 
+  /** The newest baseline not named `excludeName` (with its tasks) and how many there are */
+  async findLatestExcept(scheduleId: string, excludeName: string): Promise<{ latest: Baseline | null; count: number }> {
+    return baselineRepository.findLatestExcept(scheduleId, excludeName);
+  }
+
   async delete(id: string): Promise<boolean> {
     return baselineRepository.deleteById(id);
   }

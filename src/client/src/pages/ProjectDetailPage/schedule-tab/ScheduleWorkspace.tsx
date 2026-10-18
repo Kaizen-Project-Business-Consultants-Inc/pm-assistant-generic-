@@ -53,7 +53,7 @@ import { isCalendarOverdue, toCalendarDate, formatCalendarDate } from '../../../
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
-export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'critical' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void }) {
+export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened, onEditProject }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'critical' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void; /** Open Edit project (only for those who may edit it) */ onEditProject?: () => void }) {
   const uid = useId();
   const queryClient = useQueryClient();
   // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
@@ -901,6 +901,9 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           activeRowFilterLabel={reviewRowFilter?.label ?? null}
           onHighlightTasks={handleHighlightTasks}
           rowNumberOf={rowNumberOf}
+          // Edit project opens over the plan: the review closes first so the dialog isn't behind it
+          onEditProject={onEditProject ? () => { setShowReviewPanel(false); handleHighlightTasks(null); onEditProject(); } : undefined}
+          onSaveBaseline={canEdit ? () => createBaselineMutation.mutateAsync() : undefined}
         />
       )}
 
