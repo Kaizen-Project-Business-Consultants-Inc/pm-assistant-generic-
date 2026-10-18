@@ -5,6 +5,8 @@ import { apiService } from '../../services/api';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { AccessibleModal } from '../ui/AccessibleModal';
 import { PROJECT_TYPE_OPTIONS } from '../../constants/projectTypes';
+import { useClientChoice } from '../../hooks/useClientChoice';
+import { ClientNameField } from './ClientNameField';
 
 interface ProjectData {
   name: string;
@@ -62,8 +64,14 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
   // Client (Oct 2026): who the project is for — one of the company's clients (project groups)
   const origClientId: string = project.clientId || project.groupId || '';
   const [clientId, setClientId] = useState(origClientId);
-  const clientsQ = useQuery<{ groups: Array<{ id: string; name: string }> }>({ queryKey: ['project-groups'], queryFn: () => apiService.getProjectGroups(), staleTime: 120_000 });
-  const clients = clientsQ.data?.groups ?? [];
+  const client = useClientChoice(true);
+  const clients = client.clients;
+  // People who may add clients type a name (a new one is added, then assigned; blank = none, U35).
+  // null = not touched, so the box shows the current client once the list arrives.
+  const [clientText, setClientText] = useState<string | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
+  const [clientSaving, setClientSaving] = useState(false);
+  const origClientName = clients.find(c => c.id === origClientId)?.name ?? '';
   // Sponsor (Oct 2026): saved through its own endpoint; "user:<id>" | "person:<id>" | ""
   const projectId: string | undefined = project.id;
   const sponsorQ = useQuery({ queryKey: ['project-sponsor', projectId], queryFn: () => apiService.getProjectSponsor(projectId!), enabled: !!projectId });
@@ -118,7 +126,20 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
 
     if (location !== (project.location || '')) data.location = location;
 
-    if (clientId !== origClientId) data.clientId = clientId || null;
+    if (client.canManage) {
+      if (clientText !== null) {
+        setClientError(null); setClientSaving(true);
+        try {
+          const id = await client.resolveClientId(clientText);
+          if ((id ?? '') !== origClientId) data.clientId = id;
+        } catch (err) {
+          setClientError(getApiErrorMessage(err, 'The client could not be added. Please try again.'));
+          return;
+        } finally {
+          setClientSaving(false);
+        }
+      }
+    } else if (clientId !== origClientId) data.clientId = clientId || null;
 
     if (Object.keys(data).length === 0) {
       onClose();
@@ -262,9 +283,15 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           </div>
         )}
 
-        {(clients.length > 0 || origClientId) && (
+        {client.canManage && (
           <div>
-            <label htmlFor={`${uid}-client`} className={labelClass}>Client</label>
+            <ClientNameField clients={clients} listFailed={client.listFailed} value={clientText ?? origClientName} onChange={setClientText} label={client.label} />
+            {clientError && <p role="alert" className="mt-1 text-sm text-red-700 dark:text-red-300">{clientError}</p>}
+          </div>
+        )}
+        {!client.canManage && (clients.length > 0 || origClientId) && (
+          <div>
+            <label htmlFor={`${uid}-client`} className={labelClass}>{client.label}</label>
             <select id={`${uid}-client`} value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputClass}>
               <option value="">No client</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -281,8 +308,8 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={saving || sponsorSaving || !name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
-            {saving || sponsorSaving ? 'Saving…' : 'Save Changes'}
+          <button type="submit" disabled={saving || sponsorSaving || clientSaving || client.loading || !name.trim()} className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
+            {saving || sponsorSaving || clientSaving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </form>

@@ -1139,3 +1139,27 @@ describe('RAID owner (user, UAT 2026-10-17)', () => {
     expect(mockRepo.create.mock.calls[1][0].ownerId).toBeUndefined();
   });
 });
+
+describe('RAID import notices (UAT U39, 2026-10-18)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('a quiet create (one import row) notifies nobody', async () => {
+    mockRepo.create.mockResolvedValue({ ...sampleRisk(), ownerId: 'u2' });
+    mockMembers.findByProjectId.mockResolvedValue([{ userId: 'u-co', role: 'manager' }]);
+    await riskService.create({ projectId: 'p1', type: 'risk', title: 'A', ownerId: 'u2', createdBy: 'u1' }, undefined, { quiet: true });
+    expect(mockNotification.create).not.toHaveBeenCalled();
+    expect(mockMembers.findByProjectId).not.toHaveBeenCalled();
+  });
+
+  it('the summary: one notice per other PM and one per owner given items, never the importer', async () => {
+    mockMembers.findByProjectId.mockResolvedValue([{ userId: 'u1', role: 'owner' }, { userId: 'u-co', role: 'manager' }, { userId: 'u-t', role: 'viewer' }]);
+    await riskService.notifyImported('p1', 'u1', 1000, new Map([['u2', 3], ['u1', 5]]));
+    const sent = mockNotification.create.mock.calls.map((c: any[]) => [c[0].userId, c[0].title]);
+    expect(sent).toEqual([['u-co', '1,000 RAID items imported'], ['u2', '3 RAID items assigned to you']]);
+  });
+
+  it('nothing imported: no notices', async () => {
+    await riskService.notifyImported('p1', 'u1', 0, new Map());
+    expect(mockNotification.create).not.toHaveBeenCalled();
+  });
+});

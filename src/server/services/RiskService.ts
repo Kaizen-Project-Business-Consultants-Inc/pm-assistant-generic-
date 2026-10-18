@@ -128,7 +128,7 @@ class RiskService {
     responseStrategy?: RaidResponseStrategy | null;
     closureReason?: string | null;
     resolvedAt?: string | null;
-  }, userRole?: string): Promise<ProjectRisk> {
+  }, userRole?: string, opts?: { quiet?: boolean }): Promise<ProjectRisk> {
     assertResponseStrategy(data.responseStrategy);
     // Made without a form (import, template, AI scan, meeting minutes, standups, automation, Claude): the
     // project's PM owns it until they hand it on. Not an "assigned to you" note — the PM is told anyway.
@@ -159,6 +159,9 @@ class RiskService {
       actionType: 'created',
       newValue: risk.recordId || risk.id,
     }).catch((error) => { logger.warn('Failed to log RAID activity', { raidItemId: risk.id, error }); });
+
+    // A bulk import is quiet per row and sends one summary at the end (notifyImported)
+    if (opts?.quiet) return risk;
 
     // Notify (awaited to preserve tenant DB context, but errors are non-fatal)
     try { await this.notifyProjectManagers(data.projectId, risk, data.createdBy); } catch (error) { logger.warn('Failed to notify PMs about RAID item', { raidItemId: risk.id, error }); }
@@ -233,6 +236,31 @@ class RiskService {
       }
     } catch (err) {
       logger.error('Failed to notify project managers about RAID item: %s', err);
+    }
+  }
+
+  /**
+   * After a register import (UAT U39, 2026-10-18): one notice per other PM/owner and one per person
+   * given items, instead of one per row — a 1,000-row import used to send each of them 1,000 notices
+   * (and an email for every high/critical one).
+   */
+  async notifyImported(projectId: string, importedBy: string, count: number, assigned: Map<string, number>): Promise<void> {
+    if (count === 0) return;
+    try {
+      const members = await projectMemberRepository.findByProjectId(projectId);
+      const project = await projectService.findById(projectId).catch(() => null);
+      const where = project?.name ? ` into ${project.name}` : '';
+      const items = (n: number) => `${n.toLocaleString('en-US')} RAID item${n === 1 ? '' : 's'}`;
+      const pms = members.filter(m => ['owner', 'manager'].includes(m.role) && m.userId !== importedBy);
+      const notes = [
+        ...pms.map(pm => ({ userId: pm.userId, title: `${items(count)} imported${where}`, message: `${items(count)} ${count === 1 ? 'was' : 'were'} imported${where} from a register. Open the RAID log to review them.` })),
+        ...[...assigned].filter(([userId]) => userId !== importedBy).map(([userId, n]) => ({ userId, title: `${items(n)} assigned to you`, message: `You own ${items(n)} imported${where}.` })),
+      ];
+      // one per recipient: the project's few PMs plus the people named as owners
+      await Promise.all(notes.map(n => notificationService.create({ ...n, type: 'raid_item', severity: 'medium', projectId, linkType: 'raid' })
+        .catch((error) => { logger.warn('Failed to notify about a RAID import', { projectId, error }); })));
+    } catch (err) {
+      logger.error('Failed to notify about a RAID import: %s', err);
     }
   }
 

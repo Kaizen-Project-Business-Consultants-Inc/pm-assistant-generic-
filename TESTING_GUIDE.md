@@ -863,6 +863,23 @@ Sign up a new company on staging (consultant or trial plan), reach **Create your
 4. SME/Enterprise: the label reads **Client or department**. A team member (not PM/PMO) never sees the box.
 Unit tests: `src/client/src/__tests__/components/clientNameField.test.tsx`.
 
+### 9a3. New Project and Edit project — client box (U35, 2026-10-18)
+
+On staging as qa.pm in a company with no clients:
+1. New Project → Blank Project: the **Client (optional)** box is there. Type `Acme Bank`, Create → the project opens under Acme Bank (Clients lists it). Repeat with From File and From Template.
+2. New Project again: typing `acme` offers Acme Bank; pick it → no second Acme Bank is added. Leave blank → no client.
+3. Edit project: the box shows the current client; type a new name → saved under the new client; clear it → no client.
+4. As qa.team (team member): no client box while there are no clients; with clients, a plain list.
+Unit tests: `__tests__/hooks/useClientChoice.test.tsx`, `__tests__/components/projectClientField.test.tsx`.
+
+### 9a4. RAID import size limits (U39, 2026-10-18)
+
+1. RAID → Import a 6 MB `.xlsx` (pictures/formatting, few rows) → it reads and previews. A 26 MB `.xlsx` or an 11 MB `.csv` → a plain size message under the box.
+2. Paste a CSV over 2 million characters → Import says "This register is too big to import at once — split it or import one sheet at a time"; nothing is sent.
+3. A sheet with 1,001 rows → the server's message names the row count and the 1,000 limit; nothing is created.
+4. Import 50 rows as qa.pm into a project with a second manager → that manager gets ONE "50 RAID items imported" notice, not 50.
+Unit tests: `__tests__/components/raidImportModal.test.tsx` (client), `src/server/__tests__/routes/raidImportLimits.test.ts` (8 MB body → 413, text cap, row cap).
+
 ### 9b. Onboarding WelcomeModal
 
 The WelcomeModal appears on first login for new users. It is suppressed for returning users via two storage keys.

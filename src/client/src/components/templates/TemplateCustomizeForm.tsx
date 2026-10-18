@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect, useId } from 'react';
 import { StarterRaidReview, type StarterRaidItem } from './StarterRaidReview';
 import { ArrowLeft, Calendar, DollarSign, MapPin, ChevronDown, Lock } from 'lucide-react';
+import { ClientNameField } from '../project/ClientNameField';
+import type { ClientFieldState } from '../../hooks/useClientChoice';
 
 interface TemplateTask {
   refId: string;
@@ -33,13 +35,16 @@ interface TemplateCustomizeFormProps {
     selectedTaskRefIds?: string[];
     selectedRaidIndexes?: number[];
     clientId?: string;
+    /** What was typed in the client box (people who may add clients) — the caller turns it into a client */
+    clientName?: string;
   }) => void;
   isSubmitting: boolean;
   /** the template's starter RAID items, reviewed before creating (U10) */
   raidItems?: StarterRaidItem[];
   extraContent?: React.ReactNode;
-  /** The company's clients; the Client picker shows only when there is at least one */
-  clients?: Array<{ id: string; name: string }>;
+  /** The client box (useClientChoice): type-or-create for people who may add clients (U35, shown even
+   *  before the first client exists); others pick from the list when there is one */
+  client?: ClientFieldState;
 }
 
 export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
@@ -53,7 +58,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   onSubmit,
   isSubmitting,
   extraContent,
-  clients = [],
+  client,
   raidItems = [],
 }) => {
   const uid = useId();
@@ -65,6 +70,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
   const [methodology, setMethodology] = useState(defaultMethodology || 'waterfall');
   const [location, setLocation] = useState('');
   const [clientId, setClientId] = useState('');
+  const [clientText, setClientText] = useState('');
   const [selectedRefIds, setSelectedRefIds] = useState<Set<string>>(() => new Set(tasks.map(t => t.refId)));
   const [taskSectionExpanded, setTaskSectionExpanded] = useState(false);
   const [keptRaid, setKeptRaid] = useState<Set<number>>(() => new Set(raidItems.map((_, i) => i)));
@@ -200,7 +206,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
       location: location || undefined,
       selectedTaskRefIds: allSelected ? undefined : [...selectedRefIds],
       selectedRaidIndexes: keptRaid.size === raidItems.length ? undefined : [...keptRaid].sort((a, b) => a - b),
-      clientId: clientId || undefined,
+      ...(client?.canManage ? { clientName: clientText } : { clientId: clientId || undefined }),
     });
   };
 
@@ -239,9 +245,12 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
           />
         </div>
 
-        {clients.length > 0 && (
+        {client?.canManage && (
+          <ClientNameField clients={client.clients} listFailed={client.listFailed} value={clientText} onChange={setClientText} label={client.label} />
+        )}
+        {client && !client.canManage && client.clients.length > 0 && (
           <div>
-            <label htmlFor={`${uid}-client`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Client</label>
+            <label htmlFor={`${uid}-client`} className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{client.label}</label>
             <select
               id={`${uid}-client`}
               value={clientId}
@@ -249,7 +258,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
               <option value="">No client</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              {client.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
         )}
@@ -416,7 +425,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
 
         <button
           type="submit"
-          disabled={!projectName || !startDate || isSubmitting}
+          disabled={!projectName || !startDate || isSubmitting || !!client?.loading}
           className="w-full py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-lg transition-colors"
         >
           {isSubmitting ? 'Creating Project…' : 'Create Project'}

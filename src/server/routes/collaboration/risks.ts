@@ -29,6 +29,14 @@ import { hasRaidOwner } from '../../utils/raidOwner';
  *  the projects list can hold (200), and short enough for the address line (about 7.5 KB of ids) */
 const MAX_TOTALS_PROJECTS = 200;
 
+/** RAID import limits (client mirror in components/raids/RAIDImportModal.tsx). ~2 million characters is
+ *  thousands of register rows; the body limit leaves room for JSON escaping and non-English text and
+ *  stays under nginx's 12 MB and the app's 10 MB request cap. */
+const RAID_IMPORT_MAX_CSV_CHARS = 2_000_000;
+const RAID_IMPORT_MAX_ROWS = 1000;
+const RAID_IMPORT_BODY_LIMIT = 8 * 1024 * 1024;
+const RAID_IMPORT_TOO_BIG = 'This register is too big to import at once — split it or import one sheet at a time.';
+
 const RAID_TYPES = ['risk', 'issue', 'action', 'decision', 'assumption', 'dependency'] as const;
 const ALL_STATUSES = ['proposed', 'open', 'monitoring', 'mitigating', 'mitigated', 'closed', 'resolved',
   'cancelled', 'reversed', 'in_progress', 'completed', 'pending_decision', 'decided', 'deferred',
@@ -554,9 +562,13 @@ export async function riskRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // POST /api/v1/projects/:projectId/risks/import — CSV/Excel import with column mapping
+  // POST /api/v1/projects/:projectId/risks/import — CSV/Excel import with column mapping.
+  // Judged by what is sent (one sheet as CSV text), not the file: an .xlsx with pictures or
+  // extra sheets is big while its RAID rows are small (UAT U39). Rows are created one at a
+  // time (each takes the next record number; the PMs get one summary at the end), so the row cap keeps
+  // one request to seconds, not minutes.
   const csvImportSchema = z.object({
-    csv: z.string().min(1).max(500_000),
+    csv: z.string().min(1).max(RAID_IMPORT_MAX_CSV_CHARS, { message: RAID_IMPORT_TOO_BIG }),
     columnMap: z.record(z.string(), z.string()),
     defaultType: z.enum(['risk', 'issue', 'action', 'decision', 'assumption', 'dependency']).optional(),
   });
@@ -593,6 +605,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
   };
 
   fastify.post('/:projectId/risks/import', {
+    bodyLimit: RAID_IMPORT_BODY_LIMIT,
     preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('raid-import', 20)],
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
@@ -610,14 +623,17 @@ export async function riskRoutes(fastify: FastifyInstance) {
           relax_column_count: true,
         });
       } catch {
-        return reply.status(400).send({ error: 'Failed to parse CSV data' });
+        return reply.status(400).send({ error: 'Unreadable register', message: "The register couldn't be read as a table — check it is a CSV or Excel sheet with one header row." });
       }
 
       if (records.length === 0) {
-        return reply.status(400).send({ error: 'CSV contains no data rows' });
+        return reply.status(400).send({ error: 'Empty register', message: 'The sheet has no rows under its header row — nothing to import.' });
       }
-      if (records.length > 200) {
-        return reply.status(400).send({ error: 'Maximum 200 rows per import' });
+      if (records.length > RAID_IMPORT_MAX_ROWS) {
+        return reply.status(400).send({
+          error: 'Register too big',
+          message: `This register has ${records.length.toLocaleString('en-US')} rows; up to ${RAID_IMPORT_MAX_ROWS.toLocaleString('en-US')} can be imported at once — split it or import one sheet at a time.`,
+        });
       }
 
       // Build reverse column map: csv header → target field
@@ -642,6 +658,7 @@ export async function riskRoutes(fastify: FastifyInstance) {
       const failed: { row: number; error: string }[] = [];
       const warnings: { row: number; message: string }[] = [];
       const seenTitles = new Set<string>();
+      const assigned = new Map<string, number>(); // owner → items, for one summary notice each
 
       for (let i = 0; i < records.length; i++) {
         const row = records[i];
@@ -805,8 +822,9 @@ export async function riskRoutes(fastify: FastifyInstance) {
             resolvedAt,
             source: 'imported',
             createdBy: userId,
-          });
+          }, undefined, { quiet: true });
 
+          if (ownerId) assigned.set(ownerId, (assigned.get(ownerId) ?? 0) + 1);
           succeeded.push(rowNum);
         } catch (err: any) {
           failed.push({ row: rowNum, error: err.message || 'Unknown error' });
@@ -814,11 +832,15 @@ export async function riskRoutes(fastify: FastifyInstance) {
       }
 
       if (succeeded.length > 0) raidChanged(projectId);
+      await riskService.notifyImported(projectId, userId, succeeded.length, assigned);
       return reply.status(201).send({
         data: { succeeded: succeeded.length, failed, warnings },
       });
     } catch (err) {
-      if (err instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      if (err instanceof z.ZodError) {
+        if (err.issues.some(i => i.message === RAID_IMPORT_TOO_BIG)) return reply.status(400).send({ error: 'Register too big', message: RAID_IMPORT_TOO_BIG });
+        return reply.status(400).send({ error: 'Validation error', details: err.issues });
+      }
       fastify.log.error({ err }, 'RAID CSV import failed');
       return reply.status(500).send({ error: 'RAID CSV import failed' });
     }

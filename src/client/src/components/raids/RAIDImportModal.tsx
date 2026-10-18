@@ -187,6 +187,20 @@ const SHEET_TYPE_MAP: Record<string, string> = {
 };
 const SKIP_SHEETS = new Set(['dashboard', 'summary', 'overview', 'instructions', 'template', 'readme', 'cover']);
 
+// The file can be big (an .xlsx with formatting, pictures or extra sheets) while its RAID rows are
+// small (UAT U39), so the file limit is generous and the import is judged by what is sent: one
+// sheet as CSV text. The text limit mirrors the server's (routes/collaboration/risks.ts).
+const MAX_EXCEL_BYTES = 25 * 1024 * 1024;
+const MAX_TEXT_BYTES = 10 * 1024 * 1024;
+const MAX_IMPORT_CHARS = 2_000_000;
+const TOO_BIG_TO_IMPORT = 'This register is too big to import at once — split it or import one sheet at a time.';
+
+/** Plain words for a failed import: too big for the server (413) says what to do, not "too big to send". */
+function importErrorMessage(err: unknown): string {
+  if ((err as { response?: { status?: number } })?.response?.status === 413) return TOO_BIG_TO_IMPORT;
+  return getApiErrorMessage(err, 'Import failed');
+}
+
 // ---------------------------------------------------------------------------
 // CSV parser (same as ImportModal)
 // ---------------------------------------------------------------------------
@@ -266,6 +280,8 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     const p = parseCSV(text);
     if (p.headers.length === 0) { setError('CSV appears empty.'); setParsed(null); return; }
     setParsed(p);
+    // said as soon as the sheet loads, not after the columns are matched (Import refuses it too)
+    if (text.length > MAX_IMPORT_CHARS) setError(TOO_BIG_TO_IMPORT);
     setColumnMap({});
     // Remount the column matcher so it matches again even when the new sheet has the
     // same headers as the last one (it only re-ran on a header change, leaving all "skip")
@@ -282,7 +298,6 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
 
   const handleFile = (file: File) => {
     setError('');
-    const MAX_FILE_SIZE = 5 * 1024 * 1024;
     const ext = file.name.toLowerCase().split('.').pop() ?? '';
     if (!isExcelFile(file) && !TEXT_EXTS.includes(ext) && file.type !== 'text/csv') {
       setError(`"${file.name}" can't be imported. Choose an Excel (.xlsx, .xls, .xlsb) or CSV (.csv, .txt) file.`);
@@ -290,12 +305,13 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
     }
     // e.g. an online-only OneDrive file while offline, or one moved after picking
     const unreadable = () => setError(`Couldn't read "${file.name}". Check the file is saved on this computer and try again.`);
-    if (file.size > MAX_FILE_SIZE) {
-      setError(`File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 5MB.`);
+    const excel = isExcelFile(file);
+    if (file.size > (excel ? MAX_EXCEL_BYTES : MAX_TEXT_BYTES)) {
+      setError(`"${file.name}" is ${(file.size / 1024 / 1024).toFixed(1)} MB. Excel files can be up to 25 MB and CSV files up to 10 MB — split the register or save just the RAID sheet.`);
       return;
     }
 
-    if (isExcelFile(file)) {
+    if (excel) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -345,8 +361,9 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
 
   const handleImport = async () => {
     if (!parsed) return;
-    setImporting(true);
     setError('');
+    if (csvText.length > MAX_IMPORT_CHARS) { setError(TOO_BIG_TO_IMPORT); return; }
+    setImporting(true);
     try {
       const headerMap: Record<string, string> = {};
       for (let i = 0; i < parsed.headers.length; i++) {
@@ -362,7 +379,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
       setResult({ succeeded: data.succeeded ?? 0, failed: data.failed ?? [] });
       if ((data.succeeded ?? 0) > 0) onImported?.();
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err, 'Import failed'));
+      setError(importErrorMessage(err));
     } finally {
       setImporting(false);
     }
@@ -415,6 +432,10 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
         }
         const outCsv = outLines.join('\n');
         headerMap['_raid_type_'] = 'type';
+        if (outCsv.length > MAX_IMPORT_CHARS) {
+          results.push({ sheet: name, type: raidType, succeeded: 0, failed: -1, problems: [TOO_BIG_TO_IMPORT] });
+          continue;
+        }
 
         // eslint-disable-next-line no-await-in-loop -- one sheet per RAID type (at most four); imports run one at a time so record numbers don't clash
         const res = await apiService.importRaidItems(projectId, outCsv, headerMap, raidType);
@@ -425,8 +446,8 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
         ];
         results.push({ sheet: name, type: raidType, succeeded: data.succeeded ?? 0, failed: (data.failed ?? []).length, problems });
         if ((data.succeeded ?? 0) > 0) anySuccess = true;
-      } catch {
-        results.push({ sheet: name, type: raidType, succeeded: 0, failed: -1 });
+      } catch (err: unknown) {
+        results.push({ sheet: name, type: raidType, succeeded: 0, failed: -1, problems: [importErrorMessage(err)] });
       }
     }
 
@@ -535,7 +556,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                     >
                       Choose file
                     </button>
-                    <p className="text-xs text-gray-600 dark:text-gray-400">or drag a file here · .xlsx, .xls, .xlsb, .csv or .txt · up to 5 MB</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">or drag a file here · .xlsx, .xls, .xlsb (up to 25 MB), .csv or .txt (up to 10 MB)</p>
                   </div>
                   {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
@@ -642,7 +663,7 @@ export function RAIDImportModal({ isOpen, onClose, projectId, onImported }: RAID
                     </div>
                   </div>
 
-                  {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+                  {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
                   {/* Actions */}
                   <div className="flex items-center justify-between">

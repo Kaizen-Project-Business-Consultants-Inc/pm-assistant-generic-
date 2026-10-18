@@ -3572,7 +3572,7 @@ A collapsible filter panel with:
 
 The **Import** button in the RAID toolbar opens a file-based import modal for bulk-loading RAID items from CSV or Excel files (e.g., exported from other PM tools or PMO templates).
 
-**Supported formats:** `.csv`, `.xlsx`, `.xls` (max 5MB).
+**Supported formats:** `.xlsx`, `.xls`, `.xlsb` (file up to 25 MB), `.csv`, `.txt` (up to 10 MB). Since October 2026 (UAT U39) the import is judged by what is sent — one sheet as CSV text — not by the file, as a workbook with formatting, pictures or extra tabs is big while its rows are small.
 
 **Single-sheet workflow:**
 1. Drag-and-drop or browse for a file, or paste CSV text directly.
@@ -3606,7 +3606,7 @@ For Excel workbooks that follow a standard PMO layout with one RAID type per tab
 
 **Owner matching:** If an Owner column is mapped, the server attempts to match the name against project members (case-insensitive display name or email). Unmatched owner values are stored verbatim in the `owner_name` free-text field so no data is lost.
 
-**Limits:** Maximum 200 rows per import. Duplicate titles within the same batch are rejected.
+**Limits:** the sent CSV text is at most 2,000,000 characters and 1,000 rows per request (each sheet is its own request in Import All Sheets). The route has its own `bodyLimit` of 8 MB (room for JSON escaping and non-English text; under nginx's 12 MB and the app's 10 MB request cap). Too much text: *"This register is too big to import at once — split it or import one sheet at a time"* (checked in the browser before sending; the server's 400 carries the same sentence; a 413 shows the same sentence). Too many rows: the server's 400 names the row count and the 1,000 limit. Rows are created one at a time (each takes the next record number), which is why the row cap stays at 1,000. Rows are created quietly (`riskService.create(…, { quiet: true })`) and `riskService.notifyImported` then sends one notice to each other PM/owner ("N RAID items imported into <project>") and one to each project member named as owner ("N RAID items assigned to you") — never the importer. Until 2026-10-18 every row notified every other PM (and emailed them for each high/critical one) and its owner. Duplicate titles within the same batch are rejected.
 
 **API endpoint:** `POST /api/v1/projects/:projectId/risks/import` — accepts `{ csv: string, columnMap: Record<string, string> }`. All imported records are tagged with `source: 'imported'`.
 
@@ -4393,7 +4393,7 @@ The migration also expands the RAID `source` enum to include `'standup'`.
 Since October 2026 project groups are shown as **Clients** — who a project is for (a consultant's customers). Clients never sign in; they receive reports. Storage is unchanged (`project_groups`, `projects.group_id`; API `/api/v1/project-groups`, projects carry `clientId`).
 
 - **Who manages the client list:** the company owner, PMO and project managers (create — "Manage clients"). **Rename/recolour/reorder/delete a client:** the owner/PMO, or the project manager who added it (a reorder listing another PM's client is refused whole; the listed clients swap among the places they hold and every other client keeps its place — `mergeIntoFullOrder`) (`project_groups.created_by`; audit 2, 2026-10-11) — the controls are hidden for others and the server answers 403 "Only the company owner, a PMO or the project manager who added this client can rename or delete it." Others get 403 and don't see the button.
-- **Putting a project under a client:** the **Client** select when creating a project (blank, from file, from template — the server sets it in the same step; an unknown client is a 400) and in **Edit project**; only the project's Manager/Owner (assign/unassign routes check it).
+- **Putting a project under a client:** the **Client** box when creating a project (blank, from file, from template — the server sets it in the same step; an unknown client is a 400) and in **Edit project**; only the project's Manager/Owner (assign/unassign routes check it). Since 2026-10-18 (UAT U35) people who may add clients (owner/PMO, project managers) get the type-or-create box (`ClientNameField`) on every path, shown even before the company has a client; a new name is added (`POST /project-groups`) before the project is created or saved. One hook does it for setup, New Project and Edit project: `hooks/useClientChoice.ts` (loads the list, turns the text into none / existing / new, reuses a client added on a failed try). Everyone else keeps the plain select of existing clients.
 - **Projects page:** grouped by client with collapsible headers; **Client** filter (All clients / No client / each client); the client's name under each project; each client header links to **Risks & issues** and **Client report**.
 - **Clients page** (`/clients`): each client with its number of live projects and the two links.
 - **Client risks & issues** (`GET /project-groups/:id/raid?show=open|all|high`, page `/clients/:id/raid`): open RAID items across the client's projects **that the viewer can open** (archived projects and the sample left out), worst first; tiles for open risks, open issues, high/critical, overdue actions. Read-only — items open in their project.

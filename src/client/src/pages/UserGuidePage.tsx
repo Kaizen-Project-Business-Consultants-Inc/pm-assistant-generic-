@@ -135,7 +135,7 @@ const sections: Section[] = [
     description:
       'A client is who a project is for. Clients never sign in — they get reports.',
     items: [
-      'Pick the client when you create a project, or later in the project’s Edit (Client)',
+      'Pick the client when you create a project, or later in the project’s Edit (Client) — or type a new name there to add the client on the spot, even before you have any',
       'The Projects page groups projects by client and can filter by client',
       'Cards / List switch on the Projects page; Show archived lists archived projects as compact rows below the active ones, with Open and Restore',
       'Risks & issues for a client: every open risk and issue across its projects in one read-only list — open an item to change it in its project. Only projects you can open are included',
