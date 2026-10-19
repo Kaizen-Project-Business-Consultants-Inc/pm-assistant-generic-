@@ -357,15 +357,17 @@ Client-side `<meta>` tags in `index.html` mirror several of these headers as a d
 
 ## 7. CORS
 
-CORS is configured in `plugins.ts` with environment-aware origin validation:
+CORS is configured in `plugins.ts` with the origin check in `utils/corsOrigin.ts`:
 
 ```
 Allowed origins:
-  - localhost:*        (any port, development convenience)
-  - CORS_ORIGIN env    (production domain)
+  - no Origin header   (server-to-server calls, same-site navigation)
+  - CORS_ORIGIN env    (the app's own domain, http or https)
+  - localhost:5173     (Vite dev server, outside production only)
   - claude.ai / *.anthropic.com / *.claude.ai  (MCP access)
-  - All origins        (development mode fallback)
 ```
+
+Any other website is refused with **403** `{ code: 'CORS_REFUSED', message: "This website isn't allowed to use Kovarti's API." }` and logged as a warning (until 2026-10-19 it answered 500 and was logged as a server error).
 
 Credentials are enabled. Allowed methods: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`. The `Mcp-Session-Id` header is both allowed and exposed for MCP transport.
 

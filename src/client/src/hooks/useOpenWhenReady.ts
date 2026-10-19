@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-export interface ReadyReport {
+interface ReadyReport {
   id: string;
   title: string;
   reportType: string;

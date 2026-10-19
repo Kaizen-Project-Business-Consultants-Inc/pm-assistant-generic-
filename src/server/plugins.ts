@@ -13,6 +13,7 @@ import websocket from '@fastify/websocket';
 import multipart from '@fastify/multipart';
 import rawBody from 'fastify-raw-body';
 import { config } from './config';
+import { corsOrigin } from './utils/corsOrigin';
 import logger, { requestLogger, responseLogger } from './utils/logger';
 import { toCamelCaseKeys } from './utils/caseConverter';
 import { z } from 'zod';
@@ -216,21 +217,7 @@ export async function registerPlugins(fastify: FastifyInstance) {
   });
 
   await fastify.register(cors, {
-    origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      if (config.NODE_ENV !== 'production' && (origin === 'http://localhost:5173' || origin === 'https://localhost:5173')) {
-        return callback(null, true);
-      }
-      // Accept both http and https variants of the configured origin
-      const corsHost = config.CORS_ORIGIN.replace(/^https?:\/\//, '');
-      const originHost = origin.replace(/^https?:\/\//, '');
-      if (originHost === corsHost) return callback(null, true);
-      // Allow Anthropic/Claude domains to access the /mcp endpoint
-      if (originHost === 'claude.ai' || originHost.endsWith('.anthropic.com') || originHost.endsWith('.claude.ai')) {
-        return callback(null, true);
-      }
-      callback(new Error('Not allowed by CORS'), false);
-    },
+    origin: corsOrigin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie', 'x-user-role', 'x-user-id', 'x-admin-key', 'Mcp-Session-Id'],
