@@ -416,7 +416,7 @@ describe('DocumentIntelligenceService', () => {
       (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(true);
 
       await documentIntelligenceService.processDocument('proj-1', 'doc-1', '/tmp/file.pdf', 'user-1');
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => { setTimeout(resolve, 50); });
 
       expect(embeddingRepository.deleteChunks).toHaveBeenCalledWith('project_document', 'doc-1', []);
     });
@@ -468,7 +468,7 @@ describe('DocumentIntelligenceService', () => {
       await documentIntelligenceService.processDocument('proj-1', 'doc-1', '/tmp/file.pdf', 'user-1');
 
       // Wait for the fire-and-forget promise
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => { setTimeout(resolve, 50); });
 
       expect(embeddingService.upsertEmbedding).toHaveBeenCalledTimes(2);
       expect(embeddingService.upsertEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_0', 'chunk-0');
@@ -485,7 +485,7 @@ describe('DocumentIntelligenceService', () => {
 
       await documentIntelligenceService.processDocument('proj-1', 'doc-1', '/tmp/file.pdf', 'user-1');
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => { setTimeout(resolve, 50); });
 
       expect(embeddingService.upsertEmbedding).not.toHaveBeenCalled();
     });
@@ -503,7 +503,7 @@ describe('DocumentIntelligenceService', () => {
       expect(projectDocumentRepository.updateProcessingResult).toHaveBeenCalled();
 
       // Wait for fire-and-forget to settle
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => { setTimeout(resolve, 50); });
 
       expect(logger.error).toHaveBeenCalledWith(
         'Document embedding creation failed',
