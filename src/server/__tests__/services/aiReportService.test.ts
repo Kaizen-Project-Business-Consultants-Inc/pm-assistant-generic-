@@ -167,6 +167,26 @@ describe('AIReportService', () => {
       }
     });
 
+    it('stores the content, so the finished report opens from history (UAT U44)', async () => {
+      mockIsAvailable.mockReturnValue(false);
+
+      const made = await service.generateReport('risk-assessment', 'proj-1', 'user-1');
+
+      const insert = mockQueryCP.mock.calls.find(c => String(c[0]).includes('INSERT INTO ai_conversations'))!;
+      const storedMessages = insert[1][4] as string;
+      expect(storedMessages).not.toBeNull();
+
+      mockQueryCP.mockResolvedValueOnce([{
+        id: made.id, title: made.title, context_type: 'report', project_id: 'proj-1',
+        messages: storedMessages, created_at: made.generatedAt,
+      }]);
+      const opened = await service.getReportById(made.id, 'user-1');
+      expect(opened?.contentPurged).toBe(false);
+      expect(opened?.content).toBe(made.content);
+      expect(opened?.reportType).toBe('risk-assessment');
+      expect(opened?.aiPowered).toBe(false);
+    });
+
     it('stores the report after generation', async () => {
       mockIsAvailable.mockReturnValue(false);
 
@@ -731,6 +751,12 @@ describe('AIReportService', () => {
         expect.stringContaining('UPDATE ai_conversations SET is_active = FALSE'),
         ['r1', 'user-1'],
       );
+    });
+
+    it('a deleted AI report loses its content; status and RAID reports keep theirs (U44 review)', async () => {
+      await service.deleteReport('r1', 'user-1');
+
+      expect(mockQueryCP.mock.calls[0][0]).toContain("messages = IF(context_type = 'report', NULL, messages)");
     });
 
     it('scopes delete to the correct user and report types', async () => {

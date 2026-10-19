@@ -19,6 +19,9 @@ const {
   mockRedisGet,
   mockRedisSet,
   mockStripeCustomersUpdate,
+  mockSendWelcomeEmail,
+  mockRedisIncr,
+  mockRedisDel,
 } = vi.hoisted(() => {
   const mockConfig: Record<string, any> = {
     STRIPE_SECRET_KEY: 'sk_test_fake',
@@ -68,6 +71,9 @@ const {
     mockRedisGet: vi.fn(),
     mockRedisSet: vi.fn(),
     mockStripeCustomersUpdate: vi.fn(),
+    mockSendWelcomeEmail: vi.fn(),
+    mockRedisIncr: vi.fn(),
+    mockRedisDel: vi.fn(),
   };
 });
 
@@ -153,11 +159,11 @@ vi.mock('../../database/connection', () => ({
 }));
 
 vi.mock('../../services/EmailService', () => ({
-  emailService: { sendVerificationEmail: mockSendVerificationEmail },
+  emailService: { sendVerificationEmail: mockSendVerificationEmail, sendWelcomeEmail: mockSendWelcomeEmail },
 }));
 
 vi.mock('../../services/RedisService', () => ({
-  redisService: { get: mockRedisGet, set: mockRedisSet },
+  redisService: { get: mockRedisGet, set: mockRedisSet, incr: mockRedisIncr, del: mockRedisDel, expire: vi.fn(), isConnected: () => true },
 }));
 
 vi.mock('uuid', () => ({ v4: () => 'test-uuid' }));
@@ -795,6 +801,54 @@ describe('StripeService', () => {
           expect(mockSendVerificationEmail).not.toHaveBeenCalled();
         });
 
+        it('a Google paid sign-up gets its held welcome email once payment is in, only once (UAT U43)', async () => {
+          paidCheckout({ userId: 'user-1' });
+          mockFindById.mockResolvedValue(makeUser({ emailVerified: true, fullName: 'Jane Doe' }));
+          await service.holdWelcomeUntilPaid('user-1');
+          expect(mockRedisSet).toHaveBeenCalledWith('welcome-after-payment:user-1', '1', 30 * 24 * 60 * 60);
+          mockRedisGet.mockImplementation(async (key: string) => (key === 'welcome-after-payment:user-1' ? '1' : null));
+          mockRedisIncr.mockResolvedValueOnce(1).mockResolvedValueOnce(2);
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+          await service.handleWebhookEvent(payload, signature); // Stripe retry
+          await flush();
+
+          expect(mockSendWelcomeEmail).toHaveBeenCalledTimes(1);
+          expect(mockSendWelcomeEmail).toHaveBeenCalledWith('test@test.com', 'Jane Doe');
+          expect(mockRedisDel).toHaveBeenCalledWith('welcome-after-payment:user-1');
+          expect(mockSendVerificationEmail).not.toHaveBeenCalled();
+        });
+
+        it('a failed welcome send is released, so the next payment confirmation tries again', async () => {
+          paidCheckout({ userId: 'user-1' });
+          mockFindById.mockResolvedValue(makeUser({ emailVerified: true, fullName: 'Jane Doe' }));
+          mockRedisGet.mockImplementation(async (key: string) => (key === 'welcome-after-payment:user-1' ? '1' : null));
+          mockRedisIncr.mockResolvedValue(1);
+          mockSendWelcomeEmail.mockRejectedValueOnce(new Error('resend down')).mockResolvedValueOnce(undefined);
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+          expect(mockRedisDel).toHaveBeenCalledWith('welcome-after-payment-sent:user-1');
+          expect(mockRedisDel).not.toHaveBeenCalledWith('welcome-after-payment:user-1');
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+          expect(mockSendWelcomeEmail).toHaveBeenCalledTimes(2);
+          expect(mockRedisDel).toHaveBeenCalledWith('welcome-after-payment:user-1');
+        });
+
+        it('an existing customer upgrading gets no welcome email (none was held)', async () => {
+          paidCheckout({ userId: 'user-1' });
+          mockFindById.mockResolvedValue(makeUser({ emailVerified: true }));
+
+          await service.handleWebhookEvent(payload, signature);
+          await flush();
+
+          expect(mockSendWelcomeEmail).not.toHaveBeenCalled();
+          expect(mockRedisIncr).not.toHaveBeenCalled();
+        });
+
         it('per-seat checkout: sends it to the company owner', async () => {
           paidCheckout({ orgId: 'org-1', billingModel: 'per_seat' });
           (organizationRepository.findById as any).mockResolvedValue(makeOrg({ ownerUserId: 'owner-9' }));
@@ -816,7 +870,7 @@ describe('StripeService', () => {
           await expect(service.handleWebhookEvent(payload, signature)).resolves.toBeUndefined();
           await flush();
           expect(mockRedisSet).not.toHaveBeenCalled(); // not marked sent, so a later try can still send it
-          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Verification email after payment'), expect.anything());
+          expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Email after payment'), expect.anything());
         });
       });
 

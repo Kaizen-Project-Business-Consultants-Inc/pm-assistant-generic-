@@ -422,22 +422,32 @@ export class AIReportService {
 
   async deleteReport(reportId: string, userId: string): Promise<void> {
     await databaseService.queryControlPlane(
-      `UPDATE ai_conversations SET is_active = FALSE WHERE id = ? AND user_id = ? AND context_type IN ('report', 'raid-report', 'status-report')`,
+      // a deleted AI report's content goes with it (status and RAID reports keep theirs, as before)
+      `UPDATE ai_conversations SET is_active = FALSE, messages = IF(context_type = 'report', NULL, messages)
+       WHERE id = ? AND user_id = ? AND context_type IN ('report', 'raid-report', 'status-report')`,
       [reportId, userId],
     );
   }
 
   private async storeReport(report: GeneratedReport, userId: string): Promise<void> {
     try {
-      // Store metadata only — AI report content is not persisted (available via download at generation time)
+      // Content is kept so the report opens from history and from the "ready" message (UAT U44,
+      // 2026-10-19 — it used to be title only, so a finished report could never be seen). Only
+      // each person's most recent reports keep it (DataRetentionService.purgeReportContent).
+      const messages = [{
+        role: 'assistant',
+        content: JSON.stringify({ reportType: report.reportType, content: report.content, aiPowered: report.aiPowered }),
+        timestamp: report.generatedAt,
+      }];
       await databaseService.queryControlPlane(
         `INSERT INTO ai_conversations (id, user_id, project_id, context_type, title, messages, token_count)
-         VALUES (?, ?, ?, 'report', ?, NULL, ?)`,
+         VALUES (?, ?, ?, 'report', ?, ?, ?)`,
         [
           report.id,
           userId,
           report.metadata.projectId || null,
           report.title,
+          JSON.stringify(messages),
           report.metadata.tokenCount || 0,
         ],
       );

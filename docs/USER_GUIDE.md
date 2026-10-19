@@ -1613,8 +1613,8 @@ Click any tile marked **AI** to start an AI-powered report:
 
 1. Select a project in the project selector.
 2. Click the report tile (e.g., Budget Forecast, Risk Assessment, Resource Utilization).
-3. The report generates in the background. You will see a "generating" confirmation and receive a toast notification when the report is ready.
-4. The report appears in the Report History table below and can be viewed, downloaded, or emailed.
+3. The report generates in the background. You will see a "generating" confirmation, and when it's ready it opens on the Reports page. If you've moved to another page, a message tells you it's ready under **Reports › Report History**.
+4. The report also appears in the Report History table below and can be viewed, downloaded, or emailed.
 
 For **Status Reports** and **RAID Reports**, a modal opens with additional options (editing, email delivery, scheduling, and multi-format export). For **Strategic Risk Scan**, the scan runs in the background and the finished report is delivered via WebSocket.
 
@@ -1667,7 +1667,7 @@ All generated reports appear in the **Report History** table below the report ca
 - **Download** — click the download icon in the viewer to save as HTML.
 - **Delete** — click the trash icon to remove a report from history.
 - **Pagination** — reports are shown 20 per page. Use the page controls to navigate.
-- **Content storage** — **Status reports** are kept permanently for your records. **AI reports** (risk, budget, resource) are available for download when generated but are not stored long-term — they can always be regenerated from current project data, which gives you a fresher result anyway. Reports without stored content show an **EXPIRED** badge; click to see a **Regenerate** button.
+- **Content storage** — **Status reports** are kept permanently for your records. **AI reports** (weekly status, risk, budget, resource) keep their content for your 10 most recent reports. Older ones keep only their title — they can always be regenerated from current project data, which gives you a fresher result anyway. Reports without stored content show an **EXPIRED** badge; click to see a **Regenerate** button.
 
 > **Note:** Regular users can delete report templates they created. Deleting another user's template still requires an admin role. When updating a template in the Report Designer, all configured sections are saved correctly.
 

@@ -224,7 +224,9 @@ export function useWebSocket() {
               }
               case 'ai_report_ready': {
                 queryClient.invalidateQueries({ queryKey: ['reportHistory'] });
-                showStatusReportToast('Your AI report is ready.', 'success');
+                // The Reports page opens a report it asked for (and says so); otherwise the message says where it is
+                const opened = !window.dispatchEvent(new CustomEvent('ws:ai_report_ready', { detail: message.payload, cancelable: true }));
+                if (!opened) showStatusReportToast('Your report is ready. Find it under Reports › Report History.', 'success');
                 break;
               }
               case 'ai_report_failed': {

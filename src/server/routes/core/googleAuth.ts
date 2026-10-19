@@ -9,6 +9,7 @@ import { organizationService } from '../../services/OrganizationService';
 import { inviteService } from '../../services/InviteService';
 import { createAccount, provisionVerifiedTenant } from '../../services/accountSignup';
 import { redisService } from '../../services/RedisService';
+import { stripeService } from '../../services/StripeService';
 import { userIdentityRepository } from '../../database/UserIdentityRepository';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { guestExpired } from '../../middleware/guestGuard';
@@ -131,9 +132,12 @@ async function signUp(request: FastifyRequest, reply: FastifyReply, identity: Go
     const org = await organizationService.findByUserId(user.id).catch(() => null);
     if (org) await provisionVerifiedTenant(org.id, org.dbName, user.id);
   }
-  emailService.sendWelcomeEmail(user.email, user.fullName).catch((err) => {
-    logger.warn('Welcome email failed after Google sign-up', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
-  });
+  // Paid plan: the welcome email goes once they've paid (StripeService, UAT U43)
+  if (!checkoutUrl || !(await stripeService.holdWelcomeUntilPaid(user.id))) {
+    emailService.sendWelcomeEmail(user.email, user.fullName).catch((err) => {
+      logger.warn('Welcome email failed after Google sign-up', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
+    });
+  }
   await startNewSession(reply, user);
   return reply.redirect(checkoutUrl ?? '/onboarding');
 }

@@ -40,6 +40,7 @@ vi.mock('../../services/EmailService', () => ({ emailService: { sendWelcomeEmail
 vi.mock('../../services/OrganizationService', () => ({ organizationService: { findByUserId: vi.fn(async () => ({ id: 'org1', dbName: 'pmassist_t_jane' })) } }));
 vi.mock('../../services/InviteService', () => ({ inviteService: { validateToken: vi.fn(), acceptInvite: vi.fn(async () => ({})) } }));
 vi.mock('../../utils/session', () => ({ startNewSession: vi.fn(async () => 'token') }));
+vi.mock('../../services/StripeService', () => ({ stripeService: { holdWelcomeUntilPaid: vi.fn(async () => true) } }));
 
 import { googleAuthRoutes } from '../../routes/core/googleAuth';
 import { finishGoogleSignIn, GoogleSignInError } from '../../utils/googleSignIn';
@@ -50,6 +51,7 @@ import { emailService } from '../../services/EmailService';
 import { inviteService } from '../../services/InviteService';
 import { rateLimiter } from '../../middleware/rateLimiter';
 import { startNewSession } from '../../utils/session';
+import { stripeService } from '../../services/StripeService';
 
 const JANE = { subject: 'g-1', email: 'jane@example.com', name: 'Jane Doe' };
 const user = (over: object = {}) => ({ id: 'u1', email: 'jane@example.com', fullName: 'Jane', isActive: true, emailVerified: true, passwordHash: '', ...over }) as never;
@@ -232,6 +234,7 @@ describe('Sign in with Google — routes', () => {
     expect(userIdentityRepository.link).toHaveBeenCalledWith('u-new', 'google', 'g-1', 'jane@example.com');
     expect(provisionVerifiedTenant).toHaveBeenCalledWith('org1', 'pmassist_t_jane', 'u-new');
     expect(res.headers.location).toBe('/onboarding');
+    expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith('jane@example.com', expect.any(String));
   });
 
   it('sign-up keeps the sign-up form\'s hourly limit', async () => {
@@ -255,6 +258,17 @@ describe('Sign in with Google — routes', () => {
     google({ mode: 'signup', tier: 'consultant_pro' });
     vi.mocked(createAccount).mockResolvedValueOnce({ ok: true, user: user({ id: 'u-new' }), invitedTo: null, checkoutUrl: 'https://checkout.example/s', verificationToken: null });
     expect((await callback()).headers.location).toBe('https://checkout.example/s');
+    // the welcome email waits for the payment (UAT U43)
+    expect(stripeService.holdWelcomeUntilPaid).toHaveBeenCalledWith('u-new');
+    expect(emailService.sendWelcomeEmail).not.toHaveBeenCalled();
+  });
+
+  it('a paid-plan sign-up still gets its welcome email at once when it cannot be held (Redis down)', async () => {
+    google({ mode: 'signup', tier: 'consultant_pro' });
+    vi.mocked(stripeService.holdWelcomeUntilPaid).mockResolvedValueOnce(false);
+    vi.mocked(createAccount).mockResolvedValueOnce({ ok: true, user: user({ id: 'u-new' }), invitedTo: null, checkoutUrl: 'https://checkout.example/s', verificationToken: null });
+    expect((await callback()).headers.location).toBe('https://checkout.example/s');
+    expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith('jane@example.com', expect.any(String));
   });
 
   it('an invitation only works for the invited address — back to the invitation with the reason', async () => {

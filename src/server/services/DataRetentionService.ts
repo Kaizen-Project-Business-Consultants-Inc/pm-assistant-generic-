@@ -14,6 +14,8 @@ const DEFAULT_AGENT_LOG_RETENTION_DAYS = 180;
 const DEFAULT_AUTOMATION_RUN_RETENTION_DAYS = ANALYTICS_WINDOW_DAYS;
 const DEFAULT_SYNC_LOG_RETENTION_DAYS = 30;
 const DEFAULT_AI_USAGE_RETENTION_DAYS = 400;
+/** AI reports whose content each person keeps; older ones keep only their title */
+const DEFAULT_REPORT_CONTENT_KEEP = 10;
 /** Agents' notes to themselves after each action: one row per action, nothing ever read them back past days */
 const DEFAULT_AGENT_REFLECTION_RETENTION_DAYS = 90;
 /** Rows deleted per statement */
@@ -140,14 +142,23 @@ export class DataRetentionService {
 
   private async purgeReportContent(): Promise<number> {
     try {
-      // Purge all AI report content — these are regenerable on demand.
-      // Status reports (context_type='status-report') are kept permanently.
+      // AI reports can be made again, so only each person's most recent ones keep their content
+      // (the viewer says "Only the most recent reports retain full content"); a deleted one lost its
+      // content when deleted (aiReportService.deleteReport). Status reports
+      // (context_type='status-report') are kept permanently. One scan a night of this small table.
+      const keep = envInt('RETENTION_REPORT_CONTENT_KEEP', DEFAULT_REPORT_CONTENT_KEEP);
       const result: any = await databaseService.queryControlPlane(
-        `UPDATE ai_conversations
-         SET messages = NULL
-         WHERE context_type = 'report'
-           AND messages IS NOT NULL`,
-        [],
+        `UPDATE ai_conversations a
+         JOIN (
+           SELECT id FROM (
+             SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at DESC) AS rn
+             FROM ai_conversations
+             WHERE context_type = 'report' AND is_active = TRUE AND messages IS NOT NULL
+           ) ranked
+           WHERE rn > ?
+         ) old ON old.id = a.id
+         SET a.messages = NULL`,
+        [keep],
       );
       return result.affectedRows ?? 0;
     } catch (err) {

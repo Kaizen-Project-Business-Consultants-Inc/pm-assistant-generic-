@@ -377,18 +377,36 @@ describe('DataRetentionService', () => {
   });
 
   describe('step 7 — report content purge', () => {
-    it('nullifies messages for report-type ai_conversations', async () => {
+    it("clears content only beyond each person's 10 most recent AI reports (UAT U44)", async () => {
       mockQuery.mockResolvedValue({ affectedRows: 0 });
       mockCleanExpired.mockResolvedValueOnce(0);
       mockQueryControlPlane.mockResolvedValue({ affectedRows: 0 });
 
       await service.purgeStaleData();
 
-      const reportCall = mockQueryControlPlane.mock.calls[3];
-      expect(reportCall[0]).toContain('UPDATE ai_conversations');
+      const reportCall = mockQueryControlPlane.mock.calls.find((c: any[]) => String(c[0]).includes('UPDATE ai_conversations'))!;
+      expect(reportCall[0]).toContain('is_active = TRUE');
       expect(reportCall[0]).toContain("context_type = 'report'");
       expect(reportCall[0]).toContain('messages IS NOT NULL');
-      expect(reportCall[0]).toContain('SET messages = NULL');
+      expect(reportCall[0]).toContain('SET a.messages = NULL');
+      expect(reportCall[0]).toContain('PARTITION BY user_id ORDER BY created_at DESC');
+      expect(reportCall[1]).toEqual([10]);
+    });
+
+    it('keeps the number set in RETENTION_REPORT_CONTENT_KEEP', async () => {
+      process.env.RETENTION_REPORT_CONTENT_KEEP = '3';
+      try {
+        mockQuery.mockResolvedValue({ affectedRows: 0 });
+        mockCleanExpired.mockResolvedValueOnce(0);
+        mockQueryControlPlane.mockResolvedValue({ affectedRows: 0 });
+
+        await service.purgeStaleData();
+
+        const reportCall = mockQueryControlPlane.mock.calls.find((c: any[]) => String(c[0]).includes('UPDATE ai_conversations'))!;
+        expect(reportCall[1]).toEqual([3]);
+      } finally {
+        delete process.env.RETENTION_REPORT_CONTENT_KEEP;
+      }
     });
 
     it('returns 0 and logs error when query fails', async () => {

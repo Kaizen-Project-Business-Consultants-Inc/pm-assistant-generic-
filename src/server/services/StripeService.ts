@@ -14,6 +14,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 /** Set once a paid sign-up's confirm-your-email link has gone out (24 h) */
 const VERIFY_SENT_KEY = (userId: string) => `verify-after-payment:${userId}`;
+/** A Google paid sign-up (already confirmed) whose welcome email waits for the payment (UAT U43) */
+const WELCOME_HELD_KEY = (userId: string) => `welcome-after-payment:${userId}`;
+const WELCOME_SENT_KEY = (userId: string) => `welcome-after-payment-sent:${userId}`;
+const WELCOME_HOLD_SECONDS = 30 * 24 * 60 * 60;
 import logger from '../utils/logger';
 
 export class StripeService {
@@ -276,7 +280,9 @@ export class StripeService {
   async sendVerificationAfterPayment(userId: string): Promise<void> {
     try {
       const user = await this.userService.findById(userId);
-      if (!user || user.emailVerified) return;
+      if (!user) return;
+      // Confirmed already (Google): no link needed — the held welcome email goes now instead
+      if (user.emailVerified) { await this.sendHeldWelcome(user.id, user.email, user.fullName); return; }
       if (await redisService.get(VERIFY_SENT_KEY(userId))) return;
 
       const expires = user.emailVerificationExpires ? new Date(user.emailVerificationExpires).getTime() : 0;
@@ -297,10 +303,43 @@ export class StripeService {
       await emailService.sendVerificationEmail(now.email, token);
       await this.noteVerificationSent(userId);
     } catch (err) {
-      logger.error('[StripeService] Verification email after payment failed', {
+      logger.error('[StripeService] Email after payment (confirm link or welcome) failed', {
         userId, error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  /**
+   * A paid sign-up through Google is confirmed at once, so nothing waits for its link — but its
+   * welcome email should still wait for the payment, as a password sign-up's does (UAT U43,
+   * 2026-10-19: it arrived a minute before they paid). Held up to 30 days. Returns false when it
+   * can't be held (Redis down): the caller then sends it at once rather than never.
+   */
+  async holdWelcomeUntilPaid(userId: string): Promise<boolean> {
+    if (!redisService.isConnected()) {
+      logger.warn('[StripeService] Redis down: welcome email sent now instead of after payment', { userId });
+      return false;
+    }
+    await redisService.set(WELCOME_HELD_KEY(userId), '1', WELCOME_HOLD_SECONDS);
+    return true;
+  }
+
+  /**
+   * Sends a held welcome email once, however many payment confirmations arrive (webhook, its
+   * retries, reconcile, the pending-payment sweep). Only a held one: an upgrade by an existing
+   * customer gets none. A failed send is released, so the next confirmation tries again.
+   */
+  private async sendHeldWelcome(userId: string, email: string, fullName: string): Promise<void> {
+    if (!(await redisService.get(WELCOME_HELD_KEY(userId)))) return;
+    if ((await redisService.incr(WELCOME_SENT_KEY(userId))) !== 1) return;
+    try {
+      await emailService.sendWelcomeEmail(email, fullName);
+    } catch (err) {
+      await redisService.del(WELCOME_SENT_KEY(userId));
+      throw err;
+    }
+    await redisService.expire(WELCOME_SENT_KEY(userId), WELCOME_HOLD_SECONDS);
+    await redisService.del(WELCOME_HELD_KEY(userId));
   }
 
   /** A confirm link just went out (here, or from changing the address): no second one for a day */

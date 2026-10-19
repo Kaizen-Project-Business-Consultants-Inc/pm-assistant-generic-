@@ -164,6 +164,9 @@ Manual check on staging (Stripe test mode, card 4242 4242 4242 4242):
 3. **Wrong address? Change it** → type another address and your password → Save: "Sent to …", the link arrives there, the old link no longer works. A wrong password → "Your current password isn't right…". An address that already has an account → "That address already has a Kovarti account". After confirming, `POST /api/v1/auth/change-pending-email` answers 403.
 4. **Never paid:** sign up for a plan, close Stripe's page. Sign in → "Please confirm your email…" with **Send me a new confirmation link** (it arrives). Run the pending-payment sweep after 2 days (or set `created_at` back on staging): the reminder's **Confirm email and continue** confirms the account, which then shows the awaiting-payment banner and checkout.
 5. Click the link → setup step 1 shows neither Full Name nor Organization Name (both given at sign-up) and no methodology question; the company shows the typed name in Settings.
+6. **Sign up with Google on a paid plan (U43):** no "Welcome to Kovarti PM Assistant!" email until you've paid; it arrives once after payment (Stripe retries don't send a second). An existing customer upgrading gets none. Unit: `routes/googleAuth.test.ts`, `services/StripeService.test.ts` ("held welcome").
+
+**AI reports open when ready (U44, 2026-10-19).** Reports → pick a project → Risk Assessment (or any AI tile): when it's done the report opens in the viewer (no extra toast); go to another page while it runs and the toast says "Find it under Reports › Report History", where it opens with its content. Delete one: it's gone, and its content is cleared. Only each person's 10 most recent AI reports keep content (nightly retention). Unit: `services/aiReportService.test.ts`, `services/DataRetentionService.test.ts`, client `hooks/useOpenWhenReady.test.ts`.
 
 ---
 

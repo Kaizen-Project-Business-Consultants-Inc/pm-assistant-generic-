@@ -838,6 +838,7 @@ The nightly `pm-cron@data-retention` job (03:30 UTC) deletes old rows, in batche
 | Integration sync log | `RETENTION_SYNC_LOG_DAYS` | 30 (since 2026-10-08) |
 | AI usage log | `RETENTION_AI_USAGE_DAYS` | 400 (since 2026-10-08) |
 | Agent memory: expired entries, and reflections older than | `RETENTION_AGENT_REFLECTION_DAYS` | 90 |
+| AI report content (title kept): each person's most recent N keep it | `RETENTION_REPORT_CONTENT_KEEP` | 10 reports (since 2026-10-19; before, AI report content was never stored) |
 
 Kept on purpose: the audit history, timesheets, tasks, RAID and task history, project health history, AI memory change log, and people's Mjuzi conversations.
 

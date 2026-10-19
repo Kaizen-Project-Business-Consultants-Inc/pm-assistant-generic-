@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { apiService } from '../services/api';
+import { useOpenWhenReady } from '../hooks/useOpenWhenReady';
 import { renderMarkdown } from '../utils/renderMarkdown';
 import { RAIDReportModal } from '../components/risks/RAIDReportModal';
 import { StatusReportModal } from './ProjectDetailPage/StatusReportModal';
@@ -475,10 +476,17 @@ export const ReportsPage: React.FC = () => {
 
   // ---- Mutations ----
 
+  // A report this page asked for opens here when it is ready (UAT U44)
   const generateMutation = useMutation({
     mutationFn: (data: { reportType: string; projectId: string }) =>
       apiService.generateReport(data),
+    onSuccess: (res: { jobId?: string }) => { if (res?.jobId) expectReport(res.jobId); },
   });
+  const { reset: resetGenerate } = generateMutation;
+  const expectReport = useOpenWhenReady(useCallback((report, stillWaiting) => {
+    if (!stillWaiting) resetGenerate();
+    setViewingReport({ ...report, contextType: 'report' });
+  }, [resetGenerate]));
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiService.deleteReport(id),
