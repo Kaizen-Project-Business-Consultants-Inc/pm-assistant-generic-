@@ -5,7 +5,7 @@
 - `deploy.sh --mcp` deploys ONLY the MCP server (a failed MCP build now stops it — fixed 2026-10-03).
 - After every prod deploy run `scripts/prod-smoke.cjs` (credentials in auto-memory).
 - nginx config lives ONLY on the servers. On both staging and prod `sites-enabled/pm-app` is a symlink to `sites-available/pm-app` (staging was a separate copy until 2026-10-09; old files backed up in `/etc/nginx/backup-2026-10-09/` on staging), so edit `sites-available/pm-app`, then `sudo nginx -t && sudo systemctl reload nginx`. Staging also has `pm-testbed` (internal test bed, keep it). Staging allows `challenges.cloudflare.com`; production does not.
-- CAPTCHA (Cloudflare Turnstile) is built but switched off everywhere (no keys in either `.env`). **Do not restart it without the user asking.** Playwright can't test its happy path — only a human can.
+- CAPTCHA (Cloudflare Turnstile): ON on STAGING (keys in staging `.env` since 2026-10-17; it ticks itself for most real visitors), OFF on prod (no keys). **Do not switch it on for prod without the user asking.** Playwright can't test its happy path — only a human can.
 - Current deploy state and history live in auto-memory (`MEMORY.md`, `todo.md`) and `git log`, not here.
 
 
