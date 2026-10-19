@@ -233,7 +233,7 @@ describe('Sign in with Google — routes', () => {
     expect(createAccount).toHaveBeenCalledWith(expect.objectContaining({ email: 'jane@example.com', fullName: 'Jane Doe', passwordHash: '', emailVerified: true }));
     expect(userIdentityRepository.link).toHaveBeenCalledWith('u-new', 'google', 'g-1', 'jane@example.com');
     expect(provisionVerifiedTenant).toHaveBeenCalledWith('org1', 'pmassist_t_jane', 'u-new');
-    expect(res.headers.location).toBe('/onboarding');
+    expect(res.headers.location).toBe('/dashboard');
     expect(emailService.sendWelcomeEmail).toHaveBeenCalledWith('jane@example.com', expect.any(String));
   });
 

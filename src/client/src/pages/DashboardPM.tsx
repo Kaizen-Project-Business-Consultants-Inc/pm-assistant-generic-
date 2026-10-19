@@ -23,6 +23,7 @@ import { KpiTilePM } from '../components/pm/KpiTilePM';
 import { ActivityFeedPM } from '../components/pm/ActivityFeedPM';
 import { MorningBriefingWidget } from '../components/dashboard/widgets/MorningBriefingWidget';
 import { MyWeeklyReviews } from '../components/weeklyReview/MyWeeklyReviews';
+import { GetStartedCard } from '../components/getStarted/GetStartedCard';
 import { VelocitySparklineWidget } from '../components/dashboard/widgets/VelocitySparklineWidget';
 import { StandupSummaryWidget } from '../components/dashboard/widgets/StandupSummaryWidget';
 import { SprintSnapshotWidget } from '../components/dashboard/widgets/SprintSnapshotWidget';
@@ -279,6 +280,9 @@ export function DashboardPM() {
           />
         </div>
       </div>
+
+      {/* First login: the four Get started steps, until finished or hidden (U42) */}
+      <GetStartedCard />
 
       {/* Weekly PM review — only for people managing a reviewed project; not a movable widget */}
       <MyWeeklyReviews />

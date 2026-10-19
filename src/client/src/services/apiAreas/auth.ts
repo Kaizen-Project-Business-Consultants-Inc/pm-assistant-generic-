@@ -1,5 +1,14 @@
 import { ApiBase } from './http';
 
+/** The dashboard's Get started card: which steps are done (same shape as the server's) */
+interface GetStartedState {
+  canInvite: boolean;
+  invited: boolean;
+  firstProjectId: string | null;
+  projectHasPeople: boolean;
+  projectHasTasks: boolean;
+}
+
 /**
  * Sign-in, account, invites, organisation members, personal preferences and API keys.
  * Mixed into the one `apiService` (see ../api.ts); `this.api` is the shared axios instance.
@@ -169,6 +178,12 @@ export class AuthApi extends ApiBase {
     return response.data;
   }
 
+  /** Which steps of the dashboard's Get started card are done (server services/getStartedState.ts) */
+  async getGetStarted(): Promise<GetStartedState> {
+    const response = await this.api.get('/users/me/get-started');
+    return response.data;
+  }
+
   async updateProfile(data: { fullName?: string; email?: string; username?: string; organizationName?: string; role?: string; currentPassword?: string; completeOnboarding?: true; phone?: string }) {
     const response = await this.api.put('/users/me/profile', data);
     return response.data;
@@ -262,8 +277,9 @@ export class AuthApi extends ApiBase {
     return response.data;
   }
 
-  async inviteOrgMember(email: string, role: string) {
-    const response = await this.api.post('/org/invite', { email, role });
+  /** fullName: the name the owner typed; the server uses the start of the email without one */
+  async inviteOrgMember(email: string, role: string, fullName?: string) {
+    const response = await this.api.post('/org/invite', { email, role, ...(fullName ? { fullName } : {}) });
     return response.data;
   }
 

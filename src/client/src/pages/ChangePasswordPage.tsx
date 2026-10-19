@@ -3,6 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
+import { ConfirmYourName } from '../components/getStarted/ConfirmYourName';
+
+/** After the name check: their one project if they're on exactly one, else the dashboard */
+async function firstPageFor(): Promise<string> {
+  try {
+    const data = await apiService.getProjects();
+    // GET /projects answers { data, total, … } (paginate); older shapes had { projects }
+    const list = (data?.data ?? data?.projects ?? []) as Array<{ id: string; isDemo?: boolean }>;
+    const mine = list.filter(p => !p.isDemo);
+    return mine.length === 1 ? `/project/${mine[0].id}` : '/dashboard';
+  } catch {
+    return '/dashboard';
+  }
+}
 
 export function ChangePasswordPage() {
   const uid = useId();
@@ -13,6 +27,8 @@ export function ChangePasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Password set: an invited person checks their name next (U42), then goes on
+  const [passwordSet, setPasswordSet] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,10 +47,14 @@ export function ChangePasswordPage() {
     try {
       await apiService.changePassword(currentPassword, newPassword);
       // Clear the mustChangePassword flag in local state
-      if (user) {
+      if (user && !user.isGuest) {
         setUser({ ...user, mustChangePassword: false });
+        setPasswordSet(true);
+      } else {
+        // a guest (another company's outside person) has no name check: their host company named them
+        if (user) setUser({ ...user, mustChangePassword: false });
+        navigate('/dashboard', { replace: true });
       }
-      navigate('/dashboard', { replace: true });
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.response?.data?.error || 'Failed to change password.');
     } finally {
@@ -46,7 +66,7 @@ export function ChangePasswordPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-          <div className="flex items-center gap-3 mb-6">
+          {!passwordSet && <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg">
               <Lock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             </div>
@@ -54,8 +74,11 @@ export function ChangePasswordPage() {
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">Change Your Password</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">You must set a new password before continuing.</p>
             </div>
-          </div>
+          </div>}
 
+          {passwordSet ? (
+            <ConfirmYourName onDone={() => { void firstPageFor().then(to => navigate(to, { replace: true })); }} />
+          ) : (<>
           {error && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300">
               {error}
@@ -114,6 +137,7 @@ export function ChangePasswordPage() {
               {loading ? 'Changing...' : 'Set New Password'}
             </button>
           </form>
+          </>)}
         </div>
       </div>
     </div>

@@ -121,13 +121,18 @@ describe('PUT /users/me/profile', () => {
       }
     });
 
-    it('setup cannot be finished without a phone number, and nothing is saved', async () => {
+    it('setup can be finished without a phone number (optional since 2026-10-19, U42)', async () => {
       users.findById.mockResolvedValue({ ...me, role: 'project_manager', onboardingCompletedAt: null, phone: null });
       orgs.findByUserId.mockResolvedValue({ id: 'org-1', ownerUserId: 'u-me' });
-      const res = await put({ fullName: 'Me', completeOnboarding: true });
-      expect(res.statusCode).toBe(400);
-      expect(res.json().message).toMatch(/phone number/);
-      expect(users.update).not.toHaveBeenCalled();
+      const res = await put({ completeOnboarding: true });
+      expect(res.statusCode).toBe(200);
+      expect(users.update.mock.calls[0][1].onboardingCompletedAt).toBeInstanceOf(Date);
+    });
+
+    it('an empty phone removes a saved one (phone is optional since 2026-10-19)', async () => {
+      const res = await put({ phone: '' });
+      expect(res.statusCode).toBe(200);
+      expect(users.update).toHaveBeenCalledWith('u-me', { phone: null });
     });
 
     it('a phone number that is not one is refused with a plain message', async () => {

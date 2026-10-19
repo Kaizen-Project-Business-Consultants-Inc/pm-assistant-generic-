@@ -367,14 +367,6 @@
       "count": 2
     }
   },
-  "src/client/src/components/onboarding/WelcomeModal.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "jsx-a11y/no-noninteractive-element-interactions": {
-      "count": 1
-    }
-  },
   "src/client/src/components/pm/ActivityFeedPM.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 5
@@ -1172,14 +1164,6 @@
       "count": 1
     }
   },
-  "src/client/src/pages/OnboardingPage.tsx": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "jsx-a11y/label-has-associated-control": {
-      "count": 2
-    }
-  },
   "src/client/src/pages/PortalViewPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1
@@ -1391,9 +1375,6 @@
   },
   "src/client/src/pages/VerifyEmailPendingPage.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 1
-    },
-    "@typescript-eslint/no-misused-promises": {
       "count": 1
     }
   },

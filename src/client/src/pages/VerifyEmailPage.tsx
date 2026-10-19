@@ -5,6 +5,7 @@ import { useAuthStore } from '../stores/authStore';
 import { ROUTES } from '../routes';
 import { CheckYourEmail } from '../components/auth/CheckYourEmail';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
+import { announceEmailConfirmed } from '../utils/emailConfirmedSignal';
 
 export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -42,12 +43,15 @@ export const VerifyEmailPage: React.FC = () => {
       .then(async (data) => {
         setStatus('success');
         setMessage(data.message || 'Email verified successfully!');
-        // If already logged in, refresh user data so emailVerified updates
+        // the "check your email" tab, if open in this browser, says so instead of moving on too (U45)
+        announceEmailConfirmed();
+        // Signed in in this browser: refresh the user and carry straight on into Kovarti (U45)
         if (isAuthenticated) {
           try {
             const me = await apiService.getMe();
             if (me.user) setUser(me.user);
-          } catch { /* ignore */ }
+            if (me.user?.emailVerified) void navigate(ROUTES.dashboard, { replace: true });
+          } catch { /* ignore: Continue still works */ }
         }
       })
       .catch((err) => {

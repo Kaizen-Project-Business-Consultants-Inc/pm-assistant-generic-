@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef, useCallback } from 'react';
 import { ProjectSummaryLine } from '../components/project/ProjectSummaryLine';
 import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useProjectRole } from '../hooks/useProjectRole';
@@ -36,6 +36,7 @@ import { PresenceIndicator } from '../components/presence/PresenceIndicator';
 import { PROJECT_TYPE_LABELS } from '../constants/projectTypes';
 import { refreshProjectLists } from '../utils/projectListCache';
 import { seedIfOlder } from '../utils/scheduleChanged';
+import { ChooseTeamDialog } from '../components/getStarted/ChooseTeamDialog';
 
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
@@ -123,6 +124,19 @@ export function ProjectDetailPage() {
   const { user } = useAuthStore();
   // Project Manager/Owner (or admin/PMO) of THIS project — not the organisation role
   const { canEdit: canEditStatus, isManager, loaded: roleLoaded } = useProjectRole(id);
+  // Get started step 3 (U48): "Who's on it?" opens from the card, or right after creating a project
+  // while still setting up — only for this project's managers, and only if the company has others
+  const askedFromCard = !!(location.state as any)?.chooseTeam;
+  const wantsTeam = askedFromCard || (isNewProject && user?.onboardingCompleted === false);
+  const [chooseTeamOpen, setChooseTeamOpen] = useState(false);
+  useEffect(() => {
+    if (wantsTeam && roleLoaded && isManager) setChooseTeamOpen(true);
+  }, [wantsTeam, roleLoaded, isManager]);
+  // Closing forgets the request, so a page reload doesn't open it again (history keeps the state)
+  const closeChooseTeam = useCallback(() => {
+    setChooseTeamOpen(false);
+    void navigate(location.pathname + location.search, { replace: true, state: null });
+  }, [navigate, location.pathname, location.search]);
   // The weekly review is the PM's: anyone else following a link lands on Overview
   useEffect(() => {
     if (activeTab === 'weekly-review' && roleLoaded && !isManager) setActiveTab('overview');
@@ -647,6 +661,9 @@ export function ProjectDetailPage() {
           onEditProject={() => setShowEditProject(true)}
         />
       )}
+
+      <ChooseTeamDialog projectId={id!} projectName={project.name} isOpen={chooseTeamOpen}
+        quietIfNobody={!askedFromCard} onClose={closeChooseTeam} />
 
       {/* Proactive Lessons Banner — shown after project creation */}
       {showLessonsBanner && projectLessons.length > 0 && (

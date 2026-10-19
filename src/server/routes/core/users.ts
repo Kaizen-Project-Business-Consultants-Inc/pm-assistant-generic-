@@ -7,6 +7,7 @@ import { userService } from '../../services/UserService';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import logger from '../../utils/logger';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { getStartedState } from '../../services/getStartedState';
 
 const SELF_ASSIGNABLE_ROLES = ['project_manager', 'team_member', 'executive', 'scrum_master'] as const;
 
@@ -18,11 +19,12 @@ const profileUpdateSchema = z.object({
   role: z.enum(SELF_ASSIGNABLE_ROLES).optional(),
   // needed to change your email or username (audit 2026-10-09 H2)
   currentPassword: z.string().max(200).optional(),
-  // sent by the setup screens when "About you" is saved: setup is finished (2026-10-14)
+  // sent when the Get started card is finished or hidden: setup is finished (U42, 2026-10-19)
   completeOnboarding: z.literal(true).optional(),
-  // a phone number: digits with the usual + ( ) - . and spaces, 7 to 15 digits (U5)
+  // a phone number: digits with the usual + ( ) - . and spaces, 7 to 15 digits (U5); '' removes it
+  // (optional since 2026-10-19, U42)
   phone: z.string().trim().max(32)
-    .refine(v => /^\+?[0-9()\-.\s]+$/.test(v) && (v.match(/[0-9]/g)?.length ?? 0) >= 7 && (v.match(/[0-9]/g)?.length ?? 0) <= 15,
+    .refine(v => v === '' || (/^\+?[0-9()\-.\s]+$/.test(v) && (v.match(/[0-9]/g)?.length ?? 0) >= 7 && (v.match(/[0-9]/g)?.length ?? 0) <= 15),
       'Enter a phone number, e.g. +1 416 555 0100')
     .optional(),
 });
@@ -79,19 +81,19 @@ async function maySetOwnRole(userId: string, current: { role: string; isGuest?: 
   return !org || org.ownerUserId === userId;
 }
 
-/** The setup screens' part of a save (only while in setup): role, and finishing setup */
+/** The Get started part of a save (only until setup is finished): role, and finishing setup */
 async function addSetupFields(
   updateData: Record<string, any>,
   parsed: ProfileInput,
-  current: { role: string; isGuest?: boolean; phone?: string | null },
+  current: { role: string; isGuest?: boolean },
   userId: string,
 ): Promise<{ error: string; message: string } | null> {
   // Role self-assignment — only for someone who signed up for their own company: never an invited
   // member, viewer or guest (their role was given to them)
   if (parsed.role !== undefined && await maySetOwnRole(userId, current)) updateData.role = parsed.role;
   if (!parsed.completeOnboarding) return null;
-  // Finishing setup needs a phone number (required there, U5) — this save's or one already kept
-  if (!(parsed.phone ?? current.phone)) return { error: 'Phone required', message: 'Add your phone number to finish setting up.' };
+  // Finishing the Get started card: phone is optional now (asked on the card's profile list, U42 —
+  // the user reversed U5's "required" on 2026-10-19)
   updateData.onboardingCompletedAt = new Date();
   return null;
 }
@@ -155,6 +157,19 @@ export async function userRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Which Get started steps are done — your own company and projects only (services/getStartedState.ts)
+  fastify.get('/me/get-started', {
+    preHandler: [requireScope('read')],
+    schema: { description: 'Get started card: which steps are done', tags: ['users'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      return await getStartedState(request.user!.userId);
+    } catch (error) {
+      logger.error('Get started state error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Could not load your setup steps' });
+    }
+  });
+
   /**
    * Your own profile (audit 2026-10-09 H2). A key needs 'write' — a read-only key could change
    * the account email — while a signed-in person always edits their own (a viewer's role is
@@ -189,7 +204,7 @@ export async function userRoutes(fastify: FastifyInstance) {
       if (parsed.fullName !== undefined) updateData.fullName = parsed.fullName;
       if (emailChanges) updateData.email = parsed.email;
       if (usernameChanges) updateData.username = parsed.username;
-      if (parsed.phone !== undefined) updateData.phone = parsed.phone;
+      if (parsed.phone !== undefined) updateData.phone = parsed.phone || null;
       if (onboarding) {
         const setupRefusal = await addSetupFields(updateData, parsed, current, userId);
         if (setupRefusal) return reply.status(400).send(setupRefusal);

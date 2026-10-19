@@ -27,12 +27,6 @@ async function globalSetup() {
     throw new Error(`Login failed. Still on login page. Error: ${errorText}`);
   }
 
-  // If on onboarding, navigate to dashboard
-  if (finalUrl.includes('/onboarding')) {
-    await page.goto(`${PROD_URL}/dashboard`);
-    await page.waitForTimeout(3000);
-  }
-
   await page.context().storageState({ path: STORAGE_STATE });
   await browser.close();
 }

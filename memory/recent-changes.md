@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-19 — First login goes to work: Get started card (U42/U47/U48), clear sign-in messages (U27), one tab after confirming (U45)
+- Mock https://claude.ai/artifact/9NkgqgKMYnPA2AM9LL6vAy approved, with "yes to both" removals: the setup pages (`OnboardingPage`) and the welcome pop-up (`WelcomeModal`, which never showed — `isFirstLogin` was never sent) are gone; `/onboarding` → `/dashboard`; `utils/needsSetup` removed; the orphaned `pendingCheckout` flag removed (TrialBanner covers unpaid accounts).
+- Dashboard `GetStartedCard`: Invite your people (Team-plan owner) → Create your first project → Choose who's on it → Build the plan, from `GET /users/me/get-started` (`services/getStartedState.ts`); `InvitePeopleDialog` (Free / Paid seat, bill line from `/seats`; invites take an optional `fullName`), `ChooseTeamDialog` (after the first project; Owner/Manager/Viewer), `ProfileChecklist` (name/company — now the only company rename —, phone optional, role, time zone; no photo feature exists). Invited people: `ConfirmYourName` after setting their password.
+- Phone optional (user reversed U5): finishing setup no longer needs it; Settings › Profile can remove a saved one.
+- U27: login 401 `NO_ACCOUNT` / `WRONG_PASSWORD` with Create one / Reset it (sign-up already reveals accounts; limits unchanged).
+- U45: `utils/emailConfirmedSignal.ts` (BroadcastChannel) — the link tab carries on, the waiting tab says "You're confirmed".
+
 ## 2026-10-19 — Overnight fixes: AI reports open (U44), welcome email after payment (U43), document search works (RAG-1/2), CORS 403
 - **U44:** AI reports were stored title-only, so "Your AI report is ready" led nowhere. Content now stored; each person keeps their 10 most recent (`RETENTION_REPORT_CONTENT_KEEP`); delete clears content; the Reports page opens a report it asked for (`hooks/useOpenWhenReady`).
 - **U43:** Google paid sign-up's Welcome email waited for nothing; now held in Redis and sent once after payment (`StripeService.holdWelcomeUntilPaid`); Redis down → sent at once.

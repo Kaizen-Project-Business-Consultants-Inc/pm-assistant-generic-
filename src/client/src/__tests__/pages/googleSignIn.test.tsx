@@ -202,13 +202,11 @@ describe('Sign in with Google — screens', () => {
     expect(api.getMe).not.toHaveBeenCalled();
   });
 
-  it('a first sign-in after linking is remembered like a password sign-in', async () => {
-    api.getMe.mockResolvedValueOnce({ user: { id: 'u1', fullName: 'Jane', isFirstLogin: true } } as never);
-    sessionStorage.removeItem('pm-first-login');
+  it('someone still setting up goes to the dashboard too — its Get started card takes over (U42)', async () => {
+    api.getMe.mockResolvedValueOnce({ user: { id: 'u1', fullName: 'Jane', onboardingCompleted: false } } as never);
     show('/link-google?confirm=xyz');
     fireEvent.click(await screen.findByRole('button', { name: 'Link Google and sign in' }));
     expect(await screen.findByText('Dashboard')).toBeTruthy();
-    expect(sessionStorage.getItem('pm-first-login')).toBe('true');
   });
 
   it('an expired link says so and goes back to sign in', async () => {

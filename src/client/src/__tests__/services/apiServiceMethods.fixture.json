@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 671,
+  "count": 672,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -276,6 +276,7 @@
     "getFeedbackScreenshot",
     "getFeedbackStats",
     "getFlowMetrics",
+    "getGetStarted",
     "getGlobalResourceWorkload",
     "getGoal",
     "getGovernancePacks",

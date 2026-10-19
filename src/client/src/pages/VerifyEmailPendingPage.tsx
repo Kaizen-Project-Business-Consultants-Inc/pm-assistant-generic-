@@ -6,6 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 import { ROUTES } from '../routes';
 import { isPaidTier, tierLabel } from '../constants/branding';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
+import { onEmailConfirmedElsewhere } from '../utils/emailConfirmedSignal';
 
 /**
  * "Confirm your email". A paid sign-up lands here straight after paying (its link is sent
@@ -21,6 +22,23 @@ import { getApiErrorMessage } from '../utils/getApiErrorMessage';
  * open with the reason it was refused. Cancel closes it without saving.
  */
 const RECONCILE_WAIT_MS = 10_000;
+
+/** The link was opened in another tab of this browser, which carries on: this one says so (U45) */
+function ConfirmedElsewhere({ onContinue }: { onContinue: () => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4">
+      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 text-center" role="status">
+        <CheckCircle className="w-10 h-10 mx-auto mb-4 text-green-600 dark:text-green-400" aria-hidden="true" />
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">You&apos;re confirmed</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">Kovarti is open in the other tab. You can close this one.</p>
+        <button type="button" onClick={onContinue}
+          className="px-5 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">
+          Continue here instead
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function VerifyEmailPendingPage() {
   const { user, setUser } = useAuthStore();
@@ -49,13 +67,22 @@ export function VerifyEmailPendingPage() {
     }
   }, [changeOpen]);
 
+  // Confirmed in another tab of this browser: that tab carries on, this one says so instead of
+  // moving on too (U45). Stays false when the link was opened elsewhere — then this tab moves on.
+  const [confirmedElsewhere, setConfirmedElsewhere] = useState(false);
+  const confirmedElsewhereRef = useRef(false);
+  useEffect(() => onEmailConfirmedElsewhere(() => {
+    confirmedElsewhereRef.current = true;
+    setConfirmedElsewhere(true);
+  }), []);
+
   // Ask the server every 5 s: moves on once verified, and picks up the payment when Stripe confirms it
-  const checkVerification = useCallback(async () => {
+  const checkVerification = useCallback(async (moveOn = false) => {
     try {
       const data = await apiService.getMe();
       if (!data.user) return;
       setUser(data.user);
-      if (data.user.emailVerified) navigate(ROUTES.dashboard, { replace: true });
+      if (data.user.emailVerified && (moveOn || !confirmedElsewhereRef.current)) navigate(ROUTES.dashboard, { replace: true });
     } catch {
       // ignore — user may still be on this page
     }
@@ -80,7 +107,7 @@ export function VerifyEmailPendingPage() {
 
   useEffect(() => {
     void checkVerification();
-    const interval = setInterval(checkVerification, 5000);
+    const interval = setInterval(() => { void checkVerification(); }, 5000);
     return () => clearInterval(interval);
   }, [checkVerification]);
 
@@ -121,6 +148,8 @@ export function VerifyEmailPendingPage() {
       setChangeSaving(false);
     }
   }
+
+  if (confirmedElsewhere) return <ConfirmedElsewhere onContinue={() => { void checkVerification(true); }} />;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-500 via-purple-500 to-pink-500 py-12 px-4">

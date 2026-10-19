@@ -16,8 +16,8 @@ describe('Kovarti logo is the one shared mark', () => {
   it('the old lightbulb logo is gone', () => {
     expect(all.filter(f => f.s.includes('M9.663 17h4.673') || f.s.includes('LOGO_SVG_PATH')).map(f => f.p)).toEqual([]);
   });
-  it('the sidebar, sign-in, onboarding and public pages draw KovartiMark', () => {
-    for (const name of ['Sidebar.tsx', 'LoginPage.tsx', 'OnboardingPage.tsx', 'PublicNavbar.tsx', 'LandingPage.tsx', 'PricingPage.tsx', 'PrelaunchLandingPage.tsx']) {
+  it('the sidebar, sign-in and public pages draw KovartiMark', () => {
+    for (const name of ['Sidebar.tsx', 'LoginPage.tsx', 'PublicNavbar.tsx', 'LandingPage.tsx', 'PricingPage.tsx', 'PrelaunchLandingPage.tsx']) {
       const f = all.find(x => basename(x.p) === name)!;
       expect([name, f.s.includes('<KovartiMark')]).toEqual([name, true]);
     }

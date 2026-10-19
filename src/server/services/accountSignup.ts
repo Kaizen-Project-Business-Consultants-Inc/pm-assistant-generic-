@@ -122,7 +122,7 @@ async function checkoutFor(user: User, input: NewAccount, stripeCustomerId: stri
   if (!priceId) return fail(500, 'Stripe not configured', 'Pricing is not configured for this tier');
   if (input.tier !== 'sme') {
     // Flat-rate checkout for consultant tiers
-    return stripeService.createCheckoutSession(stripeCustomerId, priceId, user.id, '/onboarding');
+    return stripeService.createCheckoutSession(stripeCustomerId, priceId, user.id, '/dashboard');
   }
   const org = await organizationRepository.findByUserId(user.id);
   if (!org) return fail(500, 'Organization not found', 'SME signup requires an organization');

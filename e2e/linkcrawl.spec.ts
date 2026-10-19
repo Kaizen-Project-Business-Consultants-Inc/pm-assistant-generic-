@@ -22,8 +22,8 @@ interface Allowed { key: string; who: Who[]; reason: string; onlyIf?: string }
 const ALLOW_LIST: Allowed[] = [
 ];
 
-/** Screens not opened from the route list: sign-in/sign-up flows, one-time tokens, and the
- *  onboarding wizard (which saves as you go) */
+/** Screens not opened from the route list: sign-in/sign-up flows, one-time tokens, and the old
+ *  setup address (now only sends you to the dashboard — U42, 2026-10-19) */
 const SKIP_ROUTES = new Set<string>([
   ROUTES.home, ROUTES.login, ROUTES.register, ROUTES.smeRegister, ROUTES.verifyEmail, ROUTES.verifyEmailPending,
   ROUTES.forgotPassword, ROUTES.resetPassword, ROUTES.onboarding, ROUTE_PATTERNS.portal, '/oauth/callback',

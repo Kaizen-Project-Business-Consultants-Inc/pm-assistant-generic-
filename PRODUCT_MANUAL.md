@@ -1878,9 +1878,9 @@ The `TemplateService` allows saving a project's structure as a reusable template
 - Shared or private visibility
 - Apply a template to create a new project with pre-populated structure
 
-#### Template Picker (Onboarding)
+#### Template Picker (first project)
 
-The onboarding wizard's first-project step shows the first 6 templates in the library's order (until October 2026 they were sorted by a methodology question on Step 1, now removed). The new project takes the template's own methodology. Users can pick any template or skip this step entirely.
+Since 2026-10-19 the first project is made from the dashboard's Get started card (**Create your first project** opens New Project, `/projects?new=1`) — the same picker as any project. The project takes the template's own methodology.
 
 #### Built-In Templates
 
@@ -3344,48 +3344,34 @@ A monitoring cockpit with read-only scope toggle:
 - **Project Cards** — Grid layout with left border colored by health band, health pill, status/priority chips, progress meter, and "View Project" button. Clicking a card navigates to `/project/:id`.
 - **New Project** — Unified project creation flow with three options: **Blank Project** (empty project), **From File** (import Excel/CSV with smart column mapping), and **From Template** (category-based template selection). The "From File" flow guides users through file upload, column mapping (with fuzzy matching and AI-assisted suggestions), and project details before creating the project with an imported schedule in one action.
 
-### Onboarding — 3-Step Wizard (Standard Tiers)
+### First login — the Get started card (U42/U47/U48, 2026-10-19)
 
-New users on Trial, Consultant Basic, and Consultant Pro tiers see a **3-step onboarding wizard** on their first login after registration. The wizard replaces the old single-screen WelcomeModal with a guided setup flow:
+Approved mock (2026-10-19) with the user's "yes" to removing the setup pages (`OnboardingPage`: profile + role, team invites, first project, done) and the welcome pop-up (`WelcomeModal`, which in fact never showed: it waited for an `isFirstLogin` field no route sent). Sign-up, Google sign-up and paid checkout now return to `/dashboard`; `/onboarding` redirects there; the route guard no longer sends anyone to setup (`utils/needsSetup` removed).
 
-| Step | Content |
-|------|---------|
-| **Step 1 — Profile** | Full name and organization name **only when sign-up didn't give them** (October 2026: a company still named after its owner's name or email prefix counts as unnamed; the choice is fixed when the page opens), required phone number, and role (Project Manager, Team Member, Executive). Role is persisted to the backend only during onboarding (when `fullName` is null), preventing accidental role changes later. The **Preferred Methodology** question was removed (UAT 2026-10-17): it was never stored on the user — it only re-sorted the templates and was passed to `POST /templates/apply`. |
-| **Step 2 — Template Picker** | The first 6 templates in the library's own order, or skip. The project's methodology comes from the template (`TemplateService.applyTemplate` uses `defaultMethodology` when none is sent) and is changeable in Edit project. |
-| **Step 3 — Done** | Completion screen with navigation links to Dashboard, Projects, and Mjuzi AI Chat. |
+**Card** (`components/getStarted/GetStartedCard.tsx`, on `DashboardPM` above the weekly reviews): shown while `user.onboardingCompleted === false` (`users.onboarding_completed_at`, migration 137), never to viewers or guests; invited people have it set when invited (`org.ts`). Steps, in the user's order (U48), from `GET /api/v1/users/me/get-started` (`services/getStartedState.ts` — five indexed lookups: the caller's company, its other users, the caller's oldest non-sample, non-archived project by `created_by`, that project's other members, whether its schedule has a task):
 
-**Optional sample project (October 2026):** below the templates, the company owner (who works as PMO) or a PMO sees **Explore a sample project first**. Ticked, the read-only "Sample Web App Development" is loaded (`POST /api/v1/sample-project/load`) when they continue — with a template or with *Just the sample for now*. New companies no longer get the sample automatically; it is loaded and removed in **Settings → Sample project** (`SampleProjectTab.tsx`, `GET /api/v1/sample-project` → `{loaded, canManage}`, `POST …/remove`). Removal deletes everything that points at the sample's project, schedules, tasks or example people in one transaction (`SampleProjectService`). Existing companies keep their sample until removed. While loaded it never counts in company-wide totals.
+| Step | Shown to | Done when | Button |
+|------|----------|-----------|--------|
+| 1 Invite your people | company owner on a per-seat (Team) plan | anyone else is in the company | **Invite** → `InvitePeopleDialog` |
+| 2 Create your first project | everyone | a project exists | **Create** → New Project |
+| 3 Choose who's on it | after step 2 | the project has someone besides you | **Choose** → project page, `ChooseTeamDialog` |
+| 4 Build the plan | after step 2 | the plan has a task | **Open plan** → `?tab=schedule` |
 
-All three steps are fully reachable. A previous redirect bug that sent users away from the wizard after Step 1 (before Steps 2 and 3 could be shown) has been fixed.
+The next undone step is highlighted. **Hide this card** (or **Close** once all are done) sends `PUT /users/me/profile { completeOnboarding: true }` — no phone needed any more (the user made phone optional on 2026-10-19, reversing U5). No client step and no team step on the Team plan: one company, one list of people (`project_team` / client pools stay consultant-only).
 
-After creating a project in Step 2, the user is taken to the project's **Overview** tab (not the Gantt chart), which is the appropriate starting point for a brand-new project.
+**Finish your profile** (`ProfileChecklist.tsx`): name and company (**Change**; only the owner renames the company — a Google sign-up's company starts as the person's name, and this is now the only place to rename it), phone (optional; Settings › Profile can now remove a saved one — `''` → NULL), your role (Project manager / Team member / Executive / Scrum master; saved only while setup isn't finished, as before — `maySetOwnRole`), time zone (link to Settings → Display). No photo: the app has no profile pictures.
 
-First-login detection uses `sessionStorage` (set once per browser session after registration). Completing or dismissing the wizard persists a flag in `localStorage` so it does not reappear on subsequent logins.
+**Invite dialog** (`InvitePeopleDialog.tsx`): rows of Email, Name, Access (`constants/companyRoles.ts`, shared with Settings → Team) with a **Paid seat** / **Free** badge, and the bill line from `GET /seats` ("You have N seats and use M. These invites fit in your seats…" / "…add K seats: $X more a month"). One `POST /org/invite` per row (the server adds seats on per-seat plans); the invite now takes an optional `fullName`, used for the new account and its resource instead of the email prefix. Failed rows stay in the form with their reason.
 
-The `apiService.updateProfile()` call in Step 1 accepts an optional `role` parameter, which is applied by the backend only when the user's `fullName` is currently null (i.e., this is their first profile save).
+**Who's on it** (`ChooseTeamDialog.tsx`): opened from the card, or by itself after creating a project while still setting up (`location.state.showReadiness`), only for the project's managers, and — when it opened by itself — only if the company has anyone else. Lists active company members except you; company Viewers start unticked as Viewer, everyone else ticked as Manager; roles Owner / Manager / Viewer; one `POST /projects/:id/members` per person. **Skip for now**; the Team tab does the same later.
+
+**Invited person** (`ChangePasswordPage` + `ConfirmYourName.tsx`): after choosing their own password, **You've joined [company] — Is this your name?** (**Yes, that's me** / **Change it** → `PUT /users/me/profile { fullName }`), then their one project (if on exactly one, the sample excluded) or the dashboard.
+
+**Two tabs after confirming the email (U45):** `utils/emailConfirmedSignal.ts` — the confirm page (`VerifyEmailPage`) posts `{type:'email-confirmed'}` on BroadcastChannel `kovarti-auth` and, when signed in, goes straight to the dashboard; the waiting page (`VerifyEmailPendingPage`) on that message shows **You're confirmed — Kovarti is open in the other tab** with **Continue here instead**, and its 5-second check no longer moves it on. A link opened in another browser sends nothing, so the waiting tab moves on as before.
+
+The sample project is no longer offered at first login; it can be added any time from **Settings → Sample project**.
 
 **Paid sign-up (October 2026, UAT 2026-10-17):** (U41, 2026-10-18: the browser goes straight to Stripe — `utils/leaveForCheckout.ts` raises a flag before the new user reaches the store, so the sign-up route doesn't bounce to `/verify-email-pending` on the way out; on that page an unpaid plan (`subscriptionStatus: 'incomplete'` + `pendingTier`) shows **Checking your payment…** while it asks Stripe (`/stripe/reconcile`), then **Finish your payment** with **Choose your plan and pay** → `/pricing` and no Resend button — it never says a link was sent before payment. `POST /auth/change-pending-email` on such an account changes the address (and the Stripe customer's) but sends no link and doesn't mark one sent: "Changed to … We'll send your confirm link there once you've paid." `leaveForCheckout` also reloads a page the browser restores from its back/forward memory, and the checking state gives up after 10 s.) `/register?tier=…` asks **Your name** (required), **Company name** (required for `sme` / `enterprise`, optional for the consultant tiers), email and password, and sends `fullName` + `organizationName` — the company used to be named after the email prefix. `POST /auth/register` returns a `checkoutUrl` and does **not** send the confirm-your-email link; `StripeService.sendVerificationAfterPayment` sends it on `checkout.session.completed` (flat: `metadata.userId`; per seat: the org owner) and from the pending-payment sweep when it rescues a payment the webhook missed. It reuses a still-valid stored token (else a new 24-hour one), skips verified users (upgrades), and marks the send in Redis (`verify-after-payment:<userId>`, 24 h) so a repeated webhook doesn't send twice. **Verify page** (`VerifyEmailPendingPage.tsx`): refreshes the user from `/auth/me` every 5 s; when the plan is paid and `active`/`trialing` it shows **Payment received · <plan>** / **One last step: confirm your email**, otherwise the old wording. While awaiting payment it calls `POST /stripe/reconcile` once on arrival (which also sends the link if the webhook is late). **Wrong address? Change it** (replaced *Register again*, which made a second account) asks the new address **and the current password**, calls `POST /auth/change-pending-email` (see SECURITY_GUIDE.md), shows **Sent to <new email>** in an always-mounted status line, returns focus to "Change it", and updates the Stripe customer's email best-effort. On an unpaid plan it sends nothing and shows **Changed to <new email>. We'll send your confirm link there once you've paid.** (U41). **Never paid:** the pending-payment reminder (day 2) stores a fresh 24-hour link and its button is **Confirm email and continue** (`/verify-email?token=…`); once confirmed the account is still awaiting payment and finishes checkout as before. A confirmed one gets the old **Complete Checkout** button. **Sign-in:** a refusal for an unconfirmed email (403 `Email not verified`) shows **Send me a new confirmation link** (`useResendVerification`, shared with `CheckYourEmail`). Fresh links come from one helper, `utils/verificationToken.ts`.
-
-**Abandoned checkout banner:** If a user selects a paid plan, gets redirected to Stripe, and abandons the checkout without completing payment, the onboarding page detects the incomplete checkout state and shows a dismissible banner explaining that the checkout was not completed, with a link to the Pricing page to try again. The banner is cleared automatically on a successful Stripe return or after the user completes Step 1 of onboarding.
-
-Component: `src/client/src/components/onboarding/WelcomeModal.tsx`
-
-### Onboarding — 4-Step Wizard (SME Tier)
-
-SME-tier users get an extended **4-step onboarding wizard** that adds a dedicated Team Setup step between Profile and Project creation, reflecting the multi-user nature of the SME plan.
-
-| Step | Content |
-|------|---------|
-| **Step 1 — Profile & Org Setup** | Same profile fields as the standard wizard (name if missing, phone, role), plus a **required** Organization Name field when the company isn't named yet. Since October 2026 the Team plan's sign-up form asks for the company name, so it is usually already set and the field is hidden. On other tiers the org name field is optional. |
-| **Step 2 — Team Setup** (SME only) | Seat summary banner showing total seats purchased, seats already used, and seats still available. An invite form with an email field and a role dropdown (Project Manager / Team Member / Viewer / Executive) lets the owner send invitations immediately. Sent invites accumulate in a pending-invites list below the form. Buttons: **Send Invites & Continue** (proceeds after at least one invite is sent) and **Skip — I'll invite later** (proceeds without sending invites). Uses existing APIs: `GET /api/v1/seats` for seat data and `POST /api/v1/org/invite` for each invitation. |
-| **Step 3 — Create First Project** | Same template picker as the standard wizard, plus the optional **Client or department** box (below). |
-| **Step 4 — Done** | Completion screen showing an org summary: organization name, total seats, and the number of invites sent during Step 2, rather than trial countdown info. |
-
-**Who is it for? (October 2026).** Once a template is picked, the first-project step shows an optional client box (`components/project/ClientNameField.tsx`, an accessible combobox): typing filters the company's clients, offers **+ Create client "…"** for a new name and **No client (internal project)**. The typed text is the value — blank = no client, a known name = that client, anything else = a new client (`POST /project-groups`, added before the project so a refused name stops before anything is created), then `POST /templates/apply` gets its `clientId`, so the project is created already linked and placeholder roles prefer the client's own people. A client added on a failed try is reused on the retry, and Create waits until the client list has loaded so an existing name is never re-added. Labelled **Client** for consultant and trial plans, **Client or department** for SME and Enterprise; shown only to those who may add clients (owner/PMO, project managers).
-
-Non-SME tiers are unaffected and continue to use the 3-step flow. The tier is determined at render time from `subscriptionTier === 'sme'` on the authenticated user object.
-
-Component: `src/client/src/components/onboarding/OnboardingPage.tsx`
 
 ### Project Detail Tabs
 

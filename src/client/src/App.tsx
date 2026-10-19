@@ -15,7 +15,6 @@ import { RoleRouteGuard } from './components/layout/RoleRouteGuard';
 // Eagerly loaded (part of initial bundle — needed immediately)
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
-import { needsSetup } from './utils/needsSetup';
 import { signUpPageSendsOn } from './utils/leaveForCheckout';
 
 const isPrelaunch = import.meta.env.VITE_PRELAUNCH === 'true';
@@ -80,7 +79,6 @@ const ProjectsPM = lazy(() => import('./pages/ProjectsPM').then(m => ({ default:
 const ClientsPage = lazy(() => import('./pages/clients/ClientsPage').then(m => ({ default: m.ClientsPage })));
 const ClientRaidPage = lazy(() => import('./pages/clients/ClientRaidPage').then(m => ({ default: m.ClientRaidPage })));
 const ClientReportPage = lazy(() => import('./pages/clients/ClientReportPage').then(m => ({ default: m.ClientReportPage })));
-const OnboardingPage = lazy(() => import('./pages/OnboardingPage').then(m => ({ default: m.OnboardingPage })));
 const OAuthCallbackPage = lazy(() => import('./pages/OAuthCallbackPage').then(m => ({ default: m.OAuthCallbackPage })));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then(m => ({ default: m.NotFoundPage })));
@@ -101,7 +99,7 @@ function PageLoader() {
   );
 }
 
-function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { children: React.ReactNode; skipOnboardingCheck?: boolean; requiredRole?: string }) {
+function PrivateRoute({ children, requiredRole }: { children: React.ReactNode; requiredRole?: string }) {
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
 
@@ -122,7 +120,6 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user && user.emailVerified === false) return <Navigate to={ROUTES.verifyEmailPending} replace />;
   if (user?.mustChangePassword) return <Navigate to="/change-password" replace />;
-  if (!skipOnboardingCheck && needsSetup(user)) return <Navigate to="/onboarding" replace />;
   if (requiredRole && user?.role !== requiredRole) return <Navigate to="/dashboard" replace />;
   // Admin pages are the Kovarti platform admin's only — admin role AND no company
   if (requiredRole === 'admin' && !isPlatformAdmin(user)) return <Navigate to="/dashboard" replace />;
@@ -135,7 +132,7 @@ function PrivateRoute({ children, skipOnboardingCheck, requiredRole }: { childre
 }
 
 function App() {
-  const { isAuthenticated, isLoading, user, setUser, setLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, setUser, setLoading } = useAuthStore();
 
   useEffect(() => {
     // Hydrate auth from cookies on mount (handles page refresh + verify-login redirect)
@@ -192,7 +189,8 @@ function App() {
         <Route path={ROUTES.waitlistAdmin} element={<Navigate to={ROUTES.adminWaitlist} replace />} />
         <Route path={ROUTE_PATTERNS.portal} element={<PortalViewPage />} />
         <Route path={ROUTES.changePassword} element={isAuthenticated ? <ChangePasswordPage /> : <Navigate to={ROUTES.login} replace />} />
-        <Route path={ROUTES.onboarding} element={isAuthenticated ? (user?.emailVerified === false ? <Navigate to={ROUTES.verifyEmailPending} replace /> : <OnboardingPage />) : <Navigate to={ROUTES.login} replace />} />
+        {/* The setup pages became the dashboard's Get started card (U42, 2026-10-19); old links land there */}
+        <Route path={ROUTES.onboarding} element={<Navigate to={ROUTES.dashboard} replace />} />
 
         {/* Protected routes */}
         <Route path={ROUTES.dashboard} element={<PrivateRoute><DashboardPM /></PrivateRoute>} />

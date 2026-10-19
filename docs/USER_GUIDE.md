@@ -67,7 +67,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
    - **Paid plans** (October 2026) use the same form with **Subscribe to [plan]** at the top: **Your name**, **Work email**, **Company name** — required for the Team (SME) and Enterprise plans, optional for the Consultant plans — and a **Password**. Team plans also choose their number of seats. **Continue to Payment** takes you to Stripe's payment page; the name and company you typed name your account and your company (they are not asked again during setup).
    - **Or click Sign up with Google** at the top of the form (when your company's Kovarti has it switched on). Pick your Google account; Google has already confirmed your email, so you go straight in — no form, no confirmation email. It follows the same rules as the form: the free trial, your chosen paid plan's checkout, or an invitation (which must be opened with the Google account of the invited address; if you already have a Kovarti account, Continue with Google from the invitation signs you in and adds you to the inviting company). You have no Kovarti password; to connect Claude, which needs one, set a password with **Forgot password?** on the sign-in page.
 5. Verify your email address using the link sent to your inbox. **On a paid plan the link is sent once your payment goes through**, not while you are on the payment page. After paying you see **Payment received · [plan]** and **One last step: confirm your email** (for a moment it may say **Checking your payment…**) — click the link in the email and the page moves on by itself. If you leave the payment page without paying, the app shows **Finish your payment**: your account is ready but the plan isn't paid, and the confirm link comes once it is. **Choose your plan and pay** opens Pricing; **Change it** there corrects your address without sending anything yet. **Wrong address? Change it** (under the Resend button) lets you correct a mistyped email: type the right one and **your password**, then click **Save**; the link goes to the new address ("Sent to …") and the old link stops working. An address that already has a Kovarti account can't be used. Once your email is confirmed, change it in **Settings › Profile** instead. Left without paying? The reminder email two days later has a **Confirm email and continue** button: confirm, sign in, and finish checkout. Signing in before confirming shows **Send me a new confirmation link** under the message. The link lasts 24 hours; if you don't confirm, we email you a fresh link a day later and again three days after you signed up. Can't find it? In Gmail look in the **Updates** tab, then Spam or Promotions. Always use the **newest** email: an older link stops working once a newer one is sent. If a link doesn't work, the page tells you why and offers **Send me a new link** — type your email and a fresh one arrives.
-6. **Set up your workspace.** Everyone who signs up for their own company goes through the short setup screens once — about you, then your first project (with the option **Explore a sample project first**). Your name and company name are only asked if sign-up didn't give them (for example a Google sign-up, or a free trial that left the company blank). **Your phone number is required** on the first screen — Kovarti uses it only to help you with your account, never shares it and never sends texts. You can change it later in **Settings › Profile**.
+6. **Get started.** You land straight on your **Dashboard** — no setup form. A **Get started** card there walks you through the first steps, and a **Finish your profile** box beside it asks for anything sign-up didn't (all optional). See **First Login — Get started** below.
 
 > **Note:** Each email address is eligible for one free 7-day trial. If you previously had an account that was deleted, you can still register again with the same email, but you will need to select a paid plan — the free trial will not be available a second time.
 
@@ -79,6 +79,7 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
 
 1. Go to the login page (`/login`) and enter your **email** and password. (There are no usernames any more; an older account that had one can still sign in with it.)
 2. Click **Sign In**. You will be redirected to the **Dashboard**.
+   - **If sign-in is refused, the message says why** (October 2026): **There's no Kovarti account for this email** — click **Create one** or check the spelling; or **That password isn't right** — click **Reset it** to get a reset link.
    - **Continue with Google** (when shown) signs you in with your Google account instead. The first time, if you already have a Kovarti account with that address, the **You already have a Kovarti account** page asks for your Kovarti password **once** (or click **Forgot your password? Email me a link to link Google instead** and use the button on the page the email opens). This proves the account is yours — Google is never linked to an existing account automatically. After that, Continue with Google signs you straight in.
    - If Google sign-in can't go ahead, the sign-in page says why and what to do (for example "You cancelled at Google. Nothing was changed."). A Google address with no Kovarti account is sent to the **Pricing** page with a note — choose the free trial or a plan there, then click **Sign up with Google** on the next page. (From an invitation, you stay on the invitation's sign-up page instead.)
    - An account made with Google has no password: typing one shows "This account signs in with Google…". Use Continue with Google, or set a password with **Forgot password?**.
@@ -88,56 +89,38 @@ Also: [Tips](#tips) · [Need Help?](#need-help)
    - **"Verifying you are human" box:** after 3 failed sign-ins from your network (your home or office connection) within 15 minutes, a small Cloudflare box appears above **Sign In**. It usually ticks itself in a second or two; **Sign In** waits until it does. The same box appears on **Forgot password?** after 3 requests. If it says "Verification failed", reload the page and try again. If the page says **The security check could not load**, reload the page; if it keeps happening, turn off ad blockers for kovarti.com or contact support. Signing in correctly starts the count again.
 5. Use **Forgot Password** if you need to reset your credentials. A reset link is emailed to you (expires after 24 hours). Clicking the link and setting a new password automatically verifies your email address, so you will not be prompted to verify it again after a reset. If the reset link has expired or is invalid, the page shows a **"Request a new reset link"** button so you can request a fresh one without navigating away.
 
-### First Login — Onboarding Wizard
+### First Login — Get started
 
-On your very first login, an onboarding wizard appears to help you get set up. The number of steps depends on your plan.
+Since October 2026 your first sign-in opens the **Dashboard**, not a setup form. (The old "Welcome to Kovarti PM — Tell us about yourself" screens and the welcome pop-up are gone; an old link to `/onboarding` opens the Dashboard.)
 
-#### Standard Plans (Trial, Consultant Basic, Consultant Pro)
+**Confirming your email with two tabs open:** the confirm link opens in a new tab, which carries straight on into Kovarti. The "check your email" tab you left open then says **You're confirmed — Kovarti is open in the other tab. You can close this one** (or click **Continue here instead**). If you open the link in another browser or on your phone, the waiting tab moves on by itself.
 
-A **3-step wizard** guides you through initial setup:
+#### The Get started card
 
-**Step 1 — Your Profile**
-- **Full Name** and **Organization Name** appear only when sign-up didn't give them (a company still named after you or your email counts as not named yet). Your **phone number** is required.
-- Pick your role (Project Manager, Team Member or Executive).
-- There is no methodology question any more (October 2026): each project's methodology (Waterfall, Agile or Hybrid) comes from its template, and you can change it any time in **Edit project**. It sets that project's tabs, readiness bar and views.
+The card shows up to four steps, in this order. The next step is highlighted; finished steps are ticked.
 
-**Step 2 — Create Your First Project (optional)**
-- Pick a project template from the library to pre-populate tasks, milestones, and dependencies. Up to 6 are shown, in the library's order; the project takes the template's methodology.
-- **Client (optional)** (October 2026): say who the project is for. Start typing to pick one of your clients; if you have none yet, type the name and choose **+ Create client "…"** — the client is added and the project linked to it in one go (add contacts and details later under **Clients**). Leave it blank, or pick **No client (internal project)**, and the project has no client; you can link one any time from **Edit project**. Only people who can add clients (company owner, PMO, project managers) see this box.
-- You can skip this step — just click **Skip** to go straight to the confirmation screen. You can always create a project manually from the Projects page later.
-- **Explore a sample project first** (company owner or PMO, October 2026): tick this to add a read-only example, "Sample Web App Development", with made-up people, timesheets and costs, so you can see every feature filled in. It never counts in your totals, reports or workload, and you can remove it any time in **Settings → Sample project**. New companies start without it. Nothing in the sample falls on a Saturday or Sunday (tasks, sprints, meetings, timesheets, costs).
+1. **Invite your people** — company owners on the **Team** plan only. **Invite** opens a window where you add several people at once: their **Email**, **Name** (what the team will see — without one, the start of their email is used) and **Access**: Project Manager, Team Member or Executive (each marked **Paid seat**) or Viewer (**Free**). Below the list, Kovarti says what the invites do to your bill before you send — for example "You have 3 seats and use 1. These invites fit in your seats, so your bill doesn't change", or "These invites add 1 seat: $19 more a month". Click **Send N invites**. Each person gets an email with a temporary password. Click **I'll invite later** to skip; you can invite any time from **Settings → Team**.
+2. **Create your first project** — **Create** opens **New Project**. The **Client or department** box is optional (on the Team plan there is no client to set up first: one company, one list of people).
+3. **Choose who's on it** — right after you create the project, a **Who's on [project]?** window lists the people in your company (not you — you're the Owner). Everyone is ticked as **Manager** except company Viewers (unticked, as Viewer); change any tick or role, then click **Add N people**, or **Skip for now**. People who haven't signed in yet can still be added. You can do the same later on the project's **Team** tab, or with the card's **Choose** button.
+   - **Viewer** — can see the project. Can also update the RAID items assigned to them (status, progress updates, comments, attachments), log their own time, post their own sprint standups, retrospective notes and votes, and update the RAID actions they own — meeting actions included, since they live in the RAID log. Changing the sprint itself, adding to RAID, and anything Mjuzi does to a project stay with the Manager/Owner. You only ever see projects you're on — in dashboards, reports, exports and Mjuzi's answers (admins, PMO and executives see the whole portfolio). Lessons Learned stay shared across the organisation. On the Resources screens you still see how busy each person is across all projects, but work on projects you're not on shows as **"Work on another project" / "Other projects"**, without names or costs. Buttons for things you can't change are hidden, and a blue **View only** note at the top of the Sprints, Automations, What-if and Meeting Minutes screens says what you can still do.
+   - **Manager** — can change the project: tasks, dates, links, RAID items, change requests, imports, AI changes. AI suggestions on project data (suggest a mitigation, AI task estimate, AI project analysis, optimise schedule, strategic risk scan) are for the Manager/Owner too — they're hidden from everyone else.
+   - **Owner** — everything a Manager can do, plus make other people Owner, remove members and delete the project. A project always keeps at least one Owner.
+   - The **Editor** role was removed in September 2026; anyone who had it is now a Viewer.
+4. **Build the plan** — **Open plan** opens the project's Schedule: start from a template, import a schedule file, or add tasks.
 
-**Step 3 — You're all set**
-- A confirmation screen shows your trial details (start date, end date, and what's included).
-- If you created a project in Step 2, you are taken directly to that project's Overview page. Otherwise, you land on the Dashboard.
+On the free trial and the Consultant plans there is no invite step (those plans invite viewers only, from **Settings → Team**), so the card starts at **Create your first project**.
 
-#### SME Plan
+**Finish your profile** (beside the steps) — all optional:
+- **Name and company** — from sign-up; **Change** fixes either (only the company owner can rename the company — useful after a Google sign-up, where the company starts as your own name).
+- **Phone (optional)** — Kovarti uses it only to help you with your account, never shares it and never sends texts. Change or remove it later in **Settings › Profile**.
+- **Your role** — Project manager until you pick another (Team member, Executive, Scrum master). Only while the card is showing.
+- **Time zone** — **Set it** opens **Settings → Display**.
 
-SME accounts get an extended **4-step wizard** with an additional Team Setup step:
+When every step is done the card says **You're all set** — click **Close**. **Hide this card** closes it any time. Either way it doesn't come back.
 
-**Step 1 — Profile & Org Setup**
-- Same profile fields as above (name if missing, phone, role).
-- **Organization Name** is required for SME accounts if sign-up didn't name the company (the Team plan's sign-up form now asks for it, so most SME owners don't see it here). Only the company owner names (or renames) the company, so someone who joins an existing company doesn't see this field.
+#### People you invite
 
-**Step 2 — Team Setup**
-- A seat summary shows how many seats your plan includes, how many are already used, and how many are still available.
-- Use the invite form to add team members: enter an email address and select a role, then click **Send Invite**. Repeat for each person you want to add.
-  - **Viewer** — can see the project. Can also update the RAID items assigned to them (status, progress updates, comments, attachments), log their own time, post their own sprint standups, retrospective notes and votes, and update the RAID actions they own — meeting actions included, since they live in the RAID log. Changing the sprint itself, adding to RAID, and anything Mjuzi does to a project stay with the Manager/Owner. You only ever see projects you're on — in dashboards, reports, exports and Mjuzi's answers (admins, PMO and executives see the whole portfolio). Lessons Learned stay shared across the organisation. On the Resources screens you still see how busy each person is across all projects, but work on projects you're not on shows as **"Work on another project" / "Other projects"**, without names or costs. Buttons for things you can't change are hidden, and a blue **View only** note at the top of the Sprints, Automations, What-if and Meeting Minutes screens says what you can still do.
-  - **Manager** — can change the project: tasks, dates, links, RAID items, change requests, imports, AI changes. AI suggestions on project data (suggest a mitigation, AI task estimate, AI project analysis, optimise schedule, strategic risk scan) are for the Manager/Owner too — they're hidden from everyone else.
-  - **Owner** — everything a Manager can do, plus make other people Owner, remove members and delete the project. A project always keeps at least one Owner.
-  - The **Editor** role was removed in September 2026; anyone who had it is now a Viewer. Only the project's Manager or Owner can change project data. Edit buttons appear only for them.
-- Sent invitations appear in the pending-invites list below the form.
-- Click **Send Invites & Continue** to proceed, or **Skip — I'll invite later** if you prefer to set up your team after the wizard.
-
-**Step 3 — Create Your First Project (optional)**
-- Same template picker as Step 2 in the standard flow, with the same optional box — here labelled **Client or department**, as SME and Enterprise projects are often internal.
-
-**Step 4 — You're all set**
-- A confirmation screen shows your organization name, total seats, and how many invites were sent during Step 2.
-
----
-
-The wizard only appears once. After you complete or dismiss it, it will not show again.
+An invited person signs in with the temporary password from their email and chooses their own password. Next they see **You've joined [company]** — **Is this your name? Your team will see it.** **Yes, that's me** carries on; **Change it** lets them type their name and **Save and continue**. Then they go straight to their project (if they're on exactly one) or the Dashboard. They don't see the Get started card — their company is already set up.
 
 > **Abandoned checkout:** If you chose a paid plan but did not complete payment, your account is created but not activated, and a banner invites you to finish checking out. You are not placed on the free trial — the trial is for people who chose the free plan, and choosing a paid plan is a different decision. Nothing is charged until you complete payment. Finish checkout at any time from the **Pricing** page and your account opens immediately. If you never do, we send one reminder after two days and close the empty account after two weeks.
 >

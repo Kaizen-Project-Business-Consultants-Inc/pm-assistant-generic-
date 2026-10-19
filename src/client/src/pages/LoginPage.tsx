@@ -9,8 +9,21 @@ import { KovartiMark } from '../components/ui/KovartiMark';
 import { GoogleButton } from '../components/auth/GoogleButton';
 import { useHumanCheck } from '../components/auth/useHumanCheck';
 import { googleSignInMessage } from '../utils/googleSignInMessages';
-import { needsSetup } from '../utils/needsSetup';
 import { useResendVerification } from '../components/auth/CheckYourEmail';
+
+const NEXT_LINK = 'underline font-medium hover:text-red-800 dark:hover:text-red-300';
+
+/** The next step under a refused sign-in: create an account, reset the password, or (other refusals) sign up */
+function SignInErrorNext({ code }: { code: string | null }) {
+  const cls = 'text-xs text-red-600/70 dark:text-red-400/70 mt-1';
+  if (code === 'NO_ACCOUNT') {
+    return <p className={cls}><Link to="/pricing" className={NEXT_LINK}>Create one</Link> or check the spelling.</p>;
+  }
+  if (code === 'WRONG_PASSWORD') {
+    return <p className={cls}><Link to="/forgot-password" className={NEXT_LINK}>Reset it</Link></p>;
+  }
+  return <p className={cls}>New to Kovarti?{' '}<Link to="/pricing" className={NEXT_LINK}>Create an account</Link></p>;
+}
 
 export const LoginPage: React.FC = () => {
   useSEO({
@@ -28,6 +41,8 @@ export const LoginPage: React.FC = () => {
   const [awaitingVerification, setAwaitingVerification] = useState(false);
   // Signed in with an account whose email isn't confirmed: offer a new link right here
   const [unconfirmed, setUnconfirmed] = useState(false);
+  // what the refusal was (U27): no account for this email, or the wrong password
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const resend = useResendVerification(username.trim());
 
   const { setUser, setError: setAuthError } = useAuthStore();
@@ -59,6 +74,7 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setUnconfirmed(false);
+    setErrorCode(null);
 
     try {
       const response = await apiService.login(username, password, human.token);
@@ -69,9 +85,6 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      if (response.user?.isFirstLogin) {
-        sessionStorage.setItem('pm-first-login', 'true');
-      }
       setUser(response.user);
 
       // Accept pending invite if login came from invite link
@@ -87,10 +100,10 @@ export const LoginPage: React.FC = () => {
       if (response.mustChangePassword || response.user?.mustChangePassword) {
         navigate('/change-password');
       } else {
-        navigate(needsSetup(response.user) ? '/onboarding' : '/dashboard');
+        navigate('/dashboard');
       }
     } catch (err: unknown) {
-      const axiosError = err as { response?: { status?: number; data?: { error?: string; message?: string; requiresVerification?: boolean; needsHumanCheck?: boolean } } };
+      const axiosError = err as { response?: { status?: number; data?: { error?: string; code?: string; message?: string; requiresVerification?: boolean; needsHumanCheck?: boolean } } };
       human.afterFailure(axiosError.response?.data?.needsHumanCheck);
 
       // Handle 202 from fetch fallback
@@ -108,6 +121,7 @@ export const LoginPage: React.FC = () => {
       } else if (axiosError.response?.data?.message) {
         errorMessage = axiosError.response.data.message;
       }
+      setErrorCode(axiosError.response?.data?.code ?? null);
       setError(errorMessage);
       setAuthError(errorMessage);
     } finally {
@@ -192,10 +206,7 @@ export const LoginPage: React.FC = () => {
                         {resend.resendError && <p className="mt-1 text-xs text-red-700 dark:text-red-400">{resend.resendError}</p>}
                       </div>
                     )}
-                    <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1">
-                      New to Kovarti?{' '}
-                      <Link to="/pricing" className="underline font-medium hover:text-red-800 dark:hover:text-red-300">Create an account</Link>
-                    </p>
+                    <SignInErrorNext code={errorCode} />
                   </div>
                 </div>
               </div>

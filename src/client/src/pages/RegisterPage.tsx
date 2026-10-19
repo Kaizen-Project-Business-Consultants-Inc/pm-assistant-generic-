@@ -111,7 +111,6 @@ export const RegisterPage: React.FC = () => {
 
       // Plan signup flow: auto-login + redirect to Stripe (no confirm page on the way, U41)
       if (result.checkoutUrl) {
-        localStorage.setItem('pendingCheckout', 'true');
         const signedInUser = result.user;
         leaveForCheckout(result.checkoutUrl, signedInUser ? () => setUser(signedInUser) : undefined);
         return;

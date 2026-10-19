@@ -24,17 +24,17 @@ export const ProfileTab: React.FC = () => {
   const [pwError, setPwError] = useState('');
 
   const nameInvalid = !fullName.trim();
+  // phone is optional (2026-10-19): '' removes a saved one; unchanged sends nothing
+  const phoneChange = phone.trim() === (user?.phone ?? '') ? undefined : phone.trim();
 
   const handleSave = async () => {
     if (nameInvalid) { setError('Full name is required.'); return; }
     if (emailChanged && !emailPassword) { setError('Enter your current password to change your email.'); return; }
-    // a kept phone number can be changed but not emptied (it's required at setup, U5)
-    if (user?.phone && !phone.trim()) { setError('Enter your phone number — it can be changed but not removed.'); return; }
     setSaving(true);
     setError('');
     try {
-      const result = await apiService.updateProfile({ fullName, email: email.trim(), currentPassword: emailChanged ? emailPassword : undefined, phone: phone.trim() || undefined });
-      if (user) setUser({ ...user, fullName: result.fullName ?? fullName, email: result.email ?? email, phone: result.phone ?? (phone.trim() || null) });
+      const result = await apiService.updateProfile({ fullName, email: email.trim(), currentPassword: emailChanged ? emailPassword : undefined, phone: phoneChange });
+      if (user) setUser({ ...user, fullName: result.fullName ?? fullName, email: result.email ?? email, phone: phoneChange === undefined ? user.phone : (phoneChange || null) });
       setEmailPassword('');
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -64,7 +64,7 @@ export const ProfileTab: React.FC = () => {
           {nameInvalid && error && <p className="text-xs text-red-500 mt-1">Full name cannot be empty.</p>}
         </div>
         <div>
-          <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone number</label>
+          <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone number <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span></label>
           <input id="profile-phone" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+1 416 555 0100" className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
         </div>
         <div>

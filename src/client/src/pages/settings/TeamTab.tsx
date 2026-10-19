@@ -6,14 +6,7 @@ import { apiService } from '../../services/api';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { ViewerInvitePanel } from '../../components/settings/ViewerInvitePanel';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
-
-// Never 'admin': that is the Kovarti platform admin only (user rule 2026-10-04)
-const ROLE_OPTIONS = [
-  { value: 'project_manager', label: 'Project Manager' },
-  { value: 'team_member', label: 'Team Member' },
-  { value: 'viewer', label: 'Viewer' },
-  { value: 'executive', label: 'Executive' },
-];
+import { COMPANY_ROLE_OPTIONS } from '../../constants/companyRoles';
 
 interface OrgMember {
   id: string;
@@ -32,8 +25,8 @@ export const TeamTab: React.FC = () => {
   const isConsultant = CONSULTANT_TIERS.includes(user?.subscriptionTier ?? '');
   const isPerSeat = user?.subscriptionTier === 'sme' || user?.subscriptionTier === 'enterprise';
   const availableRoleOptions = isConsultant
-    ? ROLE_OPTIONS.filter(r => r.value === 'viewer')
-    : ROLE_OPTIONS;
+    ? COMPANY_ROLE_OPTIONS.filter(r => r.value === 'viewer')
+    : COMPANY_ROLE_OPTIONS;
   // Only the company owner invites people, changes roles and removes members (server: org.ts);
   // a PMO or PM sees the team but not those controls (hide, don't disable)
   const isOwner = user?.organization?.isOwner === true || user?.role === 'admin';
@@ -181,12 +174,12 @@ export const TeamTab: React.FC = () => {
                       <span className="inline-flex items-center gap-1 text-gray-700 dark:text-gray-300">
                         <Shield className="w-3 h-3" />
                         {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
-                        {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
+                        {COMPANY_ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
                       </span>
                     ) : isConsultant || !isOwner ? (
                       <span className="text-gray-700 dark:text-gray-300">
                         {/* eslint-disable-next-line no-restricted-syntax -- small: the 4 roles */}
-                        {ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
+                        {COMPANY_ROLE_OPTIONS.find(r => r.value === m.role)?.label || m.role}
                       </span>
                     ) : (
                       <select

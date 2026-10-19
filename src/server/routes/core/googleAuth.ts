@@ -139,7 +139,8 @@ async function signUp(request: FastifyRequest, reply: FastifyReply, identity: Go
     });
   }
   await startNewSession(reply, user);
-  return reply.redirect(checkoutUrl ?? '/onboarding');
+  // the dashboard's Get started card picks up from here (U42, 2026-10-19 — it was the setup page)
+  return reply.redirect(checkoutUrl ?? '/dashboard');
 }
 
 /** The pending link (who and which Google account) — kept until used or 10 minutes */

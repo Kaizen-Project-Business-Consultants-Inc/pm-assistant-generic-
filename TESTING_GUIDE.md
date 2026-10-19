@@ -147,7 +147,7 @@ Unit: `src/server/__tests__/utils/googleSignIn.test.ts` (state, nonce, token che
 
 On staging, with `GOOGLE_AUTH_CLIENT_ID`/`SECRET` set and a real Google account (Playwright cannot get past Google's own sign-in, so a person does the Google step):
 1. `curl -s https://pm.kpbc.ca/api/v1/auth/providers` → `{"google":true}`; the sign-in and sign-up pages show the Google button (none when the settings are empty).
-2. **New address:** Sign up with Google → lands on onboarding, signed in, no confirmation email; the company database exists.
+2. **New address:** Sign up with Google → lands on the Dashboard with the Get started card, signed in, no confirmation email; the company database exists.
 3. **Existing account:** make a password account with the same Gmail address, then Continue with Google → `/link-google?token=…` names the account; a wrong password says so (5 tries, then the link expires); the right one signs in. Next time Continue with Google goes straight in.
 4. **Emailed link:** on the link page click "Forgot your password? Email me a link…"; the email opens `/link-google?confirm=…`, which names both accounts and links only on the button.
 5. **No account:** Continue with Google with an address that has no account → Pricing, with the note "There's no Kovarti account for that Google address yet. Choose a plan…".
@@ -156,7 +156,7 @@ On staging, with `GOOGLE_AUTH_CLIENT_ID`/`SECRET` set and a real Google account 
 
 ### Paid sign-up: name, company, confirm email after payment (Oct 2026)
 
-Unit: `src/server/__tests__/routes/authPendingEmail.test.ts` (no link at a paid register, name/company used, every change-pending-email answer incl. password, the unique-key race and the old link refused), `routes/stripeCustomerRoutes.test.ts` (reconcile sends), `services/pendingPaymentJob.test.ts` + `EmailService.test.ts` (reminder carries a confirm link), `src/client/src/__tests__/pages/loginUnconfirmed.test.tsx`, `src/server/__tests__/services/StripeService.test.ts` ("confirm-your-email link after payment"), `src/client/src/__tests__/pages/verifyEmailPending.test.tsx`, `onboardingStep1.test.tsx`, `registerPageShortForm.test.tsx`.
+Unit: `src/server/__tests__/routes/authPendingEmail.test.ts` (no link at a paid register, name/company used, every change-pending-email answer incl. password, the unique-key race and the old link refused), `routes/stripeCustomerRoutes.test.ts` (reconcile sends), `services/pendingPaymentJob.test.ts` + `EmailService.test.ts` (reminder carries a confirm link), `src/client/src/__tests__/pages/loginUnconfirmed.test.tsx`, `src/server/__tests__/services/StripeService.test.ts` ("confirm-your-email link after payment"), `src/client/src/__tests__/pages/verifyEmailPending.test.tsx`, `registerPageShortForm.test.tsx`.
 
 Manual check on staging (Stripe test mode, card 4242 4242 4242 4242):
 1. Pricing → Subscribe on Consultant Pro: the form asks **Your name** and **Company name (optional)**; on Team/Enterprise the company is required.
@@ -885,28 +885,23 @@ Unit tests: `__tests__/hooks/useClientChoice.test.tsx`, `__tests__/components/pr
 4. Import 50 rows as qa.pm into a project with a second manager → that manager gets ONE "50 RAID items imported" notice, not 50.
 Unit tests: `__tests__/components/raidImportModal.test.tsx` (client), `src/server/__tests__/routes/raidImportLimits.test.ts` (8 MB body → 413, text cap, row cap).
 
-### 9b. Onboarding WelcomeModal
+### 9b. First login — Get started card (U42/U47/U48, 2026-10-19)
 
-The WelcomeModal appears on first login for new users. It is suppressed for returning users via two storage keys.
+Replaced the setup pages and the welcome pop-up. On staging, sign up a new Team-plan company (or reset a test owner with `UPDATE users SET onboarding_completed_at = NULL WHERE email = …`):
 
-**Trigger the modal:**
+1. After confirming the email you land on the **Dashboard**; `/onboarding` also goes there. The card **Welcome, … Let's get … working** shows, in order: Invite your people (Team-plan owner only), Create your first project, Choose who's on it, Build the plan — the next one highlighted.
+2. **Invite**: add two rows (one Viewer, one Team Member) — badges **Free** / **Paid seat**, and the bill line matches the seats (`GET /seats`). Send: both arrive in Settings → Team with the names typed; step 1 ticks.
+3. **Create** → New Project; after creating it, **Who's on [project]?** opens with the company's people (not you), Viewers unticked. **Add** → they're on the project's Team tab; step 3 ticks. With nobody else in the company it doesn't open by itself.
+4. Add a task → step 4 ticks; **You're all set** → **Close**; the card doesn't come back. **Hide this card** does the same at any point.
+5. **Finish your profile**: change name/company (owner), add and then remove a phone in Settings › Profile, pick a role, set a time zone.
+6. Sign in as one of the invited people (temporary password): after choosing a password, **Is this your name?** → **Change it** saves; they land on their project. No card for them.
+7. A company Viewer and a guest never see the card.
 
-1. Open browser DevTools (F12) → Application → Local Storage → delete the key `pm-generic-onboarding-seen`.
-2. Application → Session Storage → delete the key `pm-first-login`.
-3. In the database, ensure the test user has `lastLoginAt = null` (or has no projects):
+**Two tabs (U45):** sign up in one tab, open the confirm link in a new tab of the same browser: the new tab goes to the Dashboard, the old one says **You're confirmed** (**Continue here instead** works). Open the link in another browser instead: the old tab moves on by itself.
 
-```sql
-UPDATE users SET last_login_at = NULL WHERE username = 'testuser';
-```
+**Sign-in messages (U27):** an email with no account → "There's no Kovarti account for this email." + **Create one**; a wrong password → "That password isn't right." + **Reset it**.
 
-4. Log in as that user. The WelcomeModal should appear automatically.
-
-**Verify modal behaviour:**
-
-- Three options are presented (e.g., "Create a project", "Import data", "Take a tour" — exact labels depend on implementation).
-- Selecting an option dismisses the modal and navigates or initiates the chosen flow.
-- After dismissal, refreshing the page must NOT show the modal again (`pm-generic-onboarding-seen` will be set in localStorage).
-- Logging in again in the same browser session must NOT show the modal (`pm-first-login` session key is set).
+Unit: `__tests__/components/getStarted.test.tsx`, `__tests__/pages/emailConfirmedTabs.test.tsx`, `__tests__/pages/signInMessages.test.tsx` (client); `__tests__/services/getStartedState.test.ts`, `routes/humanCheck.test.ts`, `routes/profileUpdate.test.ts`, `routes/orgAdminRole.test.ts` (server). Browser (local, mocked): `e2e/get-started.spec.ts`.
 
 ---
 
@@ -1119,12 +1114,14 @@ npx playwright test --config playwright.staging-full.config.ts role-routes --wor
 - [ ] Re-running within the cooldown window does NOT send a second email (key already exists)
 - [ ] Resend dashboard shows delivery records for users in the trial-expiry window
 
-### Onboarding WelcomeModal
+### First login — Get started card
 
-- [ ] Modal appears after clearing `pm-generic-onboarding-seen` (localStorage) and `pm-first-login` (sessionStorage) for a user with `lastLoginAt = null`
-- [ ] All three onboarding options are rendered and functional
-- [ ] Modal does not reappear on page refresh or subsequent login after being dismissed
-- [ ] Users with `lastLoginAt` set (returning users) never see the modal
+- [ ] A new owner lands on the Dashboard with the four steps in order (Team plan) or three (trial / consultant)
+- [ ] Invite shows Free / Paid seat and the right bill line; invited people get the typed name
+- [ ] Who's on it? opens after the first project, lists the company, adds the ticked people
+- [ ] Hide / Close finishes setup and the card never returns; viewers, guests and invited people never see it
+- [ ] Confirm link in a second tab: the old tab says "You're confirmed"
+- [ ] Sign-in: no account → Create one; wrong password → Reset it
 
 ### Google Analytics
 

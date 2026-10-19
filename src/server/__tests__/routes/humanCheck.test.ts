@@ -104,6 +104,28 @@ describe('the human check on sign-in and forgot password', () => {
     expect((await forgot(ip, 'good-token')).statusCode).toBe(200);
   });
 
+  it('says what went wrong: no account for this email, or the password (U27)', async () => {
+    const ip = from();
+    const wrong = await login(ip, 'wrong');
+    expect(wrong.statusCode).toBe(401);
+    expect(wrong.json()).toMatchObject({ code: 'WRONG_PASSWORD', message: "That password isn't right." });
+
+    const unknown = await app.inject({ method: 'POST', url: '/api/v1/auth/login', remoteAddress: ip, payload: { username: 'nobody@acme.test', password: 'x' } });
+    expect(unknown.statusCode).toBe(401);
+    expect(unknown.json()).toMatchObject({ code: 'NO_ACCOUNT', message: "There's no Kovarti account for this email." });
+
+    const oldUsername = await app.inject({ method: 'POST', url: '/api/v1/auth/login', remoteAddress: from(), payload: { username: 'nobody', password: 'x' } });
+    expect(oldUsername.json()).toMatchObject({ code: 'NO_ACCOUNT', message: "There's no Kovarti account with this username." });
+  });
+
+  it('trying unknown emails counts towards the check too (no free guessing of who has an account)', async () => {
+    const ip = from();
+    const tryEmail = (e: string) => app.inject({ method: 'POST', url: '/api/v1/auth/login', remoteAddress: ip, payload: { username: e, password: 'x' } });
+    await tryEmail('a@acme.test'); await tryEmail('b@acme.test');
+    expect((await tryEmail('c@acme.test')).json().needsHumanCheck).toBe(true);
+    expect((await tryEmail('d@acme.test')).statusCode).toBe(400);
+  });
+
   it('with Turnstile switched off nothing changes, however many wrong passwords', async () => {
     turnstile.active = false;
     const ip = from();

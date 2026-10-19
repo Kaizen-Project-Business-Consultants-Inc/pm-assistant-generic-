@@ -7,7 +7,6 @@ import { useSEO } from '../hooks/useSEO';
 import { KovartiMark } from '../components/ui/KovartiMark';
 import { ROUTES } from '../routes';
 import { getApiErrorMessage } from '../utils/getApiErrorMessage';
-import { needsSetup } from '../utils/needsSetup';
 
 /**
  * "You already have a Kovarti account" (Sign in with Google, Oct 2026). Google came back with an
@@ -67,10 +66,9 @@ export const LinkGooglePage: React.FC = () => {
   const signedIn = async () => {
     try {
       const me = await apiService.getMe();
-      if (me.user?.isFirstLogin) sessionStorage.setItem('pm-first-login', 'true');
       setUser(me.user);
       if (me.user?.mustChangePassword) void navigate(ROUTES.changePassword);
-      else void navigate(needsSetup(me.user) ? ROUTES.onboarding : ROUTES.dashboard);
+      else void navigate(ROUTES.dashboard);
     } catch {
       window.location.assign(ROUTES.home);
     }

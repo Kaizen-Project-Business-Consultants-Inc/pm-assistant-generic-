@@ -76,8 +76,16 @@ export async function authRoutes(fastify: FastifyInstance) {
       // counted before it is judged; a correct sign-in wipes the count (utils/humanCheck.ts)
       const { refusal, dueNext } = await countTry('login', ip, turnstileToken);
       if (refusal) return reply.status(400).send(refusal);
+      // Each says what went wrong (U27, 2026-10-19 — both used to say "Username or password is
+      // incorrect"). Saying an email has no account reveals no more than sign-up already does
+      // ("An account with this email already exists"); the rate limit and human check still apply.
       const wrongPassword = () => reply.status(401).send({
-        error: 'Invalid credentials', message: 'Username or password is incorrect', needsHumanCheck: dueNext,
+        error: 'Invalid credentials', code: 'WRONG_PASSWORD', message: "That password isn't right.", needsHumanCheck: dueNext,
+      });
+      const noAccount = () => reply.status(401).send({
+        error: 'Invalid credentials', code: 'NO_ACCOUNT', needsHumanCheck: dueNext,
+        // an older account may still sign in with its username
+        message: username.includes('@') ? "There's no Kovarti account for this email." : "There's no Kovarti account with this username.",
       });
 
       // Allow login by username or email
@@ -85,7 +93,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       if (!user && username.includes('@')) {
         user = await userService.findByEmail(username);
       }
-      if (!user) return wrongPassword();
+      if (!user) return noAccount();
 
       if (!hasPassword(user)) {
         return reply.status(401).send({ error: 'No password', message: NO_PASSWORD_MESSAGE, needsHumanCheck: dueNext });
@@ -135,7 +143,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
-          // false = send them to the setup screens (App.tsx) — finishing setup decides, not having a name
+          // false = the dashboard shows the Get started card (GetStartedCard.tsx)
           onboardingCompleted: !!user.onboardingCompletedAt,
           phone: user.phone ?? null,
           mustChangePassword: user.mustChangePassword || false,
@@ -397,7 +405,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           subscriptionStatus: user.role === 'admin' ? 'active' : user.subscriptionStatus,
           trialEndsAt: user.trialEndsAt ? (user.trialEndsAt instanceof Date ? user.trialEndsAt.toISOString() : String(user.trialEndsAt)) : null,
           isFounder: user.isFounder || false,
-          // false = send them to the setup screens (App.tsx) — finishing setup decides, not having a name
+          // false = the dashboard shows the Get started card (GetStartedCard.tsx)
           onboardingCompleted: !!user.onboardingCompletedAt,
           phone: user.phone ?? null,
           emailVerified: user.emailVerified || false,

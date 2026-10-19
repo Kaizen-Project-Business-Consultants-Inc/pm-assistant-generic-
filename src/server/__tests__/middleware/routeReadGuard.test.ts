@@ -82,7 +82,8 @@ const READ_OK: Record<string, string[]> = {
   'core/invites.ts': ['/:token/validate'],
   'core/notifications.ts': ['/', '/unread-count', '/push/vapid-key'],
   'core/pricing.ts': ['/'],
-  'core/users.ts': ['/me', '/me/accessibility', '/me/dashboard-preferences', '/me/view-preferences'],
+  // /me/get-started: your own company and the projects you created (services/getStartedState.ts)
+  'core/users.ts': ['/me', '/me/accessibility', '/me/dashboard-preferences', '/me/view-preferences', '/me/get-started'],
   'core/websocket.ts': ['/'],
   'collaboration/portal.ts': ['/view/:token'],
   'integrations/calendar.ts': ['/callback', '/connect', '/calendars'],

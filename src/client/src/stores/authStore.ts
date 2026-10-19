@@ -18,7 +18,7 @@ export interface User {
   isFounder?: boolean;
   emailVerified?: boolean;
   mustChangePassword?: boolean;
-  /** false = still in setup (sent to /onboarding). Undefined on an older payload: fall back to the name. */
+  /** false = still setting up: the dashboard shows the Get started card (GetStartedCard.tsx) */
   onboardingCompleted?: boolean;
   /** Asked on the setup screen and in Settings › Profile (U5) */
   phone?: string | null;

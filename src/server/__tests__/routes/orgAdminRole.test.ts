@@ -9,12 +9,12 @@ import Fastify from 'fastify';
 vi.mock('../../middleware/auth', () => ({
   authMiddleware: vi.fn(async (req: any) => { req.user = { userId: req.headers['x-user'] ?? 'owner1', username: 'u', role: 'project_manager', hasCompany: true }; }),
 }));
-const org = { id: 'o1', ownerUserId: 'owner1', subscriptionTier: 'sme', billingModel: 'flat', dbName: null };
-const orgSvc = vi.hoisted(() => ({ findByUserId: vi.fn(), invalidateUserCache: vi.fn() }));
+const org = { id: 'o1', name: 'Acme', ownerUserId: 'owner1', subscriptionTier: 'sme', billingModel: 'flat', dbName: null, maxUsers: 10 };
+const orgSvc = vi.hoisted(() => ({ findByUserId: vi.fn(), invalidateUserCache: vi.fn(), countUsers: vi.fn(async () => 1) }));
 vi.mock('../../services/OrganizationService', () => ({ organizationService: orgSvc }));
 const users = vi.hoisted(() => ({ findById: vi.fn(), update: vi.fn(async () => ({})) , findByEmail: vi.fn(), create: vi.fn(), listByOrganization: vi.fn(async () => []) }));
 vi.mock('../../services/UserService', () => ({ userService: users }));
-vi.mock('../../services/EmailService', () => ({ emailService: { sendOrgInvite: vi.fn(async () => {}) } }));
+vi.mock('../../services/EmailService', () => ({ emailService: { sendOrgInvite: vi.fn(async () => {}), sendOrgInviteEmail: vi.fn(async () => {}) } }));
 vi.mock('../../services/ResourceService', () => ({ resourceService: {} }));
 vi.mock('../../middleware/rateLimiter', () => ({ rateLimiter: { check: () => ({ allowed: true }) } }));
 vi.mock('../../config', () => ({ config: { MULTI_TENANT_ENABLED: false, APP_URL: 'https://x' } }));
@@ -46,6 +46,17 @@ describe('company roles never include the Kovarti admin', () => {
     expect(res.json().message).toMatch(/reserved for the Kovarti platform team/);
     expect(users.create).not.toHaveBeenCalled();
     expect(users.update).not.toHaveBeenCalled();
+  });
+
+  it('an invite can carry the person\'s name; without one, the start of the email is used (2026-10-19)', async () => {
+    users.findByEmail.mockResolvedValue(null);
+    users.create.mockResolvedValue({ id: 'new1' });
+    const named = await app.inject({ method: 'POST', url: '/api/v1/org/invite', payload: { email: 'priya@acme.test', role: 'team_member', fullName: '  Priya Shah ' } });
+    expect(named.statusCode).toBe(200);
+    expect(users.create).toHaveBeenLastCalledWith(expect.objectContaining({ email: 'priya@acme.test', fullName: 'Priya Shah' }));
+
+    await app.inject({ method: 'POST', url: '/api/v1/org/invite', payload: { email: 'tom@acme.test', role: 'viewer' } });
+    expect(users.create).toHaveBeenLastCalledWith(expect.objectContaining({ fullName: 'tom' }));
   });
 
   it('changing a member to admin is refused', async () => {

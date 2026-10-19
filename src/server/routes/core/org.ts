@@ -32,6 +32,8 @@ const inviteSchema = z.object({
   email: z.string().email(),
   // Never 'admin' — that is the Kovarti platform admin only (user rule 2026-10-04)
   role: z.enum(COMPANY_ASSIGNABLE_ROLES).default('team_member'),
+  // the name the owner typed (Get started invite, 2026-10-19); without one, the start of the email
+  fullName: z.string().trim().min(1).max(200).optional(),
 });
 
 /**
@@ -77,7 +79,8 @@ export async function orgRoutes(fastify: FastifyInstance) {
       if ((request.body as { role?: unknown } | null)?.role === 'admin') {
         return reply.status(400).send({ error: 'Role not allowed', message: ADMIN_NOT_ASSIGNABLE_MESSAGE });
       }
-      const { email, role } = inviteSchema.parse(request.body);
+      const { email, role, fullName } = inviteSchema.parse(request.body);
+      const newName = fullName || email.split('@')[0];
       const inviterId = request.user!.userId;
 
       // Look up the inviter's organization
@@ -175,7 +178,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
           username,
           email,
           passwordHash,
-          fullName: email.split('@')[0],
+          fullName: newName,
           role: role as any,
           emailVerified: true, // admin vouches for them
         });
@@ -196,7 +199,7 @@ export async function orgRoutes(fastify: FastifyInstance) {
         // Create resource record
         try {
           await inOrgDb(org, () => resourceService.createResource({
-            name: email.split('@')[0],
+            name: newName,
             role,
             email,
             capacityHoursPerWeek: 40,
