@@ -513,8 +513,12 @@ export async function authRoutes(fastify: FastifyInstance) {
       }
       const wrongPassword = await currentPasswordRefusal(user, currentPassword, 'email');
       if (wrongPassword) return reply.status(wrongPassword.status).send(wrongPassword.body);
+      // A paid sign-up that hasn't paid gets its link once it does (U41): change the address, send nothing yet
+      const unpaidPlan = user.subscriptionStatus === 'incomplete' && !!user.pendingTier;
       if (email.toLowerCase() === user.email.toLowerCase()) {
-        return reply.status(400).send({ error: 'Same address', message: 'That is the address we already have. Use Resend to get the link again.' });
+        return reply.status(400).send({ error: 'Same address', message: unpaidPlan
+          ? 'That is the address we already have.'
+          : 'That is the address we already have. Use Resend to get the link again.' });
       }
       // Sign-up already says whether an address is taken, so this tells a stranger nothing new
       const emailTaken = () => reply.status(409).send({ error: 'Email in use', message: 'That address already has a Kovarti account. Use a different one.' });
@@ -531,7 +535,15 @@ export async function authRoutes(fastify: FastifyInstance) {
       }
       // Not in the audit ledger: that holds project data changes, and the profile email change
       // isn't there either; the application log records it like the other account changes.
-      logger.info('Unconfirmed email changed', { userId: user.id, ip });
+      logger.info('Unconfirmed email changed', { userId: user.id, ip, unpaidPlan });
+      // Receipts and invoices go to the new address too. Best-effort: the account is changed already.
+      const org = await organizationService.findByUserId(user.id).catch(() => null);
+      const ownedOrgCustomer = org?.ownerUserId === user.id ? org.stripeCustomerId : null;
+      stripeService.updateCustomerEmail([user.stripeCustomerId, ownedOrgCustomer], email).catch((err) => {
+        logger.warn('Change pending email: Stripe customer not updated', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
+      });
+      if (unpaidPlan) return { message: `Changed to ${email}. We'll send your confirm link there once you've paid.`, email };
+
       // This link is the one to use: the after-payment send (StripeService) must not follow with
       // a second email for it while it is still fresh
       stripeService.noteVerificationSent(user.id).catch(() => { /* logged inside */ });
@@ -539,13 +551,6 @@ export async function authRoutes(fastify: FastifyInstance) {
       emailService.sendVerificationEmail(email, verificationToken).catch((err) => {
         logger.error('Change pending email: verification email failed', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
       });
-      // Receipts and invoices go to the new address too. Best-effort: the account is changed already.
-      const org = await organizationService.findByUserId(user.id).catch(() => null);
-      const ownedOrgCustomer = org?.ownerUserId === user.id ? org.stripeCustomerId : null;
-      stripeService.updateCustomerEmail([user.stripeCustomerId, ownedOrgCustomer], email).catch((err) => {
-        logger.warn('Change pending email: Stripe customer not updated', { userId: user.id, message: err instanceof Error ? err.message : String(err) });
-      });
-
       return { message: `Sent to ${email}`, email };
     } catch (error) {
       logger.error('Change pending email error', { message: error instanceof Error ? error.message : String(error) });

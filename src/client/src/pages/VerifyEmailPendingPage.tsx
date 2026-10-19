@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, RefreshCw, CheckCircle } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
@@ -13,9 +13,15 @@ import { getApiErrorMessage } from '../utils/getApiErrorMessage';
  * address? Change it" corrects a typo in place (it replaced "Register again", which made a
  * second account). The page moves on by itself once the email is confirmed.
  *
+ * A paid sign-up that hasn't paid yet (left Stripe, or the payment is still being checked) is
+ * told so — "Checking your payment…", then "Finish your payment" — never "we sent a link",
+ * because the link only goes once they've paid (U41, 2026-10-18). No Resend there.
+ *
  * Change-email states: closed → open (typing) → saving → closed with "Sent to …", or back to
  * open with the reason it was refused. Cancel closes it without saving.
  */
+const RECONCILE_WAIT_MS = 10_000;
+
 export function VerifyEmailPendingPage() {
   const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
@@ -26,6 +32,7 @@ export function VerifyEmailPendingPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [changeSaving, setChangeSaving] = useState(false);
   const [changeError, setChangeError] = useState<string | null>(null);
+  /** What the server said after "Change it" ("Sent to …", or for an unpaid plan "Changed to …") */
   const [sentTo, setSentTo] = useState<string | null>(null);
   const newEmailRef = useRef<HTMLInputElement>(null);
   const changeButtonRef = useRef<HTMLButtonElement>(null);
@@ -57,11 +64,18 @@ export function VerifyEmailPendingPage() {
   // Back from paying: ask Stripe straight away rather than wait for its webhook (this also sends
   // the confirm link if the webhook hasn't). Once, on arrival, only while awaiting payment.
   const awaitingPayment = user?.subscriptionStatus === 'incomplete';
+  // Only a paid sign-up has a plan waiting; it gets no link until it pays
+  const unpaidPlan = awaitingPayment ? user?.pendingTier ?? null : null;
   const reconciled = useRef(false);
+  const [paymentChecked, setPaymentChecked] = useState(false);
   useEffect(() => {
     if (!awaitingPayment || reconciled.current) return;
     reconciled.current = true;
-    apiService.reconcileSubscription().then(() => checkVerification()).catch(() => { /* the webhook and the 5 s check still work */ });
+    // At most ~10 s on "Checking your payment…"; the 5 s check still moves on if the payment lands later
+    const giveUp = setTimeout(() => setPaymentChecked(true), RECONCILE_WAIT_MS);
+    apiService.reconcileSubscription().then(() => checkVerification())
+      .catch(() => { /* the webhook and the 5 s check still work */ })
+      .finally(() => { clearTimeout(giveUp); setPaymentChecked(true); });
   }, [awaitingPayment, checkVerification]);
 
   useEffect(() => {
@@ -95,7 +109,7 @@ export function VerifyEmailPendingPage() {
     try {
       const data = await apiService.changePendingEmail(newEmail.trim(), currentPassword);
       setUser({ ...user, email: data.email });
-      setSentTo(data.email);
+      setSentTo(data.message || `Sent to ${data.email}`);
       setChangeOpen(false);
       setNewEmail('');
       setCurrentPassword('');
@@ -121,7 +135,26 @@ export function VerifyEmailPendingPage() {
           <Mail className="w-7 h-7 text-primary-600" />
         </div>
 
-        {paid ? (
+        {unpaidPlan ? (
+          // One live region for both states, so the change from checking to the answer is announced
+          <div role="status">
+            {!paymentChecked ? (
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Checking your payment…</h2>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Finish your payment</h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Your account is ready, but your {tierLabel(unpaidPlan)} plan isn&apos;t paid yet.
+                  {' '}We&apos;ll email your confirm link as soon as it is.
+                </p>
+                <Link to={ROUTES.pricing}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors">
+                  Choose your plan and pay
+                </Link>
+              </>
+            )}
+          </div>
+        ) : paid ? (
           <>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">One last step: confirm your email</h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
@@ -142,14 +175,16 @@ export function VerifyEmailPendingPage() {
           </>
         )}
 
-        <button
-          onClick={handleResend}
-          disabled={resendStatus === 'sending' || resendStatus === 'sent'}
-          className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
-        >
-          <RefreshCw className={`w-4 h-4 ${resendStatus === 'sending' ? 'animate-spin' : ''}`} />
-          {resendStatus === 'sent' ? 'Email Sent' : resendStatus === 'sending' ? 'Sending...' : 'Resend Verification Email'}
-        </button>
+        {!unpaidPlan && (
+          <button
+            onClick={handleResend}
+            disabled={resendStatus === 'sending' || resendStatus === 'sent'}
+            className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${resendStatus === 'sending' ? 'animate-spin' : ''}`} />
+            {resendStatus === 'sent' ? 'Email Sent' : resendStatus === 'sending' ? 'Sending...' : 'Resend Verification Email'}
+          </button>
+        )}
 
         {message && (
           <p className={`mt-4 text-sm ${resendStatus === 'error' ? 'text-red-600' : 'text-green-600'}`}>
@@ -159,7 +194,7 @@ export function VerifyEmailPendingPage() {
 
         {/* Always mounted, so screen readers announce "Sent to …" when it appears */}
         <p className={sentTo && !changeOpen ? 'mt-4 text-sm text-green-700 dark:text-green-400' : ''} role="status">
-          {sentTo && !changeOpen ? `Sent to ${sentTo}` : ''}
+          {sentTo && !changeOpen ? sentTo : ''}
         </p>
 
         {changeOpen ? (

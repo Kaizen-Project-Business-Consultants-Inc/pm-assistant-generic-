@@ -16,6 +16,7 @@ import { RoleRouteGuard } from './components/layout/RoleRouteGuard';
 import { LoginPage } from './pages/LoginPage';
 import { LandingPage } from './pages/LandingPage';
 import { needsSetup } from './utils/needsSetup';
+import { signUpPageSendsOn } from './utils/leaveForCheckout';
 
 const isPrelaunch = import.meta.env.VITE_PRELAUNCH === 'true';
 
@@ -173,7 +174,7 @@ function App() {
         {/* Public routes */}
         <Route path={ROUTES.home} element={isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : (isPrelaunch ? <PrelaunchLandingPage /> : <LandingPage />)} />
         <Route path={ROUTES.login} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated ? <Navigate to={ROUTES.dashboard} replace /> : <LoginPage />)} />
-        <Route path={ROUTES.register} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (isAuthenticated && !window.location.search.includes('invite=') ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />)} />
+        <Route path={ROUTES.register} element={isPrelaunch ? <Navigate to={ROUTES.home} replace /> : (signUpPageSendsOn(isAuthenticated, window.location.search) ? <Navigate to={ROUTES.dashboard} replace /> : <RegisterPage />)} />
         <Route path={ROUTES.smeRegister} element={<Navigate to={`${ROUTES.register}?tier=sme&billing=monthly`} replace />} />
         <Route path={ROUTES.verifyEmail} element={<VerifyEmailPage />} />
         <Route path={ROUTES.verifyEmailPending} element={isAuthenticated ? <VerifyEmailPendingPage /> : <Navigate to={ROUTES.login} replace />} />

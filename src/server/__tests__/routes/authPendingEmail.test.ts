@@ -126,6 +126,25 @@ describe('POST /auth/change-pending-email — "Wrong address? Change it"', () =>
     expect(stripeService.noteVerificationSent).toHaveBeenCalledWith('u1');
   });
 
+  it('not paid yet (U41): changes the address and Stripe, but sends no link until the payment', async () => {
+    vi.mocked(userService.findById).mockResolvedValueOnce({ ...unverified, subscriptionStatus: 'incomplete', pendingTier: 'consultant_pro' } as never);
+    const res = await change('right@acme.test');
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ email: 'right@acme.test', message: "Changed to right@acme.test. We'll send your confirm link there once you've paid." });
+    expect(vi.mocked(userService.update).mock.calls.at(-1)![1]).toEqual(expect.objectContaining({ email: 'right@acme.test' }));
+    await flush();
+    expect(stripeService.updateCustomerEmail).toHaveBeenCalledWith(['cus_1', 'cus_org'], 'right@acme.test');
+    expect(emailService.sendVerificationEmail).not.toHaveBeenCalled();
+    expect(stripeService.noteVerificationSent).not.toHaveBeenCalled(); // the after-payment link still goes
+  });
+
+  it('not paid yet, same address: no mention of Resend (that page has none)', async () => {
+    vi.mocked(userService.findById).mockResolvedValueOnce({ ...unverified, subscriptionStatus: 'incomplete', pendingTier: 'sme' } as never);
+    const res = await change('typo@acme.tset');
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toBe('That is the address we already have.');
+  });
+
   it('after a change the old link no longer confirms the account', async () => {
     // a small in-memory account, so the verify route sees what the change saved
     let stored: Record<string, unknown> = { ...unverified, emailVerificationExpires: new Date(Date.now() + 60_000) };

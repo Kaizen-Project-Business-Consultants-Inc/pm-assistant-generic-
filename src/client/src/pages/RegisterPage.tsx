@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Users, CreditCard } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { leaveForCheckout } from '../utils/leaveForCheckout';
 import { apiService } from '../services/api';
 import { TIER_LABELS } from '../constants/branding';
 import { useSEO } from '../hooks/useSEO';
@@ -108,13 +109,11 @@ export const RegisterPage: React.FC = () => {
         turnstileToken,
       });
 
-      // Plan signup flow: auto-login + redirect to Stripe
+      // Plan signup flow: auto-login + redirect to Stripe (no confirm page on the way, U41)
       if (result.checkoutUrl) {
-        if (result.user) {
-          setUser(result.user);
-        }
         localStorage.setItem('pendingCheckout', 'true');
-        window.location.href = result.checkoutUrl;
+        const signedInUser = result.user;
+        leaveForCheckout(result.checkoutUrl, signedInUser ? () => setUser(signedInUser) : undefined);
         return;
       }
 
