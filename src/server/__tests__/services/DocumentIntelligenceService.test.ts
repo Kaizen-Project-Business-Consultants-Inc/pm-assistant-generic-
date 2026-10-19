@@ -41,7 +41,7 @@ vi.mock('../../services/EmbeddingService', () => ({
 }));
 
 vi.mock('../../database/EmbeddingRepository', () => ({
-  embeddingRepository: { deleteMany: vi.fn().mockResolvedValue(undefined) },
+  embeddingRepository: { deleteMany: vi.fn().mockResolvedValue(undefined), deleteChunks: vi.fn().mockResolvedValue(undefined) },
 }));
 
 vi.mock('../../services/documentTextExtractor', () => ({
@@ -356,12 +356,13 @@ describe('DocumentIntelligenceService', () => {
       expect(projectDocumentRepository.findByIds).not.toHaveBeenCalled();
     });
 
-    it('returns matched documents filtered by projectId', async () => {
-      const searchResults = [
-        { documentId: 'doc-1', score: 0.9 },
-        { documentId: 'doc-2', score: 0.7 },
-      ];
-      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue(searchResults);
+    it('finds documents through their pieces, best piece per document, this project only (RAG-2)', async () => {
+      // embeddings are stored per piece: <documentId>_chunk_<n>
+      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { documentId: 'doc-1_chunk_3', score: 0.9 },
+        { documentId: 'doc-2_chunk_0', score: 0.8 },
+        { documentId: 'doc-1_chunk_0', score: 0.7 },
+      ]);
       (projectDocumentRepository.findByIds as ReturnType<typeof vi.fn>).mockResolvedValue([
         makeDocRecord({ id: 'doc-1', projectId: 'proj-1' }),
         makeDocRecord({ id: 'doc-2', projectId: 'proj-other' }), // different project
@@ -369,103 +370,68 @@ describe('DocumentIntelligenceService', () => {
 
       const results = await documentIntelligenceService.searchDocuments(projectId, 'query');
 
+      expect(projectDocumentRepository.findByIds).toHaveBeenCalledWith(['doc-1', 'doc-2']);
       expect(results).toHaveLength(1);
       expect(results[0].document.id).toBe('doc-1');
       expect(results[0].score).toBe(0.9);
     });
 
-    it('passes topK parameter to searchSimilar', async () => {
-      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-
-      await documentIntelligenceService.searchDocuments(projectId, 'query', 5);
-
-      expect(embeddingService.searchSimilar).toHaveBeenCalledWith('query', 'project_document', 5);
-    });
-
-    it('defaults topK to 10', async () => {
-      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue([]);
-
-      await documentIntelligenceService.searchDocuments(projectId, 'query');
-
-      expect(embeddingService.searchSimilar).toHaveBeenCalledWith('query', 'project_document', 10);
-    });
-
-    it('returns results in the same order as embedding scores', async () => {
-      const searchResults = [
-        { documentId: 'doc-a', score: 0.95 },
-        { documentId: 'doc-b', score: 0.80 },
-        { documentId: 'doc-c', score: 0.60 },
-      ];
-      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue(searchResults);
+    it('asks for three pieces per wanted document and returns at most topK', async () => {
+      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { documentId: 'doc-a_chunk_0', score: 0.9 },
+        { documentId: 'doc-b_chunk_0', score: 0.8 },
+        { documentId: 'doc-c_chunk_0', score: 0.7 },
+      ]);
       (projectDocumentRepository.findByIds as ReturnType<typeof vi.fn>).mockResolvedValue([
         makeDocRecord({ id: 'doc-c', projectId }),
         makeDocRecord({ id: 'doc-a', projectId }),
         makeDocRecord({ id: 'doc-b', projectId }),
       ]);
 
-      const results = await documentIntelligenceService.searchDocuments(projectId, 'query');
+      const results = await documentIntelligenceService.searchDocuments(projectId, 'query', 2);
 
-      expect(results).toHaveLength(3);
-      expect(results[0].document.id).toBe('doc-a');
-      expect(results[1].document.id).toBe('doc-b');
-      expect(results[2].document.id).toBe('doc-c');
+      expect(embeddingService.searchSimilar).toHaveBeenCalledWith('query', 'project_document', 6);
+      expect(results.map(r => r.document.id)).toEqual(['doc-a', 'doc-b']);
+    });
+
+    it('defaults to 10 documents (30 pieces)', async () => {
+      (embeddingService.searchSimilar as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+      await documentIntelligenceService.searchDocuments(projectId, 'query');
+
+      expect(embeddingService.searchSimilar).toHaveBeenCalledWith('query', 'project_document', 30);
     });
   });
 
   // =========================================================================
   // deleteDocumentEmbeddings
   // =========================================================================
-  describe('deleteDocumentEmbeddings', () => {
-    it('does nothing when embeddings are not available', async () => {
+  describe('deleteDocumentEmbeddings (RAG-2)', () => {
+    it('a document deleted while its pieces were being made keeps none of them', async () => {
+      const aiData = makeAIResponse({ related_entities: { tasks: [], risks: [], milestones: [] } });
+      (projectDocumentRepository.findById as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce(makeDocRecord()) // processing reads it
+        .mockResolvedValue(null); // gone by the time the pieces are made
+      (claudeService.completeWithJsonSchema as ReturnType<typeof vi.fn>).mockResolvedValue({ data: aiData });
+      (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
+      await documentIntelligenceService.processDocument('proj-1', 'doc-1', '/tmp/file.pdf', 'user-1');
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      expect(embeddingRepository.deleteChunks).toHaveBeenCalledWith('project_document', 'doc-1', []);
+    });
+
+    it('removes every piece of the document, without needing the document row or the embeddings API', async () => {
       (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(false);
 
       await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
 
+      expect(embeddingRepository.deleteChunks).toHaveBeenCalledWith('project_document', 'doc-1');
       expect(projectDocumentRepository.findById).not.toHaveBeenCalled();
-      expect(embeddingRepository.deleteMany).not.toHaveBeenCalled();
-    });
-
-    it('deletes estimated chunk embeddings based on text length', async () => {
-      (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(true);
-      // 8500 chars of extracted text => ceil(8500 / 4000) + 1 = 4 chunks
-      (projectDocumentRepository.findById as ReturnType<typeof vi.fn>).mockResolvedValue(
-        makeDocRecord({ extractedText: 'x'.repeat(8500) }),
-      );
-
-      await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
-
-      // One bulk delete for all four chunk ids (2026-10-09), not one call per chunk
-      expect(embeddingRepository.deleteMany).toHaveBeenCalledTimes(1);
-      expect(embeddingRepository.deleteMany).toHaveBeenCalledWith('project_document', ['doc-1_chunk_0', 'doc-1_chunk_1', 'doc-1_chunk_2', 'doc-1_chunk_3']);
-      expect(embeddingService.deleteEmbedding).not.toHaveBeenCalled();
-    });
-
-    it('handles document with no extracted text', async () => {
-      (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(true);
-      (projectDocumentRepository.findById as ReturnType<typeof vi.fn>).mockResolvedValue(
-        makeDocRecord({ extractedText: null }),
-      );
-
-      await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
-
-      // ceil(0/4000)+1 = 1 chunk
-      expect(embeddingRepository.deleteMany).toHaveBeenCalledTimes(1);
-      expect(embeddingRepository.deleteMany).toHaveBeenCalledWith('project_document', ['doc-1_chunk_0']);
-    });
-
-    it('handles document not found (null)', async () => {
-      (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(true);
-      (projectDocumentRepository.findById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-
-      await documentIntelligenceService.deleteDocumentEmbeddings('doc-1');
-
-      // textLength = 0 => 1 chunk
-      expect(embeddingRepository.deleteMany).toHaveBeenCalledWith('project_document', ['doc-1_chunk_0']);
     });
 
     it('logs warning when cleanup fails but does not throw', async () => {
-      (embeddingService.isAvailable as ReturnType<typeof vi.fn>).mockReturnValue(true);
-      (projectDocumentRepository.findById as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('DB gone'));
+      (embeddingRepository.deleteChunks as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('DB gone'));
 
       await expect(documentIntelligenceService.deleteDocumentEmbeddings('doc-1')).resolves.toBeUndefined();
 
@@ -507,6 +473,8 @@ describe('DocumentIntelligenceService', () => {
       expect(embeddingService.upsertEmbedding).toHaveBeenCalledTimes(2);
       expect(embeddingService.upsertEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_0', 'chunk-0');
       expect(embeddingService.upsertEmbedding).toHaveBeenCalledWith('project_document', 'doc-1_chunk_1', 'chunk-1');
+      // a re-analysed document that got shorter loses its old extra pieces
+      expect(embeddingRepository.deleteChunks).toHaveBeenCalledWith('project_document', 'doc-1', ['doc-1_chunk_0', 'doc-1_chunk_1']);
     });
 
     it('skips embedding creation when service is not available', async () => {

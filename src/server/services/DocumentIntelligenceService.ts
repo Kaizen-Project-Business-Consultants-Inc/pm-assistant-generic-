@@ -29,6 +29,10 @@ Rules:
 - Keep tags lowercase, max 20 tags
 - Keep arrays reasonable — max 30 items each`;
 
+/** Search embeddings are per piece of a document */
+const chunkId = (documentId: string, n: number) => `${documentId}_chunk_${n}`;
+const documentIdOf = (pieceId: string) => pieceId.replace(/_chunk_\d+$/, '');
+
 class DocumentIntelligenceService {
   /**
    * AI analysis of one document — run only when a person clicks "Analyse with AI" (audit 2, M1,
@@ -97,22 +101,25 @@ class DocumentIntelligenceService {
    * Semantic search over document embeddings.
    */
   async searchDocuments(projectId: string, query: string, topK = 10) {
-    const results = await embeddingService.searchSimilar(query, 'project_document', topK);
+    // Embeddings are per piece (`<documentId>_chunk_<n>`): several pieces of one document can
+    // match, so ask for more and keep each document's best piece. Until 2026-10-19 the piece id
+    // was looked up as a document id, so the search could never find anything (RAG-2).
+    const results = await embeddingService.searchSimilar(query, 'project_document', topK * 3);
     if (results.length === 0) return [];
 
-    const docIds = results.map(r => r.documentId);
-    const docs = await projectDocumentRepository.findByIds(docIds);
+    const best = new Map<string, number>();
+    for (const r of results) {
+      const docId = documentIdOf(r.documentId);
+      if (!best.has(docId) || r.score > best.get(docId)!) best.set(docId, r.score);
+    }
+    const docs = await projectDocumentRepository.findByIds([...best.keys()]);
 
-    // Filter to only documents in the requested project
-    const projectDocs = docs.filter(d => d.projectId === projectId);
-    const docMap = new Map(projectDocs.map(d => [d.id, d]));
-
-    return results
-      .filter(r => docMap.has(r.documentId))
-      .map(r => ({
-        document: docMap.get(r.documentId)!,
-        score: r.score,
-      }));
+    // Only documents in the requested project
+    return docs
+      .filter(d => d.projectId === projectId)
+      .map(d => ({ document: d, score: best.get(d.id)! }))
+      .sort((x, y) => y.score - x.score)
+      .slice(0, topK);
   }
 
   // ---------------------------------------------------------------------------
@@ -209,32 +216,24 @@ ${milestoneList}`;
     if (!embeddingService.isAvailable()) return;
 
     const chunks = chunkText(text);
+    const ids = chunks.map((_, i) => chunkId(documentId, i));
     for (let i = 0; i < chunks.length; i++) {
-      const chunkId = `${documentId}_chunk_${i}`;
       // eslint-disable-next-line no-await-in-loop -- each chunk calls the OpenAI embeddings API, which is rate-limited; chunks go one by one
-      await embeddingService.upsertEmbedding('project_document', chunkId, chunks[i]);
+      await embeddingService.upsertEmbedding('project_document', ids[i], chunks[i]);
     }
+    // Deleted while its pieces were being made: none of them stay. Otherwise a re-analysed
+    // document that got shorter loses its old extra pieces.
+    const stillThere = await projectDocumentRepository.findById(documentId);
+    await embeddingRepository.deleteChunks('project_document', documentId, stillThere ? ids : []);
   }
 
   /**
-   * Delete all embeddings for a document (all chunks).
+   * Delete all embeddings for a document (all chunks), so nothing of it stays searchable.
+   * Needs no embeddings API and no document row (the caller may delete the row at the same time).
    */
   async deleteDocumentEmbeddings(documentId: string): Promise<void> {
-    if (!embeddingService.isAvailable()) return;
-    // Delete the main document embedding and chunk embeddings
-    // Since chunks use documentId_chunk_N pattern, we need to delete each
-    // For now, delete the base ID — the chunk IDs need individual deletion
-    // We'll rely on the DB FK cascade for entity links, and clean up embeddings best-effort
     try {
-      // Get the document to check how many chunks it might have
-      const doc = await projectDocumentRepository.findById(documentId);
-      const textLength = doc?.extractedText?.length || 0;
-      const estimatedChunks = Math.ceil(textLength / 4000) + 1;
-      // All the chunks in one DELETE (per 500), not one per chunk (2026-10-09)
-      await embeddingRepository.deleteMany(
-        'project_document',
-        Array.from({ length: estimatedChunks }, (_, i) => `${documentId}_chunk_${i}`),
-      );
+      await embeddingRepository.deleteChunks('project_document', documentId);
     } catch (err: any) {
       logger.warn('Failed to clean up document embeddings', { documentId, error: err.message });
     }

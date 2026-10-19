@@ -166,6 +166,8 @@ Manual check on staging (Stripe test mode, card 4242 4242 4242 4242):
 5. Click the link → setup step 1 shows neither Full Name nor Organization Name (both given at sign-up) and no methodology question; the company shows the typed name in Settings.
 6. **Sign up with Google on a paid plan (U43):** no "Welcome to Kovarti PM Assistant!" email until you've paid; it arrives once after payment (Stripe retries don't send a second). An existing customer upgrading gets none. Unit: `routes/googleAuth.test.ts`, `services/StripeService.test.ts` ("held welcome").
 
+**Document search (RAG-1/RAG-2, 2026-10-19).** Upload a text document to a project → Analyse with AI → search for a phrase from it in AI Semantic Search: the document is found (before the fix nothing ever was). On staging check `SELECT document_id FROM embeddings WHERE document_type='project_document'` shows `<id>_chunk_0…`. Delete the document: its rows are gone. Unit: `services/chunkText.test.ts` (overlap, every sentence whole somewhere, always finishes), `services/DocumentIntelligenceService.test.ts`, `database/embeddingDeleteChunks.test.ts`.
+
 **AI reports open when ready (U44, 2026-10-19).** Reports → pick a project → Risk Assessment (or any AI tile): when it's done the report opens in the viewer (no extra toast); go to another page while it runs and the toast says "Find it under Reports › Report History", where it opens with its content. Delete one: it's gone, and its content is cleared. Only each person's 10 most recent AI reports keep content (nightly retention). Unit: `services/aiReportService.test.ts`, `services/DataRetentionService.test.ts`, client `hooks/useOpenWhenReady.test.ts`.
 
 ---

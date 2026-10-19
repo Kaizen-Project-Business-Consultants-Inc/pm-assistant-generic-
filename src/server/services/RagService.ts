@@ -82,7 +82,8 @@ export class RagService {
       options?.threshold,
     );
 
-    const results = await this.enrichResults(similar);
+    // Project documents never come out of here: they have no project check in this path
+    const results = (await this.enrichResults(similar)).filter(r => r.documentType !== 'project_document');
     const readable = options?.readableProjectIds;
     if (!readable || readable === 'all') return results;
     return results.filter((r) => r.documentType !== 'meeting'

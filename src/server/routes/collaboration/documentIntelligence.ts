@@ -156,7 +156,9 @@ export async function documentIntelligenceRoutes(fastify: FastifyInstance) {
     }
 
     const query = q.trim();
-    const limit = topK ? parseInt(topK, 10) : 10;
+    // 1–50 documents (it was unbounded, and each document is now three pieces asked for)
+    const asked = Number.parseInt(topK ?? '', 10);
+    const limit = Number.isFinite(asked) ? Math.min(Math.max(asked, 1), 50) : 10;
 
     // Try semantic search first, fall back to text search
     try {

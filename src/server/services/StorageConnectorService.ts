@@ -335,8 +335,7 @@ class StorageConnectorService {
           ? `${item.parentPath}/${item.name}`
           : item.name;
 
-        // A changed file's earlier analysis is about the old version: drop its search embeddings
-        // before the row (and its text, which sizes the chunk list) is cleared
+        // A changed file's earlier analysis is about the old version: drop all its search pieces
         // eslint-disable-next-line no-await-in-loop -- one changed file at a time, before its row is reset
         if (existing) await documentIntelligenceService.deleteDocumentEmbeddings(existing.id);
 

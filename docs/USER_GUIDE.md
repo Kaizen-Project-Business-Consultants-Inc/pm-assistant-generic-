@@ -4257,7 +4257,7 @@ Click any document in the list to open the detail panel on the right:
 - **Linked entities** — tasks, risks, and milestones referenced in the document
 
 ### AI Semantic Search
-Type a natural language question in the AI search field (e.g., "budget constraints") to find documents by meaning. This uses vector embeddings for intelligent matching.
+Type a natural language question in the AI search field (e.g., "budget constraints") to find documents by meaning. This uses vector embeddings for intelligent matching. A document is searchable once it has been analysed with AI. A deleted document never shows up in search.
 
 ### Analysing again & Deleting
 - **Analyse again with AI** — runs the analysis again (useful after you replace the file or after AI improvements)

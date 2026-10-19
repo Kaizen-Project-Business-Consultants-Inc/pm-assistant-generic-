@@ -79,7 +79,12 @@ class EmbeddingRepository {
     if (documentType) {
       sql += ' AND document_type = ?';
       params.push(documentType);
-    } else if (config.MULTI_TENANT_ENABLED) {
+    } else {
+      // A project's documents are searched only through that project (DocumentIntelligenceService,
+      // behind its project-access check), never mixed into lessons/meetings/knowledge base
+      sql += ` AND document_type <> 'project_document'`;
+    }
+    if (!documentType && config.MULTI_TENANT_ENABLED) {
       // the shared rows are only ever the knowledge base
       sql += ` AND (org_id <> '' OR document_type = 'knowledge_base')`;
     }
@@ -105,6 +110,21 @@ class EmbeddingRepository {
         [owner, documentType, ...chunk],
       );
     }
+  }
+
+  /**
+   * Every piece of one document (ids `<documentId>_chunk_<n>`), however many there are, except
+   * those in `keep` — so a deleted document leaves nothing searchable, and a re-analysed shorter
+   * one loses its old extra pieces (RAG-2, 2026-10-19). Uses idx_emb_owner_document (prefix range).
+   */
+  async deleteChunks(documentType: string, documentId: string, keep: string[] = []): Promise<void> {
+    // LIKE wildcards in the id are matched literally (MariaDB's escape character is \)
+    const prefix = documentId.replace(/[\\%_]/g, '\\$&') + '\\_chunk\\_%';
+    const notKept = keep.length ? ` AND document_id NOT IN (${keep.map(() => '?').join(',')})` : '';
+    await databaseService.queryControlPlane(
+      `DELETE FROM embeddings WHERE org_id = ? AND document_type = ? AND document_id LIKE ?${notKept}`,
+      [ownerFor(documentType), documentType, prefix, ...keep],
+    );
   }
 
   async delete(documentType: string, documentId: string): Promise<any> {

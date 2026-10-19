@@ -4,6 +4,9 @@ import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { readableProjectIds as readableFor } from '../../utils/readableProjects';
 
+/** What this search covers; project documents are searched per project (/projects/:id/documents/search) */
+const RAG_TYPES = ['lesson', 'meeting', 'knowledge_base'] as const;
+
 export async function ragRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
 
@@ -15,12 +18,15 @@ export async function ragRoutes(fastify: FastifyInstance) {
       // A request with no body at all used to crash here (TypeError → 500) (2026-10-07)
       const { query, documentType, topK } = (request.body ?? {}) as {
         query?: string;
-        documentType?: 'lesson' | 'meeting' | 'knowledge_base';
+        documentType?: (typeof RAG_TYPES)[number];
         topK?: number;
       };
 
       if (!query || typeof query !== 'string') {
         return reply.status(400).send({ error: 'query is required', message: 'Enter something to search for (query).' });
+      }
+      if (documentType !== undefined && !RAG_TYPES.includes(documentType)) {
+        return reply.status(400).send({ error: 'Invalid documentType', message: `documentType must be one of: ${RAG_TYPES.join(', ')}.` });
       }
 
       if (!ragService.isAvailable()) {

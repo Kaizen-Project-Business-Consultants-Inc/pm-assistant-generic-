@@ -157,6 +157,15 @@ describe('RagService', () => {
       expect((results[0].document as LessonLearned).title).toBe('Budget overrun');
     });
 
+    it('never returns a project document piece (no project check on this path; RAG-2 review)', async () => {
+      vi.spyOn(embeddingService, 'searchSimilar').mockResolvedValue([
+        { documentType: 'project_document', documentId: 'doc-1_chunk_2', score: 0.9 },
+      ]);
+
+      expect(await ragService.search('redundancy plan', { readableProjectIds: 'all' })).toEqual([]);
+      expect(await ragService.search('redundancy plan', { readableProjectIds: new Set(['p1']) })).toEqual([]);
+    });
+
     it('returns empty when service unavailable', async () => {
       vi.spyOn(embeddingService, 'isAvailable').mockReturnValue(false);
 
