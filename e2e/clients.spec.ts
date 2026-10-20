@@ -28,7 +28,8 @@ test('clients: grouping, risks together, one report; project codes; duplicate na
     // the report: data and a page with the timeline section's heading
     const rep = await api(pm, 'get', `/api/v1/project-groups/${client.id}/report`);
     expect(rep.report.projects.map((x: any) => x.id)).toContain(project.projectId);
-    expect(rep.html).toContain('CLIENT STATUS REPORT');
+    // the QA company is on Enterprise, which says Department (U50, 2026-10-20); Consultant plans say Client
+    expect(rep.html).toMatch(/(CLIENT|DEPARTMENT) STATUS REPORT/);
     const docx = await pm.request.get(`/api/v1/project-groups/${client.id}/report/docx`);
     expect(docx.status()).toBe(200);
     expect(docx.headers()['content-type']).toContain('wordprocessingml');
@@ -39,7 +40,7 @@ test('clients: grouping, risks together, one report; project codes; duplicate na
     await pm.goto(`/clients/${client.id}/raid`);
     await expect(pm.getByRole('heading', { name: new RegExp(`QA Client ${stamp}`) })).toBeVisible({ timeout: 20_000 });
     await pm.goto(`/clients/${client.id}/report`);
-    await expect(pm.getByText('CLIENT STATUS REPORT')).toBeVisible({ timeout: 20_000 });
+    await expect(pm.getByText(/(CLIENT|DEPARTMENT) STATUS REPORT/)).toBeVisible({ timeout: 20_000 });
     await pm.goto(`/project/${project.projectId}`);
     await expect(pm.getByText(p.projectCode, { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
