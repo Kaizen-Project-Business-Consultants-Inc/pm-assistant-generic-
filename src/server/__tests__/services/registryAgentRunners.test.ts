@@ -9,7 +9,7 @@ const h = vi.hoisted(() => ({
   recipient: vi.fn(async (p: any) => p.projectManagerId || p.createdBy),
 }));
 vi.mock('../../config', () => ({ config: { AGENT_BUDGET_CPI_THRESHOLD: 0.9, AGENT_BUDGET_OVERRUN_THRESHOLD: 50, AGENT_MC_CONFIDENCE_LEVEL: 80 } }));
-vi.mock('../../services/EVMForecastService', () => ({ evmForecastService: { generateMetricsOnly: (...a: any[]) => h.metrics(...a), generateForecast: vi.fn() } }));
+vi.mock('../../services/EVMForecastService', () => ({ evmForecastService: { generateMetricsOnly: (...a: any[]) => h.metrics(...a) } }));
 vi.mock('../../services/AgentRegistryService', () => ({ agentRegistry: { invoke: (...a: any[]) => h.invoke(...a) } }));
 vi.mock('../../services/NotificationService', () => ({ notificationService: { create: (...a: any[]) => h.notify(...a) } }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: { workingDayTest: async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 } }));

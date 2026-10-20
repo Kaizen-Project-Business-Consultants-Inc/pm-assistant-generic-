@@ -27,6 +27,16 @@ class RescheduleProposalRepository {
     return rows[0] ?? null;
   }
 
+  /** The newest proposal still waiting for the PM from this source (idx_proposal_schedule_pending, T094) */
+  async findLatestPending(scheduleId: string, source: string): Promise<RescheduleProposalRow | null> {
+    const rows = await databaseService.query<RescheduleProposalRow>(
+      `SELECT * FROM reschedule_proposals WHERE schedule_id = ? AND status = 'pending' AND source = ?
+       ORDER BY created_at DESC LIMIT 1`,
+      [scheduleId, source],
+    );
+    return rows[0] ?? null;
+  }
+
   async findBySchedule(scheduleId: string): Promise<RescheduleProposalRow[]> {
     return databaseService.query<RescheduleProposalRow>(
       'SELECT * FROM reschedule_proposals WHERE schedule_id = ? ORDER BY created_at DESC',

@@ -9,9 +9,26 @@ import { z } from 'zod';
 import { agentRegistry } from './AgentRegistryService';
 import { autoRescheduleService } from './AutoRescheduleService';
 import { monteCarloService } from './MonteCarloService';
+import { companyCacheKey } from '../utils/companyCacheKey';
 
 // Register RAG agent capability (side-effect import)
 import './ragAgentCapability';
+
+// One run per schedule at a time: the overdue workflow fires once per late task, so importing a
+// late plan started a run per task, all on the same schedule (U59, 2026-10-20). Keyed inside the
+// company: the sample project's schedule id is the same in every company, and the nightly scan
+// runs several companies at once.
+const runsInFlight = new Map<string, Promise<{ delays: unknown; proposal?: unknown }>>();
+
+async function proposeForDelays(scheduleId: string, thresholdDays: number) {
+  const delays = await autoRescheduleService.detectDelays(scheduleId);
+  const significant = delays.filter(d => d.delayDays >= thresholdDays || d.isOnCriticalPath);
+  if (significant.length === 0) return { delays: significant };
+  // Rules only, as the AI inbox's weekly agent does: background runs are rarely opened, and an AI
+  // call per late task cost 20x the chat on staging (U59). The PM's own button still uses AI.
+  const proposal = await autoRescheduleService.generateProposal(scheduleId, undefined, 'agent', { useAi: false });
+  return { delays: significant, proposal };
+}
 
 // --- Auto-Reschedule Agent ---
 agentRegistry.register({
@@ -30,16 +47,13 @@ agentRegistry.register({
   permissions: ['agent:schedule'],
   timeoutMs: 120000,
   handler: async (input: { scheduleId: string; thresholdDays?: number }) => {
-    const delays = await autoRescheduleService.detectDelays(input.scheduleId);
     const thresholdDays = input.thresholdDays ?? 3;
-    const significant = delays.filter(
-      (d: any) => d.delayDays >= thresholdDays || d.isOnCriticalPath,
-    );
-    if (significant.length === 0) {
-      return { delays: significant };
-    }
-    const proposal = await autoRescheduleService.generateProposal(input.scheduleId, undefined, 'agent');
-    return { delays: significant, proposal };
+    const key = companyCacheKey(`${input.scheduleId}:${thresholdDays}`);
+    const running = runsInFlight.get(key);
+    if (running) return running;
+    const run = proposeForDelays(input.scheduleId, thresholdDays).finally(() => runsInFlight.delete(key));
+    runsInFlight.set(key, run);
+    return run;
   },
 });
 

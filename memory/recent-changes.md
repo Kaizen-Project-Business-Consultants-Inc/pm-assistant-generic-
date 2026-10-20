@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-20 — Background AI stops paying per task (U59)
+- Staging spent US$28 in 30 days (1,967 calls) on the reschedule agent — 20x the chat. Cause: the built-in "On task overdue — reschedule agent" workflow fires once per late task (any create/edit with a past end date), each run an AI proposal, mostly never opened. Now: the agent asks for the rules-based proposal (`useAi: false`, as the weekly agent does), overlapping runs per schedule share one (`agentCapabilities.ts runsInFlight`), and an agent proposal identical to the one already waiting is returned, not saved again (`RescheduleProposalRepository.findLatestPending`). Prod checked read-only: the rule is on in all 8 companies but has never fired there.
+- Risk scan uses `generateMetricsOnly` (it read only CPI; the AI forecast it triggered was unused) — the all-in-one `EVMForecastService.generateForecast` had no other caller and is removed. Time anomaly explanation / weekly narrative reuse the same question's answer for 24 h.
+
 ## 2026-10-20 — Propose fixes counts problems, Undo can't be hit by accident, Department wording (U53/U54/U50)
 - Mock https://claude.ai/artifact/K29pNmB79C4wjwEM2WELbi, built on the user's overnight go-ahead ("build as drawn", Undo asks first). U53: fixes carry the review `problem`; levels say "N problems · M fixes offered"; ticked rows never hidden; "Apply 20 fixes — fixes 1 critical problem". U54 (UAT: Undo appeared under the cursor where Apply was, a 2nd click removed 20 links): Done in the footer, `UndoWithConfirm` in the result (also RAID Review fixes). U50: `useClientWord` — Department on sme/enterprise everywhere a client is named, incl. the report email subject.
 

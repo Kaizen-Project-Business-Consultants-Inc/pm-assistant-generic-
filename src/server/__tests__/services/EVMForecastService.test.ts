@@ -187,12 +187,12 @@ describe('EVMForecastService', () => {
     (config as any).AI_ENABLED = false;
   });
 
-  // ── generateForecast ────────────────────────────────────────────────────
+  // ── the full metrics result (the AI part is generateAIPredictions, below) ──
 
-  describe('generateForecast', () => {
+  describe('generateMetricsOnly — full result', () => {
     it('should throw when project is not found', async () => {
       mockFindById.mockResolvedValue(null);
-      await expect(service.generateForecast('missing-id')).rejects.toThrow('Project not found: missing-id');
+      await expect(service.generateMetricsOnly('missing-id')).rejects.toThrow('Project not found: missing-id');
     });
 
     it('should return a complete forecast result for a waterfall project (no AI)', async () => {
@@ -200,7 +200,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.currentMetrics).toBeDefined();
       expect(result.currentMetrics.BAC).toBe(100000);
@@ -211,66 +211,6 @@ describe('EVMForecastService', () => {
       expect(result.aiPredictions).toBeUndefined();
       expect(result.methodology).toBe('waterfall');
       expect(result.sprintContext).toBeUndefined();
-    });
-
-    it('should include AI predictions when AI is enabled and cache is empty', async () => {
-      (config as any).AI_ENABLED = true;
-      mockClaudeIsAvailable.mockReturnValue(true);
-      mockRedisGet.mockResolvedValue(null);
-      mockClaudeCompleteWithJsonSchema.mockResolvedValue({ data: mockAIPredictions });
-      mockRedisSet.mockResolvedValue(undefined);
-
-      const project = makeProject();
-      mockFindById.mockResolvedValue(project);
-      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
-      // buildScheduleAnalysis needs these
-      mockFindByProjectId.mockResolvedValue([]);
-
-      const result = await service.generateForecast('proj-1');
-
-      expect(result.aiPredictions).toBeDefined();
-      expect(result.aiPredictions!.aiAdjustedEAC).toBe(105000);
-      expect(result.forecastComparison).toHaveLength(4); // 3 traditional + AI
-      expect(result.forecastComparison[3].method).toBe('AI-Adjusted EAC');
-      expect(mockRedisSet).toHaveBeenCalledWith(
-        'single:evm:ai:proj-1',
-        expect.any(String),
-        1800,
-      );
-    });
-
-    it('should use cached AI predictions from Redis', async () => {
-      (config as any).AI_ENABLED = true;
-      mockClaudeIsAvailable.mockReturnValue(true);
-      mockRedisGet.mockResolvedValue(JSON.stringify(mockAIPredictions));
-
-      const project = makeProject();
-      mockFindById.mockResolvedValue(project);
-      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
-
-      const result = await service.generateForecast('proj-1');
-
-      expect(result.aiPredictions).toBeDefined();
-      expect(result.aiPredictions!.aiAdjustedEAC).toBe(105000);
-      expect(mockClaudeCompleteWithJsonSchema).not.toHaveBeenCalled();
-    });
-
-    it('should gracefully handle AI failure and still return traditional forecasts', async () => {
-      (config as any).AI_ENABLED = true;
-      mockClaudeIsAvailable.mockReturnValue(true);
-      mockRedisGet.mockRejectedValue(new Error('Redis down'));
-
-      const project = makeProject();
-      mockFindById.mockResolvedValue(project);
-      mockComputeSCurveData.mockResolvedValue(pastSCurveData);
-      mockFindByProjectId.mockResolvedValue([]);
-
-      const result = await service.generateForecast('proj-1');
-
-      // Should still have traditional forecasts, no AI
-      expect(result.traditionalForecasts).toBeDefined();
-      expect(result.forecastComparison).toHaveLength(3);
-      expect(result.aiPredictions).toBeUndefined();
     });
 
     it('should build sprint context for agile projects', async () => {
@@ -290,7 +230,7 @@ describe('EVMForecastService', () => {
         'sprint-2': { totalPoints: 24, completedPoints: 22 },
       });
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.sprintContext).toBeDefined();
       expect(result.sprintContext!.avgVelocity).toBe(21); // (20+22)/2 = 21
@@ -306,7 +246,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.sprintContext).toBeUndefined();
       expect(mockFindByProject).not.toHaveBeenCalled();
@@ -317,7 +257,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.currentMetrics.BAC).toBe(0);
       // Historical trends should be empty when BAC <= 0
@@ -331,7 +271,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       // null || 0 === 0
       expect(result.currentMetrics.BAC).toBe(0);
@@ -506,7 +446,7 @@ describe('EVMForecastService', () => {
     });
   });
 
-  // ── computeCurrentMetrics (tested via generateForecast) ────────────────
+  // ── computeCurrentMetrics (tested via generateMetricsOnly) ────────────────
 
   describe('computeCurrentMetrics', () => {
     it('should compute CPI and SPI from latest S-curve point', async () => {
@@ -516,7 +456,7 @@ describe('EVMForecastService', () => {
       // pv=40000, ev=38000 => SPI = 38000/40000 = 0.95
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.currentMetrics.EV).toBe(38000);
       expect(result.currentMetrics.AC).toBe(42000);
@@ -532,7 +472,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 0, ac: 0 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.currentMetrics.CPI).toBe(1);
     });
@@ -544,7 +484,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 0, ev: 0, ac: 0 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.currentMetrics.SPI).toBe(1);
     });
@@ -559,7 +499,7 @@ describe('EVMForecastService', () => {
         { date: '2099-06-01', pv: 50000, ev: 45000, ac: 48000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       // Should use the first point since none are on or before the status date
       expect(result.currentMetrics.PV).toBe(5000);
@@ -572,7 +512,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue([]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.currentMetrics.EV).toBe(0);
       expect(result.currentMetrics.AC).toBe(0);
@@ -589,7 +529,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 55000, ev: 50000, ac: 60000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const m = result.currentMetrics;
 
       // EAC = BAC / CPI = 100000 / 0.8333 ~= 120000
@@ -603,7 +543,7 @@ describe('EVMForecastService', () => {
     });
   });
 
-  // ── computeHistoricalTrends (tested via generateForecast) ──────────────
+  // ── computeHistoricalTrends (tested via generateMetricsOnly) ──────────────
 
   describe('computeHistoricalTrends', () => {
     it('should return empty array when BAC is zero', async () => {
@@ -611,7 +551,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.historicalTrends.weeklyData).toEqual([]);
     });
@@ -625,7 +565,7 @@ describe('EVMForecastService', () => {
         { date: '2099-12-31', pv: 90000, ev: 85000, ac: 88000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       // Only the point on or before the status date should be in trends
       expect(result.historicalTrends.weeklyData).toHaveLength(1);
@@ -639,7 +579,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 9000, ac: 10000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       const week = result.historicalTrends.weeklyData[0];
       expect(week.cpi).toBe(0.9); // 9000/10000
@@ -647,7 +587,7 @@ describe('EVMForecastService', () => {
     });
   });
 
-  // ── generateEarlyWarnings (tested via generateForecast) ────────────────
+  // ── generateEarlyWarnings (tested via generateMetricsOnly) ────────────────
 
   describe('generateEarlyWarnings', () => {
     it('should flag critical cost warning when CPI < 0.8', async () => {
@@ -658,7 +598,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 7000, ac: 10000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const costWarning = result.earlyWarnings.find(w => w.type === 'cost');
 
       expect(costWarning).toBeDefined();
@@ -673,7 +613,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 8500, ac: 10000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const costWarning = result.earlyWarnings.find(w => w.type === 'cost');
 
       expect(costWarning).toBeDefined();
@@ -688,7 +628,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 9200, ac: 10000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const costWarning = result.earlyWarnings.find(w => w.type === 'cost');
 
       expect(costWarning).toBeDefined();
@@ -703,7 +643,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 7000, ac: 7000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const schedWarning = result.earlyWarnings.find(w => w.type === 'schedule');
 
       expect(schedWarning).toBeDefined();
@@ -718,7 +658,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 50000, ev: 20000, ac: 50000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const tcpiWarning = result.earlyWarnings.find(w => w.type === 'completion');
 
       expect(tcpiWarning).toBeDefined();
@@ -733,7 +673,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 50000, ev: 50000, ac: 70000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const budgetWarning = result.earlyWarnings.find(w => w.type === 'budget');
 
       expect(budgetWarning).toBeDefined();
@@ -748,7 +688,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 7500, ac: 10000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const combinedWarning = result.earlyWarnings.find(w => w.type === 'combined');
 
       expect(combinedWarning).toBeDefined();
@@ -763,7 +703,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 10000, ev: 10000, ac: 9500 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.earlyWarnings).toHaveLength(1);
       expect(result.earlyWarnings[0].type).toBe('status');
@@ -783,7 +723,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 55000, ev: 50000, ac: 60000 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       const f = result.traditionalForecasts;
       const m = result.currentMetrics;
 
@@ -806,7 +746,7 @@ describe('EVMForecastService', () => {
         { date: '2026-01-01', pv: 0, ev: 0, ac: 0 },
       ]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
       // With CPI=1, eacCumulative = BAC/1 = BAC
       expect(result.traditionalForecasts.eacCumulative).toBe(100000);
     });
@@ -820,7 +760,7 @@ describe('EVMForecastService', () => {
       mockFindById.mockResolvedValue(project);
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       for (const fc of result.forecastComparison) {
         expect(fc.varianceFromBAC).toBeCloseTo(fc.eacValue - 100000, 1);
@@ -990,7 +930,7 @@ describe('EVMForecastService', () => {
     });
   });
 
-  // ── buildSprintContext (tested via generateForecast) ────────────────────
+  // ── buildSprintContext (tested via generateMetricsOnly) ────────────────────
 
   describe('buildSprintContext', () => {
     it('should return undefined when no sprints exist', async () => {
@@ -999,7 +939,7 @@ describe('EVMForecastService', () => {
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
       mockFindByProject.mockResolvedValue([]);
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.sprintContext).toBeUndefined();
     });
@@ -1010,7 +950,7 @@ describe('EVMForecastService', () => {
       mockComputeSCurveData.mockResolvedValue(pastSCurveData);
       mockFindByProject.mockRejectedValue(new Error('DB error'));
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.sprintContext).toBeUndefined();
     });
@@ -1025,7 +965,7 @@ describe('EVMForecastService', () => {
         'sprint-1': { totalPoints: 10, completedPoints: 0 },
       });
 
-      const result = await service.generateForecast('proj-1');
+      const result = await service.generateMetricsOnly('proj-1');
 
       expect(result.sprintContext).toBeDefined();
       expect(result.sprintContext!.avgVelocity).toBe(0);

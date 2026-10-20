@@ -13,6 +13,7 @@ const {
   mockRepoInsert,
   mockRepoFindById,
   mockRepoFindBySchedule,
+  mockRepoFindLatestPending,
   mockRepoUpdateStatus,
   mockRepoUpdateProposalData,
   mockIsAvailable,
@@ -27,6 +28,7 @@ const {
   mockRepoInsert: vi.fn().mockResolvedValue(undefined),
   mockRepoFindById: vi.fn(),
   mockRepoFindBySchedule: vi.fn(),
+  mockRepoFindLatestPending: vi.fn().mockResolvedValue(null),
   mockRepoUpdateStatus: vi.fn().mockResolvedValue(undefined),
   mockRepoUpdateProposalData: vi.fn().mockResolvedValue(undefined),
   mockIsAvailable: vi.fn(),
@@ -101,6 +103,7 @@ vi.mock('../../database/RescheduleProposalRepository', () => ({
     insert: mockRepoInsert,
     findById: mockRepoFindById,
     findBySchedule: mockRepoFindBySchedule,
+    findLatestPending: mockRepoFindLatestPending,
     updateStatus: mockRepoUpdateStatus,
     updateProposalData: mockRepoUpdateProposalData,
   },
@@ -847,6 +850,43 @@ describe('AutoRescheduleService', () => {
         'agent',
         expect.any(String),
       );
+    });
+
+    it('an agent run that proposes what is already waiting returns that proposal instead of saving a copy (U59)', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([]);
+      // the first run saves; a second run on the unchanged plan finds that one waiting
+      await service.generateProposal('sch-1', undefined, 'agent', { useAi: false });
+      const saved = mockRepoInsert.mock.calls[0][2] as string;
+      mockRepoInsert.mockClear();
+      mockRepoFindLatestPending.mockResolvedValueOnce({
+        id: 'waiting-1', schedule_id: 'sch-1', status: 'pending', source: 'agent', feedback: null, created_at: '2026-10-20 10:00:00',
+        proposal_data: saved,
+      });
+      const p = await service.generateProposal('sch-1', undefined, 'agent', { useAi: false });
+      expect(p.id).toBe('waiting-1');
+      expect(mockRepoFindLatestPending).toHaveBeenCalledWith('sch-1', 'agent');
+      expect(mockRepoInsert).not.toHaveBeenCalled();
+    });
+
+    it('an agent run with different changes than the waiting one saves a new proposal', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([]);
+      mockRepoFindLatestPending.mockResolvedValueOnce({
+        id: 'waiting-1', schedule_id: 'sch-1', status: 'pending', source: 'agent', feedback: null, created_at: '2026-10-20 10:00:00',
+        proposal_data: JSON.stringify({ delayedTasks: [], proposedChanges: [{ taskId: 'old' }], rationale: 'r', estimatedImpact: {} }),
+      });
+      const p = await service.generateProposal('sch-1', undefined, 'agent', { useAi: false });
+      expect(p.id).toBe('test-proposal-id');
+      expect(mockRepoInsert).toHaveBeenCalled();
+    });
+
+    it('a PM asking for a proposal always gets a fresh one (no reuse check)', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([]);
+      await service.generateProposal('sch-1', 'user-1');
+      expect(mockRepoFindLatestPending).not.toHaveBeenCalled();
+      expect(mockRepoInsert).toHaveBeenCalled();
     });
 
     it('includes critical path impact text when critical path is affected', async () => {

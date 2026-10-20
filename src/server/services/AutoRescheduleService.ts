@@ -451,6 +451,18 @@ Please propose date changes to reschedule affected tasks with minimal disruption
       };
     }
 
+    // An agent run that would propose exactly what is already waiting for the PM returns that one —
+    // the overdue workflow fires per task, so one import of a late plan saved a copy per task (U59)
+    if (source === 'agent') {
+      const waiting = await rescheduleProposalRepository.findLatestPending(scheduleId, 'agent').catch(() => null);
+      if (waiting) {
+        const existing = rowToProposal(waiting);
+        // the impact too: a moved plan end with no task moving is a different proposal
+        const same = JSON.stringify([existing.proposedChanges, existing.estimatedImpact]) === JSON.stringify([proposedChanges, estimatedImpact]);
+        if (same) return existing;
+      }
+    }
+
     const proposalId = uuidv4();
     const now = new Date().toISOString();
 

@@ -46,7 +46,9 @@ describe('the project cache keeps companies apart', () => {
 
   it('other caches keyed by an id are per company too (the sample project shares its ids)', () => {
     const src = (...p: string[]) => readFileSync(join(__dirname, '..', '..', ...p), 'utf-8');
-    expect(src('services', 'EVMForecastService.ts').match(/companyCacheKey\(`evm:ai:\$\{projectId\}`\)/g)?.length).toBe(3);
+    expect(src('services', 'EVMForecastService.ts').match(/companyCacheKey\(`evm:ai:\$\{projectId\}`\)/g)?.length).toBe(2); // metrics + AI (the all-in-one forecast was removed, U59)
+    expect(src('services', 'TimeAnomalyService.ts')).toMatch(/companyCacheKey\(`time-ai:/);
+    expect(src('services', 'agentCapabilities.ts')).toMatch(/companyCacheKey\(`\$\{input\.scheduleId\}/);
     expect(src('services', 'scheduling', 'deadlineNotificationJob.ts')).toMatch(/companyCacheKey\(`deadline-notified:/);
     expect(src('services', 'scheduling', 'scheduleReviewJob.ts')).toMatch(/companyCacheKey\(`schedule-review-notified:/);
     expect(src('utils', 'aiResultCache.ts')).toMatch(/companyCacheKey\(`ai:result:/);

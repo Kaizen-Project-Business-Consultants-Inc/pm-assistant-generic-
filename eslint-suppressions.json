@@ -2009,7 +2009,7 @@
   },
   "src/server/services/EVMForecastService.ts": {
     "@typescript-eslint/no-unused-vars": {
-      "count": 2
+      "count": 1
     },
     "sonarjs/cognitive-complexity": {
       "count": 1

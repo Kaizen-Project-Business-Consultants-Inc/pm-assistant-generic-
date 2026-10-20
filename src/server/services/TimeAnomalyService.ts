@@ -5,6 +5,23 @@ import { config } from '../config';
 import logger from '../utils/logger';
 import { groupBy } from '../utils/groupBy';
 import { toDateString, addDays, today as todayDate } from '../utils/calendarDate';
+import { createHash } from 'crypto';
+import { redisService } from './RedisService';
+import { companyCacheKey } from '../utils/companyCacheKey';
+
+/** The same question within a day gets the answer already paid for, not a new AI call (U59, 2026-10-20) */
+const AI_ANSWER_TTL_SECONDS = 24 * 60 * 60;
+
+async function reuseAiAnswer<T>(kind: string, question: string, ask: () => Promise<T>): Promise<T> {
+  const key = companyCacheKey(`time-ai:${kind}:${createHash('sha1').update(question).digest('hex')}`);
+  try {
+    const hit = await redisService.get(key);
+    if (hit) return JSON.parse(hit) as T;
+  } catch { /* no cache: ask */ }
+  const answer = await ask();
+  redisService.set(key, JSON.stringify(answer), AI_ANSWER_TTL_SECONDS).catch(() => {});
+  return answer;
+}
 
 /**
  * Read a timesheet date as a plain calendar day, independent of the server's time zone.
@@ -710,9 +727,10 @@ class TimeAnomalyService {
           recentEntries = [];
         }
 
-        const result = await claudeService.completeWithJsonSchema({
+        const userMessage = `Anomaly: ${anomaly.type} — "${anomaly.message}"\nSeverity: ${anomaly.severity}\nDetails: ${JSON.stringify(anomaly.details)}\n\nRecent project entries:\n${recentEntries.slice(0, 10).map(e => `- ${e.user_name}: ${e.hours}h on ${String(e.date).slice(0, 10)} for "${e.task_name}"`).join('\n')}`;
+        return await reuseAiAnswer(`explain:${projectId}`, userMessage, async () => (await claudeService.completeWithJsonSchema({
           systemPrompt: 'You are a time tracking analyst. Analyze the given anomaly and project context to determine the root cause and suggest corrective actions. Be concise.',
-          userMessage: `Anomaly: ${anomaly.type} — "${anomaly.message}"\nSeverity: ${anomaly.severity}\nDetails: ${JSON.stringify(anomaly.details)}\n\nRecent project entries:\n${recentEntries.slice(0, 10).map(e => `- ${e.user_name}: ${e.hours}h on ${String(e.date).slice(0, 10)} for "${e.task_name}"`).join('\n')}`,
+          userMessage,
           schema: z.object({
             rootCause: z.string(),
             suggestedActions: z.array(z.string()),
@@ -720,9 +738,7 @@ class TimeAnomalyService {
           }),
           maxTokens: 300,
           temperature: 0.3,
-        });
-
-        return result.data;
+        })).data);
       } catch (err) {
         logger.warn('[TimeAnomaly] AI explanation failed, using fallback', { error: err });
       }
@@ -748,14 +764,14 @@ class TimeAnomalyService {
       try {
         const { claudeService } = await import('./claudeService');
 
-        const result = await claudeService.complete({
+        const userMessage = `Week: ${review.weekStart} to ${review.weekEnd}\nTotal hours: ${review.totalHours.toFixed(1)}h\nContributors: ${review.hoursByUser.length}\nTop tasks: ${review.topTasks.slice(0, 3).map(t => `${t.taskName} (${t.hours.toFixed(1)}h)`).join(', ')}\nAnomalies: ${review.anomalyCount}\nCompliance: ${review.compliancePercent}%\nOver-budget tasks: ${review.overBudgetTasks.length}`;
+        // the same week's figures give the same summary: reopening the panel doesn't ask again
+        return await reuseAiAnswer('narrative', userMessage, async () => (await claudeService.complete({
           systemPrompt: 'You are a project management assistant. Write a 2-3 sentence plain-language summary of the weekly time review data provided. Be concise and highlight the most important insights. Do not use markdown.',
-          userMessage: `Week: ${review.weekStart} to ${review.weekEnd}\nTotal hours: ${review.totalHours.toFixed(1)}h\nContributors: ${review.hoursByUser.length}\nTop tasks: ${review.topTasks.slice(0, 3).map(t => `${t.taskName} (${t.hours.toFixed(1)}h)`).join(', ')}\nAnomalies: ${review.anomalyCount}\nCompliance: ${review.compliancePercent}%\nOver-budget tasks: ${review.overBudgetTasks.length}`,
+          userMessage,
           maxTokens: 150,
           temperature: 0.5,
-        });
-
-        return result.content.trim();
+        })).content.trim());
       } catch (err) {
         logger.warn('[TimeAnomaly] AI narrative failed, using fallback', { error: err });
       }

@@ -499,7 +499,8 @@ class StrategicRiskAnalysisService {
         return null;
       }),
       resourceService.findAllResources(),
-      evmForecastService.generateForecast(projectId).catch(err => {
+      // the scan reads only CPI: the full forecast also asked the AI for predictions it never used (U59)
+      evmForecastService.generateMetricsOnly(projectId).catch(err => {
         logger.warn('EVM forecast failed for risk scan', { error: err.message, projectId });
         return null;
       }),
