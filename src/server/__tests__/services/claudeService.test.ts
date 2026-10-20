@@ -1127,3 +1127,75 @@ describe('prompt size and budget before every call (audit 2026-10-10)', () => {
     expect(mockCreate.mock.calls[1][1]).toEqual({ maxRetries: 0 });
   });
 });
+
+// ---------------------------------------------------------------------------
+// U58 (2026-10-20): prompt caching in the tool loop — tools and system prompt cached, each turn
+// reads the one before from the cache, cached tokens priced at their own rates but still counted
+// ---------------------------------------------------------------------------
+describe('completeToolLoop prompt caching (U58)', () => {
+  const tools: Anthropic.Tool[] = [
+    { name: 'a', description: 'A', input_schema: { type: 'object' as const, properties: {} } },
+    { name: 'b', description: 'B', input_schema: { type: 'object' as const, properties: {} } },
+  ];
+  const turn = (stop: string, usage: Record<string, number>) => ({
+    content: stop === 'tool_use' ? [{ type: 'tool_use', id: 'tu', name: 'a', input: {} }] : [{ type: 'text', text: 'Done' }],
+    usage, stop_reason: stop, model: 'claude-sonnet-4-5-20250929',
+  });
+
+  beforeEach(() => { mockCreate.mockReset(); mockRecord.mockReset(); });
+
+  it('marks the last tool, the system prompt and the last message block for caching, and never more than 4 marks', async () => {
+    mockCreate
+      .mockResolvedValueOnce(turn('tool_use', { input_tokens: 50, output_tokens: 10, cache_creation_input_tokens: 4000, cache_read_input_tokens: 0 }))
+      .mockResolvedValueOnce(turn('end_turn', { input_tokens: 60, output_tokens: 20, cache_creation_input_tokens: 100, cache_read_input_tokens: 4000 }));
+    const executeToolFn = vi.fn().mockResolvedValue('result');
+    await makeService().completeToolLoop({ ...defaultOptions(), tools, executeToolFn });
+
+    for (const [params] of mockCreate.mock.calls) {
+      expect(params.tools[0].cache_control).toBeUndefined();
+      expect(params.tools[1].cache_control).toEqual({ type: 'ephemeral' });
+      expect(params.system[0].cache_control).toEqual({ type: 'ephemeral' });
+      const marks = JSON.stringify(params).match(/"cache_control"/g)?.length ?? 0;
+      expect(marks).toBeLessThanOrEqual(4);
+      const last = params.messages[params.messages.length - 1];
+      expect(last.content[last.content.length - 1].cache_control).toEqual({ type: 'ephemeral' });
+    }
+    // the second turn: only its own last block is marked (the first turn's mark is not kept)
+    const second = mockCreate.mock.calls[1][0];
+    expect(JSON.stringify(second.messages).match(/"cache_control"/g)).toHaveLength(1);
+    // the caller's tools are not changed
+    expect((tools[1] as any).cache_control).toBeUndefined();
+  });
+
+  it('counts cached tokens as input, separately priced', async () => {
+    mockCreate
+      .mockResolvedValueOnce(turn('tool_use', { input_tokens: 50, output_tokens: 10, cache_creation_input_tokens: 4000, cache_read_input_tokens: 0 }))
+      .mockResolvedValueOnce(turn('end_turn', { input_tokens: 60, output_tokens: 20, cache_creation_input_tokens: 100, cache_read_input_tokens: 4000 }));
+    const r = await makeService().completeToolLoop({ ...defaultOptions(), tools, executeToolFn: vi.fn().mockResolvedValue('x') });
+    expect(r.totalUsage).toEqual({ inputTokens: 50 + 4000 + 60 + 100 + 4000, outputTokens: 30, cacheReadTokens: 4000, cacheWriteTokens: 4100 });
+    expect(mockRecord.mock.calls[1][0].usage).toEqual({ inputTokens: 4160, outputTokens: 20, cacheReadTokens: 4000, cacheWriteTokens: 100 });
+  });
+
+  it('the last call after the step limit keeps the tools (no use allowed), so the cache still matches', async () => {
+    mockCreate.mockResolvedValue(turn('tool_use', { input_tokens: 10, output_tokens: 5 }));
+    mockCreate.mockResolvedValueOnce(turn('tool_use', { input_tokens: 10, output_tokens: 5 }));
+    const final = turn('end_turn', { input_tokens: 10, output_tokens: 5 });
+    mockCreate.mockImplementation(async (p: any) => (p.tool_choice ? final : turn('tool_use', { input_tokens: 10, output_tokens: 5 })));
+    const r = await makeService().completeToolLoop({ ...defaultOptions(), tools, executeToolFn: vi.fn().mockResolvedValue('x'), maxIterations: 2 });
+    const last = mockCreate.mock.calls[mockCreate.mock.calls.length - 1][0];
+    expect(last.tool_choice).toEqual({ type: 'none' });
+    expect(last.tools).toHaveLength(2);
+    expect(r.finalText).toBe('Done');
+  });
+});
+
+describe('calculateCost with the prompt cache (U58)', () => {
+  it('prices cache writes at 1.25x and reads at 0.1x of the input price', async () => {
+    const { calculateCost } = await vi.importActual<typeof import('../../services/aiUsageLogger')>('../../services/aiUsageLogger');
+    const model = 'claude-sonnet-4-5-20250929'; // $3 in / $15 out per million
+    expect(calculateCost(model, { inputTokens: 1_000_000, outputTokens: 0 })).toBeCloseTo(3);
+    expect(calculateCost(model, { inputTokens: 1_000_000, outputTokens: 0, cacheReadTokens: 1_000_000 })).toBeCloseTo(0.3);
+    expect(calculateCost(model, { inputTokens: 1_000_000, outputTokens: 0, cacheWriteTokens: 1_000_000 })).toBeCloseTo(3.75);
+    expect(calculateCost(model, { inputTokens: 2_000_000, outputTokens: 1_000_000, cacheReadTokens: 1_000_000 })).toBeCloseTo(3 + 0.3 + 15);
+  });
+});

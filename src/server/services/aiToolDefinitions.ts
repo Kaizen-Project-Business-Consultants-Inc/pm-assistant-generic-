@@ -45,6 +45,22 @@ export const AI_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'update_tasks',
+    description: 'Make the same change to several tasks in one step (e.g. mark these 4 complete). Prefer this over calling update_task once per task. Use the task ids from the project context or an earlier answer.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskIds: { type: 'array', items: { type: 'string' }, description: 'The IDs of the tasks to change (at most 50)' },
+        status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'cancelled'], description: 'New status' },
+        priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'New priority' },
+        assignedTo: { type: 'string', description: 'New assignee (user ID or username)' },
+        dueDate: { type: 'string', description: 'New due date in ISO format' },
+        progressPercentage: { type: 'number', description: 'Progress percentage (0-100)' },
+      },
+      required: ['taskIds'],
+    },
+  },
+  {
     name: 'delete_task',
     description: 'Delete a task from a schedule. Use this when asked to remove a task. This action cannot be undone.',
     input_schema: {
@@ -301,5 +317,5 @@ export const AI_TOOLS: Anthropic.Tool[] = [
 
 // Tool categories for permission checking
 export const DESTRUCTIVE_TOOLS = ['delete_task', 'clear_all_dependencies'];
-export const MUTATING_TOOLS = ['create_task', 'update_task', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
+export const MUTATING_TOOLS = ['create_task', 'update_task', 'update_tasks', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
 export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary', 'remember_user_preference', 'remember_correction', 'search_knowledge_base'];

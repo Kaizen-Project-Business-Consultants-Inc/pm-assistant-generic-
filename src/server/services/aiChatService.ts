@@ -11,6 +11,24 @@ import { InterAgentQueryService } from './agents/InterAgentQueryService';
 import { AIBudgetExceededError } from './AIBudgetService';
 import { contextConfigService } from './context/ContextConfigService';
 import { getRequestContext } from '../middleware/requestContext';
+import { sanitizeForPrompt } from '../utils/promptSanitizer';
+
+/**
+ * The items a past reply's actions named, as one line after that reply in the chat history: a
+ * follow-up ("mark them complete") has the ids instead of guessing them — the guesses were refused
+ * and searched for again, one paid step per task (U58, 2026-10-20)
+ */
+function itemsLine(actions: ChatMessage['actions']): string {
+  const refs = (actions ?? []).flatMap((a: { refs?: Array<{ id: string; name?: string; scheduleId?: string }> }) => a?.refs ?? []);
+  if (refs.length === 0) return '';
+  // names are the company's text: one line, no brackets, so a name can't break out of the line
+  const clean = (name: string) => sanitizeForPrompt(name).replace(/[\r\n[\]"]+/g, ' ').trim();
+  const items = refs.slice(0, 30).map(r => `${r.name ? `"${clean(r.name)}" ` : ''}id=${r.id}${r.scheduleId ? ` scheduleId=${r.scheduleId}` : ''}`);
+  return `\n[Items in this answer: ${items.join('; ')}]`;
+}
+
+/** Replies whose items are given back in the history (the newest ones) */
+const ITEMS_REPLIES = 2;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -302,18 +320,17 @@ export class AIChatService {
 
     if (req.context?.projectId) {
       try {
-        const [ctx, insights, priorConvos, projectMemories, userMemories] = await Promise.all([
+        const [ctx, insights, projectMemories, userMemories] = await Promise.all([
           this.contextBuilder.buildProjectContext(req.context.projectId).catch(() => null),
           this.interAgentQueryService.getInsightsByProject(req.context.projectId).catch(() => []),
-          chatRepository.findByProjectId(req.context.projectId, req.userId).catch(() => []),
-          agentMemoryService.recall('mjuzi-chat', 'project', req.context.projectId).catch(() => []),
+          agentMemoryService.recall('mjuzi-chat', 'project', req.context.projectId, undefined, { excludeKeyPrefix: 'action-' }).catch(() => []),
           userMemoriesP,
         ]);
 
         // Up to CHAT_PROMPT_TASK_LIMIT task lines: this prompt is resent on every turn of the tool
         // loop, and Mjuzi can look up the rest with list_tasks (audit 2026-10-10 H1)
         projectContext = ctx
-          ? `${this.contextBuilder.toPromptString(ctx, CHAT_PROMPT_TASK_LIMIT)}A task not listed here can be found with list_tasks and nameContains (or status / assignedTo).\n`
+          ? `${this.contextBuilder.toPromptString(ctx, CHAT_PROMPT_TASK_LIMIT, true)}A task not listed here can be found with list_tasks and nameContains (or status / assignedTo).\n`
           : `Project ID: ${req.context.projectId} (context unavailable)`;
 
         const parts: string[] = [];
@@ -323,12 +340,10 @@ export class AIChatService {
           parts.push(`Recent agent scan findings for this project:\n${insightLines}`);
         }
 
-        if (priorConvos.length > 0) {
-          parts.push(`You have had ${priorConvos.length} prior conversation(s) about this project.`);
-        }
-
-        // Mjuzi project notes (excluding corrections, which go in selfLearnContext)
-        const projectNotes = projectMemories.filter(m => !m.keyName.startsWith('correction:'));
+        // Mjuzi project notes (excluding corrections, which go in selfLearnContext). Old automatic
+        // "action-<time>" logs are left out: one was written after every change, so the prompt —
+        // and its cache — changed every message, and the chat history already says what was done (U58)
+        const projectNotes = projectMemories.filter(m => !m.keyName.startsWith('correction:') && !m.keyName.startsWith('action-'));
         if (projectNotes.length > 0) {
           const memLines = projectNotes.slice(0, 5).map(m => `- ${m.keyName}: ${JSON.stringify(m.value)}`).join('\n');
           parts.push(`Your prior notes about this project:\n${memLines}`);
@@ -372,8 +387,10 @@ export class AIChatService {
       // Non-critical — continue without custom context
     }
 
+    // The company's own instructions first: the data after them can be long, and an over-long
+    // prompt is cut at the end — it was the instructions that got cut (U58, 2026-10-20)
     const systemPrompt = promptTemplates.conversational.render({
-      projectContext: projectContext + agentInsightsContext + customContextPrompt,
+      projectContext: customContextPrompt + projectContext + agentInsightsContext,
       userRole: req.userRole || 'team_member',
     });
 
@@ -384,7 +401,11 @@ export class AIChatService {
         // Verify ownership by checking conversation exists for user
         const conv = await chatRepository.findByIdForUser(req.conversationId, req.userId);
         if (conv) {
-          history = messages.map(m => ({ role: m.role, content: m.content }));
+          // the items line on the last ITEMS_REPLIES replies only: older ones are rarely what a
+          // follow-up means, and every line is resent on every step
+          const replies = messages.filter(m => m.role === 'assistant');
+          const recent = new Set(replies.slice(-ITEMS_REPLIES));
+          history = messages.map(m => ({ role: m.role, content: recent.has(m) ? m.content + itemsLine(m.actions) : m.content }));
         }
       } catch {
         // Continue without history
@@ -408,10 +429,6 @@ export class AIChatService {
           await chatRepository.addMessage(req.conversationId, { role: 'user', content: req.message });
           await chatRepository.addMessage(req.conversationId, { role: 'assistant', content: assistantReply, actions });
           await chatRepository.updateTokenCount(req.conversationId, tokenCount);
-
-          // Store agent memory if actions were taken
-          this.storeActionMemory(req, actions);
-
           return req.conversationId;
         }
       }
@@ -428,10 +445,6 @@ export class AIChatService {
       await chatRepository.addMessage(conv.id, { role: 'user', content: req.message });
       await chatRepository.addMessage(conv.id, { role: 'assistant', content: assistantReply, actions });
       await chatRepository.updateTokenCount(conv.id, tokenCount);
-
-      // Store agent memory if actions were taken
-      this.storeActionMemory(req, actions);
-
       return conv.id;
     } catch (error) {
       this.fastify.log.error({ err: error instanceof Error ? error : new Error(String(error)) }, 'Failed to persist conversation');
@@ -467,18 +480,5 @@ export class AIChatService {
       parts.push(`Previous corrections (do not repeat these mistakes):\n${corrLines}`);
     }
     return '\n\n' + parts.join('\n\n');
-  }
-
-  private storeActionMemory(req: ChatRequest, actions?: ActionResult[]): void {
-    if (!actions || actions.length === 0 || !req.context?.projectId) return;
-
-    const summary = actions.map(a => `${a.toolName}: ${a.summary}`).join('; ');
-    agentMemoryService.store(
-      'mjuzi-chat',
-      'project',
-      req.context.projectId,
-      `action-${Date.now()}`,
-      { userMessage: req.message.slice(0, 200), actions: summary },
-    ).catch(() => { /* fire-and-forget */ });
   }
 }

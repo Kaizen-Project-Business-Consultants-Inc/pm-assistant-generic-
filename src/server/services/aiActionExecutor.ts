@@ -12,6 +12,7 @@ import { policyEngineService } from './PolicyEngineService';
 import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
 import { knowledgeBaseService } from './KnowledgeBaseService';
+import { taskRepository } from '../database/TaskRepository';
 import { utcDay, ymdOf, finishFor, shiftWorking, workingDaysAfter } from '../utils/workingDays';
 import { limitRows, limitGrouped, MAX_TOOL_ROWS, filterTasks, describeTaskFilter, TASK_FILTER_HINT } from './aiToolLimits';
 
@@ -46,6 +47,21 @@ function markIfWrite(toolName: string): void {
 
 /** Tools that read one project's data: the user must be able to see that project */
 const AI_READ_TOOLS = new Set(['get_project_details', 'list_tasks', 'get_dependency_chain']);
+
+/** Most tasks one update_tasks step changes */
+const MAX_BULK_TASKS = 50;
+
+/** What update_tasks may change on each task (its tool schema) */
+const BULK_TASK_FIELDS = ['status', 'priority', 'assignedTo', 'dueDate', 'progressPercentage'] as const;
+/** What update_task may change (its tool schema) */
+const UPDATE_TASK_FIELDS = ['name', 'description', ...BULK_TASK_FIELDS] as const;
+
+/** Only the given keys that are present */
+function pickKeys(input: Record<string, any>, keys: readonly string[]): Record<string, any> {
+  const out: Record<string, any> = {};
+  for (const k of keys) if (input[k] !== undefined) out[k] = input[k];
+  return out;
+}
 
 /**
  * A list goes back to the model and is resent on every later turn of the chat's tool loop: first
@@ -105,6 +121,12 @@ export class AIActionExecutor {
 
 
   async execute(toolName: string, input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
+    // Several tasks in one step (U58): each goes through update_task — the same policy, project
+    // rights and audit as one at a time — but the AI asks once instead of once per task
+    return toolName === 'update_tasks' ? this.updateTasks(input, context) : this.executeOne(toolName, input, context);
+  }
+
+  private async executeOne(toolName: string, input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
     try {
       // Policy gate for all AI actions
       const policyResult = await policyEngineService.evaluate(`ai.action.${toolName}`, {
@@ -231,7 +253,10 @@ export class AIActionExecutor {
   }
 
   private async updateTask(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
-    const { taskId, ...updates } = input;
+    const { taskId } = input;
+    // Only the fields the tool offers: anything else the model adds (parentTaskId, scheduleId,
+    // costs…) used to reach updateTask too (U58 review)
+    const updates = pickKeys(input, UPDATE_TASK_FIELDS);
 
     const existing = await scheduleService.findTaskById(taskId);
     if (!existing) {
@@ -251,6 +276,32 @@ export class AIActionExecutor {
       summary: `Updated task "${existing.name}" (${taskId}): ${changes}`,
       data: { taskId, name: task?.name, status: task?.status, priority: task?.priority },
     };
+  }
+
+  private async updateTasks(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
+    const { taskIds } = input;
+    // the same change for each: only update_tasks' own fields (a stray taskId would have replaced
+    // each task's id and changed one task over and over — U58 review)
+    const changes = pickKeys(input, BULK_TASK_FIELDS);
+    const ids: string[] = Array.isArray(taskIds) ? [...new Set(taskIds.filter((t): t is string => typeof t === 'string' && t.length > 0))] : [];
+    if (ids.length === 0) return { success: false, toolName: 'update_tasks', summary: 'No tasks were named, so nothing was changed.', error: 'taskIds is required' };
+    if (ids.length > MAX_BULK_TASKS) {
+      return { success: false, toolName: 'update_tasks', summary: `That is ${ids.length} tasks; at most ${MAX_BULK_TASKS} can be changed in one step.`, error: 'Too many tasks' };
+    }
+    if (Object.keys(changes).length === 0) return { success: false, toolName: 'update_tasks', summary: 'No change was given, so nothing was changed.', error: 'No changes' };
+    const done: Array<{ taskId: string; name?: string }> = [];
+    const failed: Array<{ taskId: string; reason: string }> = [];
+    for (const taskId of ids) {
+      // eslint-disable-next-line no-await-in-loop -- at most MAX_BULK_TASKS, one after another: each is a write with its own checks and audit
+      const r = await this.executeOne('update_task', { ...changes, taskId }, context);
+      if (r.success) done.push({ taskId, name: r.data?.name });
+      else failed.push({ taskId, reason: r.summary });
+    }
+    const what = Object.keys(changes).map(k => `${k}: ${changes[k]}`).join(', ');
+    const names = done.map(d => `"${d.name ?? d.taskId}"`).join(', ');
+    let summary = done.length > 0 ? `Updated ${done.length} task(s) (${what}): ${names}` : 'No task was changed.';
+    if (failed.length > 0) summary += `. Not changed (${failed.length}): ${failed.map(f => f.reason).join('; ')}`;
+    return { success: done.length > 0, toolName: 'update_tasks', summary, data: { updated: done.map(d => ({ id: d.taskId, name: d.name })), failed } };
   }
 
   private async deleteTask(input: Record<string, any>, _context: ActionContext): Promise<ActionResult> {
@@ -738,38 +789,34 @@ export class AIActionExecutor {
     const allSchedules = await scheduleService.findByProjectIds(projects.map(p => p.id));
     const scheduleMap = new Map(allSchedules.map(s => [s.id, s]));
 
-    const allTasks = await scheduleService.findTasksByScheduleIds(allSchedules.map(s => s.id));
-
-    const overdueTasks: Array<Record<string, unknown>> = [];
-    for (const task of allTasks) {
-      if (
-        task.dueDate &&
-        String(task.dueDate).slice(0, 10) < today &&
-        task.status !== 'completed' &&
-        task.status !== 'cancelled'
-      ) {
-        const schedule = scheduleMap.get(task.scheduleId);
-        const project = schedule ? projectMap.get(schedule.projectId) : undefined;
-        overdueTasks.push({
-          id: task.id,
-          name: task.name,
-          status: task.status,
-          dueDate: task.dueDate,
-          projectName: project?.name,
-          projectId: project?.id,
-          scheduleName: schedule?.name,
-          assignedTo: task.assignedTo,
-          daysOverdue: Math.floor((Date.now() - new Date(String(task.dueDate)).getTime()) / (1000 * 60 * 60 * 24)),
-        });
-      }
-    }
-
-    overdueTasks.sort((a, b) => Number(b.daysOverdue) - Number(a.daysOverdue)); // most overdue first: the row cap keeps the worst
+    // Only the overdue rows, most overdue first, one more than the cap to know if there are more
+    // (it loaded every task of every plan with its links, then filtered — U58)
+    const rows = await taskRepository.findOverdueOpen(allSchedules.map(s => s.id), today, MAX_TOOL_ROWS + 1);
+    const more = rows.length > MAX_TOOL_ROWS;
+    const overdueTasks = rows.slice(0, MAX_TOOL_ROWS).map((task) => {
+      const schedule = scheduleMap.get(task.scheduleId);
+      const project = schedule ? projectMap.get(schedule.projectId) : undefined;
+      return {
+        id: task.id,
+        name: task.name,
+        status: task.status,
+        dueDate: task.dueDate,
+        daysOverdue: Math.floor((Date.now() - new Date(String(task.dueDate)).getTime()) / (1000 * 60 * 60 * 24)),
+        // where it lives: a follow-up can act on it (list_tasks needs the scheduleId)
+        scheduleId: task.scheduleId,
+        scheduleName: schedule?.name,
+        projectId: project?.id,
+        projectName: project?.name,
+        assignedTo: task.assignedTo,
+      };
+    });
 
     return {
       success: true,
       toolName: 'get_overdue_tasks',
-      summary: `${overdueTasks.length} overdue task(s) across all projects`,
+      summary: more
+        ? `More than ${MAX_TOOL_ROWS} overdue tasks across all projects; the ${MAX_TOOL_ROWS} most overdue are listed`
+        : `${overdueTasks.length} overdue task(s) across all projects`,
       data: overdueTasks,
     };
   }

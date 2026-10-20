@@ -233,6 +233,31 @@ export class TaskRepository {
     return { rows: tasks, total: Number(countResult[0].cnt) };
   }
 
+  /**
+   * Open tasks in these plans due before `today` (YYYY-MM-DD), most overdue first — only the
+   * columns a list needs, no links or hours (Mjuzi's overdue list loaded every task of every plan
+   * with all of them, then filtered — U58). Uses idx schedule_id; the due_date filter runs on its rows.
+   */
+  async findOverdueOpen(scheduleIds: string[], today: string, limit: number): Promise<Array<Pick<Task, 'id' | 'scheduleId' | 'name' | 'status' | 'dueDate' | 'assignedTo'>>> {
+    if (scheduleIds.length === 0) return [];
+    const placeholders = scheduleIds.map(() => '?').join(', ');
+    const rows = await databaseService.query<Record<string, unknown>>(
+      `SELECT id, schedule_id, name, status, due_date, assigned_to FROM tasks
+       WHERE schedule_id IN (${placeholders}) AND due_date IS NOT NULL AND due_date < ?
+         AND status NOT IN ('completed', 'cancelled')
+       ORDER BY due_date ASC, sort_order LIMIT ?`,
+      [...scheduleIds, today, limit],
+    );
+    return rows.map(r => ({
+      id: String(r.id),
+      scheduleId: String(r.schedule_id),
+      name: String(r.name),
+      status: r.status as Task['status'],
+      dueDate: r.due_date ? String(r.due_date) : undefined,
+      assignedTo: (r.assigned_to as string | null) ?? undefined,
+    }));
+  }
+
   async findByScheduleIds(scheduleIds: string[]): Promise<Task[]> {
     if (scheduleIds.length === 0) return [];
     const placeholders = scheduleIds.map(() => '?').join(', ');

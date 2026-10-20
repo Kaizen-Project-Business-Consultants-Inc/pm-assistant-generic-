@@ -77,6 +77,14 @@ const WELCOME_MESSAGE: ChatMessage = {
   timestamp: new Date().toISOString(),
 };
 
+/**
+ * The history list changes only when a reply started a new chat: a reply in a chat already listed
+ * leaves it as it is (it re-fetched the whole list after every message — U58)
+ */
+function refreshListIfNewChat(before: string | null, after: string | undefined, load: () => Promise<void>): void {
+  if (after && after !== before) load().catch(() => { /* Background refresh — non-critical */ });
+}
+
 /** Bumped by forgetUser: a reply or load still on its way for the previous person is then dropped */
 let userGeneration = 0;
 
@@ -192,7 +200,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
 
       // If Mjuzi took actions that modify data, invalidate relevant caches
       if (result.actions && result.actions.length > 0) {
-        const mutatingTools = new Set(['create_task', 'update_task', 'delete_task', 'reschedule_task', ...PLAN_TOOLS]);
+        const mutatingTools = new Set(['create_task', 'update_task', 'update_tasks', 'delete_task', 'reschedule_task', ...PLAN_TOOLS]);
         const projectTools = new Set(['create_project', 'update_project']);
         const hasMutation = result.actions.some((a: ActionResult) => mutatingTools.has(a.toolName));
         const hasProjectMutation = result.actions.some((a: ActionResult) => projectTools.has(a.toolName));
@@ -236,8 +244,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
         }
       }
 
-      // Refresh conversation list in background
-      get().loadConversations().catch(() => { /* Background refresh — non-critical */ });
+      refreshListIfNewChat(conversationId, result.conversationId, get().loadConversations); // the chat this message was sent in
 
       announce('AI response received');
       setLoading(false);

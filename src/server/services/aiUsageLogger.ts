@@ -22,10 +22,19 @@ const MODEL_PRICES: Array<[RegExp, number, number]> = [
   [/sonnet/, 3, 15],
 ];
 
+/** Prompt-cache prices, as a share of the input price: a write costs 1.25x, a read 0.1x */
+const CACHE_WRITE_RATE = 1.25;
+const CACHE_READ_RATE = 0.1;
+
 export function calculateCost(model: string, usage: TokenUsage): number {
   const hit = MODEL_PRICES.find(([re]) => re.test(model ?? ''));
   const [inPrice, outPrice] = hit ? [hit[1], hit[2]] : [config.AI_PRICING_INPUT, config.AI_PRICING_OUTPUT];
-  return (usage.inputTokens / 1_000_000) * inPrice + (usage.outputTokens / 1_000_000) * outPrice;
+  // inputTokens counts every token read; the cached parts of it are priced at their own rates
+  const read = usage.cacheReadTokens ?? 0;
+  const written = usage.cacheWriteTokens ?? 0;
+  const plain = Math.max(0, usage.inputTokens - read - written);
+  const inputCost = plain + written * CACHE_WRITE_RATE + read * CACHE_READ_RATE;
+  return (inputCost / 1_000_000) * inPrice + (usage.outputTokens / 1_000_000) * outPrice;
 }
 
 /**

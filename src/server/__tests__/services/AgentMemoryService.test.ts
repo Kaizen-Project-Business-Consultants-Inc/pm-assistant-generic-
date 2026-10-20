@@ -136,6 +136,16 @@ describe('AgentMemoryService', () => {
       expect(results[0].value).toEqual({ delays: 2, resolved: 1 });
     });
 
+    it('can leave out keys by prefix in the query, with LIKE wildcards escaped (Mjuzi skips old action- notes, U58)', async () => {
+      mockQuery.mockResolvedValueOnce([]);
+      await service.recall('mjuzi-chat', 'project', 'proj-1', undefined, { excludeKeyPrefix: 'action-' });
+      expect(mockQuery.mock.calls[0][0]).toContain('key_name NOT LIKE ?');
+      expect(mockQuery.mock.calls[0][1]).toContain('action-%');
+      mockQuery.mockResolvedValueOnce([]);
+      await service.recall('mjuzi-chat', 'project', 'proj-1', undefined, { excludeKeyPrefix: 'a_b%' });
+      expect(mockQuery.mock.calls[1][1]).toContain('a\\_b\\%%');
+    });
+
     it('filters by key name when provided', async () => {
       mockQuery.mockResolvedValueOnce([sampleRow]);
 

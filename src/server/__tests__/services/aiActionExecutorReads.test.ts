@@ -21,6 +21,8 @@ vi.mock('../../services/ScheduleService', () => ({
   DependencyValidationError: class extends Error {},
 }));
 vi.mock('../../services/UserService', () => ({ userService: {} }));
+const overdueQuery = vi.hoisted(() => vi.fn());
+vi.mock('../../database/TaskRepository', () => ({ taskRepository: { findOverdueOpen: overdueQuery } }));
 // people by name: a task holds its person's resource id, not the name
 vi.mock('../../database/connection', () => ({ databaseService: { query: vi.fn(async (sql: string, params: any[] = []) => (
   sql.startsWith('SELECT id FROM resources WHERE name LIKE') && /jane/i.test(params[0]) ? [{ id: 'res-jane' }] : [])) } }));
@@ -148,18 +150,28 @@ describe('Mjuzi read tools — bounded results', () => {
     expect(r.summary).toMatch(/Showing 200 of 360 tasks/);
   });
 
-  it('get_overdue_tasks keeps the 200 most overdue', async () => {
+  it('get_overdue_tasks asks the database for the 200 most overdue only, and says when there are more (U58)', async () => {
     ps.findAccessible.mockResolvedValue([{ id: 'mine', name: 'Mine' }]);
     ss.findByProjectIds = vi.fn().mockResolvedValue([{ id: 's1', projectId: 'mine', name: 'A' }]);
     const old = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
-    ss.findTasksByScheduleIds.mockResolvedValue(Array.from({ length: 300 }, (_, i) => ({
-      id: `t${i}`, scheduleId: 's1', name: `T${i}`, status: 'pending', dueDate: old(i + 1),
+    // the query returns most overdue first, one more than the cap
+    overdueQuery.mockResolvedValue(Array.from({ length: 201 }, (_, i) => ({
+      id: `t${i}`, scheduleId: 's1', name: `T${i}`, status: 'pending', dueDate: old(300 - i),
     })));
     const r = await executor.execute('get_overdue_tasks', {}, TEAM_MEMBER);
+    expect(overdueQuery).toHaveBeenCalledWith(['s1'], expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), 201);
+    expect(ss.findTasksByScheduleIds).not.toHaveBeenCalled(); // not every task of every plan
     expect(r.data).toHaveLength(200);
-    expect(r.data[0].daysOverdue).toBeGreaterThanOrEqual(r.data[199].daysOverdue);
-    expect(r.data[0].id).toBe('t299'); // the oldest first
-    expect(r.summary).toMatch(/300 overdue.*Showing 200 of 300/);
+    expect(r.data[0]).toMatchObject({ id: 't0', scheduleId: 's1', scheduleName: 'A', projectId: 'mine', projectName: 'Mine' });
+    expect(r.summary).toMatch(/More than 200 overdue/);
+  });
+
+  it('get_overdue_tasks with fewer than the cap gives the exact count', async () => {
+    ps.findAccessible.mockResolvedValue([{ id: 'mine', name: 'Mine' }]);
+    ss.findByProjectIds = vi.fn().mockResolvedValue([{ id: 's1', projectId: 'mine', name: 'A' }]);
+    overdueQuery.mockResolvedValue([{ id: 't1', scheduleId: 's1', name: 'T1', status: 'pending', dueDate: '2026-01-05' }]);
+    const r = await executor.execute('get_overdue_tasks', {}, TEAM_MEMBER);
+    expect(r.summary).toBe('1 overdue task(s) across all projects');
   });
 });
 
@@ -185,5 +197,64 @@ describe('Mjuzi remember_correction — project corrections only by the project 
     expect(store).toHaveBeenCalledWith('mjuzi-chat', 'role', 'u-viewer', 'correction:pm', expect.any(Object));
     expect(store).not.toHaveBeenCalledWith('mjuzi-chat', 'project', 'p1', expect.anything(), expect.anything());
     expect(r.summary).toMatch(/for you \(only the project's Manager/);
+  });
+});
+
+// U58 (2026-10-20): several tasks in one step — each through update_task's own checks
+describe('Mjuzi update_tasks — one step, the same checks per task', () => {
+  const executor = new AIActionExecutor();
+  const PM = { userId: 'u-pm', userRole: 'project_manager' };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ss.findTaskById.mockImplementation(async (id: string) => (id === 'gone' ? null : { id, name: `Task ${id}`, scheduleId: 's1' }));
+    ss.findById.mockResolvedValue({ id: 's1', projectId: 'p1' });
+    ss.updateTask = vi.fn(async (id: string, d: any) => ({ id, name: `Task ${id}`, status: d.status }));
+    roleCheck.mockResolvedValue({ ok: true });
+  });
+
+  it('changes every named task and names them', async () => {
+    const r = await executor.execute('update_tasks', { taskIds: ['t1', 't2', 't3'], status: 'completed', progressPercentage: 100 }, PM);
+    expect(ss.updateTask).toHaveBeenCalledTimes(3);
+    expect(ss.updateTask).toHaveBeenCalledWith('t1', { status: 'completed', progressPercentage: 100 });
+    expect(r.success).toBe(true);
+    expect(r.summary).toMatch(/Updated 3 task\(s\).*"Task t1", "Task t2", "Task t3"/);
+    expect(r.data.updated).toEqual([{ id: 't1', name: 'Task t1' }, { id: 't2', name: 'Task t2' }, { id: 't3', name: 'Task t3' }]);
+  });
+
+  it('a task the person may not change is refused like update_task would, the others still change', async () => {
+    roleCheck.mockImplementation(async (_u: unknown, projectId: string) => ({ ok: projectId !== 'p2' }));
+    ss.findById.mockImplementation(async () => ({ id: 's1', projectId: 'p1' }));
+    ss.findTaskById.mockImplementation(async (id: string) => ({ id, name: `Task ${id}`, scheduleId: id === 'other' ? 's2' : 's1' }));
+    ss.findById.mockImplementation(async (sid: string) => ({ id: sid, projectId: sid === 's2' ? 'p2' : 'p1' }));
+    const r = await executor.execute('update_tasks', { taskIds: ['t1', 'other'], status: 'completed' }, PM);
+    expect(ss.updateTask).toHaveBeenCalledTimes(1);
+    expect(r.data.failed).toEqual([{ taskId: 'other', reason: expect.stringMatching(/Manager or Owner/) }]);
+    expect(r.summary).toMatch(/Not changed \(1\)/);
+  });
+
+  it('refuses no tasks, no change, or more than 50 — nothing is changed', async () => {
+    expect((await executor.execute('update_tasks', { taskIds: [], status: 'completed' }, PM)).success).toBe(false);
+    expect((await executor.execute('update_tasks', { taskIds: ['t1'] }, PM)).success).toBe(false);
+    const many = Array.from({ length: 51 }, (_, i) => `t${i}`);
+    expect((await executor.execute('update_tasks', { taskIds: many, status: 'completed' }, PM)).summary).toMatch(/at most 50/);
+    expect(ss.updateTask).not.toHaveBeenCalled();
+  });
+
+  it('the same id twice is changed once', async () => {
+    await executor.execute('update_tasks', { taskIds: ['t1', 't1'], status: 'completed' }, PM);
+    expect(ss.updateTask).toHaveBeenCalledTimes(1);
+  });
+
+  it('a stray taskId or other key never reaches the change: each named task gets only the offered fields (review)', async () => {
+    await executor.execute('update_tasks', { taskIds: ['t1', 't2'], taskId: 't1', status: 'completed', parentTaskId: 'x', scheduleId: 'other' }, PM);
+    expect(ss.updateTask).toHaveBeenCalledTimes(2);
+    expect(ss.updateTask).toHaveBeenNthCalledWith(1, 't1', { status: 'completed' });
+    expect(ss.updateTask).toHaveBeenNthCalledWith(2, 't2', { status: 'completed' });
+  });
+
+  it('update_task passes only the fields its tool offers', async () => {
+    await executor.execute('update_task', { taskId: 't1', name: 'New', parentTaskId: 'x', budgetAllocated: 9 }, PM);
+    expect(ss.updateTask).toHaveBeenCalledWith('t1', { name: 'New' });
   });
 });

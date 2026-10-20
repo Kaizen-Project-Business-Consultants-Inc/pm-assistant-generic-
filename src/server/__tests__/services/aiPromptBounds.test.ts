@@ -16,8 +16,8 @@ vi.mock('../../database/BaseRepository', () => ({
   },
 }));
 
-import { AIContextBuilder, PROMPT_TASK_LIMIT, CHAT_PROMPT_TASK_LIMIT, type ProjectContext } from '../../services/aiContextBuilder';
-import { chatRepository } from '../../database/ChatRepository';
+import { AIContextBuilder, PROMPT_TASK_LIMIT, CHAT_PROMPT_TASK_LIMIT, PORTFOLIO_PROMPT_PROJECT_LIMIT, type ProjectContext } from '../../services/aiContextBuilder';
+import { chatRepository, actionRefsOf } from '../../database/ChatRepository';
 import { limitRows, limitGrouped } from '../../services/aiToolLimits';
 
 function ctxWith(taskCounts: Array<{ open: number; done: number }>): ProjectContext {
@@ -56,6 +56,26 @@ describe('project prompt size', () => {
     const s = builder.toPromptString(ctxWith([{ open: 500, done: 0 }]), CHAT_PROMPT_TASK_LIMIT);
     expect(taskLines(s)).toBe(CHAT_PROMPT_TASK_LIMIT);
   });
+
+  it("Mjuzi's lines carry plan and task ids; other prompts don't (U58)", () => {
+    const withIds = builder.toPromptString(ctxWith([{ open: 2, done: 0 }]), CHAT_PROMPT_TASK_LIMIT, true);
+    expect(withIds).toMatch(/- Plan 0 id=s0 /);
+    expect(withIds).toMatch(/\* Open 0-0 id=o0-0 \[pending\]/);
+    const plain = builder.toPromptString(ctxWith([{ open: 2, done: 0 }]));
+    expect(plain).not.toMatch(/id=/);
+  });
+
+  it('the portfolio lists at most 50 projects, with ids, and says the totals count all (U58)', () => {
+    const projects = Array.from({ length: 120 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, status: 'active', priority: 'medium', projectType: 'it' }));
+    const s = builder.portfolioToPromptString({
+      totalProjects: 120, projects,
+      summary: { byStatus: { active: 120 }, byPriority: { medium: 120 }, totalBudget: 0, totalSpent: 0 },
+    } as never);
+    expect(s.split('\n').filter(l => l.startsWith('- ')).length).toBe(PORTFOLIO_PROMPT_PROJECT_LIMIT);
+    expect(s).toMatch(/- P0 id=p0 \[active\]/);
+    expect(s).toMatch(/Total Projects: exactly 120/);
+    expect(s).toMatch(/Only 50 of 120 projects are listed/);
+  });
 });
 
 describe('tool row limits', () => {
@@ -77,19 +97,61 @@ describe('stored chat messages keep only what the chat shows', () => {
     queryRaw.mockResolvedValue([{ id: 'm1', conversation_id: 'c1', role: 'assistant', content: 'hi', actions: null, created_at: 'x' }]);
   });
 
-  it("drops each action's data (a whole task list) and keeps its outcome line", async () => {
-    const bigData = Array.from({ length: 5000 }, (_, i) => ({ id: `t${i}`, name: `Task ${i}` }));
+  it("drops each action's data (a whole task list): keeps its outcome line and the first 30 items' ids (U58)", async () => {
+    const bigData = Array.from({ length: 5000 }, (_, i) => ({ id: `t${i}`, name: `Task ${i}`, scheduleId: 's1', description: 'x'.repeat(500) }));
     await chatRepository.addMessage('c1', {
       role: 'assistant',
       content: 'Here are your tasks',
       actions: [{ success: true, toolName: 'list_tasks', summary: 'Found 5000 tasks', data: bigData }],
     });
     const stored = JSON.parse(queryRaw.mock.calls[0][1][4]);
-    expect(stored).toEqual([{ success: true, toolName: 'list_tasks', summary: 'Found 5000 tasks' }]);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]).toMatchObject({ success: true, toolName: 'list_tasks', summary: 'Found 5000 tasks' });
+    expect(stored[0].data).toBeUndefined();
+    expect(stored[0].refs).toHaveLength(30);
+    expect(stored[0].refs[0]).toEqual({ id: 't0', name: 'Task 0', scheduleId: 's1' }); // no description
+  });
+
+  it('an action whose result holds lists (update_tasks) keeps those items too', async () => {
+    await chatRepository.addMessage('c1', {
+      role: 'assistant',
+      content: 'Done',
+      actions: [{ success: true, toolName: 'update_tasks', summary: 'Updated 2', data: { updated: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], failed: [] } }],
+    });
+    const stored = JSON.parse(queryRaw.mock.calls[0][1][4]);
+    expect(stored[0].refs).toEqual([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
   });
 
   it('a message without actions stores none', async () => {
     await chatRepository.addMessage('c1', { role: 'user', content: 'hello' });
     expect(queryRaw.mock.calls[0][1][4]).toBeNull();
+  });
+});
+
+describe('actionRefsOf — the items an action named (U58)', () => {
+  it('reads a list, a single item, and lists inside an object; taskId/taskName count too', () => {
+    expect(actionRefsOf([{ id: 'a', name: 'A', scheduleId: 's' }, { nope: 1 }])).toEqual([{ id: 'a', name: 'A', scheduleId: 's' }]);
+    expect(actionRefsOf({ taskId: 't1', taskName: 'T1', projectId: 'p' })).toEqual([{ id: 't1', name: 'T1', projectId: 'p' }]);
+    expect(actionRefsOf({ updated: [{ id: 'x' }], other: 'y' })).toEqual([{ id: 'x' }]);
+    expect(actionRefsOf(null)).toEqual([]);
+    expect(actionRefsOf('text')).toEqual([]);
+  });
+
+  it("leaves out a 'failed' list: those were not done", () => {
+    expect(actionRefsOf({ updated: [{ id: 'ok' }], failed: [{ taskId: 'bad', reason: 'no' }] })).toEqual([{ id: 'ok' }]);
+  });
+
+  it('keeps at most 30 items and cuts names at 120 characters', () => {
+    const refs = actionRefsOf(Array.from({ length: 50 }, (_, i) => ({ id: `t${i}`, name: 'n'.repeat(300) })));
+    expect(refs).toHaveLength(30);
+    expect(refs[0].name).toHaveLength(120);
+  });
+
+  it('a failed action keeps no items', async () => {
+    queryRaw.mockReset();
+    queryRaw.mockResolvedValue([{ id: 'm1', conversation_id: 'c1', role: 'assistant', content: 'hi', actions: null, created_at: 'x' }]);
+    await chatRepository.addMessage('c1', { role: 'assistant', content: 'x', actions: [{ success: false, toolName: 'update_task', summary: 'Not allowed', data: { taskId: 't1' } }] });
+    const stored = JSON.parse(queryRaw.mock.calls[0][1][4]);
+    expect(stored[0].refs).toBeUndefined();
   });
 });

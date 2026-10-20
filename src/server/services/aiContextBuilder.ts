@@ -20,10 +20,12 @@ import { isOverdue } from '../utils/calendarDate';
 export const PROMPT_TASK_LIMIT = 300;
 /** Mjuzi's chat resends its system prompt on every turn of a tool loop, so it carries fewer */
 export const CHAT_PROMPT_TASK_LIMIT = 100;
+/** Most project lines in the portfolio prompt (the totals still count every project) */
+export const PORTFOLIO_PROMPT_PROJECT_LIMIT = 50;
 const CLOSED_TASK_STATUSES = new Set(['completed', 'cancelled']);
 
 /** The plans and their task lines for a prompt, at most `maxTasks` lines (see PROMPT_TASK_LIMIT) */
-function taskListing(schedules: ProjectContext['schedules'], maxTasks: number): string {
+function taskListing(schedules: ProjectContext['schedules'], maxTasks: number, withIds: boolean): string {
   const total = schedules.reduce((n, sched) => n + sched.tasks.length, 0);
   const capped = total > maxTasks;
   let room = maxTasks;
@@ -32,18 +34,18 @@ function taskListing(schedules: ProjectContext['schedules'], maxTasks: number): 
     // Over the limit only open tasks are listed, so each plan says how many of its tasks are open
     // eslint-disable-next-line no-restricted-syntax -- each plan's own tasks, each looked at once
     const shown = capped ? sched.tasks.filter((t) => !CLOSED_TASK_STATUSES.has(t.status)) : sched.tasks;
-    s += `  - ${sched.name} (${sched.startDate} to ${sched.endDate})\n`;
+    s += `  - ${sched.name}${withIds ? ` id=${sched.id}` : ''} (${sched.startDate} to ${sched.endDate})\n`;
     s += `    Tasks (${sched.tasks.length}${capped ? `, ${shown.length} open` : ''}):\n`;
     const take = Math.min(shown.length, Math.max(0, room));
-    for (const task of shown.slice(0, take)) s += taskLine(task);
+    for (const task of shown.slice(0, take)) s += taskLine(task, withIds);
     room -= take;
   }
   if (capped) s += `\n(Only ${maxTasks - room} of ${total} tasks are listed: open tasks in plan order. The others are not shown.)\n`;
   return s;
 }
 
-function taskLine(task: ProjectContext['schedules'][number]['tasks'][number]): string {
-  let line = `      * ${task.name} [${task.status}] priority=${task.priority}`;
+function taskLine(task: ProjectContext['schedules'][number]['tasks'][number], withIds: boolean): string {
+  let line = `      * ${task.name}${withIds ? ` id=${task.id}` : ''} [${task.status}] priority=${task.priority}`;
   if (task.estimatedDays) line += ` est=${task.estimatedDays}d`;
   if (task.progressPercentage) line += ` progress=${task.progressPercentage}%`;
   return `${line}\n`;
@@ -226,7 +228,11 @@ export class AIContextBuilder {
    * The project with its tasks, one line each — at most `maxTasks` lines. Over the limit only
    * open tasks are listed (plan order) and the prompt says how many were left out.
    */
-  toPromptString(ctx: ProjectContext, maxTasks = PROMPT_TASK_LIMIT): string {
+  /**
+   * `withIds`: plan and task ids on each line, for Mjuzi, which acts on them — it otherwise looked
+   * every task up again before changing it, one paid step each (U58). Reports leave them out.
+   */
+  toPromptString(ctx: ProjectContext, maxTasks = PROMPT_TASK_LIMIT, withIds = false): string {
     let s = `Project: ${sanitizeForPrompt(ctx.project.name)}\n`;
     s += `Type: ${ctx.project.projectType}`;
     if (ctx.project.methodology) s += ` | Methodology: ${ctx.project.methodology}`;
@@ -237,7 +243,7 @@ export class AIContextBuilder {
     if (ctx.project.completionPercentage !== undefined) s += `Completion: ${ctx.project.completionPercentage}%\n`;
     if (ctx.project.location) s += `Location: ${ctx.project.location}\n`;
 
-    if (ctx.schedules.length > 0) s += taskListing(ctx.schedules, maxTasks);
+    if (ctx.schedules.length > 0) s += taskListing(ctx.schedules, maxTasks, withIds);
 
     return s;
   }
@@ -249,13 +255,18 @@ export class AIContextBuilder {
     s += `By Status: ${Object.entries(ctx.summary.byStatus).map(([k, v]) => `${k}=${v}`).join(', ')}\n`;
     s += `By Priority: ${Object.entries(ctx.summary.byPriority).map(([k, v]) => `${k}=${v}`).join(', ')}\n\n`;
 
-    for (const p of ctx.projects) {
-      s += `- ${sanitizeForPrompt(p.name)} [${p.status}] type=${p.projectType}`;
+    // At most PORTFOLIO_PROMPT_PROJECT_LIMIT lines: one per project had no limit, so a large
+    // portfolio filled the prompt that is resent on every step, and the end of it was cut (U58)
+    for (const p of ctx.projects.slice(0, PORTFOLIO_PROMPT_PROJECT_LIMIT)) {
+      s += `- ${sanitizeForPrompt(p.name)} id=${p.id} [${p.status}] type=${p.projectType}`;
       if (p.methodology && p.methodology !== 'waterfall') s += ` methodology=${p.methodology}`;
       s += ` priority=${p.priority}`;
       if (p.budgetAllocated) s += ` budget=$${p.budgetAllocated.toLocaleString()}`;
       if (p.completionPercentage !== undefined) s += ` completion=${p.completionPercentage}%`;
       s += '\n';
+    }
+    if (ctx.projects.length > PORTFOLIO_PROMPT_PROJECT_LIMIT) {
+      s += `(Only ${PORTFOLIO_PROMPT_PROJECT_LIMIT} of ${ctx.projects.length} projects are listed; the totals above count all. Use list_projects or get_projects_by_status for the others.)\n`;
     }
 
     return s;

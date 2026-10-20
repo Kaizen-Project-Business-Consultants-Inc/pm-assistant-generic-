@@ -27,8 +27,38 @@ export interface CompletionOptions {
 }
 
 export interface TokenUsage {
+  /** Every input token the model read, cached or not (budgets count these) */
   inputTokens: number;
   outputTokens: number;
+  /** Of inputTokens: read from the prompt cache (billed at 0.1x) */
+  cacheReadTokens?: number;
+  /** Of inputTokens: written to the prompt cache (billed at 1.25x) */
+  cacheWriteTokens?: number;
+}
+
+/** The API's usage, as one total of input read plus the cached parts (input_tokens alone is the uncached part) */
+function usageOf(u: Anthropic.Usage): TokenUsage {
+  const cacheReadTokens = u.cache_read_input_tokens ?? 0;
+  const cacheWriteTokens = u.cache_creation_input_tokens ?? 0;
+  return { inputTokens: u.input_tokens + cacheReadTokens + cacheWriteTokens, outputTokens: u.output_tokens, cacheReadTokens, cacheWriteTokens };
+}
+
+const CACHE = { type: 'ephemeral' } as const;
+
+/**
+ * The conversation with a cache mark on its last block, so the next turn of a tool loop reads
+ * everything up to here from the prompt cache (U58). A copy: the marks never pile up past the
+ * API's four.
+ */
+function withCacheMark(messages: Anthropic.MessageParam[]): Anthropic.MessageParam[] {
+  if (messages.length === 0) return messages;
+  const last = messages[messages.length - 1];
+  const blocks: Anthropic.ContentBlockParam[] = typeof last.content === 'string'
+    ? [{ type: 'text', text: last.content }]
+    : [...last.content];
+  if (blocks.length === 0) return messages;
+  blocks[blocks.length - 1] = { ...blocks[blocks.length - 1], cache_control: CACHE } as Anthropic.ContentBlockParam;
+  return [...messages.slice(0, -1), { ...last, content: blocks }];
 }
 
 export interface CompletionResult {
@@ -859,9 +889,23 @@ export class ClaudeService {
 
     const maxIter = options.maxIterations ?? 5;
     const toolResults: Array<{ toolName: string; result: string }> = [];
-    let totalUsage: TokenUsage = { inputTokens: 0, outputTokens: 0 };
+    let totalUsage: TokenUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
     let totalLatencyMs = 0;
     const system = this.buildSystemPrompt(options.systemPrompt, options.responseFormat);
+    // Prompt caching (U58): the tools and the system prompt are the same on every turn, and each
+    // turn resends the one before — marked, they are read back at a tenth of the price. The final
+    // call keeps the same tools (tool_choice none) so the tools and system prompt still match.
+    // A one-step answer with no follow-up within ~5 minutes pays 1.25x on its input (the write).
+    const cachedTools: Anthropic.Tool[] = options.tools.map((t, i) => (i === options.tools.length - 1 ? { ...t, cache_control: CACHE } : t));
+    const cachedSystem: Anthropic.TextBlockParam[] = [{ type: 'text', text: system, cache_control: CACHE }];
+    const addUsage = (u: TokenUsage) => {
+      totalUsage = {
+        inputTokens: totalUsage.inputTokens + u.inputTokens,
+        outputTokens: totalUsage.outputTokens + u.outputTokens,
+        cacheReadTokens: (totalUsage.cacheReadTokens ?? 0) + (u.cacheReadTokens ?? 0),
+        cacheWriteTokens: (totalUsage.cacheWriteTokens ?? 0) + (u.cacheWriteTokens ?? 0),
+      };
+    };
 
     // Build initial messages
     let messages: Anthropic.MessageParam[] = this.buildMessages(options) as Anthropic.MessageParam[];
@@ -879,17 +923,17 @@ export class ClaudeService {
         model: this.pickModel(options),
         max_tokens: options.maxTokens ?? this.maxTokens,
         temperature: options.temperature ?? this.temperature,
-        system,
-        messages,
-        tools: options.tools,
+        system: cachedSystem,
+        messages: withCacheMark(messages),
+        tools: cachedTools,
         stream: false,
       }, 'completeToolLoop');
 
       const latencyMs = Date.now() - startMs;
       totalLatencyMs += latencyMs;
-      totalUsage.inputTokens += response.usage.input_tokens;
-      totalUsage.outputTokens += response.usage.output_tokens;
-      this.recordUsage({ inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens }, options, response.model);
+      const usage = usageOf(response.usage);
+      addUsage(usage);
+      this.recordUsage(usage, options, response.model);
 
       // If no tool use, extract text and return
       if (response.stop_reason !== 'tool_use') {
@@ -934,19 +978,24 @@ export class ClaudeService {
     }
 
     // Max iterations reached — get final text response
-    await check(messages, totalUsage.inputTokens + totalUsage.outputTokens);
+    await check(messages, totalUsage.inputTokens + totalUsage.outputTokens, options.tools);
+    // Same tools, but none may be used: the reply is text. The tools and system prompt still come
+    // from the cache (dropping the tools missed it all); a changed tool_choice re-writes the
+    // conversation part once (U58)
     const finalResponse = await this.createLoggedMessage({
       model: this.pickModel(options),
       max_tokens: options.maxTokens ?? this.maxTokens,
       temperature: options.temperature ?? this.temperature,
-      system,
-      messages,
+      system: cachedSystem,
+      messages: withCacheMark(messages),
+      tools: cachedTools,
+      tool_choice: { type: 'none' },
       stream: false,
     }, 'completeToolLoop(final)');
 
-    totalUsage.inputTokens += finalResponse.usage.input_tokens;
-    totalUsage.outputTokens += finalResponse.usage.output_tokens;
-    this.recordUsage({ inputTokens: finalResponse.usage.input_tokens, outputTokens: finalResponse.usage.output_tokens }, options, finalResponse.model);
+    const finalUsage = usageOf(finalResponse.usage);
+    addUsage(finalUsage);
+    this.recordUsage(finalUsage, options, finalResponse.model);
 
     return { finalText: this.textOf(finalResponse), toolResults, totalUsage, totalLatencyMs };
   }

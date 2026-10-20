@@ -115,12 +115,18 @@ export class AgentMemoryService {
     memoryType: MemoryType,
     entityId?: string | null,
     keyName?: string,
+    /** Leave out keys starting with this (Mjuzi's chat skips its old automatic "action-" notes, U58) */
+    opts: { excludeKeyPrefix?: string } = {},
   ): Promise<AgentMemory[]> {
     if (!companySelected()) return [];
     let sql = `SELECT * FROM agent_memory
       WHERE agent_id = ? AND memory_type = ?
       AND (expires_at IS NULL OR expires_at > NOW())`;
     const params: unknown[] = [agentId, memoryType];
+    if (opts.excludeKeyPrefix) {
+      sql += ` AND key_name NOT LIKE ?`;
+      params.push(`${opts.excludeKeyPrefix.replace(/[\\%_]/g, '\\$&')}%`);
+    }
 
     if (entityId !== undefined) {
       if (entityId === null) {
