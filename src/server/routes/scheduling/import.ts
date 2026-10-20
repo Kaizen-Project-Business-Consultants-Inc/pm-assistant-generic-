@@ -286,11 +286,9 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       const alreadyImported = await refuseIfAlreadyImported(scheduleId, reply);
       if (alreadyImported) return alreadyImported;
 
-      // Build dedup set from existing tasks
-      const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
-      const existingKeys = new Set(
-        existingTasks.map(t => `${t.name.toLowerCase().trim()}|${t.startDate || ''}`)
-      );
+      // Duplicates within the file, caught as rows are added. The plan itself has no tasks:
+      // refuseIfAlreadyImported just checked (U51, 2026-10-20: the plan was read a second time here)
+      const existingKeys = new Set<string>();
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
@@ -493,21 +491,16 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       const phaseTaskIds = new Map<string, string>(); // phase name → taskId
       const rowNumToTaskId = new Map<string, string>(); // 1-based row number → taskId
       const nameToTaskId = new Map<string, string>();
-      for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
-      // An existing phase task by name: the FIRST task with that name (as a .find would)
-      const existingIdByName = new Map<string, string>();
-      for (const t of existingTasks) {
-        const k = t.name.toLowerCase().trim();
-        if (!existingIdByName.has(k)) existingIdByName.set(k, t.id);
-      }
       const createdTaskIds: string[] = []; // phase summaries and rows, for Undo in Schedule History
       // looked up once for the whole file, not once per row (2026-10-08)
       const planIsWorking = await scheduleService.workingDayTest(scheduleId);
       const parentsToRoll = new Set<string>();
+      // phases made by this import: their rows skip re-reading the parent (U51)
+      const createdPhaseIds = new Set<string>();
 
       for (const p of prepared) {
         try {
-          // Phase/group column → create (or reuse) a summary parent task
+          // Phase/group column → create a summary parent task (once per phase name)
           let parentTaskId: string | undefined;
           if (p.phase) {
             const phase = p.phase;
@@ -517,6 +510,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
                 // eslint-disable-next-line no-await-in-loop -- each row is created in file order: later rows reuse its phase, and it gets its own audit entry and workflow notice
                 const phaseTask = await scheduleService.createTask({
                   scheduleId,
+                  schedule,
                   isWorking: planIsWorking,
                   name: phase,
                   status: 'in_progress' as CreateTaskData['status'],
@@ -524,12 +518,10 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
                   createdBy: userId,
                 });
                 phaseTaskIds.set(phase, phaseTask.id);
+                createdPhaseIds.add(phaseTask.id);
                 createdTaskIds.push(phaseTask.id);
                 nameToTaskId.set(phase.toLowerCase(), phaseTask.id);
                 existingKeys.add(phaseDedupKey);
-              } else {
-                const existingId = existingIdByName.get(phase.toLowerCase());
-                if (existingId !== undefined) phaseTaskIds.set(phase, existingId);
               }
             }
             parentTaskId = phaseTaskIds.get(phase);
@@ -546,8 +538,10 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
           // eslint-disable-next-line no-await-in-loop -- rows are created in file order (duplicates and phases depend on earlier rows), each with its own audit entry and workflow notice
           const created = await scheduleService.createTask({
             scheduleId,
+            schedule,
             isWorking: planIsWorking,
             deferParentRollup: true,
+            parentCreatedHere: !!parentTaskId && createdPhaseIds.has(parentTaskId),
             name: p.name,
             description: p.description,
             status: p.status as CreateTaskData['status'],
@@ -785,8 +779,8 @@ Return a JSON object mapping unmapped headers to target fields.`;
       const alreadyImportedStructured = await refuseIfAlreadyImported(scheduleId, reply);
       if (alreadyImportedStructured) return alreadyImportedStructured;
 
-      const existingTasks = await scheduleService.findTasksByScheduleId(scheduleId);
-      for (const t of existingTasks) nameToTaskId.set(t.name.toLowerCase().trim(), t.id);
+      // (refuseIfAlreadyImported just read the plan's tasks and found none, so there is nothing to
+      // match names against — U51, 2026-10-20: it was read a second time here)
 
       const succeeded: number[] = [];
       const failed: { row: number; error: string }[] = [];
@@ -822,8 +816,12 @@ Return a JSON object mapping unmapped headers to target fields.`;
           // eslint-disable-next-line no-await-in-loop -- rows are created in outline order (each parent before its children), each with its own audit entry and workflow notice
           const task = await scheduleService.createTask({
             scheduleId,
+            schedule,
             isWorking,
             deferParentRollup: true,
+            // the parent is always an earlier row of this same file: levelStack only gets a task
+            // after its create succeeded (the push below)
+            parentCreatedHere: !!parentTaskId,
             name: t.name.trim(),
             startDate: startDate || undefined,
             endDate: endDate || undefined,

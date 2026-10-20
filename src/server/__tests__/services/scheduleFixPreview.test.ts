@@ -251,6 +251,27 @@ describe('Propose fixes — preview', () => {
     expect(scheduleService.findTasksByScheduleId).toHaveBeenCalledTimes(3);
   });
 
+  it('a failed load is not kept: both waiting previews get the error, the next one reads again', async () => {
+    const svc = await service();
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    vi.mocked(scheduleReviewService.gatherInput).mockClear();
+    vi.mocked(scheduleReviewService.gatherInput).mockRejectedValueOnce(new Error('pool busy'));
+    const id = nextProposal();
+    const results = await Promise.allSettled([svc.preview('s1', id, ['l-ab']), svc.preview('s1', id, ['l-bc'])]);
+    expect(results.map(r => r.status)).toEqual(['rejected', 'rejected']);
+    await svc.preview('s1', id, ['l-ab']);
+    expect(scheduleReviewService.gatherInput).toHaveBeenCalledTimes(2);
+  });
+
+  it('previews sent while the first is still loading share its read (U52, 2026-10-20)', async () => {
+    const svc = await service();
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    vi.mocked(scheduleReviewService.gatherInput).mockClear();
+    const id = nextProposal();
+    await Promise.all([svc.preview('s1', id, ['l-ab']), svc.preview('s1', id, ['l-bc']), svc.preview('s1', id, ['l-ab', 'l-bc'])]);
+    expect(scheduleReviewService.gatherInput).toHaveBeenCalledTimes(1);
+  });
+
   it('a rename takes the name the PM typed', async () => {
     db.tasks.push(task('h', null, null, { name: 'T1', isSummary: true }));
     db.tasks[0].parentTaskId = 'h';

@@ -76,6 +76,15 @@ describe('imports are recorded in Schedule History', () => {
     expect(rows.every((d: any) => d.deferParentRollup === true)).toBe(true);
     expect(svc.recomputeParentRollup.mock.invocationCallOrder[0]).toBeGreaterThan(Math.max(...svc.createTask.mock.invocationCallOrder));
     expect(svc.recomputeParentRollup.mock.invocationCallOrder[0]).toBeLessThan(svc.addDependency.mock.invocationCallOrder[0]);
+    // U51 (2026-10-20): the plan's tasks are read once (the already-imported check), the schedule is
+    // handed to every task, and rows under a phase this import made don't re-read that phase
+    expect(svc.findTasksByScheduleId).toHaveBeenCalledTimes(1);
+    const calls = svc.createTask.mock.calls.map(c => c[0]);
+    expect(calls.every((d: any) => d.schedule?.id === 's1')).toBe(true);
+    expect(rows.every((d: any) => d.parentCreatedHere === true)).toBe(true);
+    const phaseOrLoose = calls.filter((d: any) => !d.parentTaskId);
+    expect(phaseOrLoose.length).toBeGreaterThan(0);
+    expect(phaseOrLoose.every((d: any) => !d.parentCreatedHere)).toBe(true);
   });
 
   it('MS Project / AI extraction: every task it created', async () => {
@@ -91,7 +100,9 @@ describe('imports are recorded in Schedule History', () => {
     expect(svc.recomputeParentRollup).toHaveBeenCalledTimes(1);
     expect(svc.recomputeParentRollup).toHaveBeenCalledWith('t1', 0, expect.anything()); // with the plan's calendar
     expect(svc.workingDayTest).toHaveBeenCalledTimes(1);
-    expect(svc.createTask.mock.calls[1][0]).toMatchObject({ parentTaskId: 't1', deferParentRollup: true });
+    expect(svc.createTask.mock.calls[1][0]).toMatchObject({ parentTaskId: 't1', deferParentRollup: true, parentCreatedHere: true });
+    expect(svc.createTask.mock.calls[0][0]).toMatchObject({ parentCreatedHere: false, schedule: { id: 's1' } });
+    expect(svc.findTasksByScheduleId).toHaveBeenCalledTimes(1); // U51: once, not twice
   });
 
   it('nothing imported: nothing recorded', async () => {

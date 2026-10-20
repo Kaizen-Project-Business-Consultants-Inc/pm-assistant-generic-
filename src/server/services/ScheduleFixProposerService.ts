@@ -649,10 +649,22 @@ export class ScheduleFixProposerService {
   /** In-process (it holds the float map and the calendar test), per company and proposal, a few minutes */
   private previewBases = new Map<string, { at: number; base: { input: ReviewInput; scoreBefore: number } }>();
 
+  /** Loads under way, so previews sent while one is loading share it (U52, 2026-10-20: each tick
+   *  change could start its own full read of the plan's inputs at the same time) */
+  private previewLoads = new Map<string, Promise<{ input: ReviewInput; scoreBefore: number }>>();
+
   private async previewBase(scheduleId: string, proposalId: string): Promise<{ input: ReviewInput; scoreBefore: number }> {
     const key = companyCacheKey(`schedule-fix-preview:${proposalId}`);
     const hit = this.previewBases.get(key);
     if (hit && Date.now() - hit.at < PREVIEW_BASE_TTL_MS) return hit.base;
+    const loading = this.previewLoads.get(key);
+    if (loading) return loading;
+    const load = this.loadPreviewBase(key, scheduleId).finally(() => this.previewLoads.delete(key));
+    this.previewLoads.set(key, load);
+    return load;
+  }
+
+  private async loadPreviewBase(key: string, scheduleId: string): Promise<{ input: ReviewInput; scoreBefore: number }> {
     const { input } = await scheduleReviewService.gatherInput(scheduleId);
     // Kept without the tasks: each preview reads them fresh, and a big plan's list is the bulk of it
     const base = { input: { ...input, tasks: [] }, scoreBefore: reviewSchedule(input).score };

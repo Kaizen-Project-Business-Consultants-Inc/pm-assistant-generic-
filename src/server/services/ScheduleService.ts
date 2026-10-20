@@ -162,6 +162,10 @@ export interface CreateTaskData {
   deferParentRollup?: boolean;
   /** For imports: the plan's working-day test, looked up once by the caller instead of per task */
   isWorking?: IsWorking;
+  /** For imports (U51, 2026-10-20): the schedule, already read by the caller — saves two reads per task */
+  schedule?: Schedule;
+  /** For imports: the parent is a phase this same import just created in this schedule — no need to re-read it */
+  parentCreatedHere?: boolean;
   description?: string;
   status?: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'completed' | 'blocked' | 'cancelled';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
@@ -744,7 +748,7 @@ export class ScheduleService {
       // eslint-disable-next-line no-await-in-loop -- at most 20 links (checked above); stops at the first bad one
       await this.validateDependency(null, dep.dependencyId, data.scheduleId);
     }
-    if (data.parentTaskId) await this.validateSameScheduleRef(null, data.parentTaskId, data.scheduleId, 'parent task');
+    if (data.parentTaskId && !data.parentCreatedHere) await this.validateSameScheduleRef(null, data.parentTaskId, data.scheduleId, 'parent task');
     if (data.epicId) await this.validateSameScheduleRef(null, data.epicId, data.scheduleId, 'epic');
 
     const firstDep = deps[0];
@@ -756,8 +760,11 @@ export class ScheduleService {
     // moved on to the first working day of the project calendar. A start the user typed
     // is kept even on a day off (they're warned in the form).
     const isWorking = data.isWorking ?? await this.workingDayTest(data.scheduleId);
+    // read at most once (an import passes it in)
+    let scheduleRow: Schedule | null | undefined = data.schedule?.id === data.scheduleId ? data.schedule : undefined;
+    const scheduleOf = async () => (scheduleRow === undefined ? (scheduleRow = await this.findById(data.scheduleId)) : scheduleRow);
     if (!data.startDate) {
-      const schedule = await this.findById(data.scheduleId);
+      const schedule = await scheduleOf();
       const raw = schedule?.startDate
         ? new Date(schedule.startDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
@@ -893,7 +900,7 @@ export class ScheduleService {
     }
 
     // Fire-and-forget side effects AFTER transaction commit
-    const schedule = await this.findById(data.scheduleId);
+    const schedule = await scheduleOf();
     auditLedgerService.append({
       actorId: getRequestContext()?.userId || data.createdBy,
       actorType: 'user',

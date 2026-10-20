@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-20 — Faster import and Propose fixes preview (U51/U52)
+- UAT: a 33-task import took 7–11 s, one preview 26 s. Main cause on staging: the server has 954 MB RAM and the app was swapped out (prod has 11 GB). Code trims: an import hands createTask the schedule (two reads a task fewer) and says when a parent is a phase it just made (`parentCreatedHere`, skips re-reading it; route input strips both — guard test `createTaskInternalFlags.test.ts`); the plan's tasks are read once, not twice; previews sent while one is loading share it (`ScheduleFixProposerService.previewLoads`).
+
 ## 2026-10-19 — First login goes to work: Get started card (U42/U47/U48), clear sign-in messages (U27), one tab after confirming (U45)
 - Mock https://claude.ai/artifact/9NkgqgKMYnPA2AM9LL6vAy approved, with "yes to both" removals: the setup pages (`OnboardingPage`) and the welcome pop-up (`WelcomeModal`, which never showed — `isFirstLogin` was never sent) are gone; `/onboarding` → `/dashboard`; `utils/needsSetup` removed; the orphaned `pendingCheckout` flag removed (TrialBanner covers unpaid accounts).
 - Dashboard `GetStartedCard`: Invite your people (Team-plan owner) → Create your first project → Choose who's on it → Build the plan, from `GET /users/me/get-started` (`services/getStartedState.ts`); `InvitePeopleDialog` (Free / Paid seat, bill line from `/seats`; invites take an optional `fullName`), `ChooseTeamDialog` (after the first project; Owner/Manager/Viewer), `ProfileChecklist` (name/company — now the only company rename —, phone optional, role, time zone; no photo feature exists). Invited people: `ConfirmYourName` after setting their password.
