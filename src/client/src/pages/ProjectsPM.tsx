@@ -18,6 +18,7 @@ import { groupByKey } from '../utils/lookup';
 import { useCanChangeData } from '../hooks/useCanChangeData';
 import { useCanManageClients } from '../hooks/useCanManageClients';
 import { routeTo } from '../routes';
+import { useClientWord } from '../hooks/useClientWord';
 
 const VIEW_MODE_KEY = 'pm-projects-view-mode';
 
@@ -35,6 +36,7 @@ function normalizeStatus(status: string): string {
 }
 
 export function ProjectsPM() {
+  const word = useClientWord();
   const canChange = useCanChangeData();
   const canManageClients = useCanManageClients();
   const { user } = useAuthStore();
@@ -248,10 +250,10 @@ export function ProjectsPM() {
     }
     const ungrouped = active.filter(p => !assigned.has(p.id));
     if (ungrouped.length > 0) {
-      sections.push({ id: '__ungrouped', name: 'No client', color: '#9ca3af', projects: ungrouped });
+      sections.push({ id: '__ungrouped', name: `No ${word.lower}`, color: '#9ca3af', projects: ungrouped });
     }
     return sections;
-  }, [active, groups, groupFilter]);
+  }, [active, groups, groupFilter, word.lower]);
 
   return (
     <div className="p-6 space-y-6">
@@ -295,11 +297,11 @@ export function ProjectsPM() {
             <select
               value={groupFilter}
               onChange={e => setGroupFilter(e.target.value)}
-              aria-label="Filter by client"
+              aria-label={`Filter by ${word.lower}`}
               className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200"
             >
-              <option value="all">All clients</option>
-              <option value="ungrouped">No client</option>
+              <option value="all">All {word.lowerMany}</option>
+              <option value="ungrouped">No {word.lower}</option>
               {groups.map(g => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
@@ -310,10 +312,10 @@ export function ProjectsPM() {
               type="button"
               onClick={() => setGroupManagerOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
-              title="Manage clients"
+              title={`Manage ${word.lowerMany}`}
             >
               <Folder className="w-4 h-4" />
-              Clients
+              {word.many}
             </button>
           )}
           <button
@@ -394,7 +396,7 @@ export function ProjectsPM() {
                       Risks &amp; issues
                     </Link>
                     <Link to={routeTo.clientReport(section.id)} className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline">
-                      Client report
+                      {word.one} report
                     </Link>
                   </>
                 )}

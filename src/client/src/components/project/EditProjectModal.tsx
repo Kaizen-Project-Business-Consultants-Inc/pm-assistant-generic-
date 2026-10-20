@@ -133,7 +133,7 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           const id = await client.resolveClientId(clientText);
           if ((id ?? '') !== origClientId) data.clientId = id;
         } catch (err) {
-          setClientError(getApiErrorMessage(err, 'The client could not be added. Please try again.'));
+          setClientError(getApiErrorMessage(err, `The ${client.word.lower} could not be added. Please try again.`));
           return;
         } finally {
           setClientSaving(false);
@@ -285,7 +285,7 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
 
         {client.canManage && (
           <div>
-            <ClientNameField clients={clients} listFailed={client.listFailed} value={clientText ?? origClientName} onChange={setClientText} label={client.label} />
+            <ClientNameField clients={clients} listFailed={client.listFailed} value={clientText ?? origClientName} onChange={setClientText} label={client.label} lower={client.word.lower} />
             {clientError && <p role="alert" className="mt-1 text-sm text-red-700 dark:text-red-300">{clientError}</p>}
           </div>
         )}
@@ -293,7 +293,7 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
           <div>
             <label htmlFor={`${uid}-client`} className={labelClass}>{client.label}</label>
             <select id={`${uid}-client`} value={clientId} onChange={(e) => setClientId(e.target.value)} className={inputClass}>
-              <option value="">No client</option>
+              <option value="">No {client.word.lower}</option>
               {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>

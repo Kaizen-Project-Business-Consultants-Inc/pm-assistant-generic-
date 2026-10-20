@@ -6,6 +6,7 @@ import { AccessibleModal } from '../ui/AccessibleModal';
 import { useAuthStore } from '../../stores/authStore';
 import { canChangeClient } from '../../hooks/useCanManageClients';
 import { refreshProjectLists } from '../../utils/projectListCache';
+import { useClientWord } from '../../hooks/useClientWord';
 
 interface ProjectGroup {
   id: string;
@@ -19,6 +20,7 @@ interface ProjectGroup {
 const COLORS = ['#6366f1', '#3b82f6', '#059669', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#78716c'];
 
 export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const word = useClientWord();
   const queryClient = useQueryClient();
   const titleId = useId();
   const user = useAuthStore((st) => st.user);
@@ -71,7 +73,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
     >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage clients</h2>
+          <h2 id={titleId} className="text-lg font-semibold text-gray-900 dark:text-gray-100">Manage {word.lowerMany}</h2>
           <button aria-label="Close" onClick={onClose} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
@@ -80,7 +82,7 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
         {/* Client list */}
         <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
           {groups.length === 0 && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No clients yet. Add one below.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No {word.lowerMany} yet. Add one below.</p>
           )}
           {groups.map(g => (
             <div key={g.id} className="flex items-center gap-2 py-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 group">
@@ -154,10 +156,10 @@ export function ProjectGroupManager({ isOpen, onClose }: { isOpen: boolean; onCl
         <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <input
-              aria-label="New client name"
+              aria-label={`New ${word.lower} name`}
               value={newName}
               onChange={e => setNewName(e.target.value)}
-              placeholder="New client name"
+              placeholder={`New ${word.lower} name`}
               className="flex-1 text-sm border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) createMut.mutate(); }}
             />

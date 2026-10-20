@@ -8,6 +8,7 @@ import { useCanManageClients } from '../../hooks/useCanManageClients';
 import { routeTo, ROUTES } from '../../routes';
 import { usesClientPools } from '../../utils/clientPools';
 import { useAuthStore } from '../../stores/authStore';
+import { useClientWord } from '../../hooks/useClientWord';
 
 interface Client {
   id: string;
@@ -22,6 +23,7 @@ const CLOSED_STATUSES = new Set(['completed', 'cancelled']);
  * they get reports. From here: a client's risks & issues across its projects, and its client report.
  */
 export function ClientsPage() {
+  const word = useClientWord();
   const pools = usesClientPools(useAuthStore(st => st.user));
   const canManageClients = useCanManageClients();
   const queryClient = useQueryClient();
@@ -52,9 +54,11 @@ export function ClientsPage() {
     <div className="p-6 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Clients</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{word.many}</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            Who your projects are for. Clients don't sign in — they get reports.
+            {word.isDepartment
+              ? 'Group your projects by department, each with its own risks and report.'
+              : "Who your projects are for. Clients don't sign in — they get reports."}
           </p>
         </div>
         {canManageClients && (
@@ -64,7 +68,7 @@ export function ClientsPage() {
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <Folder className="w-4 h-4" />
-            Manage clients
+            Manage {word.lowerMany}
           </button>
         )}
       </div>
@@ -76,9 +80,9 @@ export function ClientsPage() {
       ) : clients.length === 0 ? (
         <div className="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 p-12 text-center">
           <Building2 className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No clients yet.</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">No {word.lowerMany} yet.</p>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            A client is who a project is for. Add one with Manage clients, then pick it when creating a project.
+            {word.isDepartment ? 'A department groups the projects it runs.' : 'A client is who a project is for.'} Add one with Manage {word.lowerMany}, then pick it when creating a project.
           </p>
         </div>
       ) : (
@@ -103,7 +107,7 @@ export function ClientsPage() {
                     Risks &amp; issues
                   </Link>
                   <Link to={routeTo.clientReport(c.id)} className="text-sm font-medium text-primary-600 dark:text-primary-400 hover:underline">
-                    Client report
+                    {word.one} report
                   </Link>
                 </span>
               </li>

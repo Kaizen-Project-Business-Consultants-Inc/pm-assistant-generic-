@@ -23,6 +23,7 @@ import {
   planSplitDates,
   withSeverity,
   unaddressedFindings,
+  problemsOf,
   type ProposedFix, type FixSeverity, describeFix } from './scheduleReview/fixProposer';
 import { applyFixesInMemory, latestFinish, rollUpSummaries, PlanCopy, milestoneUpdate, splitHeadValues, splitPartValues } from './scheduleReview/fixPreview';
 import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, reviewSchedule, type ReviewTask, type ReviewInput } from './scheduleReview/rules';
@@ -195,7 +196,7 @@ export class ScheduleFixProposerService {
       source,
       reviewId: review.id,
       // What no fix answers is listed for the PM to decide ("Needs your decision")
-      proposalData: { fixes, needsDecision: unaddressedFindings(fixes, review.findings) },
+      proposalData: { fixes, problems: problemsOf(fixes, review.findings), needsDecision: unaddressedFindings(fixes, review.findings) },
       rulesVersion: RULES_VERSION,
       createdBy: userId,
     });

@@ -13,6 +13,7 @@ import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { readableProjectIds } from '../../utils/readableProjects';
 import { databaseService } from '../../database/connection';
 import { trialEmailAllowance } from '../../utils/trialEmail';
+import { clientWordOf } from '../../utils/clientWord';
 
 /**
  * Project groups are shown as CLIENTS (2026-10-07): a consultant's customers. Clients never sign
@@ -210,7 +211,7 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const report = await clientService.report(id, request.user!);
-      return { report, html: renderClientReportHtml(report) };
+      return { report, html: renderClientReportHtml(report, await clientWordOf(request.user!.userId)) };
     } catch (err) {
       return handleGroupError(reply, err);
     }
@@ -221,11 +222,12 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
     try {
       const { id } = request.params as { id: string };
       const report = await clientService.report(id, request.user!);
-      const buf = await buildClientReportDocx(report);
-      const safe = report.client.name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase() || 'client';
+      const word = await clientWordOf(request.user!.userId);
+      const buf = await buildClientReportDocx(report, word);
+      const safe = report.client.name.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').toLowerCase() || word;
       return reply
         .header('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-        .header('Content-Disposition', `attachment; filename="client-report-${safe}-${report.today}.docx"`)
+        .header('Content-Disposition', `attachment; filename="${word}-report-${safe}-${report.today}.docx"`)
         .send(buf);
     } catch (err) {
       return handleGroupError(reply, err);
@@ -239,7 +241,9 @@ export async function projectGroupRoutes(fastify: FastifyInstance) {
       const { id } = request.params as { id: string };
       const { recipients } = emailSchema.parse(request.body ?? {});
       const report = await clientService.report(id, request.user!);
-      await emailService.sendStatusReportEmail(recipients, `${report.client.name} (client report)`, renderClientReportHtml(report));
+      // "department" on the Team and Enterprise plans, as the screens say (U50, 2026-10-20)
+      const word = await clientWordOf(request.user!.userId);
+      await emailService.sendStatusReportEmail(recipients, `${report.client.name} (${word} report)`, renderClientReportHtml(report, word));
       return { success: true };
     } catch (err) {
       if (err instanceof EmailRejectedError) {

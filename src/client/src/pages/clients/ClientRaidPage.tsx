@@ -8,6 +8,7 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { SectionCard, TH, TD } from '../../components/ui/SectionCard';
 import { MetaPill } from '../../components/ui/MetaPill';
+import { useClientWord } from '../../hooks/useClientWord';
 
 type Show = 'open' | 'all' | 'high';
 
@@ -47,6 +48,7 @@ const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace
  * own register; an item opens in its project's RAID tab to be changed there.
  */
 export function ClientRaidPage() {
+  const word = useClientWord();
   const { id } = useParams<{ id: string }>();
   const uid = useId();
   const [show, setShow] = useState<Show>('open');
@@ -57,7 +59,7 @@ export function ClientRaidPage() {
     enabled: !!id,
   });
 
-  const name = data?.client?.name || 'Client';
+  const name = data?.client?.name || word.one;
   const items = data?.items || [];
   const summary = data?.summary;
 
@@ -96,7 +98,7 @@ export function ClientRaidPage() {
 
       {error ? (
         <div role="alert" className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
-          {getApiErrorMessage(error, 'Could not load this client\'s risks and issues. Please try again.')}
+          {getApiErrorMessage(error, `Could not load this ${word.lower}'s risks and issues. Please try again.`)}
         </div>
       ) : (
         <>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates, withSeverity, suggestSummaryName, unaddressedFindings, type ProposedFix } from '../../services/scheduleReview/fixProposer';
+import { proposeFixesDeterministic, buildGroupingFixes, splitCandidates, buildSplitFixes, buildPhaseFixes, planSplitDates, withSeverity, problemsOf, suggestSummaryName, unaddressedFindings, type ProposedFix } from '../../services/scheduleReview/fixProposer';
 import { reviewSchedule, type Finding, type ReviewTask } from '../../services/scheduleReview/rules';
 import { weekdaysOnly } from '../../utils/workingDays';
 
@@ -368,6 +368,26 @@ describe('withSeverity', () => {
       [f('R02', 'high', ['a']), f('R01', 'critical', ['b']), f('R01', 'critical', ['zzz'])],
     );
     expect(link.severity).toBe('critical');
+  });
+
+  it("keys each fix to the ONE finding that set its level; the proposal stores each problem once (U53)", () => {
+    const findings = [f('R02', 'high', ['a']), { ...f('R03', 'critical'), rule: 'No logic at all', message: 'None of the 28 tasks are linked.' }];
+    const fixes = withSeverity([fix({ id: 'l1', taskId: 'b', dependsOnTaskId: 'a' }), fix({ id: 'l2', taskId: 'c', dependsOnTaskId: 'b' })], findings);
+    expect(fixes.map(x => x.problemKey)).toEqual(['R03:', 'R03:']);
+    expect(problemsOf(fixes, findings)).toEqual({ 'R03:': { ruleId: 'R03', rule: 'No logic at all', message: 'None of the 28 tasks are linked.' } });
+    // no finding covers it: no problem named
+    const [loose] = withSeverity([fix({ type: 'rename_task', taskId: 'h' })], []);
+    expect(loose.problemKey).toBeUndefined();
+  });
+
+  it('a rule with one finding per task gives one problem per task, as the review counts them', () => {
+    const findings = [
+      { ...f('R04', 'high', ['m1']), message: "'Design sign-off' spans 5 working days" },
+      { ...f('R04', 'high', ['m2']), message: "'Build sign-off' spans 3 working days" },
+    ];
+    const fixes = withSeverity([fix({ id: 's1', type: 'split_task', taskId: 'm1', replace: true }), fix({ id: 's2', type: 'split_task', taskId: 'm2', replace: true })], findings);
+    expect(new Set(fixes.map(x => x.problemKey)).size).toBe(2);
+    expect(Object.keys(problemsOf(fixes, findings))).toHaveLength(2);
   });
 
   it('checks the task a link starts from too (R02 on the feeder)', () => {

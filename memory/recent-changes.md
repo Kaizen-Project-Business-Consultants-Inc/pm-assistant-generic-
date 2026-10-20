@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-20 — Propose fixes counts problems, Undo can't be hit by accident, Department wording (U53/U54/U50)
+- Mock https://claude.ai/artifact/K29pNmB79C4wjwEM2WELbi, built on the user's overnight go-ahead ("build as drawn", Undo asks first). U53: fixes carry the review `problem`; levels say "N problems · M fixes offered"; ticked rows never hidden; "Apply 20 fixes — fixes 1 critical problem". U54 (UAT: Undo appeared under the cursor where Apply was, a 2nd click removed 20 links): Done in the footer, `UndoWithConfirm` in the result (also RAID Review fixes). U50: `useClientWord` — Department on sme/enterprise everywhere a client is named, incl. the report email subject.
+
 ## 2026-10-20 — Faster import and Propose fixes preview (U51/U52)
 - UAT: a 33-task import took 7–11 s, one preview 26 s. Main cause on staging: the server has 954 MB RAM and the app was swapped out (prod has 11 GB). Code trims: an import hands createTask the schedule (two reads a task fewer) and says when a parent is a phase it just made (`parentCreatedHere`, skips re-reading it; route input strips both — guard test `createTaskInternalFlags.test.ts`); the plan's tasks are read once, not twice; previews sent while one is loading share it (`ScheduleFixProposerService.previewLoads`).
 

@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2, CheckCircle2, Undo2, Link2, Flag, FolderTree, Clock, Shield, Sparkles, Scissors, ListPlus, PencilLine } from 'lucide-react';
+import { X, Loader2, CheckCircle2, Link2, Flag, FolderTree, Clock, Shield, Sparkles, Scissors, ListPlus, PencilLine } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -8,6 +8,7 @@ import { severityColor } from '../../../utils/severityColors';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 import { formatCalendarDate } from '../../../utils/dateUtils';
 import { useFixPreview, ImpactBox, overlapImpactText, shiftText, passesEnd } from './ScheduleFixImpact';
+import { UndoWithConfirm } from '../../ui/UndoWithConfirm';
 import { NeedsDecision, useDecisionActions, type OpenFinding } from './NeedsDecision';
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,8 @@ interface ProposedFix {
   defaultChecked: boolean;
   /** The level of the review finding it fixes; proposals made before 2026-10-17 have none (low) */
   severity?: FixLevel;
+  /** That review problem (one finding) — its key in the proposal's `problems` (U53, 2026-10-20) */
+  problemKey?: string;
   taskId?: string;
   taskName?: string;
   dependsOnTaskId?: string;
@@ -48,10 +51,13 @@ interface ProposedFix {
   overlaps?: boolean;
 }
 
+/** A review finding as the review words it — a rule can give several (one per task) */
+interface ReviewProblem { ruleId: string; rule: string; message: string }
+
 interface FixProposal {
   id: string;
   source: 'ai' | 'rules';
-  proposalData: { fixes: ProposedFix[]; summary?: string; needsDecision?: OpenFinding[] };
+  proposalData: { fixes: ProposedFix[]; summary?: string; needsDecision?: OpenFinding[]; problems?: Record<string, ReviewProblem> };
 }
 
 interface DateDelta {
@@ -173,12 +179,33 @@ function fixText(f: ProposedFix): string {
   return `Group '${f.taskName}' under phase '${f.newParentName}'`;
 }
 
-/** "Apply 4 fixes (1 critical, 3 low)" — only the levels that have a selected fix */
+/** The review problems (findings) a set of fixes answers, by level — counted as the review counts
+ *  them: one per finding, so six milestones that span days are six problems (U53) */
+function problemsByLevel(fixes: ProposedFix[]): Map<FixLevel, Set<string>> {
+  const out = new Map<FixLevel, Set<string>>();
+  for (const f of fixes) {
+    if (!f.problemKey) continue;
+    const set = out.get(levelOf(f)) ?? new Set<string>();
+    set.add(f.problemKey);
+    out.set(levelOf(f), set);
+  }
+  return out;
+}
+
+/** "Apply 20 fixes — fixes 1 critical problem" (U53: the review's own count of what it fixes); an
+ *  older proposal without problems: "Apply 4 fixes (1 critical, 3 low)" */
 function applyLabel(chosen: ProposedFix[]): string {
+  const head = `Apply ${plural(chosen.length, 'fix', 'fixes')}`;
+  const problems = problemsByLevel(chosen);
+  if (problems.size > 0) {
+    const parts = LEVELS.filter(l => problems.get(l)?.size).map(l => `${problems.get(l)!.size} ${l}`);
+    const total = [...problems.values()].reduce((n, set) => n + set.size, 0);
+    return `${head} — fixes ${parts.join(', ')} problem${total === 1 ? '' : 's'}`;
+  }
   const counts = new Map<FixLevel, number>();
   for (const f of chosen) counts.set(levelOf(f), (counts.get(levelOf(f)) ?? 0) + 1);
   const parts = LEVELS.filter(l => counts.get(l)).map(l => `${counts.get(l)} ${l}`);
-  return `Apply ${plural(chosen.length, 'fix', 'fixes')}${parts.length ? ` (${parts.join(', ')})` : ''}`;
+  return `${head}${parts.length ? ` (${parts.join(', ')})` : ''}`;
 }
 
 /** "Still to do: 1 critical · 17 high" from what the review finds after Apply */
@@ -326,13 +353,15 @@ function OverlapGroup({ scheduleId, proposalId, level, items, tick, children }: 
   );
 }
 
-/** A list of fix rows, the first few shown until "Show N more" */
-function FixList({ items, open, onMore, row }: { items: ProposedFix[]; open: boolean; onMore: () => void; row: (f: ProposedFix) => ReactNode }) {
+/** A list of fix rows, the first few shown until "Show N more" — but a list with a ticked row shows
+ *  every row (U53, 2026-10-20: "Select all" ticked 20 while 5 showed), scrolling inside its own box */
+function FixList({ items, open, onMore, row, anyTicked }: { items: ProposedFix[]; open: boolean; onMore: () => void; row: (f: ProposedFix) => ReactNode; anyTicked: boolean }) {
   if (items.length === 0) return null;
-  const all = open || items.length <= FIRST_ROWS;
+  const all = open || anyTicked || items.length <= FIRST_ROWS;
+  const long = all && items.length > FIRST_ROWS;
   return (
     <>
-      <ul className="space-y-1.5">{(all ? items : items.slice(0, FIRST_ROWS)).map(row)}</ul>
+      <ul className={`space-y-1.5 ${long ? 'max-h-80 overflow-y-auto pr-1' : ''}`}>{(all ? items : items.slice(0, FIRST_ROWS)).map(row)}</ul>
       {!all && (
         <button type="button" onClick={onMore} className="mt-1.5 text-xs font-medium text-primary-700 dark:text-primary-300 hover:underline">
           Show {items.length - FIRST_ROWS} more
@@ -343,27 +372,47 @@ function FixList({ items, open, onMore, row }: { items: ProposedFix[]; open: boo
 }
 
 /** One level: its other fixes, the links that follow the dates, and the overlapping links apart */
-function LevelSection({ group, scheduleId, proposalId, tick, list }: {
+function LevelSection({ group, scheduleId, proposalId, tick, list, ticked, problemOf }: {
   group: LevelGroup;
+  /** the proposal's problem for a fix's key */
+  problemOf: (key: string) => ReviewProblem | undefined;
   scheduleId: string;
   proposalId: string;
   tick: (id: string, items: ProposedFix[], label: ReactNode) => ReactNode;
   list: (items: ProposedFix[], key: string) => ReactNode;
+  /** How many of these are ticked */
+  ticked: (items: ProposedFix[]) => number;
 }) {
   const { level, items, rest, others, links, overlap } = group;
   const label = LEVEL_LABEL[level];
+  // the review problems these fixes answer, each once, as the review words them (U53)
+  const keys = [...new Set(items.map(f => f.problemKey).filter((k): k is string => !!k))];
+  const problems = keys.map(k => ({ key: k, ...problemOf(k) })).filter((pr): pr is ReviewProblem & { key: string } => !!pr.ruleId);
+  const linksTicked = ticked(links);
   return (
     <section aria-label={`${label} fixes`}>
-      <div className="flex items-center gap-2 mb-2">
+      <div className="flex flex-wrap items-center gap-2 mb-2">
         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(level)}`}>{label}</span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">{plural(items.length, 'fix', 'fixes')}</span>
+        {problems.length > 0 && <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{plural(problems.length, 'problem')}</span>}
+        <span className="text-xs text-gray-500 dark:text-gray-400">{problems.length > 0 ? '· ' : ''}{plural(items.length, 'fix', 'fixes')} offered</span>
         {rest.length > 0 && tick(`fix-level-${level}`, rest, `Select all in ${label}`)}
       </div>
+      {problems.length > 0 && (
+        <ul className="mb-2 space-y-1">
+          {problems.map(pr => (
+            <li key={pr.key} className="px-2.5 py-1.5 rounded-md bg-gray-50 dark:bg-gray-800 text-xs text-gray-800 dark:text-gray-200">
+              <span className="font-semibold">{pr.rule}</span> — {pr.message}
+            </li>
+          ))}
+        </ul>
+      )}
       <div className="space-y-2">
         {list(others, level)}
         {links.length > 0 && (
           <div>
-            <p className="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">{plural(links.length, 'link')} follow your dates — no dates move</p>
+            <p className="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">
+              {plural(links.length, 'link')} follow your dates — no dates move{linksTicked > 0 ? ` · ${linksTicked} ticked` : ''}
+            </p>
             {list(links, `${level}:links`)}
           </div>
         )}
@@ -387,7 +436,7 @@ function LevelSection({ group, scheduleId, proposalId, tick, list }: {
 // The result after Apply — the score first
 // ---------------------------------------------------------------------------
 
-function AppliedSummary({ result }: { result: ApplyResult }) {
+function AppliedSummary({ result, undoing, onUndo }: { result: ApplyResult; undoing: boolean; onUndo: () => void }) {
   const diff = result.beforeScore == null ? null : result.afterScore - result.beforeScore;
   const change = diff == null ? '' : diff === 0 ? ' · score unchanged' : ` · score ${diff > 0 ? 'up' : 'down'} ${plural(Math.abs(diff), 'point')}`;
   const left = stillToDo(result.afterCounts);
@@ -416,11 +465,16 @@ function AppliedSummary({ result }: { result: ApplyResult }) {
         {result.skipped.length > 0 && (
           <p className="text-amber-700 dark:text-amber-300">{skippedText(result.skipped)}</p>
         )}
+        {result.appliedCount > 0 && (
+          <div className="pt-1">
+            <UndoWithConfirm count={result.appliedCount} undoing={undoing} onUndo={onUndo} />
+          </div>
+        )}
       </div>
 
       {pastEnd && (
         <div role="alert" className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm">
-          The plan now finishes after the project’s end date ({formatCalendarDate(result.projectEnd!)}). Undo below, or move the end date in Edit project.
+          The plan now finishes after the project’s end date ({formatCalendarDate(result.projectEnd!)}). Undo above, or move the end date in Edit project.
         </div>
       )}
 
@@ -613,7 +667,7 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
     />
   );
   const fixList = (items: ProposedFix[], key: string) => (
-    <FixList items={items} open={showAll.has(key)} onMore={() => setShowAll(prev => new Set(prev).add(key))} row={fixRow} />
+    <FixList items={items} open={showAll.has(key)} anyTicked={items.some(f => selected.has(f.id))} onMore={() => setShowAll(prev => new Set(prev).add(key))} row={fixRow} />
   );
 
   return (
@@ -676,9 +730,18 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
             <p className="text-sm text-gray-700 dark:text-gray-300">Nothing to propose. The schedule already has the structure the review checks for.</p>
           )}
 
-          {applied && !undone && <AppliedSummary result={result!} />}
+          {applyMutation.isPending && (
+            <p role="status" className="flex items-center gap-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              Applying {plural(applyMutation.variables?.length ?? chosen.length, 'fix', 'fixes')}… this takes a few seconds
+            </p>
+          )}
+          {applied && !undone && <AppliedSummary result={result!} undoing={undoMutation.isPending} onUndo={() => undoMutation.mutate()} />}
           {undone && (
-            <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm">Fixes undone. The schedule is back to how it was.</div>
+            <div role="status" className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 text-sm">
+              <span className="font-semibold">Undone — the {plural(result!.appliedCount, 'fix', 'fixes')} you applied {result!.appliedCount === 1 ? 'was' : 'were'} removed.</span>
+              {' '}Your plan is as it was before Apply{result!.beforeScore != null ? ` (score ${result!.beforeScore})` : ''}.
+            </div>
           )}
 
           {!applied && fixes.length > 0 && (
@@ -692,19 +755,27 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
             </div>
           )}
 
-          {/* Fix list by level, Critical first (hidden once applied) */}
-          {!applied && proposal && byLevel.map(group => (
-            <LevelSection
-              key={group.level}
-              group={group}
-              scheduleId={scheduleId}
-              proposalId={proposal.id}
-              tick={(id, items, label) => (
-                <GroupTick id={id} items={items} selected={selected} canApply={canApply} onSet={setMany}>{label}</GroupTick>
-              )}
-              list={fixList}
-            />
-          ))}
+          {/* Fix list by level, Critical first (hidden once applied; greyed and unclickable while applying) */}
+          {!applied && proposal && (
+            <fieldset disabled={applyMutation.isPending} aria-busy={applyMutation.isPending} className={`min-w-0 space-y-4 ${applyMutation.isPending ? 'opacity-50' : ''}`}>
+              <legend className="sr-only">Fixes to apply</legend>
+              {byLevel.map(group => (
+                <LevelSection
+                  key={group.level}
+                  group={group}
+                  scheduleId={scheduleId}
+                  proposalId={proposal.id}
+                  tick={(id, items, label) => (
+                    <GroupTick id={id} items={items} selected={selected} canApply={canApply} onSet={setMany}>{label}</GroupTick>
+                  )}
+                  list={fixList}
+                  // eslint-disable-next-line no-restricted-syntax -- small: four levels, and selected is a Set (has is O(1))
+                  ticked={items => items.filter(f => selected.has(f.id)).length}
+                  problemOf={k => proposal.proposalData.problems?.[k]}
+                />
+              ))}
+            </fieldset>
+          )}
 
           <NeedsDecision items={proposeMutation.isPending ? [] : decisions.items} actions={decisions.actions} />
         </div>
@@ -713,20 +784,13 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
 
         {/* Footer actions */}
         <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
-          {applied && !undone ? (
-            <>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Not what you wanted?</span>
-              <button
-                type="button"
-                onClick={() => undoMutation.mutate()}
-                disabled={undoMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60"
-              >
-                {undoMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Undo2 className="w-3.5 h-3.5" />}
-                Undo
-              </button>
-            </>
-          ) : !applied && fixes.length > 0 ? (
+          {applied ? (
+            // Done, not Undo: what appears where Apply was must be harmless to click (U54)
+            <button type="button" onClick={onClose} disabled={undoMutation.isPending}
+              className="ml-auto px-4 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
+              Done
+            </button>
+          ) : fixes.length > 0 ? (
             <>
               <button
                 type="button"

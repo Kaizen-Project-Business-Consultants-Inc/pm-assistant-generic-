@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2, CheckCircle2, Undo2, Sparkles, ArrowRightLeft, UserRound, CalendarDays, Shield } from 'lucide-react';
+import { X, Loader2, CheckCircle2, Sparkles, ArrowRightLeft, UserRound, CalendarDays, Shield } from 'lucide-react';
+import { UndoWithConfirm } from '../../ui/UndoWithConfirm';
 import { apiService } from '../../../services/api';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
@@ -205,11 +206,17 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
               <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm space-y-1">
                 <p className="font-medium flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" aria-hidden="true" /> Applied {result!.applied} fix{result!.applied === 1 ? '' : 'es'}.</p>
                 {result!.summary && <p>{result!.summary}</p>}
+                {/* Undo here, asking first — never where Apply was (U54, 2026-10-20) */}
+                {result!.applied > 0 && (
+                  <div className="pt-1">
+                    <UndoWithConfirm count={result!.applied} undoing={undoMutation.isPending} onUndo={() => undoMutation.mutate()} />
+                  </div>
+                )}
               </div>
             )}
             {undone !== null && (
-              <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm">
-                Fixes undone — {undone} item{undone === 1 ? '' : 's'} back to how {undone === 1 ? 'it was' : 'they were'}.
+              <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 text-sm">
+                <span className="font-semibold">Undone</span> — {undone} item{undone === 1 ? '' : 's'} back to how {undone === 1 ? 'it was' : 'they were'} before Apply.
               </div>
             )}
           </div>
@@ -253,20 +260,13 @@ export function RaidFixPanel({ projectId, onClose }: Props) {
 
         {/* Footer actions */}
         <div className="flex items-center justify-between gap-2 p-4 border-t border-gray-200 dark:border-gray-700">
-          {applied && undone === null ? (
-            <>
-              <span className="text-xs text-gray-500 dark:text-gray-400">Not what you wanted?</span>
-              <button
-                type="button"
-                onClick={() => undoMutation.mutate()}
-                disabled={undoMutation.isPending}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-60"
-              >
-                {undoMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" /> : <Undo2 className="w-3.5 h-3.5" aria-hidden="true" />}
-                Undo
-              </button>
-            </>
-          ) : !applied && fixes.length > 0 ? (
+          {applied ? (
+            // Done, not Undo: what appears where Apply was must be harmless to click (U54)
+            <button type="button" onClick={onClose} disabled={undoMutation.isPending}
+              className="ml-auto px-4 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50">
+              Done
+            </button>
+          ) : fixes.length > 0 ? (
             <>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {triedApply && missing.length > 0 ? <span className="text-red-600 dark:text-red-400">Fill in {missing.length} ticked fix{missing.length === 1 ? '' : 'es'} first</span> : `${selected.size} of ${fixes.length} ticked`}

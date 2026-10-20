@@ -343,7 +343,7 @@ export const TemplatePicker: React.FC<TemplatePickerProps> = ({ isOpen, onClose 
     try {
       applyMutation.mutate({ templateId: selectedTemplateId, ...(await withClientId(data)) });
     } catch (err) {
-      showCreateError(err, 'The client could not be added. Please try again.');
+      showCreateError(err, `The ${client.word.lower} could not be added. Please try again.`);
     } finally {
       setScratchSubmitting(false);
     }

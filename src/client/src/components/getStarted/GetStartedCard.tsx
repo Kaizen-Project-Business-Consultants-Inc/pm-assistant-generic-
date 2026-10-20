@@ -8,6 +8,7 @@ import { ROUTES, routeTo } from '../../routes';
 import { InvitePeopleDialog } from './InvitePeopleDialog';
 import { ProfileChecklist } from './ProfileChecklist';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
+import { useClientWord } from '../../hooks/useClientWord';
 
 /**
  * First login goes to work, not to a form (U42/U47/U48, approved mock 2026-10-19). The dashboard
@@ -26,6 +27,7 @@ const isShownTo = (u: ReturnType<typeof useAuthStore.getState>['user']) =>
 
 export function GetStartedCard() {
   const { user, setUser } = useAuthStore();
+  const word = useClientWord();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const shown = isShownTo(user);
@@ -46,7 +48,7 @@ export function GetStartedCard() {
       action: { label: 'Invite', run: () => setInviting(true) },
     }] : []),
     {
-      key: 'project', title: 'Create your first project', hint: 'Client or department is optional.', done: !!project,
+      key: 'project', title: 'Create your first project', hint: `${word.one} is optional.`, done: !!project,
       action: { label: 'Create', run: () => { void navigate(`${ROUTES.projects}?new=1`); } },
     },
     {

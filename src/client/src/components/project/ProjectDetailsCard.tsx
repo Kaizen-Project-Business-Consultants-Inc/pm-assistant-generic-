@@ -7,6 +7,7 @@ import { Avatar } from '../ui/Avatar';
 import { formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
 import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
 import { PROJECT_TYPE_LABELS } from '../../constants/projectTypes';
+import { useClientWord } from '../../hooks/useClientWord';
 
 /**
  * The project's details, grouped so they read at a glance (UAT U15, 2026-10-14): WHO it is for and
@@ -100,6 +101,7 @@ export function ProjectDetailsCard({ project, manager, managerLoading, onEdit }:
   /** shown only to whoever may change the project (its PM) */
   onEdit?: () => void;
 }) {
+  const word = useClientWord();
   const clientId = project.clientId || project.groupId || null;
   const clientsQ = useQuery<{ groups: Array<{ id: string; name: string; holidayCalendarId?: string | null }> }>({
     queryKey: ['project-groups'], queryFn: () => apiService.getProjectGroups(), staleTime: 120_000, enabled: !!clientId,
@@ -145,7 +147,7 @@ export function ProjectDetailsCard({ project, manager, managerLoading, onEdit }:
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
         <Group title="Who">
-          <Field label="Client">{client?.name ?? (clientId ? <Pending /> : 'No client')}</Field>
+          <Field label={word.one}>{client?.name ?? (clientId ? <Pending /> : `No ${word.lower}`)}</Field>
           <Field label="Sponsor">{sponsor?.name ?? 'Not named'}</Field>
           <Field label="Project manager">
             <ManagerValue manager={manager} loading={managerLoading} />

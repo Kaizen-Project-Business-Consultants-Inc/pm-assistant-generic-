@@ -4,16 +4,14 @@ import { apiService } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import { canManageClients } from './useCanManageClients';
 import { resolveClientChoice, type ClientOption } from '../components/project/ClientNameField';
-
-/** "Client or department" where clients are often internal (SME, Enterprise), else "Client". */
-function clientFieldLabel(tier: string | null | undefined): string {
-  return tier === 'sme' || tier === 'enterprise' ? 'Client or department' : 'Client';
-}
+import { clientWordFor, type ClientWord } from './useClientWord';
 
 /** What a client box needs to show itself (the resolve step stays with the screen that saves). */
 export interface ClientFieldState {
   /** May add clients (owner/PMO, project managers) — gets the type-or-create box; others pick from a list */
   canManage: boolean;
+  /** "Department" on the Team and Enterprise plans, else "Client" (U50) */
+  word: ClientWord;
   clients: ClientOption[];
   listFailed: boolean;
   /** The list is still loading — a typed name can't yet be told apart from an existing client */
@@ -55,7 +53,8 @@ export function useClientChoice(enabled: boolean): ClientFieldState & { resolveC
     clients: clients ?? [],
     listFailed: q.isError,
     loading: enabled && q.isLoading,
-    label: clientFieldLabel(user?.subscriptionTier),
+    word: clientWordFor(user?.subscriptionTier),
+    label: clientWordFor(user?.subscriptionTier).one,
     resolveClientId,
   };
 }

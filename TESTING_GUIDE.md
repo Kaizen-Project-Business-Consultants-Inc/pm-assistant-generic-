@@ -885,6 +885,17 @@ Unit tests: `__tests__/hooks/useClientChoice.test.tsx`, `__tests__/components/pr
 4. Import 50 rows as qa.pm into a project with a second manager → that manager gets ONE "50 RAID items imported" notice, not 50.
 Unit tests: `__tests__/components/raidImportModal.test.tsx` (client), `src/server/__tests__/routes/raidImportLimits.test.ts` (8 MB body → 413, text cap, row cap).
 
+### 9a. Propose fixes counts and Undo; Department wording (U53/U54/U50, 2026-10-20)
+
+1. Import a plan with no links (e.g. a 30-task CSV) and run the review: **1 critical** (No logic at all). Open **Propose fixes**: the Critical heading says **1 problem · N fixes offered** and names "No logic at all".
+2. **Select all in Critical**: every ticked link is listed (scroll inside the box), the heading says "N ticked", and Apply reads **Apply N fixes — fixes 1 critical problem**.
+3. Click Apply, then click again where Apply was: it is **Done** (closes the panel) — nothing is undone. Reopen: the links are there.
+4. In the result, **Undo these N fixes** → **Keep them** keeps them; **Yes, undo** removes them and says **Undone — the N fixes you applied were removed**.
+5. RAID Review → Propose fixes: same Done / Undo-in-the-result behaviour.
+6. As a Team-plan (sme) or Enterprise owner: the side menu says **Departments**, the project's Details card **Department / No department**, New Project **Department (optional)** with "+ Create department …", the department report **Department report — …** and its email subject "(department report)". As a Consultant or trial account: **Client** everywhere.
+
+Unit: `__tests__/components/scheduleFixProblemsAndUndo.test.tsx`, `raidFixUndo.test.tsx`, `__tests__/hooks/useClientWord.test.tsx` (client); `services/scheduleFixProposer.test.ts` (problem named), `routes/clientReportEmailWord.test.ts` (server).
+
 ### 9b. First login — Get started card (U42/U47/U48, 2026-10-19)
 
 Replaced the setup pages and the welcome pop-up. On staging, sign up a new Team-plan company (or reset a test owner with `UPDATE users SET onboarding_completed_at = NULL WHERE email = …`):

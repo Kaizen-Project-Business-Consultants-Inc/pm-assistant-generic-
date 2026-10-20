@@ -53,7 +53,7 @@ describe('useClientChoice', () => {
     expect(await result.current.resolveClientId('Initech')).toBe('new-Initech');
   });
 
-  it.each([['sme', 'Client or department'], ['enterprise', 'Client or department'], ['consultant_pro', 'Client'], ['trial', 'Client']])('label for %s is "%s"', async (tier, label) => {
+  it.each([['sme', 'Department'], ['enterprise', 'Department'], ['consultant_pro', 'Client'], ['trial', 'Client']])('label for %s is "%s"', async (tier, label) => {
     setUser({ subscriptionTier: tier });
     const { result } = await mount();
     expect(result.current.label).toBe(label);

@@ -9,6 +9,7 @@ import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { useCanManageClients } from '../../hooks/useCanManageClients';
 import { AccessibleModal } from '../../components/ui/AccessibleModal';
 import { structureClientReport } from '../../utils/clientReportStructure';
+import { useClientWord } from '../../hooks/useClientWord';
 
 interface ClientReportResponse {
   report: { client: { id: string; name: string }; period?: string; today?: string };
@@ -22,6 +23,7 @@ const buttonClass = 'inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-
  * PDF (in the browser, like the status report) or Word (from the server), or emailed to the client.
  */
 export function ClientReportPage() {
+  const word = useClientWord();
   const { id } = useParams<{ id: string }>();
   const uid = useId();
   const canEmail = useCanManageClients();
@@ -37,7 +39,7 @@ export function ClientReportPage() {
     enabled: !!id,
   });
 
-  const name = data?.report?.client?.name || 'Client';
+  const name = data?.report?.client?.name || word.one;
   const html = data?.html || '';
   // Sanitised, then given real headings (the server sends styled paragraphs — fine for email)
   const reportHtml = useMemo(() => structureClientReport(DOMPurify.sanitize(html)), [html]);
@@ -107,7 +109,7 @@ export function ClientReportPage() {
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Client report — {name}</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{word.one} report — {name}</h1>
           {data?.report?.period && <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{data.report.period}</p>}
         </div>
         {html && (
@@ -142,7 +144,7 @@ export function ClientReportPage() {
         <div className="h-96 rounded-xl bg-gray-100 dark:bg-gray-700 animate-pulse" />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-300">
-          {getApiErrorMessage(error, 'Could not make this client report. Please try again.')}
+          {getApiErrorMessage(error, `Could not make this ${word.lower} report. Please try again.`)}
         </div>
       ) : html ? (
         // The report is a light document (as emailed and printed): a sealed light surface keeps
@@ -155,11 +157,11 @@ export function ClientReportPage() {
       <AccessibleModal
         isOpen={emailOpen}
         onClose={closeEmail}
-        ariaLabel="Email the client report"
+        ariaLabel={`Email the ${word.lower} report`}
         className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md mx-4"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Email to client</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Email to {word.isDepartment ? 'people' : 'client'}</h2>
           <button type="button" aria-label="Close" onClick={closeEmail} className="p-1 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
             <X className="w-5 h-5" />
           </button>
@@ -177,7 +179,7 @@ export function ClientReportPage() {
               type="text"
               value={recipients}
               onChange={e => setRecipients(e.target.value)}
-              placeholder="name@client.com, other@client.com"
+              placeholder="name@company.com, other@company.com"
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             />
           </div>

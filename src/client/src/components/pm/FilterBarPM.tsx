@@ -1,4 +1,5 @@
 import { Search, X } from 'lucide-react';
+import { useClientWord } from '../../hooks/useClientWord';
 
 interface FilterBarPMProps {
   search: string;
@@ -29,6 +30,7 @@ export function FilterBarPM({
   onClear,
   hasActiveFilters,
 }: FilterBarPMProps) {
+  const word = useClientWord();
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3">
       <div className="flex flex-wrap items-center gap-3">
@@ -37,8 +39,8 @@ export function FilterBarPM({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search projects or clients…"
-            aria-label="Search projects or clients"
+            placeholder={`Search projects or ${word.lowerMany}…`}
+            aria-label={`Search projects or ${word.lowerMany}`}
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"

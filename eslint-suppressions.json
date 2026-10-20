@@ -1928,9 +1928,6 @@
     }
   },
   "src/server/routes/scheduling/import.ts": {
-    "max-depth": {
-      "count": 1
-    },
     "prefer-const": {
       "count": 1
     },

@@ -30,9 +30,10 @@ const table = (header: string[], rows: string[][], bg?: (r: number, c: number) =
   ],
 });
 
-export async function buildClientReportDocx(r: ClientReport): Promise<Buffer> {
+/** word: "department" on the Team and Enterprise plans (U50), else "client" */
+export async function buildClientReportDocx(r: ClientReport, word: 'client' | 'department' = 'client'): Promise<Buffer> {
   const children: (Paragraph | Table)[] = [];
-  children.push(new Paragraph({ children: [new TextRun({ text: 'CLIENT STATUS REPORT', bold: true, size: 36, color: NAVY, font: 'Calibri' })] }));
+  children.push(new Paragraph({ children: [new TextRun({ text: `${word.toUpperCase()} STATUS REPORT`, bold: true, size: 36, color: NAVY, font: 'Calibri' })] }));
   children.push(para(`${r.client.name} · ${r.projects.length} project${r.projects.length === 1 ? '' : 's'} · period ${r.period}`, { color: '6B7280' }));
 
   children.push(sectionHeading(1, 'SUMMARY ACROSS ALL PROJECTS'));

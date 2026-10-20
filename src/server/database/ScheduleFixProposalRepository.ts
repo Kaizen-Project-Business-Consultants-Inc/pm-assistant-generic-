@@ -19,6 +19,8 @@ export interface FixProposalData {
   summary?: string;
   /** Review findings no fix answers (proposals made before 2026-10-18 have none) */
   needsDecision?: OpenFinding[];
+  /** The review problems the fixes answer, by problemKey, each once (U53, 2026-10-20; older proposals have none) */
+  problems?: Record<string, { ruleId: string; rule: string; message: string }>;
 }
 
 export interface ScheduleFixProposal {

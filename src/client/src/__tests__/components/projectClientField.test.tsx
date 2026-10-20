@@ -102,10 +102,10 @@ describe('New Project — client', () => {
     expect(api.applyTemplate).not.toHaveBeenCalled();
   });
 
-  it('SME / Enterprise call it "Client or department"', async () => {
+  it('the Team and Enterprise plans call it "Department" (U50, 2026-10-20)', async () => {
     setUser('pmo', 'sme');
     await openBlankProject();
-    expect(await clientBox(/Client or department/)).toBeTruthy();
+    expect(await clientBox(/^Department/)).toBeTruthy();
   });
 
   it('someone who may not add clients gets no box while there are none (as before)', async () => {

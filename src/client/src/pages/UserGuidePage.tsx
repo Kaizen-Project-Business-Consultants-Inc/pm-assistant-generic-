@@ -132,11 +132,12 @@ const sections: Section[] = [
   },
   {
     id: 'clients',
-    title: 'Clients',
+    title: 'Clients (Departments on Team and Enterprise)',
     icon: Building2,
     description:
       'A client is who a project is for. Clients never sign in — they get reports.',
     items: [
+      'On the Team and Enterprise plans everything here says Department instead of Client — same pages, only the word changes',
       'Pick the client when you create a project, or later in the project’s Edit (Client) — or type a new name there to add the client on the spot, even before you have any',
       'The Projects page groups projects by client and can filter by client',
       'Cards / List switch on the Projects page; Show archived lists archived projects as compact rows below the active ones, with Open and Restore',
@@ -163,7 +164,8 @@ const sections: Section[] = [
       '"If you apply what is ticked" shows the score and the finish before → after before you apply — red when it passes the project end',
       '"Needs your decision" lists what no suggestion fixes (overdue, no owner, past the end date, no baseline…) with buttons to the right screen',
       'After Apply the score comes first ("22 → 48 / 100"), then the finish before → after, then what is still left to fix',
-      'Right after you apply, Undo in the panel puts that batch of fixes back in one step',
+      'Each level says how many problems it fixes, as the review counts them, and names them; anything ticked is always shown',
+      'Right after you apply, Undo these fixes (inside the green result, it asks first) puts that batch back in one step; where Apply was, the button says Done',
       'It also points out bottleneck tasks (4+ unfinished tasks wait on them — shown for information, no score change) and sprints left open after their end',
     ],
   },

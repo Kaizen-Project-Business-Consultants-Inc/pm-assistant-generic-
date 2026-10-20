@@ -24,6 +24,9 @@ export interface ProposedFix {
   defaultChecked: boolean;
   /** Set by the service from the review (withSeverity); proposals stored before 2026-10-17 have none */
   severity?: FixSeverity;
+  /** The review problem (one finding) that set that level — its key in the proposal's `problems`
+   *  (U53, 2026-10-20); none when no finding covers the fix, or on proposals made before */
+  problemKey?: string;
   // add_dependency
   taskId?: string;
   taskName?: string;
@@ -107,12 +110,29 @@ const FIX_RULES: Record<FixType, Array<{ rule: string; on?: FixField }>> = {
 const SEVERITY_RANK: Record<FixSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 const asFixSeverity = (s: Severity): FixSeverity => (s === 'info' ? 'low' : s);
 
+/** One finding's key: its rule and its tasks — a rule may give one finding per task (R04, R06…),
+ *  and the review counts each, so the panel must too */
+const problemKeyOf = (f: Pick<Finding, 'ruleId' | 'taskIds'>): string => `${f.ruleId}:${[...f.taskIds].sort().join(',')}`;
+
+/** The problems the fixes answer, each stored ONCE per proposal (not copied onto every fix: a big
+ *  plan has thousands of link fixes for the same finding) */
+export function problemsOf(fixes: ProposedFix[], findings: Finding[]): Record<string, { ruleId: string; rule: string; message: string }> {
+  const used = new Set(fixes.map(f => f.problemKey).filter((k): k is string => !!k));
+  const out: Record<string, { ruleId: string; rule: string; message: string }> = {};
+  for (const f of findings) {
+    const key = problemKeyOf(f);
+    if (used.has(key)) out[key] = { ruleId: f.ruleId, rule: f.rule, message: f.message };
+  }
+  return out;
+}
+
 export function withSeverity(fixes: ProposedFix[], findings: Finding[]): ProposedFix[] {
   const byRule = groupBy(findings, f => f.ruleId);
   const covered = new Map(findings.map(f => [f, new Set(f.taskIds)]));
   return fixes.map(fix => {
     const rules = FIX_RULES[fix.type];
     let best: FixSeverity | null = null;
+    let problem: Finding | null = null;
     for (const { rule, on } of rules) {
       const id = on ? fix[on] : undefined;
       for (const f of byRule.get(rule) ?? []) {
@@ -120,11 +140,15 @@ export function withSeverity(fixes: ProposedFix[], findings: Finding[]): Propose
         // a whole-plan finding, or a rule not tied to one task, covers the fix
         const applies = set.size === 0 || !on || (!!id && set.has(id));
         const sev = asFixSeverity(f.severity);
-        if (applies && (best === null || SEVERITY_RANK[sev] < SEVERITY_RANK[best])) best = sev;
+        if (applies && (best === null || SEVERITY_RANK[sev] < SEVERITY_RANK[best])) { best = sev; problem = f; }
       }
     }
     const fallback: FixSeverity = fix.type === 'split_task' && fix.replace !== true ? 'low' : asFixSeverity(RULES[rules[0].rule].severity);
-    return { ...fix, severity: best ?? fallback };
+    return {
+      ...fix,
+      severity: best ?? fallback,
+      ...(problem ? { problemKey: problemKeyOf(problem) } : {}),
+    };
   });
 }
 

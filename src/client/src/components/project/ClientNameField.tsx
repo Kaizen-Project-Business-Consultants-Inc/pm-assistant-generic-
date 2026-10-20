@@ -16,8 +16,10 @@ interface Props {
   clients: ClientOption[];
   value: string;
   onChange: (text: string) => void;
-  /** "Client" for consultants, "Client or department" for SME/Enterprise */
+  /** "Client" for consultants, "Department" for the Team and Enterprise plans (U50) */
   label: string;
+  /** "client" / "department", in "+ Create …" and "No …" */
+  lower?: string;
   /** The client list could not be read — don't claim there are none */
   listFailed?: boolean;
 }
@@ -28,7 +30,7 @@ interface Props {
  * the value — resolveClientChoice turns it into none / existing / new, so typing a new name and
  * going on without picking anything still adds that client.
  */
-export function ClientNameField({ clients, value, onChange, label, listFailed }: Props) {
+export function ClientNameField({ clients, value, onChange, label, listFailed, lower = 'client' }: Props) {
   const uid = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1); // nothing highlighted until an arrow key, so Enter never swaps a typed new name for a match
@@ -39,10 +41,10 @@ export function ClientNameField({ clients, value, onChange, label, listFailed }:
     const exact = clients.some(c => c.name.trim().toLowerCase() === q);
     return [
       ...shown.map(c => ({ key: c.id, text: c.name, pick: c.name, create: false })),
-      ...(q && !exact ? [{ key: '__new', text: `+ Create client "${value.trim()}"`, pick: value.trim(), create: true }] : []),
-      { key: '__none', text: 'No client (internal project)', pick: '', create: false },
+      ...(q && !exact ? [{ key: '__new', text: `+ Create ${lower} "${value.trim()}"`, pick: value.trim(), create: true }] : []),
+      { key: '__none', text: lower === 'client' ? 'No client (internal project)' : `No ${lower}`, pick: '', create: false },
     ];
-  }, [clients, value]);
+  }, [clients, value, lower]);
 
   const choose = (i: number) => { onChange(options[i].pick); setOpen(false); setActive(-1); };
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -81,7 +83,7 @@ export function ClientNameField({ clients, value, onChange, label, listFailed }:
         <ul id={listId} role="listbox" aria-label={label} onMouseDown={(e) => e.preventDefault()}
           className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg">
           {clients.length === 0 && !listFailed && !value.trim() && (
-            <li role="presentation" className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">You have no clients yet — type a name to add one</li>
+            <li role="presentation" className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">You have no {lower}s yet — type a name to add one</li>
           )}
           {options.map((o, i) => (
             <li key={o.key} id={`${uid}-opt-${i}`} role="option" aria-selected={i === active}

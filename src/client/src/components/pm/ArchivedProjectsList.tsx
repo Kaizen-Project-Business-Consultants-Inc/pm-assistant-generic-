@@ -10,6 +10,7 @@ import { PROJECT_TYPE_LABELS } from '../../constants/projectTypes';
 import { SectionCard, TH, TD } from '../ui/SectionCard';
 import { MetaPill } from '../ui/MetaPill';
 import type { ProjectSummaryPM } from '../../types/pm';
+import { useClientWord } from '../../hooks/useClientWord';
 
 const PAGE = 25;
 
@@ -20,6 +21,7 @@ const PAGE = 25;
  * project (its Manager/Owner, or admin/PMO: the list's canEdit) — hide, don't disable.
  */
 export function ArchivedProjectsList({ projects, canRestore }: { projects: ProjectSummaryPM[]; canRestore: boolean }) {
+  const word = useClientWord();
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const queryClient = useQueryClient();
@@ -51,7 +53,7 @@ export function ArchivedProjectsList({ projects, canRestore }: { projects: Proje
             <thead>
               <tr>
                 <th scope="col" className={TH}>Project</th>
-                <th scope="col" className={TH}>Client</th>
+                <th scope="col" className={TH}>{word.one}</th>
                 <th scope="col" className={TH}>Type</th>
                 <th scope="col" className={TH}>Archived on</th>
                 <th scope="col" className={TH}>End date</th>

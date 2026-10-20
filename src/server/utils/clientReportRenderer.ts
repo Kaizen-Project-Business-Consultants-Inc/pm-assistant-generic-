@@ -26,11 +26,12 @@ const date = (d: string | null | undefined) => {
 };
 const label = (p: { name: string; code: string | null }) => `${p.code ? `${esc(p.code)} ` : ''}${esc(p.name)}`;
 
-export function renderClientReportHtml(r: ClientReport): string {
+/** word: "department" on the Team and Enterprise plans (U50), else "client" */
+export function renderClientReportHtml(r: ClientReport, word: 'client' | 'department' = 'client'): string {
   const title = `
     <table style="width: 100%; border-collapse: collapse;"><tr>
       <td style="background: ${NAVY}; padding: 18px 20px; border-radius: 6px 6px 0 0;">
-        <p style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;">CLIENT STATUS REPORT</p>
+        <p style="color: #ffffff; margin: 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px;">${word.toUpperCase()} STATUS REPORT</p>
         <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0; font-size: 12px;">${esc(r.client.name)} · ${r.projects.length} project${r.projects.length === 1 ? '' : 's'} · period ${esc(r.period)}</p>
       </td></tr></table>`;
 

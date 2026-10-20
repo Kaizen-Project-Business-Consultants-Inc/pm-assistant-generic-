@@ -14,6 +14,7 @@ import { FeedbackModal } from '../feedback/FeedbackModal';
 import { ROUTES, ROUTE_PATTERNS } from '../../routes';
 import { canOpenPath } from '../../constants/roleRoutes';
 import { SIDEBAR_ID, MOBILE_MENU_BUTTON_ID } from './mobileMenuIds';
+import { useClientWord } from '../../hooks/useClientWord';
 
 interface Breadcrumb {
   label: string;
@@ -83,7 +84,8 @@ const hasPage = (path: string) => APP_ROUTES.some(pattern => matchPath({ path: p
  * /kpi and /clients/<id> have none, so they show as plain text instead of leading to "Page not found".
  * The id after /project/ or /clients/ shows the project or client name once known.
  */
-export function buildBreadcrumbs(pathname: string, names: { project?: string; client?: string } = {}): Breadcrumb[] {
+/** names.word: "Client"/"Clients", or "Department"/"Departments" on the Team and Enterprise plans (U50) */
+export function buildBreadcrumbs(pathname: string, names: { project?: string; client?: string; word?: { one: string; many: string } } = {}): Breadcrumb[] {
   const segments = pathname.split('/').filter(Boolean);
   const crumbs: Breadcrumb[] = [{ label: 'Home', to: ROUTES.dashboard }];
 
@@ -98,7 +100,8 @@ export function buildBreadcrumbs(pathname: string, names: { project?: string; cl
     const parent = segments[i - 1];
     let label: string;
     if (parent === 'project' && i === 1) label = names.project || 'Project';
-    else if (parent === 'clients' && i === 1) label = names.client || 'Client';
+    else if (parent === 'clients' && i === 1) label = names.client || names.word?.one || 'Client';
+    else if (segment === 'clients' && names.word) label = names.word.many;
     else if (UUID_RE.test(segment)) label = 'Item';
     else label = segmentLabels[segment]
       || (ACRONYMS.has(segment.toLowerCase())
@@ -152,12 +155,13 @@ const TopBar: React.FC<TopBarProps> = ({ onMobileMenuToggle, mobileMenuOpen = fa
     staleTime: 120_000,
   });
   const clientName = clientId ? clientsData?.groups?.find(g => g.id === clientId)?.name : undefined;
+  const word = useClientWord();
 
   // A crumb for a page the role can't open (e.g. Clients above a client report) is plain text
   const breadcrumbs = useMemo(
-    () => buildBreadcrumbs(location.pathname, { project: projectName, client: clientName })
+    () => buildBreadcrumbs(location.pathname, { project: projectName, client: clientName, word })
       .map(c => (c.to && !canOpenPath(user, c.to) ? { label: c.label } : c)),
-    [location.pathname, projectName, clientName, user],
+    [location.pathname, projectName, clientName, user, word],
   );
 
   // Close dropdown when clicking outside

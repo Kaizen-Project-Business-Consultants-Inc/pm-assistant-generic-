@@ -246,7 +246,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
         </div>
 
         {client?.canManage && (
-          <ClientNameField clients={client.clients} listFailed={client.listFailed} value={clientText} onChange={setClientText} label={client.label} />
+          <ClientNameField clients={client.clients} listFailed={client.listFailed} value={clientText} onChange={setClientText} label={client.label} lower={client.word.lower} />
         )}
         {client && !client.canManage && client.clients.length > 0 && (
           <div>
@@ -257,7 +257,7 @@ export const TemplateCustomizeForm: React.FC<TemplateCustomizeFormProps> = ({
               onChange={(e) => setClientId(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             >
-              <option value="">No client</option>
+              <option value="">No {client.word.lower}</option>
               {client.clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>

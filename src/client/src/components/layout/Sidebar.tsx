@@ -31,6 +31,8 @@ import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { SIDEBAR_ID, MOBILE_MENU_BUTTON_ID } from './mobileMenuIds';
 import { PM_NAV_SECTIONS, GUEST_HIDDEN_PATHS, canOpenPath } from '../../constants/roleRoutes';
 import type { NavSection } from '../../constants/roleRoutes';
+import { useClientWord } from '../../hooks/useClientWord';
+import { ROUTES } from '../../routes';
 
 interface SidebarProps {
   collapsed: boolean;
@@ -140,6 +142,9 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
   const nav = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { t } = useTranslation();
+  const word = useClientWord();
+  // "Departments" on the Team and Enterprise plans, else the translated "Clients" (U50)
+  const navLabel = (item: { labelKey: string; path: string }) => (item.path === ROUTES.clients && word.isDepartment ? t('nav.departments') : t(item.labelKey));
   // The Kovarti platform admin (admin role, no company) — company members are never admin
   const isAdmin = isPlatformAdmin(user);
 
@@ -293,7 +298,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
                   <Link
                     key={item.path}
                     to={item.path}
-                    title={collapsed ? t(item.labelKey) : undefined}
+                    title={collapsed ? navLabel(item) : undefined}
                     className={`
                       group relative flex items-center rounded-lg
                       transition-all duration-200 ease-in-out
@@ -320,7 +325,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle, mobileOpen, onMo
                         ${collapsed ? 'sr-only' : 'block'}
                       `}
                     >
-                      {t(item.labelKey)}
+                      {navLabel(item)}
                     </span>
 
                     <NavCount kind={item.count} counts={{ aiInbox: inboxWaiting }} collapsed={collapsed} />
