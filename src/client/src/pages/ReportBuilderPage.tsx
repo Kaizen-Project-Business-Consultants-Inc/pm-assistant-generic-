@@ -13,6 +13,7 @@ import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { ReportDesigner } from '../components/reports/ReportDesigner';
 import { ReportPreview } from '../components/reports/ReportPreview';
 import { ReportScheduleModal } from '../components/reports/ReportScheduleModal';
+import { DescribeReport } from '../components/reports/DescribeReport';
 
 type View = 'list' | 'designer' | 'preview';
 
@@ -32,6 +33,8 @@ export const ReportBuilderPage: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>();
   const [scheduleTemplate, setScheduleTemplate] = useState<{ id: string; name: string } | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  /** A draft from typed words, opened in the designer to change by hand */
+  const [draftSections, setDraftSections] = useState<Record<string, unknown>[] | undefined>();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['reportTemplates'],
@@ -49,6 +52,13 @@ export const ReportBuilderPage: React.FC = () => {
 
   const handleNewReport = () => {
     setSelectedTemplateId(undefined);
+    setDraftSections(undefined);
+    setView('designer');
+  };
+
+  const handleEditDraft = (sections: Record<string, unknown>[]) => {
+    setSelectedTemplateId(undefined);
+    setDraftSections(sections);
     setView('designer');
   };
 
@@ -64,6 +74,7 @@ export const ReportBuilderPage: React.FC = () => {
 
   const handleDelete = (id: string) => setConfirmDeleteId(id);
 
+  // Close without saving: a draft opened with Edit is shown again, as it was
   const handleDesignerClose = () => {
     setSelectedTemplateId(undefined);
     setView('list');
@@ -73,6 +84,7 @@ export const ReportBuilderPage: React.FC = () => {
     queryClient.invalidateQueries({ queryKey: ['reportTemplates'] });
     setView('list');
     setSelectedTemplateId(undefined);
+    setDraftSections(undefined);
   };
 
   const handlePreviewClose = () => {
@@ -84,6 +96,7 @@ export const ReportBuilderPage: React.FC = () => {
     return (
       <ReportDesigner
         templateId={selectedTemplateId}
+        initialSections={draftSections}
         onClose={handleDesignerClose}
         onSaved={handleDesignerSaved}
       />
@@ -120,6 +133,17 @@ export const ReportBuilderPage: React.FC = () => {
           New Report
         </button>
       </div>
+
+      {/* only where it can run (Report Builder role + AI on the plan): hidden, not refused */}
+      {data?.canDraft && (
+        <DescribeReport
+          onStartBlank={handleNewReport}
+          onEditByHand={handleEditDraft}
+          onSaved={handleDesignerSaved}
+          resume={draftSections}
+          onDone={() => setDraftSections(undefined)}
+        />
+      )}
 
       {/* Loading */}
       {isLoading && (

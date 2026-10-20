@@ -20,6 +20,8 @@ import { apiService } from '../../services/api';
 
 interface ReportDesignerProps {
   templateId?: string;
+  /** A draft made from typed words, opened here to change by hand before saving (2026-10-20) */
+  initialSections?: Record<string, unknown>[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -37,6 +39,8 @@ interface ReportSection {
     dateEnd: string;
     projectId: string;
     status: string;
+    /** Only past their due date and not done (tasks, action items) */
+    overdue?: boolean;
   };
   groupBy: string;
   columns: string[];
@@ -214,6 +218,26 @@ function generateId(): string {
   return `sec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** A saved or drafted section as the form holds it (overdue kept: the form had no place for it) */
+function toDesignerSection(s: any): ReportSection {
+  return {
+    id: s.id || generateId(),
+    title: s.title || '',
+    // 'kpi' is the older name of the KPI card (the type list only offers kpi_card)
+    type: s.type === 'kpi' ? 'kpi_card' : (s.type || 'table'),
+    dataSource: s.dataSource || 'tasks',
+    filters: {
+      dateStart: s.filters?.dateStart || s.filters?.dateRange?.start || '',
+      dateEnd: s.filters?.dateEnd || s.filters?.dateRange?.end || '',
+      projectId: s.filters?.projectId || '',
+      status: s.filters?.status || '',
+      ...(s.filters?.overdue ? { overdue: true } : {}),
+    },
+    groupBy: s.groupBy || '',
+    columns: s.columns || [],
+  };
+}
+
 function createEmptySection(type: SectionType): ReportSection {
   return {
     id: generateId(),
@@ -231,7 +255,7 @@ function createEmptySection(type: SectionType): ReportSection {
   };
 }
 
-export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerProps) {
+export function ReportDesigner({ templateId, initialSections, onClose, onSaved }: ReportDesignerProps) {
   const uid = useId();
   const [form, setForm] = useState<TemplateFormData>({
     name: '',
@@ -267,23 +291,15 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
         description: t.description || '',
         isShared: t.isShared || false,
         config: t.config || {},
-        sections: (t.sections || t.config?.sections || []).map((s: any) => ({
-          id: s.id || generateId(),
-          title: s.title || '',
-          type: s.type || 'table',
-          dataSource: s.dataSource || 'tasks',
-          filters: {
-            dateStart: s.filters?.dateStart || '',
-            dateEnd: s.filters?.dateEnd || '',
-            projectId: s.filters?.projectId || '',
-            status: s.filters?.status || '',
-          },
-          groupBy: s.groupBy || '',
-          columns: s.columns || [],
-        })),
+        sections: (t.sections || t.config?.sections || []).map(toDesignerSection),
       });
     }
   }, [existingTemplate]);
+
+  // A draft from typed words starts the form (a new report: nothing saved yet)
+  useEffect(() => {
+    if (!templateId && initialSections?.length) setForm(prev => ({ ...prev, sections: initialSections.map(toDesignerSection) }));
+  }, [templateId, initialSections]);
 
   const saveMutation = useMutation({
     mutationFn: (data: TemplateFormData) => {
@@ -343,7 +359,7 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
     }));
   };
 
-  const updateSectionFilter = (id: string, filterKey: keyof ReportSection['filters'], value: string) => {
+  const updateSectionFilter = (id: string, filterKey: keyof ReportSection['filters'], value: string | boolean) => {
     setForm((prev) => ({
       ...prev,
       sections: prev.sections.map((s) =>
@@ -615,6 +631,18 @@ export function ReportDesigner({ templateId, onClose, onSaved }: ReportDesignerP
                       ))}
                     </select>
                   </div>
+                  {(section.dataSource === 'tasks' || section.dataSource === 'action_items') && (
+                    <label htmlFor={`${uid}-${section.id}-overdue`} className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 sm:col-span-2 lg:col-span-4">
+                      <input
+                        id={`${uid}-${section.id}-overdue`}
+                        type="checkbox"
+                        checked={!!section.filters.overdue}
+                        onChange={(e) => updateSectionFilter(section.id, 'overdue', e.target.checked)}
+                        className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      />
+                      Overdue only (past the due date and not done)
+                    </label>
+                  )}
                 </div>
               </div>
 

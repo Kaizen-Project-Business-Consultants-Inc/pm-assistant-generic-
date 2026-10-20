@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 672,
+  "count": 674,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -152,6 +152,7 @@
     "dismissPmWeeklyReviewItem",
     "downloadAttachment",
     "downloadClientReportDocx",
+    "draftReportFromWords",
     "editRaidUpdate",
     "elevateLesson",
     "emailClientReport",
@@ -406,6 +407,7 @@
     "getAiInboxCount",
     "getProjectAiInboxCount",
     "acceptAiSuggestion",
+    "previewReportSections",
     "rejectAiSuggestion",
     "undoAiSuggestion",
     "getSkillMatch",

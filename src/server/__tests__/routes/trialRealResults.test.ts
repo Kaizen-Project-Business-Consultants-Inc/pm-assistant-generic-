@@ -13,7 +13,7 @@ import { join, relative } from 'path';
 const state = vi.hoisted(() => ({ tier: 'trial', hasRows: true }));
 vi.mock('../../middleware/auth', () => ({ authMiddleware: vi.fn(async (req: any) => { req.user = { userId: 'u1', role: 'project_manager' }; }) }));
 vi.mock('../../middleware/requireScope', () => ({ requireScope: () => vi.fn(async () => {}) }));
-vi.mock('../../middleware/requireTier', async (orig) => ({ ...(await orig() as object), requireFeature: () => vi.fn(async () => {}) }));
+vi.mock('../../middleware/requireTier', async (orig) => ({ ...(await orig() as object), requireFeature: () => vi.fn(async () => {}), hasFeature: vi.fn(async () => true) }));
 vi.mock('../../middleware/requireProjectAccess', () => ({
   requireProjectAccess: () => vi.fn(async () => {}),
   checkProjectRole: vi.fn(async () => ({ ok: true })),
@@ -148,7 +148,7 @@ describe('lists and things the user acts on: always real for the trial', () => {
   it('report templates: a trial user sees their own templates', async () => {
     builder.getTemplates.mockResolvedValueOnce([{ id: 't1' }]);
     const res = await app.inject({ method: 'GET', url: '/builder/templates' });
-    expect(res.json()).toEqual({ templates: [{ id: 't1' }] });
+    expect(res.json()).toMatchObject({ templates: [{ id: 't1' }] }); // + canDraft (the describe box)
   });
 });
 

@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-20 — Report Builder in plain words
+- Approved mock https://claude.ai/artifact/5UUmYUEJesdXfuhx8V1B5m (user: "yes build it"). Type the report → one AI call picks builder sections (checked by the shared schema; anything else listed under "Not in this draft") → preview with real figures (`POST /report-builder/preview`, not saved) → Edit (designer, `initialSections`) / Remove / change by typing → Save report. Report Builder roles only; `/draft` also needs AI on the plan. Gaps closed: overdue only filter, people's names when grouping tasks by person, grouped tables (count, most late), and the designer's own Start/End dates now apply (they were ignored). Not built: AI summary sentences. Prod saved-template check not done (needs the user's OK).
+
 ## 2026-10-20 — Mjuzi costs less per message (U58)
 - Audit: each step resent ~8–15k tokens at full price; 23 calls ≈ $0.79 for one chat. Now: prompt caching in `completeToolLoop` (tools + system + last message; final call keeps tools with `tool_choice: none`), cache tokens priced in `calculateCost` but still counted as input for budgets; no more `action-<time>` notes / prior-conversation count in the prompt (they changed it every message); company instructions before the data (they were what got cut on big prompts); ids in Mjuzi's project context; portfolio context ≤ 50 projects.
 - Follow-ups keep ids: stored actions keep `refs` (≤ 30 items) and the history adds "[Items in this answer: …]". New `update_tasks` (≤ 50, each via update_task's checks). `get_overdue_tasks` = one SQL query for overdue rows only, with plan ids. Question/reply order fixed when both saved in the same second. Chat list reloads only when a new chat starts.

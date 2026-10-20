@@ -414,6 +414,12 @@ AI-powered workflow generation from plain English descriptions.
 
 ---
 
+## 18b. Report Builder in plain words (2026-10-20)
+
+The PM types the report they want; `POST /api/v1/report-builder/draft` makes **one** `completeWithJsonSchema` call (`services/reportBuilder/reportFromWords.ts`, usage feature `report-from-words`, ~1–2 cents). The system prompt lists only the builder's own parts (section types, the 8 data sources, the designer's group-by values, the filters including `overdue`) and the projects the person can read (name + id, ≤100, no sample); the request goes in `<user-data>`. "Change it by typing" sends the current draft with the change and gets the whole new draft back. Every returned section is re-checked with the shared section schema (`reportSections.ts`), its group-by against the allowed list, and its project against the readable set — anything else is dropped and named in `notDone`, shown as **Not in this draft**. The AI never writes SQL and nothing is saved: the PM previews (`POST /preview`, same code as a saved report, readable projects only), edits, and saves. AI-written summary sentences were discussed as a later step and are not built.
+
+---
+
 ## AI Scheduling Services
 
 **Service:** `aiSchedulingClaude.ts`

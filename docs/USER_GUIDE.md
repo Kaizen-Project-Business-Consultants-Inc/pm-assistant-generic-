@@ -1624,6 +1624,17 @@ The Reports page includes links to the **EVM Dashboard** and **Monte Carlo Simul
 
 ### Report Builder
 
+**Describe the report you want (October 2026).** At the top of the Report Builder, type what the report should show in plain words, for example "Overdue tasks by owner for Customer Portal, plus budget spent vs allocated as a chart", and click **Build draft**. Kovarti builds a draft from your own project data and shows it with real figures. Under each section a grey line says how it was built (for example "Table · Tasks · Customer Portal · overdue only · grouped by person"). Nothing is saved yet:
+
+- **Remove** drops a section; **Edit** opens the whole draft in the designer to change by hand (close the designer without saving and you're back at the draft).
+- **Change it by typing**: write what to change ("make the chart a pie and add open risks by severity") and click **Update draft**.
+- **Not in this draft** lists anything you asked for that the Report Builder can't show, and why — each section reads one kind of data, so "risks per owner next to budget" becomes two sections.
+- **Save report** asks for a name and saves it with your other templates; **Discard** throws the draft away. After saving it works like any template: open, share, export, schedule.
+
+Building or updating a draft uses AI (about 1–2 cents each); the box only shows on a plan with AI. It only ever reads the projects you can open. **Start from blank** opens the designer as before.
+
+New in the designer at the same time: **Overdue only** (tasks past their due date — or their finish date when they have no due date — and not done, summary rows left out; RAID actions past their due date and not closed, resolved, cancelled or mitigated), tasks and time grouped by person show people's **names**, time grouped by anything adds up **hours** (it used to count entries), a **table with Group By** shows a count (or hours) per group, for an overdue list also "Most late (days)", and the **Start/End Date** filters now apply, the whole end day included — before, the designer's dates were saved but not used, so saved reports with dates may show different numbers now.
+
 For custom reports, use the **Report Builder**:
 
 1. Navigate to **Report Builder** in the sidebar.

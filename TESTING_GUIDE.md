@@ -877,6 +877,10 @@ On staging as qa.pm in a company with no clients:
 4. As qa.team (team member): no client box while there are no clients; with clients, a plain list.
 Unit tests: `__tests__/hooks/useClientChoice.test.tsx`, `__tests__/components/projectClientField.test.tsx`.
 
+### 9a5. Report Builder in plain words (2026-10-20)
+
+Unit: `src/server/__tests__/services/reportFromWords.test.ts` (one AI call; readable projects only, no sample; request fenced as data; made-up parts, groupings and other companies' projects dropped and named; change-by-typing sends the current draft; ≤12), `reportBuilderDraftData.test.ts` (preview runs unsaved sections limited to readable projects; overdue for tasks and actions; names for people in charts, grouped tables and the person column; grouped table with "Most late (days)"; the designer's dateStart/dateEnd apply), `routes/reportDraftRoutes.test.ts` (PM gets a draft, team member/viewer and no-AI plans refused before any call, empty/too-long request, budget and AI-down messages, preview validation and roles). By hand on staging as the QA PM: Report Builder → type "Overdue tasks by owner for <project>, plus budget spent vs allocated as a chart" → Build draft → two sections with figures and the grey "how it was built" lines → "make the chart a pie" → Update draft → Edit opens the designer with both sections (Overdue only ticked) → Save report → it appears in the list and Generate shows the same figures. As the QA team member the page is not in the menu.
+
 ### 9a4. RAID import size limits (U39, 2026-10-18)
 
 1. RAID → Import a 6 MB `.xlsx` (pictures/formatting, few rows) → it reads and previews. A 26 MB `.xlsx` or an 11 MB `.csv` → a plain size message under the box.

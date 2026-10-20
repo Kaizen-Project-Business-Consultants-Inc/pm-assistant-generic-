@@ -3,6 +3,8 @@ import { databaseService } from '../database/connection';
 import { reportTemplateRepository, ReportTemplateRow } from '../database/ReportTemplateRepository';
 import { auditLedgerService } from './AuditLedgerService';
 import { policyEngineService } from './PolicyEngineService';
+import { today as todayUtc } from '../utils/calendarDate';
+import { CLOSED_STATUSES } from './raidReview/rules';
 
 export interface ReportTemplate {
   id: string;
@@ -29,9 +31,39 @@ export interface ReportSectionConfig {
     dateRange?: { start: string; end: string };
     projectId?: string;
     status?: string;
+    /** What the hand designer saves (dateRange is the older form) */
+    dateStart?: string;
+    dateEnd?: string;
+    /** Only past their due date and not done (tasks, action items) */
+    overdue?: boolean;
   };
   groupBy?: string;
   columns?: string[];
+}
+
+/** A group's column heading in a grouped table: "Person" for the people columns */
+function humanizeGroup(groupBy: string): string {
+  if (['assigned_to', 'assignee', 'resource', 'assignee_name'].includes(groupBy)) return 'Person';
+  if (groupBy === 'project_id' || groupBy === 'project') return 'Project';
+  return groupBy.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/** A task's person by name (tasks hold the resource id), or "Not assigned" */
+const TASK_PERSON_NAME = `COALESCE(
+  (SELECT pr_name.name FROM resources pr_name WHERE pr_name.id = tasks.assigned_to),
+  (SELECT pr_user.name FROM resources pr_user WHERE pr_user.user_id = tasks.assigned_to LIMIT 1),
+  CASE WHEN tasks.assigned_to REGEXP '^[0-9a-fA-F-]{36}$' THEN NULL ELSE NULLIF(TRIM(tasks.assigned_to), '') END,
+  'Not assigned')`;
+/** A time entry's person by name (entries hold the user id): their resource, else their account name */
+const TIME_PERSON_NAME = `COALESCE(
+  (SELECT te_res.name FROM resources te_res WHERE te_res.user_id = time_entries.user_id LIMIT 1),
+  (SELECT te_user.full_name FROM pmassist.users te_user WHERE te_user.id = time_entries.user_id),
+  'Unknown person')`;
+/** A task's own due date, else its finish — how the rest of the app judges a task late */
+const TASK_DUE = 'COALESCE(due_date, end_date)';
+/** What a chart or grouped table adds up: hours for time logged, else how many */
+function valueOf(dataSource: DataSource): string {
+  return dataSource === 'time_entries' ? 'COALESCE(SUM(hours), 0)' : 'COUNT(*)';
 }
 
 export interface ReportSection {
@@ -130,10 +162,20 @@ class ReportBuilderService {
   } | undefined, readable: Set<string> | 'all'): Promise<GeneratedReport> {
     const template = await this.getTemplateById(templateId);
     if (!template) throw new Error('Report template not found');
+    return this.generateSections(template.config.sections, params, readable);
+  }
 
+  /**
+   * Runs sections that may not be saved yet — a draft's preview — exactly as a saved report runs
+   * them, limited to the projects the person may read.
+   */
+  async generateSections(configSections: ReportSectionConfig[], params: {
+    dateRange?: { start: string; end: string };
+    projectId?: string;
+  } | undefined, readable: Set<string> | 'all'): Promise<GeneratedReport> {
     const sections: ReportSection[] = [];
 
-    for (const section of template.config.sections) {
+    for (const section of configSections) {
       const mergedFilters = {
         ...section.filters,
         ...(params?.dateRange ? { dateRange: params.dateRange } : {}),
@@ -171,6 +213,8 @@ class ReportBuilderService {
     }
 
     if (normalizedType === 'table') {
+      // a table grouped by something is a count per group ("overdue tasks by person")
+      if (groupBy) return this.executeGroupedTable(tableName, whereClause, whereParams, groupBy, dataSource, !!filters?.overdue);
       return this.executeTableQuery(tableName, whereClause, whereParams, columns);
     }
 
@@ -258,18 +302,36 @@ class ReportBuilderService {
       params.push(filters.status);
     }
 
-    if (filters.dateRange) {
+    // Overdue: due before today (UTC calendar day, as the overdue lists elsewhere) and not done
+    if (filters.overdue && (dataSource === 'tasks' || dataSource === 'action_items')) {
+      if (dataSource === 'tasks') {
+        // a summary row is late only through its tasks
+        conditions.push(`${TASK_DUE} IS NOT NULL AND ${TASK_DUE} < ? AND status NOT IN ('completed', 'cancelled') AND COALESCE(is_summary, 0) = 0`);
+        params.push(todayUtc());
+      } else {
+        // every RAID status that means finished (resolved, cancelled, mitigated …)
+        const closed = [...CLOSED_STATUSES];
+        conditions.push(`due_date IS NOT NULL AND due_date < ? AND LOWER(status) NOT IN (${closed.map(() => '?').join(', ')})`);
+        params.push(todayUtc(), ...closed);
+      }
+    }
+
+    // The designer saves dateStart/dateEnd; saved reports and the generate call use dateRange —
+    // both count (the designer's dates were ignored until 2026-10-20)
+    const range = filters.dateRange ?? (filters.dateStart || filters.dateEnd ? { start: filters.dateStart ?? '', end: filters.dateEnd ?? '' } : undefined);
+    if (range) {
       let dateField = 'created_at';
       if (dataSource === 'time_entries') dateField = 'date';
       else if (dataSource === 'meetings') dateField = 'scheduled_date';
       else if (dataSource === 'action_items') dateField = 'due_date';
-      if (filters.dateRange.start) {
+      if (range.start) {
         conditions.push(`${dateField} >= ?`);
-        params.push(filters.dateRange.start);
+        params.push(range.start);
       }
-      if (filters.dateRange.end) {
-        conditions.push(`${dateField} <= ?`);
-        params.push(filters.dateRange.end);
+      if (range.end) {
+        // the whole end day counts (created_at has a time of day)
+        conditions.push(`${dateField} < DATE_ADD(?, INTERVAL 1 DAY)`);
+        params.push(range.end);
       }
     }
 
@@ -436,7 +498,8 @@ class ReportBuilderService {
       // Filter to only allowed columns
       const safeColumns = columns.filter(c => allowed.includes(c));
       if (safeColumns.length > 0) {
-        selectClause = safeColumns.join(', ');
+        // a task's person column shows the name, not the stored resource id (2026-10-20)
+        selectClause = safeColumns.map(c => (tableName === 'tasks' && c === 'assigned_to' ? `${TASK_PERSON_NAME} AS assigned_to` : c)).join(', ');
       }
     }
 
@@ -469,18 +532,19 @@ class ReportBuilderService {
       'type', 'severity', 'meeting_type', 'assignee_name', 'source',
       'is_active', 'resource_group',
     ];
-    if (ALLOWED_COLUMNS.includes(groupBy)) {
-      return { selectExpr: groupBy, groupExpr: groupBy };
-    }
-
     // Client-side aliases → actual column names
     const aliasMap: Record<string, string> = {
       project: 'project_id',
       assignee: 'assigned_to',
       resource: 'assigned_to',
     };
-    if (aliasMap[groupBy] && ALLOWED_COLUMNS.includes(aliasMap[groupBy])) {
-      return { selectExpr: aliasMap[groupBy], groupExpr: aliasMap[groupBy] };
+    const column = ALLOWED_COLUMNS.includes(groupBy) ? groupBy : aliasMap[groupBy];
+    if (column && ALLOWED_COLUMNS.includes(column)) {
+      // tasks by person: the person's name, not the stored resource id (2026-10-20)
+      // tasks and time by person: the person's name, grouped once by it (2026-10-20)
+      if (column === 'assigned_to' && dataSource === 'tasks') return { selectExpr: TASK_PERSON_NAME, groupExpr: 'label' };
+      if (column === 'assigned_to' && dataSource === 'time_entries') return { selectExpr: TIME_PERSON_NAME, groupExpr: 'label' };
+      return { selectExpr: column, groupExpr: column };
     }
 
     // Computed temporal groupings
@@ -508,6 +572,34 @@ class ReportBuilderService {
     return null;
   }
 
+  /**
+   * A table counted per group: label + count, and for an overdue list how late the latest one is
+   * (whole days past its due date).
+   */
+  private async executeGroupedTable(
+    tableName: string,
+    whereClause: string,
+    whereParams: any[],
+    groupBy: string,
+    dataSource: DataSource,
+    overdue: boolean,
+  ): Promise<any> {
+    const resolved = this.resolveGroupBy(groupBy, dataSource) ?? { selectExpr: 'status', groupExpr: 'status' };
+    const late = overdue && (dataSource === 'tasks' || dataSource === 'action_items');
+    const rows = await databaseService.query<any>(
+      `SELECT ${resolved.selectExpr} as label, ${valueOf(dataSource)} as value${late ? `, MAX(DATEDIFF(?, ${dataSource === 'tasks' ? TASK_DUE : 'due_date'})) as most_late` : ''}
+       FROM ${tableName}${whereClause} GROUP BY ${resolved.groupExpr} ORDER BY value DESC LIMIT 500`,
+      late ? [todayUtc(), ...whereParams] : whereParams,
+    );
+    const headers = [humanizeGroup(groupBy), dataSource === 'time_entries' ? 'Hours' : 'Count', ...(late ? ['Most late (days)'] : [])];
+    return {
+      table: {
+        headers,
+        rows: rows.map((r: any) => [r.label || 'N/A', Number(r.value), ...(late ? [Number(r.most_late)] : [])]),
+      },
+    };
+  }
+
   private async executeChartQuery(
     tableName: string,
     whereClause: string,
@@ -520,7 +612,7 @@ class ReportBuilderService {
     const groupExpr = resolved ? resolved.groupExpr : 'status';
 
     const rows = await databaseService.query<any>(
-      `SELECT ${selectExpr} as label, COUNT(*) as value FROM ${tableName}${whereClause} GROUP BY ${groupExpr} ORDER BY value DESC`,
+      `SELECT ${selectExpr} as label, ${valueOf(dataSource || 'projects')} as value FROM ${tableName}${whereClause} GROUP BY ${groupExpr} ORDER BY value DESC`,
       whereParams,
     );
     return {

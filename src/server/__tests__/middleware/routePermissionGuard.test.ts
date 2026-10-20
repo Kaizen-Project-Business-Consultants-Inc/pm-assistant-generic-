@@ -212,7 +212,9 @@ const NON_PROJECT: Record<string, string[]> = {
     "PUT /templates/:id",
     "DELETE /templates/:id",
     "POST /templates/:id/generate",
-    "POST /templates/:id/export"
+    "POST /templates/:id/export",
+    "POST /draft",
+    "POST /preview"
   ],
   "reporting/reportSchedules.ts": [
     "POST /",

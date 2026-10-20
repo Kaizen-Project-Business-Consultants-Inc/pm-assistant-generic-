@@ -226,7 +226,6 @@
     "server|exports|src/server/services/proactiveAlertService.ts|ProactiveAlertService",
     "server|exports|src/server/services/raidReview/autoRerun.ts|QUIET_MS",
     "server|exports|src/server/services/raidReview/autoRerun.ts|_resetRaidAutoRerunForTests",
-    "server|exports|src/server/services/raidReview/rules.ts|CLOSED_STATUSES",
     "server|exports|src/server/services/raidReview/rules.ts|RULES",
     "server|exports|src/server/services/raidReview/rules.ts|isOpen",
     "server|exports|src/server/services/scheduleReview/fixProposer.ts|DEFAULT_CHECK_THRESHOLD",

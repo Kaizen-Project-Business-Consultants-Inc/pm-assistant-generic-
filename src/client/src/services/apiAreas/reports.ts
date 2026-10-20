@@ -331,6 +331,18 @@ ${schedules.filter((s: any) => s.criticalPath?.criticalPathTaskIds?.length).map(
     return response.data;
   }
 
+  /** Typed words → a draft report (not saved); `current` = the draft being changed by typing */
+  async draftReportFromWords(request: string, current?: unknown[]) {
+    const response = await this.api.post('/report-builder/draft', { request, ...(current && current.length ? { current } : {}) });
+    return response.data as { draft: { sections: Record<string, unknown>[]; notDone: string[] } };
+  }
+
+  /** Runs sections that are not saved yet (a draft) */
+  async previewReportSections(sections: unknown[]) {
+    const response = await this.api.post('/report-builder/preview', { sections });
+    return response.data;
+  }
+
   async exportReportFromTemplate(templateId: string, format: string) {
     const response = await this.api.post(`/report-builder/templates/${templateId}/export`, { format });
     return response.data;

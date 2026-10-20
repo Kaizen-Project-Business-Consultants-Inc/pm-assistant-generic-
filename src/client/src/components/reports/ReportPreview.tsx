@@ -36,7 +36,7 @@ interface ChartDataPoint {
   color?: string;
 }
 
-interface ReportSectionData {
+export interface ReportSectionData {
   title: string;
   type: 'kpi' | 'kpi_card' | 'table' | 'bar_chart' | 'line_chart' | 'pie_chart';
   data: {
@@ -305,7 +305,8 @@ function PieChartSvg({ data }: { data: ChartDataPoint[] }) {
   );
 }
 
-function SectionRenderer({ section }: { section: ReportSectionData }) {
+/** One section's figures (also the draft view in DescribeReport) */
+export function SectionRenderer({ section }: { section: ReportSectionData }) {
   const iconMap: Record<string, React.ReactNode> = {
     kpi: <Activity className="w-4 h-4 text-emerald-600" />,
     kpi_card: <Activity className="w-4 h-4 text-emerald-600" />,
