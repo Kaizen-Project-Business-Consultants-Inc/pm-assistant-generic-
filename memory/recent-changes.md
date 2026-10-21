@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-20 — Round 5: date-move warning, problem counts, daily deadline email, Mjuzi mic and replies (U61, U60, U55, U56, U57)
+- Mock https://claude.ai/artifact/PP6uLZfCCZBPRVrWqwMXNC, user "proceed" (with the suggested answers: 08:00 local, warning only for U61, partly-done extras later).
+- U61: rules 1.11 R41 "Dates don't follow a link" (high); the fix preview returns brokenLinks/brokenExample/maxShiftDays/moves; the panel no longer says "no dates move" — the impact box warns and lists the moving tasks, Apply says "— N tasks move".
+- U60: the review counts "problems"; R01/R02 say "One problem, N links to add"; a level of only links says "N links to add".
+- U55: deadlineNotificationJob sends one summary per person per project per day (Managers/Owners the whole plan, others their own tasks, one email if both), overdue + due in the next 7 days, button "Open these N in the schedule" → `?tab=schedule&deadlines=mine|all`, where ScheduleWorkspace marks them with a note (Show only these / Show all / Close). Notification emails keep line breaks. (The mock said the other alert email would be folded in — there is none: proactiveAlertService only feeds /alerts.)
+- U56: Mjuzi's Speak button, Speak replies and Clear chat in a row above a full-width box; useVoice reports why voice failed.
+- U57: ActionOutcome shows what Mjuzi did ("Marked complete (4)", names link to the schedule), hides look-ups and retried guesses and ids; update/create task results carry scheduleId/projectId.
+
 ## 2026-10-20 — Report Builder in plain words
 - Approved mock https://claude.ai/artifact/5UUmYUEJesdXfuhx8V1B5m (user: "yes build it"). Type the report → one AI call picks builder sections (checked by the shared schema; anything else listed under "Not in this draft") → preview with real figures (`POST /report-builder/preview`, not saved) → Edit (designer, `initialSections`) / Remove / change by typing → Save report. Report Builder roles only; `/draft` also needs AI on the plan. Gaps closed: overdue only filter, people's names when grouping tasks by person, grouped tables (count, most late), and the designer's own Start/End dates now apply (they were ignored). Not built: AI summary sentences. Prod saved-template check not done (needs the user's OK).
 

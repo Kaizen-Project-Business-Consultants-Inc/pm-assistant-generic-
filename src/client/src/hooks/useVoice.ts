@@ -10,7 +10,7 @@ interface SpeechRecognitionInstance extends EventTarget {
   lang: string;
   onresult: ((event: SpeechRecognitionEvent) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
   start(): void;
   stop(): void;
   abort(): void;
@@ -25,8 +25,29 @@ declare global {
   }
 }
 
+/**
+ * What to tell the person when voice fails (U56, 2026-10-20: the mic did nothing and said nothing in
+ * Edge). The browser's speech service reports why; "aborted" is our own stop.
+ */
+export function voiceErrorMessage(code?: string): string | null {
+  switch (code) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'The microphone is blocked. Allow it from the padlock in the address bar, then try again.';
+    case 'audio-capture':
+      return 'No microphone was found. Check one is connected and allowed for this browser.';
+    case 'no-speech':
+      return "I didn't hear anything. Tap Speak and try again.";
+    case 'aborted':
+      return null;
+    default:
+      return "Voice isn't working in this browser right now. Try Chrome, or type instead.";
+  }
+}
+
 export function useVoice() {
   const [isListening, setIsListening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const onResultRef = useRef<((transcript: string) => void) | null>(null);
@@ -50,7 +71,10 @@ export function useVoice() {
       };
 
       recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
+      recognition.onerror = (event) => {
+        setIsListening(false);
+        setError(voiceErrorMessage(event?.error));
+      };
 
       recognitionRef.current = recognition;
       return () => {
@@ -68,12 +92,14 @@ export function useVoice() {
     const rec = recognitionRef.current;
     if (!rec) return;
     onResultRef.current = onResult;
+    setError(null);
     try {
       rec.start();
       setIsListening(true);
     } catch {
       setIsListening(false);
       onResultRef.current = null;
+      setError(voiceErrorMessage());
     }
   }, []);
 
@@ -98,5 +124,5 @@ export function useVoice() {
     window.speechSynthesis.speak(u);
   }, []);
 
-  return { isSupported, isListening, startListening, stopListening, speak };
+  return { isSupported, isListening, startListening, stopListening, speak, error };
 }

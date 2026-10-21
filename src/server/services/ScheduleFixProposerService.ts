@@ -26,7 +26,7 @@ import {
   problemsOf,
   type ProposedFix, type FixSeverity, describeFix } from './scheduleReview/fixProposer';
 import { applyFixesInMemory, latestFinish, rollUpSummaries, PlanCopy, milestoneUpdate, splitHeadValues, splitPartValues } from './scheduleReview/fixPreview';
-import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, reviewSchedule, type ReviewTask, type ReviewInput } from './scheduleReview/rules';
+import { RULES_VERSION, findMissingPhases, PRE_REVIEW_BASELINE_NAME, reviewSchedule, linksDatesBreak, type ReviewTask, type ReviewInput } from './scheduleReview/rules';
 import { companyCacheKey } from '../utils/companyCacheKey';
 import { profileFor } from './scheduleReview/domainProfiles';
 import { projectService } from './ProjectService';
@@ -105,6 +105,14 @@ export interface ApplyResult {
 
 interface PreviewResult {
   tasksMoved: number;
+  /** The most any one task moves, in calendar days (U61) */
+  maxShiftDays: number;
+  /** Links the plan's own dates already break (R41): Apply makes the dates follow them too */
+  brokenLinks: number;
+  /** One of them, to name in the warning */
+  brokenExample: { task: string; waitsFor: string } | null;
+  /** The tasks that move, the furthest first (at most MAX_PREVIEW_MOVES) */
+  moves: Array<{ name: string; finishBefore: string | null; finishAfter: string; days: number }>;
   /** The plan's last finish now, and after Apply would re-flow it (YYYY-MM-DD) */
   finishBefore: string | null;
   finishAfter: string | null;
@@ -117,6 +125,22 @@ interface PreviewResult {
 
 /** How long a preview reuses what the review read for its proposal, and how many proposals it keeps */
 const PREVIEW_BASE_TTL_MS = 5 * 60_000;
+
+/** Most moved tasks a preview lists (the count says how many in all) */
+const MAX_PREVIEW_MOVES = 50;
+
+/** What would move, by how far each finish moves (calendar days), the furthest first */
+function movesList(deltas: DateDelta[]): PreviewResult['moves'] {
+  return deltas
+    .map(d => ({
+      name: d.name,
+      finishBefore: d.oldEnd ? d.oldEnd.slice(0, 10) : null,
+      finishAfter: d.newEnd.slice(0, 10),
+      days: d.oldEnd ? calendarDaysBetween(d.oldEnd.slice(0, 10), d.newEnd.slice(0, 10)) : 0,
+    }))
+    .sort((a, b) => Math.abs(b.days) - Math.abs(a.days))
+    .slice(0, MAX_PREVIEW_MOVES);
+}
 const PREVIEW_BASE_MAX = 200;
 
 /** The ticked fixes, in proposal order; a rename takes the name the PM typed, when they changed it */
@@ -636,8 +660,15 @@ export class ScheduleFixProposerService {
 
     const finishBefore = latestFinish(tasks);
     const finishAfter = flow.projectEndAfter;
+    const broken = linksDatesBreak(tasks.map(toFullReviewTask));
+    const moves = movesList(flow.deltas);
     return {
       tasksMoved: flow.tasksMoved,
+      // how far a finish moves, as the result table shows it
+      maxShiftDays: moves.reduce((m, x) => Math.max(m, Math.abs(x.days)), 0),
+      brokenLinks: broken.length,
+      brokenExample: broken[0] ? { task: broken[0].task.name, waitsFor: broken[0].waitsFor.name } : null,
+      moves,
       finishBefore,
       finishAfter,
       finishShiftDays: finishBefore && finishAfter ? calendarDaysBetween(finishBefore, finishAfter) : 0,

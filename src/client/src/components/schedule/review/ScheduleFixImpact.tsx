@@ -13,6 +13,13 @@ import { formatCalendarDate } from '../../../utils/dateUtils';
 /** The server's dry run (ScheduleFixProposerService.preview) */
 interface FixPreview {
   tasksMoved: number;
+  /** The most any one task's finish moves, in days (U61) */
+  maxShiftDays?: number;
+  /** Links the plan's own dates already break: Apply makes the dates follow them too */
+  brokenLinks?: number;
+  brokenExample?: { task: string; waitsFor: string } | null;
+  /** The tasks that move, most first (at most 50) */
+  moves?: Array<{ name: string; finishBefore: string | null; finishAfter: string; days: number }>;
   finishBefore: string | null;
   finishAfter: string | null;
   finishShiftDays: number;
@@ -100,6 +107,44 @@ export function ImpactBox({ preview, working }: { preview: FixPreview | null; wo
   );
 }
 
+/**
+ * Dates will move because the plan already breaks some links (U61): what moves, how far, why —
+ * and the tasks, on request
+ */
+function MovesWarning({ preview }: { preview: FixPreview }) {
+  const [open, setOpen] = useState(false);
+  if (!preview.tasksMoved) return null;
+  const far = preview.maxShiftDays ? `, up to ${preview.maxShiftDays} day${preview.maxShiftDays === 1 ? '' : 's'}` : '';
+  return (
+    <div className="mt-1 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 px-2.5 py-2 text-xs text-amber-900 dark:text-amber-100 space-y-1">
+      <p>
+        <strong>Applying these moves {preview.tasksMoved} task{preview.tasksMoved === 1 ? '' : 's'}{far}.</strong>
+        {preview.brokenLinks ? (
+          <> Your plan already has {preview.brokenLinks} link{preview.brokenLinks === 1 ? '' : 's'} its dates don't follow
+            {preview.brokenExample ? <> (for example, '{preview.brokenExample.task}' starts before '{preview.brokenExample.waitsFor}' finishes)</> : null}.
+            {' '}Applying fixes makes the plan follow those too.</>
+        ) : null}
+      </p>
+      {preview.moves && preview.moves.length > 0 && (
+        <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="font-medium underline">
+          {open ? 'Hide' : 'See'} the {preview.tasksMoved} task{preview.tasksMoved === 1 ? '' : 's'}
+        </button>
+      )}
+      {open && preview.moves && (
+        <ul className="max-h-48 overflow-y-auto space-y-0.5">
+          {preview.moves.map((m, i) => (
+            <li key={`${i}-${m.name}`} className="flex justify-between gap-2">
+              <span className="min-w-0 truncate">{m.name}</span>
+              <span className="shrink-0 tabular-nums">{fmt(m.finishBefore)} → {fmt(m.finishAfter)} ({m.days > 0 ? '+' : ''}{m.days}d)</span>
+            </li>
+          ))}
+          {preview.tasksMoved > preview.moves.length && <li>…and {preview.tasksMoved - preview.moves.length} more</li>}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ImpactDetails({ preview, working }: { preview: FixPreview | null; working: boolean }) {
   if (!preview && !working) return null;
   return (
@@ -121,6 +166,7 @@ function ImpactDetails({ preview, working }: { preview: FixPreview | null; worki
             {preview.tasksMoved === 0 ? 'No task dates move.' : `${preview.tasksMoved} task${preview.tasksMoved === 1 ? '' : 's'} move.`}
             {working && <span className="ml-1 text-xs">Updating…</span>}
           </p>
+          <MovesWarning preview={preview} />
         </>
       )}
     </div>

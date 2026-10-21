@@ -88,7 +88,6 @@
     "client|types|src/services/apiAreas/raid.ts|ProjectSponsor",
     "client|types|src/services/apiAreas/scheduling.ts|CompanyHoliday",
     "client|types|src/services/apiAreas/scheduling.ts|WorkingCalendarData",
-    "client|types|src/stores/aiChatStore.ts|ActionResult",
     "client|types|src/stores/aiChatStore.ts|ChatMessage",
     "client|types|src/types/pm.ts|DocumentPM",
     "client|types|src/types/pm.ts|IssuePM",

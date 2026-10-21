@@ -95,6 +95,8 @@ const sections: Section[] = [
       'Overdue actions — meeting actions included — come from the RAID log and open it in one click',
       'Click any line to jump straight to that task, highlighted in the schedule',
       'The bell shows events (assignments, changes, approvals) — live warnings stay in the briefing',
+      'Deadline email: one a day per project at 08:00 your time — what is overdue and due this week; Open these in the schedule marks them, with Show only these / Show all / Close',
+      'Mjuzi (the chat panel): Speak above the message box (it says why if voice fails — try Chrome if Edge does nothing), Speak replies, Clear chat; after a change Mjuzi lists what it did, e.g. Marked complete (4), each name linking to the task',
     ],
   },
   {
@@ -167,6 +169,8 @@ const sections: Section[] = [
       'Each level says how many problems it fixes, as the review counts them, and names them; anything ticked is always shown',
       'Right after you apply, Undo these fixes (inside the green result, it asks first) puts that batch back in one step; where Apply was, the button says Done',
       'It also points out bottleneck tasks (4+ unfinished tasks wait on them — shown for information, no score change) and sprints left open after their end',
+      'It counts problems: one problem can take several changes — e.g. "One problem, 4 links to add"',
+      'Dates don’t follow a link: a task starts before what it waits for finishes. Fixing anything makes the plan follow those links, so before you apply the box warns how many tasks move and how far, and Apply says "— 21 tasks move"',
     ],
   },
   {

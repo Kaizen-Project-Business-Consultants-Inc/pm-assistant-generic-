@@ -2847,6 +2847,8 @@ The column mapping component (`ColumnMapper`) is shared between the "From File" 
 
 ### Schedule Review (automatic after import, on demand from the toolbar)
 
+**Rules 1.11 (2026-10-20, U61): R41 "Dates don't follow a link" (high)** — `linksDatesBreak()` (FS: successor starts on/before its predecessor's finish; SS/FF by their own dates; leads/lags and finished tasks skipped). The fix preview returns `brokenLinks`, `brokenExample`, `maxShiftDays` and `moves` (≤50, finish before → after) because the re-flow every Apply runs enforces these links too — 4 new links once moved 21 tasks up to 89 days under a panel that said "no dates move". The panel now says "N links that fit the dates of the tasks they join", the impact box warns and lists the moves, and Apply reads "Apply N fixes — M tasks move". The review panel counts problems ("1 critical problem"), and R01/R02 say how many links one problem takes (U60).
+
 *Rules v1.8 (Oct 2026) adds R38 "Bottleneck task" (info — shown, no score deduction): an open task with 4 or more open tasks waiting directly on it; and R40 "Sprint left open after its end" (low): a sprint not completed more than 5 working days after its end date. Both came from the retired Dependency Risk and Project Hygiene agents; their long-chain check was not kept (normal in sequential plans).*
 
 *Rules v1.7 (Oct 2026) adds R37 "Work starting soon with no one named" (medium): an open leaf task starting within 14 days (or already started) whose Assigned To or a % person is a generic role. R11 now ignores generic roles and treats a placeholder email (`@example.com`) as no email.*

@@ -90,6 +90,11 @@ export interface CreateNotificationData {
   scheduleId?: string;
   linkType?: string;
   linkId?: string;
+  /** The email's button, when "View Details" says too little ("Open these 5 in the schedule") */
+  ctaLabel?: string;
+  /** Not to the project's Slack/Teams channel: a per-person notice sent to each of several people
+   *  would land there once per person (the daily deadline summary) */
+  skipChannels?: boolean;
 }
 
 export class NotificationService {
@@ -164,7 +169,7 @@ export class NotificationService {
             await emailService.sendNotificationEmail(
               user.email,
               `[${data.severity?.toUpperCase()}] ${data.title}`,
-              data.title, data.message, ctaUrl, 'View Details',
+              data.title, data.message, ctaUrl, data.ctaLabel || 'View Details',
             );
           }
         } catch (err) {
@@ -175,9 +180,8 @@ export class NotificationService {
 
     // Fire-and-forget push notification delivery
     if (shouldInApp && webPushService.isConfigured) {
-      const linkUrl = data.linkType && data.linkId
-        ? `/${data.linkType}s/${data.linkId}`
-        : undefined;
+      // the same page the bell and the email open (it built /<type>s/<id>, a page that doesn't exist)
+      const linkUrl = notificationPath(data) ?? undefined;
       webPushService.sendPush(data.userId, {
         title: data.title,
         body: data.message,
@@ -191,7 +195,7 @@ export class NotificationService {
     // Fire-and-forget Slack delivery (project-scoped only, skip types already dispatched inline)
     const shouldSlack = isAdminSystemAlert || !category || (catPref.slack ?? true);
     const slackEvent = NOTIFICATION_TYPE_TO_SLACK_EVENT[type];
-    if (shouldSlack && slackEvent && data.projectId) {
+    if (shouldSlack && slackEvent && data.projectId && !data.skipChannels) {
       slackEventDispatcher.dispatchToSlack(slackEvent, {
         notification: { title: data.title, message: data.message, severity, type },
       }, data.projectId).catch(err => {

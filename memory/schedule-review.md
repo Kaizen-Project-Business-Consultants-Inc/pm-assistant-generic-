@@ -2,6 +2,9 @@
 
 Source of truth: Claude Doc "Schedule Review Spec" (https://claude.ai/code/artifact/3ca60bdf-7674-4668-b205-020981c1edc7), also exported as PDF to the user on 2026-09-16. This file carries enough of it to keep building without the doc.
 
+## Rules v1.11 (2026-10-20) — R41 links the dates don't follow (U61)
+- R41 (high, per task): a finish-to-start link where the task starts on or before its predecessor's finish (SS / FF by their own dates; leads/lags and finished tasks left out). `linksDatesBreak()` in rules.ts, also used by the fix preview (`brokenLinks`, `brokenExample`, `maxShiftDays`, `moves`). No fix offered yet. The UAT case: 4 new links moved 21 tasks up to 89 days because the re-flow enforced these.
+
 ## Rules v1.8 (2026-10-04) — R38 bottleneck task, R40 open sprint (from the retired agents)
 - R38 (info, no deduction): open leaf task with 4+ open leaf tasks waiting directly on it. No built-in template trips it.
 - R40 (low, schedule-wide): a sprint not completed/cancelled more than 5 working days after its end date (input `sprints` from ScheduleReviewService).

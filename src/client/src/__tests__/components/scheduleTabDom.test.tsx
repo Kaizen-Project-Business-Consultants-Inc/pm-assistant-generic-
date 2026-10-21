@@ -192,3 +192,36 @@ describe('Schedule tab DOM is byte-identical to the pre-move capture', () => {
     expectSameDom('no-schedules', document.body.innerHTML);
   });
 });
+
+// U55 (2026-10-20): the daily deadline email opens ?deadlines=all|mine — the schedule works out the
+// same tasks again, marks them and says how many, until the PM closes the note
+describe('Schedule tab opened from the deadline email', () => {
+  it('the whole plan: marks what is overdue or due this week, Show only these filters, Close clears', async () => {
+    await renderTab('/project/p1?tab=schedule&schedule=s1&deadlines=all');
+    const note = await waitFor(() => {
+      const el = [...document.querySelectorAll('[role="status"]')].find(n => n.textContent?.includes('From your email'));
+      if (!el) throw new Error('no note yet');
+      return el as HTMLElement;
+    });
+    // 12 Mar 2026: "Requirements doc" (in progress, due 10 Mar) is the one overdue task; nothing due by 18 Mar
+    expect(note.textContent).toContain('1 overdue, 0 due this week — marked below.');
+    fireEvent.click([...note.querySelectorAll('button')].find(b => b.textContent === 'Show only these')!);
+    await settle();
+    expect(document.body.textContent).toContain('Requirements doc');
+    expect(document.body.textContent).not.toContain('Stakeholder interviews');
+    fireEvent.click([...note.querySelectorAll('button')].find(b => b.textContent === 'Close')!);
+    await settle();
+    expect([...document.querySelectorAll('[role="status"]')].some(n => n.textContent?.includes('From your email'))).toBe(false);
+    expect(document.body.textContent).toContain('Stakeholder interviews'); // the filter went with the note
+  });
+
+  it("mine: only the person's own tasks (theirs via their resource)", async () => {
+    await renderTab('/project/p1?tab=schedule&schedule=s1&deadlines=mine');
+    const note = await waitFor(() => {
+      const el = [...document.querySelectorAll('[role="status"]')].find(n => n.textContent?.includes('From your email'));
+      if (!el) throw new Error('no note yet');
+      return el as HTMLElement;
+    });
+    expect(note.textContent).toMatch(/overdue|nothing is overdue/);
+  });
+});

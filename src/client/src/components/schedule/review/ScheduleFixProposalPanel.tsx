@@ -194,8 +194,10 @@ function problemsByLevel(fixes: ProposedFix[]): Map<FixLevel, Set<string>> {
 
 /** "Apply 20 fixes — fixes 1 critical problem" (U53: the review's own count of what it fixes); an
  *  older proposal without problems: "Apply 4 fixes (1 critical, 3 low)" */
-function applyLabel(chosen: ProposedFix[]): string {
+function applyLabel(chosen: ProposedFix[], tasksMoved?: number): string {
   const head = `Apply ${plural(chosen.length, 'fix', 'fixes')}`;
+  // dates will move: the button says so (U61 — the PM applied "no dates move" and 21 tasks moved)
+  if (tasksMoved && tasksMoved > 0) return `${head} — ${plural(tasksMoved, 'task')} move`;
   const problems = problemsByLevel(chosen);
   if (problems.size > 0) {
     const parts = LEVELS.filter(l => problems.get(l)?.size).map(l => `${problems.get(l)!.size} ${l}`);
@@ -394,7 +396,7 @@ function LevelSection({ group, scheduleId, proposalId, tick, list, ticked, probl
       <div className="flex flex-wrap items-center gap-2 mb-2">
         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(level)}`}>{label}</span>
         {problems.length > 0 && <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{plural(problems.length, 'problem')}</span>}
-        <span className="text-xs text-gray-500 dark:text-gray-400">{problems.length > 0 ? '· ' : ''}{plural(items.length, 'fix', 'fixes')} offered</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{problems.length > 0 ? '· ' : ''}{items.every(f => f.type === 'add_dependency') ? `${plural(items.length, 'link')} to add` : `${plural(items.length, 'fix', 'fixes')} offered`}</span>
         {rest.length > 0 && tick(`fix-level-${level}`, rest, `Select all in ${label}`)}
       </div>
       {problems.length > 0 && (
@@ -411,7 +413,8 @@ function LevelSection({ group, scheduleId, proposalId, tick, list, ticked, probl
         {links.length > 0 && (
           <div>
             <p className="mb-1 text-xs font-medium text-gray-600 dark:text-gray-300">
-              {plural(links.length, 'link')} follow your dates — no dates move{linksTicked > 0 ? ` · ${linksTicked} ticked` : ''}
+              {/* each link fits the dates of the two tasks it joins; what Apply moves overall is in "If you apply what is ticked" (U61: "no dates move" was wrong when the plan already broke other links) */}
+              {plural(links.length, 'link')} that fit the dates of the tasks they join{linksTicked > 0 ? ` · ${linksTicked} ticked` : ''}
             </p>
             {list(links, `${level}:links`)}
           </div>
@@ -807,7 +810,7 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
                 className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:opacity-50"
               >
                 {applyMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {chosen.length > MAX_APPLY ? `Apply up to ${MAX_APPLY} fixes at a time` : applyLabel(chosen)}
+                {chosen.length > MAX_APPLY ? `Apply up to ${MAX_APPLY} fixes at a time` : applyLabel(chosen, impact.data?.tasksMoved)}
               </button>
             </>
           ) : (

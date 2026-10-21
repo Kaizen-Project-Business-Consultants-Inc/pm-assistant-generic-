@@ -7,6 +7,7 @@ import {
   calendarDaySpan,
   workingDaySpan,
   RULES,
+  linksDatesBreak,
   type ReviewInput,
   type ReviewTask,
 } from '../../services/scheduleReview/rules';
@@ -529,7 +530,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.10') // 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.11') // 1.11: R41 links the dates don't follow; 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
@@ -714,5 +715,47 @@ describe('R38 and R40 — taken over from the retired agents (rules 1.8)', () =>
     expect(f[0].message).toContain("'Sprint 3'");
     expect(f[0].message).not.toContain('Sprint 4');
     expect(RULES.R40.severity).toBe('low');
+  });
+});
+
+// U61 (2026-10-20): 4 new links moved 21 tasks up to 89 days because the imported plan's dates
+// already broke other links. R41 names those links before anything is applied.
+describe("R41 — dates that don't follow a link", () => {
+  const fs = (id: string) => [{ dependencyId: id, dependencyType: 'FS', lagDays: 0 }];
+
+  it('a task that starts before what it waits for has finished (finish-to-start)', () => {
+    const a = task({ id: 'ssd', name: 'SSD Part-1 Review & Sign-Off', startDate: '2026-08-25', endDate: '2026-09-15', assignedTo: 'r1', description: 'x' });
+    const b = task({ id: 'core', name: 'Core LMS Configuration', startDate: '2026-08-26', endDate: '2026-10-22', assignedTo: 'r1', description: 'x', dependencies: fs('ssd') });
+    const f = reviewSchedule(input([a, b])).findings.find(x => x.ruleId === 'R41');
+    expect(f).toBeDefined();
+    expect(f!.taskIds).toEqual(['core']);
+    expect(f!.severity).toBe('high');
+    expect(f!.message).toContain("'Core LMS Configuration' starts before 'SSD Part-1 Review & Sign-Off' finishes");
+  });
+
+  it('starting the day after is fine; starting on the finish day is not', () => {
+    const a = task({ id: 'a', name: 'A', startDate: '2026-09-01', endDate: '2026-09-10' });
+    expect(linksDatesBreak([a, task({ id: 'b', name: 'B', startDate: '2026-09-11', endDate: '2026-09-12', dependencies: fs('a') })])).toHaveLength(0);
+    expect(linksDatesBreak([a, task({ id: 'c', name: 'C', startDate: '2026-09-10', endDate: '2026-09-12', dependencies: fs('a') })])).toHaveLength(1);
+  });
+
+  it('start-to-start and finish-to-finish are judged by their own dates', () => {
+    const a = task({ id: 'a', name: 'A', startDate: '2026-09-05', endDate: '2026-09-20' });
+    const ss = task({ id: 'ss', name: 'SS', startDate: '2026-09-04', endDate: '2026-09-25', dependencies: [{ dependencyId: 'a', dependencyType: 'SS', lagDays: 0 }] });
+    const ff = task({ id: 'ff', name: 'FF', startDate: '2026-09-06', endDate: '2026-09-19', dependencies: [{ dependencyId: 'a', dependencyType: 'FF', lagDays: 0 }] });
+    expect(linksDatesBreak([a, ss, ff]).map(x => x.task.id)).toEqual(['ss', 'ff']);
+  });
+
+  it('links with a lead or lag, and finished tasks, are left out', () => {
+    const a = task({ id: 'a', name: 'A', startDate: '2026-09-01', endDate: '2026-09-10' });
+    const lag = task({ id: 'l', name: 'L', startDate: '2026-09-05', endDate: '2026-09-12', dependencies: [{ dependencyId: 'a', dependencyType: 'FS', lagDays: 2 }] });
+    const done = task({ id: 'd', name: 'D', status: 'completed', startDate: '2026-09-05', endDate: '2026-09-12', dependencies: fs('a') });
+    expect(linksDatesBreak([a, lag, done])).toHaveLength(0);
+  });
+
+  it('a plan whose dates follow every link has no R41', () => {
+    const a = task({ id: 'a', name: 'A', startDate: '2026-09-01', endDate: '2026-09-10' });
+    const b = task({ id: 'b', name: 'B', startDate: '2026-09-11', endDate: '2026-09-15', dependencies: fs('a') });
+    expect(reviewSchedule(input([a, b])).findings.some(x => x.ruleId === 'R41')).toBe(false);
   });
 });

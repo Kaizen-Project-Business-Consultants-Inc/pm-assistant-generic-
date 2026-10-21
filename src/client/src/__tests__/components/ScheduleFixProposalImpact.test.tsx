@@ -65,7 +65,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 describe('Propose fixes — links between tasks that run at the same time', () => {
   it('are their own group, left out of "Select all in" and "Select all", with their own tick', async () => {
     renderPanel();
-    expect(await screen.findByText('2 links follow your dates — no dates move')).toBeInTheDocument();
+    expect(await screen.findByText('2 links that fit the dates of the tasks they join')).toBeInTheDocument(); // U61: no "no dates move" claim
     const group = screen.getByRole('group', { name: 'Critical: links between tasks that run at the same time' });
 
     fireEvent.click(screen.getByLabelText('Select all in Critical'));
@@ -101,7 +101,7 @@ describe('Propose fixes — "If you apply what is ticked"', () => {
     expect(finish.className).toMatch(/text-red-700/);
     expect(within(status).getByText('6 tasks move.')).toBeInTheDocument();
     // never blocks Apply
-    expect(screen.getByRole('button', { name: 'Apply 3 fixes (3 critical)' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Apply 3 fixes — 6 tasks move' })).toBeEnabled(); // never blocks Apply; says what moves (U61)
   });
 
   it('a screen reader hears one sentence, from a live region that is always there', async () => {
@@ -209,5 +209,35 @@ describe('Propose fixes — Needs your decision', () => {
     expect(within(section).queryByRole('button', { name: 'Undo the last Apply' })).not.toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Edit project end date' })).not.toBeInTheDocument();
     expect(within(section).queryByRole('button', { name: 'Save a baseline now' })).not.toBeInTheDocument();
+  });
+});
+
+// U61 (2026-10-20): "4 links follow your dates — no dates move", then Apply moved 21 tasks up to 89
+// days — the plan already broke other links. The panel now says what will move, and why.
+describe('Propose fixes — dates the plan already breaks (U61)', () => {
+  it('warns how many tasks move, how far, names a broken link, lists them, and the Apply button says it', async () => {
+    api.previewScheduleFixes.mockImplementation(async () => ({
+      tasksMoved: 21, maxShiftDays: 89, brokenLinks: 6,
+      brokenExample: { task: 'Core LMS Configuration', waitsFor: 'SSD Part-1 Review & Sign-Off' },
+      moves: [{ name: 'System Integration', finishBefore: '2026-10-22', finishAfter: '2027-01-19', days: 89 }],
+      finishBefore: '2027-04-19', finishAfter: '2027-07-06', finishShiftDays: 78, projectEnd: '2027-07-31', scoreBefore: 40, scoreAfter: 48,
+    }));
+    renderPanel();
+    fireEvent.click(await screen.findByLabelText('Select all in Critical'));
+    expect(await screen.findByText(/Applying these moves 21 tasks, up to 89 days\./)).toBeInTheDocument();
+    expect(screen.getByText(/6 links its dates don't follow/)).toBeInTheDocument();
+    expect(screen.getByText(/'Core LMS Configuration' starts before 'SSD Part-1 Review & Sign-Off' finishes/)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /^Apply 2 fixes — 21 tasks move$/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'See the 21 tasks' }));
+    expect(screen.getByText('System Integration')).toBeInTheDocument();
+    expect(screen.getByText(/\+89d/)).toBeInTheDocument();
+  });
+
+  it('nothing moves: no warning, and the button says what it fixes', async () => {
+    renderPanel();
+    fireEvent.click(await screen.findByLabelText('Select all in Critical'));
+    await screen.findByText('No task dates move.');
+    expect(screen.queryByText(/Applying these moves/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Apply 2 fixes (2 critical)' })).toBeInTheDocument();
   });
 });

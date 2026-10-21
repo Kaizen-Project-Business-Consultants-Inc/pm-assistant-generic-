@@ -50,9 +50,13 @@ import { ROUTES } from '../../../routes';
 import { announce } from '../../../utils/announce';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 import { isCalendarOverdue, toCalendarDate, formatCalendarDate } from '../../../utils/dateUtils';
+import { deadlineTasks } from '../../../utils/deadlineDigest';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
+
+/** The row filter "Show only these" sets from the deadline email's note */
+const DEADLINE_ROWS_LABEL = 'From your email';
 export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened, onEditProject }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'critical' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void; /** Open Edit project (only for those who may edit it) */ onEditProject?: () => void }) {
   const uid = useId();
   const queryClient = useQueryClient();
@@ -449,6 +453,43 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   }, [tasks, filteredTasks]);
   const rowNumberOf = useCallback((id: string) => rowNumbers.get(id), [rowNumbers]);
 
+  // ---- From the daily deadline email: ?deadlines=mine|all (U55) ----
+  // The tasks it named are worked out again here (overdue + due in the next week, the person's own
+  // or the whole plan for the PM), marked, and a note says how many — until the PM closes it.
+  const linkedDeadlines = focusParams.get('deadlines');
+  const [deadlineView, setDeadlineView] = useState<{ ids: string[]; overdue: number; soon: number } | null>(null);
+  useEffect(() => {
+    if (!linkedDeadlines || tasksLoading) return;
+    if (linkedSchedule && linkedSchedule !== schedule.id) return; // the right schedule is on its way
+    if (linkedDeadlines === 'mine' && !resourcesData) return; // who "mine" is comes with the resources
+    const parents = new Set(tasks.map(t => t.parentTaskId).filter(Boolean) as string[]);
+    const { overdue, soon } = deadlineTasks(
+      tasks.map(t => ({ ...t, isSummary: parents.has(t.id) })),
+      new Date(),
+      // the person's own: given to their resource, or to them directly (as "My tasks" counts it)
+      linkedDeadlines === 'mine' ? new Set([...myResourceIds, ...(user?.id ? [user.id] : [])]) : undefined,
+    );
+    const ids = [...overdue, ...soon];
+    setDeadlineView({ ids, overdue: overdue.length, soon: soon.length });
+    handleHighlightTasks(ids);
+    setFocusParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.delete('deadlines');
+      next.delete('schedule');
+      return next;
+    }, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the link and its data are here
+  }, [linkedDeadlines, tasksLoading, schedule.id, resourcesData]);
+  // Something else cleared the marks (closing the review panel) while the note is up: mark them again
+  useEffect(() => {
+    if (deadlineView && deadlineView.ids.length > 0 && highlightTaskIds.size === 0) setHighlightTaskIds(new Set(deadlineView.ids));
+  }, [deadlineView, highlightTaskIds]);
+  const closeDeadlineView = () => {
+    setDeadlineView(null);
+    setHighlightTaskIds(new Set());
+    if (reviewRowFilter?.label === DEADLINE_ROWS_LABEL) setReviewRowFilter(null);
+  };
+
   // The highlight and the note fade after a few seconds; the row stays where it is.
   useEffect(() => {
     if (!focusTaskId) return;
@@ -646,6 +687,27 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       {focusNotice && (
         <div role="status" className="mb-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
           {focusNotice}
+        </div>
+      )}
+      {deadlineView && (
+        <div role="status" className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-yellow-400 dark:border-yellow-600 bg-yellow-50 dark:bg-yellow-900/30 px-3 py-2 text-sm text-yellow-900 dark:text-yellow-100">
+          <span>
+            <strong>From your email:</strong>{' '}
+            {deadlineView.ids.length === 0
+              ? 'nothing is overdue or due this week any more.'
+              : `${deadlineView.overdue} overdue, ${deadlineView.soon} due this week — marked below.`}
+          </span>
+          <span className="flex gap-2">
+            {deadlineView.ids.length > 0 && (
+              <>
+                <button type="button" className="px-2.5 py-1 rounded-md border border-yellow-500 text-xs font-medium hover:bg-yellow-100 dark:hover:bg-yellow-900/50"
+                  onClick={() => setReviewRowFilter({ taskIds: new Set(deadlineView.ids), label: DEADLINE_ROWS_LABEL })}>Show only these</button>
+                <button type="button" className="px-2.5 py-1 rounded-md border border-yellow-500 text-xs font-medium hover:bg-yellow-100 dark:hover:bg-yellow-900/50"
+                  onClick={() => setReviewRowFilter(null)}>Show all</button>
+              </>
+            )}
+            <button type="button" className="px-2.5 py-1 rounded-md border border-yellow-500 text-xs font-medium hover:bg-yellow-100 dark:hover:bg-yellow-900/50" onClick={closeDeadlineView}>Close</button>
+          </span>
         </div>
       )}
       {viewMode === 'gantt' && (

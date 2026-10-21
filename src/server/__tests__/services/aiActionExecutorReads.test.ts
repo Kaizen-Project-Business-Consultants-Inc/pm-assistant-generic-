@@ -219,7 +219,7 @@ describe('Mjuzi update_tasks — one step, the same checks per task', () => {
     expect(ss.updateTask).toHaveBeenCalledWith('t1', { status: 'completed', progressPercentage: 100 });
     expect(r.success).toBe(true);
     expect(r.summary).toMatch(/Updated 3 task\(s\).*"Task t1", "Task t2", "Task t3"/);
-    expect(r.data.updated).toEqual([{ id: 't1', name: 'Task t1' }, { id: 't2', name: 'Task t2' }, { id: 't3', name: 'Task t3' }]);
+    expect(r.data.updated).toEqual(['t1', 't2', 't3'].map(id => ({ id, name: `Task ${id}`, scheduleId: 's1', projectId: 'p1' }))); // where each lives: the chat links them (U57)
   });
 
   it('a task the person may not change is refused like update_task would, the others still change', async () => {

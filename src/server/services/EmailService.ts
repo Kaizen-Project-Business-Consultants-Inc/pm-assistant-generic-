@@ -268,7 +268,8 @@ export class EmailService {
       return;
     }
 
-    let bodyHtml = `<p style="color: #4b5563; line-height: 1.6;">${escapeHtml(message)}</p>`;
+    // pre-line: a message with lines (the daily deadline list) keeps them
+    let bodyHtml = `<p style="color: #4b5563; line-height: 1.6; white-space: pre-line;">${escapeHtml(message)}</p>`;
     if (ctaUrl) {
       bodyHtml += `
         <div style="text-align: center; margin: 32px 0;">

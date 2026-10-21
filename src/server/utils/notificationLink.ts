@@ -27,6 +27,9 @@ export function notificationPath(n: NotificationTarget): string | null {
     }
     case 'schedule':
       return p ? `/project/${p}?tab=schedule${n.linkId ? `&schedule=${n.linkId}` : ''}` : null;
+    case 'deadline_digest':
+      // the daily deadline email (U55): the schedule with its tasks marked — "digest:<day>:mine|all"
+      return p ? `/project/${p}?tab=schedule${n.scheduleId ? `&schedule=${n.scheduleId}` : ''}&deadlines=${n.linkId?.endsWith(':mine') ? 'mine' : 'all'}` : null;
     case 'raid':
       return project('raid');
     case 'change_request':

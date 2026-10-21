@@ -6,8 +6,6 @@ import {
   Bot,
   User,
   ChevronDown,
-  CheckCircle,
-  XCircle,
   Mic,
   MicOff,
   History,
@@ -16,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useAIChatStore, dashboardQuickActions, projectQuickActions, type QuickAction, type ConversationSummary } from '../../stores/aiChatStore';
 import { AIChatContext } from './AIChatContext';
+import { ActionOutcome } from './ActionOutcome';
 import { QuickActions } from './QuickActions';
 import { useVoice } from '../../hooks/useVoice';
 import type { AIPanelContext } from '../../stores/uiStore';
@@ -36,7 +35,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const lastSpokenMessageIdRef = useRef<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const { isSupported: voiceSupported, isListening, startListening, stopListening, speak } = useVoice();
+  const { isSupported: voiceSupported, isListening, startListening, stopListening, speak, error: voiceError } = useVoice();
 
   const quickActions = context.type === 'project' ? projectQuickActions : dashboardQuickActions;
 
@@ -256,28 +255,8 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
                 {message.isStreaming && (
                   <span className="ml-1 inline-block h-4 w-1.5 animate-pulse rounded-full bg-primary-500" />
                 )}
-                {/* Action Results */}
-                {message.actions && message.actions.length > 0 && (
-                  <div className="mt-2 space-y-1.5 border-t border-gray-200 dark:border-gray-600 pt-2">
-                    {message.actions.map((action, idx) => (
-                      <div
-                        key={idx}
-                        className={`flex items-start gap-2 rounded-lg px-2.5 py-1.5 text-xs ${
-                          action.success
-                            ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400'
-                        }`}
-                      >
-                        {action.success ? (
-                          <CheckCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                        ) : (
-                          <XCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                        )}
-                        <span>{action.summary}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* What Mjuzi did: the result, not every step (U57) */}
+                {message.actions && message.actions.length > 0 && <ActionOutcome actions={message.actions} />}
               </div>
             </div>
           ))}
@@ -324,39 +303,46 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input (U56): the voice and chat controls in their own row above a full-width box */}
       <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-        <div className="flex items-end gap-2">
-          <div className="flex items-center gap-1">
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          {voiceSupported && (
             <button
-              onClick={clearChat}
-              className="rounded-md p-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300"
-              title="Clear chat"
-              aria-label="Clear chat"
+              type="button"
+              onClick={handleMicClick}
+              disabled={isLoading}
+              aria-pressed={isListening}
+              className={`inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-xs font-semibold disabled:opacity-40 ${
+                isListening
+                  ? 'border-red-500 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                  : 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/50'
+              }`}
             >
-              <Trash2 className="h-4 w-4" />
+              {isListening ? <MicOff className="h-3.5 w-3.5" aria-hidden="true" /> : <Mic className="h-3.5 w-3.5" aria-hidden="true" />}
+              {isListening ? 'Listening… tap to stop' : 'Speak'}
             </button>
-            {voiceSupported && (
-              <button
-                type="button"
-                onClick={handleMicClick}
-                disabled={isLoading}
-                className={`rounded-md p-1.5 ${
-                  isListening
-                    ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'
-                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-600 dark:hover:text-gray-300'
-                }`}
-                title={isListening ? 'Stop listening' : 'Speak your message'}
-                aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
-              >
-                {isListening ? (
-                  <MicOff className="h-4 w-4" />
-                ) : (
-                  <Mic className="h-4 w-4" />
-                )}
-              </button>
-            )}
-          </div>
+          )}
+          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={ttsEnabled}
+              onChange={(e) => setTtsEnabled(e.target.checked)}
+              className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
+            />
+            Speak replies
+          </label>
+          <button
+            type="button"
+            onClick={clearChat}
+            className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-200"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Clear chat
+          </button>
+        </div>
+        {voiceError && (
+          <p role="alert" className="mb-2 text-xs text-red-600 dark:text-red-400">{voiceError}</p>
+        )}
+        <div className="flex items-end gap-2">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -364,7 +350,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
             placeholder="Ask Mjuzi about your projects..."
             aria-label="Chat message input"
             rows={1}
-            className="flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3.5 py-2.5 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="min-w-0 flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3.5 py-2.5 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             style={{ maxHeight: '120px' }}
             onInput={(e) => {
               const target = e.target as HTMLTextAreaElement;
@@ -385,20 +371,9 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
             )}
           </button>
         </div>
-        <div className="mt-1.5 flex items-center justify-center gap-3">
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-            <input
-              type="checkbox"
-              checked={ttsEnabled}
-              onChange={(e) => setTtsEnabled(e.target.checked)}
-              className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
-            />
-            Speak replies
-          </label>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Mjuzi can make mistakes. Verify important information.
-          </span>
-        </div>
+        <p className="mt-1.5 text-center text-xs text-gray-500 dark:text-gray-400">
+          Mjuzi can make mistakes. Check important information.
+        </p>
       </div>
     </div>
   );

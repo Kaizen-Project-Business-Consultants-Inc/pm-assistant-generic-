@@ -369,7 +369,7 @@ export function NotificationsPage() {
                       )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{n.message}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-line">{n.message}</p>
                   <div className="flex items-center gap-3 mt-1.5">
                     <span className="text-xs text-gray-600 dark:text-gray-400">{timeAgo(n.createdAt)}</span>
                     <span className="text-xs text-gray-600 dark:text-gray-400 capitalize">{typeLabels[n.type] || n.type}</span>

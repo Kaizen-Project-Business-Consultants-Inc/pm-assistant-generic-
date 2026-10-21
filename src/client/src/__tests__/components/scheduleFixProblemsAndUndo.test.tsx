@@ -46,7 +46,7 @@ describe('Propose fixes counts problems as the review does (U53)', () => {
     renderPanel();
     const critical = await screen.findByRole('region', { name: 'Critical fixes' });
     expect(within(critical).getByText('1 problem')).toBeInTheDocument();
-    expect(within(critical).getByText(/10 fixes offered/)).toBeInTheDocument();
+    expect(within(critical).getByText(/10 links to add/)).toBeInTheDocument(); // U60: a level of links says so
     expect(within(critical).getByText('No logic at all')).toBeInTheDocument();
   });
 

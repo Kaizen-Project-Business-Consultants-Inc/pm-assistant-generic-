@@ -71,6 +71,16 @@ describe('ScheduleReviewPanel', () => {
     expect(screen.getByText('No owner')).toBeInTheDocument();
   });
 
+  it('counts problems, and a link problem says how many links it takes (U60: "1 critical" vs "4 selected")', async () => {
+    api.getScheduleReviewLatest.mockResolvedValue({
+      ...review,
+      findings: [{ ruleId: 'R01', rule: 'Missing predecessor', severity: 'critical', taskIds: ['a', 'b', 'c', 'd'], message: '4 tasks (13%) have no predecessor.', pointsDeducted: 12 }, ...review.findings.slice(1)],
+    });
+    renderPanel();
+    expect(await screen.findByText('One problem, 4 links to add: Propose fixes adds one for each task.')).toBeInTheDocument();
+    expect(screen.getByText(/1 critical problem, 2 high problems, 1 medium problem, 1 for information\./)).toBeInTheDocument();
+  });
+
   it('Show rows passes the finding task ids and label', async () => {
     const { onShowRows } = renderPanel();
     await screen.findByText('No logic at all');

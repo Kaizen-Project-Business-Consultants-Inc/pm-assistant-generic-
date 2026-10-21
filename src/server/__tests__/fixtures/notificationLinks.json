@@ -18,5 +18,8 @@
   { "in": { "linkType": "weekly_pm_review", "projectId": "p1" }, "out": "/project/p1?tab=weekly-review" },
   { "in": { "linkType": "weekly_pm_review" }, "out": "/dashboard" },
   { "in": { "linkType": null, "projectId": "p1" }, "out": "/project/p1" },
+  { "in": { "linkType": "deadline_digest", "linkId": "digest:s1:2026-10-21:mine", "projectId": "p1", "scheduleId": "s1" }, "out": "/project/p1?tab=schedule&schedule=s1&deadlines=mine" },
+  { "in": { "linkType": "deadline_digest", "linkId": "digest:s1:2026-10-21:all", "projectId": "p1" }, "out": "/project/p1?tab=schedule&deadlines=all" },
+  { "in": { "linkType": "deadline_digest", "linkId": "digest:s1:2026-10-21:all" }, "out": null },
   { "in": { "linkType": "something_new" }, "out": null }
 ]

@@ -67,6 +67,19 @@ const SEVERITY_ORDER: ReviewSeverity[] = ['critical', 'high', 'medium', 'low', '
 const SEVERITY_LABEL: Record<ReviewSeverity, string> = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' };
 const OPEN_BY_DEFAULT = new Set<ReviewSeverity>(['critical', 'high']);
 
+/** "1 critical problem" — the review counts problems; one problem can take several changes (U60) */
+function problemCount(n: number, level: string): string {
+  if (level === 'info') return `${n} for information`; // not a problem: no points come off
+  return `${n} ${level} problem${n === 1 ? '' : 's'}`;
+}
+
+/** Rules fixed one link per task: how many changes this one problem takes */
+const ONE_LINK_PER_TASK = new Set(['R01', 'R02']);
+function fixSize(f: { ruleId: string; taskIds: string[] }): string | null {
+  if (!ONE_LINK_PER_TASK.has(f.ruleId) || f.taskIds.length < 2) return null;
+  return `One problem, ${f.taskIds.length} links to add: Propose fixes adds one for each task.`;
+}
+
 const SKIP_REASON: Record<string, string> = {
   covered_by_R03: 'covered by "No logic at all"',
   needs_logic: 'unlocks when dependencies exist',
@@ -282,7 +295,7 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
           {review && review.findings.length > 0 && (
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {review.findings.length} finding{review.findings.length === 1 ? '' : 's'} across {review.leafTaskCount} task{review.leafTaskCount === 1 ? '' : 's'}.
-              {' '}{SEVERITY_ORDER.filter(s => review.counts[s] > 0).map(s => `${review.counts[s]} ${SEVERITY_LABEL[s].toLowerCase()}`).join(', ')}.
+              {' '}{SEVERITY_ORDER.filter(s => review.counts[s] > 0).map(s => problemCount(review.counts[s], SEVERITY_LABEL[s].toLowerCase())).join(', ')}.
             </p>
           )}
 
@@ -313,6 +326,7 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
                               {f.rule} <span className="font-normal text-gray-500">· {f.ruleId}</span>
                             </div>
                             <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 break-words">{f.message}</p>
+                            {fixSize(f) && <p className="text-xs font-medium text-gray-800 dark:text-gray-200 mt-0.5">{fixSize(f)}</p>}
                           </div>
                           {f.pointsDeducted > 0 && (
                             <span className="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400" title="Points deducted">−{f.pointsDeducted}</span>

@@ -13,7 +13,11 @@ import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/work
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { groupBy } from '../../utils/groupBy';
 
-export const RULES_VERSION = '1.10';
+export const RULES_VERSION = '1.11';
+
+// 1.11 (2026-10-20, U61): R41 — links the plan's own dates don't follow ('high'). An imported plan
+// can carry links its dates break; the first fix that re-plans the dates then moves everything
+// after them, which surprised the PM. No fix is offered for it yet: the PM checks the link or dates.
 
 // 1.8 (2026-10-04): checks taken over from retired agents — R38 bottleneck task (4+ open tasks
 // wait directly on it; 'info': a risk to know about, no deduction, so the score keeps meaning "is
@@ -58,6 +62,10 @@ export interface ReviewTask {
   isSummary?: boolean | null;
   parentTaskId?: string | null;
   constraintType?: string | null;
+  /** R41: what the re-plan keeps where it is (a fixed date, or work already started/finished) */
+  constraintDate?: string | null;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   sortOrder?: number | null;
   updatedAt?: string | null;
   recurrenceParentId?: string | null;
@@ -184,6 +192,7 @@ export const RULES: Record<string, RuleMeta> = {
   R37: { id: 'R37', name: 'Work starting soon with no one named', severity: 'medium', scope: 'task' },
   R38: { id: 'R38', name: 'Bottleneck task', severity: 'info', scope: 'task' },
   R40: { id: 'R40', name: 'Sprint left open after its end', severity: 'low', scope: 'schedule' },
+  R41: { id: 'R41', name: "Dates don't follow a link", severity: 'high', scope: 'task' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -784,7 +793,56 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     findings.push(make('R40', [], `${plural(staleSprints.length, 'sprint')} ended more than ${SPRINT_GRACE_WORKING_DAYS} working days ago but ${staleSprints.length === 1 ? 'is' : 'are'} still open: ${staleSprints.slice(0, 3).map(sp => `'${sp.name}'`).join(', ')}${staleSprints.length > 3 ? ` and ${staleSprints.length - 3} more` : ''}. Complete ${staleSprints.length === 1 ? 'it' : 'them'} (Sprints tab) so unfinished work moves on and velocity stays accurate.`));
   }
 
+  // R41 — A task's dates break a link it has (it starts before what it waits for has finished).
+  // Fixing anything that re-flows the plan makes the dates follow these links, which can move a
+  // lot (U61, 2026-10-20: 4 new links moved 21 tasks up to 89 days).
+  const broken = linksDatesBreak(g.all);
+  if (broken.length > 0) {
+    const tasksAffected = [...new Map(broken.map(b => [b.task.id, b.task])).values()];
+    const ex = broken[0];
+    findings.push(make('R41', tasksAffected.map(t => t.id), `${plural(broken.length, 'link')} ${agree(broken.length, "isn't", "aren't")} followed by the dates, for example '${ex.task.name}' starts before '${ex.waitsFor.name}' finishes. Any fix that re-plans the dates will move these tasks; check the links or the dates first.`));
+  }
+
   return { findings, skipped, leafTaskCount: n };
+}
+
+/** The re-plan keeps these where they are (ScheduleRecomputeService: completed, started or finished, a fixed date) */
+function stays(t: ReviewTask): boolean {
+  const c = String(t.constraintType || '').toUpperCase();
+  return norm(t.status) === 'completed' || norm(t.status) === 'cancelled' || !!t.actualStartDate || !!t.actualEndDate
+    || ((c === 'MSO' || c === 'MFO') && !!t.constraintDate);
+}
+
+/**
+ * Links the plan's own dates don't follow AND the re-plan would enforce: finish-to-start where the
+ * task starts on or before the day what it waits for finishes, start-to-start before it starts,
+ * finish-to-finish before it finishes — between tasks (not summary rows, which the re-plan doesn't
+ * schedule), for a task the re-plan would move. Links with a lead or lag are left out (R17).
+ */
+export function linksDatesBreak(tasks: ReviewTask[]): Array<{ task: ReviewTask; waitsFor: ReviewTask; type: string }> {
+  const byId = new Map(tasks.map(t => [t.id, t]));
+  const parents = new Set(tasks.map(t => t.parentTaskId).filter((p): p is string => !!p));
+  const isSummary = (t: ReviewTask) => !!t.isSummary || parents.has(t.id);
+  const out: Array<{ task: ReviewTask; waitsFor: ReviewTask; type: string }> = [];
+  for (const t of tasks) {
+    if (isSummary(t) || stays(t)) continue;
+    for (const d of t.dependencies || []) {
+      const p = byId.get(d.dependencyId);
+      if (!p || isSummary(p) || (d.lagDays ?? 0) !== 0) continue;
+      const type = (d.dependencyType || 'FS').toUpperCase();
+      if (datesBreak(type, t, p)) out.push({ task: t, waitsFor: p, type });
+    }
+  }
+  return out;
+}
+
+/** One link's own test: does the task's date come too early for what it waits for? */
+function datesBreak(type: string, t: ReviewTask, p: ReviewTask): boolean {
+  const ts = ymd(t.startDate); const te = ymd(t.endDate); const ps = ymd(p.startDate); const pe = ymd(p.endDate);
+  if (type === 'SS') return !!(ts && ps && ts < ps);
+  if (type === 'FF') return !!(te && pe && te < pe);
+  if (type === 'FS') return !!(ts && pe && ts <= pe);
+  return false;
 }
 
 /** R38: this many open tasks waiting directly on one task */

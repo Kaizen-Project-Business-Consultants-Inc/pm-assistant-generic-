@@ -182,6 +182,28 @@ describe('Propose fixes — preview', () => {
     expect(preview).toMatchObject({ tasksMoved: 0, finishBefore: '2026-10-21', finishAfter: '2026-10-21', finishShiftDays: 0 });
   });
 
+  it('the UAT case (U61): a new link that fits its dates still moves what an OLD broken link holds back — and the preview says why', async () => {
+    // d already waits for c (FS), but starts before c finishes: the imported plan's dates break it
+    db.tasks = [
+      task('a', '2026-10-05', '2026-10-09'),
+      task('b', '2026-10-12', '2026-10-16'),
+      task('c', '2026-10-12', '2026-10-21', { dependencies: [] }),
+      task('d', '2026-10-14', '2026-10-16', { dependencies: [{ dependencyId: 'c', dependencyType: 'FS', lagDays: 0 }] }),
+    ];
+    const preview = await (await service()).preview('s1', nextProposal(), ['l-ab']);
+    expect(preview.brokenLinks).toBe(1);
+    expect(preview.brokenExample).toEqual({ task: 'd', waitsFor: 'c' });
+    expect(preview.tasksMoved).toBeGreaterThan(0);
+    expect(preview.maxShiftDays).toBeGreaterThan(0);
+    expect(preview.moves[0]).toMatchObject({ name: 'd', finishBefore: '2026-10-16' });
+    expect(preview.moves[0].days).toBe(preview.maxShiftDays);
+  });
+
+  it('a plan whose dates follow its links: no broken links, no moves listed', async () => {
+    const preview = await (await service()).preview('s1', nextProposal(), ['l-ab']);
+    expect(preview).toMatchObject({ brokenLinks: 0, brokenExample: null, maxShiftDays: 0, moves: [] });
+  });
+
   it('a link and a split of the same task: the new link moves to the first part, not left on the summary', async () => {
     fixes = [
       link('l-bc', 'c', 'b', true),

@@ -57,23 +57,76 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-describe('deadline reminders', () => {
-  it('300 tasks: one MGET for the dedup check, no GET each; already-notified tasks are skipped', async () => {
-    h.answer = (sql) => /FROM tasks t/.test(sql)
-      ? Array.from({ length: 300 }, (_, i) => ({ id: `t${i}`, name: `T${i}`, created_by: 'u1', due_date: '2026-10-10', project_id: 'p1' }))
-      : [];
-    const day = new Date().toISOString().slice(0, 10);
-    h.store.set(`co:deadline-notified:t1:${day}`, '1');
-    expect(await runDeadlineNotifications()).toBe(299);
+describe('deadline reminders — one summary a day per person and project (U55)', () => {
+  const day = new Date().toISOString().slice(0, 10);
+  const shift = (n: number) => { const d = new Date(); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const row = (id: string, due: string, over: Record<string, unknown> = {}) => ({ id, name: `Task ${id}`, created_by: 'u1', due, schedule_id: 's1', schedule_name: 'Plan', project_id: 'p1', project_name: 'DBJ-LMS', ...over });
+
+  it('four tasks due: ONE email to the person, overdue and due-this-week listed, one MGET', async () => {
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? [row('a', shift(-3)), row('b', shift(-1)), row('c', day), row('d', shift(4))] : []);
+    expect(await runDeadlineNotifications()).toBe(1);
     expect(h.client.mget).toHaveBeenCalledTimes(1);
-    expect(h.client.mget.mock.calls[0][0]).toHaveLength(300);
-    expect(h.client.get).not.toHaveBeenCalled();
-    expect(h.notify.mock.calls.map(c => c[0].linkId).slice(0, 3)).toEqual(['t0', 't2', 't3']);
+    const n = h.notify.mock.calls[0][0];
+    expect(n.title).toBe('DBJ-LMS: 2 overdue, 2 due this week');
+    expect(n.message).toContain('Overdue\n- Task a — was due');
+    expect(n.message).toContain('Due this week\n- Task c — due');
+    expect(n).toMatchObject({ userId: 'u1', projectId: 'p1', scheduleId: 's1', linkType: 'deadline_digest', linkId: `digest:s1:${day}:mine`, ctaLabel: 'Open these 4 in the schedule', skipChannels: true });
   });
 
-  it('Redis down: no dedup, every task notified (as before)', async () => {
+  it("the project's Manager gets the whole plan; a Manager with their own tasks there gets one email, not two", async () => {
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? [row('a', shift(-1), { created_by: 'pm' }), row('b', day, { created_by: 'dev' })]
+      : /FROM project_members/.test(sql) ? [{ user_id: 'pm', project_id: 'p1' }] : []);
+    expect(await runDeadlineNotifications()).toBe(2);
+    const byUser = Object.fromEntries(h.notify.mock.calls.map(c => [c[0].userId, c[0]]));
+    expect(byUser.pm.linkId).toBe(`digest:s1:${day}:all`);
+    expect(byUser.pm.title).toBe('DBJ-LMS: 1 overdue, 1 due this week');
+    expect(byUser.dev.linkId).toBe(`digest:s1:${day}:mine`);
+    expect(byUser.dev.title).toBe('DBJ-LMS: 1 due this week');
+  });
+
+  it('already sent today: skipped (per person, project and their own day)', async () => {
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? [row('a', day)] : []);
+    h.store.set(`co:deadline-notified:u1:s1:${day}`, '1');
+    expect(await runDeadlineNotifications()).toBe(0);
+    expect(h.notify).not.toHaveBeenCalled();
+  });
+
+  it('a Manager of two projects gets both emails, each with its own link (the same link would count as already sent)', async () => {
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? [row('a', day, { created_by: 'x' }), row('b', day, { created_by: 'x', project_id: 'p2', schedule_id: 's2', project_name: 'NSWMA' })]
+      : /FROM project_members/.test(sql) ? [{ user_id: 'pm', project_id: 'p1' }, { user_id: 'pm', project_id: 'p2' }] : []);
+    await runDeadlineNotifications();
+    const pm = h.notify.mock.calls.map(c => c[0]).filter(n => n.userId === 'pm');
+    expect(pm.map(n => n.title).sort()).toEqual(['DBJ-LMS: 1 due this week', 'NSWMA: 1 due this week']);
+    expect(new Set(pm.map(n => n.linkId)).size).toBe(2);
+  });
+
+  it('a project with two plans: one email per plan, each naming its plan and opening it', async () => {
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? [row('a', day), row('b', day, { schedule_id: 's2', schedule_name: 'Phase 2' })] : []);
+    expect(await runDeadlineNotifications()).toBe(2);
+    const titles = h.notify.mock.calls.map(c => [c[0].title, c[0].scheduleId]).sort();
+    expect(titles).toEqual([['DBJ-LMS / Phase 2: 1 due this week', 's2'], ['DBJ-LMS / Plan: 1 due this week', 's1']]);
+  });
+
+  it('a long list names 8 and says how many more', async () => {
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? Array.from({ length: 12 }, (_, i) => row(`t${i}`, shift(-2))) : []);
+    await runDeadlineNotifications();
+    expect(h.notify.mock.calls[0][0].message).toContain('- …and 4 more');
+  });
+
+  it('the query reads open, non-summary tasks of live projects, overdue included', async () => {
+    h.answer = () => [];
+    await runDeadlineNotifications();
+    const sql = stmts(/FROM tasks t/)[0].sql;
+    expect(sql).toContain('COALESCE(t.is_summary, 0) = 0');
+    expect(sql).toContain('p.archived_at IS NULL');
+    expect(sql).toContain('COALESCE(t.due_date, t.end_date) < DATE_ADD(CURDATE(), INTERVAL 8 DAY)'); // a day of room for far time zones
+    expect(sql).toContain('>= DATE_SUB(CURDATE(), INTERVAL 60 DAY)'); // an old plan isn't listed whole
+    expect(sql).toContain('ORDER BY due DESC'); // past the row cap, the oldest are the ones left out
+  });
+
+  it('Redis down: no dedup, still one email per person and project', async () => {
     h.connected = false;
-    h.answer = (sql) => /FROM tasks t/.test(sql) ? [{ id: 't1', name: 'T', created_by: 'u1', due_date: '2026-10-10' }] : [];
+    h.answer = (sql) => (/FROM tasks t/.test(sql) ? [row('a', day), row('b', day)] : []);
     expect(await runDeadlineNotifications()).toBe(1);
     expect(h.client.mget).not.toHaveBeenCalled();
   });

@@ -248,7 +248,8 @@ export class AIActionExecutor {
       success: true,
       toolName: 'create_task',
       summary: `Created task "${task.name}" (ID: ${task.id}) in schedule ${scheduleId}${assignedTo ? ` assigned to ${assignedTo}` : ''}${dueDate ? ` due ${dueDate}` : ''}`,
-      data: { taskId: task.id, name: task.name, scheduleId, status: task.status, priority: task.priority, sortOrder: task.sortOrder },
+      // projectId: the chat links the task's name to it in the schedule (U57)
+      data: { taskId: task.id, name: task.name, scheduleId, projectId: schedule.projectId, status: task.status, priority: task.priority, sortOrder: task.sortOrder },
     };
   }
 
@@ -268,13 +269,15 @@ export class AIActionExecutor {
     if (updateData.dueDate) updateData.dueDate = new Date(updateData.dueDate);
 
     const task = await scheduleService.updateTask(taskId, updateData);
+    // where it lives, for the chat's link to it (U57)
+    const schedule = await scheduleService.findById(existing.scheduleId);
 
     const changes = Object.keys(updates).map(k => `${k}: ${updates[k]}`).join(', ');
     return {
       success: true,
       toolName: 'update_task',
       summary: `Updated task "${existing.name}" (${taskId}): ${changes}`,
-      data: { taskId, name: task?.name, status: task?.status, priority: task?.priority },
+      data: { taskId, name: task?.name, status: task?.status, priority: task?.priority, scheduleId: existing.scheduleId, projectId: schedule?.projectId },
     };
   }
 
@@ -289,19 +292,19 @@ export class AIActionExecutor {
       return { success: false, toolName: 'update_tasks', summary: `That is ${ids.length} tasks; at most ${MAX_BULK_TASKS} can be changed in one step.`, error: 'Too many tasks' };
     }
     if (Object.keys(changes).length === 0) return { success: false, toolName: 'update_tasks', summary: 'No change was given, so nothing was changed.', error: 'No changes' };
-    const done: Array<{ taskId: string; name?: string }> = [];
+    const done: Array<{ taskId: string; name?: string; scheduleId?: string; projectId?: string }> = [];
     const failed: Array<{ taskId: string; reason: string }> = [];
     for (const taskId of ids) {
       // eslint-disable-next-line no-await-in-loop -- at most MAX_BULK_TASKS, one after another: each is a write with its own checks and audit
       const r = await this.executeOne('update_task', { ...changes, taskId }, context);
-      if (r.success) done.push({ taskId, name: r.data?.name });
+      if (r.success) done.push({ taskId, name: r.data?.name, scheduleId: r.data?.scheduleId, projectId: r.data?.projectId });
       else failed.push({ taskId, reason: r.summary });
     }
     const what = Object.keys(changes).map(k => `${k}: ${changes[k]}`).join(', ');
     const names = done.map(d => `"${d.name ?? d.taskId}"`).join(', ');
     let summary = done.length > 0 ? `Updated ${done.length} task(s) (${what}): ${names}` : 'No task was changed.';
     if (failed.length > 0) summary += `. Not changed (${failed.length}): ${failed.map(f => f.reason).join('; ')}`;
-    return { success: done.length > 0, toolName: 'update_tasks', summary, data: { updated: done.map(d => ({ id: d.taskId, name: d.name })), failed } };
+    return { success: done.length > 0, toolName: 'update_tasks', summary, data: { updated: done.map(d => ({ id: d.taskId, name: d.name, scheduleId: d.scheduleId, projectId: d.projectId })), failed } };
   }
 
   private async deleteTask(input: Record<string, any>, _context: ActionContext): Promise<ActionResult> {

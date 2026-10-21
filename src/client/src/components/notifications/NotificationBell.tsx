@@ -341,7 +341,7 @@ export function NotificationBell() {
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2 whitespace-pre-line">
                         {notification.message}
                       </p>
                       <div className="flex items-center gap-2 mt-1">

@@ -138,8 +138,9 @@ describe('guard: whole-plan changes refresh the plan', () => {
       + "|'(clear_all_dependencies|set_dependency|remove_dependency|cascade_reschedule)'",
       'g',
     );
-    // a brand-new plan made with the project: nothing of it is cached yet, and the page opens fresh
-    const exempt = new Set(['components/templates/TemplatePicker.tsx']);
+    // a brand-new plan made with the project: nothing of it is cached yet, and the page opens fresh;
+    // Mjuzi's reply view only names the tools to word what was done (the chat store refreshes, U57)
+    const exempt = new Set(['components/templates/TemplatePicker.tsx', 'components/ai/ActionOutcome.tsx']);
     const WINDOW = 20; // the refresh must come at most this many lines after the call
     const missing: string[] = [];
     const check = (rel: string, src: string) => {
