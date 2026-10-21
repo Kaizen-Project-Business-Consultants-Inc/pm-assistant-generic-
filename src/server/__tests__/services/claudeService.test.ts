@@ -621,6 +621,20 @@ describe('ClaudeService', () => {
       expect(mockCreate).toHaveBeenCalledTimes(1);
     });
 
+    it('shows the AI the exact shape to return (U73: What-If never told it the field names)', async () => {
+      mockCreate.mockResolvedValue(mockApiResponse({
+        content: [{ type: 'text', text: '{"name":"test","count":42}' }],
+      }));
+      const service = makeService();
+      await service.completeWithJsonSchema({ ...defaultOptions(), schema });
+
+      const call = mockCreate.mock.calls[0][0];
+      const system = JSON.stringify(call.system);
+      expect(system).toContain('must match this JSON Schema exactly');
+      expect(system).toContain('\\"name\\"');
+      expect(system).toContain('\\"count\\"');
+    });
+
     it('strips markdown code fences from JSON response', async () => {
       mockCreate.mockResolvedValue(mockApiResponse({
         content: [{ type: 'text', text: '```json\n{"name":"test","count":1}\n```' }],

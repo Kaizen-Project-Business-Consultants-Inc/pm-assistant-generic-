@@ -14,7 +14,7 @@
 PM Assistant is an AI-assisted project management platform. AI runs when a person asks for it (a button, opening a tab, a chat question) and every change it suggests waits for the project's PM. Rule-based checks (Schedule Review, RAID Review, the Weekly PM review) find problems without AI. The earlier autonomous agents that "continuously monitored" projects were retired in October 2026, and the remaining nightly checks are switched off. Every AI capability is powered by the Anthropic Claude SDK, with structured JSON output validated by Zod schemas. All features degrade gracefully when AI is unavailable -- the application remains fully functional without AI.
 
 Key architectural components:
-- **Claude Service** (`claudeService.ts`) -- Core SDK integration with streaming, JSON schema mode, tool use, rate limiting, retry logic, and token tracking
+- **Claude Service** (`claudeService.ts`) -- Core SDK integration with streaming, JSON schema mode, tool use, rate limiting, retry logic, and token tracking. `completeWithJsonSchema` adds the schema itself (as JSON Schema, `jsonShapeInstruction`) to the system prompt, so the AI is told the exact field names and allowed values instead of guessing them (2026-10-21, U73: What-If's prompt named no fields and most answers failed twice)
 - **AI Context Builder** (`aiContextBuilder.ts`) -- Assembles rich project/portfolio context for every AI call from database records
 - **AI Action Executor** (`aiActionExecutor.ts`) -- Executes AI-recommended mutations (create/update tasks, projects) with policy-engine gating and audit logging
 - **AI Tool Definitions** (`aiToolDefinitions.ts`) -- Claude tool schemas for agentic tool-use in chat
@@ -219,7 +219,8 @@ Scenario modeling with cascading impact analysis.
 - Claude models cascading effects on schedule, budget, resources, and risk profile
 - Impact analysis covers: downstream task dependencies, resource reallocation needs, risk profile changes, external factors
 - Confidence scoring (0.5-0.9) on scenario outcomes
-- Output validated against `AIScenarioResultSchema`
+- Output validated against `AIScenarioResultSchema` (the AI is shown that schema; until 2026-10-21 it wasn't, so most AI answers failed twice — about a minute and two paid calls — and the rules-only answer was shown)
+- Each result is saved for the scenario history (`scenario_analyses`; `user_id` was an INT until T095, so no save ever succeeded)
 
 ---
 

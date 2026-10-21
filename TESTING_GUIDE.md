@@ -1629,6 +1629,14 @@ What existed on 2026-10-08 is listed at the top as allowances (1 unbounded read,
 
 The code checker adds the in-memory side: **`no-restricted-syntax`** flags searching a list (`find`/`filter`/`findIndex`) inside a loop or inside a `map`/`forEach`/… callback (2,000 tasks × 2,000 people = 4 million steps; a `Map` built once = 4,000), and sorting or building a `RegExp` inside a loop. Existing cases are in `eslint-suppressions.json`. If both lists are always small, disable the line with a reason (`-- small: …`).
 
+## Schema and AI-format guards (Oct 2026, U73/U76)
+
+Three guards from bugs found in the staging log on 2026-10-21, all part of `npx vitest run`, no database needed:
+
+- `src/server/__tests__/database/userIdColumnsGuard.test.ts` replays every migration (CREATE, then ADD / MODIFY / CHANGE) and fails if a column holding a user (`…user_id`, `…_by`) ends up a number. User ids are UUID strings; an INT column made every What-If save (T027) and every admin reply to feedback (106) fail with "Data truncated".
+- `src/server/__tests__/services/aiJsonShapes.test.ts` checks every Zod schema in `src/server/schemas/` can be written out as JSON Schema and an object schema names its fields (schemas defined inside a service file are not scanned) — `completeWithJsonSchema` puts it in the prompt so the AI knows the exact field names. Without it the AI guesses and fails twice.
+- `src/server/__tests__/mcp/oauthErrors.test.ts`: an unknown Claude token is `invalid_token` (401, Claude signs in again), a bad authorization code `invalid_grant` (400), and `mcp-server/src/oauth/` throws no plain `Error` (the SDK turns those into 500s). It catches the literal `throw new Error(` only — `Promise.reject(new Error…)` or a runtime throw (bad JSON) would still be a 500.
+
 ## Copy-paste check (Oct 2026)
 
 `npm run duplication` (`scripts/duplicationCheck.mjs`, ~20 s; settings `.jscpd.json`): jscpd finds blocks of 15+ lines that appear in two places (tests excluded). 2026-10-08: 69 copies, 2,070 lines in 67 files (measured on a clean checkout — files with Windows line endings in a working folder hide some copies from jscpd, so a working folder may show fewer; releases build from a clean checkout), listed in `scripts/duplication-baseline.json`. A copied block in a file that has never had one fails, and so do more copies than the baseline or the copied lines growing by more than 60: make it one shared function or component. (It compares by file, not by pair, because jscpd can pair the same block with a different file from one machine to another.) Shrink the list with `--update` after removing copies. Runs in `deploy.sh` with the code checker.

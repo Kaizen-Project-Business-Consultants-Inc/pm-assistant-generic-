@@ -199,6 +199,12 @@ describe('WhatIfScenarioService', () => {
       expect(insertCall![1][3]).toBe('Cut budget by 10%'); // scenario_text
     });
 
+    it('a run with no signed-in person is not saved (it used to save user 0)', async () => {
+      setupDefaultMocks();
+      await service.modelScenario({ projectId: 'proj-1', scenario: 'Cut budget by 10%', parameters: { budgetChangePct: -10 } });
+      expect(mockQuery.mock.calls.some((call: any[]) => String(call[0]).includes('INSERT INTO scenario_analyses'))).toBe(false);
+    });
+
     it('uses AI when claudeService is available', async () => {
       setupDefaultMocks();
       mockIsAvailable.mockReturnValue(true);
@@ -512,7 +518,7 @@ describe('WhatIfScenarioService', () => {
       const { result, id } = await service.modelScenario({
         projectId: 'proj-1',
         scenario: 'Persist fail test',
-      });
+      }, 'user-42');
 
       expect(result).toBeDefined();
       expect(id).toBe('test-uuid-1234');

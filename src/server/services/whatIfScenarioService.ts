@@ -130,7 +130,7 @@ export function computeMetricsFromContext(ctx: ProjectContext, isWorking: IsWork
 export interface SavedScenario {
   id: string;
   projectId: string;
-  userId: number;
+  userId: string;
   scenarioText: string;
   parameters: AIScenarioRequest['parameters'] | null;
   result: AIScenarioResult;
@@ -497,13 +497,14 @@ export class WhatIfScenarioService {
       finalResult = fallbackResult;
     }
 
-    // #2: Persist scenario to DB
+    // #2: Persist scenario to DB — only a signed-in person's run (user_id is their UUID since T095;
+    // it was an INT and no save ever succeeded)
     const id = uuidv4();
-    try {
+    if (userId) try {
       await databaseService.query(
         `INSERT INTO scenario_analyses (id, project_id, user_id, scenario_text, parameters, result, ai_powered, confidence)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id, request.projectId, userId ?? 0, request.scenario,
+        [id, request.projectId, userId, request.scenario,
          JSON.stringify(request.parameters ?? null),
          JSON.stringify(finalResult),
          aiPowered ? 1 : 0,

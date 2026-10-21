@@ -8,6 +8,27 @@ import { getRequestContext } from '../middleware/requestContext';
 import { recordAIUsage, calculateCost } from './aiUsageLogger';
 import { redisService } from './RedisService';
 
+/** Each schema's JSON Schema text, worked out once */
+const jsonShapes = new WeakMap<z.ZodType, string>();
+
+/**
+ * The system-prompt line that gives the AI the exact JSON shape to return: the field names, types
+ * and allowed values of `schema`. Empty when the schema can't be written out (it is still checked).
+ */
+export function jsonShapeInstruction(schema: z.ZodType): string {
+  let shape = jsonShapes.get(schema);
+  if (shape === undefined) {
+    try {
+      const { $schema: _drop, ...json } = z.toJSONSchema(schema, { io: 'input', unrepresentable: 'any' }) as Record<string, unknown>;
+      shape = JSON.stringify(json);
+    } catch {
+      shape = '';
+    }
+    jsonShapes.set(schema, shape);
+  }
+  return shape ? `\n\nYour JSON must match this JSON Schema exactly (same field names and types):\n${shape}` : '';
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -765,7 +786,11 @@ export class ClaudeService {
   async completeWithJsonSchema<T>(
     options: CompletionOptions & { schema: z.ZodType<T> },
   ): Promise<{ data: T; usage: TokenUsage; latencyMs: number }> {
-    const { schema, ...completionOptions } = options;
+    const { schema, ...rest } = options;
+    // The AI is shown the exact shape it must return (U73, 2026-10-21): What-If's prompt said "match
+    // the schema" without one, the AI guessed the field names, failed twice (~1 min, paid twice)
+    // and the user got the rules-only answer.
+    const completionOptions = { ...rest, systemPrompt: rest.systemPrompt + jsonShapeInstruction(schema) };
 
     const firstResult = await this.complete({
       ...completionOptions,

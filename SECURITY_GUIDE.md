@@ -108,6 +108,12 @@ Until then a revoked connection came back on Claude's next renewal with a fresh 
 renewals still rotate the key and the refresh token. Tests: `__tests__/mcp/oauthRenewal.test.ts`,
 `__tests__/routes/apiKeyRevoke.test.ts`.
 
+**An old or unknown Claude sign-in gets 401, not 500 (2026-10-21, U76).** `verifyAccessToken` throws the SDK's
+`InvalidTokenError` for a token that matches no active key, so the bearer check answers 401 with
+`WWW-Authenticate` and Claude signs in again; unknown or used authorization codes are `invalid_grant` (400).
+A plain `Error` became a 500, so a connector holding a token from before staging's accounts were recreated
+failed on every call. Guard: `__tests__/mcp/oauthErrors.test.ts` (no plain `throw new Error` in `mcp-server/src/oauth/`).
+
 ---
 
 ## 3. API Keys

@@ -5,7 +5,7 @@ import type { OAuthClientInformationFull, OAuthTokens, OAuthTokenRevocationReque
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import type { RowDataPacket } from 'mysql2/promise';
 import crypto from 'node:crypto';
-import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
+import { InvalidGrantError, InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { query } from '../db.js';
 import { DatabaseClientsStore } from './clientsStore.js';
 import { renderAuthorizePage } from './authorizePage.js';
@@ -108,7 +108,7 @@ export class PmOAuthProvider implements OAuthServerProvider {
       [authorizationCode, client.client_id],
     );
     if (rows.length === 0) {
-      throw new Error('Invalid or expired authorization code');
+      throw new InvalidGrantError('Invalid or expired authorization code');
     }
     return rows[0].code_challenge;
   }
@@ -128,7 +128,7 @@ export class PmOAuthProvider implements OAuthServerProvider {
       [authorizationCode, client.client_id],
     );
     if (rows.length === 0) {
-      throw new Error('Invalid or expired authorization code');
+      throw new InvalidGrantError('Invalid or expired authorization code');
     }
     const authCode = rows[0];
 
@@ -283,7 +283,9 @@ export class PmOAuthProvider implements OAuthServerProvider {
       [keyHash],
     );
     if (keyRows.length === 0) {
-      throw new Error('Invalid or expired access token');
+      // An OAuth error, not a plain one: the SDK answers 401 and Claude signs in again. A plain
+      // Error became a 500, so a connector holding an old token failed for good (U76, 2026-10-21).
+      throw new InvalidTokenError('Invalid or expired access token');
     }
     const apiKey = keyRows[0];
 

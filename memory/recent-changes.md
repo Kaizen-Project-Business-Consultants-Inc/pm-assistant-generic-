@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-21 — Round 6 part 1: What-If saves and AI answers, admin feedback replies, Claude connector sign-in (U73, U76)
+- Found in the staging log during UAT (user paused UAT: "Fix issues on the log"). No screen changes.
+- U73: `scenario_analyses.user_id` was INT (T027) — every What-If save failed ("Data truncated"), history always empty → T095 makes it VARCHAR(36). Same bug in `feedback.admin_reply_by` (106) — admin replies to feedback failed → migration 140. Guard `__tests__/database/userIdColumnsGuard.test.ts`: after all migrations no …user_id / …_by column is a number.
+- U73: the What-If prompt said "match the schema" but never showed it; the AI guessed field names, both tries failed (64–115 s, two paid calls) and the rules-only answer showed. `claudeService.completeWithJsonSchema` now appends the schema as JSON Schema (`jsonShapeInstruction`, zod `toJSONSchema`, cached per schema; ≤ ~6K chars) for every caller. Guard `__tests__/services/aiJsonShapes.test.ts`: every schema in `schemas/` can be written out.
+- U76: `mcp-server` `verifyAccessToken` threw a plain Error for an unknown token → SDK 500 → Claude never re-authorised (staging connector failing). Now `InvalidTokenError` (401); bad auth codes `InvalidGrantError` (400). Guard `__tests__/mcp/oauthErrors.test.ts`. Needs the MCP server deployed too (`--mcp`).
+- What-If saves only a signed-in person's run (no more user 0). Reviewer: three prompts (ScheduleFixProposer, NLQuery, predictiveIntelligence) also describe their shape by hand — they match today; delete the hand-written copies if a schema changes.
+- Still open from U73: Workers +/- doesn't move dates/cost (→ U75/U77); visible What-If fixes (U74, U78) wait for a mock.
+
 ## 2026-10-20 — Round 5: date-move warning, problem counts, daily deadline email, Mjuzi mic and replies (U61, U60, U55, U56, U57)
 - Mock https://claude.ai/artifact/PP6uLZfCCZBPRVrWqwMXNC, user "proceed" (with the suggested answers: 08:00 local, warning only for U61, partly-done extras later).
 - U61: rules 1.11 R41 "Dates don't follow a link" (high); the fix preview returns brokenLinks/brokenExample/maxShiftDays/moves; the panel no longer says "no dates move" — the impact box warns and lists the moving tasks, Apply says "— N tasks move".
