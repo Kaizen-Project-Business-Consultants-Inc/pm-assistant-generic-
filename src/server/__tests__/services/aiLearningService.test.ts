@@ -19,19 +19,28 @@ vi.mock('../../utils/logger', () => ({
   },
 }));
 
-vi.mock('../../services/claudeService', () => ({
+vi.mock('../../services/claudeService', () => {
+  const complete = vi.fn().mockResolvedValue({
+    content: '{}',
+    usage: { inputTokens: 100, outputTokens: 50 },
+    latencyMs: 200,
+  });
+  return {
   claudeService: {
     isAvailable: vi.fn().mockReturnValue(false),
-    complete: vi.fn().mockResolvedValue({
-      content: '{}',
-      usage: { inputTokens: 100, outputTokens: 50 },
-      latencyMs: 200,
+    complete,
+    // as the real one (U79): the reply, ```json fences stripped, checked against the schema
+    completeWithJsonSchema: vi.fn(async (opts: { schema: { parse: (v: unknown) => unknown } }) => {
+      const r = await complete(opts);
+      const text = String(r.content).replace(/^```(?:json)?\s*|\s*```$/g, '');
+      return { data: opts.schema.parse(JSON.parse(text)), usage: r.usage, latencyMs: r.latencyMs };
     }),
   },
   PromptTemplate: vi.fn().mockImplementation((template: string) => ({
     render: vi.fn().mockReturnValue(template),
   })),
-}));
+  };
+});
 
 vi.mock('../../services/aiUsageLogger', () => ({
   logAIUsage: vi.fn(),
@@ -640,10 +649,25 @@ describe('AILearningServiceV2', () => {
 
       const result = await service.getAIAccuracyInsights('user-1');
 
-      // parsed.improvements is undefined, not Array => original deterministic improvements kept
-      expect(result.aiPowered).toBe(true);
-      // The deterministic improvements should still be there since parsed.improvements is not an array
+      // the answer doesn't have the shape asked for: the deterministic improvements stand
+      expect(result.aiPowered).toBe(false);
       expect(result.insights.improvements).not.toEqual(['something']);
+    });
+
+    it('a reply wrapped in ```json fences is used (U79: it used to throw and be thrown away)', async () => {
+      mockIsAvailable.mockReturnValue(true);
+      mockReportQueries(
+        [{ total: '10', avg_var: '10' }],
+        [{ metric_type: 'duration_estimate', cnt: '10', avg_var: '10' }],
+      );
+      mockComplete.mockResolvedValueOnce({
+        content: '```json\n{ "improvements": ["Recalibrate duration estimates"] }\n```',
+        usage: { inputTokens: 100, outputTokens: 50 },
+        latencyMs: 200,
+      });
+      const result = await service.getAIAccuracyInsights('user-1');
+      expect(result.aiPowered).toBe(true);
+      expect(result.insights.improvements).toEqual(['Recalibrate duration estimates']);
     });
 
     it('works without userId parameter', async () => {

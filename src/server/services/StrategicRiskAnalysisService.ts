@@ -6,8 +6,16 @@ import { projectService, Project } from './ProjectService';
 import { evmForecastService } from './EVMForecastService';
 import { claudeService } from './claudeService';
 import logger from '../utils/logger';
+import { z } from 'zod';
 import { isOverdue } from '../utils/calendarDate';
 import { utcDay } from '../utils/workingDays';
+
+// U79 (2026-10-22): completeWithJsonSchema, not JSON.parse(complete()): a reply wrapped in ```json
+// fences made the parse throw and the paid answer was thrown away
+const StrategicPolishSchema = z.object({
+  polishedStatements: z.array(z.object({ index: z.number().int().min(0), statement: z.string() })),
+  crossCategoryInsights: z.array(z.string()),
+});
 
 // ---------------------------------------------------------------------------
 // Interfaces
@@ -442,29 +450,24 @@ ${JSON.stringify(risksForAI, null, 2)}
 Return ONLY valid JSON.`;
 
   try {
-    const aiResult = await claudeService.complete({
+    const aiResult = await claudeService.completeWithJsonSchema({
       systemPrompt: 'You are a senior project risk analyst. Return only valid JSON.',
       userMessage: prompt,
       maxTokens: 1500,
       temperature: 0.3,
-      responseFormat: 'json',
+      schema: StrategicPolishSchema,
     });
 
-    const parsed = JSON.parse(aiResult.content);
+    const parsed = aiResult.data;
 
     // Apply polished statements
-    if (Array.isArray(parsed.polishedStatements)) {
-      for (const ps of parsed.polishedStatements) {
-        if (typeof ps.index === 'number' && typeof ps.statement === 'string' && ps.index < allRisks.length) {
-          allRisks[ps.index].riskStatement = ps.statement;
-        }
-      }
+    // (the schema guarantees whole, non-negative indexes and strings)
+    for (const ps of parsed.polishedStatements) {
+      if (ps.index < allRisks.length) allRisks[ps.index].riskStatement = ps.statement;
     }
 
     // Add cross-category insights
-    if (Array.isArray(parsed.crossCategoryInsights)) {
-      result.crossCategoryInsights = parsed.crossCategoryInsights.filter((s: unknown) => typeof s === 'string').slice(0, 4);
-    }
+    result.crossCategoryInsights = parsed.crossCategoryInsights.slice(0, 4);
 
     result.summary.aiEnhanced = true;
   } catch (err: any) {

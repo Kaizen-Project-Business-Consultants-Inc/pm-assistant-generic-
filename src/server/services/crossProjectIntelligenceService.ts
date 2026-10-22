@@ -3,9 +3,14 @@ import { AIContextBuilder } from './aiContextBuilder';
 import { claudeService, PromptTemplate } from './claudeService';
 import { logAIUsage } from './aiUsageLogger';
 import { computeEVMMetrics } from './predictiveIntelligence';
+import { z } from 'zod';
 import type { AICrossProjectInsight } from '../schemas/phase5Schemas';
 import { MS_PER_DAY } from '../utils/constants';
 import { utcDay } from '../utils/workingDays';
+
+// U79 (2026-10-22): completeWithJsonSchema, not JSON.parse(complete()): the reply came wrapped in ```json
+// fences, the parse threw and the paid answer was thrown away on every run
+const PortfolioAnswerSchema = z.object({ summary: z.string(), recommendations: z.array(z.string()) });
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -28,8 +33,7 @@ Similar project data:
 
 Return a JSON object with:
 - "summary": 1-2 sentence strategic overview
-- "recommendations": array of budget reallocation suggestions
-- "similarProjectInsights": enhanced with "lessonsLearned" field for each similar project
+- "recommendations": array of budget reallocation suggestions (plain sentences)
 
 Keep recommendations specific and actionable.`,
   '1.0.0',
@@ -221,12 +225,12 @@ export class CrossProjectIntelligenceService {
         similarProjects: 'N/A for portfolio-wide analysis',
       });
 
-      const result = await claudeService.complete({
+      const result = await claudeService.completeWithJsonSchema({
       feature: 'cross_project_intelligence',
       tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the cross-project data and return the enhanced JSON.',
-        responseFormat: 'json',
+        schema: PortfolioAnswerSchema,
         temperature: 0.3,
       });
 
@@ -240,14 +244,14 @@ export class CrossProjectIntelligenceService {
         requestContext: {},
       });
 
-      const parsed = JSON.parse(result.content);
+      const parsed = result.data;
       return {
         insight: {
           ...deterministicInsight,
           summary: parsed.summary || deterministicInsight.summary,
           budgetReallocation: {
             ...deterministicInsight.budgetReallocation,
-            recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : budgetRecommendations,
+            recommendations: parsed.recommendations.length ? parsed.recommendations : budgetRecommendations,
           },
         },
         aiPowered: true,

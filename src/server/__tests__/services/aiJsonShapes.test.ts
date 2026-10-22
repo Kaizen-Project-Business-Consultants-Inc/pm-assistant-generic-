@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync } from 'fs';
+import { readdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { z } from 'zod';
 import { jsonShapeInstruction } from '../../services/claudeService';
@@ -39,5 +39,27 @@ describe('the AI is shown the JSON shape it must return', () => {
     }
     expect(count).toBeGreaterThan(20);
     expect(empty).toEqual([]);
+  });
+
+  it('guard (U79): a file that asks the AI for JSON lets completeWithJsonSchema read it (fences stripped, shape checked)', () => {
+    // Portfolio Intelligence, anomaly detection, AI accuracy and the strategic risk scan did
+    // JSON.parse(complete().content): a ```json-fenced reply threw and the paid answer was thrown
+    // away every run. Files listed here still parse a JSON reply themselves (they strip fences by
+    // hand, so they work): move them to completeWithJsonSchema, then take them off. The list only shrinks.
+    const STILL_PARSE_THEMSELVES = new Set([
+      'routes/scheduling/import.ts',
+      'services/ProjectStatusReportService.ts',
+    ]);
+    const root = join(__dirname, '..', '..');
+    const files = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e =>
+      e.isDirectory() ? (e.name === '__tests__' ? [] : files(join(dir, e.name))) : e.name.endsWith('.ts') ? [join(dir, e.name)] : []);
+    const offenders = files(root)
+      .filter(f => !f.endsWith('claudeService.ts'))
+      .map(f => ({ rel: f.slice(root.length + 1).replace(/\\/g, '/'), src: readFileSync(f, 'utf8') }))
+      .filter(({ src }) => /\bJSON\.parse\(/.test(src) && (/responseFormat:\s*'json'/.test(src) || /JSON\.parse\(\s*\w+\.content\b/.test(src)))
+      .map(({ rel }) => rel);
+    expect(offenders.filter(f => !STILL_PARSE_THEMSELVES.has(f))).toEqual([]);
+    // a file fixed later must come off the list
+    expect([...STILL_PARSE_THEMSELVES].filter(f => !offenders.includes(f))).toEqual([]);
   });
 });

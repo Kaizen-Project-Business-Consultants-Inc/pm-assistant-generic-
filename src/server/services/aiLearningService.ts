@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto';
+import { z } from 'zod';
 import { claudeService, PromptTemplate } from './claudeService';
 import { logAIUsage } from './aiUsageLogger';
 import { databaseService } from '../database/connection';
@@ -8,6 +9,10 @@ import type {
   AIAccuracyRecord,
   AIAccuracyReport,
 } from '../schemas/phase5Schemas';
+
+// U79 (2026-10-22): completeWithJsonSchema, not JSON.parse(complete()): a reply wrapped in ```json
+// fences made the parse throw and the paid answer was thrown away
+const ImprovementsSchema = z.object({ improvements: z.array(z.string()) });
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -281,12 +286,12 @@ export class AILearningServiceV2 {
       const reportStr = JSON.stringify(report, null, 2);
       const systemPrompt = accuracyInsightsPrompt.render({ accuracyReport: reportStr });
 
-      const result = await claudeService.complete({
+      const result = await claudeService.completeWithJsonSchema({
       feature: 'accuracy_insights',
       tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the accuracy report and return improvement suggestions JSON.',
-        responseFormat: 'json',
+        schema: ImprovementsSchema,
         temperature: 0.3,
       });
 
@@ -299,10 +304,7 @@ export class AILearningServiceV2 {
         success: true,
       });
 
-      const parsed = JSON.parse(result.content);
-      if (Array.isArray(parsed.improvements)) {
-        report.improvements = parsed.improvements;
-      }
+      if (result.data.improvements.length) report.improvements = result.data.improvements;
       return { insights: report, aiPowered: true };
     } catch (err) {
       logger.warn(`AI accuracy insights failed, using deterministic fallback: ${err instanceof Error ? err.message : String(err)}`);

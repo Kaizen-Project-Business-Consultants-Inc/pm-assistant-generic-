@@ -2,9 +2,13 @@ import { FastifyInstance } from 'fastify';
 import { AIContextBuilder, ProjectContext } from './aiContextBuilder';
 import { claudeService, PromptTemplate } from './claudeService';
 import { logAIUsage } from './aiUsageLogger';
-import type { AIAnomaly, AIAnomalyReport } from '../schemas/phase5Schemas';
+import { AIAnomalyReportSchema, type AIAnomaly, type AIAnomalyReport } from '../schemas/phase5Schemas';
 import { isOverdue, toCalendarDate, CalendarDate } from '../utils/calendarDate';
 import { statusDateFor } from './StatusDateService';
+
+// U79 (2026-10-22): completeWithJsonSchema, not JSON.parse(complete()): the reply came wrapped in ```json
+// fences, the parse threw and the paid answer was thrown away on every run
+const AnomalyAnswerSchema = AIAnomalyReportSchema.pick({ anomalies: true, summary: true, overallHealthTrend: true });
 
 // ---------------------------------------------------------------------------
 // Prompt Template
@@ -128,12 +132,12 @@ export class AnomalyDetectionService {
         portfolioContext: portfolioPrompt,
       });
 
-      const result = await claudeService.complete({
+      const result = await claudeService.completeWithJsonSchema({
       feature: 'anomaly_detection',
       tier: 'light', // routine job: the cheaper model
         systemPrompt,
         userMessage: 'Analyze the anomalies and return the enhanced JSON.',
-        responseFormat: 'json',
+        schema: AnomalyAnswerSchema,
         temperature: 0.3,
       });
 
@@ -147,9 +151,9 @@ export class AnomalyDetectionService {
         requestContext: {},
       });
 
-      const parsed = JSON.parse(result.content);
+      const parsed = result.data;
       return {
-        anomalies: Array.isArray(parsed.anomalies) ? parsed.anomalies : anomalies,
+        anomalies: parsed.anomalies.length ? parsed.anomalies : anomalies,
         summary: parsed.summary || deterministicReport.summary,
         overallHealthTrend: parsed.overallHealthTrend || deterministicReport.overallHealthTrend,
         scannedProjects: portfolio.projects.length,

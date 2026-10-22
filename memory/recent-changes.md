@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-22 — Round 6 part 3: AI answers no longer thrown away (U79)
+- Found in the staging log right after the round-6 release (not caused by it). Portfolio Intelligence (crossProjectIntelligenceService), anomaly detection, AI accuracy insights (aiLearningService) and the strategic risk scan parsed `complete().content` themselves; a ```json-fenced reply threw → deterministic fallback, the AI call paid for nothing. All four now `completeWithJsonSchema` with a small schema of the fields they use (anomalies reuse `AIAnomalyReportSchema.pick`). An empty AI list keeps the rules-based one. Guard in aiJsonShapes.test.ts. Reviewer follow-ups done: strategic index must be a whole number ≥ 0; Portfolio prompt no longer asks for similarProjectInsights (thrown away). Known, not changed: anomaly detection asks the AI to send every anomaly back in full — on a big portfolio the reply can hit the output limit (pre-existing; better: ask only for index + wording).
+
 ## 2026-10-21 — Round 6 part 2: six visible fixes (U78, U74, U62, U64, U65, U69)
 - Mock https://claude.ai/artifact/D94EMU7a1MfJDvcQPMjeGk, user "ok" (my suggested picks). The view is **Task calendar**, not "Month view": the view has its own Month/Week/Day switch — told the user.
 - U78/U74: `components/scenarios/ScenarioResultView` (cards, Estimate + How lines, No budget set) now used by the project What-If tab (was `JSON.stringify`) AND ScenarioModelingPage (its inline cards + helpers removed). `WhatIfIntro` line on both. `ScenarioSliderPanel` shared by both (tab's own sliders removed; its ranges now the page's: days −60..60, resources −5..5), labels "Resources +/-", ⓘ per slider, `budgetSet`. SensitivityChart tab "Resources".
