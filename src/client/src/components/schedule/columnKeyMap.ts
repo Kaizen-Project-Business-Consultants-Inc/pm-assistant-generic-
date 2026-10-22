@@ -15,6 +15,7 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
   ['name', 'name'],
   ['pred', 'dependency'],
   ['succ', 'successor'],
+  ['slack', 'totalFloat'],
   ['start', 'startDate'],
   ['end', 'endDate'],
   ['dur', 'duration'],
@@ -38,7 +39,7 @@ export const GANTT_ONLY_KEYS: ReadonlySet<string> = new Set(['editIcon']);
 /** Table columns with no Gantt column (CPM, baseline, cost, actual dates, constraints, WBS) */
 export const TABLE_ONLY_KEYS: ReadonlySet<ColumnKey> = new Set<ColumnKey>([
   'actualStartDate', 'actualEndDate',
-  'earlyStart', 'earlyFinish', 'lateStart', 'lateFinish', 'totalFloat', 'freeFloat', 'critical',
+  'earlyStart', 'earlyFinish', 'lateStart', 'lateFinish', 'freeFloat', 'critical',
   'constraintType', 'constraintDate',
   'baselineStart', 'baselineEnd', 'startVariance', 'endVariance', 'baselineDuration', 'baselineCost',
   'budgetAllocated', 'actualCost', 'budgetVariance',

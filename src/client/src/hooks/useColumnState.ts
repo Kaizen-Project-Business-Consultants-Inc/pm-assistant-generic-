@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, SCHEDULING_KEYS } from '../components/schedule/tableColumns';
+import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, SCHEDULING_KEYS, DEFAULTS_ADDED_LATER } from '../components/schedule/tableColumns';
 import type { ColumnKey, ColumnGroup, ColumnDef } from '../components/schedule/tableColumns';
 import { apiService } from '../services/api';
 
@@ -21,6 +21,24 @@ interface PerScheduleColumnState {
   visibleKeys: ColumnKey[];
   columnOrder: ColumnKey[];
   colWidths: Record<string, number>;
+  /** DEFAULTS_ADDED_LATER this plan has already had switched on (so turning one off sticks) */
+  addedDefaults?: string[];
+}
+
+/**
+ * A plan's saved columns plus any default column added since they were saved (U69, 2026-10-21:
+ * Successors and Total slack). Each is switched on once; after that the person's choice stands.
+ */
+function withAddedDefaults(saved: Iterable<ColumnKey>, alreadyAdded: readonly string[] | undefined): Set<ColumnKey> {
+  const keys = new Set(saved);
+  keys.add('rowNum'); // always visible
+  for (const k of DEFAULTS_ADDED_LATER) if (!alreadyAdded?.includes(k)) keys.add(k);
+  return keys;
+}
+
+const addedKey = (scheduleId: string) => `tableview-cols-added:${scheduleId}`;
+function readAdded(scheduleId: string): string[] | undefined {
+  try { return JSON.parse(localStorage.getItem(addedKey(scheduleId)) ?? 'null') ?? undefined; } catch { return undefined; }
 }
 
 function doSyncToServer(scheduleId: string, state: PerScheduleColumnState) {
@@ -34,11 +52,7 @@ export function useColumnState(scheduleId: string): ColumnState {
   const [visibleKeys, setVisibleKeys] = useState<Set<ColumnKey>>(() => {
     try {
       const stored = localStorage.getItem(`tableview-cols:${scheduleId}`);
-      if (stored) {
-        const keys = new Set(JSON.parse(stored) as ColumnKey[]);
-        keys.add('rowNum'); // always visible
-        return keys;
-      }
+      if (stored) return withAddedDefaults(JSON.parse(stored) as ColumnKey[], readAdded(scheduleId));
     } catch {}
     return new Set(DEFAULT_VISIBLE_KEYS);
   });
@@ -74,7 +88,7 @@ export function useColumnState(scheduleId: string): ColumnState {
     syncTimerRef.current = setTimeout(() => {
       dirtyRef.current = false;
       const { visibleKeys: vk, columnOrder: co, colWidths: cw } = latestRef.current;
-      doSyncToServer(scheduleId, { visibleKeys: [...vk], columnOrder: co, colWidths: cw });
+      doSyncToServer(scheduleId, { visibleKeys: [...vk], columnOrder: co, colWidths: cw, addedDefaults: [...DEFAULTS_ADDED_LATER] });
     }, 1500);
   }, [scheduleId]);
 
@@ -86,10 +100,9 @@ export function useColumnState(scheduleId: string): ColumnState {
         const saved: PerScheduleColumnState | undefined = prefs?.columnStates?.[scheduleId];
         if (saved) {
           if (saved.visibleKeys?.length) {
-            const keys = new Set(saved.visibleKeys as ColumnKey[]);
-            keys.add('rowNum');
+            const keys = withAddedDefaults(saved.visibleKeys, saved.addedDefaults);
             setVisibleKeys(keys);
-            localStorage.setItem(`tableview-cols:${scheduleId}`, JSON.stringify(saved.visibleKeys));
+            localStorage.setItem(`tableview-cols:${scheduleId}`, JSON.stringify([...keys]));
           }
           if (saved.columnOrder?.length) {
             setColumnOrder(saved.columnOrder);
@@ -108,6 +121,7 @@ export function useColumnState(scheduleId: string): ColumnState {
   // Persist to localStorage + debounced server sync
   useEffect(() => {
     localStorage.setItem(`tableview-cols:${scheduleId}`, JSON.stringify([...visibleKeys]));
+    localStorage.setItem(addedKey(scheduleId), JSON.stringify(DEFAULTS_ADDED_LATER));
     if (serverLoaded.current) scheduleDebouncedSync();
   }, [visibleKeys, scheduleId, scheduleDebouncedSync]);
 
@@ -134,7 +148,7 @@ export function useColumnState(scheduleId: string): ColumnState {
       }
       if (dirtyRef.current) {
         const { visibleKeys: vk, columnOrder: co, colWidths: cw } = latestRef.current;
-        doSyncToServer(scheduleId, { visibleKeys: [...vk], columnOrder: co, colWidths: cw });
+        doSyncToServer(scheduleId, { visibleKeys: [...vk], columnOrder: co, colWidths: cw, addedDefaults: [...DEFAULTS_ADDED_LATER] });
         dirtyRef.current = false;
       }
     };

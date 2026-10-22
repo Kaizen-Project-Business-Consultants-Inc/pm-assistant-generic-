@@ -54,6 +54,7 @@ import { deadlineTasks } from '../../../utils/deadlineDigest';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
+import { useResourceConflicts } from '../../../hooks/useResourceConflicts';
 
 /** The row filter "Show only these" sets from the deadline email's note */
 const DEADLINE_ROWS_LABEL = 'From your email';
@@ -218,6 +219,10 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     [nwdData, nonWorkingDates, taskDateRange],
   );
 
+  // Overbooked people on the Table and Kanban (U65; the Gantt keeps its own toggle)
+  const [showOverbooked, setShowOverbooked] = useState(false);
+  const { notes: overbookedNotes, anyoneAssigned } = useResourceConflicts(tasks, showOverbooked && (viewMode === 'table' || viewMode === 'kanban'));
+
   // What-if scenarios
   const { data: scenariosData } = useQuery({
     queryKey: ['scenarios', schedule.id],
@@ -236,8 +241,15 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   const { data: cpmData } = useQuery({
     queryKey: ['criticalPath', schedule.id],
     queryFn: () => apiService.getCriticalPath(schedule.id),
-    enabled: showCriticalPath || cpmNeeded,
+    // the Slack column (on by default) shows only on the Gantt and Table: don't work it out for other views
+    enabled: showCriticalPath || (cpmNeeded && (viewMode === 'gantt' || viewMode === 'table')),
   });
+  // Each task's total slack for the Gantt's Slack column (U69)
+  // A plan with no links has no critical path (every task would start on day 0): no slack shown
+  const slackByTask = useMemo(
+    () => (cpmData?.tasks && cpmData.hasLinks !== false ? new Map<string, number>(cpmData.tasks.map((t: { taskId: string; totalFloat: number }) => [t.taskId, t.totalFloat])) : undefined),
+    [cpmData],
+  );
 
   // Baselines
   const { data: baselinesData } = useQuery({
@@ -352,6 +364,16 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       }
     });
   }, [dropdownFilteredTasks, quickFilter, taskRiskMap, user?.id, dueWeeks, reviewRowFilter, myResourceIds]);
+  // the count matches what the Table / Kanban show (the filtered tasks)
+  const overbooked = useMemo(
+    () => ({
+      on: showOverbooked,
+      onToggle: () => setShowOverbooked(v => !v),
+      count: overbookedNotes.size ? filteredTasks.filter(t => overbookedNotes.has(t.id)).length : 0,
+      anyoneAssigned,
+    }),
+    [showOverbooked, overbookedNotes, anyoneAssigned, filteredTasks],
+  );
 
   const hasActiveFilters = !!(searchQuery || filterStatus || filterPriority || filterAssignee || quickFilter !== 'all' || reviewRowFilter);
 
@@ -622,6 +644,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
           filteredCount={filteredTasks.length}
           totalCount={tasks.length}
+          overbooked={overbooked}
         />
         )}
         {tasks.length > 0 && (
@@ -760,7 +783,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onUndo={undo}
           onRedo={redo}
           criticalPathTaskIds={showCriticalPath && cpmData?.hasLinks !== false ? cpmData?.criticalPathTaskIds : undefined}
-          taskFloatMap={showCriticalPath && cpmData?.hasLinks !== false && cpmData?.tasks ? Object.fromEntries(cpmData.tasks.map((t: any) => [t.taskId, t.totalFloat])) : undefined}
+          slackByTask={slackByTask}
+          taskFloatMap={showCriticalPath && slackByTask ? Object.fromEntries(slackByTask) : undefined}
           baselineTasks={selectedBaseline?.tasks?.map((bt: any) => ({
             taskId: bt.taskId,
             startDate: bt.startDate,
@@ -784,6 +808,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           tasks={filteredTasks}
           allTasks={tasks}
           taskRiskMap={taskRiskMap}
+          overbookedNotes={overbookedNotes}
           onTaskClick={(task) => { setActiveTaskId(task.id); setEditingTask(task as GanttTask); }}
           onStatusChange={canEdit ? handleKanbanStatusChange : undefined}
           onQuickAdd={canEdit ? (name, status) => {
@@ -800,6 +825,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onGroupTasks={canEdit ? handleGroupTasks : undefined}
           scheduleId={schedule.id}
           reviewFlagMap={reviewFlagMap}
+          overbookedNotes={overbookedNotes}
           focusTaskId={focusTaskId}
           highlightTaskIds={highlightTaskIds}
           workCalendar={workCalendar}
@@ -842,6 +868,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             updateTaskWithUndo(taskId, { startDate: newStart, endDate: newEnd });
           } : undefined}
           workCalendar={workCalendar}
+          onOpenWorkingCalendar={() => setShowCalendarPanel(true)}
         />
       )}
       {viewMode === 'network' && (

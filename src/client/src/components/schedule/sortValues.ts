@@ -23,6 +23,7 @@ export const GANTT_SORT_FIELD: Readonly<Record<string, string>> = {
   resource: 'resource',
   status: 'status',
   notes: 'notes',
+  slack: 'totalFloat',
 };
 
 /** Can this Gantt column's header sort? */

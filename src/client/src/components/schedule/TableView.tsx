@@ -41,7 +41,7 @@ import { firstByKey } from '../../utils/lookup';
 import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
 
-export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
+export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, overbookedNotes, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -231,9 +231,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   }, [editingCell]);
 
   // CPM lookup map
+  // A plan with no links has no critical path: every task would show day 0 and a meaningless
+  // slack, so its CPM columns stay blank (review 2026-10-21, now that Total slack shows by default)
   const cpmMap = useMemo(() => {
     const map = new Map<string, CpmTaskData>();
-    if (cpmData?.tasks) {
+    if (cpmData?.tasks && cpmData.hasLinks !== false) {
       for (const t of cpmData.tasks) map.set(t.taskId, t);
     }
     return map;
@@ -768,7 +770,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${editableCellClass(task.id, 'name', task)}`}
+            className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${overbookedNotes?.has(task.id) ? 'border-l-[3px] border-l-amber-500' : ''} ${editableCellClass(task.id, 'name', task)}`}
             {...cellA11y(task, 'name')}
             role="rowheader"
             onClick={() => handleCellClick(task.id, 'name', task)}
@@ -806,6 +808,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                   <span className="inline-block w-2.5 h-2.5 rotate-45 bg-amber-500 flex-shrink-0" title="Milestone" />
                 )}
                 <span>{task.name}</span>
+                {overbookedNotes?.has(task.id) && (
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">· {overbookedNotes.get(task.id)!.join('; ')}</span>
+                )}
               </div>
             )}
             {renderSaveIndicator(task.id, 'name')}
@@ -1079,7 +1084,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'totalFloat':
         return (
           <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-            {cpm ? `${cpm.totalFloat}d` : '\u2014'}
+            {cpm ? <span className={cpm.totalFloat <= 0 ? 'text-red-600 dark:text-red-400 font-semibold' : undefined}>{cpm.totalFloat} d</span> : '\u2014'}
           </td>
         );
       case 'freeFloat':

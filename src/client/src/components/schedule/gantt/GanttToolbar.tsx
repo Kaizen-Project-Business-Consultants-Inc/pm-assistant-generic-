@@ -5,9 +5,8 @@ import type { SavedView } from '../SavedViewsDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, type ColumnKey } from '../tableColumns';
 import { ColumnPickerDropdown } from '../ColumnPickerDropdown';
 import { GanttExportDropdown } from './GanttExportDropdown';
-import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
-import { ROUTES } from '../../../routes';
 import { WorkingCalendarButton } from '../calendar/WorkingCalendarButton';
+import { OverbookedToggle } from '../OverbookedToggle';
 import {
   type GanttTask,
   type GanttColDef,
@@ -59,6 +58,8 @@ interface GanttToolbarProps {
   showOverallocation: boolean;
   setShowOverallocation: React.Dispatch<React.SetStateAction<boolean>>;
   overallocatedCount: number;
+  /** false = no task has a person: Overbooked people has nothing to check */
+  anyoneAssigned: boolean;
   showTimeline: boolean;
   setShowTimeline: React.Dispatch<React.SetStateAction<boolean>>;
   handleLoadView: (view: SavedView) => void;
@@ -115,6 +116,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   showOverallocation,
   setShowOverallocation,
   overallocatedCount,
+  anyoneAssigned,
   showTimeline,
   setShowTimeline,
   handleLoadView,
@@ -132,7 +134,6 @@ export const GanttToolbar = React.memo(function GanttToolbar({
 }: GanttToolbarProps) {
   const colPickerId = useId();
   // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
-  const canOpenResources = useCanOpenPage()(ROUTES.resources);
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
 
@@ -442,29 +443,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           tasks={tasks}
           timelineShown={showTimeline}
         />
-        {/* Resource overallocation toggle */}
-        <button
-          onClick={() => setShowOverallocation(v => !v)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showOverallocation ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-          title="Highlight resource scheduling conflicts"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-          </svg>
-          Conflicts
-          {showOverallocation && overallocatedCount > 0 && (
-            <span className="ml-0.5 px-1.5 py-0.5 text-xs font-bold bg-amber-200 text-amber-800 rounded-full">{overallocatedCount}</span>
-          )}
-        </button>
-        {showOverallocation && canOpenResources && (
-          <a
-            href="/resources?tab=workload"
-            className="text-xs font-medium text-amber-700 dark:text-amber-400 underline hover:text-amber-800 dark:hover:text-amber-300 print:hidden whitespace-nowrap"
-            title="Everyone's weekly load, across all projects"
-          >
-            {overallocatedCount > 0 ? 'See Workload Heatmap' : 'No one over 100% · Workload Heatmap'}
-          </a>
-        )}
+        <OverbookedToggle on={showOverallocation} onToggle={() => setShowOverallocation(v => !v)} count={overallocatedCount} anyoneAssigned={anyoneAssigned} />
         {/* Timeline strip toggle (replaced the minimap 2026-10-01) */}
         <button
           onClick={() => setShowTimeline(v => !v)}

@@ -47,8 +47,8 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'earlyFinish', label: 'Early Finish', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'lateStart', label: 'Late Start', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'lateFinish', label: 'Late Finish', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
-  { key: 'totalFloat', label: 'Total Float', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
-  { key: 'freeFloat', label: 'Free Float', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
+  { key: 'totalFloat', label: 'Total slack', group: 'scheduling', defaultVisible: true, editable: false, sortable: true },
+  { key: 'freeFloat', label: 'Free slack', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'critical', label: 'Critical', group: 'scheduling', defaultVisible: false, editable: false, sortable: true },
   { key: 'constraintType', label: 'Constraint', group: 'scheduling', defaultVisible: false, editable: true, sortable: true },
   { key: 'constraintDate', label: 'Constraint Date', group: 'scheduling', defaultVisible: false, editable: true, sortable: true },
@@ -68,7 +68,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
 
   // Other
   { key: 'notes', label: 'Notes', group: 'standard', defaultVisible: false, editable: true, sortable: true },
-  { key: 'successor', label: 'Successor', group: 'standard', defaultVisible: false, editable: false, sortable: true },
+  { key: 'successor', label: 'Successors', group: 'standard', defaultVisible: true, editable: false, sortable: true },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
   { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: true },
 ];
@@ -76,6 +76,13 @@ export const COLUMN_DEFS: ColumnDef[] = [
 export const DEFAULT_VISIBLE_KEYS = new Set<ColumnKey>(
   COLUMN_DEFS.filter(c => c.defaultVisible).map(c => c.key)
 );
+
+/**
+ * Default columns added after plans already had saved columns: each is switched on once for those
+ * plans too (useColumnState), so a person sees it without hunting in Columns (U69, 2026-10-21).
+ * Append only; a key here stays here.
+ */
+export const DEFAULTS_ADDED_LATER: readonly ColumnKey[] = ['successor', 'totalFloat'];
 
 export const SCHEDULING_KEYS = new Set<ColumnKey>(
   COLUMN_DEFS.filter(c => c.group === 'scheduling').map(c => c.key)

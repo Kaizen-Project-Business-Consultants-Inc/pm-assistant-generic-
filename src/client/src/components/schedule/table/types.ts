@@ -44,7 +44,7 @@ export interface TableViewProps {
   onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
   onQuickAdd?: (name: string) => void;
   columnState: ColumnState;
-  cpmData?: { tasks: CpmTaskData[]; criticalPathTaskIds: string[] };
+  cpmData?: { tasks: CpmTaskData[]; criticalPathTaskIds: string[]; hasLinks?: boolean };
   baselineData?: { taskVariances: BaselineTaskVariance[] };
   scheduleStartDate?: string;
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
@@ -67,6 +67,8 @@ export interface TableViewProps {
   taskRiskMap?: Map<string, import('../../../utils/taskRiskAssessment').TaskRiskLevel>;
   /** taskId → tooltip for rows flagged Critical/High by Schedule Review */
   reviewFlagMap?: Map<string, string>;
+  /** Overbooked people (U65): taskId → "Priya 140% (week of 3 Nov)" lines, while the toggle is on */
+  overbookedNotes?: Map<string, string[]>;
   /** Task to bring into view and highlight (e.g. opened from the Morning Briefing) */
   focusTaskId?: string | null;
   /** Rows to keep highlighted (amber) — e.g. the tasks a Propose-fixes suggestion changes */

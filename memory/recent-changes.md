@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-21 — Round 6 part 2: six visible fixes (U78, U74, U62, U64, U65, U69)
+- Mock https://claude.ai/artifact/D94EMU7a1MfJDvcQPMjeGk, user "ok" (my suggested picks). The view is **Task calendar**, not "Month view": the view has its own Month/Week/Day switch — told the user.
+- U78/U74: `components/scenarios/ScenarioResultView` (cards, Estimate + How lines, No budget set) now used by the project What-If tab (was `JSON.stringify`) AND ScenarioModelingPage (its inline cards + helpers removed). `WhatIfIntro` line on both. `ScenarioSliderPanel` shared by both (tab's own sliders removed; its ranges now the page's: days −60..60, resources −5..5), labels "Resources +/-", ⓘ per slider, `budgetSet`. SensitivityChart tab "Resources".
+- U64: `components/ui/InfoTip` (hover / click-to-pin / Enter, Escape or outside click closes, guide link) — first use beside the Working calendar button (both toolbars); the old title tooltip removed.
+- U62: view label "Task calendar" (ScheduleTab, Display settings); CalendarView top line links to the Working calendar (`onOpenWorkingCalendar`).
+- U65: "Conflicts" → "Overbooked people" on Gantt, Table, Kanban: `hooks/useResourceConflicts` + `components/schedule/OverbookedToggle` (GanttChart's inline query removed); Table name cell amber edge + note, Kanban cards the same; "No one is assigned to tasks yet" when nobody is.
+- U69: Successors + Total slack default-visible (labels "Successors", "Total slack", "Free slack"); Gantt gets a sortable **Slack** column (`slack` ↔ `totalFloat` in columnKeyMap/sortValues; `slackByTask` from ScheduleWorkspace's critical-path query); 0 d red. Saved column states get the two once (`DEFAULTS_ADDED_LATER`, `addedDefaults` in localStorage + view prefs; server schema accepts it).
+- Snapshot fixtures (ganttChartDom, scheduleTabDom) re-captured; every difference reviewed (ⓘ, renamed labels, new columns, link).
+
 ## 2026-10-21 — Round 6 part 1: What-If saves and AI answers, admin feedback replies, Claude connector sign-in (U73, U76)
 - Found in the staging log during UAT (user paused UAT: "Fix issues on the log"). No screen changes.
 - U73: `scenario_analyses.user_id` was INT (T027) — every What-If save failed ("Data truncated"), history always empty → T095 makes it VARCHAR(36). Same bug in `feedback.admin_reply_by` (106) — admin replies to feedback failed → migration 140. Guard `__tests__/database/userIdColumnsGuard.test.ts`: after all migrations no …user_id / …_by column is a number.

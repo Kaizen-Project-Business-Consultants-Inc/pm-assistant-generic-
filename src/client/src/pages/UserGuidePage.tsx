@@ -108,7 +108,8 @@ const sections: Section[] = [
     items: [
       'Create new projects with name, dates, and budget',
       'Importing a spreadsheet maps its columns for you; any it can\'t place get a Suggest … with AI button — the AI is asked only if you press it',
-      'Switch between Gantt, Kanban, Table, and Calendar views',
+      'Switch between Gantt, Kanban, Table, and Task calendar views (Task calendar shows tasks on dates; working days are set in the Working calendar)',
+      'Successors and Total slack columns show by default: slack is how many working days a task can slip before the finish moves (0 d in red = critical)',
       'Timeline: the whole project on one line (phases, milestones, today) — click to jump, export as an image for reports',
       'The summary cards show on Overview; other tabs show one line (Show details brings the cards back) so the work area starts higher',
       'Fewer tabs show in the bar; the rest (Hours, Files, Forecast, Resources, Agent Activity, Changes and more) are under More at the end of the tab bar',
@@ -180,7 +181,7 @@ const sections: Section[] = [
     description:
       'Durations and every automatic date move count working days — weekends and holidays are skipped.',
     items: [
-      'Click Working calendar in the schedule toolbar to see the working weekdays and days off',
+      'Click Working calendar in the schedule toolbar to see the working weekdays and days off (the ⓘ beside it explains it, like Change Working Time in MS Project)',
       'Add a day off, or an extra working day (e.g. a cutover Saturday), for this project only',
       'Company holidays are set once in Settings → Company holidays and every project picks them up',
       'Before anything is saved you see how many tasks move and how the finish changes — then Apply or Cancel',
@@ -310,7 +311,7 @@ const sections: Section[] = [
       'Portfolio Intelligence: patterns across your projects',
       'Anomaly Detection: flags unusual project patterns',
       'AI Accuracy: how close earlier AI forecasts came to what happened',
-      'What-If Scenario Modeling: compare what-if plans before you change anything',
+      'What-If Scenario Modeling: compare what-if plans before you change anything — each slider has an ⓘ, Resources +/- adds or removes people, and a result marked Estimate says how it was worked out',
     ],
   },
   {
@@ -529,7 +530,7 @@ const sections: Section[] = [
       'Team Planner without a mouse: Tab to a task and press Enter to pick the person and week',
       'Resources → Workload Heatmap: everyone\'s weekly load across all live projects',
       'While you assign someone in the task form, a warning appears if it takes them over 100% that week',
-      'Gantt → Conflicts: highlights bars whose person is over 100% that week; hover the "!" for who and when',
+      'Overbooked people (Gantt, Table and Kanban toolbars): marks tasks whose person is over 100% that week, with who and when',
       'Resources → Resource Histogram: hours per working day against each person\'s own day',
       'Level Resources (schedule ⋮ menu, or project → Resources → Leveling) proposes moving non-critical tasks within their spare time; nothing changes until you Apply',
       'Every person needs an email — "Placeholder email" (name@example.com) means the real one is still to add; nothing is ever sent there',

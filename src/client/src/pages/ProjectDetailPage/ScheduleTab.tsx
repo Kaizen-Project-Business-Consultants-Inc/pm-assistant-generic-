@@ -180,7 +180,7 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
             { mode: 'gantt' as const, icon: GanttChartSquare, label: 'Gantt' },
             { mode: 'kanban' as const, icon: Kanban, label: 'Kanban' },
             { mode: 'table' as const, icon: Table2, label: 'Table' },
-            { mode: 'calendar' as const, icon: CalendarDays, label: 'Calendar' },
+            { mode: 'calendar' as const, icon: CalendarDays, label: 'Task calendar' },
             { mode: 'network' as const, icon: MapPin, label: 'Network' },
             { mode: 'critical' as const, icon: Route, label: 'Critical path' },
             ...(offered.includes('burndown') ? [{ mode: 'burndown' as const, icon: TrendingUp, label: 'Burndown' }] : []),

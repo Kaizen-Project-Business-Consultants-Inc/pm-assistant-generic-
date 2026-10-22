@@ -12,11 +12,8 @@ import {
   DollarSign,
   Zap,
   FlaskConical,
-  Clock,
-  Users,
   ChevronDown,
   ChevronUp,
-  Lightbulb,
   Play,
   History,
   Trash2,
@@ -31,6 +28,8 @@ import { ExampleDataNote } from '../components/ui/ExampleDataNote';
 import { ScenarioSliderPanel, type SliderValues } from '../components/scenarios/ScenarioSliderPanel';
 import { ScenarioImpactGauges } from '../components/scenarios/ScenarioImpactGauges';
 import { SensitivityChart } from '../components/scenarios/SensitivityChart';
+import { ScenarioResultView, impactColor, type ScenarioResult } from '../components/scenarios/ScenarioResultView';
+import { WhatIfIntro } from '../components/scenarios/WhatIfIntro';
 import { routeTo } from '../routes';
 
 // ---------------------------------------------------------------------------
@@ -645,16 +644,6 @@ const AIAccuracy: React.FC = () => {
 // What-If Scenario Modeling
 // ---------------------------------------------------------------------------
 
-interface ScenarioResult {
-  scheduleImpact: { originalDays: number; projectedDays: number; changePct: number; explanation: string };
-  budgetImpact: { originalBudget: number; projectedBudget: number; changePct: number; explanation: string };
-  resourceImpact: { currentWorkers: number; projectedWorkers: number; explanation: string };
-  riskImpact: { currentRiskScore: number; projectedRiskScore: number; newRisks: string[]; explanation: string };
-  affectedTasks: Array<{ taskName: string; impact: string; severity: 'low' | 'medium' | 'high' }>;
-  recommendations: string[];
-  confidence: number;
-}
-
 interface Project { id: string; name: string; scheduleId?: string }
 
 interface SavedScenario {
@@ -665,21 +654,6 @@ interface SavedScenario {
   aiPowered: boolean;
   confidence: number;
   createdAt: string;
-}
-
-function impactColor(changePct: number): string {
-  if (changePct > 5) return 'text-red-600';
-  if (changePct < -5) return 'text-green-600';
-  return 'text-gray-700 dark:text-gray-200';
-}
-
-function severityBadge(severity: string) {
-  const colors: Record<string, string> = {
-    high: 'bg-red-100 text-red-700',
-    medium: 'bg-yellow-100 text-yellow-700',
-    low: 'bg-green-100 text-green-700',
-  };
-  return colors[severity] || 'bg-gray-100 text-gray-700';
 }
 
 // ---------------------------------------------------------------------------
@@ -805,6 +779,8 @@ const WhatIfScenario: React.FC = () => {
   });
   const baseline: BaselineData | undefined = baselineData?.data;
   const isBaselineSample: boolean = baselineData?.sample || false;
+  /** false = the project has no budget: budget changes are off (U78) */
+  const budgetSet = !baseline || baseline.budgetAllocated > 0;
 
   // Client-side preview calculation
   const computePreview = useCallback(
@@ -829,7 +805,8 @@ const WhatIfScenario: React.FC = () => {
   const mutation = useMutation({
     mutationFn: async () => {
       const params: Record<string, number> = {};
-      if (sliderValues.budgetChangePct !== 0) params.budgetChangePct = sliderValues.budgetChangePct;
+      // no budget: a budget change means nothing (the slider is off; a preset may have set it)
+      if (sliderValues.budgetChangePct !== 0 && budgetSet) params.budgetChangePct = sliderValues.budgetChangePct;
       if (sliderValues.daysExtension !== 0) params.daysExtension = sliderValues.daysExtension;
       if (sliderValues.workerChange !== 0) params.workerChange = sliderValues.workerChange;
       if (sliderValues.scopeChangePct !== 0) params.scopeChangePct = sliderValues.scopeChangePct;
@@ -867,7 +844,7 @@ const WhatIfScenario: React.FC = () => {
   const applyPreset = (preset: typeof PRESETS[0]) => {
     setScenario(preset.scenario);
     setSliderValues({
-      budgetChangePct: preset.params.budgetChangePct ?? 0,
+      budgetChangePct: budgetSet ? preset.params.budgetChangePct ?? 0 : 0,
       daysExtension: preset.params.daysExtension ?? 0,
       workerChange: preset.params.workerChange ?? 0,
       scopeChangePct: preset.params.scopeChangePct ?? 0,
@@ -916,6 +893,8 @@ const WhatIfScenario: React.FC = () => {
         </div>
       )}
 
+      <WhatIfIntro className="mb-4" />
+
       {/* Scenario Description */}
       <div className="mb-4">
         <label htmlFor={`${uid}-scenario`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Scenario</label>
@@ -936,7 +915,7 @@ const WhatIfScenario: React.FC = () => {
             <ExampleDataNote className="mb-3">This project has no tasks yet, so the sliders start from an example project. Add tasks to the project to model your own.</ExampleDataNote>
           )}
           <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Adjust parameters:</p>
-          <ScenarioSliderPanel values={sliderValues} onChange={setSliderValues} disabled={mutation.isPending} />
+          <ScenarioSliderPanel values={sliderValues} onChange={setSliderValues} disabled={mutation.isPending} budgetSet={budgetSet} />
         </div>
       )}
 
@@ -1031,124 +1010,7 @@ const WhatIfScenario: React.FC = () => {
             )}
           </div>
 
-          {/* 4 Impact Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Schedule */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Clock className="w-4 h-4 text-blue-500" />
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase">Schedule</span>
-              </div>
-              <p className={`text-xl font-bold ${impactColor(result.scheduleImpact.changePct)}`}>
-                {result.scheduleImpact.changePct > 0 ? '+' : ''}{result.scheduleImpact.changePct}%
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {result.scheduleImpact.originalDays} → {result.scheduleImpact.projectedDays} days
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">{result.scheduleImpact.explanation}</p>
-            </div>
-
-            {/* Budget */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <DollarSign className="w-4 h-4 text-green-500" />
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase">Budget</span>
-              </div>
-              <p className={`text-xl font-bold ${impactColor(result.budgetImpact.changePct)}`}>
-                {result.budgetImpact.changePct > 0 ? '+' : ''}{result.budgetImpact.changePct}%
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                ${result.budgetImpact.originalBudget.toLocaleString()} → ${result.budgetImpact.projectedBudget.toLocaleString()}
-              </p>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">{result.budgetImpact.explanation}</p>
-            </div>
-
-            {/* Resources */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Users className="w-4 h-4 text-purple-500" />
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase">Resources</span>
-              </div>
-              <p className="text-xl font-bold text-gray-700 dark:text-gray-200">
-                {result.resourceImpact.currentWorkers} → {result.resourceImpact.projectedWorkers}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">team members</p>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">{result.resourceImpact.explanation}</p>
-            </div>
-
-            {/* Risk */}
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-              <div className="flex items-center gap-1.5 mb-2">
-                <Shield className="w-4 h-4 text-orange-500" />
-                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase">Risk</span>
-              </div>
-              <p className={`text-xl font-bold ${
-                result.riskImpact.projectedRiskScore > result.riskImpact.currentRiskScore ? 'text-red-600' :
-                result.riskImpact.projectedRiskScore < result.riskImpact.currentRiskScore ? 'text-green-600' :
-                'text-gray-700 dark:text-gray-200'
-              }`}>
-                {result.riskImpact.currentRiskScore} → {result.riskImpact.projectedRiskScore}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">risk score</p>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 leading-relaxed">{result.riskImpact.explanation}</p>
-            </div>
-          </div>
-
-          {/* New Risks */}
-          {result.riskImpact.newRisks.length > 0 && (
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3">
-              <p className="text-xs font-semibold text-red-700 dark:text-red-300 mb-2 flex items-center gap-1">
-                <AlertTriangle className="w-3.5 h-3.5" /> New Risks Identified
-              </p>
-              <ul className="space-y-1">
-                {result.riskImpact.newRisks.map((risk, idx) => (
-                  <li key={idx} className="text-xs text-red-800 dark:text-red-200 flex items-start gap-1.5">
-                    <span className="mt-1.5 w-1 h-1 rounded-full bg-red-400 flex-shrink-0" />
-                    {risk}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Affected Tasks */}
-          {result.affectedTasks.length > 0 && (
-            <div>
-              <h3 className="text-xs font-semibold text-gray-700 dark:text-gray-200 uppercase tracking-wide mb-2">
-                Affected Tasks
-              </h3>
-              <div className="space-y-2">
-                {result.affectedTasks.map((task, idx) => (
-                  <div key={idx} className="flex items-start gap-2 rounded-lg border border-gray-100 dark:border-gray-700 p-2.5">
-                    <span className={`mt-0.5 px-1.5 py-0.5 rounded text-xs font-semibold uppercase ${severityBadge(task.severity)}`}>
-                      {task.severity}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{task.taskName}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{task.impact}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Recommendations */}
-          {result.recommendations.length > 0 && (
-            <div className="rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 p-3">
-              <p className="text-xs font-semibold text-violet-700 dark:text-violet-300 mb-2 flex items-center gap-1">
-                <Lightbulb className="w-3.5 h-3.5" /> Recommendations
-              </p>
-              <ul className="space-y-1.5">
-                {result.recommendations.map((rec, idx) => (
-                  <li key={idx} className="text-xs text-violet-800 dark:text-violet-200 flex items-start gap-1.5">
-                    <span className="mt-1.5 w-1 h-1 rounded-full bg-violet-400 flex-shrink-0" />
-                    {rec}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ScenarioResultView result={result} aiPowered={aiPowered} />
 
           {/* Cross-link actions */}
           {!isSample && (

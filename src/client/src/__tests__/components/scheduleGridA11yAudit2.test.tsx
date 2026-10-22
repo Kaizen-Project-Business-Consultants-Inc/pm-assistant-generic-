@@ -105,7 +105,7 @@ describe('M2: toggle groups say which option is on', () => {
         setShowFilters={() => {}} activeFilterCount={0} setPendingDeleteIds={() => {}} orderedColumns={[]}
         ganttVisibleCols={new Set()} toggleColVisibility={() => {}} moveColumn={() => {}} setGanttVisibleCols={() => {}}
         setGanttColOrder={() => {}} tasks={[]} showOverallocation={false} setShowOverallocation={() => {}}
-        overallocatedCount={0} showTimeline={false} setShowTimeline={() => {}} handleLoadView={() => {}}
+        overallocatedCount={0} anyoneAssigned showTimeline={false} setShowTimeline={() => {}} handleLoadView={() => {}}
         panelMode={panelMode} setPanelMode={() => {}} sortField={null} sortDirection={null}
       />,
     );

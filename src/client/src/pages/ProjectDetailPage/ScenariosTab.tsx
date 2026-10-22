@@ -1,19 +1,13 @@
 import { useState, useId } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import {
-  Calendar,
-  DollarSign,
-  ShieldAlert,
-  AlertTriangle,
-  Lightbulb,
-  Play,
-  SlidersHorizontal,
-  XCircle,
-} from 'lucide-react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Play, SlidersHorizontal, XCircle } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { useProjectRole } from '../../hooks/useProjectRole';
 import { ViewOnlyNote } from '../../components/ui/ViewOnlyNote';
 import { ExampleDataNote } from '../../components/ui/ExampleDataNote';
+import { ScenarioSliderPanel, type SliderValues } from '../../components/scenarios/ScenarioSliderPanel';
+import { ScenarioResultView, type ScenarioResult } from '../../components/scenarios/ScenarioResultView';
+import { WhatIfIntro } from '../../components/scenarios/WhatIfIntro';
 
 function SectionError({ message }: { message: string }) {
   return (
@@ -28,10 +22,14 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
   const uid = useId();
   const { canEdit, loaded: roleLoaded } = useProjectRole(projectId);
   const [scenario, setScenario] = useState('');
-  const [budgetChangePct, setBudgetChangePct] = useState<number>(0);
-  const [workerChange, setWorkerChange] = useState<number>(0);
-  const [daysExtension, setDaysExtension] = useState<number>(0);
-  const [scopeChangePct, setScopeChangePct] = useState<number>(0);
+  const [sliders, setSliders] = useState<SliderValues>({ budgetChangePct: 0, daysExtension: 0, workerChange: 0, scopeChangePct: 0 });
+  // the project's budget, so the Budget slider can say "No budget set" (U78)
+  const { data: baselineData } = useQuery({
+    queryKey: ['scenario-baseline', projectId],
+    queryFn: () => apiService.getScenarioBaseline(projectId),
+    enabled: roleLoaded && canEdit,
+  });
+  const baseline = baselineData?.data as { budgetAllocated?: number } | undefined;
 
   const mutation = useMutation({
     mutationFn: (data: {
@@ -48,11 +46,7 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
 
   const handleRunScenario = () => {
     if (!scenario.trim()) return;
-    const parameters: any = {};
-    if (budgetChangePct !== 0) parameters.budgetChangePct = budgetChangePct;
-    if (workerChange !== 0) parameters.workerChange = workerChange;
-    if (daysExtension !== 0) parameters.daysExtension = daysExtension;
-    if (scopeChangePct !== 0) parameters.scopeChangePct = scopeChangePct;
+    const parameters = Object.fromEntries(Object.entries(sliders).filter(([, v]) => v !== 0));
 
     mutation.mutate({
       projectId,
@@ -61,7 +55,7 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
     });
   };
 
-  const result = mutation.data?.data;
+  const result: ScenarioResult | undefined = mutation.data?.data;
 
   if (roleLoaded && !canEdit) {
     return <ViewOnlyNote className="mt-6" />;
@@ -77,6 +71,7 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
         </div>
 
         <div className="space-y-4">
+          <WhatIfIntro />
           <div>
             <label htmlFor={`${uid}-scenario-description`} className="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-200">
               Scenario Description
@@ -86,17 +81,17 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
               type="text"
               value={scenario}
               onChange={(e) => setScenario(e.target.value)}
-              placeholder="e.g., What if we add 5 more workers and extend the deadline by 2 weeks?"
+              placeholder="e.g., What if we lose the business analyst and extend the deadline by 2 weeks?"
               className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <SliderInput label="Budget Change" value={budgetChangePct} onChange={setBudgetChangePct} min={-50} max={50} step={5} unit="%" />
-            <SliderInput label="Worker Change" value={workerChange} onChange={setWorkerChange} min={-20} max={20} step={1} unit="" />
-            <SliderInput label="Days Extension" value={daysExtension} onChange={setDaysExtension} min={0} max={180} step={7} unit=" days" />
-            <SliderInput label="Scope Change" value={scopeChangePct} onChange={setScopeChangePct} min={-50} max={50} step={5} unit="%" />
-          </div>
+          <ScenarioSliderPanel
+            values={sliders}
+            onChange={setSliders}
+            disabled={mutation.isPending}
+            budgetSet={!baseline || (baseline.budgetAllocated ?? 0) > 0}
+          />
 
           <div className="flex justify-end">
             <button
@@ -146,144 +141,9 @@ export function ScenariosTab({ projectId }: { projectId: string }) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {result.scheduleImpact && (
-              <ImpactCard title="Schedule Impact" icon={Calendar} iconColor="text-blue-500" content={result.scheduleImpact} />
-            )}
-            {result.budgetImpact && (
-              <ImpactCard title="Budget Impact" icon={DollarSign} iconColor="text-green-500" content={result.budgetImpact} />
-            )}
-            {result.riskImpact && (
-              <ImpactCard title="Risk Impact" icon={ShieldAlert} iconColor="text-red-500" content={result.riskImpact} />
-            )}
-          </div>
-
-          {result.resourceImpact && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <h4 className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">Resource Impact</h4>
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                {typeof result.resourceImpact === 'string'
-                  ? result.resourceImpact
-                  : JSON.stringify(result.resourceImpact)}
-              </p>
-            </div>
-          )}
-
-          {result.affectedTasks && result.affectedTasks.length > 0 && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <h4 className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">Affected Tasks</h4>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                {result.affectedTasks.map((task: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex items-center gap-2 rounded-md bg-gray-50 dark:bg-gray-900 px-2.5 py-1.5 text-xs text-gray-700 dark:text-gray-200"
-                  >
-                    <AlertTriangle className="h-3 w-3 text-yellow-500 flex-shrink-0" />
-                    <span>
-                      {typeof task === 'string'
-                        ? task
-                        : task.name || task.task || JSON.stringify(task)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {result.recommendations && result.recommendations.length > 0 && (
-            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <h4 className="mb-2 text-xs font-semibold text-gray-700 dark:text-gray-200">Recommendations</h4>
-              <ul className="space-y-1.5">
-                {result.recommendations.map((rec: string, idx: number) => (
-                  <li
-                    key={idx}
-                    className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-300"
-                  >
-                    <Lightbulb className="mt-0.5 h-3 w-3 text-yellow-500 flex-shrink-0" />
-                    <span>{rec}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <ScenarioResultView result={result} aiPowered={!!mutation.data?.aiPowered} />
         </div>
       )}
-    </div>
-  );
-}
-
-function SliderInput({
-  label,
-  value,
-  onChange,
-  min,
-  max,
-  step,
-  unit,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  min: number;
-  max: number;
-  step: number;
-  unit: string;
-}) {
-  const sliderId = useId();
-  return (
-    <div>
-      <div className="mb-1 flex items-center justify-between">
-        <label htmlFor={sliderId} className="text-xs font-medium text-gray-700 dark:text-gray-200">{label}</label>
-        <span className="text-xs font-bold text-gray-900 dark:text-white">
-          {value > 0 ? '+' : ''}
-          {value}
-          {unit}
-        </span>
-      </div>
-      <input
-        id={sliderId}
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-primary-600"
-      />
-      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
-        <span>
-          {min}
-          {unit}
-        </span>
-        <span>
-          {max}
-          {unit}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ImpactCard({
-  title,
-  icon: Icon,
-  iconColor,
-  content,
-}: {
-  title: string;
-  icon: React.ElementType;
-  iconColor: string;
-  content: any;
-}) {
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className={`h-4 w-4 ${iconColor}`} />
-        <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-200">{title}</h4>
-      </div>
-      <p className="text-sm text-gray-600 dark:text-gray-300">
-        {typeof content === 'string' ? content : JSON.stringify(content)}
-      </p>
     </div>
   );
 }

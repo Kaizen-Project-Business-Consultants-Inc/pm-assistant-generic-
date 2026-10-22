@@ -384,6 +384,8 @@ export async function userRoutes(fastify: FastifyInstance) {
     visibleKeys: z.array(z.string()).optional(),
     columnOrder: z.array(z.string()).optional(),
     colWidths: z.record(z.string(), z.number()).optional(),
+    /** default columns added after this plan's columns were first saved, already switched on once (U69) */
+    addedDefaults: z.array(z.string()).max(50).optional(),
   });
 
   const viewPrefsSchema = z.object({

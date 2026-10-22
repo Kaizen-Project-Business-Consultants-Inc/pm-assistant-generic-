@@ -110,6 +110,7 @@ export interface GanttGridPanelProps {
   workCalendar?: WorkCalendar | null;
   reviewFlagMap?: Map<string, string>;
   successorMap: Links['successorMap'];
+  slackByTask?: ReadonlyMap<string, number>;
   getDepHealth: Links['getDepHealth'];
   // GanttChart's own callbacks (for most of the grid only whether they exist matters)
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
@@ -135,7 +136,7 @@ export function GanttGridPanel({
   setEditValue, saveEdit, cancelEditing, handleSelectChange, handleDateChange, handleCellClick, handleKeyDown,
   rowDrag, handleRowDragStart, handleRowDragOver, handleRowDrop, handleRowDragEnd,
   handleRowClick, handleRowDoubleClick, handleRowContextMenu, handleInsertAfter, setNotesPopup, setPendingDeleteIds,
-  workCalendar, reviewFlagMap, successorMap, getDepHealth,
+  workCalendar, reviewFlagMap, successorMap, slackByTask, getDepHealth,
   onBulkUpdate, onTaskClick, onTaskReorder, onTaskUpdate, onInsertAfter, onDeleteTask,
 }: GanttGridPanelProps) {
   // Row positions for screen readers (aria-rowcount / aria-rowindex): the header is row 1, then the
@@ -261,6 +262,7 @@ export function GanttGridPanel({
             rowNumMap={rowNumMap}
             reviewFlagMap={reviewFlagMap}
             successorMap={successorMap}
+            slack={slackByTask?.get(task.id)}
             taskById={taskById}
             sortField={sortField}
             hasOnBulkUpdate={!!onBulkUpdate}

@@ -9,7 +9,7 @@ import { useGanttColumns, useGanttColumnAutoFit } from '../../components/schedul
 import { GANTT_COLUMNS, type FlatRow, type GanttTask } from '../../components/schedule/gantt/types';
 import type { ColumnState } from '../../hooks/useColumnState';
 
-const DEFAULT_ORDER = ['rowNum', 'name', 'dur', 'start', 'end', 'pred', 'assigned', 'status', 'succ', 'est', 'work', 'pct', 'priority', 'resource', 'notes', 'editIcon'];
+const DEFAULT_ORDER = ['rowNum', 'name', 'dur', 'start', 'end', 'pred', 'assigned', 'status', 'succ', 'slack', 'est', 'work', 'pct', 'priority', 'resource', 'notes', 'editIcon'];
 const col = (key: string) => GANTT_COLUMNS.find(c => c.key === key)!;
 const keysOf = (cols: { key: string }[]) => cols.map(c => c.key);
 
@@ -30,7 +30,7 @@ describe('useGanttColumns — persistence (same keys and formats as before the m
     localStorage.setItem('gantt-col-widths:s1', JSON.stringify({ pct: 99, rowNum: 500 }));
     const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1' }));
 
-    const expectedOrder = ['rowNum', 'name', 'pct', 'status', 'dur', 'start', 'end', 'pred', 'assigned', 'succ', 'est', 'work', 'priority', 'resource', 'notes', 'editIcon'];
+    const expectedOrder = ['rowNum', 'name', 'pct', 'status', 'dur', 'start', 'end', 'pred', 'assigned', 'succ', 'slack', 'est', 'work', 'priority', 'resource', 'notes', 'editIcon'];
     expect(keysOf(result.current.orderedColumns)).toEqual(expectedOrder);
     expect([...result.current.ganttVisibleCols]).toEqual(['pct', 'notes']);
     expect(result.current.isColVisible(col('pct'))).toBe(true);
@@ -84,7 +84,7 @@ describe('useGanttColumns — hide/show, reorder, resize', () => {
     act(() => result.current.moveColumn('notes', 'right')); // would swap with editIcon (pinned)
     expect(keysOf(result.current.orderedColumns).slice(-2)).toEqual(['notes', 'editIcon']);
     act(() => result.current.moveColumn('nope', 'right'));
-    expect(keysOf(result.current.orderedColumns).length).toBe(16);
+    expect(keysOf(result.current.orderedColumns).length).toBe(17);
   });
 
   it('dragging a column edge resizes it (respecting min width) and persists', () => {
@@ -117,7 +117,7 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     expect(result.current.isColVisible(col('dur'))).toBe(false); // own default says visible, Table says not
     expect(result.current.isColVisible(col('resource'))).toBe(false); // Table says hidden
     expect(keysOf(result.current.orderedColumns)).toEqual(
-      ['rowNum', 'name', 'pct', 'start', 'pred', 'succ', 'end', 'dur', 'est', 'work', 'priority', 'assigned', 'resource', 'status', 'notes', 'editIcon'],
+      ['rowNum', 'name', 'pct', 'start', 'pred', 'succ', 'slack', 'end', 'dur', 'est', 'work', 'priority', 'assigned', 'resource', 'status', 'notes', 'editIcon'],
     );
     expect(result.current.ganttKeyToTableKey.pct).toBe('progressPercentage');
   });

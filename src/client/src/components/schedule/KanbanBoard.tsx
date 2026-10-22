@@ -25,6 +25,8 @@ interface KanbanBoardProps {
   scheduleId?: string;
   activeTaskId?: string | null;
   taskRiskMap?: Map<string, import('../../utils/taskRiskAssessment').TaskRiskLevel>;
+  /** Overbooked people (U65): taskId → "Priya 140% (week of 3 Nov)" lines, while the toggle is on */
+  overbookedNotes?: Map<string, string[]>;
 }
 
 const COLUMNS: { id: string; label: string; color: string; bg: string; border: string }[] = [
@@ -101,6 +103,8 @@ interface CardProps {
   task: KanbanTask;
   isActive: boolean;
   risk: RiskLevel | undefined;
+  /** Who this task overbooks, as one line (Overbooked people on) */
+  overbooked?: string;
   onCardClick: (task: KanbanTask) => void;
   onCardDragStart: (e: React.DragEvent<HTMLDivElement>, taskId: string) => void;
 }
@@ -128,24 +132,25 @@ const CARD_FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:r
  * One card. Memoised with stable callbacks, so a drag over a column or a change to one task
  * re-renders only the cards whose props changed, not every card on the board (2026-10-11).
  */
-const KanbanCard = React.memo(function KanbanCard({ task, isActive, risk, subtaskCount, dependencyCount, onCardClick, onCardDragStart }: CardProps & { subtaskCount: number; dependencyCount: number }) {
+const KanbanCard = React.memo(function KanbanCard({ task, isActive, risk, overbooked, subtaskCount, dependencyCount, onCardClick, onCardDragStart }: CardProps & { subtaskCount: number; dependencyCount: number }) {
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
   const due = task.dueDate || task.endDate;
   const overdue = (task.status !== 'completed' && task.status !== 'cancelled') && isOverdue(due);
-  const label = `Open ${task.name}, ${task.priority || 'medium'} priority${due ? `, ${overdue ? 'overdue' : 'due'} ${formatDate(due)}` : ''}${task.assignedTo ? `, ${task.assignedTo}` : ''}`;
+  const label = `Open ${task.name}, ${task.priority || 'medium'} priority${due ? `, ${overdue ? 'overdue' : 'due'} ${formatDate(due)}` : ''}${task.assignedTo ? `, ${task.assignedTo}` : ''}${overbooked ? `, overbooked: ${overbooked}` : ''}`;
 
   return (
     <div
       draggable
       onDragStart={(e) => onCardDragStart(e, task.id)}
       {...cardButtonProps(task, label, onCardClick)}
-      className={`bg-white dark:bg-gray-700 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${CARD_FOCUS_RING} ${cardBorder(isActive, risk)}`}
+      className={`bg-white dark:bg-gray-700 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group ${CARD_FOCUS_RING} ${cardBorder(isActive, risk)} ${overbooked ? 'border-l-[3px] border-l-amber-500' : ''}`}
     >
       {/* Title */}
       <div className="text-xs font-medium text-gray-900 dark:text-gray-100 mb-2 line-clamp-2 group-hover:text-primary-700 dark:group-hover:text-primary-300 transition-colors flex items-center gap-1.5">
         {task.isMilestone && <span className="w-2.5 h-2.5 flex-shrink-0 rotate-45 bg-primary-500 inline-block" title="Milestone" />}
         {task.name}
       </div>
+      {overbooked && <p className="-mt-1 mb-2 text-xs font-semibold text-amber-700 dark:text-amber-400">{overbooked}</p>}
 
       {/* Priority + Due date */}
       <div className="flex items-center gap-2 flex-wrap">
@@ -210,15 +215,16 @@ const KanbanCard = React.memo(function KanbanCard({ task, isActive, risk, subtas
 });
 
 /** The small card in a swimlane's mini column (name only); memoised like KanbanCard. */
-const KanbanLaneCard = React.memo(function KanbanLaneCard({ task, isActive, risk, onCardClick, onCardDragStart }: CardProps) {
+const KanbanLaneCard = React.memo(function KanbanLaneCard({ task, isActive, risk, overbooked, onCardClick, onCardDragStart }: CardProps) {
   return (
     <div
       draggable
       onDragStart={(e) => onCardDragStart(e, task.id)}
-      {...cardButtonProps(task, `Open ${task.name}`, onCardClick)}
-      className={`bg-white dark:bg-gray-700 rounded-md border p-2 text-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${CARD_FOCUS_RING} ${cardBorder(isActive, risk)}`}
+      {...cardButtonProps(task, `Open ${task.name}${overbooked ? `, overbooked: ${overbooked}` : ''}`, onCardClick)}
+      className={`bg-white dark:bg-gray-700 rounded-md border p-2 text-xs cursor-grab active:cursor-grabbing hover:shadow-sm transition-shadow ${CARD_FOCUS_RING} ${cardBorder(isActive, risk)} ${overbooked ? 'border-l-[3px] border-l-amber-500' : ''}`}
     >
       <span className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1">{task.name}</span>
+      {overbooked && <span className="block font-semibold text-amber-700 dark:text-amber-400 line-clamp-1">{overbooked}</span>}
     </div>
   );
 });
@@ -241,7 +247,7 @@ function saveWipLimits(scheduleId: string, limits: Record<string, number>) {
 
 type SwimlaneSetting = '' | 'assignee' | 'priority';
 
-export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQuickAdd, scheduleId, activeTaskId, taskRiskMap }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQuickAdd, scheduleId, activeTaskId, taskRiskMap, overbookedNotes }: KanbanBoardProps) {
   const uid = useId();
   const [quickAddColumn, setQuickAddColumn] = useState<string | null>(null);
   const [quickAddValue, setQuickAddValue] = useState('');
@@ -433,6 +439,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                               task={task}
                               isActive={activeTaskId === task.id}
                               risk={taskRiskMap?.get(task.id)}
+                              overbooked={overbookedNotes?.get(task.id)?.join('; ')}
                               onCardClick={handleCardClick}
                               onCardDragStart={handleDragStart}
                             />
@@ -503,6 +510,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                     task={task}
                     isActive={activeTaskId === task.id}
                     risk={taskRiskMap?.get(task.id)}
+                    overbooked={overbookedNotes?.get(task.id)?.join('; ')}
                     subtaskCount={subtaskCounts[task.id] || 0}
                     dependencyCount={dependencyCounts[task.id] || 0}
                     onCardClick={handleCardClick}

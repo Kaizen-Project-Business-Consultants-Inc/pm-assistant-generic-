@@ -20,6 +20,8 @@ interface CalendarViewProps {
   onTaskReschedule?: (taskId: string, newStartDate: string, newEndDate: string) => void;
   /** Project calendar: a dropped task starts on a working day and keeps its length in working days */
   workCalendar?: WorkCalendar | null;
+  /** Opens the project's Working calendar — this view only shows tasks on dates (U62) */
+  onOpenWorkingCalendar?: () => void;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -57,7 +59,7 @@ function taskStartsOnDay(task: GanttTask, day: Date): boolean {
   return isSameDay(day, toDateOnly(task.startDate));
 }
 
-export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalendar }: CalendarViewProps) {
+export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalendar, onOpenWorkingCalendar }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [mode, setMode] = useState<CalendarMode>('month');
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -361,6 +363,15 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
 
   return (
     <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+      {/* "Calendar" read as the project calendar (UAT 2026-10-21): point to where working days are set */}
+      {onOpenWorkingCalendar && (
+        <p className="px-4 pt-3 text-xs text-gray-600 dark:text-gray-300">
+          Working days and holidays are set in the{' '}
+          <button type="button" onClick={onOpenWorkingCalendar} className="font-semibold text-indigo-700 dark:text-indigo-300 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 rounded">
+            Working calendar →
+          </button>
+        </p>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">

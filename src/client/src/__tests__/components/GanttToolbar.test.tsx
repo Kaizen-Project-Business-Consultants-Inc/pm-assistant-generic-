@@ -57,6 +57,7 @@ function renderToolbar(columnState?: ColumnState) {
       showOverallocation={false}
       setShowOverallocation={() => {}}
       overallocatedCount={0}
+      anyoneAssigned
       showTimeline={false}
       setShowTimeline={() => {}}
       handleLoadView={() => {}}

@@ -235,6 +235,8 @@ export const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'name',      label: 'Task Name',defaultWidth: 250, minWidth: 120, resizable: true, alwaysVisible: true },
   { key: 'pred',      label: 'Pred',     defaultWidth: 56,  minWidth: 40,  resizable: true },
   { key: 'succ',      label: 'Succ',     defaultWidth: 56,  minWidth: 40,  resizable: true },
+  // Total slack (float) in working days, from the critical-path calculation (U69)
+  { key: 'slack',     label: 'Slack',    defaultWidth: 52,  minWidth: 40,  resizable: true },
   { key: 'start',     label: 'Start',    defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'end',       label: 'End',      defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'dur',       label: 'Dur',      defaultWidth: 48,  minWidth: 36,  resizable: true },
@@ -250,7 +252,9 @@ export const GANTT_COLUMNS: GanttColDef[] = [
 ];
 
 /** Default visible columns -- show only essential columns so the name column isn't squeezed */
-/** Default view (matches tableColumns.ts): Duration, Start, End, Predecessor, Assigned, Status */
+/** Default view of a Gantt with no Table column state (e.g. the portfolio Gantt): Duration, Start, End,
+ *  Predecessor, Assigned, Status. On a project schedule the Gantt follows tableColumns.ts, whose
+ *  defaults also show Successors and Total slack (Slack). */
 export const DEFAULT_VISIBLE_COLS = new Set(['dur', 'start', 'end', 'pred', 'assigned', 'status']);
 
 /** Default column order — the default view first, then the rest in their usual order */

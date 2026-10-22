@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Filter, X, Download, ClipboardCheck } from 'lucide-react';
 import { WorkingCalendarButton } from '../../../components/schedule/calendar/WorkingCalendarButton';
+import { OverbookedToggle } from '../../../components/schedule/OverbookedToggle';
 import { ColumnPickerDropdown } from '../../../components/schedule/ColumnPickerDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS } from '../../../components/schedule/tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
@@ -25,6 +26,8 @@ interface ScheduleToolbarProps {
   onExportCSV: () => void;
   filteredCount: number;
   totalCount: number;
+  /** Overbooked people on the Table and Kanban (the Gantt has its own toolbar) — U65 */
+  overbooked?: { on: boolean; onToggle: () => void; count: number; anyoneAssigned: boolean };
 }
 
 export const ScheduleToolbar = React.memo(function ScheduleToolbar({
@@ -46,6 +49,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   onExportCSV,
   filteredCount,
   totalCount,
+  overbooked,
 }: ScheduleToolbarProps) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -119,6 +123,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
         </button>
       )}
       {onOpenCalendar && <WorkingCalendarButton onClick={onOpenCalendar} active={calendarActive} />}
+      {overbooked && (viewMode === 'table' || viewMode === 'kanban') && <OverbookedToggle {...overbooked} />}
 
       {viewMode === 'gantt' && (
         <button

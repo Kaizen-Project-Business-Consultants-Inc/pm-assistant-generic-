@@ -57,7 +57,7 @@ export const DisplayTab: React.FC = () => {
     { value: 'gantt', label: 'Gantt' },
     { value: 'kanban', label: 'Kanban' },
     { value: 'table', label: 'Table' },
-    { value: 'calendar', label: 'Calendar' },
+    { value: 'calendar', label: 'Task calendar' },
   ];
 
   return (

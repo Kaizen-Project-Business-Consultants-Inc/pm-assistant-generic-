@@ -114,3 +114,13 @@ describe('Kanban cards: keyboard', () => {
     expect(onTaskClick.mock.calls.map(c => c[0].id)).toEqual(['c']);
   });
 });
+
+describe('Overbooked people on the board (U65, 2026-10-21)', () => {
+  it('a card that overbooks someone says who and when; the others say nothing', () => {
+    render(<KanbanBoard tasks={TASKS} overbookedNotes={new Map([['b', ['Ben 140% (week of 3 Nov)']]])} />);
+    expect(screen.getByText('Ben 140% (week of 3 Nov)')).toBeInTheDocument();
+    expect(screen.queryAllByText(/%\s\(week of/)).toHaveLength(1);
+    // a screen reader hears it too: the card's name carries the note
+    expect(screen.getByRole('button', { name: /Open Bravo.*overbooked: Ben 140% \(week of 3 Nov\)/ })).toBeInTheDocument();
+  });
+});

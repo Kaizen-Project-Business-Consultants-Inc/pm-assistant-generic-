@@ -59,6 +59,8 @@ export interface GanttLeftPanelRowProps {
   rowNumMap: Map<string, number>;
   reviewFlagMap?: Map<string, string>;
   successorMap: Map<string, Array<{ successorId: string; type: string; lag: number }>>;
+  /** Total slack in working days (undefined until the critical path is worked out) */
+  slack?: number;
   taskById: ReadonlyMap<string, GanttTask>; // for dependency name tooltips
   // Feature flags
   sortField: string | null;
@@ -170,6 +172,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   rowNumMap,
   reviewFlagMap,
   successorMap,
+  slack,
   taskById,
   sortField,
   hasOnBulkUpdate,
@@ -443,6 +446,18 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               });
               return labels.join(',');
             })()}
+          </div>
+        );
+
+        if (col.key === 'slack') return (
+          <div
+            key="slack"
+            {...CELL}
+            className={`shrink-0 px-1 text-center text-xs tabular-nums ${slack != null && slack <= 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}
+            style={{ width: w }}
+            title={slack == null ? undefined : slack <= 0 ? 'No slack: on the critical path' : `Can slip ${slack} working day${slack === 1 ? '' : 's'} before the finish moves`}
+          >
+            {slack == null ? '—' : `${slack} d`}
           </div>
         );
 

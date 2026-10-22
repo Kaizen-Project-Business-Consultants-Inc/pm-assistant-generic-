@@ -102,7 +102,7 @@ describe('guards: one shared map, every column sorts, every sort has a value', (
   const plan = [y, full, z];
 
   it('every Gantt sort field has a sort value (none falls through)', () => {
-    const ctx = { rowNumOf: buildRowNumberMap(plan), successorIds: buildSuccessorIds(plan), resourceNameOf: NAMES, workCalendar: null };
+    const ctx = { rowNumOf: buildRowNumberMap(plan), successorIds: buildSuccessorIds(plan), resourceNameOf: NAMES, workCalendar: null, slackOf: new Map([['x', 3]]) };
     for (const field of Object.values(GANTT_SORT_FIELD)) {
       expect(ganttSortValue(full, field, ctx), field).not.toBe('');
       expect(ganttSortValue(full, field, ctx), field).not.toBeNull();

@@ -27,7 +27,7 @@ interface Props {
 const PARAMS = [
   { key: 'budgetChangePct' as const, label: 'Budget %', min: -50, max: 50 },
   { key: 'daysExtension' as const, label: 'Days', min: -60, max: 60 },
-  { key: 'workerChange' as const, label: 'Workers', min: -5, max: 5 },
+  { key: 'workerChange' as const, label: 'Resources', min: -5, max: 5 },
   { key: 'scopeChangePct' as const, label: 'Scope %', min: -50, max: 50 },
 ] as const;
 

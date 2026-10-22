@@ -106,7 +106,6 @@
     "client|types|src/utils/notificationLink.ts|NotificationTarget",
     "client|types|src/utils/plannerLayout.ts|Placed",
     "client|types|src/utils/readingLevel.ts|ReadingLevelResult",
-    "client|types|src/utils/resourceConflicts.ts|ConflictTask",
     "client|types|src/utils/resourceLookup.ts|AssignableResource",
     "client|types|src/utils/userGuide.ts|GuideChapter",
     "client|unlisted|src/__tests__/components/domFixtures.ts|vitest-environment-happy-dom`,",

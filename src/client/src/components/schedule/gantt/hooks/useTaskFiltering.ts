@@ -27,6 +27,8 @@ export interface GanttSortContext {
   successorIds: Map<string, string[]>;
   resourceNameOf: Map<string, string>;
   workCalendar?: WorkCalendar | null;
+  /** Each task's total slack (Slack column); missing = not worked out yet, sorts last */
+  slackOf?: ReadonlyMap<string, number>;
 }
 
 const PRIORITY_ORDER: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
@@ -53,6 +55,7 @@ export function ganttSortValue(task: GanttTask, sortField: string, ctx: GanttSor
     case 'priority': return PRIORITY_ORDER[task.priority || 'medium'] ?? 1;
     case 'status': return STATUS_ORDER[task.status] ?? 0;
     case 'assignedTo': return assignedSortName(task, ctx.resourceNameOf);
+    case 'totalFloat': return ctx.slackOf?.get(task.id) ?? null;
     default: return '';
   }
 }
@@ -71,6 +74,7 @@ export function useTaskFiltering({
   collapsedIds,
   workCalendar,
   resourceNameOf,
+  slackOf,
 }: {
   tasks: GanttTask[];
   /** The whole plan, for the fixed row numbers Pred / Succ sort by (defaults to tasks) */
@@ -79,6 +83,8 @@ export function useTaskFiltering({
   workCalendar?: WorkCalendar | null;
   /** Resource / person id → name, for the Assigned and Resource sorts */
   resourceNameOf?: Map<string, string>;
+  /** Each task's total slack, for the Slack sort (U69) */
+  slackOf?: ReadonlyMap<string, number>;
 }) {
   // -----------------------------------------------------------------------
   // Quick search state
@@ -209,7 +215,7 @@ export function useTaskFiltering({
   const rows = useMemo(() => {
     if (!sortField || !sortDirection) return filteredRows;
     // Sort within sibling groups to preserve hierarchy
-    const ctx: GanttSortContext = { rowNumOf, successorIds, resourceNameOf: names, workCalendar };
+    const ctx: GanttSortContext = { rowNumOf, successorIds, resourceNameOf: names, workCalendar, slackOf };
     const getSortValue = (task: GanttTask) => ganttSortValue(task, sortField, ctx);
 
     // Group rows by parentTaskId, sort within each group, reassemble
@@ -245,7 +251,7 @@ export function useTaskFiltering({
       }
     }
     return result;
-  }, [filteredRows, sortField, sortDirection, workCalendar, rowNumOf, successorIds, names]);
+  }, [filteredRows, sortField, sortDirection, workCalendar, rowNumOf, successorIds, names, slackOf]);
 
   return {
     searchQuery,

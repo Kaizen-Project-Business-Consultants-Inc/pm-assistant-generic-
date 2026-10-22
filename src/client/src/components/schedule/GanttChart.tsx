@@ -1,8 +1,6 @@
 import { useMemo, useRef, useEffect, useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
-import { apiService } from '../../services/api';
-import { findResourceConflicts, type WorkloadRow } from '../../utils/resourceConflicts';
+import { useResourceConflicts } from '../../hooks/useResourceConflicts';
 import type { ColumnState } from '../../hooks/useColumnState';
 import { useGanttColumns, useGanttColumnAutoFit } from './gantt/hooks/useGanttColumns';
 import { useTaskFiltering } from './gantt/hooks/useTaskFiltering';
@@ -72,6 +70,7 @@ export function GanttChart({
   columnState: _columnState,
   criticalPathTaskIds,
   taskFloatMap,
+  slackByTask,
   baselineTasks,
   onTaskDragEnd,
   onTaskUpdate,
@@ -131,6 +130,8 @@ export function GanttChart({
   criticalPathTaskIds?: string[];
   /** Map of taskId → total float days (from CPM analysis) */
   taskFloatMap?: Record<string, number>;
+  /** Each task's total slack in working days, for the Slack column (U69) */
+  slackByTask?: ReadonlyMap<string, number>;
   /** Baseline task data for ghost bars */
   baselineTasks?: Array<{ taskId: string; startDate: string; endDate: string }>;
   /** Called when a task bar is dragged to new dates */
@@ -376,20 +377,8 @@ export function GanttChart({
     return set;
   }, [tasks]);
 
-  /** Tasks that book someone who is over 100% that week — the Workload Heatmap's own numbers
-   *  (every project, every way of assigning someone), fetched only while Conflicts is on */
-  const { data: workloadData } = useQuery({
-    queryKey: ['workload', '__all__'],
-    queryFn: () => apiService.getGlobalResourceWorkload(),
-    enabled: showOverallocation,
-    staleTime: 60_000,
-  });
-  const conflictNotes = useMemo(
-    () => (showOverallocation
-      ? findResourceConflicts(tasks, (workloadData?.workload ?? []) as WorkloadRow[], parentTaskIds)
-      : new Map<string, string[]>()),
-    [showOverallocation, tasks, workloadData, parentTaskIds],
-  );
+  /** Tasks that book someone who is over 100% that week (Overbooked people, shared with Table and Kanban) */
+  const { notes: conflictNotes, anyoneAssigned } = useResourceConflicts(tasks, showOverallocation);
   const overallocatedTaskIds = useMemo(() => new Set(conflictNotes.keys()), [conflictNotes]);
 
   const collapseAll = useCallback(() => {
@@ -445,7 +434,7 @@ export function GanttChart({
     handleHeaderSort,
     baseRows,
     rows,
-  } = useTaskFiltering({ tasks, allTasks, collapsedIds, workCalendar, resourceNameOf: resourceNameMap });
+  } = useTaskFiltering({ tasks, allTasks, collapsedIds, workCalendar, resourceNameOf: resourceNameMap, slackOf: slackByTask });
 
   const allSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.task.id));
 
@@ -1104,6 +1093,7 @@ export function GanttChart({
         showOverallocation={showOverallocation}
         setShowOverallocation={setShowOverallocation}
         overallocatedCount={overallocatedTaskIds.size}
+        anyoneAssigned={anyoneAssigned}
         showTimeline={showTimeline}
         setShowTimeline={setShowTimeline}
         handleLoadView={handleLoadView}
@@ -1247,6 +1237,7 @@ export function GanttChart({
           workCalendar={workCalendar}
           reviewFlagMap={reviewFlagMap}
           successorMap={successorMap}
+          slackByTask={slackByTask}
           getDepHealth={getDepHealth}
           onBulkUpdate={onBulkUpdate}
           onTaskClick={onTaskClick}
