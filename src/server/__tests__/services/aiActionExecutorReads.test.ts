@@ -93,7 +93,7 @@ describe('Mjuzi read tools — bounded results', () => {
   const executor = new AIActionExecutor();
   const tasks = (n: number, scheduleId = 's1') => Array.from({ length: n }, (_, i) => ({
     id: `${scheduleId}-t${i}`, scheduleId, name: `Task ${i}`, status: 'pending', priority: 'medium',
-    dueDate: null, dependencies: [],
+    dueDate: null, dependencies: [], sortOrder: i, // the plan's order: the list is cut after sorting by row number
   }));
 
   beforeEach(() => {
