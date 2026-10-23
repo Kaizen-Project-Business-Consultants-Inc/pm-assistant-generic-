@@ -293,8 +293,10 @@ export class AIActionExecutor {
     const repointed: Array<{ id: string; old: Array<{ dependencyId: string; dependencyType: string; lagDays: number }> }> = [];
     const asLinks = (deps: Task['dependencies']) => deps.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays }));
     try {
-      // the first part is the original
-      await scheduleService.updateTask(orig.id, { name: names[0], description: descriptions[0] ?? orig.description, estimatedDays: days[0] } as any);
+      // the first part is the original: shorter, so it also finishes sooner (working days of the project calendar)
+      const isWorking = await scheduleService.workingDayTest(orig.scheduleId);
+      const shortEnd = orig.startDate ? ymdOf(finishFor(utcDay(orig.startDate), days[0], isWorking)) : undefined;
+      await scheduleService.updateTask(orig.id, { name: names[0], description: descriptions[0] ?? orig.description, estimatedDays: days[0], ...(shortEnd ? { endDate: shortEnd } : {}) } as any);
 
       for (let i = 1; i < pieces.length; i++) {
         const previous = i === 1 ? orig : made[i - 2];
@@ -342,7 +344,7 @@ export class AIActionExecutor {
         // eslint-disable-next-line no-await-in-loop -- undoing the parts already made, one by one
         await scheduleService.deleteTask(m.id).catch((e: unknown) => { undoFailures.push(`part ${m.id}: ${String(e)}`); });
       }
-      await scheduleService.updateTask(orig.id, { name: orig.name, description: orig.description, estimatedDays: orig.estimatedDays } as any)
+      await scheduleService.updateTask(orig.id, { name: orig.name, description: orig.description, estimatedDays: orig.estimatedDays, ...(orig.endDate ? { endDate: ymdOf(utcDay(orig.endDate)) } : {}) } as any)
         .catch((e: unknown) => { undoFailures.push(`original: ${String(e)}`); });
       const message = error instanceof Error ? error.message : String(error);
       if (undoFailures.length) {
@@ -748,6 +750,13 @@ export class AIActionExecutor {
       dependencies: existingDeps.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
     } as any);
 
+    // dates follow the new link, as when a person links in the app (QA 2026-10-23: a task linked after Handover kept starting before it)
+    let movedByLink = 0;
+    try {
+      movedByLink = (await scheduleRecomputeService.recompute(task.scheduleId, { onlyFrom: [taskId], reason: 'link_added' })).tasksMoved ?? 0;
+    } catch (error) {
+      logger.warn(`set_dependency: dates not re-flowed for ${taskId}: ${error instanceof Error ? error.message : String(error)}`);
+    }
     const predecessor = predecessorRow;
     // a link that points DOWN the plan makes it read out of order (found 2026-10-23: Onboarding after a task listed below it)
     const rowOf = computeScheduleRowNumbers(await scheduleService.findTasksByScheduleId(task.scheduleId));
@@ -759,7 +768,7 @@ export class AIActionExecutor {
     return {
       success: true,
       toolName: 'set_dependency',
-      summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})${warning ? ` WARNING: ${warning}` : ''}`,
+      summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})${movedByLink ? `; ${movedByLink} task${movedByLink === 1 ? '' : 's'} moved later to follow it` : ''}${warning ? ` WARNING: ${warning}` : ''}`,
       // scheduleId: the chat refreshes that plan's views (critical path, network…; U38)
       data: { taskId, scheduleId: task.scheduleId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType, ...(warning ? { warning } : {}) },
     };

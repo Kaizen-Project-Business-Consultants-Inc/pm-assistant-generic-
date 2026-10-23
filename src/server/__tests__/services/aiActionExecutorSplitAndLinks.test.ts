@@ -16,6 +16,7 @@ vi.mock('../../services/ScheduleService', () => ({
     updateTask: vi.fn(),
     deleteTask: vi.fn(async () => true),
     validateDependency: vi.fn(async () => {}),
+    workingDayTest: vi.fn(async () => (d: Date) => { const w = d.getUTCDay(); return w !== 0 && w !== 6; }),
   },
   DependencyValidationError: class extends Error {},
 }));
@@ -49,7 +50,7 @@ const task = (id: string, name: string, sortOrder: number, extra: Record<string,
 describe('Mjuzi split_task', () => {
   const executor = new AIActionExecutor() as any;
   let n = 0;
-  const original = task('orig', 'Gate 1 review and acceptance', 4, { parentTaskId: 'ph1', dependencies: [dep('before')], estimatedDays: 10, startDate: '2026-07-22', assignedTo: 'ann', status: 'pending', progressPercentage: 0, description: 'old text' });
+  const original = task('orig', 'Gate 1 review and acceptance', 4, { parentTaskId: 'ph1', dependencies: [dep('before')], estimatedDays: 10, startDate: '2026-07-22', endDate: '2026-07-31', assignedTo: 'ann', status: 'pending', progressPercentage: 0, description: 'old text' });
   // one follower finishes after the original (FS, with another link), one starts with it (SS)
   const after = task('after', 'Phase 2 kickoff', 5, { dependencies: [dep('orig'), dep('other')] });
   const sameStart = task('with', 'Prepare handover', 6, { dependencies: [{ dependencyId: 'orig', dependencyType: 'SS', lagDays: 0 }] });
@@ -68,7 +69,8 @@ describe('Mjuzi split_task', () => {
 
     expect(r.success).toBe(true);
     // the original is renamed and shortened — nothing is deleted, so its dates, assignee and History stay
-    expect(ss.updateTask).toHaveBeenNthCalledWith(1, 'orig', { name: 'Review', description: 'old text', estimatedDays: 3 });
+    // 3 working days from Wed 22 Jul → Fri 24 Jul (it kept the old end date before — QA 2026-10-23)
+    expect(ss.updateTask).toHaveBeenNthCalledWith(1, 'orig', { name: 'Review', description: 'old text', estimatedDays: 3, endDate: '2026-07-24' });
     const calls = ss.createTask.mock.calls.map(c => c[0]);
     expect(calls).toHaveLength(2);
     expect(calls.map(c => c.afterTaskId)).toEqual(['orig', 'new1']);
@@ -101,7 +103,7 @@ describe('Mjuzi split_task', () => {
     expect(r.summary).toMatch(/Nothing was split/);
     expect(ss.deleteTask).toHaveBeenCalledWith('new1');
     // the original gets its own name, text and length back
-    expect(ss.updateTask).toHaveBeenLastCalledWith('orig', { name: original.name, description: 'old text', estimatedDays: 10 });
+    expect(ss.updateTask).toHaveBeenLastCalledWith('orig', { name: original.name, description: 'old text', estimatedDays: 10, endDate: '2026-07-31' });
   });
 
   it('restores the links of followers already moved when a later step fails, and does not claim it is unchanged if undo fails', async () => {
@@ -161,10 +163,20 @@ describe('Mjuzi set_dependency checks and list_tasks rows', () => {
     expect(ss.updateTask).not.toHaveBeenCalled();
   });
 
-  it('links a later row after an earlier one without a warning', async () => {
+  it('links a later row after an earlier one without a warning, and re-flows the dates from the linked task', async () => {
+    recompute.mockResolvedValueOnce({ deltas: [], tasksMoved: 2 });
     const r = await executor.setDependency({ taskId: 'gov', predecessorId: 'onb' }, CTX);
     expect(r.success).toBe(true);
     expect(r.data.warning).toBeUndefined();
+    expect(recompute).toHaveBeenCalledWith('s1', { onlyFrom: ['gov'], reason: 'link_added' });
+    expect(r.summary).toMatch(/2 tasks moved later to follow it/);
+  });
+
+  it('still links when the date re-flow fails', async () => {
+    recompute.mockRejectedValueOnce(new Error('lock timeout'));
+    const r = await executor.setDependency({ taskId: 'gov', predecessorId: 'onb' }, CTX);
+    expect(r.success).toBe(true);
+    expect(r.summary).not.toMatch(/moved later/);
   });
 
   it('warns when the predecessor is further down the plan (Onboarding after Governance)', async () => {
