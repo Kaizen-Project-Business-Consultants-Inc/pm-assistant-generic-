@@ -70,6 +70,8 @@ export function runWithTenantContext<T>(
     startTime: Date.now(),
     tenantDbName: dbName,
     organizationId: orgId,
+    // keep who asked when this runs inside a request (a Claude-connector report stays 'mcp'); a scheduled job has none
+    actorSource: asyncLocalStorage.getStore()?.actorSource,
   };
   return asyncLocalStorage.run(context, async () => callback());
 }

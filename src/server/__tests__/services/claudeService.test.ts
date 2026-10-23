@@ -254,6 +254,33 @@ describe('ClaudeService', () => {
       expect(result.latencyMs).toBeGreaterThanOrEqual(0);
     });
 
+    it('records how long the call took and who asked (M5: latency was always 0)', async () => {
+      mockRecord.mockReset();
+      mockCreate.mockImplementation(async () => { await new Promise<void>(r => { setTimeout(r, 15); }); return mockApiResponse(); });
+      const service = makeService();
+      await service.complete(defaultOptions());
+      const rec = mockRecord.mock.calls[0][0];
+      expect(rec.latencyMs).toBeGreaterThan(0);
+      expect(rec.requestContext).toEqual({ source: 'background' });
+      mockCreate.mockReset();
+    });
+
+    it('tags a scheduled job as background and keeps the connector as mcp, even inside a company context', async () => {
+      const { runWithTenantContext, asyncLocalStorage } = await import('../../middleware/requestContext');
+      // this file stubs getRequestContext() to null; here the real store is needed
+      vi.mocked(getRequestContext).mockImplementation(() => asyncLocalStorage.getStore() ?? null as any);
+      mockCreate.mockResolvedValue(mockApiResponse());
+      const service = makeService();
+      mockRecord.mockReset();
+      await runWithTenantContext('db_x', 'org1', () => service.complete(defaultOptions()));
+      expect(mockRecord.mock.calls[0][0].requestContext).toEqual({ source: 'background' });
+      mockRecord.mockReset();
+      await asyncLocalStorage.run({ requestId: 'r', startTime: 0, actorSource: 'mcp' }, () =>
+        runWithTenantContext('db_x', 'org1', () => service.complete(defaultOptions())));
+      expect(mockRecord.mock.calls[0][0].requestContext).toEqual({ source: 'mcp' });
+      vi.mocked(getRequestContext).mockImplementation(() => null as any);
+    });
+
     it('passes system prompt with defense and persona preambles', async () => {
       mockCreate.mockResolvedValue(mockApiResponse());
       const service = makeService();

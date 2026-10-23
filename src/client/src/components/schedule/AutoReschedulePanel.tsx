@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag } from 'lucide-react';
 import { severityColor } from '../../utils/severityColors';
 import { announce } from '../../utils/announce';
+import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { formatCalendarDate } from '../../utils/dateUtils';
 
@@ -332,8 +333,8 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
           )}
 
           {generateMutation.isError && (
-            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-400">
-              Failed to generate proposal. Please try again.
+            <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 text-sm text-red-700 dark:text-red-400">
+              {getApiErrorMessage(generateMutation.error, 'Failed to generate proposal. Please try again.')}
             </div>
           )}
 

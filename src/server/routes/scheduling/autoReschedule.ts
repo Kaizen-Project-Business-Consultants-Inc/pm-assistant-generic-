@@ -8,6 +8,7 @@ import { automationEventBus } from '../../services/automation/AutomationEventBus
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
 import { requireFeature } from '../../middleware/requireTier';
+import { rateLimiter } from '../../middleware/rateLimiter';
 import logger from '../../utils/logger';
 
 const rejectBodySchema = z.object({
@@ -75,6 +76,16 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
       const { scheduleId } = request.params as { scheduleId: string };
       const user = request.user!;
       const userId = user.userId;
+      // Each proposal is a paid AI call; the button, the Claude connector and scripts all come through here
+      const rl = await rateLimiter.checkAsync(`ai:reschedule:${userId}`, 10, 3600_000);
+      if (!rl.allowed) {
+        reply.header('Retry-After', String(Math.max(1, Math.ceil((rl.resetAt - Date.now()) / 1000))));
+        return reply.status(429).send({
+          error: 'Too many reschedule proposals',
+          message: 'You have asked for 10 reschedule proposals in the last hour. Use one of them, or try again later.',
+          retryAfterMs: rl.resetAt - Date.now(),
+        });
+      }
       const proposal = await autoRescheduleService.generateProposal(scheduleId, userId);
       webhookService.dispatch('proposal.created', { proposal }, userId);
       automationEventBus.emit({ type: 'proposal.created', entityType: 'proposal', entityId: proposal.id, projectId: '', userId, payload: proposal as any, timestamp: new Date().toISOString() }).catch(() => {});

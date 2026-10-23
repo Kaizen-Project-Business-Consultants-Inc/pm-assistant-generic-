@@ -704,7 +704,7 @@ export class ClaudeService {
             outputTokens: fallbackResponse.usage.output_tokens,
           };
 
-          this.recordUsage(usage, options, this.fallbackModel);
+          this.recordUsage(usage, options, this.fallbackModel, latencyMs);
           this.circuitBreaker.recordSuccess();
 
           return { content, usage, latencyMs, model: fallbackResponse.model, stopReason: fallbackResponse.stop_reason ?? undefined };
@@ -729,6 +729,7 @@ export class ClaudeService {
     const effectiveMaxTokens = options.maxTokens ?? this.maxTokens;
     const effectiveTemperature = options.temperature ?? this.temperature;
 
+    const streamStartMs = Date.now();
     try {
       const messageStream = this.client!.messages.stream({
         model: this.pickModel(options),
@@ -772,7 +773,7 @@ export class ClaudeService {
         outputTokens: accumulatedOutputTokens,
       };
 
-      this.recordUsage(finalUsage, options, this.pickModel(options));
+      this.recordUsage(finalUsage, options, this.pickModel(options), Date.now() - streamStartMs);
       this.circuitBreaker.recordSuccess();
 
       yield { type: 'usage', usage: finalUsage };
@@ -883,7 +884,7 @@ export class ClaudeService {
         outputTokens: response.usage.output_tokens,
       };
 
-      this.recordUsage(usage, options, response.model);
+      this.recordUsage(usage, options, response.model, latencyMs);
       this.circuitBreaker.recordSuccess();
 
       return {
@@ -958,7 +959,7 @@ export class ClaudeService {
       totalLatencyMs += latencyMs;
       const usage = usageOf(response.usage);
       addUsage(usage);
-      this.recordUsage(usage, options, response.model);
+      this.recordUsage(usage, options, response.model, latencyMs);
 
       // If no tool use, extract text and return
       if (response.stop_reason !== 'tool_use') {
@@ -1007,6 +1008,7 @@ export class ClaudeService {
     // Same tools, but none may be used: the reply is text. The tools and system prompt still come
     // from the cache (dropping the tools missed it all); a changed tool_choice re-writes the
     // conversation part once (U58)
+    const finalStartMs = Date.now();
     const finalResponse = await this.createLoggedMessage({
       model: this.pickModel(options),
       max_tokens: options.maxTokens ?? this.maxTokens,
@@ -1020,7 +1022,9 @@ export class ClaudeService {
 
     const finalUsage = usageOf(finalResponse.usage);
     addUsage(finalUsage);
-    this.recordUsage(finalUsage, options, finalResponse.model);
+    const finalLatencyMs = Date.now() - finalStartMs;
+    totalLatencyMs += finalLatencyMs;
+    this.recordUsage(finalUsage, options, finalResponse.model, finalLatencyMs);
 
     return { finalText: this.textOf(finalResponse), toolResults, totalUsage, totalLatencyMs };
   }
@@ -1279,7 +1283,7 @@ export class ClaudeService {
    * features that remembered to log did (about 30% of spend), and the monthly budget cap is
    * measured from that log.
    */
-  private recordUsage(usage: TokenUsage, options?: { feature?: string; userId?: string }, model?: string, latencyMs = 0): void {
+  private recordUsage(usage: TokenUsage, options: { feature?: string; userId?: string } | undefined, model: string | undefined, latencyMs: number): void {
     this.stats.totalRequests += 1;
     this.stats.totalInputTokens += usage.inputTokens;
     this.stats.totalOutputTokens += usage.outputTokens;
@@ -1300,6 +1304,8 @@ export class ClaudeService {
         usage,
         latencyMs,
         success: true,
+        // who asked: the web app, the Claude connector / an API key, or a background job (no request)
+        requestContext: { source: getRequestContext()?.actorSource ?? 'background' },
       });
     } catch { /* recording must never break an AI answer */ }
   }
