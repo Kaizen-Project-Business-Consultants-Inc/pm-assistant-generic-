@@ -96,7 +96,7 @@ const sections: Section[] = [
       'Click any line to jump straight to that task, highlighted in the schedule',
       'The bell shows events (assignments, changes, approvals) — live warnings stay in the briefing',
       'Deadline email: one a day per project at 08:00 your time — what is overdue and due this week; Open these in the schedule marks them, with Show only these / Show all / Close',
-      'Mjuzi (the chat panel): Speak above the message box (it says why if voice fails — try Chrome if Edge does nothing), Speak replies, Clear chat; after a change Mjuzi lists what it did, e.g. Marked complete (4), each name linking to the task',
+      'Mjuzi (the chat panel): Speak above the message box (it says why if voice fails — try Chrome if Edge does nothing), Speak replies, Clear chat; after a change Mjuzi lists what it did, e.g. Marked complete (4), each name linking to the task; "task 5" means row 5 on your schedule; ask it to split a task and the parts take its place; it asks before making more than 3 link changes; Stop talking silences it, and it opens the mic after a spoken question',
     ],
   },
   {

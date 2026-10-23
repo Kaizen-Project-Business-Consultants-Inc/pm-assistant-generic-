@@ -13,6 +13,9 @@ import { deadLetterService } from './DeadLetterService';
 import { agentMemoryService } from './AgentMemoryService';
 import { knowledgeBaseService } from './KnowledgeBaseService';
 import { taskRepository } from '../database/TaskRepository';
+import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
+import { scheduleRecomputeService } from './ScheduleRecomputeService';
+import logger from '../utils/logger';
 import { utcDay, ymdOf, finishFor, shiftWorking, workingDaysAfter } from '../utils/workingDays';
 import { limitRows, limitGrouped, MAX_TOOL_ROWS, filterTasks, describeTaskFilter, TASK_FILTER_HINT } from './aiToolLimits';
 
@@ -31,7 +34,7 @@ export interface ActionContext {
 
 /** Tools that change an existing project's data */
 const AI_WRITE_TOOLS = new Set([
-  'create_task', 'update_task', 'delete_task', 'update_project', 'reschedule_task',
+  'create_task', 'split_task', 'update_task', 'delete_task', 'update_project', 'reschedule_task',
   'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies',
 ]);
 
@@ -172,6 +175,7 @@ export class AIActionExecutor {
       let result: ActionResult;
       switch (toolName) {
         case 'create_task': result = await this.createTask(input, context); break;
+        case 'split_task': result = await this.splitTask(input, context); break;
         case 'update_task': result = await this.updateTask(input, context); break;
         case 'delete_task': result = await this.deleteTask(input, context); break;
         case 'create_project': result = await this.createProject(input, context); break;
@@ -250,6 +254,113 @@ export class AIActionExecutor {
       summary: `Created task "${task.name}" (ID: ${task.id}) in schedule ${scheduleId}${assignedTo ? ` assigned to ${assignedTo}` : ''}${dueDate ? ` due ${dueDate}` : ''}`,
       // projectId: the chat links the task's name to it in the schedule (U57)
       data: { taskId: task.id, name: task.name, scheduleId, projectId: schedule.projectId, status: task.status, priority: task.priority, sortOrder: task.sortOrder },
+    };
+  }
+
+  /**
+   * One task becomes 2–6 parts in its place (M1, 2026-10-23: create_task + delete_task put the parts at
+   * the END of the plan and left the neighbours linked to nothing). The FIRST part is the original task,
+   * renamed and shortened — so its dates, assignments, baseline and History stay, and nothing is deleted.
+   * The other parts are added right after it, each following the one before, and whatever followed the
+   * original (finish-to-start / finish-to-finish) now follows the last part. Dates are re-flowed once at
+   * the end. Only a task that has not started and is not a milestone can be split. If a step fails, the
+   * links and the original's name and length are put back and the parts already made are removed.
+   */
+  private async splitTask(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
+    const { taskId, pieces } = input;
+    const fail = (summary: string): ActionResult => ({ success: false, toolName: 'split_task', summary, error: summary });
+    if (!Array.isArray(pieces) || pieces.length < 2 || pieces.length > 6) return fail('A split needs 2 to 6 parts.');
+    const names = pieces.map(p => (typeof p?.name === 'string' ? p.name.trim() : ''));
+    if (names.some(n => !n || n.length > 200)) return fail('Every part needs a name of up to 200 characters.');
+    const descriptions = pieces.map(p => (typeof p?.description === 'string' ? p.description.slice(0, 2000) : undefined));
+
+    const orig = await scheduleService.findTaskById(taskId);
+    if (!orig) return fail(`Task '${taskId}' not found`);
+    if (orig.isSummary) return fail(`"${orig.name}" is a phase (a summary row); split one of its tasks instead.`);
+    if (orig.isMilestone) return fail(`"${orig.name}" is a milestone (a moment, not work), so it cannot be split.`);
+    if ((orig.progressPercentage ?? 0) > 0 || (orig.status && orig.status !== 'pending')) {
+      return fail(`"${orig.name}" has already started (${orig.status}, ${orig.progressPercentage ?? 0}% done). I only split tasks that have not started, so its progress and actual dates are not lost.`);
+    }
+
+    // Durations: the numbers given (1–365 working days), else the original's duration shared out (the last part takes the remainder)
+    const total = Math.max(orig.estimatedDays ?? pieces.length, pieces.length);
+    const share = Math.floor(total / pieces.length);
+    const days = pieces.map((p, i) => (typeof p.estimatedDays === 'number'
+      ? Math.min(Math.max(Math.round(p.estimatedDays), 1), 365)
+      : i === pieces.length - 1 ? total - share * (pieces.length - 1) : share));
+
+    const made: Task[] = [];
+    const repointed: Array<{ id: string; old: Array<{ dependencyId: string; dependencyType: string; lagDays: number }> }> = [];
+    const asLinks = (deps: Task['dependencies']) => deps.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays }));
+    try {
+      // the first part is the original
+      await scheduleService.updateTask(orig.id, { name: names[0], description: descriptions[0] ?? orig.description, estimatedDays: days[0] } as any);
+
+      for (let i = 1; i < pieces.length; i++) {
+        const previous = i === 1 ? orig : made[i - 2];
+        // eslint-disable-next-line no-await-in-loop -- each part is placed after the one before it
+        made.push(await scheduleService.createTask({
+          scheduleId: orig.scheduleId,
+          name: names[i],
+          description: descriptions[i],
+          priority: orig.priority,
+          assignedTo: orig.assignedTo,
+          estimatedDays: days[i],
+          parentTaskId: orig.parentTaskId,
+          afterTaskId: previous.id,
+          dependencies: [{ dependencyId: previous.id, dependencyType: 'FS', lagDays: 0 }],
+          createdBy: context.userId,
+        } as CreateTaskData));
+      }
+
+      // whatever finished-after the original now finishes-after the last part (a start-linked follower keeps the first part)
+      const last = made[made.length - 1];
+      const all = await scheduleService.findTasksByScheduleId(orig.scheduleId);
+      const followers = all.filter(t => t.id !== orig.id && !made.some(m => m.id === t.id)
+        && (t.dependencies.some(d => d.dependencyId === orig.id && (d.dependencyType === 'FS' || d.dependencyType === 'FF'))));
+      for (const succ of followers) {
+        repointed.push({ id: succ.id, old: asLinks(succ.dependencies) });
+        // eslint-disable-next-line no-await-in-loop -- one link at a time, so a failure knows exactly what to put back
+        await scheduleService.updateTask(succ.id, {
+          dependencies: succ.dependencies.map(d => ({
+            dependencyId: d.dependencyId === orig.id && (d.dependencyType === 'FS' || d.dependencyType === 'FF') ? last.id : d.dependencyId,
+            dependencyType: d.dependencyType,
+            lagDays: d.lagDays,
+          })),
+        } as any);
+      }
+
+      // dates: the parts and the followers move to follow each other, as when a task is added in the app
+      await scheduleRecomputeService.recompute(orig.scheduleId, { onlyFrom: [orig.id] });
+    } catch (error) {
+      const undoFailures: string[] = [];
+      for (const r of repointed.reverse()) {
+        // eslint-disable-next-line no-await-in-loop -- undoing in reverse order
+        await scheduleService.updateTask(r.id, { dependencies: r.old } as any).catch((e: unknown) => { undoFailures.push(`links of ${r.id}: ${String(e)}`); });
+      }
+      for (const m of made) {
+        // eslint-disable-next-line no-await-in-loop -- undoing the parts already made, one by one
+        await scheduleService.deleteTask(m.id).catch((e: unknown) => { undoFailures.push(`part ${m.id}: ${String(e)}`); });
+      }
+      await scheduleService.updateTask(orig.id, { name: orig.name, description: orig.description, estimatedDays: orig.estimatedDays } as any)
+        .catch((e: unknown) => { undoFailures.push(`original: ${String(e)}`); });
+      const message = error instanceof Error ? error.message : String(error);
+      if (undoFailures.length) {
+        logger.error(`split_task rollback incomplete for ${orig.id}: ${undoFailures.join('; ')}`);
+        return fail(`The split failed (${message}) and some changes could not be put back — check "${orig.name}" and the tasks around it.`);
+      }
+      return fail(`Nothing was split — "${orig.name}" is unchanged. ${message}`);
+    }
+
+    const schedule = await scheduleService.findById(orig.scheduleId);
+    const rowOf = computeScheduleRowNumbers(await scheduleService.findTasksByScheduleId(orig.scheduleId));
+    const ids = [orig.id, ...made.map(m => m.id)];
+    const partsOut = ids.map((id, i) => ({ id, name: names[i], row: rowOf.get(id) ?? null }));
+    return {
+      success: true,
+      toolName: 'split_task',
+      summary: `Split "${orig.name}" into ${ids.length} tasks in its place: ${partsOut.map(p => `row ${p.row} "${p.name}"`).join(', ')}. The first part is the original task (it keeps its dates and assignee); later tasks now follow "${names[names.length - 1]}". Row numbers below these have changed.`,
+      data: { taskId: orig.id, name: names[0], scheduleId: orig.scheduleId, projectId: schedule?.projectId, pieces: partsOut },
     };
   }
 
@@ -511,9 +622,14 @@ export class AIActionExecutor {
 
     const all = await scheduleService.findTasksByScheduleId(scheduleId);
     // Filters first, then the row limit: any task can be reached however big the plan
-    const tasks = await filterTasks(all, input);
+    // the number the schedule screen shows, over the whole plan (not just the filtered tasks)
+    const rowOf = computeScheduleRowNumbers(all);
+    const tasks = (await filterTasks(all, input)).sort((a, b) => (rowOf.get(a.id) ?? 0) - (rowOf.get(b.id) ?? 0));
     const limited = limitRows(tasks, MAX_TOOL_ROWS, TASK_FILTER_HINT);
     const taskList = limited.rows.map(t => ({
+      row: rowOf.get(t.id) ?? null,
+      isPhase: !!t.isSummary,
+      predecessorRows: t.dependencies.map(d => rowOf.get(d.dependencyId) ?? null),
       id: t.id,
       name: t.name,
       status: t.status,
@@ -608,6 +724,12 @@ export class AIActionExecutor {
       return { success: false, toolName: 'set_dependency', summary: `Task '${taskId}' not found`, error: 'Task not found' };
     }
 
+    // A phase finishes when its tasks do: a phase row as a predecessor (e.g. Kick-off after "Phase 1") is never what the user means
+    const predecessorRow = await scheduleService.findTaskById(predecessorId);
+    if (predecessorRow?.isSummary) {
+      return { success: false, toolName: 'set_dependency', summary: `"${predecessorRow.name}" is a phase (a summary row), so "${task.name}" was not linked to it. Link to a task inside the phase instead.`, error: 'Phase row as predecessor' };
+    }
+
     // Use shared validation (covers self-ref, existence, same-schedule, circular)
     try {
       await scheduleService.validateDependency(taskId, predecessorId, task.scheduleId);
@@ -626,13 +748,20 @@ export class AIActionExecutor {
       dependencies: existingDeps.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
     } as any);
 
-    const predecessor = await scheduleService.findTaskById(predecessorId);
+    const predecessor = predecessorRow;
+    // a link that points DOWN the plan makes it read out of order (found 2026-10-23: Onboarding after a task listed below it)
+    const rowOf = computeScheduleRowNumbers(await scheduleService.findTasksByScheduleId(task.scheduleId));
+    const predRow = rowOf.get(predecessorId);
+    const taskRow = rowOf.get(taskId);
+    const warning = predRow != null && taskRow != null && predRow > taskRow
+      ? `"${predecessor?.name}" is row ${predRow}, below "${task.name}" (row ${taskRow}), so the plan now reads out of order. Tell the user, and offer to move the rows into the order of the links.`
+      : undefined;
     return {
       success: true,
       toolName: 'set_dependency',
-      summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})`,
+      summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})${warning ? ` WARNING: ${warning}` : ''}`,
       // scheduleId: the chat refreshes that plan's views (critical path, network…; U38)
-      data: { taskId, scheduleId: task.scheduleId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType },
+      data: { taskId, scheduleId: task.scheduleId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType, ...(warning ? { warning } : {}) },
     };
   }
 

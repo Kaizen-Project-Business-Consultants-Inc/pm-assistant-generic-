@@ -1411,6 +1411,8 @@ The `crossProjectIntelligenceService` analyzes patterns across the entire portfo
 
 ### Mjuzi Chat
 
+**Plan edits (Oct 2026, M1/M7):** `split_task` replaces create_task + delete_task for a split — the FIRST part is the original task (renamed, shortened; dates, assignee, baseline and History stay, nothing is deleted); parts 2–n are created with `afterTaskId` in the original's phase and chain FS; finish-to-start / finish-to-finish followers are repointed to the last part (start-linked ones stay on the first); `scheduleRecomputeService.recompute(onlyFrom: [original])` re-flows dates; refused for phases, milestones and tasks that have started; a failed step restores the followers' links, deletes the made parts and restores the original's name/length (and says so if an undo step fails). `list_tasks` returns `row` (the schedule screen's number, `utils/scheduleRowNumbers`), `isPhase` and `predecessorRows`. `set_dependency` refuses a phase row as predecessor and returns a WARNING when the predecessor's row is below the task's. `aiChatService` refuses a 4th `set_dependency`/`remove_dependency` in one message (`MAX_LINK_CHANGES_PER_MESSAGE`) so Mjuzi must list the links and ask. The Mjuzi prompt (3.1.0) tells it to re-list before acting on a number, never agree a task is deleted without looking, and read back voice numbers that match no row.
+
 **Mjuzi** is the AI project assistant, available as a slide-out chat panel on every page. The `aiChatService` provides a conversational interface where users can ask open-ended questions about their projects and receive AI-generated responses grounded in actual project data.
 
 All Mjuzi-related surfaces are grouped under a **”Mjuzi AI”** section in the sidebar:

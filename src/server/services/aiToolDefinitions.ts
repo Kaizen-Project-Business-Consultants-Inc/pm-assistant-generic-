@@ -27,6 +27,32 @@ export const AI_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'split_task',
+    description: 'Split one task into 2 to 6 parts that take its place on the plan (same phase, same position). The parts are chained in order; the FIRST part is the original task itself (renamed, shortened, keeping its dates and assignee) and the others follow it, whatever followed the original now follows the last part. Only tasks that have not started and are not milestones or phases can be split. ALWAYS use this when the user asks to split, break up or separate a task — never create_task plus delete_task. taskId is the task to split (take it from list_tasks; the user may say its row number).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskId: { type: 'string', description: 'The ID of the task to split' },
+        pieces: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 6,
+          description: 'The parts, in the order they happen',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Part name' },
+              estimatedDays: { type: 'number', description: 'Working days for this part. If no part has a number, the original duration is shared out evenly.' },
+              description: { type: 'string', description: 'What this part covers' },
+            },
+            required: ['name'],
+          },
+        },
+      },
+      required: ['taskId', 'pieces'],
+    },
+  },
+  {
     name: 'update_task',
     description: 'Update an existing task. Use this to change task status, priority, assignee, dates, or progress.',
     input_schema: {
@@ -143,7 +169,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'list_tasks',
-    description: 'List the tasks in a project schedule. Use this to find task IDs when the user refers to tasks by name — pass nameContains to find a task by name. Returns at most 200 tasks (the summary says how many matched); in a big plan, narrow it with nameContains, status or assignedTo.',
+    description: 'List the tasks in a project schedule. Use this to find task IDs when the user refers to tasks by name or by number — pass nameContains to find a task by name. Each task has a `row`: the number the user sees on the schedule screen ("task 5" = row 5), `isPhase` (a phase/summary row) and `predecessorRows`. Rows change whenever a task is added, deleted or split, so call this again before acting on a row number. Returns at most 200 tasks (the summary says how many matched); in a big plan, narrow it with nameContains, status or assignedTo.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -169,7 +195,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'set_dependency',
-    description: 'Set or update the dependency relationship between two tasks. The dependent task (taskId) cannot start until the predecessor (predecessorId) completes (Finish-to-Start by default). Use this when adding a new task to wire it into the schedule, or to adjust the dependency chain.',
+    description: 'Set or update the dependency relationship between two tasks. The dependent task (taskId) cannot start until the predecessor (predecessorId) completes (Finish-to-Start by default). To adjust the dependency chain. Link from an earlier row to a later row; a phase row cannot be a predecessor (link to a task inside it). If the result carries a warning, tell the user in plain words.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -317,5 +343,5 @@ export const AI_TOOLS: Anthropic.Tool[] = [
 
 // Tool categories for permission checking
 export const DESTRUCTIVE_TOOLS = ['delete_task', 'clear_all_dependencies'];
-export const MUTATING_TOOLS = ['create_task', 'update_task', 'update_tasks', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
+export const MUTATING_TOOLS = ['create_task', 'split_task', 'update_task', 'update_tasks', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
 export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary', 'remember_user_preference', 'remember_correction', 'search_knowledge_base'];

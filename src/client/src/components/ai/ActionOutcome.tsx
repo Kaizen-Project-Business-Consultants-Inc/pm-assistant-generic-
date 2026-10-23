@@ -14,7 +14,7 @@ type Stored = ActionResult & { refs?: Item[] };
 
 /** Tools that change something (the rest only look things up) */
 const WRITE_TOOLS = new Set([
-  'create_task', 'update_task', 'update_tasks', 'delete_task', 'reschedule_task', 'cascade_reschedule',
+  'create_task', 'split_task', 'update_task', 'update_tasks', 'delete_task', 'reschedule_task', 'cascade_reschedule',
   'set_dependency', 'remove_dependency', 'clear_all_dependencies', 'create_project', 'update_project',
 ]);
 /** Failures that were Mjuzi guessing (a wrong id), retried on a later step */
@@ -32,6 +32,7 @@ function itemsOf(a: Stored): Item[] {
   const d = a.data;
   if (!d || typeof d !== 'object') return [];
   if (Array.isArray(d.updated)) return d.updated as Item[];
+  if (Array.isArray(d.pieces)) return (d.pieces as Item[]).map(p => ({ id: p.id, name: p.name, scheduleId: d.scheduleId, projectId: d.projectId }));
   if (typeof d.taskId === 'string') return [{ id: d.taskId, name: d.name, scheduleId: d.scheduleId, projectId: d.projectId }];
   if (typeof d.projectId === 'string' && typeof d.name === 'string') return [{ name: d.name, projectId: d.projectId }];
   return [];
@@ -43,6 +44,7 @@ function verbOf(a: Stored): string {
   switch (a.toolName) {
     case 'update_task': case 'update_tasks': return completed ? 'Marked complete' : 'Updated';
     case 'create_task': return 'Added';
+    case 'split_task': return 'Split into';
     case 'delete_task': return 'Deleted';
     case 'reschedule_task': case 'cascade_reschedule': return 'Moved';
     case 'set_dependency': return 'Linked';

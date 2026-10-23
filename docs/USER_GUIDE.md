@@ -1838,6 +1838,12 @@ Just ask naturally — "how do I run an EVM calculation?", "what goes in a risk 
 - This covers all documented features: scheduling, task management, budgets, reports, meetings, resources, and more.
 - You don't need to do anything special — just ask your question naturally and Mjuzi will find the right documentation.
 
+**Editing the plan with Mjuzi (October 2026)**
+
+- **Task numbers are the row numbers on your schedule screen.** Say "task 5" and Mjuzi looks up row 5 first. Rows move when a task is added, deleted or split, so Mjuzi checks again each time instead of trusting an earlier message. If a number you said does not match a row (voice can run numbers together, for example "333435"), Mjuzi reads back what it heard and asks.
+- **Splitting a task:** ask "split task 5 into review, revisions and acceptance". The first part is the original task (renamed and shortened, so it keeps its dates and assignee); the other parts are added right after it in the same phase, each following the one before, and whatever came after the original now follows the last part. Dates are re-flowed. Only a task that has not started, and is not a milestone or a phase, can be split. If a step fails, everything is put back.
+- **Links:** Mjuzi will not link a task to a phase row (link to a task inside the phase). If a link points to a task further down the plan, Mjuzi tells you the plan now reads out of order and offers to reorder. More than 3 link changes in one message are never made without your OK: Mjuzi lists the links it proposes and asks first.
+
 **Live UI sync**
 
 - When Mjuzi creates, updates, or deletes tasks (or modifies projects/dependencies), the schedule views (Gantt, Table, Kanban) automatically refresh — no manual page reload needed.

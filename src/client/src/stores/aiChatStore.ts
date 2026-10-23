@@ -89,7 +89,7 @@ function refreshListIfNewChat(before: string | null, after: string | undefined, 
 let userGeneration = 0;
 
 /** Mjuzi tools that change a plan's links or move its tasks; their result names the plan (data.scheduleId) */
-const PLAN_TOOLS = new Set(['set_dependency', 'remove_dependency', 'cascade_reschedule', 'clear_all_dependencies']);
+const PLAN_TOOLS = new Set(['set_dependency', 'remove_dependency', 'cascade_reschedule', 'clear_all_dependencies', 'split_task']);
 
 /**
  * Mjuzi changed links or moved tasks: every view of that plan — critical path, network and the
@@ -200,7 +200,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
 
       // If Mjuzi took actions that modify data, invalidate relevant caches
       if (result.actions && result.actions.length > 0) {
-        const mutatingTools = new Set(['create_task', 'update_task', 'update_tasks', 'delete_task', 'reschedule_task', ...PLAN_TOOLS]);
+        const mutatingTools = new Set(['create_task', 'update_task', 'update_tasks', 'delete_task', 'reschedule_task', ...PLAN_TOOLS]); // PLAN_TOOLS includes split_task
         const projectTools = new Set(['create_project', 'update_project']);
         const hasMutation = result.actions.some((a: ActionResult) => mutatingTools.has(a.toolName));
         const hasProjectMutation = result.actions.some((a: ActionResult) => projectTools.has(a.toolName));

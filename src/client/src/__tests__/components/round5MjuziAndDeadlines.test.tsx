@@ -43,6 +43,15 @@ describe('U57 — Mjuzi says what it did', () => {
     expect(o.groups).toEqual([{ verb: 'Marked complete', items: [{ id: 'a', name: 'A', projectId: 'p1' }, { id: 'b', name: 'B', projectId: 'p1' }], plain: [] }]);
   });
 
+  it('a split names every part (M1), so the chat links each one', () => {
+    const pieces = [{ id: 'a', name: 'Review', row: 4 }, { id: 'b', name: 'Revisions', row: 5 }];
+    const o = summarizeActions([{ success: true, toolName: 'split_task', summary: 'Split "Gate 1" into 2 tasks', data: { taskId: 'a', scheduleId: 's1', projectId: 'p1', pieces } }]);
+    expect(o.groups).toEqual([{ verb: 'Split into', items: [
+      { id: 'a', name: 'Review', scheduleId: 's1', projectId: 'p1' },
+      { id: 'b', name: 'Revisions', scheduleId: 's1', projectId: 'p1' },
+    ], plain: [] }]);
+  });
+
   it('a reply that only looked things up shows no action box', () => {
     const { container } = render(<MemoryRouter><ActionOutcome actions={[{ success: true, toolName: 'get_overdue_tasks', summary: '4 overdue', data: [] }]} /></MemoryRouter>);
     expect(container).toBeEmptyDOMElement();

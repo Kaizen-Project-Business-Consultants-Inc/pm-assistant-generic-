@@ -807,6 +807,10 @@ The file `src/server/services/aiContextBuilder.ts` has 3 pre-existing type error
 
 ## 9. Testing Recent Features (July 2026)
 
+### 9-M1/M7. Mjuzi splits a task in place and checks links (Oct 2026)
+
+On staging as qa.pm, on a QA plan with a phase of 4+ linked tasks: (1) tell Mjuzi "split task 3 into A, B and C" — task 3 is renamed A and the new B and C follow it in the same phase, chained, with dates re-flowed, and the old task 4 now follows C (nothing is deleted). Also try a task that is In progress — Mjuzi refuses and explains. (2) Ask "link task 2 after task 4" — the reply warns the plan reads out of order. (3) Ask "link task 3 after Phase 1" (the phase row) — refused. (4) Ask "link all tasks in order" — Mjuzi makes at most 3 links, then lists the rest and asks. (5) Ask about "task 3" after a split — Mjuzi lists the tasks first. Archive the QA project afterwards. Automated: `aiActionExecutorSplitAndLinks.test.ts`, `aiChatService.test.ts`.
+
 ### 9a. Trial Reminder Cron
 
 The trial reminder cron sends emails to users approaching or past their trial expiration. It deduplicates sends using Redis keys of the form `trial-reminder:{userId}:{type}`. The countdown goes only to confirmed emails; unconfirmed sign-ups 1–4 days old get a fresh confirm-your-email link instead (keys `verify-reminder:{userId}:1day|3day`). Automated: `jobsBatched.test.ts` (trial reminders), `EmailService.test.ts` (reminder wording; no mail to `@pm.kpbc.ca`), `placeholderEmail.test.ts` (`isUndeliverableEmail`).

@@ -30,6 +30,14 @@ function itemsLine(actions: ChatMessage['actions']): string {
 /** Replies whose items are given back in the history (the newest ones) */
 const ITEMS_REPLIES = 2;
 
+/**
+ * More than a few link changes in one message is a bulk edit (M4, 2026-10-23: "link all tasks" chained
+ * 33 tasks into one line without asking). Past this, the change is refused and Mjuzi must show the
+ * user the links it proposes and ask first.
+ */
+export const MAX_LINK_CHANGES_PER_MESSAGE = 3;
+const LINK_TOOLS = new Set(['set_dependency', 'remove_dependency']);
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -98,6 +106,16 @@ export class AIChatService {
           temperature: 0.5,
           tools: AI_TOOLS,
           executeToolFn: async (toolName: string, toolInput: Record<string, any>) => {
+            if (LINK_TOOLS.has(toolName) && allActions.filter(a => a.success && LINK_TOOLS.has(a.toolName)).length >= MAX_LINK_CHANGES_PER_MESSAGE) {
+              const stopped: ActionResult = {
+                success: false,
+                toolName,
+                summary: `Stopped: more than ${MAX_LINK_CHANGES_PER_MESSAGE} link changes in one message needs the user's OK. List the links you propose (task row → predecessor row), say what it would do to the plan, and ask them to confirm before making more.`,
+                error: 'Bulk link change needs the user\'s OK',
+              };
+              allActions.push(stopped);
+              return JSON.stringify(stopped);
+            }
             const actionResult = await this.actionExecutor.execute(toolName, toolInput, actionContext);
             allActions.push(actionResult);
             // Return the result as a string for Claude to interpret

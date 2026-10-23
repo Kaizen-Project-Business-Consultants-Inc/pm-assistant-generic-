@@ -269,6 +269,23 @@ describe('AIChatService', () => {
       );
     });
 
+    it('refuses a 4th link change in one message and tells Mjuzi to ask the user first (M4)', async () => {
+      mockExecute.mockResolvedValue({ success: true, toolName: 'set_dependency', summary: 'Linked', data: {} });
+      let fourth = '';
+      mockCompleteToolLoop.mockImplementation(async (opts: any) => {
+        for (let i = 0; i < 3; i++) await opts.executeToolFn('set_dependency', { taskId: 't' + i, predecessorId: 'p' + i });
+        fourth = await opts.executeToolFn('set_dependency', { taskId: 't9', predecessorId: 'p9' });
+        return { finalText: 'done', toolResults: [], totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1 };
+      });
+
+      const result = await service.sendMessage(makeRequest());
+
+      expect(mockExecute).toHaveBeenCalledTimes(3);
+      expect(JSON.parse(fourth)).toMatchObject({ success: false, toolName: 'set_dependency' });
+      expect(JSON.parse(fourth).summary).toMatch(/needs the user's OK/);
+      expect(result.actions).toHaveLength(4);
+    });
+
     it('persists new conversation when no conversationId provided', async () => {
       mockCompleteToolLoop.mockResolvedValue({
         finalText: 'Hello!',
