@@ -35,7 +35,7 @@ const ITEMS_REPLIES = 2;
  * 33 tasks into one line without asking). Past this, the change is refused and Mjuzi must show the
  * user the links it proposes and ask first.
  */
-export const MAX_LINK_CHANGES_PER_MESSAGE = 3;
+const MAX_LINK_CHANGES_PER_MESSAGE = 3;
 const LINK_TOOLS = new Set(['set_dependency', 'remove_dependency']);
 
 // ---------------------------------------------------------------------------
