@@ -31,6 +31,22 @@ function itemsLine(actions: ChatMessage['actions']): string {
 const ITEMS_REPLIES = 2;
 
 /**
+ * What of the past conversation is resent with every message (A4, 2026-10-23: one long chat reached
+ * ~30,000 input tokens a message, and a message is paid and counted against the allowance in full).
+ * The last 12 messages; all but the newest exchange are cut to 2,000 characters (the newest stays whole:
+ * "now create tasks from those notes" needs the 8,000-character paste). Mjuzi looks up current data with its tools anyway.
+ */
+const CHAT_HISTORY_MESSAGES = 12;
+const CHAT_HISTORY_CHARS = 2000;
+const shortened = (s: string) => {
+  if (s.length <= CHAT_HISTORY_CHARS) return s;
+  let cut = s.slice(0, CHAT_HISTORY_CHARS);
+  // never leave half an emoji: a lone surrogate makes the API refuse every later message
+  if (/[\uD800-\uDBFF]$/.test(cut)) cut = cut.slice(0, -1);
+  return `${cut} … [shortened]`;
+};
+
+/**
  * More than a few link changes in one message is a bulk edit (M4, 2026-10-23: "link all tasks" chained
  * 33 tasks into one line without asking). Past this, the change is refused and Mjuzi must show the
  * user the links it proposes and ask first.
@@ -415,7 +431,7 @@ export class AIChatService {
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     if (req.conversationId) {
       try {
-        const messages = await chatRepository.getMessages(req.conversationId, 20);
+        const messages = await chatRepository.getMessages(req.conversationId, CHAT_HISTORY_MESSAGES);
         // Verify ownership by checking conversation exists for user
         const conv = await chatRepository.findByIdForUser(req.conversationId, req.userId);
         if (conv) {
@@ -423,7 +439,10 @@ export class AIChatService {
           // follow-up means, and every line is resent on every step
           const replies = messages.filter(m => m.role === 'assistant');
           const recent = new Set(replies.slice(-ITEMS_REPLIES));
-          history = messages.map(m => ({ role: m.role, content: recent.has(m) ? m.content + itemsLine(m.actions) : m.content }));
+          history = messages.map((m, i) => {
+            const body = i >= messages.length - 2 ? m.content : shortened(m.content); // the newest exchange stays whole
+            return { role: m.role, content: recent.has(m) ? body + itemsLine(m.actions) : body };
+          });
         }
       } catch {
         // Continue without history

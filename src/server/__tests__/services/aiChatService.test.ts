@@ -509,7 +509,43 @@ describe('AIChatService', () => {
 
       await service.sendMessage(makeRequest({ conversationId: 'conv-1' }));
 
-      expect(mockGetMessages).toHaveBeenCalledWith('conv-1', 20);
+      expect(mockGetMessages).toHaveBeenCalledWith('conv-1', 12); // A4: the last 12 messages, not 20
+    });
+
+    it('a very long past message is cut to 2,000 characters so every later message stays cheap (A4)', async () => {
+      mockGetMessages.mockResolvedValue([
+        { role: 'user', content: 'x'.repeat(5000) },
+        { role: 'assistant', content: 'older answer', actions: null },
+        { role: 'user', content: 'meeting notes: ' + 'n'.repeat(8000) }, // the newest exchange stays whole
+        { role: 'assistant', content: 'short answer', actions: null },
+      ]);
+      mockFindByIdForUser.mockResolvedValue({ id: 'conv-1', userId: 'user-1' });
+      mockCompleteToolLoop.mockResolvedValue({ finalText: 'ok', toolResults: [], totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1 });
+
+      await service.sendMessage(makeRequest({ conversationId: 'conv-1' }));
+
+      const history = mockCompleteToolLoop.mock.calls[0][0].conversationHistory;
+      expect(history[0].content).toBe('x'.repeat(2000) + ' … [shortened]');
+      expect(history[1].content).toBe('older answer');
+      expect(history[2].content).toHaveLength('meeting notes: '.length + 8000);
+      expect(history[3].content).toBe('short answer');
+    });
+
+    it('never cuts an emoji in half at the 2,000-character edge (a lone surrogate makes the API refuse the chat)', async () => {
+      mockGetMessages.mockResolvedValue([
+        { role: 'user', content: 'a'.repeat(1999) + '😀' + 'tail' },
+        { role: 'assistant', content: 'older', actions: null },
+        { role: 'user', content: 'latest question' },
+        { role: 'assistant', content: 'latest answer', actions: null },
+      ]);
+      mockFindByIdForUser.mockResolvedValue({ id: 'conv-1', userId: 'user-1' });
+      mockCompleteToolLoop.mockResolvedValue({ finalText: 'ok', toolResults: [], totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1 });
+
+      await service.sendMessage(makeRequest({ conversationId: 'conv-1' }));
+
+      const first = mockCompleteToolLoop.mock.calls[0][0].conversationHistory[0].content as string;
+      expect(first).toBe('a'.repeat(1999) + ' … [shortened]');
+      expect(JSON.stringify(first)).not.toMatch(/\\ud83d/i);
     });
 
     it('a past reply carries the ids of the items its actions named, so a follow-up can act on them (U58)', async () => {

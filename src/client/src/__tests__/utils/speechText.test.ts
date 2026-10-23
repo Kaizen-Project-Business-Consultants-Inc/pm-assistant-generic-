@@ -23,6 +23,13 @@ describe('toSpeechText', () => {
     expect(endsWithQuestion('Done. **Shall I continue?**')).toBe(true);
     expect(endsWithQuestion('Done. (Anything else?)')).toBe(true);
   });
+  it('still sees a question that ends with an emoji', () => {
+    expect(endsWithQuestion('Shall I move it? 🙂')).toBe(true);
+    expect(endsWithQuestion('Shall I? 👍🏽')).toBe(true); // skin-tone modifier
+    expect(endsWithQuestion('Shall I? 🧑‍💻')).toBe(true); // joined emoji
+    expect(endsWithQuestion('He asked “Shall I?”')).toBe(true);
+    expect(endsWithQuestion('All done 🙂')).toBe(false);
+  });
   it('does not open the mic for a statement or a mid-text question', () => {
     expect(endsWithQuestion('Why late? Because of the holiday.')).toBe(false);
     expect(endsWithQuestion('All done.')).toBe(false);

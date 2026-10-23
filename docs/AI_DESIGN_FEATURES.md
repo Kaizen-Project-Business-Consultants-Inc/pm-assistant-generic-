@@ -56,6 +56,8 @@ Mjuzi is the persistent, context-aware conversational AI assistant available thr
 - Conversation continues across page navigation and browser refreshes
 - **Knowledge Base RAG:** `search_knowledge_base` tool searches embedded product documentation. 5 doc files (USER_GUIDE, PRODUCT_MANUAL, WORLD_CLASS_FEATURES, ADMIN_MANUAL, AI_DESIGN_FEATURES) are chunked by `###` heading, embedded via OpenAI text-embedding-3-small, and stored in `knowledge_base_chunks` table. Vector search uses MariaDB `VEC_DISTANCE_COSINE()` on the `embeddings` table (document_type='knowledge_base'). Admin reindex endpoint: `POST /api/v1/admin/knowledge-base/reindex`. Claude calls this tool automatically for how-to and feature questions.
 
+**Chat cost (A4, Oct 2026):** each message resends the last 12 messages of the conversation (was 20), all but the newest exchange cut to 2,000 characters (never mid-emoji), plus the project context and the tool list; tokens count against the plan allowance in full. Admin → AI usage and `ai_usage_log` show tokens per call.
+
 **Plan-edit safeguards (Oct 2026):** row numbers in `list_tasks`; `split_task` (first part = the original task, others added after it, followers relinked, dates re-flowed, rolls back on failure; not for started tasks or milestones); `set_dependency` refuses phase rows and warns on links that point down the plan; at most 3 link changes per message before Mjuzi must list them and ask; prompt 3.1.0 rules on re-listing before acting on a number.
 
 **Tool-use flow:**

@@ -335,6 +335,8 @@ How they chain: a message uses tokens → the tokens count against the subscribe
 
 **Your Anthropic credit** (Console → Plans & Billing) is a third, separate balance: it only matters when it hits zero, and then Anthropic refuses every call ("credit balance is too low" in the logs). It is a different account from your Claude subscription on claude.ai.
 
+**Chat history (Oct 2026):** each Mjuzi message resends the last 12 messages (all but the newest exchange cut to 2,000 characters) — this is the main reason a long conversation costs more per message; starting a new conversation resets it.
+
 **Rule of thumb (Oct 2026, staging estimates):** about $5 per million tokens on average, so an SME seat that uses its whole 500K allowance costs roughly $2.50 a month. A Mjuzi chat message is about 10,000–30,000 input tokens (it grows with conversation length), roughly 3–6 cents.
 
 ### AI Budget Administration

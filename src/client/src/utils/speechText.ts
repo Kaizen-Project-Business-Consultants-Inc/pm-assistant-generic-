@@ -19,5 +19,7 @@ export function toSpeechText(markdown: string): string {
 
 /** True when what Mjuzi says ends by asking the user something (so the mic should open once it stops talking). */
 export function endsWithQuestion(markdown: string): boolean {
-  return /\?[\s"')\]]*$/.test(toSpeechText(markdown));
+  // what trails the last word — spaces, quotes, brackets, emoji — does not matter: "Shall I? 🙂", “Shall I?”
+  const spoken = toSpeechText(markdown).replace(/[^\p{L}\p{N}?.!]+$/u, '');
+  return spoken.endsWith('?');
 }

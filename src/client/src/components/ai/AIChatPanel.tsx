@@ -19,6 +19,7 @@ import { ActionOutcome } from './ActionOutcome';
 import { QuickActions } from './QuickActions';
 import { useVoice } from '../../hooks/useVoice';
 import { endsWithQuestion } from '../../utils/speechText';
+import { announce } from '../../utils/announce';
 import type { AIPanelContext } from '../../stores/uiStore';
 
 interface AIChatPanelProps {
@@ -36,6 +37,8 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const lastSpokenMessageIdRef = useRef<string | null>(null);
+  // replies seen arriving live: an old conversation opened from History is never read out (or answered by the mic)
+  const arrivedLiveRef = useRef(new Set<string>());
   const [showScrollButton, setShowScrollButton] = useState(false);
   const { isSupported: voiceSupported, isListening, startListening, stopListening, speak, cancelSpeech, isSpeaking, error: voiceError } = useVoice();
 
@@ -58,6 +61,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
   const listenAfterQuestion = useCallback(() => {
     const live = liveRef.current;
     if (live.input.trim() || live.isLoading || !live.ttsEnabled) return;
+    announce('Mjuzi asked a question. The microphone is on: answer now, or press Speak to stop.');
     listenForReply();
   }, [listenForReply]);
 
@@ -73,10 +77,12 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
     if (!ttsEnabled || messages.length === 0) return;
     const last = messages[messages.length - 1];
     if (last.id === 'welcome') return; // never speak the welcome message
+    if (last.isStreaming) arrivedLiveRef.current.add(last.id);
     if (
       last.role === 'assistant' &&
       !last.isStreaming &&
       last.content &&
+      arrivedLiveRef.current.has(last.id) &&
       last.id !== lastSpokenMessageIdRef.current
     ) {
       // A spoken question turns the mic on once Mjuzi has finished talking, so the user can just answer
