@@ -323,15 +323,15 @@ Three different things are easy to mix up:
 
 | Thing | What it is | Who sets it | Where you see it |
 |---|---|---|---|
-| **Tokens** | The unit of AI work. About 4 characters is one token. Every call has **input** tokens (your question, the last 20 chat messages, project data, memories) and **output** tokens (the answer). | Nobody; it follows from what is sent | , Admin → AI usage |
-| **API cost** | US dollars Anthropic bills the API key's account for those tokens. Depends on the model; output tokens cost more than input. The app stores its own estimate per call (). | Anthropic | Anthropic console (Usage → by API key) is the real bill; Admin → AI usage shows the app's estimate |
+| **Tokens** | The unit of AI work. About 4 characters is one token. Every call has **input** tokens (your question, the last 20 chat messages, project data, memories) and **output** tokens (the answer). | Nobody; it follows from what is sent | `ai_usage_log`, Admin → AI usage |
+| **API cost** | US dollars Anthropic bills the API key's account for those tokens. Depends on the model; output tokens cost more than input. The app stores its own estimate per call (`cost_estimate`). | Anthropic | Anthropic console (Usage → by API key) is the real bill; Admin → AI usage shows the app's estimate |
 | **Plan allowance** | A monthly cap in tokens per subscriber, so nobody can use more AI than their price covers. Trial 50K, Consultant Pro 500K, SME 500K per seat (pooled across the company's seats), Enterprise 5M, plus purchased top-ups. | Plan table (Admin → Pricing); per-person override on Admin → Users | The AI budget bar in the app; Admin → AI usage |
 
 How they chain: a message uses tokens → the tokens count against the subscriber's plan allowance **and** cost API dollars. When the allowance is used up the subscriber is blocked, but the tokens already used were still paid for.
 
 **Two separate limits protect you:**
 1. **Per-subscriber token allowance** (above). Per-seat companies share one pool (seats × per-seat allowance); the per-person override on Admin → Users does **not** apply to them.
-2. **Account-wide dollar limit**  (default $100 a month, all companies and background jobs together). Stops all AI when reached; warning email at 80%.
+2. **Account-wide dollar limit** `AI_MONTHLY_CAP_USD` (default $100 a month, all companies and background jobs together). Stops all AI when reached; warning email at 80%.
 
 **Your Anthropic credit** (Console → Plans & Billing) is a third, separate balance: it only matters when it hits zero, and then Anthropic refuses every call ("credit balance is too low" in the logs). It is a different account from your Claude subscription on claude.ai.
 
