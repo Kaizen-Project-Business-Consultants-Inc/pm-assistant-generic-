@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { toSpeechText } from '../utils/speechText';
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
@@ -51,6 +52,9 @@ export function useVoice() {
   const [isSupported, setIsSupported] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const onResultRef = useRef<((transcript: string) => void) | null>(null);
+  const listeningRef = useRef(false); // the state can be stale inside a speech callback
+  const speakingRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
@@ -70,8 +74,9 @@ export function useVoice() {
         }
       };
 
-      recognition.onend = () => setIsListening(false);
+      recognition.onend = () => { listeningRef.current = false; setIsListening(false); };
       recognition.onerror = (event) => {
+        listeningRef.current = false;
         setIsListening(false);
         setError(voiceErrorMessage(event?.error));
       };
@@ -90,13 +95,15 @@ export function useVoice() {
 
   const startListening = useCallback((onResult: (transcript: string) => void) => {
     const rec = recognitionRef.current;
-    if (!rec) return;
+    if (!rec || listeningRef.current) return; // already listening: a second start() would throw and drop the answer
     onResultRef.current = onResult;
     setError(null);
     try {
       rec.start();
+      listeningRef.current = true;
       setIsListening(true);
     } catch {
+      listeningRef.current = false;
       setIsListening(false);
       onResultRef.current = null;
       setError(voiceErrorMessage());
@@ -112,17 +119,36 @@ export function useVoice() {
         // ignore
       }
     }
+    listeningRef.current = false;
     setIsListening(false);
     onResultRef.current = null;
   }, [isListening]);
 
-  const speak = useCallback((text: string) => {
-    if (!text || !window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.95;
-    window.speechSynthesis.speak(u);
+  // Silence the voice. The old utterance's onend is dropped first: cancel() fires it, and that must not open the mic.
+  const cancelSpeech = useCallback(() => {
+    if (speakingRef.current) speakingRef.current.onend = null;
+    speakingRef.current = null;
+    setIsSpeaking(false);
+    window.speechSynthesis?.cancel();
   }, []);
 
-  return { isSupported, isListening, startListening, stopListening, speak, error };
+  const speak = useCallback((text: string, onDone?: () => void) => {
+    if (!text || !window.speechSynthesis) return;
+    cancelSpeech();
+    const spoken = toSpeechText(text);
+    if (!spoken) return;
+    const u = new SpeechSynthesisUtterance(spoken);
+    u.rate = 0.95;
+    u.onend = () => {
+      if (speakingRef.current !== u) return;
+      speakingRef.current = null;
+      setIsSpeaking(false);
+      onDone?.();
+    };
+    speakingRef.current = u; // also keeps the utterance alive (Chrome can drop long ones and never fire onend)
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(u);
+  }, [cancelSpeech]);
+
+  return { isSupported, isListening, startListening, stopListening, speak, cancelSpeech, isSpeaking, error };
 }

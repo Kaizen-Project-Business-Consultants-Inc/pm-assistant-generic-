@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Send,
   Trash2,
@@ -8,6 +8,7 @@ import {
   ChevronDown,
   Mic,
   MicOff,
+  VolumeX,
   History,
   Plus,
   MessageSquare,
@@ -17,6 +18,7 @@ import { AIChatContext } from './AIChatContext';
 import { ActionOutcome } from './ActionOutcome';
 import { QuickActions } from './QuickActions';
 import { useVoice } from '../../hooks/useVoice';
+import { endsWithQuestion } from '../../utils/speechText';
 import type { AIPanelContext } from '../../stores/uiStore';
 
 interface AIChatPanelProps {
@@ -35,9 +37,29 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const lastSpokenMessageIdRef = useRef<string | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const { isSupported: voiceSupported, isListening, startListening, stopListening, speak, error: voiceError } = useVoice();
+  const { isSupported: voiceSupported, isListening, startListening, stopListening, speak, cancelSpeech, isSpeaking, error: voiceError } = useVoice();
+
+  // Read at the moment speech ends, not when it started
+  const liveRef = useRef({ input: '', isLoading: false, ttsEnabled: false });
+  liveRef.current = { input, isLoading, ttsEnabled };
 
   const quickActions = context.type === 'project' ? projectQuickActions : dashboardQuickActions;
+
+  const listenForReply = useCallback(() => {
+    startListening((transcript) => {
+      const trimmed = transcript.trim();
+      if (!trimmed || liveRef.current.isLoading) return;
+      addMessage({ role: 'user', content: trimmed });
+      sendMessage(trimmed, context);
+    });
+  }, [startListening, addMessage, sendMessage, context]);
+
+  // After a spoken question: open the mic unless the user is typing, a reply is on its way, or voice was switched off
+  const listenAfterQuestion = useCallback(() => {
+    const live = liveRef.current;
+    if (live.input.trim() || live.isLoading || !live.ttsEnabled) return;
+    listenForReply();
+  }, [listenForReply]);
 
   // Load conversations on first open
   useEffect(() => {
@@ -57,10 +79,11 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
       last.content &&
       last.id !== lastSpokenMessageIdRef.current
     ) {
-      speak(last.content);
+      // A spoken question turns the mic on once Mjuzi has finished talking, so the user can just answer
+      speak(last.content, endsWithQuestion(last.content) && voiceSupported ? listenAfterQuestion : undefined);
       lastSpokenMessageIdRef.current = last.id;
     }
-  }, [messages, ttsEnabled, speak]);
+  }, [messages, ttsEnabled, speak, voiceSupported, listenAfterQuestion]);
 
   useEffect(() => {
     scrollToBottom();
@@ -86,6 +109,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
   function handleSend() {
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
+    cancelSpeech();
 
     addMessage({ role: 'user', content: trimmed });
     setInput('');
@@ -106,16 +130,12 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
   }
 
   function handleMicClick() {
+    cancelSpeech(); // Mjuzi stops talking so the mic does not hear it
     if (isListening) {
       stopListening();
       return;
     }
-    startListening((transcript) => {
-      const trimmed = transcript.trim();
-      if (!trimmed || isLoading) return;
-      addMessage({ role: 'user', content: trimmed });
-      sendMessage(trimmed, context);
-    });
+    listenForReply();
   }
 
   function handleSelectConversation(conv: ConversationSummary) {
@@ -322,11 +342,24 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
               {isListening ? 'Listening… tap to stop' : 'Speak'}
             </button>
           )}
+          {isSpeaking && (
+            <button
+              type="button"
+              onClick={cancelSpeech}
+              className="inline-flex items-center gap-1.5 rounded-full border-2 border-amber-500 bg-amber-50 dark:bg-amber-900/30 px-3 py-1 text-xs font-semibold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
+            >
+              <VolumeX className="h-3.5 w-3.5" aria-hidden="true" />
+              Stop talking
+            </button>
+          )}
           <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
             <input
               type="checkbox"
               checked={ttsEnabled}
-              onChange={(e) => setTtsEnabled(e.target.checked)}
+              onChange={(e) => {
+                setTtsEnabled(e.target.checked);
+                if (!e.target.checked) cancelSpeech();
+              }}
               className="h-3 w-3 rounded border-gray-300 dark:border-gray-600"
             />
             Speak replies
@@ -345,7 +378,10 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
         <div className="flex items-end gap-2">
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => {
+              setInput(e.target.value);
+              if (isSpeaking) cancelSpeech();
+            }}
             onKeyDown={handleKeyDown}
             placeholder="Ask Mjuzi about your projects..."
             aria-label="Chat message input"
