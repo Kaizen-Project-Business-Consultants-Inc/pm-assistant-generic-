@@ -56,6 +56,12 @@ import type { WorkCalendar } from '../../../utils/workingDays';
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
 import { useResourceConflicts } from '../../../hooks/useResourceConflicts';
 
+/** task id -> the ids it waits for, built once per render of the open AI Reschedule panel */
+function predecessorLookup(tasks: Array<{ id: string; dependencies?: Array<{ dependencyId: string }> }>) {
+  const map = new Map(tasks.map(t => [t.id, (t.dependencies ?? []).map(d => d.dependencyId)]));
+  return (id: string) => map.get(id) ?? [];
+}
+
 /** The row filter "Show only these" sets from the deadline email's note */
 const DEADLINE_ROWS_LABEL = 'From your email';
 export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad, onImportOpened, onEditProject }: { schedule: any; viewMode: 'gantt' | 'kanban' | 'table' | 'calendar' | 'network' | 'critical' | 'burndown' | 'scurve'; projectId: string; openImportOnLoad?: boolean; onImportOpened?: () => void; /** Open Edit project (only for those who may edit it) */ onEditProject?: () => void }) {
@@ -1001,7 +1007,9 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         <AutoReschedulePanel
           scheduleId={schedule.id}
           projectId={projectId}
-          onClose={() => setShowReschedulePanel(false)}
+          onClose={() => { setShowReschedulePanel(false); handleHighlightTasks(null); }}
+          onHighlightTasks={handleHighlightTasks}
+          predecessorsOf={predecessorLookup(tasks)}
         />
       )}
 

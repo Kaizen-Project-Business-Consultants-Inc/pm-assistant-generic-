@@ -614,14 +614,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/schedule/AutoReschedulePanel.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "src/client/src/components/schedule/BulkGroupControls.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 1

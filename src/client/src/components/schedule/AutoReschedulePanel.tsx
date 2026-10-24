@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { X, AlertTriangle, Loader2, CheckCircle2, XCircle, Pencil, Flag } from 'lucide-react';
@@ -6,7 +6,7 @@ import { severityColor } from '../../utils/severityColors';
 import { announce } from '../../utils/announce';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
-import { formatCalendarDate } from '../../utils/dateUtils';
+import { formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,6 +16,10 @@ interface AutoReschedulePanelProps {
   scheduleId: string;
   projectId: string;
   onClose: () => void;
+  /** Lights up these rows in the schedule behind the panel (null clears) */
+  onHighlightTasks: (ids: string[] | null) => void;
+  /** The tasks this one waits for, to warn when a ticked change depends on an unticked one */
+  predecessorsOf: (taskId: string) => string[];
 }
 
 interface Delay {
@@ -23,9 +27,14 @@ interface Delay {
   taskName: string;
   delayDays: number;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  reason: string;
-  isCriticalPath: boolean;
+  isOnCriticalPath: boolean;
+  currentProgress: number;
+  expectedEndDate: string;
+  status?: string;
+  isSummary?: boolean;
 }
+
+const STATUS_LABEL: Record<string, string> = { pending: 'Not started', in_progress: 'In progress', in_review: 'In review', testing: 'Testing', blocked: 'Blocked' };
 
 interface TaskChange {
   taskId: string;
@@ -88,7 +97,7 @@ function dateTextClass(direction: 'later' | 'earlier' | 'same'): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoReschedulePanelProps) {
+export function AutoReschedulePanel({ scheduleId, projectId, onClose, onHighlightTasks, predecessorsOf }: AutoReschedulePanelProps) {
   const queryClient = useQueryClient();
   const uid = useId();
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -98,6 +107,19 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
   const [rejected, setRejected] = useState(false);
   const [isModifying, setIsModifying] = useState(false);
   const [modifiedChanges, setModifiedChanges] = useState<Record<string, { proposedStart: string; proposedEnd: string }>>({});
+  // Changes the PM un-ticked: left out when accepting
+  const [leftOut, setLeftOut] = useState<Set<string>>(new Set());
+  const [pickedId, setPickedId] = useState<string | null>(null);
+  const [finishedOn, setFinishedOn] = useState<Record<string, string>>({});
+  const [staleNote, setStaleNote] = useState('');
+  // Escape closes the panel while focus is inside it (there is no backdrop to click any more)
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && panelRef.current?.contains(document.activeElement)) onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  const today = toLocalDate(); // the user's own day, not UTC's
 
   // Fetch detected delays
   const {
@@ -127,13 +149,15 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
         reason: c.reason,
       }));
       setProposal({ ...raw, changes });
+      setLeftOut(new Set());
+      setStaleNote('');
       announce(`Reschedule proposal generated with ${changes.length} changes`);
     },
   });
 
   // Accept proposal mutation
   const acceptMutation = useMutation({
-    mutationFn: (proposalId: string) => apiService.acceptRescheduleProposal(proposalId),
+    mutationFn: ({ proposalId, taskIds }: { proposalId: string; taskIds?: string[] }) => apiService.acceptRescheduleProposal(proposalId, taskIds),
     onSuccess: () => {
       setAccepted(true);
       // the new dates are in the plan: every view of it fetches again (U38)
@@ -141,6 +165,29 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
       announce('Reschedule proposal accepted');
     },
   });
+
+  // A task that is really finished but was never marked complete: close it here, from the late list
+  const completeMutation = useMutation({
+    mutationFn: ({ taskId, date }: { taskId: string; date: string }) =>
+      apiService.updateTask(scheduleId, taskId, { status: 'completed', progressPercentage: 100, actualEndDate: date }),
+    onSuccess: (_d, { taskId }) => {
+      refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
+      void queryClient.invalidateQueries({ queryKey: ['autoRescheduleDelays', scheduleId] });
+      if (pickedId === taskId) { setPickedId(null); onHighlightTasks(null); }
+      if (proposal && !accepted) {
+        // the old proposal must not stay acceptable (second tab, MCP)
+        apiService.rejectRescheduleProposal(proposal.id, 'Cleared: a late task was marked complete').catch(() => {});
+        setProposal(null);
+        setStaleNote('The late list changed, so the proposal was cleared. Generate a new one.');
+      }
+      announce('Task marked complete');
+    },
+  });
+
+  const pick = (taskId: string) => {
+    setPickedId(taskId);
+    onHighlightTasks([taskId]);
+  };
 
   // Reject proposal mutation
   const rejectMutation = useMutation({
@@ -174,9 +221,19 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
     },
   });
 
+  const ticked = (proposal?.changes ?? []).filter(c => !leftOut.has(c.taskId));
+  const toggleChange = (taskId: string) => setLeftOut(prev => {
+    const next = new Set(prev);
+    if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
+    return next;
+  });
+  /** A ticked change that waits for this un-ticked one: it may not make sense alone */
+  const dependantsTicked = (taskId: string) =>
+    ticked.filter(c => c.taskId !== taskId && predecessorsOf(c.taskId).includes(taskId)).map(c => c.taskName);
+
   const handleAccept = () => {
-    if (proposal) {
-      acceptMutation.mutate(proposal.id);
+    if (proposal && ticked.length > 0) {
+      acceptMutation.mutate({ proposalId: proposal.id, taskIds: leftOut.size ? ticked.map(c => c.taskId) : undefined });
     }
   };
 
@@ -224,14 +281,12 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
 
   return (
     <>
-      {/* Backdrop overlay */}
+      {/* Slide-in panel from right; no backdrop, so the schedule stays visible and usable beside it */}
       <div
-        className="fixed inset-0 z-40 bg-black/10 dark:bg-black/20 transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Slide-in panel from right */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-slide-in-right">
+        role="complementary"
+        aria-label="AI Auto-Reschedule"
+        ref={panelRef}
+        className="fixed inset-y-0 right-0 z-50 w-full max-w-lg border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-2xl flex flex-col animate-slide-in-right">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-primary-50 to-white dark:from-gray-800 dark:to-gray-900">
           <div className="flex items-center gap-3">
@@ -256,7 +311,16 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
           {/* --- Detected Delays Section --- */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">Detected Delays</h3>
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Late tasks ({delays.length})</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Click a task to find it in the schedule. If it is really finished, mark it complete and it leaves this list.</p>
+            {completeMutation.isError && (
+              <div role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-xs text-red-700 dark:text-red-400 mb-3">
+                {getApiErrorMessage(completeMutation.error, 'Could not mark the task complete. Please try again.')}
+              </div>
+            )}
+            {staleNote && (
+              <div role="status" className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-300 mb-3">{staleNote}</div>
+            )}
 
             {delaysLoading && (
               <div className="flex items-center justify-center py-8">
@@ -281,30 +345,62 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
             {!delaysLoading && delays.length > 0 && (
               <div className="space-y-2">
                 {delays.map((delay) => {
+                  const picked = pickedId === delay.taskId;
                   return (
                     <div
                       key={delay.taskId}
-                      className="flex items-center gap-3 rounded-lg border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3"
+                      className={`rounded-lg border px-4 py-3 ${picked ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20' : 'border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {delay.taskName}
-                          </span>
-                          {delay.isCriticalPath && (
-                            <Flag className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Critical path" />
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{delay.reason}</p>
-                      </div>
-                      <span className="text-sm font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">
-                        {delay.delayDays} day{delay.delayDays === 1 ? '' : 's'} late
-                      </span>
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${severityColor(delay.severity)}`}
+                      <button
+                        type="button"
+                        onClick={() => pick(delay.taskId)}
+                        aria-pressed={picked}
+                        className="flex w-full items-center gap-3 text-left"
                       >
-                        {delay.severity}
-                      </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {delay.taskName}
+                            </span>
+                            {delay.isOnCriticalPath && (
+                              <Flag className="w-3.5 h-3.5 text-red-500 flex-shrink-0" aria-label="Critical path" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {STATUS_LABEL[delay.status ?? ''] ?? 'Open'} &middot; {delay.currentProgress}% done &middot; due {formatDate(delay.expectedEndDate)}
+                          </p>
+                        </div>
+                        <span className="text-sm font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">
+                          {delay.delayDays} day{delay.delayDays === 1 ? '' : 's'} late
+                        </span>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold uppercase ${severityColor(delay.severity)}`}
+                        >
+                          {delay.severity}
+                        </span>
+                      </button>
+                      {!accepted && !delay.isSummary && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => completeMutation.mutate({ taskId: delay.taskId, date: finishedOn[delay.taskId] || today })}
+                            disabled={completeMutation.isPending}
+                            className="px-2.5 py-1 rounded-md border border-primary-600 text-primary-700 dark:text-primary-300 text-xs font-semibold hover:bg-primary-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                          >
+                            Mark complete
+                          </button>
+                          <label className="text-xs text-gray-500 dark:text-gray-400">
+                            Finished on{' '}
+                            <input
+                              type="date"
+                              value={finishedOn[delay.taskId] || today}
+                              max={today}
+                              onChange={(e) => setFinishedOn(prev => ({ ...prev, [delay.taskId]: e.target.value }))}
+                              className="border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                            />
+                          </label>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -377,6 +473,7 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase text-xs">
+                        {!isModifying && <th className="px-3 py-2 w-8"><span className="sr-only">Include</span></th>}
                         <th className="text-left px-3 py-2 font-semibold">Task Name</th>
                         {!isModifying && <th className="text-left px-3 py-2 font-semibold">Current Start</th>}
                         {!isModifying && <th className="text-left px-3 py-2 font-semibold">Current End</th>}
@@ -393,9 +490,33 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
                         const startDir = dateMoved(change.currentStart, displayStart);
                         const endDir = dateMoved(change.currentEnd, displayEnd);
                         return (
-                          <tr key={change.taskId} className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isModifying ? 'bg-yellow-50/30 dark:bg-yellow-900/10' : 'dark:bg-gray-900'}`}>
+                          <tr
+                            key={change.taskId}
+                            onClick={() => !isModifying && pick(change.taskId)}
+                            tabIndex={isModifying ? undefined : 0}
+                            aria-current={pickedId === change.taskId ? 'true' : undefined}
+                            onKeyDown={(e) => { if (!isModifying && e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); pick(change.taskId); } }}
+                            className={`transition-colors ${isModifying ? 'bg-yellow-50/30 dark:bg-yellow-900/10' : pickedId === change.taskId ? 'bg-yellow-50 dark:bg-yellow-900/20 cursor-pointer' : 'hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-900 cursor-pointer'} ${leftOut.has(change.taskId) ? 'opacity-60' : ''}`}
+                          >
+                            {!isModifying && (
+                              <td className="px-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  checked={!leftOut.has(change.taskId)}
+                                  onChange={() => toggleChange(change.taskId)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  aria-label={`Include change to ${change.taskName}`}
+                                  className="w-4 h-4"
+                                />
+                              </td>
+                            )}
                             <td className="px-3 py-2 font-medium text-gray-900 dark:text-white whitespace-nowrap">
                               {change.taskName}
+                              {leftOut.has(change.taskId) && dependantsTicked(change.taskId).length > 0 && (
+                                <span className="block mt-1 whitespace-normal text-xs font-normal text-amber-700 dark:text-amber-300">
+                                  {dependantsTicked(change.taskId)[0]} waits for this task. Its change may not make sense on its own.
+                                </span>
+                              )}
                             </td>
                             {!isModifying && (
                               <td className="px-3 py-2 text-gray-500 dark:text-gray-400 whitespace-nowrap">
@@ -558,7 +679,7 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
             </button>
             <button
               onClick={handleAccept}
-              disabled={acceptMutation.isPending}
+              disabled={acceptMutation.isPending || ticked.length === 0}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
             >
               {acceptMutation.isPending ? (
@@ -566,7 +687,7 @@ export function AutoReschedulePanel({ scheduleId, projectId, onClose }: AutoResc
               ) : (
                 <CheckCircle2 className="w-4 h-4" />
               )}
-              Accept
+              {ticked.length === 0 ? 'Nothing ticked' : `Accept ${ticked.length} of ${proposal.changes.length} change${proposal.changes.length === 1 ? '' : 's'}`}
             </button>
           </div>
         )}

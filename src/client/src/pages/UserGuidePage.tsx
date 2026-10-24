@@ -267,6 +267,7 @@ const sections: Section[] = [
       'View S-curve charts comparing planned vs. actual progress — planned value comes from each task\'s own budget (booked hours × rate), and summary rows are never counted twice',
       'Actual cost keeps approved hours on a task that was later deleted: the money was spent',
       'Use auto-reschedule to adjust timelines based on current performance',
+      'AI Reschedule: click a late task to find it in the schedule, mark it complete if it is really done, and untick any proposed change you do not want before you Accept',
       'On a project, More → Forecast → Performance shows the cost forecast; its AI analysis is asked for only when you press Ask AI there',
       'Forecast → AI Predictions opens with risk and budget worked out from your plan (weather too on construction, infrastructure and roads projects); press Ask AI for the AI\'s view',
       'Identify cost and schedule variances early',

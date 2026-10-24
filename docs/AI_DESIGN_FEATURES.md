@@ -78,6 +78,8 @@ Mjuzi is the persistent, context-aware conversational AI assistant available thr
 
 Detects schedule delays and generates AI-powered reschedule proposals.
 
+**Accept (2026-10-24):** `POST /auto-reschedule/proposals/:id/accept` takes an optional body `{ taskIds: string[] }`: only those changes are applied (no body = all). Ids not in the proposal are ignored; if none match, nothing is changed (409). The stored proposal is not edited. `GET .../delays` now also returns each late task's `status`, so the panel can show tasks that were never marked complete.
+
 **Capabilities:**
 - Scans tasks for delays by comparing actual progress to planned dates
 - Uses critical path analysis to assess downstream impact

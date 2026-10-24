@@ -81,6 +81,9 @@ export class StaleProposalError extends Error {
   static partlySaved(): StaleProposalError {
     return new StaleProposalError('A task in this proposal was deleted while it was being applied. Some changes were saved and can be undone in History; ask for a new proposal for the rest.');
   }
+  static nothingChosen(): StaleProposalError {
+    return new StaleProposalError('No change was ticked. Nothing was changed.');
+  }
   static planGone(): StaleProposalError {
     return new StaleProposalError('The plan this proposal was made for no longer exists. Nothing was changed.');
   }
@@ -203,6 +206,8 @@ export class AutoRescheduleService {
           estimatedEndDate: toDateStr(estimatedEndDate),
           delayDays,
           isOnCriticalPath,
+          status: task.status,
+          isSummary: !!task.isSummary,
           severity,
         });
       }
@@ -523,9 +528,13 @@ export class AutoRescheduleService {
   // Accept Proposal
   // ---------------------------------------------------------------------------
 
-  async acceptProposal(proposalId: string): Promise<boolean> {
-    const proposal = await this.getProposalById(proposalId);
-    if (!proposal || proposal.status !== 'pending') return false;
+  /** `taskIds`: apply only these changes (the PM ticked them); omitted = all of them */
+  async acceptProposal(proposalId: string, taskIds?: string[]): Promise<boolean> {
+    const stored = await this.getProposalById(proposalId);
+    if (!stored || stored.status !== 'pending') return false;
+    // a copy: the stored proposal keeps all its changes if this accept fails
+    const proposal = { ...stored, proposedChanges: taskIds ? stored.proposedChanges.filter(c => taskIds.includes(c.taskId)) : stored.proposedChanges };
+    if (taskIds && proposal.proposedChanges.length === 0) throw StaleProposalError.nothingChosen();
 
     // The dates as they are now (the proposal's "current" dates may be stale) — for History's Undo.
     // One read for every task in the proposal. If it fails, or a task in the proposal has been

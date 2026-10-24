@@ -993,6 +993,8 @@ All AI features use the Anthropic Claude SDK and are gated behind the `AI_ENABLE
 
 ### Auto-Reschedule
 
+**Picking tasks and changes (2026-10-24).** The panel no longer dims the schedule. Clicking a late task (or a proposed change) highlights its row in the schedule. A late task that is really finished can be closed from the list (**Mark complete**, with its finish date); phases (summary rows) cannot. Each proposed change has a tick box; **Accept N of M changes** applies only the ticked ones (`POST /auto-reschedule/proposals/:id/accept` with optional `{ taskIds }`; the webhook and automation event carry `taskIds` when a subset was accepted). A proposal on screen is rejected and cleared when a task is marked complete, because it was based on the old list.
+
 The `AutoRescheduleService` detects delayed tasks and generates reschedule proposals:
 
 1. Identifies tasks that have slipped past their planned dates

@@ -1138,6 +1138,41 @@ describe('AutoRescheduleService', () => {
       expect(result).toBe(false);
     });
 
+    describe('only the ticked changes (taskIds)', () => {
+      const twoChanges = () => makeProposalRow({
+        proposal_data: JSON.stringify({
+          delayedTasks: [],
+          proposedChanges: [
+            { taskId: 't1', taskName: 'Task 1', currentStartDate: '2026-01-01', currentEndDate: '2026-01-10', proposedStartDate: '2026-01-01', proposedEndDate: '2026-01-15', reason: 'Delayed' },
+            { taskId: 't2', taskName: 'Task 2', currentStartDate: '2026-01-11', currentEndDate: '2026-01-20', proposedStartDate: '2026-01-16', proposedEndDate: '2026-01-25', reason: 'Follows t1' },
+          ],
+          rationale: 'r',
+          estimatedImpact: { originalEndDate: '2026-01-20', proposedEndDate: '2026-01-25', daysChange: 5, criticalPathImpact: 'None' },
+        }),
+      });
+
+      it('saves only the ticked change and leaves the other task alone', async () => {
+        mockRepoFindById.mockResolvedValue(twoChanges());
+        mockFindTasksByIds.mockResolvedValue([{ id: 't2', startDate: '2026-01-11', endDate: '2026-01-20' }]);
+        expect(await service.acceptProposal('prop-1', ['t2'])).toBe(true);
+        expect(mockUpdateTask).toHaveBeenCalledTimes(1);
+        expect(mockUpdateTask).toHaveBeenCalledWith('t2', { startDate: '2026-01-16', endDate: '2026-01-25' });
+        expect(mockRecompute).toHaveBeenCalledWith('sch-1', { onlyFrom: ['t2'], reason: 'ai_reschedule' });
+      });
+
+      it('changes nothing when no change is ticked', async () => {
+        mockRepoFindById.mockResolvedValue(twoChanges());
+        await expect(service.acceptProposal('prop-1', [])).rejects.toThrow('No change was ticked');
+        expect(mockUpdateTask).not.toHaveBeenCalled();
+        expect(mockRepoUpdateStatus).not.toHaveBeenCalled();
+      });
+
+      it('ignores ids that are not in the proposal', async () => {
+        mockRepoFindById.mockResolvedValue(twoChanges());
+        await expect(service.acceptProposal('prop-1', ['t9'])).rejects.toThrow('No change was ticked');
+      });
+    });
+
     it('returns false when proposal is not pending', async () => {
       mockRepoFindById.mockResolvedValue(makeProposalRow({ status: 'accepted' }));
       const result = await service.acceptProposal('prop-1');

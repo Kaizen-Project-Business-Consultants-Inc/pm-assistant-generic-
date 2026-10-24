@@ -199,7 +199,6 @@ describe('no hand-rolled modal without a dialog role', () => {
   const NOT_DIALOGS = new Set([
     'components/layout/Sidebar.tsx',              // phone-width menu backdrop
     'components/risks/RAIDDetailPanel.tsx',       // backdrop of a side panel that has role="dialog"
-    'components/schedule/AutoReschedulePanel.tsx', // backdrop of a slide-in side panel (listed in the audit sweep)
     'components/layout/CommandPalette.tsx',       // outer layer; its panel below has role="dialog"
     'components/ui/AccessibleModal.tsx',          // the shared dialog itself
     'pages/LessonsLearnedPage.tsx',               // click-catcher behind the Actions menu

@@ -1991,6 +1991,12 @@ On the dashboard, the **Portfolio Intelligence** banner shows your portfolio hea
 
 When delays are detected, the AI can suggest schedule adjustments that minimize overall project impact. Review and accept or reject proposed changes. Delays and proposed moves are counted in **working days** from the project's working calendar (the AI is told the project's days off, and any proposed date that lands on one is moved to the next working day). Delay severity: 5+ working days behind is medium, 10+ high, 15+ critical. Accepting a proposal also moves the tasks that follow the ones it changed; they are included in its Schedule History line and its Undo. *Since 9 October 2026:* if a task in the proposal (or the plan) has been deleted since it was made, **nothing** is changed and you are told to ask for a new proposal (it used to save the tasks before the deleted one, with nothing in History to undo them). If it stops part-way, the message says some changes were saved — they are in History and can be undone.
 
+**October 2026 — picking tasks and changes.** The AI Reschedule panel no longer dims the schedule: it sits at the right edge and the schedule stays visible.
+
+- **Late tasks:** each shows its status (Not started, In progress…), how much is done and when it was due. **Click a task** and its row lights up in the schedule (the schedule scrolls to it).
+- **Finished but never marked complete?** A task can show as late only because nobody closed it. Click **Mark complete** on the task (choose the date it finished, today by default). It is set to Completed, 100%, and leaves the list. If a proposal was already on screen, it is cleared and you generate a new one, because it was based on the old list. Mark complete is a normal task change, so it appears in the task's activity.
+- **Proposed changes:** every change has a tick box, all ticked to start. Click a change to light it up in the schedule. **Accept 3 of 4 changes** applies only the ticked ones; the others stay as they are and the proposal is used up (generate a new one for the rest). If you untick a change that a ticked task waits for, a note says so; nothing is forced. Accepting is still one entry in **History**, so Undo puts back everything it moved. With nothing ticked, Accept is off. **Reject** and **Modify** work as before.
+
 ### Task Slip Predictions
 
 In **More → Insights → AI Predictions** on any project, the Task Slip Predictions section shows which tasks are most likely to slip. Each task is scored (0-100%) based on:

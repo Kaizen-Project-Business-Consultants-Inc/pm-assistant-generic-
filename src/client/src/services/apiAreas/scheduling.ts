@@ -183,8 +183,9 @@ export class SchedulingApi extends ApiBase {
     return response.data;
   }
 
-  async acceptRescheduleProposal(proposalId: string) {
-    const response = await this.api.post(`/auto-reschedule/proposals/${proposalId}/accept`);
+  /** `taskIds`: apply only these changes; omitted = all */
+  async acceptRescheduleProposal(proposalId: string, taskIds?: string[]) {
+    const response = await this.api.post(`/auto-reschedule/proposals/${proposalId}/accept`, taskIds ? { taskIds } : undefined);
     return response.data;
   }
 

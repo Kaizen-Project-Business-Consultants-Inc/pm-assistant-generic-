@@ -9,6 +9,10 @@ export const DelayedTaskSchema = z.object({
   estimatedEndDate: z.string(),
   delayDays: z.number(),
   isOnCriticalPath: z.boolean(),
+  // 'pending' / 'in_progress': shown so the PM can spot a task that is done but was never marked complete
+  status: z.string().optional(),
+  // a phase's status and progress come from its tasks, so the panel offers no Mark complete on it
+  isSummary: z.boolean().optional(),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
 });
 

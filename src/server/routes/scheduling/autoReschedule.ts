@@ -15,6 +15,8 @@ const rejectBodySchema = z.object({
   feedback: z.string().optional(),
 });
 
+/** Accept only the ticked changes; no body = all of them */
+const acceptBodySchema = z.object({ taskIds: z.array(z.string().max(64)).max(500).optional() }).optional();
 const modifyBodySchema = z.object({
   modifications: z.array(ProposedChangeSchema),
 });
@@ -106,7 +108,8 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { id } = request.params as { id: string };
-      const accepted = await autoRescheduleService.acceptProposal(id);
+      const body = acceptBodySchema.parse(request.body);
+      const accepted = await autoRescheduleService.acceptProposal(id, body?.taskIds);
       if (!accepted) {
         return reply.status(404).send({
           error: 'Proposal not found',
@@ -114,10 +117,11 @@ export async function autoRescheduleRoutes(fastify: FastifyInstance) {
         });
       }
       const user = request.user!;
-      webhookService.dispatch('proposal.accepted', { proposalId: id }, user.userId);
-      automationEventBus.emit({ type: 'proposal.accepted', entityType: 'proposal', entityId: id, projectId: '', userId: user.userId, payload: { proposalId: id }, timestamp: new Date().toISOString() }).catch(() => {});
+      webhookService.dispatch('proposal.accepted', { proposalId: id, ...(body?.taskIds ? { taskIds: body.taskIds } : {}) }, user.userId);
+      automationEventBus.emit({ type: 'proposal.accepted', entityType: 'proposal', entityId: id, projectId: '', userId: user.userId, payload: { proposalId: id, ...(body?.taskIds ? { taskIds: body.taskIds } : {}) }, timestamp: new Date().toISOString() }).catch(() => {});
       return { message: 'Proposal accepted and changes applied successfully' };
     } catch (error) {
+      if (error instanceof z.ZodError) throw error;
       if (error instanceof StaleProposalError) {
         return reply.status(409).send({ error: 'Proposal out of date', message: error.message });
       }
