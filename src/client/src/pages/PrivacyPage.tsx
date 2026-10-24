@@ -18,14 +18,14 @@ export const PrivacyPage: React.FC = () => {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Privacy Policy</h1>
         <div className="prose max-w-none text-sm text-gray-600 dark:text-gray-300 space-y-6">
-          <p><strong>Last updated:</strong> July 2026</p>
+          <p><strong>Last updated:</strong> October 2026</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">1. Information We Collect</h2>
           <p><strong>Account information:</strong> Name, email address, phone number, and password (hashed) when you register. We use your phone number only to help you with your account (support and onboarding); we never sell or share it and never send text messages.</p>
           <p><strong>Project data:</strong> Projects, tasks, schedules, and other content you create within the Service.</p>
           <p><strong>Payment information:</strong> Billing details are processed by Stripe. We do not store your credit card numbers.</p>
           <p><strong>Waitlist information:</strong> If you join our pre-launch waitlist, we collect your email address. Waitlist emails are stored securely and used solely to notify you when the Service launches. Waitlist data is deleted within 30 days of launch. To request removal from the waitlist before launch, contact {PRIVACY_EMAIL}.</p>
-          <p><strong>Usage data:</strong> We collect information about how you use the Service, including pages visited, features used, session duration, device type, browser type, IP address, and referring URL. This data is collected via Google Analytics only if you consent (see Section 8).</p>
+          <p><strong>Usage data:</strong> We collect information about how you use the Service, including pages visited, features used, session duration, device type, browser type, IP address, and referring URL. This data is collected via Google Analytics and, on our public pages only, Microsoft Clarity only if you consent (see Section 8).</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">2. How We Use Your Information</h2>
           <p>We use your information to:</p>
@@ -47,6 +47,7 @@ export const PrivacyPage: React.FC = () => {
             <li><strong>Resend</strong> (San Francisco, CA): Transactional email delivery</li>
             <li><strong>Anthropic</strong> (San Francisco, CA): AI feature processing</li>
             <li><strong>Google Analytics</strong> (Mountain View, CA): Website usage analytics</li>
+            <li><strong>Microsoft Clarity</strong> (Redmond, WA): Session replay on our public pages, after you accept analytics</li>
           </ul>
           <p>By using the Service, you consent to the transfer of data to these US-based providers. Each provider is bound by their own privacy policies and data processing agreements.</p>
 
@@ -71,6 +72,7 @@ export const PrivacyPage: React.FC = () => {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">8. Cookies and Analytics</h2>
           <p><strong>Essential cookies:</strong> We use secure, HTTP-only cookies for authentication and session management. These are strictly necessary for the Service to function.</p>
           <p><strong>Analytics cookies (consent required):</strong> We use Google Analytics 4 (GA4) to understand how visitors use our website. <strong>GA4 is only loaded after you explicitly consent</strong> via the cookie consent banner shown on your first visit. If you decline, no analytics cookies are set and no usage data is collected.</p>
+          <p><strong>Session replay (consent required):</strong> On our public pages only (home, pricing, features, about, roadmap, terms and privacy; never the sign-up or invitation pages) we use Microsoft Clarity, after you accept analytics, to see how visitors click and scroll so we can improve those pages. It is switched off as soon as you move into the application, so it never records your projects or company data. Clarity sets the cookies _clck and _clsk (up to 12 months); we tell it not to use advertising storage.</p>
           <p>If you consent, GA4 sets the following cookies:</p>
           <ul className="list-disc pl-6 space-y-1">
             <li><code>_ga</code> — Distinguishes unique visitors (expires: 2 years)</li>
@@ -81,7 +83,7 @@ export const PrivacyPage: React.FC = () => {
           <p>We do not use advertising cookies or sell data to advertisers.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">9. International Data Transfers</h2>
-          <p>The Service is hosted in Canada (Oracle Cloud, Toronto region). Your data may be transferred to the United States for processing by our third-party providers (Stripe, Resend, Anthropic, Google). We rely on the service providers' standard contractual clauses and privacy frameworks to protect your data during transfer.</p>
+          <p>The Service is hosted in Canada (Oracle Cloud, Toronto region). Your data may be transferred to the United States for processing by our third-party providers (Stripe, Resend, Anthropic, Google, Microsoft). We rely on the service providers' standard contractual clauses and privacy frameworks to protect your data during transfer.</p>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mt-8">10. Canadian Privacy Law (PIPEDA)</h2>
           <p>We comply with the Personal Information Protection and Electronic Documents Act (PIPEDA). We collect, use, and disclose personal information only for the purposes identified in this policy. You may withdraw consent at any time by deleting your account. For privacy inquiries or complaints, contact our Privacy Officer at {PRIVACY_EMAIL}.</p>

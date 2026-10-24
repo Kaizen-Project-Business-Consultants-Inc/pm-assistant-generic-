@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useLayoutEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 const CONSENT_KEY = 'kovarti_analytics_consent';
 const GA_ID = 'G-46RCPEQRE5';
@@ -24,15 +24,45 @@ function loadGA4() {
   document.head.appendChild(script);
 }
 
+/**
+ * Microsoft Clarity (session replay) records the public marketing pages only (2026-10-23): it must
+ * never watch customers' project screens, so it is stopped as soon as the visitor leaves them.
+ */
+const CLARITY_ID = 'z2hrnr3p8p';
+const CLARITY_PUBLIC_PATHS = ['/', '/pricing', '/features', '/about', '/roadmap', '/terms', '/privacy'];
+export const clarityAllowedOn = (pathname: string) => CLARITY_PUBLIC_PATHS.includes(pathname.replace(/(.)\/$/, '$1'));
+
+function syncClarity(pathname: string) {
+  if (!analyticsEnabled()) return;
+  if (!clarityAllowedOn(pathname)) {
+    window.clarity?.('stop');
+    return;
+  }
+  if (window.clarity) {
+    window.clarity('start');
+    return;
+  }
+  window.clarity = function (...args: unknown[]) { (window.clarity!.q = window.clarity!.q || []).push(args); };
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = `https://www.clarity.ms/tag/${CLARITY_ID}`;
+  document.head.appendChild(script);
+  // No advertising storage: this is analytics only (the banner asks for analytics cookies)
+  window.clarity('consentv2', { ad_Storage: 'denied', analytics_Storage: 'granted' });
+}
+
 declare global {
   interface Window {
     dataLayer?: any[];
     gtag?: (...args: any[]) => void;
+    clarity?: ((...args: any[]) => void) & { q?: any[] };
   }
 }
 
 export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const { pathname } = useLocation();
 
   useEffect(() => {
     // No analytics here, so nothing to ask about
@@ -40,14 +70,21 @@ export function CookieConsentBanner() {
     const consent = localStorage.getItem(CONSENT_KEY);
     if (consent === 'accepted') {
       loadGA4();
+      setAccepted(true);
     } else if (consent !== 'declined') {
       setVisible(true);
     }
   }, []);
 
+  // Layout effect: stop recording in the same task as the navigation, before Clarity sees the app's first DOM
+  useLayoutEffect(() => {
+    if (accepted) syncClarity(pathname);
+  }, [accepted, pathname]);
+
   const handleAccept = () => {
     localStorage.setItem(CONSENT_KEY, 'accepted');
     loadGA4();
+    setAccepted(true);
     setVisible(false);
   };
 

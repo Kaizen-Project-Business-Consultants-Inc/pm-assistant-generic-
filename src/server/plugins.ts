@@ -185,12 +185,15 @@ export async function registerPlugins(fastify: FastifyInstance) {
           // Inline gtag script hash (see index.html)
           "'sha256-eCGAeUSA/USJdg+UP79N3fM7LLrSz53WdyTKf6QZipw='",
           "https://www.googletagmanager.com",
+          "https://www.clarity.ms",
+          "https://scripts.clarity.ms",
           ...(config.NODE_ENV === 'development' ? ["'unsafe-eval'", "'unsafe-inline'"] : [])
         ],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
         connectSrc: [
           "'self'",
           "https://www.google-analytics.com",
+          "https://*.clarity.ms",
           "https://www.googletagmanager.com",
           ...(config.NODE_ENV === 'development' ? [
             "http://localhost:3001", "ws://localhost:3001", "wss://localhost:3001"

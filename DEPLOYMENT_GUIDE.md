@@ -178,6 +178,7 @@ ssh -i "~/.ssh/ssh-key-2026-07-08 (1).key" ubuntu@147.5.127.99 \
 - `robots.txt` and `sitemap.xml` live in `src/client/public/` and are copied into `src/client/dist/` automatically by Vite at build time. No separate deployment step is needed for these files.
 - The build produces separate `vendor-react` and `vendor-query` chunks (configured in `src/client/vite.config.ts`) to improve browser caching of third-party libraries between deploys.
 - Google Analytics (GA4, G-46RCPEQRE5) loads from `CookieConsentBanner.tsx` after cookie consent, on kovarti.com only (staging sends nothing). No server-side configuration is required.
+- Microsoft Clarity (session replay, project `z2hrnr3p8p`) loads from the same component, same consent, same host rule, and only on the public marketing pages (`CLARITY_PUBLIC_PATHS`); it is stopped when the visitor moves into the app. nginx sends no CSP header on the SPA (checked 2026-10-23); the Node server's helmet CSP also allows `www.clarity.ms`, `scripts.clarity.ms` and `*.clarity.ms`. Never recorded: `/register` (invite links carry a token and the invitee's email). `stop`/`start` are not in Microsoft's documented API (they come from the open-source clarity-js), so after each release confirm on kovarti.com that requests to `l.clarity.ms/collect` stop when you move from /pricing to /dashboard.
 
 ### 4. Restart the Application
 
