@@ -14,9 +14,9 @@ export function findSpikes(rows: SpikeRow[], factor: number, minUsd: number): Sp
 }
 
 /** 'combined' = a company billed per person: the limit is each person's own, so there is no company-wide verdict */
-export type CompanyStatus = 'ok' | 'near' | 'blocked' | 'combined';
+type CompanyStatus ='ok' | 'near' | 'blocked' | 'combined';
 
-export interface CompanyUsageRow {
+interface CompanyUsageRow {
   id: string;
   name: string;
   plan: string;

@@ -7,7 +7,7 @@ import { formatCalendarDate } from '../../utils/dateUtils';
 /** 'combined' = a company billed per person: each person has their own limit, so there is no company-wide verdict */
 type Status = 'ok' | 'near' | 'blocked' | 'combined';
 
-export interface CompanyCostRow {
+interface CompanyCostRow {
   id: string;
   name: string;
   plan: string;
@@ -25,7 +25,7 @@ export interface CompanyCostRow {
 }
 interface OtherRow { bucket: string; label: string; tokens: number; cost: number; calls: number; lastCall: string | null }
 interface FeatureRow { feature: string; cost: number; calls: number; today: number; normal: number; unusual: boolean }
-export interface CompanyCostReport {
+interface CompanyCostReport {
   month: string;
   summary: { cost: number; tokens: number; calls: number; capUsd: number };
   companies: CompanyCostRow[];

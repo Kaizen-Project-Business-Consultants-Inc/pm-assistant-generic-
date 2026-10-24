@@ -209,7 +209,7 @@ class AIBudgetService {
 }
 
 /** What the admin cost table needs to know about a company's allowance */
-export interface AllowanceInput { id: string; billingModel: 'flat' | 'per_seat'; seatCount: number; subscriptionTier: string; aiAllowanceOverride: number | null }
+interface AllowanceInput { id: string; billingModel: 'flat' | 'per_seat'; seatCount: number; subscriptionTier: string; aiAllowanceOverride: number | null }
 
 /**
  * Each company's monthly AI allowance, for the admin cost table. A per-seat company shares one pool
