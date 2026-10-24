@@ -903,6 +903,8 @@ Unit tests: `__tests__/components/raidImportModal.test.tsx` (client), `src/serve
 
 ### 9a. Propose fixes counts and Undo; Department wording (U53/U54/U50, 2026-10-20)
 
+After the 2026-10-24 fix: on a plan whose tasks overlap with no links, Review → Propose fixes → Apply all → Undo, then compare each task's dates, length and links (and the phase's length) with what they were before Apply — they are identical. Automated: `ScheduleFixProposerService.test.ts` ("undo puts a phase's length back too").
+
 1. Import a plan with no links (e.g. a 30-task CSV) and run the review: **1 critical** (No logic at all). Open **Propose fixes**: the Critical heading says **1 problem · N fixes offered** and names "No logic at all".
 2. **Select all in Critical**: every ticked link is listed (scroll inside the box), the heading says "N ticked", and Apply reads **Apply N fixes — fixes 1 critical problem**.
 3. Click Apply, then click again where Apply was: it is **Done** (closes the panel) — nothing is undone. Reopen: the links are there.

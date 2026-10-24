@@ -795,6 +795,15 @@ export class ScheduleFixProposerService {
           startDate: bt.startDate ? new Date(bt.startDate).toISOString().slice(0, 10) : null,
           endDate: bt.endDate ? new Date(bt.endDate).toISOString().slice(0, 10) : null,
         })));
+        // A phase's length is worked out from its tasks and is not part of the date write above: put it back too, or
+        // Undo leaves "44 days" on a phase whose dates are back to 15 (found by QA on staging, 2026-10-24)
+        const nowDays = new Map((await scheduleService.findTasksByScheduleId(scheduleId)).map(t => [t.id, t.estimatedDays]));
+        for (const bt of baseline?.tasks ?? []) {
+          if (bt.estimatedDays != null && nowDays.has(bt.taskId) && nowDays.get(bt.taskId) !== bt.estimatedDays) {
+            // eslint-disable-next-line no-await-in-loop -- only the few tasks whose length differs (phases); each is one small write
+            await scheduleService.updateTask(bt.taskId, { estimatedDays: bt.estimatedDays } as any);
+          }
+        }
       } catch (err: any) {
         logger.warn('[ScheduleFix] undo date restore failed', { proposalId, error: err?.message });
       }
