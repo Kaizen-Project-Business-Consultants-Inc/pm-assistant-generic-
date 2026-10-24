@@ -341,7 +341,7 @@ export class TaskRepository {
    * task by task starts from the true old dates and every task's bookings still move. A task
    * listed twice gets its last dates, as when they were saved one by one.
    */
-  async updateDatesMany(changes: Array<{ id: string; startDate: string | null; endDate: string | null }>): Promise<void> {
+  async updateDatesMany(changes: Array<{ id: string; startDate: string | null; endDate: string | null; /** Also set the length (working days) for these tasks; left alone when absent */ estimatedDays?: number | null }>): Promise<void> {
     const last = [...new Map(changes.map(c => [c.id, c])).values()];
     if (last.length === 0) return;
     await databaseService.transaction(async (conn) => {
@@ -349,13 +349,18 @@ export class TaskRepository {
       const before = await taskDatesOf(run, last.map(c => c.id));
       for (const chunk of chunksOf(last, 100)) {
         const cases = chunk.map(() => 'WHEN ? THEN ?').join(' ');
+        // a phase's length is worked out from its tasks, not part of the dates: Undo of Propose fixes sets it back here
+        // eslint-disable-next-line no-restricted-syntax -- small: one chunk of at most 100 tasks
+        const withDays = chunk.filter(c => c.estimatedDays !== undefined);
+        const daysSql = withDays.length > 0 ? `, estimated_days = CASE id ${withDays.map(() => 'WHEN ? THEN ?').join(' ')} ELSE estimated_days END` : '';
         // eslint-disable-next-line no-await-in-loop -- one statement per 100 tasks, in one transaction
         await run(
-          `UPDATE tasks SET start_date = CASE id ${cases} END, end_date = CASE id ${cases} END
+          `UPDATE tasks SET start_date = CASE id ${cases} END, end_date = CASE id ${cases} END${daysSql}
            WHERE id IN (${chunk.map(() => '?').join(',')})`,
           [
             ...chunk.flatMap(c => [c.id, c.startDate]),
             ...chunk.flatMap(c => [c.id, c.endDate]),
+            ...withDays.flatMap(c => [c.id, c.estimatedDays ?? null]),
             ...chunk.map(c => c.id),
           ],
         );

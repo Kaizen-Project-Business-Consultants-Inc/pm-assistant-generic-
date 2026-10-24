@@ -53,6 +53,22 @@ describe('taskRepository.updateDatesMany', () => {
     expect(call[2]).toEqual(['a', '2026-12-01', 'a', '2026-12-02', 'a']);
   });
 
+  it('a length can ride along (Undo of Propose fixes puts a phase back to 15 days); tasks without one keep theirs', async () => {
+    const { databaseService } = await import('../../database/connection');
+    await taskRepository.updateDatesMany([
+      { id: 'phase', startDate: '2026-11-02', endDate: '2026-11-20', estimatedDays: 15 },
+      { id: 'leaf', startDate: '2026-11-02', endDate: '2026-11-04' }, // no length given: left alone
+    ]);
+    const call = vi.mocked(databaseService.queryOn).mock.calls.find(c => String(c[1]).startsWith('UPDATE tasks'))!;
+    expect(String(call[1])).toContain('estimated_days = CASE id WHEN ? THEN ? ELSE estimated_days END');
+    expect(call[2]).toEqual(['phase', '2026-11-02', 'leaf', '2026-11-02', 'phase', '2026-11-20', 'leaf', '2026-11-04', 'phase', 15, 'phase', 'leaf']);
+    // and without any length the statement is the old one, with no estimated_days at all
+    vi.mocked(databaseService.queryOn).mockClear();
+    await taskRepository.updateDatesMany([{ id: 'a', startDate: '2026-11-02', endDate: '2026-11-03' }]);
+    const plain = vi.mocked(databaseService.queryOn).mock.calls.find(c => String(c[1]).startsWith('UPDATE tasks'))!;
+    expect(String(plain[1])).not.toContain('estimated_days');
+  });
+
   it('nothing to save: no transaction, no statements', async () => {
     await taskRepository.updateDatesMany([]);
     expect(db.onConn).toEqual([]);

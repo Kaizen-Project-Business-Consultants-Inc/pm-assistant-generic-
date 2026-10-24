@@ -424,16 +424,21 @@ describe('ScheduleFixProposerService', () => {
       { taskId: 'gone', startDate: '2026-11-05', endDate: '2026-11-06', estimatedDays: 2 },
       { taskId: 'nolen', startDate: '2026-11-05', endDate: '2026-11-06' },
     ] } as any);
-    // after the apply's re-flow the phase says 44 days; the leaf is as before; 'gone' was deleted since
-    vi.mocked(scheduleService.findTasksByScheduleId).mockResolvedValueOnce([
-      { id: 'phase', estimatedDays: 44 }, { id: 'leaf', estimatedDays: 3 }, { id: 'nolen', estimatedDays: 9 },
-    ] as any);
+    const { taskRepository } = await import('../../database/TaskRepository');
+    vi.mocked(taskRepository.updateDatesMany).mockClear();
     vi.mocked(scheduleService.updateTask).mockClear();
 
     await (await svc()).undo('s1', 'prop-1', 'u1');
 
-    expect(scheduleService.updateTask).toHaveBeenCalledTimes(1);
-    expect(scheduleService.updateTask).toHaveBeenCalledWith('phase', { estimatedDays: 15 });
+    // dates AND lengths go back in ONE batched write (not a database write per task); a task with no baseline length keeps what it has
+    expect(taskRepository.updateDatesMany).toHaveBeenCalledTimes(1);
+    expect(taskRepository.updateDatesMany).toHaveBeenCalledWith([
+      { id: 'phase', startDate: '2026-11-02', endDate: '2026-11-20', estimatedDays: 15 },
+      { id: 'leaf', startDate: '2026-11-02', endDate: '2026-11-04', estimatedDays: 3 },
+      { id: 'gone', startDate: '2026-11-05', endDate: '2026-11-06', estimatedDays: 2 },
+      { id: 'nolen', startDate: '2026-11-05', endDate: '2026-11-06' },
+    ]);
+    expect(scheduleService.updateTask).not.toHaveBeenCalled();
   });
 
   it('undo restores a large baseline in one batched date write, null dates kept as null', async () => {
