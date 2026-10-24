@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { AdminPageWrapper } from './AdminPageWrapper';
+import { CompanyCostView } from '../../components/admin/CompanyCostView';
 import { formatUsdCost } from '../../utils/formatCurrency';
 import { Brain, Zap, DollarSign, BarChart3, Activity, MessageSquare, GitBranch, ArrowRight, Bot } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -113,7 +114,7 @@ function agentLabel(id: string) {
   return id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function AiCostTab() {
+function AiCostByPerson() {
   const [period, setPeriod] = useState(30);
   const since = period > 0 ? new Date(Date.now() - period * 86400000).toISOString().slice(0, 10) : undefined;
 
@@ -190,6 +191,25 @@ function AiCostTab() {
           </div>
         </>
       )}
+    </>
+  );
+}
+
+/** Cost tab: by company (this month, with each company's allowance) or by person (a chosen period) */
+function AiCostTab() {
+  const [view, setView] = useState<'company' | 'person'>('company');
+  const btn = (active: boolean) => `px-3 py-1.5 text-sm rounded-lg font-medium transition ${
+    active
+      ? 'bg-indigo-600 text-white'
+      : 'text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+  }`;
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-5" role="group" aria-label="Group the cost by">
+        <button type="button" aria-pressed={view === 'company'} onClick={() => setView('company')} className={btn(view === 'company')}>By company</button>
+        <button type="button" aria-pressed={view === 'person'} onClick={() => setView('person')} className={btn(view === 'person')}>By person</button>
+      </div>
+      {view === 'company' ? <CompanyCostView /> : <AiCostByPerson />}
     </>
   );
 }

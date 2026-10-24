@@ -595,7 +595,7 @@ export function AdminUsersPage() {
                           <button
                             onClick={() => { setEditingBudgetId(u.id); setBudgetInput(u.aiMonthlyTokenBudget != null ? String(u.aiMonthlyTokenBudget) : ''); }}
                             className="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                            title="Click to edit AI budget"
+                            title="Click to edit this person's AI allowance. It does not apply when their company is billed per seat: set that company's allowance on the Tenants screen (AI allowance)."
                           >
                             {u.aiMonthlyTokenBudget != null ? (
                               <span className="font-mono">{u.aiMonthlyTokenBudget.toLocaleString()}</span>

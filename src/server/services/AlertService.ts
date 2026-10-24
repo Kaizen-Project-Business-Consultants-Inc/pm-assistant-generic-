@@ -10,10 +10,13 @@ import logger from '../utils/logger';
 import { registrationActivity } from '../utils/registrationWatch';
 import { serverErrorActivity } from '../utils/serverErrorWatch';
 import { pricingConfigService } from './PricingConfigService';
+import { aiUsageLogRepository } from '../database/AIUsageLogRepository';
+import { findSpikes, type SpikeRow } from './AIUsageReportService';
 
 type AlertType =
   | 'error_rate_high'
   | 'ai_account_spend'
+  | 'ai_spend_spike'
   | 'ai_budget_warning'
   | 'ai_budget_critical'
   | 'circuit_breaker_open'
@@ -83,6 +86,7 @@ class AlertService {
         this.checkDegradedStart(),
         this.checkRegistrationFlood(),
         this.checkAccountAISpend(),
+        this.checkAISpendSpike(),
         this.checkPlanFeatures(),
         this.checkIdCollation(),
       ]);
@@ -174,6 +178,51 @@ class AlertService {
       title: spent >= cap ? 'AI spending limit reached' : 'AI spending at 80% of the monthly limit',
       message: `AI has cost about $${spent.toFixed(2)} this month against a limit of $${cap}. ${spent >= cap ? 'AI features are paused until next month' : 'At the limit, AI features pause until next month'} unless AI_MONTHLY_CAP_USD is raised.`,
     });
+  }
+
+  /**
+   * AI spend far above normal (C3, 2026-10-23). The $100 account limit and its 80% email fire too late
+   * for one runaway: AutoReschedule made ~530 paid calls a day for weeks and nobody was told. Looks at
+   * each feature and each company: at least AI_SPIKE_MIN_USD today and AI_SPIKE_FACTOR times a normal
+   * day. The alert-check job runs every 5 minutes, so this runs once an hour, and each feature or
+   * company is mentioned once a day. Needs Redis, like the other checks.
+   */
+  private async checkAISpendSpike(): Promise<void> {
+    if (!config.AI_SPIKE_ALERTS || !redisService.isConnected()) return;
+    const now = new Date().toISOString();
+    const hourKey = `ai:spike:checked:${now.slice(0, 13)}`;
+    if (await redisService.get(hourKey)) return;
+    await redisService.set(hourKey, '1', 3600);
+
+    const [byFeature, byCompany] = await Promise.all([aiUsageLogRepository.spendTodayVsNormal('feature'), aiUsageLogRepository.spendTodayVsNormal('company')]);
+    const fresh: Array<{ kind: 'feature' | 'company'; row: SpikeRow; told: string }> = [];
+    for (const [kind, rows] of [['feature', byFeature], ['company', byCompany]] as const) {
+      for (const row of findSpikes(rows, config.AI_SPIKE_FACTOR, config.AI_SPIKE_MIN_USD)) {
+        const told = `ai:spike:alerted:${now.slice(0, 10)}:${kind}:${row.key}`;
+        // eslint-disable-next-line no-await-in-loop -- a handful of spikes at most
+        if (await redisService.get(told)) continue;
+        fresh.push({ kind, row, told });
+      }
+    }
+    if (fresh.length === 0) return;
+
+    const money = (n: number) => `$${n.toFixed(2)}`;
+    const lines: string[] = [];
+    for (const { kind, row } of fresh.slice(0, 5)) {
+      // eslint-disable-next-line no-await-in-loop -- at most 5 small look-ups, only when an alert is going out
+      const who = kind === 'feature' ? await aiUsageLogRepository.topCallerToday(row.key) : null;
+      lines.push(`${row.label} (${kind}) spent about ${money(row.today)} today; a normal day is ${money(row.normal)}.${who ? ` Most of it came from ${who}.` : ''}`);
+    }
+    const sent = await this.fire({
+      type: 'ai_spend_spike',
+      severity: 'warning',
+      title: 'AI spending is far above normal today',
+      message: `${lines.join(' ')}${fresh.length > 5 ? ` (${fresh.length - 5} more.)` : ''} Open AI usage in the admin panel, "By company", to see where it is coming from.`,
+    });
+    // told only once the alert really went out: a cooldown that held it back must not swallow the spike for the day
+    if (sent) {
+      await Promise.all(fresh.map(f => redisService.set(f.told, '1', 26 * 3600)));
+    }
   }
 
   private async checkRegistrationFlood(): Promise<void> {
@@ -358,12 +407,13 @@ class AlertService {
     }
   }
 
-  private async fire(alert: Alert): Promise<void> {
+  /** Returns whether the alert went out (false when the cooldown held it back) */
+  private async fire(alert: Alert): Promise<boolean> {
     // Cooldown check via Redis
     const cooldownKey = `alert:cooldown:${alert.type}`;
     if (redisService.isConnected()) {
       const existing = await redisService.get(cooldownKey);
-      if (existing) return; // Already alerted within cooldown window
+      if (existing) return false; // Already alerted within cooldown window
       await redisService.set(cooldownKey, '1', config.ALERT_COOLDOWN_MINUTES * 60);
     }
 
@@ -419,6 +469,7 @@ class AlertService {
     } catch {
       // Non-critical
     }
+    return true;
   }
 }
 

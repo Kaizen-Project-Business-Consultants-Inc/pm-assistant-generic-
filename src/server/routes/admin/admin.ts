@@ -17,6 +17,7 @@ import logger from '../../utils/logger';
 import { sendValidationError } from '../../utils/validationError';
 import { selectAcrossCompanies, sumRows, mergeGroups } from '../../utils/acrossCompanies';
 
+import { buildCompanyUsageReport } from '../../services/AIUsageReportService';
 import { isPlatformAdmin } from '../../utils/platformAdmin';
 import { neverConfirmedSql } from '../../constants/neverConfirmed';
 import { clampPagination } from '../../schemas/paginationSchema';
@@ -325,6 +326,16 @@ export async function adminRoutes(fastify: FastifyInstance) {
       if (!updated) {
         return reply.status(404).send({ error: 'Not found', message: 'User not found' });
       }
+      // what a customer may use changed: recorded in the ledger like the company allowance
+      auditLedgerService.append({
+        actorId: request.user!.userId,
+        actorType: 'user',
+        action: 'user.ai_allowance.set',
+        entityType: 'user',
+        entityId: id,
+        payload: { to: body.budget ?? null },
+        source: 'web',
+      }).catch(err => logger.error('Failed to record the AI allowance change in the audit ledger', { userId: id, error: err instanceof Error ? err.message : String(err) }));
       return { message: 'AI budget updated', ai_monthly_token_budget: body.budget ?? null };
     } catch (error) {
       fastify.log.error(error);
@@ -426,6 +437,18 @@ export async function adminRoutes(fastify: FastifyInstance) {
         summary: summaryRows[0] ?? { total_calls: 0, total_tokens: 0, total_cost: 0 },
         dailyTrend: dailyRows,
       };
+    } catch (error) {
+      fastify.log.error(error);
+      return reply.status(500).send({ error: 'Internal server error' });
+    }
+  });
+
+  // GET /api/v1/admin/ai-usage/companies — this month per company (tokens, estimated $, allowance, status)
+  // plus what belongs to no company and the top features with a mark when one is far above its normal day
+  fastify.get('/ai-usage/companies', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!requireAdmin(request, reply)) return reply;
+    try {
+      return await buildCompanyUsageReport();
     } catch (error) {
       fastify.log.error(error);
       return reply.status(500).send({ error: 'Internal server error' });

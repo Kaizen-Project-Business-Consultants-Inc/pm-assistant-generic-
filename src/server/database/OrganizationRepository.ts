@@ -17,6 +17,10 @@ export interface Organization {
   trialEndsAt: string | null;
   maxUsers: number;
   viewerLimit: number;
+  /** The company's own monthly AI tokens (per-seat companies); null = the plan default. Set by Kovarti admin (C1). */
+  aiAllowanceOverride: number | null;
+  aiAllowanceOverrideBy: string | null;
+  aiAllowanceOverrideAt: string | null;
   isActive: boolean;
   isProvisioned: boolean;
   createdAt: string;
@@ -41,6 +45,9 @@ function mapRow(row: any): Organization {
     trialEndsAt: row.trial_ends_at,
     maxUsers: row.max_users,
     viewerLimit: row.viewer_limit ?? 5,
+    aiAllowanceOverride: row.ai_allowance_override != null ? Number(row.ai_allowance_override) : null,
+    aiAllowanceOverrideBy: row.ai_allowance_override_by ?? null,
+    aiAllowanceOverrideAt: row.ai_allowance_override_at ?? null,
     isActive: !!row.is_active,
     isProvisioned: !!row.is_provisioned,
     createdAt: row.created_at,
@@ -97,7 +104,7 @@ export class OrganizationRepository {
     return rows.map(mapRow);
   }
 
-  async create(org: Omit<Organization, 'createdAt' | 'updatedAt'>): Promise<Organization> {
+  async create(org: Omit<Organization, 'createdAt' | 'updatedAt' | 'aiAllowanceOverride' | 'aiAllowanceOverrideBy' | 'aiAllowanceOverrideAt'>): Promise<Organization> {
     await databaseService.queryControlPlane(
       `INSERT INTO organizations (id, name, slug, db_name, owner_user_id, stripe_customer_id,
         subscription_tier, subscription_status, trial_ends_at, max_users, is_active, is_provisioned)
@@ -122,7 +129,7 @@ export class OrganizationRepository {
     );
   }
 
-  async update(id: string, data: Partial<Pick<Organization, 'name' | 'isActive' | 'isProvisioned' | 'subscriptionTier' | 'subscriptionStatus' | 'trialEndsAt' | 'maxUsers' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'stripeSubscriptionItemId' | 'billingModel' | 'seatCount' | 'seatPriceCents' | 'viewerLimit'>>): Promise<void> {
+  async update(id: string, data: Partial<Pick<Organization, 'name' | 'isActive' | 'isProvisioned' | 'subscriptionTier' | 'subscriptionStatus' | 'trialEndsAt' | 'maxUsers' | 'stripeCustomerId' | 'stripeSubscriptionId' | 'stripeSubscriptionItemId' | 'billingModel' | 'seatCount' | 'seatPriceCents' | 'viewerLimit' | 'aiAllowanceOverride' | 'aiAllowanceOverrideBy' | 'aiAllowanceOverrideAt'>>): Promise<void> {
     const fields: string[] = [];
     const values: any[] = [];
 
@@ -141,6 +148,9 @@ export class OrganizationRepository {
       seatCount: 'seat_count',
       seatPriceCents: 'seat_price_cents',
       viewerLimit: 'viewer_limit',
+      aiAllowanceOverride: 'ai_allowance_override',
+      aiAllowanceOverrideBy: 'ai_allowance_override_by',
+      aiAllowanceOverrideAt: 'ai_allowance_override_at',
     };
 
     for (const [key, column] of Object.entries(columnMap)) {

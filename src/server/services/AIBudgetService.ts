@@ -178,6 +178,8 @@ class AIBudgetService {
   private async getBudget(userId: string, org: OrgRow, knownTier?: string): Promise<number> {
     // Per-seat organisation → pooled budget
     if (org && org.billingModel === 'per_seat') {
+      // the owner's own number for this company replaces the plan pool (C1)
+      if (org.aiAllowanceOverride != null) return org.aiAllowanceOverride;
       const tier = org.subscriptionTier || 'sme';
       let perSeatBudget: number;
       try {
@@ -204,6 +206,41 @@ class AIBudgetService {
     const topUpTokens = await tokenTopUpRepository.getRemainingTokens(userId);
     return baseBudget + topUpTokens;
   }
+}
+
+/** What the admin cost table needs to know about a company's allowance */
+export interface AllowanceInput { id: string; billingModel: 'flat' | 'per_seat'; seatCount: number; subscriptionTier: string; aiAllowanceOverride: number | null }
+
+/**
+ * Each company's monthly AI allowance, for the admin cost table. A per-seat company shares one pool
+ * (its own override, else seats x the plan's per-seat number); any other company is its people's
+ * individual allowances added up. Purchased top-ups are not included.
+ */
+export async function allowancesFor(orgs: AllowanceInput[]): Promise<Map<string, { allowance: number; source: 'company' | 'plan' | 'per-person'; planDefault: number }>> {
+  const tierBudget = async (tier: string): Promise<number> => {
+    try { return (await pricingConfigService.getAIBudget(tier)) || getTierBudget(tier); } catch { return getTierBudget(tier); }
+  };
+  const result = new Map<string, { allowance: number; source: 'company' | 'plan' | 'per-person'; planDefault: number }>();
+  const flat = orgs.filter(o => o.billingModel !== 'per_seat');
+  const members = await aiBudgetRepository.getMemberBudgetInputs(flat.map(o => o.id));
+  const byOrg = new Map<string, typeof members>();
+  for (const m of members) byOrg.set(m.organizationId, [...(byOrg.get(m.organizationId) ?? []), m]);
+  // each plan is looked up once, not once per company or person
+  const tiers = new Set<string>(orgs.filter(o => o.billingModel === 'per_seat').map(o => o.subscriptionTier || 'sme'));
+  for (const m of members) tiers.add(m.tier || 'trial');
+  const budgetOf = new Map<string, number>(await Promise.all([...tiers].map(async tier => [tier, await tierBudget(tier)] as [string, number])));
+  for (const o of orgs) {
+    if (o.billingModel === 'per_seat') {
+      const perSeat = budgetOf.get(o.subscriptionTier || 'sme') ?? 0;
+      const planDefault = perSeat * o.seatCount;
+      result.set(o.id, o.aiAllowanceOverride != null ? { allowance: o.aiAllowanceOverride, source: 'company', planDefault } : { allowance: planDefault, source: 'plan', planDefault });
+    } else {
+      let sum = 0;
+      for (const m of byOrg.get(o.id) ?? []) sum += m.override ?? budgetOf.get(m.tier || 'trial') ?? 0;
+      result.set(o.id, { allowance: sum, source: 'per-person', planDefault: sum });
+    }
+  }
+  return result;
 }
 
 export const aiBudgetService = new AIBudgetService();

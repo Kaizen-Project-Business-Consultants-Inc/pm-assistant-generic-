@@ -98,6 +98,11 @@ export class AdminApi extends ApiBase {
     return response.data;
   }
 
+  async getAdminAiUsageByCompany() {
+    const response = await this.api.get('/admin/ai-usage/companies');
+    return response.data;
+  }
+
   async getAgentCosts(since?: string) {
     const params = since ? `?since=${encodeURIComponent(since)}` : '';
     const response = await this.api.get(`/agent/costs${params}`);

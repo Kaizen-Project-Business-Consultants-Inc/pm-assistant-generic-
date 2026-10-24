@@ -5,6 +5,8 @@ import { keyChangesNeed } from '../../middleware/requireScope';
 import { databaseService } from '../../database/connection';
 import { organizationRepository } from '../../database/OrganizationRepository';
 import { organizationService } from '../../services/OrganizationService';
+import { auditLedgerService } from '../../services/AuditLedgerService';
+import logger from '../../utils/logger';
 import { provisionTenantDatabase } from '../../database/tenantProvisioner';
 import { runTenantMigrations } from '../../database/tenantMigrationRunner';
 
@@ -26,6 +28,8 @@ const updateSchema = z.object({
   subscriptionTier: z.enum(['trial', 'consultant_basic', 'consultant_pro', 'sme', 'enterprise']).optional(),
   subscriptionStatus: z.enum(['active', 'trialing', 'past_due', 'canceled', 'incomplete', 'none']).optional(),
   trialEndsAt: z.string().nullable().optional(),
+  // The company's own monthly AI tokens (C1); null puts it back to the plan default. Per-seat companies only.
+  aiAllowanceOverride: z.number().int().min(0).max(10_000_000_000).nullable().optional(),
 });
 
 export async function tenantAdminRoutes(fastify: FastifyInstance) {
@@ -40,6 +44,7 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
       const rows = await databaseService.queryControlPlane(
         `SELECT o.*,
           u.full_name AS owner_name, u.email AS owner_email,
+          (SELECT full_name FROM users WHERE id = o.ai_allowance_override_by) AS ai_allowance_override_by_name,
           ${neverConfirmedSql('u')} AS never_confirmed,
           (SELECT COUNT(*) FROM users WHERE organization_id = o.id) AS user_count
         FROM organizations o
@@ -114,7 +119,17 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
         return reply.status(404).send({ error: 'Not found', message: 'Organization not found' });
       }
 
-      await organizationRepository.update(id, result.data);
+      // Only a per-seat company shares one pool; anyone else's allowance is each person's own (Admin → Users)
+      const changesAllowance = 'aiAllowanceOverride' in result.data;
+      if (changesAllowance && result.data.aiAllowanceOverride != null && org.billingModel !== 'per_seat') {
+        return reply.status(400).send({ error: 'Bad request', message: 'Only a per-seat company shares one AI allowance. For this company, set each person\'s allowance on the Users screen.' });
+      }
+
+      await organizationRepository.update(id, {
+        ...result.data,
+        // who changed the allowance and when, kept on the company (also when it is put back to the plan default)
+        ...(changesAllowance ? { aiAllowanceOverrideBy: request.user!.userId, aiAllowanceOverrideAt: new Date().toISOString().slice(0, 19).replace('T', ' ') } : {}),
+      });
 
       // Invalidate cached user→org lookups for all users in this org
       const users = await databaseService.queryControlPlane(
@@ -123,6 +138,19 @@ export async function tenantAdminRoutes(fastify: FastifyInstance) {
       );
       for (const u of users) {
         organizationService.invalidateUserCache(u.id);
+      }
+
+      // What a paying customer may use changed: the old and new number go in the ledger (the company only keeps the last change)
+      if (changesAllowance) {
+        auditLedgerService.append({
+          actorId: request.user!.userId,
+          actorType: 'user',
+          action: 'org.ai_allowance.set',
+          entityType: 'organization',
+          entityId: id,
+          payload: { from: org.aiAllowanceOverride, to: result.data.aiAllowanceOverride ?? null },
+          source: 'web',
+        }).catch(err => logger.error('Failed to record the AI allowance change in the audit ledger', { orgId: id, error: err instanceof Error ? err.message : String(err) }));
       }
 
       const updated = await organizationRepository.findById(id);

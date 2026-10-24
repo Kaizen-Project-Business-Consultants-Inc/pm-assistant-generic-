@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { SupportVisitDialog } from '../../components/admin/SupportVisitDialog';
+import { CompanyAiAllowanceDialog } from '../../components/admin/CompanyAiAllowanceDialog';
 import { apiService } from '../../services/api';
 import { tierBadgeClass } from '../../constants/branding';
 import { AdminPageWrapper } from './AdminPageWrapper';
@@ -12,6 +13,7 @@ import {
   CheckCircle,
   XCircle,
   Eye,
+  Brain,
 } from 'lucide-react';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { NeverConfirmedBadge } from '../../components/admin/NeverConfirmedBadge';
@@ -34,6 +36,12 @@ export interface AdminTenant {
   createdAt: string;
   /** The owner never confirmed their email (labelled, not counted) */
   neverConfirmed?: number | boolean;
+  billingModel: 'flat' | 'per_seat';
+  seatCount: number;
+  /** The company's own monthly AI tokens (per-seat companies); null = the plan default (C1) */
+  aiAllowanceOverride: number | null;
+  aiAllowanceOverrideAt: string | null;
+  aiAllowanceOverrideByName: string | null;
 }
 
 function fmt(date: string | null) {
@@ -48,6 +56,7 @@ function fmt(date: string | null) {
 export function AdminTenantsPage() {
   const queryClient = useQueryClient();
   const [supportFor, setSupportFor] = useState<{ id: string; name: string } | null>(null);
+  const [allowanceFor, setAllowanceFor] = useState<AdminTenant | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin-tenants'],
@@ -174,6 +183,15 @@ export function AdminTenantsPage() {
                             View as support
                           </button>
                         )}
+                        <button
+                          onClick={() => setAllowanceFor(t)}
+                          title={t.aiAllowanceOverride != null ? `This company's own AI allowance: ${Number(t.aiAllowanceOverride).toLocaleString()} tokens a month` : "This company's AI allowance (plan default)"}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 transition-colors"
+                        >
+                          <Brain className="w-3.5 h-3.5" aria-hidden="true" />
+                          AI allowance
+                          {t.aiAllowanceOverride != null && (<><span aria-hidden="true"> ●</span><span className="sr-only"> (custom)</span></>)}
+                        </button>
                         {provisioned && (
                           <button
                             onClick={() => runMigrations.mutate(t.id)}
@@ -195,6 +213,7 @@ export function AdminTenantsPage() {
         );
       })()}
       {supportFor && <SupportVisitDialog company={supportFor} onClose={() => setSupportFor(null)} />}
+      {allowanceFor && <CompanyAiAllowanceDialog company={allowanceFor} onClose={() => setAllowanceFor(null)} />}
     </AdminPageWrapper>
   );
 }

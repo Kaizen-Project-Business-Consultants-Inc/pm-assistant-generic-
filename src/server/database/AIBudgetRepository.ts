@@ -35,6 +35,17 @@ class AIBudgetRepository {
     return rows[0];
   }
 
+  /** Each active member's plan and personal override, for several companies at once (the admin cost table) */
+  async getMemberBudgetInputs(orgIds: string[]): Promise<Array<{ organizationId: string; tier: string | null; override: number | null }>> {
+    if (orgIds.length === 0) return [];
+    const rows = await databaseService.queryControlPlane<any>(
+      `SELECT organization_id, subscription_tier, ai_monthly_token_budget
+       FROM users WHERE is_active = 1 AND organization_id IN (${orgIds.map(() => '?').join(',')})`,
+      orgIds,
+    );
+    return rows.map((r: any) => ({ organizationId: r.organization_id, tier: r.subscription_tier ?? null, override: r.ai_monthly_token_budget != null ? Number(r.ai_monthly_token_budget) : null }));
+  }
+
   async getUserBudget(userId: string): Promise<number | null> {
     const rows = await databaseService.queryControlPlane<{ ai_monthly_token_budget: number | null }>(
       'SELECT ai_monthly_token_budget FROM users WHERE id = ?',

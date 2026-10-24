@@ -35,6 +35,11 @@ const configSchema = z.object({
   // Whole-account AI spend limit per calendar month in US$ (0 = no limit). Covers background jobs,
   // which have no user and so no per-user budget. Warning email at 80%.
   AI_MONTHLY_CAP_USD: z.coerce.number().min(0).default(100),
+  // Daily check for AI spend far above normal (C3): a feature or company that spent at least AI_SPIKE_MIN_USD today
+  // AND at least AI_SPIKE_FACTOR times a normal day (the 14-day average) is emailed to ALERT_EMAIL once a day.
+  AI_SPIKE_ALERTS: z.preprocess((val) => val === undefined || val === '' ? true : !(val === 'false' || val === '0' || val === false), z.boolean()),
+  AI_SPIKE_FACTOR: z.coerce.number().min(1.5).max(100).default(3),
+  AI_SPIKE_MIN_USD: z.coerce.number().min(0).max(10000).default(2),
   AI_FALLBACK_ENABLED: z.preprocess((val) => val === 'true' || val === '1' || val === true, z.boolean().default(false)),
 
   // Email Configuration (Resend)
@@ -228,6 +233,9 @@ export function validateConfiguration() {
       AI_FALLBACK_MODEL: process.env['AI_FALLBACK_MODEL'],
       AI_MODEL_LIGHT: process.env['AI_MODEL_LIGHT'],
       AI_MONTHLY_CAP_USD: process.env['AI_MONTHLY_CAP_USD'],
+      AI_SPIKE_ALERTS: process.env['AI_SPIKE_ALERTS'],
+      AI_SPIKE_FACTOR: process.env['AI_SPIKE_FACTOR'],
+      AI_SPIKE_MIN_USD: process.env['AI_SPIKE_MIN_USD'],
       AI_FALLBACK_ENABLED: process.env['AI_FALLBACK_ENABLED'],
       RESEND_API_KEY: process.env['RESEND_API_KEY'],
       RESEND_FROM_EMAIL: process.env['RESEND_FROM_EMAIL'],

@@ -131,6 +131,9 @@ When the pool is full the app now answers **503 "Kovarti is busy right now"** wi
 | `REDIS_URL` | _(empty)_ | Redis URL (empty = disabled) |
 | `ALERT_ENABLED` | `false` | Enable health monitoring alerts |
 | `ALERT_EMAIL` | _(empty)_ | Alert notification email |
+| `AI_SPIKE_ALERTS` | `true` | Daily AI-spend spike alert: a feature or company that spends at least `AI_SPIKE_MIN_USD` today and at least `AI_SPIKE_FACTOR` times a normal day (the 14-day average) is emailed to `ALERT_EMAIL`, once a day each. Needs Redis. Migration 141 adds the company AI allowance columns |
+| `AI_SPIKE_FACTOR` | `3` | How many times a normal day counts as a spike |
+| `AI_SPIKE_MIN_USD` | `2` | Smallest daily spend (US$) worth an alert |
 | `UPLOAD_DIR` | `~/uploads/pm-assistant` | File upload storage directory |
 | `MAX_UPLOAD_SIZE_MB` | `10` | Maximum upload file size in MB |
 | `MULTI_TENANT_ENABLED` | `false` | Enable multi-tenant mode |
