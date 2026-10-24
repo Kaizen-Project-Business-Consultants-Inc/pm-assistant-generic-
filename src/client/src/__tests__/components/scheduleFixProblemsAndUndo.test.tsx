@@ -99,20 +99,147 @@ describe('Undo is never where Apply was (U54)', () => {
     expect(onClose).toHaveBeenCalled();
     expect(api.undoScheduleFixProposal).not.toHaveBeenCalled();
 
-    // Undo asks, with focus on the safe answer; "Keep them" keeps them and focus goes back to Undo
-    fireEvent.click(screen.getByRole('button', { name: 'Undo these 8 fixes' }));
-    expect(screen.getByText('Remove the 8 fixes you just applied?')).toBeInTheDocument();
+    // Undo asks, with focus on the safe answer; "Keep them" keeps them and focus goes back to the button that opened it
+    fireEvent.click(screen.getByRole('button', { name: 'Undo all (8)' }));
+    expect(screen.getByText('Put back all 8 fixes?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Keep them' })).toHaveFocus();
     fireEvent.click(screen.getByRole('button', { name: 'Keep them' }));
     expect(api.undoScheduleFixProposal).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Undo these 8 fixes' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Undo all (8)' })).toHaveFocus();
 
-    // "Yes, undo" undoes, and says so
-    fireEvent.click(screen.getByRole('button', { name: 'Undo these 8 fixes' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Yes, undo' }));
-    await waitFor(() => expect(api.undoScheduleFixProposal).toHaveBeenCalledWith('s1', 'prop-1'));
+    // "Yes, put back" undoes the whole Apply (no list of fixes sent), and says so
+    fireEvent.click(screen.getByRole('button', { name: 'Undo all (8)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 8' }));
+    await waitFor(() => expect(api.undoScheduleFixProposal).toHaveBeenCalledWith('s1', 'prop-1', undefined));
     expect(await screen.findByText('Undone — the 8 fixes you applied were removed.')).toBeInTheDocument();
     expect(screen.getByText(/as it was before Apply \(score 17\)/)).toBeInTheDocument();
+  });
+
+  describe('Undo selected (U80, mock approved 2026-10-24)', () => {
+    async function applyAll(onClose = vi.fn()) {
+      renderPanel(onClose);
+      fireEvent.click(await screen.findByLabelText('Select all in Critical'));
+      fireEvent.click(screen.getByRole('button', { name: /^Apply 8 fixes/ }));
+      expect(await screen.findByText('17 → 58')).toBeInTheDocument();
+      return onClose;
+    }
+
+    it('nothing is ticked at first, so Undo selected waits; ticking some puts back only those and says what is left', async () => {
+      await applyAll();
+      const undoSelected = () => screen.getByRole('button', { name: /^Undo selected/ });
+      expect(undoSelected()).toBeDisabled();
+      expect(screen.getByText('0 selected')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 1'/));
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 2'/));
+      expect(undoSelected()).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Undo selected (2)' })).toBeInTheDocument();
+      fireEvent.click(undoSelected());
+      // the question lists exactly what goes back, and says the others stay
+      expect(screen.getByText('Put back 2 fixes?')).toBeInTheDocument();
+      expect(screen.getByText(/The other 6 fixes stay applied/)).toBeInTheDocument();
+      expect(api.undoScheduleFixProposal).not.toHaveBeenCalled();
+
+      api.undoScheduleFixProposal.mockResolvedValueOnce({
+        score: 40, putBack: 2, stillApplied: ['d3', 'd4', 'd5', 'd6', 'd7', 'd8'], alsoPutBack: [], finishBefore: '2026-11-16', finishAfter: '2026-11-12', everything: false,
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 2' }));
+      await waitFor(() => expect(api.undoScheduleFixProposal).toHaveBeenCalledWith('s1', 'prop-1', ['d1', 'd2']));
+      expect(await screen.findByText(/^Put back 2 of 8 fixes; project finish back to /)).toBeInTheDocument();
+      expect(screen.getByText('Score 58 → 40. 6 fixes are still applied.')).toBeInTheDocument();
+      expect(screen.getByText('Still applied (6)')).toBeInTheDocument();
+
+      // "Undo more…" goes back to the list, now of the 6 that stay
+      fireEvent.click(screen.getByRole('button', { name: 'Undo more…' }));
+      expect(screen.getAllByRole('checkbox', { name: /^Put back:/ })).toHaveLength(6);
+      expect(screen.queryByLabelText(/Put back: Link 'Build 1'/)).toBeNull();
+    });
+
+    it('a kept fix that relied on one put back is reported as put back too', async () => {
+      await applyAll();
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 1'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (1)' }));
+      api.undoScheduleFixProposal.mockResolvedValueOnce({ score: 50, putBack: 2, stillApplied: ['d3', 'd4', 'd5', 'd6', 'd7', 'd8'], alsoPutBack: ['d2'], finishBefore: '2026-11-16', finishAfter: '2026-11-16', everything: false });
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 1' }));
+      expect(await screen.findByText('1 other fix relied on the ones you chose, so it was put back too.')).toBeInTheDocument();
+      expect(screen.getByText(/^Put back 2 of 8 fixes; project finish stays /)).toBeInTheDocument();
+    });
+
+    it('Escape closes only the question and puts focus back on the button; the panel stays open', async () => {
+      const onClose = await applyAll();
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 3'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (1)' }));
+      expect(screen.getByRole('button', { name: 'Keep them' })).toHaveFocus();
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+      expect(screen.queryByText('Put back 1 fix?')).toBeNull();
+      expect(onClose).not.toHaveBeenCalled();
+      expect(api.undoScheduleFixProposal).not.toHaveBeenCalled();
+      expect(screen.getByRole('button', { name: 'Undo selected (1)' })).toHaveFocus();
+    });
+
+    it('Select all / Select none, and ticking every fix then putting them back is the whole undo', async () => {
+      await applyAll();
+      fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
+      expect(screen.getByRole('button', { name: 'Undo selected (8)' })).toBeEnabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Select none' }));
+      expect(screen.getByRole('button', { name: 'Undo selected (0)' })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Select all' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (8)' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 8' }));
+      await waitFor(() => expect(api.undoScheduleFixProposal).toHaveBeenCalledWith('s1', 'prop-1', undefined));
+      expect(await screen.findByText('Undone — the 8 fixes you applied were removed.')).toBeInTheDocument();
+    });
+
+    it('when the fixes that were to stay could not be applied again, the screen shows the plan as it now is (all put back) with the reason', async () => {
+      await applyAll();
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 1'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (1)' }));
+      api.undoScheduleFixProposal.mockRejectedValueOnce({ response: { status: 409, data: { error: 'The fixes you kept could not be applied again, so all 8 fixes were put back. review timed out', code: 'reapply_failed' } } });
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 1' }));
+      expect(await screen.findByText(/so all 8 fixes were put back/)).toBeInTheDocument();
+      expect(screen.getByText('Undone — the 8 fixes you applied were removed.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Undo selected/ })).toBeNull(); // nothing left to put back
+    });
+
+    it('when some steps could not be reversed the banner does not claim a clean undo', async () => {
+      await applyAll();
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 1'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (1)' }));
+      api.undoScheduleFixProposal.mockRejectedValueOnce({ response: { status: 409, data: { error: 'Everything was put back except 1 step that could not be reversed. Check the plan.', code: 'revert_incomplete' } } });
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 1' }));
+      expect(await screen.findByText(/except 1 step that could not be reversed/)).toBeInTheDocument();
+      expect(screen.getByText(/Put back, except for a few steps that failed/)).toBeInTheDocument();
+      expect(screen.queryByText(/^Undone — the 8 fixes/)).toBeNull();
+    });
+
+    it('while the undo runs the list cannot be changed and the buttons wait', async () => {
+      await applyAll();
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 1'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (1)' }));
+      let finish!: (v: unknown) => void;
+      api.undoScheduleFixProposal.mockImplementationOnce(() => new Promise(r => { finish = r as (v: unknown) => void; }));
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 1' }));
+      expect(await screen.findByRole('button', { name: 'Putting back…' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Keep them' })).toBeDisabled();
+      finish({ score: 50, putBack: 1, stillApplied: ['d2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8'], alsoPutBack: [], finishBefore: null, finishAfter: null, everything: false });
+      expect(await screen.findByText(/^Put back 1 of 8 fixes/)).toBeInTheDocument();
+    });
+
+    it('a fix the Apply skipped is not offered to put back', async () => {
+      api.applyScheduleFixes.mockResolvedValueOnce({ beforeScore: 17, afterScore: 58, appliedCount: 7, datesMoved: 0, dateDeltas: [], skipped: [{ fixId: 'd8', reason: 'already linked' }] });
+      await applyAll();
+      expect(screen.getAllByRole('checkbox', { name: /^Put back:/ })).toHaveLength(7);
+      expect(screen.getByRole('button', { name: 'Undo all (7)' })).toBeInTheDocument();
+    });
+
+    it('the server refusing (something changed since) shows its words', async () => {
+      await applyAll();
+      fireEvent.click(screen.getByLabelText(/Put back: Link 'Build 1'/));
+      fireEvent.click(screen.getByRole('button', { name: 'Undo selected (1)' }));
+      api.undoScheduleFixProposal.mockRejectedValueOnce({ response: { data: { error: 'not_latest', message: 'Something changed after this Apply, so it can no longer be undone from here.' } } });
+      fireEvent.click(screen.getByRole('button', { name: 'Yes, put back 1' }));
+      expect(await screen.findByText(/can no longer be undone from here/)).toBeInTheDocument();
+    });
   });
 
   it('while applying, it says so and the list cannot be clicked', async () => {

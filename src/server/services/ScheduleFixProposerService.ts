@@ -103,6 +103,22 @@ export interface ApplyResult {
   afterCounts: Record<FixSeverity, number>;
 }
 
+/** What "Undo selected" did (U80): which fixes are back, which stay applied, the finish before and after */
+export interface UndoSelectedResult {
+  score: number;
+  /** How many the PM asked to put back */
+  requested: number;
+  /** How many were put back in the end (the asked ones plus any kept fix that needed one of them) */
+  putBack: number;
+  stillApplied: string[];
+  /** Kept fixes that could not stay because they relied on a fix that was put back */
+  alsoPutBack: string[];
+  finishBefore: string | null;
+  finishAfter: string | null;
+  /** Nothing is left applied */
+  everything: boolean;
+}
+
 interface PreviewResult {
   tasksMoved: number;
   /** The most any one task moves, in calendar days (U61) */
@@ -289,10 +305,12 @@ export class ScheduleFixProposerService {
   }
 
   /** Apply the selected fixes, recording a reversal log, then re-score. */
-  async apply(scheduleId: string, proposalId: string, fixIds: string[], userId: string | null, names: Record<string, string> = {}): Promise<ApplyResult> {
+  async apply(scheduleId: string, proposalId: string, fixIds: string[], userId: string | null, names: Record<string, string> = {}, opts: { from?: 'pending' | 'undone' } = {}): Promise<ApplyResult> {
     const proposal = await scheduleFixProposalRepository.findById(proposalId);
     if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
-    if (proposal.status !== 'pending') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not pending`);
+    // 'undone' is only ever passed by Undo selected, which holds the proposal in that state while it applies the fixes that stay
+    const needs = opts.from ?? 'pending';
+    if (proposal.status !== needs) throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not ${needs}`);
 
     const fixes = chosenFixes(proposal.proposalData.fixes, fixIds, names);
     const skipped: Array<{ fixId: string; reason: string }> = [];
@@ -319,6 +337,7 @@ export class ScheduleFixProposerService {
 
     const applied: AppliedAction[] = [];
     let appliedCount = 0;
+    const appliedFixIds: string[] = [];
     // The fixes of each kind, in the order they were proposed
     const fixesOfType = groupBy(fixes, f => f.type);
     const ofType = (type: ProposedFix['type']) => fixesOfType.get(type) ?? [];
@@ -340,6 +359,7 @@ export class ScheduleFixProposerService {
         await addLink(f.taskId!, f.dependsOnTaskId!, f.dependencyType ?? 'FS', f.lagDays ?? 0);
         applied.push({ op: 'remove_dependency', taskId: f.taskId!, dependencyId: f.dependsOnTaskId! });
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'dependency rejected (cycle or duplicate)' });
       }
@@ -359,6 +379,7 @@ export class ScheduleFixProposerService {
         plan.update(f.taskId, milestoneUpdate(t));
         applied.push({ op: 'restore_milestone', taskId: f.taskId!, oldValue });
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not flag milestone' });
       }
@@ -387,6 +408,7 @@ export class ScheduleFixProposerService {
         plan.update(parentId, { isSummary: true });
         applied.push({ op: 'restore_parent', taskId: f.taskId!, oldValue: old });
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not reparent' });
       }
@@ -400,6 +422,7 @@ export class ScheduleFixProposerService {
         plan.update(f.taskId, { estimatedDays: f.newDuration });
         applied.push({ op: 'restore_duration', taskId: f.taskId!, oldValue: old });
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not set duration' });
       }
@@ -437,6 +460,7 @@ export class ScheduleFixProposerService {
         await addLink(f.gateTaskId!, buffer.id, 'FS', 0);
         applied.push({ op: 'remove_dependency', taskId: f.gateTaskId!, dependencyId: buffer.id });
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not insert buffer' });
       }
@@ -514,6 +538,7 @@ export class ScheduleFixProposerService {
           applied.push({ op: 'remove_dependency', taskId: succ.id, dependencyId: last });
         }
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not split task' });
       }
@@ -541,6 +566,7 @@ export class ScheduleFixProposerService {
           await addLink(f.beforeTaskId, created.id, 'FS', 0).catch(() => { /* would loop — leave it unlinked */ });
         }
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not add phase task' });
       }
@@ -555,6 +581,7 @@ export class ScheduleFixProposerService {
         plan.update(t.id, { name: f.newName });
         applied.push({ op: 'restore_name', taskId: t.id, oldValue: oldName });
         appliedCount++;
+        appliedFixIds.push(f.id);
       } catch (err: any) {
         skipped.push({ fixId: f.id, reason: err?.message || 'could not rename task' });
       }
@@ -579,8 +606,11 @@ export class ScheduleFixProposerService {
       ? `${movedFar} of ${recompute.leafCount} tasks moved more than 10 days. Review before keeping, or undo.`
       : null;
 
-    const after = await scheduleReviewService.run(scheduleId, 'post_proposal', userId, proposalId);
+    // not a reversal step (undo skips it): what "Undo selected" needs to apply the fixes that stay once the rest is put back
+    applied.push({ op: 'applied_fixes', fixIds: appliedFixIds, names: Object.fromEntries(appliedFixIds.filter(id => names[id]).map(id => [id, names[id]])) });
+    // saved before the review run and the History entry: if either fails, the writes above can still be undone
     await scheduleFixProposalRepository.markApplied(proposalId, applied, baselineId);
+    const after = await scheduleReviewService.run(scheduleId, 'post_proposal', userId, proposalId);
     await changeHistoryService.record({
       projectId: proposal.projectId,
       scheduleId,
@@ -721,12 +751,9 @@ export class ScheduleFixProposerService {
     }
   }
 
-  /** Reverse an applied proposal, then re-score. */
-  async undo(scheduleId: string, proposalId: string, userId: string | null): Promise<{ score: number }> {
-    const proposal = await scheduleFixProposalRepository.findById(proposalId);
-    if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
-    if (proposal.status !== 'applied') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not applied`);
-
+  /** Put every task back exactly as it was before Apply: the reversal log newest-first, then dates and lengths from the Pre-review baseline, then the baseline is removed. */
+  private async revert(scheduleId: string, proposalId: string, proposal: NonNullable<Awaited<ReturnType<typeof scheduleFixProposalRepository.findById>>>): Promise<number> {
+    let failed = 0; // steps that could not be reversed (each is logged); a plain Undo carries on, Undo selected stops
     const log = proposal.appliedData ?? [];
     /* eslint-disable no-await-in-loop -- undo replays the applied log newest-first; a created parent must be deleted only after its children are restored */
     for (const action of [...log].reverse()) {
@@ -777,6 +804,7 @@ export class ScheduleFixProposerService {
           }
         }
       } catch (err: any) {
+        failed++;
         logger.warn('[ScheduleFix] undo step failed', { proposalId, op: action.op, error: err?.message });
       }
     }
@@ -799,11 +827,28 @@ export class ScheduleFixProposerService {
           ...(bt.estimatedDays != null ? { estimatedDays: bt.estimatedDays } : {}),
         })));
       } catch (err: any) {
+        failed++;
         logger.warn('[ScheduleFix] undo date restore failed', { proposalId, error: err?.message });
       }
       await baselineService.delete(proposal.baselineId).catch((err: any) =>
         logger.warn('[ScheduleFix] undo baseline delete failed', { proposalId, error: err?.message }));
     }
+    return failed;
+  }
+
+  /** Reverse an applied proposal, then re-score. */
+  async undo(scheduleId: string, proposalId: string, userId: string | null): Promise<{ score: number }> {
+    const proposal = await scheduleFixProposalRepository.findById(proposalId);
+    if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
+    if (proposal.status !== 'applied') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not applied`);
+    // One undo at a time: a second request (another tab, History, the AI inbox) finds it no longer 'applied'. 'undone' also
+    // keeps a stale Apply or Reject out while this runs, and is what a crash mid-undo leaves behind.
+    if (!await scheduleFixProposalRepository.claimStatus(proposalId, 'applied', 'undone')) {
+      throw new ScheduleFixStateError('These fixes are already being undone. Reload the schedule to see the result.');
+    }
+
+    const log = proposal.appliedData ?? [];
+    await this.revert(scheduleId, proposalId, proposal);
 
     const review = await scheduleReviewService.run(scheduleId, 'post_proposal', userId);
     await scheduleFixProposalRepository.setStatus(proposalId, 'undone');
@@ -820,6 +865,94 @@ export class ScheduleFixProposerService {
     }).catch(err => logger.warn('[ScheduleFix] audit append (undo) failed', { proposalId, error: err?.message }));
 
     return { score: review.score };
+  }
+
+/**
+   * Put back SOME of the fixes of the newest Apply (U80, 2026-10-24): everything is put back exactly as
+   * before Apply (the proven Undo), then the fixes that stay are applied again to that plan. The plan
+   * ends as if those fixes had never been ticked, and a kept fix that needed one put back (it linked to
+   * a task that fix had created) is skipped by the same rules as Apply and is put back too: it is
+   * reported as "alsoPutBack". If the second step fails everything stays put back, and the error says so.
+   * An Apply from before 2026-10-24 did not record which fixes it made: only the whole of it can go back.
+   */
+  async undoSelected(scheduleId: string, proposalId: string, putBackIds: string[], userId: string | null): Promise<UndoSelectedResult> {
+    const proposal = await scheduleFixProposalRepository.findById(proposalId);
+    if (!proposal || proposal.scheduleId !== scheduleId) throw new ScheduleFixNotFoundError(proposalId);
+    if (proposal.status !== 'applied') throw new ScheduleFixStateError(`Proposal is ${proposal.status}, not applied`);
+
+    const meta = (proposal.appliedData ?? []).find(a => a.op === 'applied_fixes');
+    if (!meta?.fixIds) throw new ScheduleFixStateError('This Apply was made before part of it could be undone: put all of it back, or change the plan by hand.');
+    const appliedIds = meta.fixIds;
+    const wanted = new Set(putBackIds);
+    const madeSet = new Set(appliedIds);
+    if (wanted.size === 0 || putBackIds.some(id => !madeSet.has(id))) throw new ScheduleFixStateError('Choose fixes from the ones that were applied.');
+    const remaining = appliedIds.filter(id => !wanted.has(id));
+
+    const finishBefore = latestFinish(await scheduleService.findTasksByScheduleId(scheduleId));
+    if (remaining.length === 0) {
+      const all = await this.undo(scheduleId, proposalId, userId);
+      await changeHistoryService.markUndoneByRef('review_fix', proposalId);
+      return { score: all.score, requested: putBackIds.length, putBack: appliedIds.length, stillApplied: [], alsoPutBack: [], finishBefore, finishAfter: null, everything: true };
+    }
+
+    // One request at a time: a second one (another tab, a retry) finds the proposal no longer 'applied' and stops here
+    if (!await scheduleFixProposalRepository.claimStatus(proposalId, 'applied', 'undone')) {
+      throw new ScheduleFixStateError('These fixes are already being undone. Reload the schedule to see the result.');
+    }
+    const failedSteps = await this.revert(scheduleId, proposalId, proposal);
+    // History: this Apply is over; the apply below records the one that stays
+    await changeHistoryService.markUndoneByRef('review_fix', proposalId);
+    if (failedSteps > 0) {
+      // never apply the kept fixes on top of a plan that is only partly put back (a part that failed to delete would be made twice)
+      await scheduleFixProposalRepository.setStatus(proposalId, 'undone');
+      throw new ScheduleFixPartialError(`Everything was put back except ${failedSteps} step${failedSteps === 1 ? '' : 's'} that could not be reversed. Check the plan.`, 'revert_incomplete');
+    }
+    let again: ApplyResult;
+    try {
+      again = await this.apply(scheduleId, proposalId, remaining, userId, meta.names ?? {}, { from: 'undone' });
+    } catch (err: any) {
+      logger.error('[ScheduleFix] undo selected: applying the kept fixes again failed', { proposalId, error: err?.message });
+      // the kept fixes may have been written and recorded before something later failed: if so, put them back properly
+      const now = await scheduleFixProposalRepository.findById(proposalId).catch(() => null);
+      let leftBehind = false;
+      if (now?.status === 'applied') {
+        try {
+          await this.undo(scheduleId, proposalId, userId);
+          await changeHistoryService.markUndoneByRef('review_fix', proposalId);
+        } catch (undoErr: any) {
+          leftBehind = true;
+          logger.error('[ScheduleFix] undo selected: putting the kept fixes back failed', { proposalId, error: undoErr?.message });
+        }
+      } else {
+        await scheduleFixProposalRepository.setStatus(proposalId, 'undone');
+      }
+      throw new ScheduleFixPartialError(leftBehind
+        ? `The fixes you kept could not be applied again and could not be put back either. Check the plan, and use Schedule History.`
+        : `The fixes you kept could not be applied again, so all ${appliedIds.length} fixes were put back. ${err?.message ?? ''}`.trim());
+    }
+    const skipped = new Set(again.skipped.map(s => s.fixId));
+    const stillApplied = remaining.filter(id => !skipped.has(id));
+    const alsoPutBack = remaining.filter(id => skipped.has(id));
+    auditLedgerService.append({
+      actorId: userId ?? 'system',
+      actorType: userId ? 'user' : 'system',
+      action: 'schedule.fix.undo_selected',
+      entityType: 'schedule',
+      entityId: scheduleId,
+      projectId: proposal.projectId,
+      payload: { proposalId, putBack: putBackIds, alsoPutBack, stillApplied, afterScore: again.afterScore, reverted: proposal.appliedData },
+      source: getActorSource(),
+    }).catch(err => logger.warn('[ScheduleFix] audit append (undo selected) failed', { proposalId, error: err?.message }));
+    return {
+      score: again.afterScore,
+      requested: putBackIds.length,
+      putBack: appliedIds.length - stillApplied.length,
+      stillApplied,
+      alsoPutBack,
+      finishBefore,
+      finishAfter: again.projectEndAfter,
+      everything: stillApplied.length === 0,
+    };
   }
 
   /** Reject a proposal and remember it as a negative example for future prompts. */
@@ -861,6 +994,13 @@ export class ScheduleFixNotFoundError extends Error {
 }
 export class ScheduleFixStateError extends Error {
   constructor(msg: string) { super(msg); this.name = 'ScheduleFixStateError'; }
+  /** Lets the client tell this refusal from the others (the route sends it) */
+  code?: string;
+}
+/** Undo selected could not keep the fixes that were to stay: the plan is as it was before Apply (or says what is left) */
+export class ScheduleFixPartialError extends ScheduleFixStateError {
+  /** 'reapply_failed': the plan is as before Apply. 'revert_incomplete': put back except some steps that failed */
+  constructor(msg: string, code: 'reapply_failed' | 'revert_incomplete' = 'reapply_failed') { super(msg); this.name = 'ScheduleFixPartialError'; this.code = code; }
 }
 
 export const scheduleFixProposerService = new ScheduleFixProposerService();

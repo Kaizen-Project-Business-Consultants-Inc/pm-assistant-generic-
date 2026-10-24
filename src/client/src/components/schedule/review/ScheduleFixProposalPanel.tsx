@@ -8,7 +8,7 @@ import { severityColor } from '../../../utils/severityColors';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 import { formatCalendarDate } from '../../../utils/dateUtils';
 import { useFixPreview, ImpactBox, overlapImpactText, shiftText, passesEnd } from './ScheduleFixImpact';
-import { UndoWithConfirm } from '../../ui/UndoWithConfirm';
+import { UndoSelectedFixes, type AppliedFixItem, type UndoSummary } from './UndoSelectedFixes';
 import { NeedsDecision, useDecisionActions, type OpenFinding } from './NeedsDecision';
 
 // ---------------------------------------------------------------------------
@@ -82,6 +82,17 @@ interface ApplyResult {
   warning?: string | null;
   dateDeltas?: DateDelta[];
   afterCounts?: Record<FixLevel, number>;
+}
+
+/** What POST …/undo answers: {score} for the whole Apply, the rest when only some fixes were put back (U80) */
+interface UndoAnswer {
+  score: number;
+  putBack?: number;
+  stillApplied?: string[];
+  alsoPutBack?: string[];
+  finishBefore?: string | null;
+  finishAfter?: string | null;
+  everything?: boolean;
 }
 
 interface Props {
@@ -439,14 +450,23 @@ function LevelSection({ group, scheduleId, proposalId, tick, list, ticked, probl
 // The result after Apply — the score first
 // ---------------------------------------------------------------------------
 
-function AppliedSummary({ result, undoing, onUndo }: { result: ApplyResult; undoing: boolean; onUndo: () => void }) {
+function AppliedSummary({ result, undoing, onUndo, appliedFixes, undoSummary }: {
+  result: ApplyResult;
+  undoing: boolean;
+  /** Undo the fixes with these ids (all of them, or the ticked ones) */
+  onUndo: (ids: string[]) => void;
+  appliedFixes: AppliedFixItem[];
+  undoSummary: UndoSummary | null;
+}) {
   const diff = result.beforeScore == null ? null : result.afterScore - result.beforeScore;
   const change = diff == null ? '' : diff === 0 ? ' · score unchanged' : ` · score ${diff > 0 ? 'up' : 'down'} ${plural(Math.abs(diff), 'point')}`;
   const left = stillToDo(result.afterCounts);
   const shift = result.projectEndShiftDays ?? 0;
   const pastEnd = passesEnd({ finishAfter: result.projectEndAfter ?? null, projectEnd: result.projectEnd ?? null });
+  // after some of the fixes were put back, the result of the Apply no longer describes the plan: the undo's own result replaces it
   return (
     <div className="space-y-2">
+      {!undoSummary && (
       <div className="p-3 rounded-lg bg-green-50 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm space-y-1">
         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
           {result.beforeScore ?? '—'} → {result.afterScore} <span className="text-sm font-medium text-gray-500 dark:text-gray-400">/ 100</span>
@@ -468,26 +488,25 @@ function AppliedSummary({ result, undoing, onUndo }: { result: ApplyResult; undo
         {result.skipped.length > 0 && (
           <p className="text-amber-700 dark:text-amber-300">{skippedText(result.skipped)}</p>
         )}
-        {result.appliedCount > 0 && (
-          <div className="pt-1">
-            <UndoWithConfirm count={result.appliedCount} undoing={undoing} onUndo={onUndo} />
-          </div>
-        )}
       </div>
+      )}
 
-      {pastEnd && (
+      {/* Put back all or some of the fixes — inside the result, never where Apply was (U54), and it asks first (U80) */}
+      {(appliedFixes.length > 0 || undoSummary) && <UndoSelectedFixes fixes={appliedFixes} undoing={undoing} summary={undoSummary} onUndo={onUndo} />}
+
+      {!undoSummary && pastEnd && (
         <div role="alert" className="p-3 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300 text-sm">
           The plan now finishes after the project’s end date ({formatCalendarDate(result.projectEnd!)}). Undo above, or move the end date in Edit project.
         </div>
       )}
 
-      {result.warning && (
+      {!undoSummary && result.warning && (
         <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 text-sm">
           {result.warning}
         </div>
       )}
 
-      {result.dateDeltas && result.dateDeltas.length > 0 && (
+      {!undoSummary && result.dateDeltas && result.dateDeltas.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
           <table className="w-full text-xs">
             <thead>
@@ -545,6 +564,14 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
   const [showAll, setShowAll] = useState<Set<string>>(new Set());
   const [result, setResult] = useState<ApplyResult | null>(null);
   const [undone, setUndone] = useState(false);
+  /** The undo stopped part-way: everything was put back except some steps (the message says how many) */
+  const [undoIncomplete, setUndoIncomplete] = useState(false);
+  /** The fixes Apply really made (not the ones it skipped) that are still applied; shrinks as some are put back (U80) */
+  const [appliedIds, setAppliedIds] = useState<string[]>([]);
+  /** How many fixes the Apply made, and the score now — for the words after a partial undo */
+  const appliedTotal = useRef(0);
+  const scoreNow = useRef<number | null>(null);
+  const [undoSummary, setUndoSummary] = useState<UndoSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const generated = useRef(false);
   const askedAi = useRef(false);
@@ -556,6 +583,8 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
       setProposal(data);
       setResult(null);
       setUndone(false);
+      setAppliedIds([]);
+      setUndoSummary(null);
       // Nothing is ticked at the start: the PM chooses every change (user, 2026-10-17)
       setSelected(new Set());
       setNames(Object.fromEntries(data.proposalData.fixes.filter(f => f.type === 'rename_task').map(f => [f.id, f.newName ?? ''])));
@@ -569,9 +598,16 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
     mutationFn: (chosen: ProposedFix[]) => {
       return apiService.applyScheduleFixes(scheduleId, proposal!.id, chosen.map(f => f.id), typedNames(chosen, names));
     },
-    onSuccess: (data: ApplyResult) => {
+    onSuccess: (data: ApplyResult, chosenFixes: ProposedFix[]) => {
       setError(null);
       setResult(data);
+      // the fixes that were made (a skipped one was not), for "Undo selected"
+      const skippedIds = new Set(data.skipped.map(s => s.fixId));
+      const madeIds = chosenFixes.map(f => f.id).filter(id => !skippedIds.has(id));
+      setAppliedIds(madeIds);
+      appliedTotal.current = madeIds.length;
+      scoreNow.current = data.afterScore;
+      setUndoSummary(null);
       planChanged();
       const left = stillToDo(data.afterCounts);
       announce(`Applied ${data.appliedCount} fixes. Score ${data.beforeScore ?? '?'} to ${data.afterScore}.${left ? ` ${left}` : ''}`);
@@ -579,10 +615,41 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
     onError: (err: unknown) => setError(getApiErrorMessage(err, 'Apply failed')),
   });
 
+  /** No ids: everything goes back. Some ids: those go back and the rest are applied again (U80) */
   const undoMutation = useMutation({
-    mutationFn: () => apiService.undoScheduleFixProposal(scheduleId, proposal!.id),
-    onSuccess: () => { setUndone(true); planChanged(); announce('Fixes undone'); },
-    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Undo failed')),
+    mutationFn: (ids: string[]) => apiService.undoScheduleFixProposal(scheduleId, proposal!.id, ids.length === appliedIds.length ? undefined : ids) as Promise<UndoAnswer>,
+    onSuccess: (data: UndoAnswer, ids: string[]) => {
+      setError(null);
+      planChanged();
+      if (ids.length === appliedIds.length || data.everything) {
+        setUndone(true);
+        announce('Fixes undone');
+        return;
+      }
+      const left = data.stillApplied ?? [];
+      const total = appliedTotal.current;
+      const finish = data.finishAfter
+        ? `; project finish ${data.finishAfter !== data.finishBefore ? 'back to' : 'stays'} ${formatCalendarDate(data.finishAfter)}`
+        : '';
+      const text = `Put back ${total - left.length} of ${total} fixes${finish}.`;
+      const detail = `Score ${scoreNow.current ?? '?'} → ${data.score}. ${plural(left.length, 'fix is', 'fixes are')} still applied.`;
+      const extra = data.alsoPutBack?.length
+        ? `${plural(data.alsoPutBack.length, 'other fix')} relied on the ones you chose, so ${data.alsoPutBack.length === 1 ? 'it was' : 'they were'} put back too.`
+        : null;
+      scoreNow.current = data.score;
+      setAppliedIds(left);
+      setUndoSummary({ text, detail, alsoPutBack: extra });
+      announce(`${text} ${detail}`);
+    },
+    onError: (err: unknown) => {
+      const response = (err as { response?: { status?: number; data?: { code?: string } } })?.response;
+      // a refusal means the server looked at the plan: show what it is now. When the kept fixes could not be applied
+      // again, the plan is back as it was before Apply (or the message says what is left)
+      if (response?.status === 409) planChanged();
+      if (response?.data?.code === 'reapply_failed' || response?.data?.code === 'revert_incomplete') setUndone(true);
+      if (response?.data?.code === 'revert_incomplete') setUndoIncomplete(true);
+      setError(getApiErrorMessage(err, 'Undo failed'));
+    },
   });
 
   const rejectMutation = useMutation({
@@ -631,6 +698,12 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
     // an emptied rename is unticked for good: typing again doesn't tick it back
     if (!value.trim()) setSelected(prev => { if (!prev.has(id)) return prev; const next = new Set(prev); next.delete(id); return next; });
   }, []);
+
+  /** The fixes still applied, worded as in the list (U80) */
+  const appliedFixes = useMemo<AppliedFixItem[]>(() => {
+    const live = new Set(appliedIds);
+    return fixes.filter(f => live.has(f.id)).map(f => ({ id: f.id, text: f.type === 'rename_task' ? `Rename '${f.taskName}' to '${names[f.id] ?? f.newName ?? ''}'` : fixText(f), kind: TYPE_META[f.type].label }));
+  }, [fixes, appliedIds, names]);
 
   const applied = !!result;
   const busy = proposeMutation.isPending || applyMutation.isPending || undoMutation.isPending;
@@ -739,11 +812,25 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
               Applying {plural(applyMutation.variables?.length ?? chosen.length, 'fix', 'fixes')}… this takes a few seconds
             </p>
           )}
-          {applied && !undone && <AppliedSummary result={result!} undoing={undoMutation.isPending} onUndo={() => undoMutation.mutate()} />}
+          {applied && !undone && (
+            <AppliedSummary
+              result={result!}
+              undoing={undoMutation.isPending}
+              onUndo={ids => undoMutation.mutate(ids)}
+              appliedFixes={appliedFixes}
+              undoSummary={undoSummary}
+            />
+          )}
           {undone && (
             <div role="status" className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 text-sm">
-              <span className="font-semibold">Undone — the {plural(result!.appliedCount, 'fix', 'fixes')} you applied {result!.appliedCount === 1 ? 'was' : 'were'} removed.</span>
-              {' '}Your plan is as it was before Apply{result!.beforeScore != null ? ` (score ${result!.beforeScore})` : ''}.
+              {undoIncomplete ? (
+                <span className="font-semibold">Put back, except for a few steps that failed — check the plan (the message above says how many).</span>
+              ) : (
+                <>
+                  <span className="font-semibold">Undone — the {plural(result!.appliedCount, 'fix', 'fixes')} you applied {result!.appliedCount === 1 ? 'was' : 'were'} removed.</span>
+                  {' '}Your plan is as it was before Apply{result!.beforeScore != null ? ` (score ${result!.beforeScore})` : ''}.
+                </>
+              )}
             </div>
           )}
 

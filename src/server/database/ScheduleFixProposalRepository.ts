@@ -6,12 +6,15 @@ export type FixProposalSource = 'ai' | 'rules';
 
 /** One recorded reversal step, written at apply time so undo can replay it. */
 export interface AppliedAction {
-  op: 'remove_dependency' | 'restore_milestone' | 'restore_parent' | 'delete_task' | 'restore_duration' | 'readd_dependency' | 'restore_task' | 'restore_name';
+  op: 'remove_dependency' | 'restore_milestone' | 'restore_parent' | 'delete_task' | 'restore_duration' | 'readd_dependency' | 'restore_task' | 'restore_name' | 'applied_fixes';
   taskId?: string;
   dependencyId?: string;
   dependencyType?: 'FS' | 'SS' | 'FF' | 'SF';
   lagDays?: number;
   oldValue?: unknown; // prior isMilestone / prior parentTaskId / prior estimatedDays
+  /** op 'applied_fixes' (not a reversal step; undo skips it): the fixes this Apply really made, and the new names typed for renames, so "Undo selected" can apply the ones that stay again */
+  fixIds?: string[];
+  names?: Record<string, string>;
 }
 
 export interface FixProposalData {
@@ -108,6 +111,14 @@ export class ScheduleFixProposalRepository {
        WHERE id = ?`,
       [JSON.stringify(appliedData), baselineId, id],
     );
+  }
+
+  /** Move to `to` only if the proposal is still in `from`: true for the one request that got it (two undo requests at once must not both go on) */
+  async claimStatus(id: string, from: FixProposalStatus, to: FixProposalStatus): Promise<boolean> {
+    const result: any = await databaseService.query(
+      `UPDATE schedule_fix_proposals SET status = ? WHERE id = ? AND status = ?`, [to, id, from],
+    );
+    return (result?.affectedRows ?? 0) > 0;
   }
 
   async setStatus(id: string, status: FixProposalStatus): Promise<void> {

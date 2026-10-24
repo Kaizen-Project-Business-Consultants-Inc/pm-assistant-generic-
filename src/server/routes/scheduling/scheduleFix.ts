@@ -35,6 +35,13 @@ const previewSchema = z.object({
   names: namesSchema,
 });
 const rejectSchema = z.object({ feedback: z.string().max(2000).optional() });
+/** Undo: nothing = all of the newest Apply; fixIds = only those fixes (U80) */
+const undoSchema = z.object({
+  fixIds: z.array(z.string().max(300), { message: 'Choose the fixes to put back.' })
+    .min(1, 'Choose at least one fix to put back.')
+    .max(200, 'Choose up to 200 fixes at a time.')
+    .optional(),
+});
 
 /** Map AI infra errors to their conventional status codes. */
 function handleAiError(error: any, reply: FastifyReply): FastifyReply | null {
@@ -127,20 +134,24 @@ export async function scheduleFixRoutes(fastify: FastifyInstance) {
 
   // POST /:scheduleId/review/proposals/:proposalId/undo
   fastify.post('/:scheduleId/review/proposals/:proposalId/undo', {
-    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    preHandler: [requireScope('write'), requireProjectAccess('manager'), heavyActionLimit('schedule-fix-undo', 30)],
     schema: { description: 'Undo an applied schedule fix proposal', tags: ['schedules'] },
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { scheduleId, proposalId } = request.params as { scheduleId: string; proposalId: string };
       // Same rule as Schedule History: only the newest change, while nothing has changed since
       await changeHistoryService.assertLatestByRef(scheduleId, 'review_fix', proposalId);
+      const { fixIds } = undoSchema.parse(request.body ?? {});
+      // some of the fixes (U80): the service keeps History in step itself, as it records the Apply that stays
+      if (fixIds) return await scheduleFixProposerService.undoSelected(scheduleId, proposalId, fixIds, request.user!.userId);
       const result = await scheduleFixProposerService.undo(scheduleId, proposalId, request.user!.userId);
       await changeHistoryService.markUndoneByRef('review_fix', proposalId); // keep History in step
       return result;
     } catch (error: any) {
+      if (error instanceof z.ZodError) return sendValidationError(reply, error);
       if (error instanceof NotLatestChangeError) return reply.status(409).send({ error: 'not_latest', message: error.message });
       if (error instanceof ScheduleFixNotFoundError) return reply.status(404).send({ error: 'Proposal not found' });
-      if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message });
+      if (error instanceof ScheduleFixStateError) return reply.status(409).send({ error: error.message, code: error.code });
       logger.error('Schedule fix undo error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to undo fixes' });
     }

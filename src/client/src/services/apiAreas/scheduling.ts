@@ -91,8 +91,9 @@ export class SchedulingApi extends ApiBase {
     return response.data;
   }
 
-  async undoScheduleFixProposal(scheduleId: string, proposalId: string) {
-    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/undo`);
+  /** No fixIds: the whole Apply goes back. fixIds: only those fixes (the others are applied again) — U80 */
+  async undoScheduleFixProposal(scheduleId: string, proposalId: string, fixIds?: string[]) {
+    const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/undo`, fixIds ? { fixIds } : undefined);
     return response.data;
   }
 

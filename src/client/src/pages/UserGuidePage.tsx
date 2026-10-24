@@ -168,7 +168,7 @@ const sections: Section[] = [
       '"Needs your decision" lists what no suggestion fixes (overdue, no owner, past the end date, no baseline…) with buttons to the right screen',
       'After Apply the score comes first ("22 → 48 / 100"), then the finish before → after, then what is still left to fix',
       'Each level says how many problems it fixes, as the review counts them, and names them; anything ticked is always shown',
-      'Right after you apply, Undo these fixes (inside the green result, it asks first) puts that batch back in one step; where Apply was, the button says Done',
+      'Right after you apply, Undo all or Undo selected (under the green result, they ask first) puts back the whole batch or only the fixes you tick; where Apply was, the button says Done',
       'It also points out bottleneck tasks (4+ unfinished tasks wait on them — shown for information, no score change) and sprints left open after their end',
       'It counts problems: one problem can take several changes — e.g. "One problem, 4 links to add"',
       'Dates don’t follow a link: a task starts before what it waits for finishes. Fixing anything makes the plan follow those links, so before you apply the box warns how many tasks move and how far, and Apply says "— 21 tasks move"',

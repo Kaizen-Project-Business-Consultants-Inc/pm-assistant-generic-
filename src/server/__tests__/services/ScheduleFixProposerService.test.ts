@@ -81,6 +81,7 @@ vi.mock('../../database/ScheduleFixProposalRepository', () => ({
     insert: vi.fn(),
     supersedePending: vi.fn().mockResolvedValue(undefined),
     markApplied: vi.fn().mockResolvedValue(undefined),
+    claimStatus: vi.fn().mockResolvedValue(true),
     setStatus: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -104,6 +105,9 @@ const TASKS = [
   { id: 'g1', name: 'Gate 1', isMilestone: false, parentTaskId: undefined, startDate: '2026-10-19', endDate: '2026-10-25', estimatedDays: 4, dependencies: [] },
   { id: 'x', name: 'T1 Task', isMilestone: false, parentTaskId: undefined, dependencies: [] },
 ];
+
+/** The reversal steps of an Apply's log: it also ends with a note of which fixes were made (for Undo selected), which undo skips */
+const reversalSteps = (log: any[]) => log.filter(a => a.op !== 'applied_fixes');
 
 describe('ScheduleFixProposerService', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -130,7 +134,7 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { parentTaskId: 'phase-new' });
     expect(scheduleReviewService.run).toHaveBeenCalledWith('s1', 'post_proposal', 'u1', 'prop-1');
 
-    const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const appliedLog = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(appliedLog.map(a => a.op)).toEqual(['remove_dependency', 'restore_milestone', 'delete_task', 'restore_parent']);
     expect(result).toMatchObject({ beforeScore: 19, afterScore: 63, appliedCount: 3, skipped: [], datesMoved: 1, warning: null });
     // the finish before is the saved plan's (Gate 1 ends 25 Oct), after is the re-flow's
@@ -153,7 +157,7 @@ describe('ScheduleFixProposerService', () => {
 
     const res = await (await svc()).apply('s1', 'prop-1', ['dur1'], 'u1');
     expect(scheduleService.updateTask).toHaveBeenCalledWith('b', { estimatedDays: 14 });
-    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const log = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(log.find((a: any) => a.op === 'restore_duration')).toMatchObject({ taskId: 'b', oldValue: 1 });
     expect(res.appliedCount).toBe(1);
   });
@@ -176,7 +180,7 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.addDependency).toHaveBeenCalledWith('buf-1', 'p', 'FS', 0); // buffer depends on old predecessor
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('g', 'p');           // gate no longer depends on it directly
     expect(scheduleService.addDependency).toHaveBeenCalledWith('g', 'buf-1', 'FS', 0); // gate depends on buffer
-    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const log = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(log.map(a => a.op)).toEqual(['delete_task', 'readd_dependency', 'remove_dependency']);
     expect(res.appliedCount).toBe(1);
   });
@@ -207,7 +211,7 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('brd', 'pre');
     expect(scheduleService.addDependency).toHaveBeenCalledWith('des', 'part-2', 'FS', 2);     // successor now waits on the last part, lag kept
     expect(scheduleService.removeDependency).toHaveBeenCalledWith('des', 'brd');
-    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const log = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(log.map(a => a.op)).toEqual(['delete_task', 'delete_task', 'readd_dependency', 'readd_dependency', 'remove_dependency']);
     expect(res.appliedCount).toBe(1);
   });
@@ -238,7 +242,7 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.addDependency).toHaveBeenCalledWith('p3', 'p2', 'FF', 0);
     expect(scheduleService.removeDependency).not.toHaveBeenCalledWith('g1', 'pre');       // keeps its predecessor
     expect(scheduleService.addDependency).toHaveBeenCalledWith('nxt', 'p3', 'FS', 0);     // successor waits on the last part
-    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const log = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(log[0]).toEqual({ op: 'restore_task', taskId: 'g1', oldValue: { name: 'Gate 1 – Inception Report Review & Acceptance', isMilestone: false, estimatedDays: 10, startDate: '2026-07-22', endDate: '2026-07-31' } });
     expect(log.map(a => a.op)).toEqual(['restore_task', 'delete_task', 'delete_task', 'readd_dependency', 'remove_dependency']);
   });
@@ -288,7 +292,7 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.createTask).toHaveBeenCalledWith(expect.objectContaining({ name: 'System testing', afterTaskId: 'build', parentTaskId: 'phase-b', startDate: '2026-10-12', endDate: '2026-10-16', estimatedDays: 5 }));
     expect(scheduleService.addDependency).toHaveBeenCalledWith('test-1', 'build', 'FS', 0);
     expect(scheduleService.addDependency).toHaveBeenCalledWith('dep', 'test-1', 'FS', 0);
-    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const log = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(log.map(a => a.op)).toEqual(['delete_task']);
   });
 
@@ -481,7 +485,7 @@ describe('ScheduleFixProposerService', () => {
     expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { name: 'Task 1 – Kick-off' });
     expect(result.appliedCount).toBe(1);
     expect(result.afterCounts).toEqual({ critical: 1, high: 17, medium: 2, low: 7 });
-    const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const appliedLog = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(appliedLog).toEqual([{ op: 'restore_name', taskId: 'x', oldValue: 'T1 Task' }]);
 
     vi.mocked(scheduleService.updateTask).mockClear();
@@ -509,7 +513,7 @@ describe('ScheduleFixProposerService', () => {
     const result = await (await svc()).apply('s1', 'prop-1', ['d1'], 'u1', { r1: 'Sneaky name' });
     expect(result.appliedCount).toBe(1);
     expect(scheduleService.updateTask).not.toHaveBeenCalled();
-    const appliedLog = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const appliedLog = reversalSteps(vi.mocked(repo.markApplied).mock.calls[0][1] as any[]);
     expect(appliedLog.map(a => a.op)).toEqual(['remove_dependency']);
   });
 
@@ -541,5 +545,203 @@ describe('ScheduleFixProposerService', () => {
       'u1',
     );
     expect(repo.setStatus).toHaveBeenCalledWith('prop-1', 'rejected');
+  });
+});
+
+describe('ScheduleFixProposerService — Undo selected (U80, 2026-10-24)', () => {
+  beforeEach(() => vi.clearAllMocks());
+  const svc = async () => (await import('../../services/ScheduleFixProposerService')).scheduleFixProposerService;
+  const appliedProposal = (fixIds: string[] | null, names: Record<string, string> = {}) => ({
+    ...PROPOSAL, status: 'applied', baselineId: 'baseline-1',
+    appliedData: [
+      { op: 'remove_dependency', taskId: 'b', dependencyId: 'a' },
+      { op: 'restore_name', taskId: 'x', oldValue: 'Old heading' },
+      ...(fixIds ? [{ op: 'applied_fixes', fixIds, names }] : []),
+    ],
+  }) as any;
+  const result = (extra: Record<string, unknown> = {}) => ({ afterScore: 70, appliedCount: 2, skipped: [], projectEndAfter: '2026-11-12', ...extra }) as any;
+
+  it('an Apply records which fixes it made and the names typed for renames (the log ends with that note)', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL } as any);
+    await (await svc()).apply('s1', 'prop-1', ['d1'], 'u1');
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    expect(log[log.length - 1]).toEqual({ op: 'applied_fixes', fixIds: ['d1'], names: {} });
+  });
+
+  it('puts everything back, then applies the fixes that stay (with their typed names), and says which stay', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const { scheduleService } = await import('../../services/ScheduleService');
+    const { taskRepository } = await import('../../database/TaskRepository');
+    vi.mocked(repo.findById).mockResolvedValue(appliedProposal(['d1', 'd2', 'r1'], { r1: 'New heading' }));
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply').mockResolvedValue(result());
+    try {
+      const res = await s.undoSelected('s1', 'prop-1', ['d2'], 'u1');
+      // the proven undo first: the log reversed, dates and lengths from the baseline
+      expect(scheduleService.removeDependency).toHaveBeenCalledWith('b', 'a');
+      expect(scheduleService.updateTask).toHaveBeenCalledWith('x', { name: 'Old heading' });
+      expect(taskRepository.updateDatesMany).toHaveBeenCalledTimes(1);
+      // then the others again, from a clean slate, with the name the PM typed
+      expect(repo.claimStatus).toHaveBeenCalledWith('prop-1', 'applied', 'undone'); // taken by this request only; a stale Apply or Reject finds 'undone'
+      expect(apply).toHaveBeenCalledWith('s1', 'prop-1', ['d1', 'r1'], 'u1', { r1: 'New heading' }, { from: 'undone' });
+      expect(res).toMatchObject({ requested: 1, putBack: 1, stillApplied: ['d1', 'r1'], alsoPutBack: [], finishAfter: '2026-11-12', everything: false });
+    } finally { apply.mockRestore(); }
+  });
+
+  it('a kept fix that relied on one put back is skipped by the same rules as Apply: it is put back too, and reported', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(repo.findById).mockResolvedValue(appliedProposal(['d1', 'd2', 'd3']));
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply').mockResolvedValue(result({ skipped: [{ fixId: 'd3', reason: 'task not found' }] }));
+    try {
+      const res = await s.undoSelected('s1', 'prop-1', ['d2'], 'u1');
+      expect(res).toMatchObject({ requested: 1, putBack: 2, stillApplied: ['d1'], alsoPutBack: ['d3'] });
+    } finally { apply.mockRestore(); }
+  });
+
+  it('putting back every fix is the ordinary Undo', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(repo.findById).mockResolvedValue(appliedProposal(['d1', 'd2']));
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply');
+    try {
+      const res = await s.undoSelected('s1', 'prop-1', ['d1', 'd2'], 'u1');
+      expect(apply).not.toHaveBeenCalled();
+      expect(repo.setStatus).toHaveBeenCalledWith('prop-1', 'undone');
+      expect(res).toMatchObject({ putBack: 2, stillApplied: [], everything: true });
+    } finally { apply.mockRestore(); }
+  });
+
+  it('if the kept fixes cannot be applied again, everything stays put back and the message says so', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(repo.findById).mockResolvedValue(appliedProposal(['d1', 'd2', 'd3']));
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply').mockRejectedValue(new Error('lock timeout'));
+    try {
+      await expect(s.undoSelected('s1', 'prop-1', ['d2'], 'u1')).rejects.toThrow(/all 3 fixes were put back/);
+      expect(repo.setStatus).toHaveBeenLastCalledWith('prop-1', 'undone');
+    } finally { apply.mockRestore(); }
+  });
+
+  it('refuses an Apply from before the fixes were recorded, fixes that were not applied, an empty choice and a proposal not applied', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const s = await svc();
+    vi.mocked(repo.findById).mockResolvedValue(appliedProposal(null));
+    await expect(s.undoSelected('s1', 'prop-1', ['d1'], 'u1')).rejects.toThrow(/before part of it could be undone/);
+    vi.mocked(repo.findById).mockResolvedValue(appliedProposal(['d1', 'd2']));
+    await expect(s.undoSelected('s1', 'prop-1', ['nope'], 'u1')).rejects.toThrow(/ones that were applied/);
+    await expect(s.undoSelected('s1', 'prop-1', [], 'u1')).rejects.toThrow(/ones that were applied/);
+    vi.mocked(repo.findById).mockResolvedValue({ ...appliedProposal(['d1']), status: 'pending' });
+    await expect(s.undoSelected('s1', 'prop-1', ['d1'], 'u1')).rejects.toThrow(/not applied/);
+  });
+});
+
+describe('ScheduleFixProposerService — Undo selected: the risky paths (review 2026-10-24)', () => {
+  beforeEach(() => vi.clearAllMocks());
+  const svc = async () => (await import('../../services/ScheduleFixProposerService')).scheduleFixProposerService;
+  const applied = (extra: Record<string, unknown> = {}) => ({
+    ...PROPOSAL, status: 'applied', baselineId: 'baseline-1',
+    appliedData: [{ op: 'remove_dependency', taskId: 'b', dependencyId: 'a' }, { op: 'applied_fixes', fixIds: ['d1', 'd2', 'd3'], names: {} }],
+    ...extra,
+  }) as any;
+
+  it('Apply saves its reversal log BEFORE the slow review run and the History entry, so a failure there still leaves something to undo', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const { scheduleReviewService } = await import('../../services/ScheduleReviewService');
+    vi.mocked(repo.findById).mockResolvedValue({ ...PROPOSAL } as any);
+    vi.mocked(repo.markApplied).mockClear();
+    vi.mocked(scheduleReviewService.run).mockClear();
+    await (await svc()).apply('s1', 'prop-1', ['d1'], 'u1');
+    expect(vi.mocked(repo.markApplied).mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(scheduleReviewService.run).mock.invocationCallOrder[0]);
+  });
+
+  it('a second request at the same moment is refused before anything is reverted or applied', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const { scheduleService } = await import('../../services/ScheduleService');
+    vi.mocked(repo.findById).mockResolvedValue(applied());
+    vi.mocked(repo.claimStatus).mockResolvedValueOnce(false); // another request already took it
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply');
+    try {
+      await expect(s.undoSelected('s1', 'prop-1', ['d2'], 'u1')).rejects.toThrow(/already being undone/);
+      expect(scheduleService.removeDependency).not.toHaveBeenCalled();
+      expect(apply).not.toHaveBeenCalled();
+    } finally { apply.mockRestore(); }
+  });
+
+  it('a revert step that fails stops it: the kept fixes are NOT applied on top of a half-reverted plan', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const { scheduleService } = await import('../../services/ScheduleService');
+    vi.mocked(repo.findById).mockResolvedValue(applied());
+    vi.mocked(scheduleService.removeDependency).mockRejectedValueOnce(new Error('deadlock'));
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply');
+    try {
+      const err: any = await s.undoSelected('s1', 'prop-1', ['d2'], 'u1').catch(e => e);
+      expect(err.message).toMatch(/Everything was put back except 1 step that could not be reversed/);
+      expect(err.code).toBe('revert_incomplete');
+      expect(apply).not.toHaveBeenCalled();
+      expect(repo.setStatus).toHaveBeenLastCalledWith('prop-1', 'undone');
+    } finally { apply.mockRestore(); }
+  });
+
+  it('if applying the kept fixes fails AFTER they were recorded, they are really put back, and the message says so', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(repo.findById)
+      .mockResolvedValueOnce(applied())                       // undoSelected's own read
+      .mockResolvedValueOnce(applied({ status: 'applied' }))  // after the failed apply: it got as far as being recorded
+      .mockResolvedValue(applied());                          // the undo it then runs
+    const s = await svc();
+    const apply = vi.spyOn(s, 'apply').mockRejectedValue(new Error('review timed out'));
+    try {
+      const err: any = await s.undoSelected('s1', 'prop-1', ['d2'], 'u1').catch(e => e);
+      expect(err.message).toMatch(/all 3 fixes were put back\. review timed out/);
+      expect(err.code).toBe('reapply_failed');
+      expect(repo.setStatus).toHaveBeenLastCalledWith('prop-1', 'undone'); // the undo that really put them back
+    } finally { apply.mockRestore(); }
+  });
+});
+
+describe('ScheduleFixProposerService — Undo selected: the real handshake, apply not mocked (review 2026-10-24)', () => {
+  beforeEach(() => vi.clearAllMocks());
+  const svc = async () => (await import('../../services/ScheduleFixProposerService')).scheduleFixProposerService;
+
+  it('takes the proposal to "undone", then applies ONLY the kept fixes from there, and records exactly those for the next undo', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const appliedProposal = {
+      ...PROPOSAL, status: 'applied', baselineId: 'baseline-1',
+      appliedData: [{ op: 'remove_dependency', taskId: 'b', dependencyId: 'a' }, { op: 'applied_fixes', fixIds: ['d1', 'm1', 'p1'], names: {} }],
+    } as any;
+    // undoSelected's own read sees 'applied'; every later read (apply's) sees what the claim left: 'undone'
+    vi.mocked(repo.findById).mockReset().mockResolvedValueOnce(appliedProposal).mockResolvedValue({ ...PROPOSAL, status: 'undone' } as any);
+    vi.mocked(repo.claimStatus).mockClear();
+    vi.mocked(repo.markApplied).mockClear();
+
+    const res = await (await svc()).undoSelected('s1', 'prop-1', ['p1'], 'u1');
+
+    expect(repo.claimStatus).toHaveBeenCalledWith('prop-1', 'applied', 'undone');
+    const log = vi.mocked(repo.markApplied).mock.calls[0][1] as any[];
+    const note = log[log.length - 1];
+    expect(note.op).toBe('applied_fixes');
+    expect(note.fixIds).not.toContain('p1');         // the one put back is gone from what is applied now
+    expect(note.fixIds).toEqual(expect.arrayContaining(['d1']));
+    expect(res.stillApplied).toEqual(note.fixIds);
+    expect(res.putBack).toBe(3 - note.fixIds.length);
+  });
+
+  it('a stale Apply of the same proposal while it is held as "undone" is refused', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    vi.mocked(repo.findById).mockReset().mockResolvedValue({ ...PROPOSAL, status: 'undone' } as any);
+    await expect((await svc()).apply('s1', 'prop-1', ['d1'], 'u1')).rejects.toThrow(/Proposal is undone, not pending/);
+  });
+
+  it('a plain Undo takes the same lock: if another request got it first, this one stops before reverting anything', async () => {
+    const { scheduleFixProposalRepository: repo } = await import('../../database/ScheduleFixProposalRepository');
+    const { scheduleService } = await import('../../services/ScheduleService');
+    vi.mocked(repo.findById).mockReset().mockResolvedValue({ ...PROPOSAL, status: 'applied', baselineId: 'b', appliedData: [{ op: 'remove_dependency', taskId: 'b', dependencyId: 'a' }] } as any);
+    vi.mocked(repo.claimStatus).mockResolvedValueOnce(false);
+    await expect((await svc()).undo('s1', 'prop-1', 'u1')).rejects.toThrow(/already being undone/);
+    expect(scheduleService.removeDependency).not.toHaveBeenCalled();
   });
 });

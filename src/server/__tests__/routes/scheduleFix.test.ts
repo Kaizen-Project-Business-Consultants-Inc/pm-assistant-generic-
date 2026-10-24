@@ -24,6 +24,8 @@ vi.mock('../../services/AIBudgetService', () => ({ aiRefusalReply: () => null })
 const svc = vi.hoisted(() => ({
   apply: vi.fn(async () => ({ appliedCount: 1 })),
   preview: vi.fn(async () => ({ tasksMoved: 3, finishBefore: '2027-01-15', finishAfter: '2027-09-13' })),
+  undo: vi.fn(async () => ({ score: 54 })),
+  undoSelected: vi.fn(async () => ({ putBack: 1, stillApplied: ['d1'], alsoPutBack: [] })),
 }));
 vi.mock('../../services/ScheduleFixProposerService', () => ({
   scheduleFixProposerService: svc,
@@ -117,5 +119,54 @@ describe('Preview schedule fixes', () => {
       last = (await app.inject({ method: 'POST', url: PREVIEW, payload: { fixIds: [] } })).statusCode;
     }
     expect(last).toBe(429);
+  });
+});
+
+describe('Undo schedule fixes — all or only some (U80)', () => {
+  let app: any;
+  const UNDO = '/api/v1/schedules/s1/review/proposals/p1/undo';
+  beforeAll(async () => {
+    app = Fastify();
+    await app.register(scheduleFixRoutes, { prefix: '/api/v1/schedules' });
+  }, 60_000);
+  beforeEach(() => { svc.undo.mockClear(); svc.undoSelected.mockClear(); });
+
+  it('no body: the whole Apply goes back, as before', async () => {
+    const res = await app.inject({ method: 'POST', url: UNDO });
+    expect(res.statusCode).toBe(200);
+    expect(svc.undo).toHaveBeenCalledWith('s1', 'p1', 'u1');
+    expect(svc.undoSelected).not.toHaveBeenCalled();
+  });
+
+  it('with fixIds: only those go back (through undoSelected), after the same newest-change check', async () => {
+    const { changeHistoryService } = await import('../../services/ChangeHistoryService');
+    const res = await app.inject({ method: 'POST', url: UNDO, payload: { fixIds: ['d2', 'd3'] } });
+    expect(res.statusCode).toBe(200);
+    expect(changeHistoryService.assertLatestByRef).toHaveBeenCalledWith('s1', 'review_fix', 'p1');
+    expect(svc.undoSelected).toHaveBeenCalledWith('s1', 'p1', ['d2', 'd3'], 'u1');
+    expect(svc.undo).not.toHaveBeenCalled();
+  });
+
+  it('an empty list, text instead of a list, or more than 200 is a 400 with a plain message, and nothing is undone', async () => {
+    for (const fixIds of [[], 'd1', Array.from({ length: 201 }, (_, i) => 'd' + i)]) {
+      const res = await app.inject({ method: 'POST', url: UNDO, payload: { fixIds } });
+      expect(res.statusCode).toBe(400);
+    }
+    expect(svc.undo).not.toHaveBeenCalled();
+    expect(svc.undoSelected).not.toHaveBeenCalled();
+  });
+
+  it('a refusal with a code (the kept fixes could not be applied again) reaches the client as 409 with that code', async () => {
+    const { ScheduleFixStateError } = await import('../../services/ScheduleFixProposerService');
+    svc.undoSelected.mockRejectedValueOnce(Object.assign(new ScheduleFixStateError('All 3 fixes were put back.'), { code: 'reapply_failed' }));
+    const res = await app.inject({ method: 'POST', url: UNDO, payload: { fixIds: ['d1'] } });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toEqual({ error: 'All 3 fixes were put back.', code: 'reapply_failed' });
+  });
+
+  it('a caller who is not the project manager is refused before anything runs', async () => {
+    const res = await app.inject({ method: 'POST', url: UNDO, headers: { 'x-deny': '1' }, payload: { fixIds: ['d1'] } });
+    expect(res.statusCode).toBe(403);
+    expect(svc.undoSelected).not.toHaveBeenCalled();
   });
 });
