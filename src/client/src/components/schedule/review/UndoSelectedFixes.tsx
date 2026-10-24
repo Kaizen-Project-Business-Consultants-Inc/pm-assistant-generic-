@@ -145,7 +145,7 @@ export function UndoSelectedFixes({ fixes, undoing, summary, onUndo }: Props) {
               <input type="checkbox" checked={ticked.has(f.id)} disabled={undoing} onChange={() => toggle(f.id)} aria-label={`Put back: ${f.text}`} className="mt-0.5" />
               <span className="min-w-0 text-sm text-gray-900 dark:text-gray-100 break-words">{f.text}</span>
             </label>
-            <span className="shrink-0 mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{f.kind}</span>
+            <span className="shrink-0 mt-0.5 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{f.kind}</span>
           </li>
         ))}
       </ul>
