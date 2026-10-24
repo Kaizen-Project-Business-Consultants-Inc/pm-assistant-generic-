@@ -104,7 +104,7 @@ export interface ApplyResult {
 }
 
 /** What "Undo selected" did (U80): which fixes are back, which stay applied, the finish before and after */
-export interface UndoSelectedResult {
+interface UndoSelectedResult {
   score: number;
   /** How many the PM asked to put back */
   requested: number;
@@ -998,7 +998,7 @@ export class ScheduleFixStateError extends Error {
   code?: string;
 }
 /** Undo selected could not keep the fixes that were to stay: the plan is as it was before Apply (or says what is left) */
-export class ScheduleFixPartialError extends ScheduleFixStateError {
+class ScheduleFixPartialError extends ScheduleFixStateError {
   /** 'reapply_failed': the plan is as before Apply. 'revert_incomplete': put back except some steps that failed */
   constructor(msg: string, code: 'reapply_failed' | 'revert_incomplete' = 'reapply_failed') { super(msg); this.name = 'ScheduleFixPartialError'; this.code = code; }
 }
