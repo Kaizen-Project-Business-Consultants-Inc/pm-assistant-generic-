@@ -704,6 +704,7 @@ Before deploying to production, verify the following:
 The **Privacy Policy** page (`/privacy`) discloses the application's use of third-party services that may process user data:
 
 - **Google Analytics (GA4)** -- The application uses GA4 for usage analytics. GA4 sets the cookies `_ga` and `_ga_*` in the user's browser. Data collected (page views, session duration, events) is transferred to Google's servers, which may be located outside the user's country of residence.
+- **Microsoft Clarity** -- Session replay (project `z2hrnr3p8p`) on the public marketing pages only, after the visitor accepts the cookie banner, never for a signed-in user and never inside the app (`CookieConsentBanner.tsx`). It sets `_clck` and `_clsk`; advertising storage is denied. Its hosts (`www.clarity.ms`, `scripts.clarity.ms`, `*.clarity.ms`) are in the CSP.
 - **International data transfers** -- By using the application, users acknowledge that their data may be transferred to and processed in jurisdictions with different data protection laws than their own.
 - **Google as a data processor** -- Google is listed as a third-party data processor in the Privacy Policy. Users can review Google's own privacy policy and opt out of GA4 tracking via standard browser mechanisms (e.g., browser settings, GA opt-out browser add-on).
 

@@ -3,7 +3,7 @@ import { analyticsEnabled, clarityAllowedOn } from '../../components/CookieConse
 
 describe('Clarity session replay records public pages only (2026-10-23)', () => {
   it('marketing pages are recorded; the app and unknown paths are not', () => {
-    for (const p of ['/', '/pricing', '/pricing/', '/features', '/about', '/privacy']) {
+    for (const p of ['/', '/pricing', '/pricing/', '/features', '/about', '/roadmap', '/terms', '/privacy']) {
       expect(clarityAllowedOn(p)).toBe(true);
     }
     for (const p of ['/dashboard', '/projects/123', '/settings', '/portal/abc', '/login', '/register']) {

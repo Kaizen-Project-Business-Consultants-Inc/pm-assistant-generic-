@@ -3971,8 +3971,8 @@ You can **cancel** a request at any time before it is fulfilled.
 
 On your first visit, a **cookie consent banner** appears at the bottom of the screen asking whether you accept analytics cookies.
 
-- **Accept** — Google Analytics 4 (GA4) is loaded and begins collecting anonymized usage data (pages visited, session duration, device type). Two cookies are set: `_ga` and `_ga_*` (expire after 2 years).
-- **Decline** — No analytics cookies are set and no usage data is collected. GA4 is never loaded.
+- **Accept** — Google Analytics 4 (GA4) is loaded and begins collecting anonymized usage data (pages visited, session duration, device type). Two cookies are set: `_ga` and `_ga_*` (expire after 2 years). On our public pages only (home, pricing, features, about, roadmap, terms, privacy), Microsoft Clarity also records anonymous sessions (clicks and scrolling) and sets `_clck` and `_clsk`. Nothing inside the application is ever recorded, and nobody who is signed in is recorded.
+- **Decline** — No analytics cookies are set and no usage data is collected. GA4 and Clarity are never loaded.
 
 Your choice is stored in your browser's localStorage. To change your preference later, clear localStorage for this site (which resets the consent banner) or install the [Google Analytics Opt-out Browser Add-on](https://tools.google.com/dlpage/gaoptout).
 

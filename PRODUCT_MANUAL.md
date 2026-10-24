@@ -3905,7 +3905,7 @@ The Terms of Service (`/terms`) has been updated to include the following provis
 
 The Privacy Policy (`/privacy`) has been updated to include:
 
-- **Cookie consent banner** — Google Analytics 4 (GA4) is only loaded after the user explicitly consents via a cookie consent banner shown on first visit. If the user declines, no analytics cookies are set and no usage data is collected. Consent preference is stored in localStorage (`kovarti_analytics_consent`).
+- **Cookie consent banner** — Google Analytics 4 (GA4) is only loaded after the user explicitly consents via a cookie consent banner shown on first visit. If the user declines, no analytics cookies are set and no usage data is collected. Consent preference is stored in localStorage (`kovarti_analytics_consent`; `kovarti_analytics_consent_v2` since 2026-10-24, when the banner began naming Microsoft Clarity session recordings of the public pages — earlier accepters are asked again). Clarity never runs for a signed-in user or inside the app.
 - **Google Analytics GA4 disclosure** — when consented, GA4 sets `_ga` (2-year expiry, identifies unique visitors) and `_ga_*` (session tracking). Users can revoke consent by clearing localStorage.
 - **Waitlist data collection** — pre-launch waitlist collects email addresses only, stored securely, used solely for launch notification, and deleted within 30 days of launch. Removal by emailing the privacy officer.
 - **International data transfer** — user data may be processed outside Canada by third-party service providers (e.g., Anthropic, Stripe, Resend, Google). Transfers are subject to standard contractual clauses or equivalent safeguards.

@@ -1,7 +1,10 @@
 import { useState, useEffect, useLayoutEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useAuthStore } from '../stores/authStore';
 
 const CONSENT_KEY = 'kovarti_analytics_consent';
+// v2 = the banner that also names session recordings; visitors who accepted the older wording are asked again
+const REPLAY_CONSENT_KEY = 'kovarti_analytics_consent_v2';
 const GA_ID = 'G-46RCPEQRE5';
 
 /**
@@ -26,15 +29,16 @@ function loadGA4() {
 
 /**
  * Microsoft Clarity (session replay) records the public marketing pages only (2026-10-23): it must
- * never watch customers' project screens, so it is stopped as soon as the visitor leaves them.
+ * never watch customers' project screens, so it is stopped as soon as the visitor leaves them, and it
+ * never runs for anyone signed in (the Upgrade and logo links lead signed-in customers to public pages).
  */
 const CLARITY_ID = 'z2hrnr3p8p';
 const CLARITY_PUBLIC_PATHS = ['/', '/pricing', '/features', '/about', '/roadmap', '/terms', '/privacy'];
 export const clarityAllowedOn = (pathname: string) => CLARITY_PUBLIC_PATHS.includes(pathname.replace(/(.)\/$/, '$1'));
 
-function syncClarity(pathname: string) {
+function syncClarity(pathname: string, signedIn: boolean) {
   if (!analyticsEnabled()) return;
-  if (!clarityAllowedOn(pathname)) {
+  if (signedIn || !clarityAllowedOn(pathname)) {
     window.clarity?.('stop');
     return;
   }
@@ -63,26 +67,29 @@ export function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const { pathname } = useLocation();
+  const signedIn = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     // No analytics here, so nothing to ask about
     if (!analyticsEnabled()) return;
     const consent = localStorage.getItem(CONSENT_KEY);
-    if (consent === 'accepted') {
-      loadGA4();
-      setAccepted(true);
-    } else if (consent !== 'declined') {
-      setVisible(true);
-    }
+    const replayConsent = localStorage.getItem(REPLAY_CONSENT_KEY);
+    // Google Analytics keeps the consent already given; recordings need the newer answer
+    if (consent === 'accepted') loadGA4();
+    // An earlier "decline" is still a decline: only earlier accepters are asked again
+    if (consent === 'declined' && !replayConsent) localStorage.setItem(REPLAY_CONSENT_KEY, 'declined');
+    if (replayConsent === 'accepted') setAccepted(true);
+    if (consent !== 'declined' && replayConsent !== 'accepted' && replayConsent !== 'declined') setVisible(true);
   }, []);
 
   // Layout effect: stop recording in the same task as the navigation, before Clarity sees the app's first DOM
   useLayoutEffect(() => {
-    if (accepted) syncClarity(pathname);
-  }, [accepted, pathname]);
+    if (accepted) syncClarity(pathname, signedIn);
+  }, [accepted, pathname, signedIn]);
 
   const handleAccept = () => {
     localStorage.setItem(CONSENT_KEY, 'accepted');
+    localStorage.setItem(REPLAY_CONSENT_KEY, 'accepted');
     loadGA4();
     setAccepted(true);
     setVisible(false);
@@ -90,6 +97,7 @@ export function CookieConsentBanner() {
 
   const handleDecline = () => {
     localStorage.setItem(CONSENT_KEY, 'declined');
+    localStorage.setItem(REPLAY_CONSENT_KEY, 'declined');
     setVisible(false);
   };
 
@@ -103,7 +111,8 @@ export function CookieConsentBanner() {
     >
       <div className="mx-auto max-w-3xl sm:mb-4 rounded-xl bg-gray-900 text-white shadow-2xl border border-gray-700 px-5 py-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
         <p className="text-sm flex-1">
-          We use cookies for analytics to improve our service.
+          We use cookies for analytics and, on our public marketing pages, anonymous
+          session recordings to understand how visitors use them. Nothing inside the app is ever recorded.
           See our{' '}
           <Link to="/privacy" className="underline text-primary-400 hover:text-primary-300">
             Privacy Policy
