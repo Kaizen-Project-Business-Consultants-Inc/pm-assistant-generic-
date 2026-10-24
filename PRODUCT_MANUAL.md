@@ -2979,6 +2979,8 @@ so the jump is visible; **Undo** reverses the whole batch in one click. Dismissi
 it as a negative example that informs future suggestions. Proposals are stored per schedule in the
 tenant table `schedule_fix_proposals` and are never executed autonomously — a person always approves.
 
+**Propose fixes button states (2026-10-24).** `ScheduleFixProposalPanel` reports each proposal's counts (`onProposed`: fixes, decisions, whether the AI suggestions were tried) to `ScheduleReviewPanel`, which keeps them keyed by `review.id` (a new review forgets them). The footer button reads **Propose fixes** (default), **Decisions needed (N)** (no fixes, N findings in needsDecision; outlined purple; the panel says "No more fixes to propose. These need your decision.") or a greyed, `aria-disabled` **Nothing to propose** (0 fixes, 0 decisions and the AI suggestions tried; still focusable, described by the tooltip). Client only; no API change.
+
 **Date impact before Apply, overlap links, Needs your decision (2026-10-18).** UAT: "Select all in
 Critical" took 27 links, 12 of them between tasks that overlap in the imported plan; the re-flow
 pushed the finish from 15 Jan to 13 Sep 2027 and raised 26 "outside project window" findings, while

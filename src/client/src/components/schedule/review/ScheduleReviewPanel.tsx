@@ -96,6 +96,7 @@ export function describeRerun(prevScore: number | undefined, next: ScheduleRevie
 }
 
 const RERUN_MESSAGE_MS = 8000;
+const NOTHING_TO_PROPOSE_TIP = 'The review found nothing to fix or decide. Click Re-run review after you change the plan.';
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -217,6 +218,12 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
   });
 
   const busy = runMutation.isPending || latestQuery.isLoading;
+  // What the last proposal left, for the Propose fixes button — only while it is about this review (a new review may find new things)
+  const [leftOver, setLeftOver] = useState<{ reviewId: string; fixes: number; decisions: number; aiTried: boolean } | null>(null);
+  const left = review && leftOver?.reviewId === review.id ? leftOver : null;
+  // greyed only once the AI suggestions were tried too: that button lives inside the fixes panel, so until then the panel must stay reachable
+  const nothingLeft = !!left && left.fixes === 0 && left.decisions === 0 && left.aiTried;
+  const onlyDecisions = !!left && left.fixes === 0 && left.decisions > 0;
 
   return (
     <>
@@ -390,7 +397,31 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
                 {runMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                 Re-run review
               </button>
-              {review && review.findings.length > 0 && (
+              {review && review.findings.length > 0 && (nothingLeft ? (
+                <>
+                // greyed, not hidden: it comes back when the plan changes. aria-disabled keeps it reachable so a screen reader says why
+                <button
+                  type="button"
+                  aria-disabled="true"
+                  aria-describedby="propose-fixes-off"
+                  title={NOTHING_TO_PROPOSE_TIP}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 cursor-not-allowed"
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  Nothing to propose
+                </button>
+                <span id="propose-fixes-off" className="sr-only">{NOTHING_TO_PROPOSE_TIP}</span>
+                </>
+              ) : onlyDecisions ? (
+                <button
+                  type="button"
+                  onClick={() => setShowFixes(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-ai-primary text-ai-primary hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  <Wrench className="w-3.5 h-3.5" />
+                  Decisions needed ({left!.decisions})
+                </button>
+              ) : (
                 <button
                   type="button"
                   onClick={() => setShowFixes(true)}
@@ -399,7 +430,7 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
                   <Wrench className="w-3.5 h-3.5" />
                   Propose fixes
                 </button>
-              )}
+              ))}
             </div>
           )}
         </div>
@@ -414,6 +445,7 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
           rowNumberOf={rowNumberOf}
           onEditProject={onEditProject}
           onSaveBaseline={onSaveBaseline}
+          onProposed={s => review && setLeftOver({ reviewId: review.id, ...s })}
         />
       )}
     </>

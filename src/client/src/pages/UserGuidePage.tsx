@@ -161,6 +161,7 @@ const sections: Section[] = [
       'Findings point to the rows involved: missing links, long tasks, milestones with a duration, overloaded people, and more',
       'A milestone takes zero days — name it as the outcome ("Design Approved"); name tasks verb + object ("Review Design")',
       'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved, or linking the next step after a task that feeds nothing',
+      'The Propose fixes button tells you what is left: "Decisions needed (N)" when only your decisions remain, a grey "Nothing to propose" when there is nothing at all (run Review again after you change the plan)',
       'Suggestions are grouped Critical → Low and nothing is ticked at the start; "Select all in High" ticks a whole level. Headings named "T1" or "PG" get a new name you can edit before applying',
       'Click a suggestion to see its rows: they turn amber in the schedule. Only the tick box chooses the fix',
       'Links between tasks that run at the same time sit in their own amber box (not in "Select all"): it says how far linking them would move the finish',

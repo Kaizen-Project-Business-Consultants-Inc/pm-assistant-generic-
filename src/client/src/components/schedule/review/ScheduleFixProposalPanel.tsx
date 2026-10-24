@@ -106,6 +106,8 @@ interface Props {
   onEditProject?: () => void;
   /** Save a baseline of the plan now (the schedule's own Save baseline) */
   onSaveBaseline?: () => Promise<unknown>;
+  /** What a new proposal holds, so the Review's button can say what is left (fixes, or only decisions) */
+  onProposed?: (left: { fixes: number; decisions: number; aiTried: boolean }) => void;
 }
 
 /** The names typed for the chosen renames, by fix id (undefined when none) — sent with Apply and the preview */
@@ -539,7 +541,7 @@ function AppliedSummary({ result, undoing, onUndo, appliedFixes, undoSummary }: 
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline }: Props) {
+export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline, onProposed }: Props) {
   const queryClient = useQueryClient();
   // Apply and Undo change links, dates and tasks: every view of the plan fetches again (U38)
   const planChanged = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
@@ -590,6 +592,7 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
       setNames(Object.fromEntries(data.proposalData.fixes.filter(f => f.type === 'rename_task').map(f => [f.id, f.newName ?? ''])));
       setShowAll(new Set());
       announce(`${data.proposalData.fixes.length} fixes proposed`);
+      onProposed?.({ fixes: data.proposalData.fixes.length, decisions: data.proposalData.needsDecision?.length ?? 0, aiTried: askedAi.current || data.source === 'ai' });
     },
     onError: (err: unknown) => setError(getApiErrorMessage(err, 'Could not propose fixes')),
   });
@@ -803,7 +806,11 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
           )}
 
           {proposal && !proposeMutation.isPending && fixes.length === 0 && (
-            <p className="text-sm text-gray-700 dark:text-gray-300">Nothing to propose. The schedule already has the structure the review checks for.</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              {proposal.proposalData.needsDecision?.length
+                ? 'No more fixes to propose. These need your decision.'
+                : 'Nothing to propose. The schedule already has the structure the review checks for.'}
+            </p>
           )}
 
           {applyMutation.isPending && (
