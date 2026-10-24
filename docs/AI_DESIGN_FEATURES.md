@@ -58,6 +58,8 @@ Mjuzi is the persistent, context-aware conversational AI assistant available thr
 
 **Chat cost (A4, Oct 2026):** each message resends the last 12 messages of the conversation (was 20), all but the newest exchange cut to 2,000 characters (never mid-emoji), plus the project context and the tool list; tokens count against the plan allowance in full. Admin → AI usage and `ai_usage_log` show tokens per call.
 
+**Link questions (Oct 2026):** `get_dependency_chain` returns `directPredecessors` / `directSuccessors` (the task's own links) next to the whole-chain `upstream` / `downstream`; prompt 3.2.0 tells Mjuzi to look links up (the chat's project data does not list them) and to name only direct links unless asked. Found on staging: on a plain 6-task chain Mjuzi said a later task depended on Build.
+
 **Plan-edit safeguards (Oct 2026):** row numbers in `list_tasks`; `split_task` (first part = the original task, others added after it, followers relinked, dates re-flowed, rolls back on failure; not for started tasks or milestones); `set_dependency` refuses phase rows and warns on links that point down the plan; at most 3 link changes per message before Mjuzi must list them and ask; prompt 3.1.0 rules on re-listing before acting on a number.
 
 **Tool-use flow:**

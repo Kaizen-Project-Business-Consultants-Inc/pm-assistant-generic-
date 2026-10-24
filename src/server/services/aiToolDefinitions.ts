@@ -231,7 +231,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'get_dependency_chain',
-    description: 'Show the full dependency chain for a task — both what it depends on (upstream) and what depends on it (downstream). Use this to understand impact before rescheduling.',
+    description: 'Show how a task is linked. directPredecessors / directSuccessors are the links the task itself has (use these for "what does it depend on", "what depends on it", "what is it linked to"). upstream / downstream run on through the WHOLE chain, every task before and after it, linked or not directly (use these for impact before rescheduling, and say they are indirect).',
     input_schema: {
       type: 'object' as const,
       properties: {

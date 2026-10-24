@@ -851,12 +851,25 @@ export class AIActionExecutor {
       endDate: d.endDate,
     }));
 
+    // The links this task itself has. `upstream` / `downstream` run on through the whole chain, so "which task depends on
+    // Build?" read from them named every later task too (found 2026-10-24: Launch "depends on Build" on a plain chain).
+    const directPredecessors = task.dependencies
+      .map(d => ({ id: d.dependencyId, name: taskMap.get(d.dependencyId)?.name, type: d.dependencyType || 'FS' }))
+      .filter(p => !!p.name);
+    const directSuccessors = allScheduleTasks.flatMap(t => {
+      // eslint-disable-next-line no-restricted-syntax -- small: one task's own links (at most 20)
+      const link = t.id === task.id ? undefined : t.dependencies.find(d => d.dependencyId === task.id);
+      return link ? [{ id: t.id, name: t.name, type: link.dependencyType || 'FS' }] : [];
+    });
+
     return {
       success: true,
       toolName: 'get_dependency_chain',
-      summary: `"${task.name}" has ${upstream.length} predecessor(s) and ${downstream.length} downstream dependent(s)`,
+      summary: `"${task.name}": direct predecessors ${directPredecessors.length}, direct successors ${directSuccessors.length}; the whole chain has ${upstream.length} before it and ${downstream.length} after it`,
       data: {
         task: { id: task.id, name: task.name, startDate: task.startDate, endDate: task.endDate },
+        directPredecessors,
+        directSuccessors,
         upstream,
         downstream: downstreamList,
       },

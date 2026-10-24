@@ -17,6 +17,7 @@ vi.mock('../../services/ScheduleService', () => ({
     deleteTask: vi.fn(async () => true),
     validateDependency: vi.fn(async () => {}),
     workingDayTest: vi.fn(async () => (d: Date) => { const w = d.getUTCDay(); return w !== 0 && w !== 6; }),
+    findAllDownstreamTasks: vi.fn(),
   },
   DependencyValidationError: class extends Error {},
 }));
@@ -192,5 +193,46 @@ describe('Mjuzi set_dependency checks and list_tasks rows', () => {
       [1, 'Phase 1', true], [2, 'Onboarding', false], [3, 'Kick-off', false], [4, 'Governance', false],
     ]);
     expect(r.data[3].predecessorRows).toEqual([3]);
+  });
+});
+
+describe('Mjuzi get_dependency_chain names the DIRECT links separately from the whole chain', () => {
+  const executor = new AIActionExecutor() as any;
+  // Design -> Build -> Test -> Launch, each linked to the one before only
+  const design = task('d', 'Design', 0);
+  const build = task('b', 'Build', 1, { dependencies: [dep('d')] });
+  const testT = task('t', 'Test', 2, { dependencies: [dep('b')] });
+  const launch = task('l', 'Launch', 3, { dependencies: [dep('t')] });
+  const plan = [design, build, testT, launch];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    ss.findTaskById.mockImplementation(async (id: string) => plan.find(t => t.id === id) ?? null);
+    ss.findTasksByScheduleId.mockResolvedValue(plan);
+    ss.findAllDownstreamTasks.mockResolvedValue([testT, launch]);
+  });
+
+  it('"which task depends on Build?" has one direct answer (Test); Launch is only further down the chain', async () => {
+    const r = await executor.getDependencyChain({ taskId: 'b' }, CTX);
+    expect(r.data.directPredecessors.map((p: any) => p.name)).toEqual(['Design']);
+    expect(r.data.directSuccessors.map((p: any) => p.name)).toEqual(['Test']);
+    expect(r.data.downstream.map((p: any) => p.name)).toEqual(['Test', 'Launch']); // the whole chain stays available
+    expect(r.summary).toMatch(/direct predecessors 1, direct successors 1; the whole chain has 1 before it and 2 after it/);
+  });
+
+  it('a task with two direct successors (one linked start-to-start) names both with their link type', async () => {
+    const side = task('s', 'Prepare handover', 4, { dependencies: [{ dependencyId: 'b', dependencyType: 'SS', lagDays: 0 }] });
+    ss.findTasksByScheduleId.mockResolvedValue([...plan, side]);
+    const r = await executor.getDependencyChain({ taskId: 'b' }, CTX);
+    expect(r.data.directSuccessors).toEqual([
+      { id: 't', name: 'Test', type: 'FS' },
+      { id: 's', name: 'Prepare handover', type: 'SS' },
+    ]);
+  });
+
+  it('the first task has no direct predecessor, the last has no direct successor', async () => {
+    expect((await executor.getDependencyChain({ taskId: 'd' }, CTX)).data.directPredecessors).toEqual([]);
+    ss.findAllDownstreamTasks.mockResolvedValue([]);
+    expect((await executor.getDependencyChain({ taskId: 'l' }, CTX)).data.directSuccessors).toEqual([]);
   });
 });

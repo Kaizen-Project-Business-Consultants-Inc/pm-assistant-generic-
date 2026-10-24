@@ -982,6 +982,15 @@ describe('ClaudeService', () => {
       );
     });
 
+    it("Mjuzi's prompt keeps the plan-edit rules that fixed real mistakes (row numbers, split, link warnings, look links up)", () => {
+      const prompt = promptTemplates.conversational.render({ projectContext: 'ctx', userRole: 'project_manager' });
+      expect(prompt).toContain('ROW numbers');           // 2026-10-23: "task 33" meant two different tasks
+      expect(prompt).toContain('split_task');            // never create_task + delete_task for a split
+      expect(prompt).toContain('WARNING');               // a link pointing down the plan is passed on
+      expect(prompt).toContain('directSuccessors');      // 2026-10-24: "Launch depends on Build" on a plain chain
+      expect(promptTemplates.conversational.getVersion()).toBe('3.2.0');
+    });
+
     it('all templates are PromptTemplate instances', () => {
       for (const tmpl of Object.values(promptTemplates)) {
         expect(tmpl).toBeInstanceOf(PromptTemplate);
