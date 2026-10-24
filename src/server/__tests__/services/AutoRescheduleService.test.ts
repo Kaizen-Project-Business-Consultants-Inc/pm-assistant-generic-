@@ -92,6 +92,7 @@ vi.mock('../../services/claudeService', () => ({
     isAvailable: mockIsAvailable,
     completeWithJsonSchema: mockComplete,
   },
+  isAIUnavailableError: () => false,
 }));
 
 vi.mock('../../config', () => ({
@@ -969,6 +970,48 @@ describe('AutoRescheduleService', () => {
       expect(proposal.estimatedImpact.proposedEndDate).toBe(daysFromNow(30));
     });
 
+    it('falls back to the standard calculation when the AI answer is cut off, and says so (was a 500 with nothing to show)', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Delayed', { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }),
+      ]);
+      mockComplete.mockRejectedValue(new Error("The AI's JSON reply was cut off at the output limit; not retried."));
+
+      const proposal = await service.generateProposal('sch-1');
+      expect(proposal.proposedChanges.length).toBeGreaterThan(0);
+      expect(proposal.rationale).toContain('The AI could not finish its answer');
+    });
+
+    it('says the AI is unavailable (not cut off) when the budget is used up, and still gives a proposal', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Delayed', { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }),
+      ]);
+      mockComplete.mockRejectedValue(Object.assign(new Error('budget used'), { code: 'AI_BUDGET_EXCEEDED' }));
+
+      const proposal = await service.generateProposal('sch-1');
+      expect(proposal.proposedChanges.length).toBeGreaterThan(0);
+      expect(proposal.rationale).toContain("The AI isn't available right now");
+    });
+
+    it('accepts an AI answer without task names and takes the name from the plan', async () => {
+      mockFindScheduleById.mockResolvedValue({ id: 'sch-1', name: 'Test', endDate: daysFromNow(30) });
+      mockFindTasksByScheduleId.mockResolvedValue([
+        makeTask('t1', 'Delayed', { startDate: daysAgo(10), endDate: daysFromNow(5), progressPercentage: 0 }),
+      ]);
+      mockComplete.mockResolvedValue({
+        data: {
+          proposedChanges: [{ taskId: 't1', proposedStartDate: daysAgo(10), proposedEndDate: daysFromNow(15), reason: 'Short' }],
+          rationale: 'AI rationale',
+          estimatedImpact: { proposedEndDate: daysFromNow(15), daysChange: 10, criticalPathImpact: 'Extended' },
+        },
+      });
+
+      const proposal = await service.generateProposal('sch-1');
+      expect(proposal.proposedChanges[0].taskName).toBe('Delayed');
+      expect(mockComplete.mock.calls[0][0].maxTokens).toBe(8192);
+    });
+
     it('tells the model the project calendar and snaps proposed dates off days off', async () => {
       mockFindScheduleById.mockResolvedValue({ id: 'sch-1', projectId: 'p-1', name: 'Test', endDate: '2026-10-09' });
       mockFindTasksByScheduleId.mockResolvedValue([
@@ -1075,10 +1118,9 @@ describe('AutoRescheduleService', () => {
       });
 
       const proposal = await service.generateProposal('sch-1');
-      // Should still produce the proposal; currentStartDate/currentEndDate will be empty
-      expect(proposal.proposedChanges[0].taskId).toBe('unknown-id');
-      expect(proposal.proposedChanges[0].currentStartDate).toBe('');
-      expect(proposal.proposedChanges[0].currentEndDate).toBe('');
+      // A task id that is not in the plan is dropped (accepting it would fail the whole proposal); the proposal itself is still made
+      expect(proposal.proposedChanges).toEqual([]);
+      expect(proposal.rationale).toBe('R');
     });
   });
 

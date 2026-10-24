@@ -1,7 +1,7 @@
 import { ScheduleService, Task } from './ScheduleService';
 import { changeHistoryService } from './ChangeHistoryService';
 import { CriticalPathService } from './CriticalPathService';
-import { claudeService } from './claudeService';
+import { claudeService, isAIUnavailableError } from './claudeService';
 import { config } from '../config';
 import { rescheduleProposalRepository, RescheduleProposalRow } from '../database/RescheduleProposalRepository';
 import { v4 as uuidv4 } from 'uuid';
@@ -249,94 +249,110 @@ export class AutoRescheduleService {
       estimatedDays: t.estimatedDays ?? null,
     }));
 
-    let proposedChanges: ProposedChange[];
-    let rationale: string;
-    let estimatedImpact: RescheduleProposal['estimatedImpact'];
+    let proposedChanges: ProposedChange[] = [];
+    let rationale = '';
+    let estimatedImpact!: RescheduleProposal['estimatedImpact'];
 
     // the AI inbox's weekly agent asks for the rules-based plan (no AI cost, the same answer every time)
+    let aiDone = false;
+    let aiNote = '';
     if (opts.useAi !== false && config.AI_ENABLED && claudeService.isAvailable() && delayedTasks.length > 0) {
-      // Use AI to generate intelligent rescheduling proposal
-      const systemPrompt = `You are an expert project scheduling AI. Your role is to analyze delayed tasks in a project schedule and propose minimal-disruption date changes to get the project back on track.
+      try {
+        // Use AI to generate intelligent rescheduling proposal
+        const systemPrompt = `You are an expert project scheduling AI. Your role is to analyze delayed tasks in a project schedule and propose minimal-disruption date changes to get the project back on track.
 
-Rules:
-- Only propose changes for tasks that NEED to be moved (delayed tasks and their dependents).
-- Respect dependency chains: if task B depends on task A, B cannot start before A finishes.
-- Minimize the overall project end date impact.
-- Prefer compressing non-critical-path tasks over extending the critical path.
-- Dates must be in YYYY-MM-DD format.
-- Durations, delays and lag count WORKING days from the project calendar given below; a task of N days includes its start day.
-- Every proposedStartDate and proposedEndDate MUST be a working day — never a weekday that is off, and never a listed holiday.
-- Be realistic with proposed dates — account for the delays already detected.
-- proposedEndDate in estimatedImpact should be the latest proposedEndDate among all tasks, or the original end date if it's later.
-- daysChange (in working days) should be positive if the project is extended, negative if shortened, 0 if unchanged.`;
+  Rules:
+  - Only propose changes for tasks that NEED to be moved (delayed tasks and their dependents).
+  - Respect dependency chains: if task B depends on task A, B cannot start before A finishes.
+  - Minimize the overall project end date impact.
+  - Prefer compressing non-critical-path tasks over extending the critical path.
+  - Dates must be in YYYY-MM-DD format.
+  - Durations, delays and lag count WORKING days from the project calendar given below; a task of N days includes its start day.
+  - Every proposedStartDate and proposedEndDate MUST be a working day — never a weekday that is off, and never a listed holiday.
+  - Be realistic with proposed dates — account for the delays already detected.
+  - proposedEndDate in estimatedImpact should be the latest proposedEndDate among all tasks, or the original end date if it's later.
+  - daysChange (in working days) should be positive if the project is extended, negative if shortened, 0 if unchanged.
+- Keep the answer short: leave taskName out (the task id is enough), and keep each reason under 15 words.`;
 
-      // The project's days off across the plan, with about six months' room for it to grow
-      const planDates = [originalEndDate];
-      for (const t of taskSummary) { if (t.startDate) planDates.push(t.startDate); if (t.endDate) planDates.push(t.endDate); }
-      const sortedDates = planDates.filter(d => !isNaN(utcDay(d).getTime())).sort();
-      const rangeFrom = sortedDates[0] ?? originalEndDate;
-      const rangeTo = ymdOf(shiftWorking(utcDay(sortedDates[sortedDates.length - 1] ?? originalEndDate), 130, weekdaysOnly));
-      const daysOff = await this.describeDaysOff(schedule.projectId, rangeFrom, rangeTo);
+        // The project's days off across the plan, with about six months' room for it to grow
+        const planDates = [originalEndDate];
+        for (const t of taskSummary) { if (t.startDate) planDates.push(t.startDate); if (t.endDate) planDates.push(t.endDate); }
+        const sortedDates = planDates.filter(d => !isNaN(utcDay(d).getTime())).sort();
+        const rangeFrom = sortedDates[0] ?? originalEndDate;
+        const rangeTo = ymdOf(shiftWorking(utcDay(sortedDates[sortedDates.length - 1] ?? originalEndDate), 130, weekdaysOnly));
+        const daysOff = await this.describeDaysOff(schedule.projectId, rangeFrom, rangeTo);
 
-      const userMessage = `Here is the current schedule state:
+        const userMessage = `Here is the current schedule state:
 
-Schedule: ${schedule.name} (${scheduleId})
-Original End Date: ${originalEndDate}
+  Schedule: ${schedule.name} (${scheduleId})
+  Original End Date: ${originalEndDate}
 
-Project calendar (proposed dates must be working days):
-${daysOff}
+  Project calendar (proposed dates must be working days):
+  ${daysOff}
 
-All Tasks:
-${JSON.stringify(taskSummary, null, 2)}
+  All Tasks:
+  ${JSON.stringify(taskSummary, null, 2)}
 
-Critical Path Task IDs: ${JSON.stringify(criticalPathResult.criticalPathTaskIds)}
-Project Duration (days): ${criticalPathResult.projectDuration}
+  Critical Path Task IDs: ${JSON.stringify(criticalPathResult.criticalPathTaskIds)}
+  Project Duration (days): ${criticalPathResult.projectDuration}
 
-Detected Delays:
-${JSON.stringify(delayedTasks, null, 2)}
+  Detected Delays:
+  ${JSON.stringify(delayedTasks, null, 2)}
 
-Please propose date changes to reschedule affected tasks with minimal disruption. Only include tasks whose dates actually need to change.`;
+  Please propose date changes to reschedule affected tasks with minimal disruption. Only include tasks whose dates actually need to change.`;
 
-      const aiResult = await claudeService.completeWithJsonSchema<RescheduleAIResponse>({
-        systemPrompt,
-        userMessage,
-        schema: RescheduleAIResponseSchema,
-        maxTokens: 4096,
-      });
+        const aiResult = await claudeService.completeWithJsonSchema<RescheduleAIResponse>({
+          systemPrompt,
+          userMessage,
+          schema: RescheduleAIResponseSchema,
+          maxTokens: 8192,
+        });
 
-      const aiResponse = aiResult.data;
+        const aiResponse = aiResult.data;
 
-      // Map AI proposed changes to full ProposedChange objects with current dates. A
-      // proposed date on a day off is put back on the calendar (start → next working
-      // day, the task keeps its working-day length).
-      proposedChanges = aiResponse.proposedChanges.map((pc) => {
-        const task = taskById.get(pc.taskId);
-        const snapped = snapToWorking(pc.proposedStartDate, pc.proposedEndDate, isWorking);
-        return {
-          taskId: pc.taskId,
-          taskName: pc.taskName,
-          currentStartDate: task?.startDate ? toDateStr(new Date(task.startDate)) : '',
-          currentEndDate: task?.endDate ? toDateStr(new Date(task.endDate)) : '',
-          proposedStartDate: snapped.start,
-          proposedEndDate: snapped.end,
-          reason: pc.reason,
+        // Map AI proposed changes to full ProposedChange objects with current dates. A
+        // proposed date on a day off is put back on the calendar (start → next working
+        // day, the task keeps its working-day length).
+        // a task id the AI made up is dropped: accepting a proposal with an id that is not in the plan would fail as a whole
+      proposedChanges = aiResponse.proposedChanges.filter((pc) => taskById.has(pc.taskId)).map((pc) => {
+          const task = taskById.get(pc.taskId);
+          const snapped = snapToWorking(pc.proposedStartDate, pc.proposedEndDate, isWorking);
+          return {
+            taskId: pc.taskId,
+            taskName: pc.taskName ?? task?.name ?? '',
+            currentStartDate: task?.startDate ? toDateStr(new Date(task.startDate)) : '',
+            currentEndDate: task?.endDate ? toDateStr(new Date(task.endDate)) : '',
+            proposedStartDate: snapped.start,
+            proposedEndDate: snapped.end,
+            reason: pc.reason,
+          };
+        });
+
+        // The new finish and its change in working days, from the (snapped) proposed dates
+        const latestAiEnd = proposedChanges.reduce((latest, pc) => {
+          const d = utcDay(pc.proposedEndDate);
+          return !isNaN(d.getTime()) && d > latest ? d : latest;
+        }, utcDay(originalEndDate));
+
+        rationale = aiResponse.rationale;
+        estimatedImpact = {
+          originalEndDate,
+          proposedEndDate: ymdOf(latestAiEnd),
+          daysChange: workingDaysAfter(utcDay(originalEndDate), latestAiEnd, isWorking),
+          criticalPathImpact: aiResponse.estimatedImpact.criticalPathImpact,
         };
-      });
+        aiDone = true;
+      } catch (err: any) {
+        // the AI's answer was cut off or unreadable: the plan-based calculation below still gives the PM a proposal
+        // over the AI budget, out of credit, breaker open: pressing the button again will not help
+        aiNote = isAIUnavailableError(err) || err?.code === 'AI_BUDGET_EXCEEDED' || err?.code === 'UPGRADE_REQUIRED'
+          ? "The AI isn't available right now, so this is the standard calculation. "
+          : 'The AI could not finish its answer, so this is the standard calculation. ';
+        logger.warn('[AutoReschedule] AI proposal failed, using the standard calculation: ' + (err?.message || err));
+      }
+    }
 
-      // The new finish and its change in working days, from the (snapped) proposed dates
-      const latestAiEnd = proposedChanges.reduce((latest, pc) => {
-        const d = utcDay(pc.proposedEndDate);
-        return !isNaN(d.getTime()) && d > latest ? d : latest;
-      }, utcDay(originalEndDate));
-
-      rationale = aiResponse.rationale;
-      estimatedImpact = {
-        originalEndDate,
-        proposedEndDate: ymdOf(latestAiEnd),
-        daysChange: workingDaysAfter(utcDay(originalEndDate), latestAiEnd, isWorking),
-        criticalPathImpact: aiResponse.estimatedImpact.criticalPathImpact,
-      };
-    } else {
+    if (!aiDone) {
       // Fallback: generate a simple heuristic-based proposal without AI
       proposedChanges = [];
       const proposedIds = new Set<string>();
@@ -437,7 +453,8 @@ Please propose date changes to reschedule affected tasks with minimal disruption
 
       // phases are rolled up, not counted
       const lateTasks = delayedTasks.filter(d => !taskById.get(d.taskId)?.isSummary).length;
-      rationale = lateTasks > 0
+      rationale = aiNote;
+      rationale += lateTasks > 0
         ? `Detected ${lateTasks} delayed task(s). Proposed date adjustments extend delayed tasks to match current velocity and shift dependent tasks accordingly.`
         : 'No delays detected. Schedule is on track.';
 

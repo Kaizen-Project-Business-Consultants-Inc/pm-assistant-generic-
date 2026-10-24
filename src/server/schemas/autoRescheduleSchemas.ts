@@ -52,7 +52,7 @@ export const RescheduleAIResponseSchema = z.object({
   proposedChanges: z.array(
     z.object({
       taskId: z.string(),
-      taskName: z.string(),
+      taskName: z.string().optional(),
       proposedStartDate: z.string(),
       proposedEndDate: z.string(),
       reason: z.string(),
