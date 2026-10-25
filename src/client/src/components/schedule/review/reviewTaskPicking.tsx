@@ -11,7 +11,7 @@ import { formatCalendarDate } from '../../../utils/dateUtils';
  */
 
 /** The most tasks one delete takes — the server refuses more (routes/core/bulk.ts MAX_BULK) */
-export const MAX_DELETE_AT_ONCE = 100;
+const MAX_DELETE_AT_ONCE = 100;
 
 /** What a panel needs to know about a task to list it */
 export interface ReviewTaskInfo {
