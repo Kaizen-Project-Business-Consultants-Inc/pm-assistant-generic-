@@ -468,10 +468,12 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   // first one scrolled into view (filters that hide them are cleared, with a note).
   const [highlightTaskIds, setHighlightTaskIds] = useState<Set<string>>(new Set());
   const handleHighlightTasks = useCallback((ids: string[] | null) => {
-    const list = (ids ?? []).filter(id => tasks.some(t => t.id === id));
+    const known = new Set(tasks.map(t => t.id));
+    const list = (ids ?? []).filter(id => known.has(id));
     setHighlightTaskIds(new Set(list));
     if (list.length === 0) { setFocusTaskId(null); return; }
-    if (list.some(id => !filteredTasks.some(t => t.id === id))) {
+    const visible = new Set(filteredTasks.map(t => t.id));
+    if (list.some(id => !visible.has(id))) {
       setSearchQuery(''); setFilterStatus(''); setFilterPriority(''); setFilterAssignee('');
       setReviewRowFilter(null); setQuickFilter('all');
       setFocusNotice('Filters were cleared so you can see these rows.');
@@ -480,6 +482,12 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     setTimeout(() => setFocusTaskId(list[0]), 0); // re-scroll even if it's the same row as before
   }, [tasks, filteredTasks]);
   const rowNumberOf = useCallback((id: string) => rowNumbers.get(id), [rowNumbers]);
+  // What the review panels list for a task: its name and dates (U81)
+  const taskInfoOf = useMemo(() => {
+    const list: GanttTask[] = tasksData?.data || tasksData?.tasks || [];
+    const byId = new Map(list.map(t => [t.id, { name: t.name, startDate: t.startDate, endDate: t.endDate, isSummary: t.isSummary }]));
+    return (id: string) => byId.get(id);
+  }, [tasksData]);
 
   // ---- From the daily deadline email: ?deadlines=mine|all (U55) ----
   // The tasks it named are worked out again here (overdue + due in the next week, the person's own
@@ -996,6 +1004,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           activeRowFilterLabel={reviewRowFilter?.label ?? null}
           onHighlightTasks={handleHighlightTasks}
           rowNumberOf={rowNumberOf}
+          taskInfoOf={taskInfoOf}
+          onDeleteTasks={canEdit ? handleBulkDelete : undefined}
           // Edit project opens over the plan: the review closes first so the dialog isn't behind it
           onEditProject={onEditProject ? () => { setShowReviewPanel(false); handleHighlightTasks(null); onEditProject(); } : undefined}
           onSaveBaseline={canEdit ? () => createBaselineMutation.mutateAsync() : undefined}

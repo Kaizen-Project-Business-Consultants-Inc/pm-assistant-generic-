@@ -81,11 +81,15 @@ describe('ScheduleReviewPanel', () => {
     expect(screen.getByText(/1 critical problem, 2 high problems, 1 medium problem, 1 for information\./)).toBeInTheDocument();
   });
 
-  it('Show rows passes the finding task ids and label', async () => {
-    const { onShowRows } = renderPanel();
+  it('clicking a finding lights its rows up in the plan; ticking it and Show in plan filters the grid', async () => {
+    const onHighlightTasks = vi.fn();
+    const { onShowRows } = renderPanel({ onHighlightTasks });
     await screen.findByText('No logic at all');
-    // R04 and R06 each flag one task; the first button belongs to R04 (findings are in severity order)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Show 1 row' })[0]);
+    // R04 and R06 each flag one task; the first belongs to R04 (findings are in severity order)
+    fireEvent.click(screen.getByRole('button', { name: /Milestone with duration/ }));
+    expect(onHighlightTasks).toHaveBeenCalledWith(['g1']);
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Tick: Milestone with duration, 1 task' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show in plan' }));
     expect(onShowRows).toHaveBeenCalledWith(['g1'], 'Milestone with duration');
   });
 

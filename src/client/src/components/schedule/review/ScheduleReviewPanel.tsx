@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, ListFilter, Wrench, FileDown, CheckCircle2 } from 'lucide-react';
+import { X, RefreshCw, Loader2, ChevronDown, ChevronRight, Lock, Wrench, FileDown, CheckCircle2 } from 'lucide-react';
 import { apiService } from '../../../services/api';
 import { severityColor } from '../../../utils/severityColors';
 import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { ScheduleScoreChip, BAND_LABELS, type ReviewBand } from './ScheduleScoreChip';
 import { ScheduleFixProposalPanel } from './ScheduleFixProposalPanel';
+import { TickBar, useTicks, type TaskPickingProps } from './reviewTaskPicking';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server's ScheduleReviewRecord)
@@ -46,7 +47,7 @@ export interface ReviewRunSummary {
   createdAt: string;
 }
 
-interface ScheduleReviewPanelProps {
+interface ScheduleReviewPanelProps extends TaskPickingProps {
   scheduleId: string;
   projectId: string;
   canEdit: boolean;
@@ -103,11 +104,152 @@ function formatWhen(iso: string): string {
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+const findingKey = (sev: ReviewSeverity, f: ReviewFinding, i: number) => `${sev}-${f.ruleId}-${i}`;
+
+/**
+ * The findings by level. Tasks deleted since the review (its re-run takes a few seconds) are no longer
+ * counted, and a finding whose tasks are all gone is left out.
+ */
+function groupLive(findings: ReviewFinding[], taskInfoOf: TaskPickingProps['taskInfoOf']): Map<ReviewSeverity, ReviewFinding[]> {
+  const m = new Map<ReviewSeverity, ReviewFinding[]>(SEVERITY_ORDER.map(s => [s, []]));
+  for (const f of findings) {
+    // eslint-disable-next-line no-restricted-syntax -- a finding's own task ids, each looked up in a Map (no search)
+    const taskIds = taskInfoOf ? f.taskIds.filter(id => taskInfoOf(id)) : f.taskIds;
+    if (taskIds.length > 0 || f.taskIds.length === 0) m.get(f.severity)?.push(taskIds.length === f.taskIds.length ? f : { ...f, taskIds });
+  }
+  return m;
+}
+
+/** The tasks behind the ticked findings (each once), and the name the plan's row filter shows for them */
+function tickedFrom(grouped: Map<ReviewSeverity, ReviewFinding[]>, ticked: Set<string>): { taskIds: string[]; label: string } {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  for (const sev of SEVERITY_ORDER) {
+    (grouped.get(sev) ?? []).forEach((f, i) => {
+      if (!ticked.has(findingKey(sev, f, i))) return;
+      names.add(f.rule);
+      f.taskIds.forEach(id => ids.add(id));
+    });
+  }
+  return { taskIds: [...ids], label: names.size === 1 ? [...names][0] : `${ticked.size} ticked findings` };
+}
+
+function FindingText({ f }: { f: ReviewFinding }) {
+  return (
+    <>
+      <span className="block text-xs font-semibold text-gray-900 dark:text-gray-100">
+        {f.rule} <span className="font-normal text-gray-500">· {f.ruleId}</span>
+      </span>
+      <span className="mt-0.5 block text-xs text-gray-700 dark:text-gray-300 break-words">{f.message}</span>
+      {fixSize(f) && <span className="mt-0.5 block text-xs font-medium text-gray-800 dark:text-gray-200">{fixSize(f)}</span>}
+    </>
+  );
+}
+
+/**
+ * Findings ticked (U81) and the one the PM clicked (its rows are lit in the plan). A new review means
+ * new findings, so the ticks and the lit rows belong to the old list and go.
+ */
+function useFindingPicking(reviewId: string | undefined, onHighlightTasks: ((taskIds: string[] | null) => void) | undefined) {
+  const picks = useTicks();
+  const clearPicks = picks.clear;
+  const [pointed, setPointed] = useState<string | null>(null);
+  const highlight = useRef(onHighlightTasks);
+  highlight.current = onHighlightTasks;
+  const pointedRef = useRef(pointed);
+  pointedRef.current = pointed;
+  const dropLit = useCallback(() => { setPointed(null); highlight.current?.(null); }, []);
+  const dropAll = useCallback(() => { clearPicks(); dropLit(); }, [clearPicks, dropLit]);
+  useEffect(() => {
+    clearPicks();
+    if (pointedRef.current) dropLit();
+  }, [reviewId, clearPicks, dropLit]);
+  // Click a finding: its rows light up in the plan (click it again to put them out)
+  const point = (key: string, f: ReviewFinding) => {
+    const off = pointed === key;
+    setPointed(off ? null : key);
+    highlight.current?.(off ? null : f.taskIds);
+  };
+  return { picks, pointed, point, dropLit, dropAll };
+}
+
+/** One level of findings: its header (open/close, Select all) and its rows, each ticked or clicked */
+function SeverityGroup({ sev, items, open, onToggle, ticked, toggle, setMany, pointed, onPoint }: {
+  sev: ReviewSeverity;
+  items: ReviewFinding[];
+  open: boolean;
+  onToggle: () => void;
+  ticked: Set<string>;
+  toggle: (key: string) => void;
+  setMany: (keys: string[], on: boolean) => void;
+  pointed: string | null;
+  onPoint: (key: string, f: ReviewFinding) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+      <section aria-label={`${SEVERITY_LABEL[sev]} findings`}>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            className="flex flex-1 items-center gap-2 py-1 text-left"
+          >
+            {open ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(sev)}`}>{SEVERITY_LABEL[sev]}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{items.length}</span>
+          </button>
+          {open && items.some(f => f.taskIds.length > 0) && (
+            <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={items.every((f, i) => f.taskIds.length === 0 || ticked.has(findingKey(sev, f, i)))}
+                onChange={e => setMany(items.flatMap((f, i) => (f.taskIds.length > 0 ? [findingKey(sev, f, i)] : [])), e.target.checked)}
+                className="rounded border-gray-300 text-primary-600"
+              />
+              Select all in {SEVERITY_LABEL[sev]}
+            </label>
+          )}
+        </div>
+        {open && (
+          <ul className="mt-1 space-y-2">
+            {items.map((f, i) => {
+              const key = findingKey(sev, f, i);
+              return (
+                <li key={key} className={`flex items-start gap-2 rounded-lg border px-3 py-2 ${pointed === key ? 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/30' : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800'}`}>
+                  {f.taskIds.length > 0 && (
+                    <input
+                      type="checkbox"
+                      checked={ticked.has(key)}
+                      onChange={() => toggle(key)}
+                      aria-label={`Tick: ${f.rule}, ${f.taskIds.length} task${f.taskIds.length === 1 ? '' : 's'}`}
+                      className="mt-0.5 rounded border-gray-300 text-primary-600"
+                    />
+                  )}
+                  <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                    {f.taskIds.length > 0 ? (
+                      <button type="button" onClick={() => onPoint(key, f)} aria-pressed={pointed === key} aria-label={`Show rows in the plan: ${f.rule}`} className="min-w-0 text-left" title="Show these rows in the plan">
+                        <FindingText f={f} />
+                      </button>
+                    ) : <div className="min-w-0"><FindingText f={f} /></div>}
+                    {f.pointsDeducted > 0 && (
+                      <span className="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400" title="Points deducted">−{f.pointsDeducted}</span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline }: ScheduleReviewPanelProps) {
+export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, onShowRows, activeRowFilterLabel, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline, taskInfoOf, onDeleteTasks }: ScheduleReviewPanelProps) {
   const queryClient = useQueryClient();
   const panelRef = useRef<HTMLDivElement>(null);
   const [openGroups, setOpenGroups] = useState<Set<ReviewSeverity>>(new Set(OPEN_BY_DEFAULT));
@@ -201,12 +343,9 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
   }, []);
 
   const review = latestQuery.data ?? null;
-  const grouped = useMemo(() => {
-    const m = new Map<ReviewSeverity, ReviewFinding[]>();
-    for (const s of SEVERITY_ORDER) m.set(s, []);
-    for (const f of review?.findings ?? []) m.get(f.severity)?.push(f);
-    return m;
-  }, [review]);
+  const { picks, pointed, point, dropLit, dropAll } = useFindingPicking(review?.id, onHighlightTasks);
+  const grouped = useMemo(() => groupLive(review?.findings ?? [], taskInfoOf), [review, taskInfoOf]);
+  const { taskIds: tickedTaskIds, label: tickedLabel } = useMemo(() => tickedFrom(grouped, picks.ticked), [grouped, picks.ticked]);
 
   const history = historyQuery.data?.runs ?? [];
   const trend = [...history].reverse(); // oldest → newest for the sparkline
@@ -307,54 +446,20 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
           )}
 
           {/* Findings by severity */}
-          {review && SEVERITY_ORDER.map(sev => {
-            const items = grouped.get(sev) ?? [];
-            if (items.length === 0) return null;
-            const open = openGroups.has(sev);
-            return (
-              <section key={sev} aria-label={`${SEVERITY_LABEL[sev]} findings`}>
-                <button
-                  type="button"
-                  onClick={() => toggleGroup(sev)}
-                  aria-expanded={open}
-                  className="w-full flex items-center gap-2 py-1 text-left"
-                >
-                  {open ? <ChevronDown className="w-4 h-4 text-gray-500" /> : <ChevronRight className="w-4 h-4 text-gray-500" />}
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(sev)}`}>{SEVERITY_LABEL[sev]}</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{items.length}</span>
-                </button>
-                {open && (
-                  <ul className="mt-1 space-y-2">
-                    {items.map((f, i) => (
-                      <li key={`${f.ruleId}-${i}`} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="text-xs font-semibold text-gray-900 dark:text-gray-100">
-                              {f.rule} <span className="font-normal text-gray-500">· {f.ruleId}</span>
-                            </div>
-                            <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 break-words">{f.message}</p>
-                            {fixSize(f) && <p className="text-xs font-medium text-gray-800 dark:text-gray-200 mt-0.5">{fixSize(f)}</p>}
-                          </div>
-                          {f.pointsDeducted > 0 && (
-                            <span className="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400" title="Points deducted">−{f.pointsDeducted}</span>
-                          )}
-                        </div>
-                        {f.taskIds.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => onShowRows(f.taskIds, f.rule)}
-                            className="mt-1.5 inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
-                          >
-                            <ListFilter className="w-3 h-3" /> Show {f.taskIds.length} row{f.taskIds.length === 1 ? '' : 's'}
-                          </button>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            );
-          })}
+          {review && SEVERITY_ORDER.map(sev => (
+            <SeverityGroup
+              key={sev}
+              sev={sev}
+              items={grouped.get(sev) ?? []}
+              open={openGroups.has(sev)}
+              onToggle={() => toggleGroup(sev)}
+              ticked={picks.ticked}
+              toggle={picks.toggle}
+              setMany={picks.setMany}
+              pointed={pointed}
+              onPoint={point}
+            />
+          ))}
 
           {/* Skipped rules */}
           {review && review.skippedRules.filter(s => s.reason === 'needs_logic').length > 0 && (
@@ -370,6 +475,16 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
             </section>
           )}
         </div>
+
+        <TickBar
+          unit="finding"
+          count={picks.ticked.size}
+          taskIds={tickedTaskIds}
+          onShow={ids => onShowRows(ids, tickedLabel)}
+          onDeleteTasks={canEdit ? onDeleteTasks : undefined}
+          taskInfoOf={taskInfoOf}
+          onDeleted={dropAll}
+        />
 
         {/* Confirmation after Re-run review — without it a run that changes nothing looks like a dead button */}
         {rerunMessage && (
@@ -399,7 +514,7 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
               </button>
               {review && review.findings.length > 0 && (nothingLeft ? (
                 <>
-                // greyed, not hidden: it comes back when the plan changes. aria-disabled keeps it reachable so a screen reader says why
+                {/* greyed, not hidden: it comes back when the plan changes. aria-disabled keeps it reachable so a screen reader says why */}
                 <button
                   type="button"
                   aria-disabled="true"
@@ -440,9 +555,12 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
         <ScheduleFixProposalPanel
           scheduleId={scheduleId}
           projectId={projectId}
-          onClose={() => { setShowFixes(false); onHighlightTasks?.(null); }}
+          onClose={() => { setShowFixes(false); dropLit(); }}
           onHighlightTasks={onHighlightTasks}
           rowNumberOf={rowNumberOf}
+          taskInfoOf={taskInfoOf}
+          onDeleteTasks={canEdit ? onDeleteTasks : undefined}
+          findingCount={review?.findings.filter(f => f.severity !== 'info').length}
           onEditProject={onEditProject}
           onSaveBaseline={onSaveBaseline}
           onProposed={s => review && setLeftOver({ reviewId: review.id, ...s })}

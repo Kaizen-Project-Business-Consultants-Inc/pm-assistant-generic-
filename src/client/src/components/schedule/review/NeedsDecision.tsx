@@ -6,12 +6,16 @@ import { announce } from '../../../utils/announce';
 import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { severityColor } from '../../../utils/severityColors';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
+import { formatCalendarDate } from '../../../utils/dateUtils';
+import { TaskTickRow, TickBar, useTicks, type TaskPickingProps } from './reviewTaskPicking';
 
 /**
  * Propose fixes — "Needs your decision" (2026-10-18). The review findings no proposed fix answers
  * (worked out on the server, by rule and task), each with a plain sentence and buttons that open
  * screens that already exist: the plan with those rows highlighted, Edit project, the newest
  * History change's Undo, and Save baseline. No new editing screens.
+ * U81 (2026-10-24): each decision lists its tasks — tick them, click one to light its row up in the plan,
+ * and delete the ticked ones after one question.
  */
 
 type Level = 'critical' | 'high' | 'medium' | 'low';
@@ -150,32 +154,117 @@ function Buttons({ f, a }: { f: OpenFinding; a: DecisionActions }) {
   );
 }
 
-export function NeedsDecision({ items, actions }: { items: OpenFinding[]; actions: DecisionActions }) {
+/** Tasks listed under a decision before "Show all" */
+const FIRST_TASKS = 8;
+
+/**
+ * The decisions as they stand now: tasks deleted since the proposal was made (they are no longer in the
+ * plan) drop out, and a decision whose tasks are all gone goes with them. Whole-plan decisions stay.
+ */
+export function liveDecisions(items: OpenFinding[], taskInfoOf: TaskPickingProps['taskInfoOf']): OpenFinding[] {
+  if (!taskInfoOf) return items;
+  const out: OpenFinding[] = [];
+  for (const f of items) {
+    // eslint-disable-next-line no-restricted-syntax -- a decision's own task ids, each looked up in a Map (no search)
+    const taskIds = f.taskIds.filter(id => taskInfoOf(id));
+    if (taskIds.length > 0 || f.taskIds.length === 0) out.push({ ...f, taskIds });
+  }
+  return out;
+}
+
+/** The span the tasks cover — what the project dates would have to take in (R06) */
+function taskSpan(ids: string[], taskInfoOf: TaskPickingProps['taskInfoOf']): string | null {
+  let first = '';
+  let last = '';
+  for (const id of ids) {
+    const info = taskInfoOf?.(id);
+    const start = (info?.startDate ?? '').slice(0, 10);
+    const end = (info?.endDate ?? '').slice(0, 10);
+    if (start && (!first || start < first)) first = start;
+    if (end && (!last || end > last)) last = end;
+  }
+  return first && last ? `These tasks run from ${formatCalendarDate(first)} to ${formatCalendarDate(last)}.` : null;
+}
+
+export function NeedsDecision({ items, actions, picking, onTasksDeleted }: { items: OpenFinding[]; actions: DecisionActions; picking?: TaskPickingProps; onTasksDeleted?: () => void }) {
   const [open, setOpen] = useState(true);
-  if (items.length === 0) return null;
+  const ticks = useTicks();
+  const [pointed, setPointed] = useState<string | null>(null);
+  const [allShown, setAllShown] = useState<Set<string>>(new Set());
+  const { taskInfoOf, rowNumberOf, onDeleteTasks } = picking ?? {};
+  const shown = liveDecisions(items, taskInfoOf);
+  if (shown.length === 0) return null;
+  const point = (key: string, ids: string[]) => {
+    setPointed(key);
+    actions.onShowTasks?.(ids);
+  };
   return (
     <section aria-label="Needs your decision" className="pt-3 border-t border-gray-200 dark:border-gray-700">
       <h3>
         <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="w-full text-left text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Needs your decision ({items.length})
+          Needs your decision ({shown.length})
         </button>
       </h3>
       <p className="text-xs text-gray-500 dark:text-gray-400">The review found these, and no fix above changes them. They need you, not a rule.</p>
       {open && (
         <ul className="mt-2 space-y-2">
-          {items.map(f => (
-            <li key={f.ruleId} className="rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(f.severity)}`}>{LEVEL_LABEL[f.severity]}</span>
-                <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{f.rule}</span>
-                {f.taskIds.length > 0 && <span className="text-xs text-gray-500 dark:text-gray-400">· {f.taskIds.length} task{f.taskIds.length === 1 ? '' : 's'}</span>}
-              </div>
-              <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5">{PLAIN[f.ruleId] ?? f.message}</p>
-              <Buttons f={f} a={actions} />
-            </li>
-          ))}
+          {shown.map(f => {
+            const listed = !!taskInfoOf && f.taskIds.length > 0;
+            const every = listed && f.taskIds.every(id => ticks.ticked.has(id));
+            const more = f.taskIds.length > FIRST_TASKS && !allShown.has(f.ruleId);
+            return (
+              <li key={f.ruleId} className={`rounded-lg border px-3 py-2 ${pointed === f.ruleId ? 'border-amber-400 bg-amber-50 dark:border-amber-600 dark:bg-amber-900/30' : 'border-gray-200 dark:border-gray-700'}`}>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${severityColor(f.severity)}`}>{LEVEL_LABEL[f.severity]}</span>
+                  <span className="text-xs font-semibold text-gray-900 dark:text-gray-100">{f.rule}</span>
+                  {f.taskIds.length > 0 && <span className="text-xs text-gray-500 dark:text-gray-400">· {f.taskIds.length} task{f.taskIds.length === 1 ? '' : 's'}</span>}
+                </div>
+                <p className="text-xs text-gray-700 dark:text-gray-300 mt-0.5">{PLAIN[f.ruleId] ?? f.message}</p>
+                {f.ruleId === 'R06' && taskSpan(f.taskIds, taskInfoOf) && <p className="text-xs font-medium text-gray-800 dark:text-gray-200 mt-0.5">{taskSpan(f.taskIds, taskInfoOf)}</p>}
+                <Buttons f={f} a={{ ...actions, onShowTasks: actions.onShowTasks ? ids => point(f.ruleId, ids) : undefined }} />
+                {listed && (
+                  <div className="mt-2 space-y-1">
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-gray-700 dark:text-gray-300">
+                      <input type="checkbox" checked={every} onChange={e => ticks.setMany(f.taskIds, e.target.checked)} className="rounded border-gray-300 text-primary-600" />
+                      Select all {f.taskIds.length} task{f.taskIds.length === 1 ? '' : 's'}
+                    </label>
+                    <ul className="space-y-1" aria-label={`Tasks: ${f.rule}`}>
+                      {(more ? f.taskIds.slice(0, FIRST_TASKS) : f.taskIds).map(id => (
+                        <TaskTickRow
+                          key={id}
+                          id={id}
+                          ticked={ticks.ticked.has(id)}
+                          pointed={pointed === `${f.ruleId}:${id}`}
+                          info={taskInfoOf?.(id)}
+                          rowNumber={rowNumberOf?.(id)}
+                          onToggle={ticks.toggle}
+                          onPoint={taskId => point(`${f.ruleId}:${taskId}`, [taskId])}
+                        />
+                      ))}
+                    </ul>
+                    {more && (
+                      <button type="button" onClick={() => setAllShown(prev => new Set(prev).add(f.ruleId))} className="text-xs font-medium text-primary-600 hover:underline dark:text-primary-400">
+                        Show all {f.taskIds.length} tasks
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
+      <div className="sticky bottom-0 -mx-4 mt-2">
+        <TickBar
+          unit="task"
+          count={ticks.ticked.size}
+          taskIds={[...ticks.ticked]}
+          onShow={ids => point('ticked', ids)}
+          onDeleteTasks={onDeleteTasks}
+          taskInfoOf={taskInfoOf}
+          onDeleted={() => { ticks.clear(); setPointed(null); actions.onShowTasks?.([]); onTasksDeleted?.(); }}
+        />
+      </div>
     </section>
   );
 }

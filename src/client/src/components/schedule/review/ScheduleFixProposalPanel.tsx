@@ -9,7 +9,8 @@ import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
 import { formatCalendarDate } from '../../../utils/dateUtils';
 import { useFixPreview, ImpactBox, overlapImpactText, shiftText, passesEnd } from './ScheduleFixImpact';
 import { UndoSelectedFixes, type AppliedFixItem, type UndoSummary } from './UndoSelectedFixes';
-import { NeedsDecision, useDecisionActions, type OpenFinding } from './NeedsDecision';
+import { NeedsDecision, liveDecisions, useDecisionActions, type OpenFinding } from './NeedsDecision';
+import type { TaskPickingProps } from './reviewTaskPicking';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server ProposedFix / proposal shape)
@@ -95,13 +96,14 @@ interface UndoAnswer {
   everything?: boolean;
 }
 
-interface Props {
+interface Props extends TaskPickingProps {
   scheduleId: string;
   projectId: string;
   onClose: () => void;
   /** Highlight (and scroll to) the rows a suggestion changes; null clears */
   onHighlightTasks?: (taskIds: string[] | null) => void;
-  rowNumberOf?: (taskId: string) => number | undefined;
+  /** How many findings the review has — for "32 findings → 0 fixes, 7 decisions" */
+  findingCount?: number;
   /** Open Edit project (Needs your decision: move the end date); absent when the user can't edit it */
   onEditProject?: () => void;
   /** Save a baseline of the plan now (the schedule's own Save baseline) */
@@ -412,6 +414,11 @@ function LevelSection({ group, scheduleId, proposalId, tick, list, ticked, probl
         <span className="text-xs text-gray-500 dark:text-gray-400">{problems.length > 0 ? '· ' : ''}{items.every(f => f.type === 'add_dependency') ? `${plural(items.length, 'link')} to add` : `${plural(items.length, 'fix', 'fixes')} offered`}</span>
         {rest.length > 0 && tick(`fix-level-${level}`, rest, `Select all in ${label}`)}
       </div>
+      {rest.length > 0 && overlap.length > 0 && (
+        <p className="mb-2 text-xs text-gray-600 dark:text-gray-300">
+          Select all skips the overlap links. Tick them one by one in the box below: {plural(overlap.length, 'link')} between tasks that run at the same time.
+        </p>
+      )}
       {problems.length > 0 && (
         <ul className="mb-2 space-y-1">
           {problems.map(pr => (
@@ -541,7 +548,7 @@ function AppliedSummary({ result, undoing, onUndo, appliedFixes, undoSummary }: 
 // Component
 // ---------------------------------------------------------------------------
 
-export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline, onProposed }: Props) {
+export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHighlightTasks, rowNumberOf, onEditProject, onSaveBaseline, onProposed, taskInfoOf, onDeleteTasks, findingCount }: Props) {
   const queryClient = useQueryClient();
   // Apply and Undo change links, dates and tasks: every view of the plan fetches again (U38)
   const planChanged = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
@@ -731,6 +738,13 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
     onError: setError,
   });
 
+  // Tasks deleted from a decision: the review is made again (the deleted tasks' findings go) and so is the proposal
+  const tasksDeleted = () => {
+    planChanged();
+    apiService.reviewSchedule(scheduleId).catch(() => undefined).then(() => { planChanged(); proposeMutation.mutate(false); }).catch(() => undefined);
+  };
+  const liveDecisionCount = liveDecisions(decisions.items, taskInfoOf).length;
+
   /** A list of fix rows, the first few shown until "Show N more" */
   const fixRow = (f: ProposedFix) => (
     <FixRow
@@ -805,6 +819,13 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
             </div>
           )}
 
+          {proposal && !proposeMutation.isPending && !applied && findingCount != null && findingCount > 0 && (liveDecisionCount > 0 || fixes.length > 0) && (
+            <p className="rounded-lg bg-gray-50 dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200">
+              <span className="font-semibold">{plural(findingCount, 'finding')} → {plural(fixes.length, 'fix', 'fixes')} the app can make, {plural(liveDecisionCount, 'decision')} for you.</span>
+              {' '}A decision covers every task with the same problem.
+            </p>
+          )}
+
           {proposal && !proposeMutation.isPending && fixes.length === 0 && (
             <p className="text-sm text-gray-700 dark:text-gray-300">
               {proposal.proposalData.needsDecision?.length
@@ -874,7 +895,7 @@ export function ScheduleFixProposalPanel({ scheduleId, projectId, onClose, onHig
             </fieldset>
           )}
 
-          <NeedsDecision items={proposeMutation.isPending ? [] : decisions.items} actions={decisions.actions} />
+          <NeedsDecision key={proposal?.id} items={proposeMutation.isPending ? [] : decisions.items} actions={decisions.actions} picking={{ taskInfoOf, rowNumberOf, onDeleteTasks }} onTasksDeleted={tasksDeleted} />
         </div>
 
         <ImpactBox preview={impact.data} working={impact.working} />
