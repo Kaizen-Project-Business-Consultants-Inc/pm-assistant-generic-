@@ -73,7 +73,7 @@ export function ArchivedProjectsList({ projects, canRestore }: { projects: Proje
                   <td className={`${TD} whitespace-nowrap`}>{p.endDate ? formatCalendarDate(p.endDate) : '—'}</td>
                   <td className={`${TD} whitespace-nowrap`}>
                     <div className="flex items-center gap-3">
-                      <Link to={`/project/${p.id}`} className="text-sm font-semibold text-primary-700 dark:text-primary-300 hover:underline">Open<span className="sr-only"> {p.name}</span></Link>
+                      <Link to={`/project/${p.id}`} className="text-sm font-semibold text-primary-700 dark:text-primary-300 hover:underline">Open{' '}<span className="sr-only">{p.name}</span></Link>
                       {canRestore && p.canEdit && (
                         <button
                           type="button"
@@ -82,7 +82,7 @@ export function ArchivedProjectsList({ projects, canRestore }: { projects: Proje
                           className="inline-flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-600 px-2.5 py-1 text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
                         >
                           <ArchiveRestore className="w-3.5 h-3.5" aria-hidden="true" />
-                          Restore<span className="sr-only"> {p.name}</span>
+                          Restore{' '}<span className="sr-only">{p.name}</span>
                         </button>
                       )}
                     </div>
