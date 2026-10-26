@@ -26,6 +26,7 @@ const {
   mockRecall,
   mockStore,
   mockGetInsightsByProject,
+  mockRunCommand,
 } = vi.hoisted(() => ({
   mockIsAvailable: vi.fn(),
   mockComplete: vi.fn(),
@@ -50,6 +51,7 @@ const {
   mockRecall: vi.fn(),
   mockStore: vi.fn(),
   mockGetInsightsByProject: vi.fn(),
+  mockRunCommand: vi.fn(),
 }));
 
 // ── Module mocks ───────────────────────────────────────────────────────
@@ -71,6 +73,8 @@ vi.mock('../../services/claudeService', () => ({
     }
   },
 }));
+
+vi.mock('../../services/chatCommands/runChatCommand', () => ({ runChatCommand: mockRunCommand }));
 
 vi.mock('../../services/aiContextBuilder', () => ({
   AIContextBuilder: class {
@@ -210,6 +214,37 @@ describe('AIChatService', () => {
   // =====================================================================
 
   describe('sendMessage', () => {
+    it('does a typed command in the app: no Claude call, even with AI switched off, and the reply is stored', async () => {
+      mockIsAvailable.mockReturnValue(false);
+      const actions = [{ success: true, toolName: 'typed_command', summary: 'Renamed.', data: { typed: true } }];
+      mockRunCommand.mockResolvedValue({ reply: 'Renamed.', actions });
+
+      const result = await service.sendMessage(makeRequest({ message: 'rename 5 to "Design"', context: { type: 'project', projectId: 'p1', scheduleId: 's1' } }));
+
+      expect(result).toEqual({ reply: 'Renamed.', conversationId: 'conv-new', aiPowered: false, actions });
+      expect(mockRunCommand).toHaveBeenCalledWith(
+        { kind: 'rename', row: 5, name: 'Design' },
+        { userId: 'user-1', userRole: 'admin', projectId: 'p1', scheduleId: 's1' },
+        expect.anything(),
+      );
+      expect(mockCompleteToolLoop).not.toHaveBeenCalled();
+      expect(mockComplete).not.toHaveBeenCalled();
+      expect(mockAddMessage).toHaveBeenCalledWith('conv-new', { role: 'assistant', content: 'Renamed.', actions });
+    });
+
+    it('stores a Confirm button press as "Confirm delete", not its id', async () => {
+      mockRunCommand.mockResolvedValue({ reply: 'Deleted.', actions: [] });
+      await service.sendMessage(makeRequest({ message: 'confirm delete 0b6a6a3e-1111-4222-8333-444455556666' }));
+      expect(mockAddMessage).toHaveBeenCalledWith('conv-new', { role: 'user', content: 'Confirm delete' });
+    });
+
+    it('a message that is not exactly a command still goes to Claude', async () => {
+      mockCompleteToolLoop.mockResolvedValue({ finalText: 'ok', totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1, toolResults: [] });
+      await service.sendMessage(makeRequest({ message: 'get rid of the testing task' }));
+      expect(mockRunCommand).not.toHaveBeenCalled();
+      expect(mockCompleteToolLoop).toHaveBeenCalled();
+    });
+
     it('returns AI-disabled message when claudeService is unavailable', async () => {
       mockIsAvailable.mockReturnValue(false);
 

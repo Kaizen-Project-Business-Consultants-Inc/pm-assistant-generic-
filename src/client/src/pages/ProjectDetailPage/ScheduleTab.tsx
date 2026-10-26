@@ -12,6 +12,7 @@ import {
   Table2,
   MapPin, Route } from 'lucide-react';
 import { apiService } from '../../services/api';
+import { useUIStore } from '../../stores/uiStore';
 import type { Methodology } from '../../utils/methodology';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { MobileScheduleView } from './schedule-tab/MobileScheduleView';
@@ -53,6 +54,13 @@ export function ScheduleTab({ projectId, projectName, projectStartDate, defaultV
   });
 
   const schedules: any[] = schedulesData?.schedules || [];
+
+  // Mjuzi's typed commands number their rows in the plan on screen
+  const openScheduleId: string | undefined = schedules[selectedScheduleIdx]?.id;
+  useEffect(() => {
+    useUIStore.getState().setOpenScheduleId(openScheduleId ?? null);
+    return () => useUIStore.getState().setOpenScheduleId(null);
+  }, [openScheduleId]);
 
   // A link to one task (Morning Briefing): open the schedule it lives in, in a view
   // that has rows. ScheduleGantt scrolls to and highlights the task itself.

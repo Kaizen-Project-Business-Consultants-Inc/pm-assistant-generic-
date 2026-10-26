@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   Send,
   Trash2,
@@ -16,17 +16,21 @@ import {
 import { useAIChatStore, dashboardQuickActions, projectQuickActions, type QuickAction, type ConversationSummary } from '../../stores/aiChatStore';
 import { AIChatContext } from './AIChatContext';
 import { ActionOutcome } from './ActionOutcome';
+import { TypedCommandReply, ClaudeBadge, typedReplyOf } from './TypedCommandReply';
 import { QuickActions } from './QuickActions';
 import { useVoice } from '../../hooks/useVoice';
 import { endsWithQuestion } from '../../utils/speechText';
 import { announce } from '../../utils/announce';
-import type { AIPanelContext } from '../../stores/uiStore';
+import { useUIStore, type AIPanelContext } from '../../stores/uiStore';
 
 interface AIChatPanelProps {
   context: AIPanelContext;
 }
 
-export function AIChatPanel({ context }: AIChatPanelProps) {
+export function AIChatPanel({ context: panelContext }: AIChatPanelProps) {
+  // typed commands (delete task 5…) number their rows in the plan open on screen
+  const openScheduleId = useUIStore(s => s.openScheduleId);
+  const context = useMemo(() => (openScheduleId ? { ...panelContext, scheduleId: openScheduleId } : panelContext), [panelContext, openScheduleId]);
   const {
     messages, isLoading, error, addMessage, clearChat, sendMessage,
     conversations, conversationsLoaded, loadConversations, loadConversation,
@@ -120,6 +124,13 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
     addMessage({ role: 'user', content: trimmed });
     setInput('');
     sendMessage(trimmed, context);
+  }
+
+  /** The Confirm button of a typed delete: the chat shows what was pressed, the app does the delete (no AI) */
+  function handleConfirmDelete(taskId: string) {
+    if (isLoading) return;
+    addMessage({ role: 'user', content: 'Confirm delete' });
+    void sendMessage(`confirm delete ${taskId}`, context);
   }
 
   function handleQuickAction(action: QuickAction) {
@@ -282,7 +293,10 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
                   <span className="ml-1 inline-block h-4 w-1.5 animate-pulse rounded-full bg-primary-500" />
                 )}
                 {/* What Mjuzi did: the result, not every step (U57) */}
-                {message.actions && message.actions.length > 0 && <ActionOutcome actions={message.actions} />}
+                {typedReplyOf(message.actions)
+                  ? <TypedCommandReply reply={typedReplyOf(message.actions)!} busy={isLoading} onConfirmDelete={handleConfirmDelete} />
+                  : message.actions && message.actions.length > 0 && <ActionOutcome actions={message.actions} />}
+                {message.viaClaude && !message.isStreaming && message.content && <div className="mt-2"><ClaudeBadge /></div>}
               </div>
             </div>
           ))}
@@ -389,7 +403,7 @@ export function AIChatPanel({ context }: AIChatPanelProps) {
               if (isSpeaking) cancelSpeech();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Mjuzi about your projects..."
+            placeholder="Ask Mjuzi, or type a command (type help)..."
             aria-label="Chat message input"
             rows={1}
             className="min-w-0 flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3.5 py-2.5 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"

@@ -27,7 +27,7 @@ export class AiApi extends ApiBase {
   async sendChatMessage(data: {
     message: string;
     conversationId?: string;
-    context?: { type: string; projectId?: string };
+    context?: { type: string; projectId?: string; scheduleId?: string };
   }) {
     const response = await this.api.post('/ai-chat/message', data);
     return response.data;

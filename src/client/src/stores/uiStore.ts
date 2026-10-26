@@ -27,6 +27,8 @@ interface UIState {
   sidebarCollapsed: boolean;
   aiPanelOpen: boolean;
   aiPanelContext: AIPanelContext;
+  /** The plan open on the Schedule tab: Mjuzi's typed commands (delete task 5…) number their rows in it */
+  openScheduleId: string | null;
   notifications: Notification[];
   unreadCount: number;
 
@@ -36,6 +38,7 @@ interface UIState {
   toggleAIPanel: () => void;
   setAIPanelOpen: (open: boolean) => void;
   setAIPanelContext: (context: AIPanelContext) => void;
+  setOpenScheduleId: (id: string | null) => void;
   /** `id` = the server's id (so marking read reaches the server); an id already shown is ignored */
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'> & { id?: string; createdAt?: string }) => void;
   /** The server's unread total — the list only holds a page of them */
@@ -53,6 +56,7 @@ export const useUIStore = create<UIState>()(
       sidebarCollapsed: false,
       aiPanelOpen: false,
       aiPanelContext: { type: 'dashboard' },
+      openScheduleId: null,
       notifications: [],
       unreadCount: 0,
 
@@ -65,6 +69,8 @@ export const useUIStore = create<UIState>()(
       setAIPanelOpen: (open) => set({ aiPanelOpen: open }),
 
       setAIPanelContext: (context) => set({ aiPanelContext: context }),
+
+      setOpenScheduleId: (id) => set({ openScheduleId: id }),
 
       addNotification: (notification) =>
         set((state) => {

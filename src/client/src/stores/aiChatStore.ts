@@ -12,6 +12,8 @@ export interface ChatMessage {
   timestamp: string;
   isStreaming?: boolean;
   actions?: ActionResult[];
+  /** The reply came from Claude (it used AI credit); a reply done by a typed command says so in its own action */
+  viaClaude?: boolean;
   context?: {
     type: string;
     projectId?: string;
@@ -62,7 +64,7 @@ interface AIChatState {
   forgetUser: () => void;
   sendMessage: (
     userMessage: string,
-    context?: { type: string; projectId?: string },
+    context?: { type: string; projectId?: string; scheduleId?: string },
   ) => Promise<void>;
   loadConversations: () => Promise<void>;
   loadConversation: (id: string) => Promise<void>;
@@ -189,7 +191,7 @@ export const useAIChatStore = create<AIChatState>()((set, get) => ({
       set((state) => ({
         messages: state.messages.map(m =>
           m.id === placeholderMsg.id
-            ? { ...m, content: result.reply, isStreaming: false, actions: result.actions }
+            ? { ...m, content: result.reply, isStreaming: false, actions: result.actions, viaClaude: result.aiPowered === true }
             : m
         ),
       }));

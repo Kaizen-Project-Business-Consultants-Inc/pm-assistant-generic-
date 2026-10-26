@@ -12,6 +12,8 @@ import { AIBudgetExceededError } from './AIBudgetService';
 import { contextConfigService } from './context/ContextConfigService';
 import { getRequestContext } from '../middleware/requestContext';
 import { sanitizeForPrompt } from '../utils/promptSanitizer';
+import { parseChatCommand, type ChatCommand } from './chatCommands/parseChatCommand';
+import { runChatCommand } from './chatCommands/runChatCommand';
 
 /**
  * The items a past reply's actions named, as one line after that reply in the chat history: a
@@ -64,6 +66,8 @@ export interface ChatRequest {
   context?: {
     type: 'dashboard' | 'project' | 'schedule' | 'reports' | 'general';
     projectId?: string;
+    /** The plan open on screen: typed commands' row numbers belong to it */
+    scheduleId?: string;
   };
   userId: string;
   userRole: string;
@@ -96,6 +100,10 @@ export class AIChatService {
     aiPowered: boolean;
     actions?: ActionResult[];
   }> {
+    // A message that is exactly a typed command is done by the app: no AI call, so it works with AI off or the allowance used up
+    const command = parseChatCommand(req.message);
+    if (command) return this.sendTypedCommand(command, req);
+
     if (!claudeService.isAvailable()) {
       return {
         reply:
@@ -237,6 +245,24 @@ export class AIChatService {
         aiPowered: false,
       };
     }
+  }
+
+  private async sendTypedCommand(command: ChatCommand, req: ChatRequest): Promise<{
+    reply: string;
+    conversationId: string;
+    aiPowered: boolean;
+    actions?: ActionResult[];
+  }> {
+    const out = await runChatCommand(command, {
+      userId: req.userId,
+      userRole: req.userRole,
+      projectId: req.context?.projectId,
+      scheduleId: req.context?.scheduleId,
+    }, this.actionExecutor);
+    // the stored line for a Confirm button is not its id
+    const stored = command.kind === 'confirm_delete' ? { ...req, message: 'Confirm delete' } : req;
+    const conversationId = await this.persistConversation(stored, out.reply, 0, out.actions);
+    return { reply: out.reply, conversationId, aiPowered: false, actions: out.actions };
   }
 
   // -----------------------------------------------------------------------

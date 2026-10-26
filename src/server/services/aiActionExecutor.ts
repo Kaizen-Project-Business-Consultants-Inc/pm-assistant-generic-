@@ -429,12 +429,13 @@ export class AIActionExecutor {
     }
 
     // Recorded in Schedule History like a delete in the app, so it can be undone there
-    const { deleted } = await changeHistoryService.deleteTaskWithHistory(taskId);
+    const { deleted, changeId } = await changeHistoryService.deleteTaskWithHistory(taskId);
     return {
       success: deleted,
       toolName: 'delete_task',
       summary: deleted ? `Deleted task "${existing.name}" (${taskId})` : `Failed to delete task ${taskId}`,
-      data: { taskId, name: existing.name },
+      // changeId: the History entry a typed "delete task 5" offers Undo for
+      data: { taskId, name: existing.name, changeId },
     };
   }
 
@@ -527,7 +528,8 @@ export class AIActionExecutor {
       summary: `Rescheduled task "${existing.name}" (${taskId}): ${dateChanges.join(', ')}`
         + `${pushed.length ? `; ${pushed.length} downstream task${pushed.length === 1 ? '' : 's'} moved to follow` : ''}`
         + `${reason ? `. Reason: ${reason}` : ''}`,
-      data: { taskId, name: task?.name, startDate, endDate, dueDate, affectedTasks: pushed },
+      // changeId: the History entry of the tasks pushed to follow; a typed "task 5 end …" offers Undo through it
+      data: { taskId, name: task?.name, startDate, endDate, dueDate, affectedTasks: pushed, changeId: cascade.changeId ?? null },
     };
   }
 

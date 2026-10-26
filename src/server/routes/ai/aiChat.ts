@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireProjectAccess, projectsOfSchedules, checkProjectRole, checkProjectRoleFor } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { AIChatService } from '../../services/aiChatService';
+import { parseChatCommand } from '../../services/chatCommands/parseChatCommand';
 import { AICircuitBreakerError } from '../../services/claudeService';
 import { authMiddleware } from '../../middleware/auth';
 import { requireScope } from '../../middleware/requireScope';
@@ -15,6 +16,7 @@ const chatMessageSchema = z.object({
   context: z.object({
     type: z.enum(['dashboard', 'project', 'schedule', 'reports', 'general']),
     projectId: z.string().optional(),
+    scheduleId: z.string().optional(),
   }).optional(),
 });
 
@@ -72,6 +74,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
             properties: {
               type: { type: 'string', enum: ['dashboard', 'project', 'schedule', 'reports', 'general'] },
               projectId: { type: 'string' },
+              scheduleId: { type: 'string' },
             },
           },
         },
@@ -81,8 +84,13 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
       try {
         const user = request.user!;
 
-        // Per-user AI rate limit: 60 requests per hour
-        const rl = rateLimiter.check(`ai:chat:${user.userId}`, 60, 3600_000);
+        // Per-user AI rate limit: 60 requests per hour. A typed command (no AI call) has its own, higher limit:
+        // it must keep working after the AI limit is reached
+        const rawMessage = (request.body as { message?: unknown } | undefined)?.message;
+        const typedCommand = typeof rawMessage === 'string' && parseChatCommand(rawMessage) !== null;
+        const rl = typedCommand
+          ? rateLimiter.check(`ai:cmd:${user.userId}`, 600, 3600_000)
+          : rateLimiter.check(`ai:chat:${user.userId}`, 60, 3600_000);
         if (!rl.allowed) {
           return reply.code(429).send({
             error: 'AI rate limit exceeded',
@@ -139,6 +147,7 @@ export async function aiChatRoutes(fastify: FastifyInstance) {
             properties: {
               type: { type: 'string', enum: ['dashboard', 'project', 'schedule', 'reports', 'general'] },
               projectId: { type: 'string' },
+              scheduleId: { type: 'string' },
             },
           },
         },
