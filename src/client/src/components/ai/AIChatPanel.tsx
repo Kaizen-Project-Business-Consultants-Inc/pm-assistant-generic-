@@ -403,7 +403,7 @@ export function AIChatPanel({ context: panelContext }: AIChatPanelProps) {
               if (isSpeaking) cancelSpeech();
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Mjuzi, or type a command (type help)..."
+            placeholder="Ask Mjuzi, or type help"
             aria-label="Chat message input"
             rows={1}
             className="min-w-0 flex-1 resize-none rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 px-3.5 py-2.5 text-sm placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"

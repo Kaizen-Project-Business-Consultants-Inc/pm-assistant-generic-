@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { signedIn, makeProject, makeTask, archiveProject } from './qa-data';
+import { signedIn, makeProject, makeTask, archiveProject, plusDays } from './qa-data';
 import { STAGING_USER, STAGING_TEAM_MEMBER } from './staging-helpers';
 import { openSchedule, getTasks } from './schedule-helpers';
 
@@ -21,7 +21,8 @@ test.beforeAll(async ({ browser }) => {
   projectId = made.projectId;
   scheduleId = made.scheduleId;
   for (const [i, name] of NAMES.entries()) {
-    await makeTask(page, scheduleId, { name, startDate: `2027-01-${String(11 + i * 7).padStart(2, '0')}`, endDate: `2027-01-${String(15 + i * 7).padStart(2, '0')}` });
+    const start = plusDays('2027-01-11', i * 7);
+    await makeTask(page, scheduleId, { name, startDate: start, endDate: plusDays(start, 4) });
   }
 });
 
@@ -35,8 +36,10 @@ const task = async (name: string) => (await getTasks(page, scheduleId)).find(t =
 
 async function openChat() {
   await openSchedule(page, projectId, scheduleId, 'table');
-  await page.getByRole('button', { name: 'Open AI Assistant' }).click();
-  await expect(page.getByLabel('Chat message input')).toBeVisible();
+  const box = page.getByLabel('Chat message input');
+  // the panel stays open from a page before; the round button shows only when it is closed
+  if (!(await box.isVisible())) await page.getByRole('button', { name: 'Open AI Assistant' }).click();
+  await expect(box).toBeVisible();
 }
 
 async function type(text: string) {
@@ -93,6 +96,8 @@ test('a date change that pushes the next task: one Undo puts back both tasks\' d
   await expect(page.getByText(/Linked\. Design \(2\) must finish before Build \(3\) starts/)).toBeVisible();
   const before = { design: await task('Design'), build: await task('Build') };
 
+  // Schedule History orders entries by the second: a person never types two commands within one, a test can
+  await page.waitForTimeout(1500);
   await type('task 2 end 2027-02-05');
   await expect(page.getByText(/later task moved to follow/)).toBeVisible();
   await expect.poll(async () => (await task('Build'))?.startDate?.slice(0, 10)).not.toBe(before.build!.startDate!.slice(0, 10));
