@@ -5,6 +5,9 @@ import { redisService } from './RedisService';
 import { isUndeliverableEmail } from '../utils/placeholderEmail';
 import { timelineForEmail } from '../utils/reportTimelineImage';
 
+/** Where replies to the account emails below go: noreply@ has no mailbox (mirrors SUPPORT_EMAIL in the client's constants/branding.ts) */
+const SUPPORT_EMAIL = 'support@kovarti.com';
+
 /**
  * The mail provider refused the message — almost always a recipient it will not
  * accept (a typo, or a domain this account is not allowed to send to). That is
@@ -659,11 +662,11 @@ export class EmailService {
       infoPoints: [
         { emoji: '⚡', title: 'What you\'ll keep', text: 'All your projects, schedules, RAID logs, reports, and team settings carry over. Zero setup needed.' },
         { emoji: '💰', title: 'No surprise charges', text: 'You only pay when you choose to. Your trial is completely free until the end date.' },
-        { emoji: '💬', title: 'Questions?', text: `Reply to this email or reach us at support@kovarti.com. We're happy to help you find the right plan.` },
+        { emoji: '💬', title: 'Questions?', text: `Reply to this email or reach us at ${SUPPORT_EMAIL}. We're happy to help you find the right plan.` },
       ],
     });
 
-    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject, html });
+    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject, html, replyTo: SUPPORT_EMAIL });
   }
 
   async sendTrialExpiredEmail(to: string, name: string): Promise<void> {
@@ -694,11 +697,11 @@ export class EmailService {
       infoPoints: [
         { emoji: '🔒', title: 'Your data is safe', text: 'All projects, schedules, RAID logs, reports, and settings are preserved. Subscribe anytime to unlock them.' },
         { emoji: '⚡', title: 'Instant reactivation', text: 'The moment you subscribe, everything is live again — no re-setup, no data loss, no waiting.' },
-        { emoji: '💬', title: 'Need help deciding?', text: `Reply to this email or contact support@kovarti.com. We'll help you pick the right plan.` },
+        { emoji: '💬', title: 'Need help deciding?', text: `Reply to this email or contact ${SUPPORT_EMAIL}. We'll help you pick the right plan.` },
       ],
     });
 
-    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM trial has ended', html });
+    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM trial has ended', html, replyTo: SUPPORT_EMAIL });
   }
 
   /**
@@ -746,11 +749,11 @@ export class EmailService {
       infoPoints: [
         { emoji: '🔒', title: 'Nothing charged', text: 'No payment has been taken. You are not on a plan and there is no balance owing.' },
         { emoji: '⚡', title: 'Instant access', text: 'The moment your payment clears, your workspace is ready to use.' },
-        { emoji: '💬', title: 'Trouble paying?', text: 'Reply to this email or reach us at support@kovarti.com and we will sort it out.' },
+        { emoji: '💬', title: 'Trouble paying?', text: `Reply to this email or reach us at ${SUPPORT_EMAIL} and we will sort it out.` },
       ],
     });
 
-    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM account needs payment to activate', html });
+    await this.sendEmail({ from: config.RESEND_FROM_EMAIL, to, subject: 'Your Kovarti PM account needs payment to activate', html, replyTo: SUPPORT_EMAIL });
   }
 
   private buildTrialEmailHtml(opts: {

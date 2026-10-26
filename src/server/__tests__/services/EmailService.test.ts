@@ -945,6 +945,15 @@ describe('EmailService', () => {
       (config as any).RESEND_API_KEY = origKey;
     });
 
+    it('the emails that say "Reply to this email" reply to support (noreply@ has no mailbox); others set no reply-to', async () => {
+      await service.sendTrialReminderEmail('u@t.com', 'Alice', 3);
+      await service.sendTrialExpiredEmail('u@t.com', 'Alice');
+      await service.sendPendingPaymentEmail('u@t.com', 'Alice', 'consultant_pro');
+      await service.sendVerificationEmail('u@t.com', 'tok');
+      const replyTos = mockSend.mock.calls.map((c) => c[0].replyTo);
+      expect(replyTos).toEqual(['support@kovarti.com', 'support@kovarti.com', 'support@kovarti.com', undefined]);
+    });
+
     it('sends trial expired email with correct content', async () => {
       await service.sendTrialExpiredEmail('u@t.com', 'Alice');
 
