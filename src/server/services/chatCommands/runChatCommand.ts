@@ -15,7 +15,7 @@ import { HELP_TEXT, STATUS_LABEL, type ChatCommand } from './parseChatCommand';
  * refreshes the plan the way it does after any change Mjuzi makes.
  */
 
-export interface CommandContext {
+interface CommandContext {
   userId: string;
   userRole: string;
   /** The project the chat is open on */
@@ -24,7 +24,7 @@ export interface CommandContext {
   scheduleId?: string;
 }
 
-export interface TypedReplyData {
+interface TypedReplyData {
   typed: true;
   /** A delete waiting for Confirm */
   pending?: { taskId: string };
@@ -32,7 +32,7 @@ export interface TypedReplyData {
   undo?: { scheduleId: string; changeId: string; projectId: string };
 }
 
-export interface CommandReply {
+interface CommandReply {
   reply: string;
   actions: ActionResult[];
 }

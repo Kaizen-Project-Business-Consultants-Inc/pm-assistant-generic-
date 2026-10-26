@@ -25,7 +25,7 @@ export type ChatCommand =
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'blocked';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
-export const STATUS_WORDS: Record<string, TaskStatus> = {
+const STATUS_WORDS: Record<string, TaskStatus> = {
   'not started': 'pending', pending: 'pending',
   'in progress': 'in_progress',
   completed: 'completed', complete: 'completed', done: 'completed',
