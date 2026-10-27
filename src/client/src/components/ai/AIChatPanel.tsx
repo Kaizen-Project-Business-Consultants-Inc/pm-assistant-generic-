@@ -184,7 +184,7 @@ export function AIChatPanel({ context: panelContext }: AIChatPanelProps) {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Context Bar + History Toggle */}
       <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 px-2 py-1">
         <div className="flex-1">
