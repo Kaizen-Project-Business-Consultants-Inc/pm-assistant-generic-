@@ -16,6 +16,7 @@ for (const height of [560, 420]) {
       // the page loads lazily and the panel's open state is saved per user: wait for either control, then open if closed
       const open = page.getByRole('button', { name: 'Open AI Assistant' });
       await expect(box.or(open)).toBeVisible();
+      await page.waitForLoadState('networkidle'); // the saved open/closed state arrives after the page: clicking before it toggles the panel shut again
       if (await open.isVisible()) await open.click();
       await expect(box).toBeVisible();
       // a chat with some answers in it (the app answers `help` itself, no AI credit): that is when the panel overflowed
