@@ -32,6 +32,7 @@ import {
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
+import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel } from '../../utils/taskStatus';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { isLockedCell, CALCULATED_CELL_HINTS } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
@@ -759,7 +760,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
   // Render a single cell for a given column definition
   const renderCell = (task: GanttTask, col: ColumnDef): React.ReactNode => {
-    const statusStyle = barColors[task.status] || barColors.pending;
+    const statusStyle = barColors[effectiveTaskStatus(task)] || barColors.pending;
     const priorityStyle = priorityColors[task.priority || 'medium'] || priorityColors.medium;
     const progress = task.progressPercentage ?? 0;
     const cpm = cpmMap.get(task.id);
@@ -837,12 +838,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 onKeyDown={e => { if (e.key === 'Escape') cancelEditing(); }}
               >
                 {statusOptions.map(s => (
-                  <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                  <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
                 ))}
               </select>
             ) : (
               <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-                {task.status.replace('_', ' ')}
+                {taskStatusLabel(task)}
               </span>
             )}
             {renderSaveIndicator(task.id, 'status')}

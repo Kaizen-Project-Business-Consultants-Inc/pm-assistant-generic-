@@ -5,6 +5,7 @@ import { timeAgo } from '../../utils/timeAgo';
 import { MessageSquare, Activity, Send, Trash2 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { STATUS_LABEL } from '../../utils/taskStatus';
 
 interface TaskActivityPanelProps {
   scheduleId: string;
@@ -21,16 +22,10 @@ const fieldLabels: Record<string, string> = {
   name: 'Name',
 };
 
-const statusLabels: Record<string, string> = {
-  pending: 'Not Started',
-  in_progress: 'In Progress',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-};
 
 function formatValue(field: string | undefined, value: string | undefined): string {
   if (!value) return '(empty)';
-  if (field === 'status') return statusLabels[value] || value;
+  if (field === 'status') return STATUS_LABEL[value] || value;
   if (field === 'progressPercentage') return `${value}%`;
   if (field === 'startDate' || field === 'endDate') {
     try {

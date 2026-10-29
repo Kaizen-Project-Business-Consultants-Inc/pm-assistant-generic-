@@ -316,7 +316,7 @@ export class SprintService {
       if (status === 'completed') return 'completed';
       if (status === 'testing') return 'testing';
       if (status === 'in_review') return 'in_review';
-      if (status === 'in_progress') return 'in_progress';
+      if (status === 'in_progress' || status === 'late') return 'in_progress';
       if (status === 'blocked') return 'blocked';
       if (status === 'cancelled') return 'not_started';
       return 'not_started'; // pending

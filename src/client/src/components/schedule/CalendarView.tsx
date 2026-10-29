@@ -2,13 +2,16 @@ import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { effectiveTaskStatus } from '../../utils/taskStatus';
 import { moveKeepingWorkingLength, type WorkCalendar } from '../../utils/workingDays';
 
 const barColors: Record<string, string> = {
-  completed: 'bg-green-500',
-  in_progress: 'bg-blue-500',
+  completed: 'bg-blue-500',
+  in_progress: 'bg-green-500',
+  late: 'bg-amber-500',
+  blocked: 'bg-red-500',
   pending: 'bg-gray-400',
-  cancelled: 'bg-red-400',
+  cancelled: 'bg-gray-300',
 };
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -136,7 +139,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
   // Task pill renderer
   const renderTaskPill = (task: GanttTask, day: Date, compact = false) => {
     const startsHere = taskStartsOnDay(task, day);
-    const color = barColors[task.status] || barColors.pending;
+    const color = barColors[effectiveTaskStatus(task)] || barColors.pending;
     const draggable = !!onTaskReschedule;
 
     if (startsHere) {
@@ -320,7 +323,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
         ) : (
           <div className="space-y-2">
             {dayTasks.map(task => {
-              const color = barColors[task.status] || barColors.pending;
+              const color = barColors[effectiveTaskStatus(task)] || barColors.pending;
               const draggable = !!onTaskReschedule;
               return (
                 <div

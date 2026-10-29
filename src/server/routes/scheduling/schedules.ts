@@ -48,7 +48,7 @@ export const createTaskSchema = z.object({
   scheduleId: z.string(),
   name: z.string().min(1),
   description: z.string().optional(),
-  status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled']).default('pending'),
+  status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'late', 'completed', 'blocked', 'cancelled']).default('pending'),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   taskType: z.enum(['task', 'story', 'bug', 'epic']).default('task'),
   epicId: z.string().optional(),
@@ -105,7 +105,7 @@ export const createTaskSchema = z.object({
 // 'task'). Stripping the default on just those three fields fixes it without touching
 // the rest of createTaskSchema's already-correct partial behaviour.
 export const updateTaskSchema = createTaskSchema.partial().omit({ scheduleId: true }).extend({
-  status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled']).optional(),
+  status: z.enum(['pending', 'in_progress', 'in_review', 'testing', 'late', 'completed', 'blocked', 'cancelled']).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   taskType: z.enum(['task', 'story', 'bug', 'epic']).optional(),
   // null = move the task to the top level (outdent out of its summary); the old summary rolls up

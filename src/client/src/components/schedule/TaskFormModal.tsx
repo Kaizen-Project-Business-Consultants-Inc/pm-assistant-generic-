@@ -19,6 +19,7 @@ import { firstByKey } from '../../utils/lookup';
 import { useModal } from '../../hooks/useModal';
 import { isWorkingDay, type WorkCalendar } from '../../utils/workingDays';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { PICKABLE_STATUSES, STATUS_LABEL } from '../../utils/taskStatus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -477,13 +478,10 @@ export function TaskFormModal({
                 disabled={isSummary}
                 className="input w-full"
               >
-                <option value="pending">Not Started</option>
-                <option value="in_progress">In Progress</option>
-                <option value="in_review">In Review</option>
-                <option value="testing">Testing</option>
-                <option value="completed">Completed</option>
-                <option value="blocked">Blocked</option>
-                <option value="cancelled">Cancelled</option>
+                {/* a status no longer offered (In Review, Testing, Cancelled) stays selectable while the task has it */}
+                {[...(PICKABLE_STATUSES as readonly string[]).includes(form.status) ? [] : [form.status], ...PICKABLE_STATUSES].map(s => (
+                  <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
+                ))}
               </select>
             </div>
             <div>

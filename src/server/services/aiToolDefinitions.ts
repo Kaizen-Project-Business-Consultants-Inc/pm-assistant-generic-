@@ -61,7 +61,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
         taskId: { type: 'string', description: 'The ID of the task to update' },
         name: { type: 'string', description: 'New task name' },
         description: { type: 'string', description: 'New task description' },
-        status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'cancelled'], description: 'New status' },
+        status: { type: 'string', enum: ['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled'], description: 'New status (in_progress shows as On Track, pending as Not Started)' },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'New priority' },
         assignedTo: { type: 'string', description: 'New assignee (user ID or username)' },
         dueDate: { type: 'string', description: 'New due date in ISO format' },
@@ -77,7 +77,7 @@ export const AI_TOOLS: Anthropic.Tool[] = [
       type: 'object' as const,
       properties: {
         taskIds: { type: 'array', items: { type: 'string' }, description: 'The IDs of the tasks to change (at most 50)' },
-        status: { type: 'string', enum: ['pending', 'in_progress', 'completed', 'cancelled'], description: 'New status' },
+        status: { type: 'string', enum: ['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled'], description: 'New status (in_progress shows as On Track, pending as Not Started)' },
         priority: { type: 'string', enum: ['low', 'medium', 'high', 'urgent'], description: 'New priority' },
         assignedTo: { type: 'string', description: 'New assignee (user ID or username)' },
         dueDate: { type: 'string', description: 'New due date in ISO format' },

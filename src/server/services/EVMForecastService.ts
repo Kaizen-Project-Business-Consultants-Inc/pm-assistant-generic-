@@ -618,7 +618,7 @@ export class EVMForecastService {
       // --- Task summary stats ---
       const totalTasks = allTasks.filter(t => !t.isSummary).length;
       const completedTasks = allTasks.filter(t => t.status === 'completed' && !t.isSummary).length;
-      const inProgressTasks = allTasks.filter(t => t.status === 'in_progress' && !t.isSummary).length;
+      const inProgressTasks = allTasks.filter(t => (t.status === 'in_progress' || t.status === 'late') && !t.isSummary).length;
 
       // --- Build the text ---
       const sections: string[] = ['Schedule analysis (from actual project tasks):'];

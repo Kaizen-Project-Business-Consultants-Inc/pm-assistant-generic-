@@ -209,7 +209,7 @@ test('Gantt grid: inline edit name, start, finish, duration and status; the assi
   await (await ganttCell(page, ids.docs, 'Status')).click();
   await ganttRow(page, ids.docs).locator('select').selectOption('in_progress');
   await expectTask(page, scheduleId, 'Docs', t => t.status === 'in_progress');
-  await expect(await ganttCell(page, ids.docs, 'Status')).toHaveText('Active');
+  await expect(await ganttCell(page, ids.docs, 'Status')).toHaveText(/^(On Track|Late)$/); // Late once the plan's dates are in the past, which they are on a fixed-date fixture
 
   // Assignee: the picker opens on the first click (choosing someone: the next test)
   await (await ganttCell(page, ids.launch, 'Assigned')).click();

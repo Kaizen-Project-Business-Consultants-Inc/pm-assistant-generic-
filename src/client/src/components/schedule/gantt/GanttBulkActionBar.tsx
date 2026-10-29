@@ -1,5 +1,6 @@
 import React from 'react';
 import { statusOptions, priorityOptions } from './types';
+import { STATUS_LABEL } from '../../../utils/taskStatus';
 
 interface GanttBulkActionBarProps {
   selectedCount: number;
@@ -51,7 +52,7 @@ export const GanttBulkActionBar = React.memo(function GanttBulkActionBar({
           disabled={bulkLoading}
         >
           <option value="">Status...</option>
-          {statusOptions.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+          {statusOptions.map(s => <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>)}
         </select>
         {bulkStatus && (
           <button className="text-xs px-2 py-1 rounded bg-primary-100 text-primary-700 hover:bg-primary-200 disabled:opacity-50" onClick={() => applyBulkUpdate('status', bulkStatus)} disabled={bulkLoading}>Apply</button>

@@ -1,5 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Calendar, User, Check } from 'lucide-react';
+import { effectiveTaskStatus, taskStatusLabel } from '../../utils/taskStatus';
 
 interface TaskCardMobileProps {
   task: {
@@ -17,23 +18,17 @@ interface TaskCardMobileProps {
 const statusCycle: Record<string, string> = {
   pending: 'in_progress',
   in_progress: 'completed',
+  late: 'completed',
   completed: 'pending',
 };
 
 const statusStyles: Record<string, string> = {
   pending: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300',
-  in_progress: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
-  completed: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
-  cancelled: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400',
-  blocked: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
-};
-
-const statusLabels: Record<string, string> = {
-  pending: 'Pending',
-  in_progress: 'In Progress',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  blocked: 'Blocked',
+  in_progress: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400',
+  late: 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300',
+  completed: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+  cancelled: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400',
+  blocked: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400',
 };
 
 const priorityStyles: Record<string, string> = {
@@ -139,9 +134,9 @@ export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCy
           )}
           <button
             onClick={handleStatusTap}
-            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[task.status] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[effectiveTaskStatus(task)] || 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
           >
-            {statusLabels[task.status] || task.status}
+            {taskStatusLabel(task)}
           </button>
         </div>
       </div>

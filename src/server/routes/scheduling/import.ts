@@ -65,7 +65,7 @@ function fixMojibake(text: string): string {
     .replace(/\u00C2\u00A0/g, ' ');             // non-breaking space
 }
 
-const VALID_STATUSES = ['pending', 'in_progress', 'completed', 'cancelled'];
+const VALID_STATUSES = ['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled'];
 const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 
 /** Normalise a CSV header to a known task field name, applying columnMap overrides first. */

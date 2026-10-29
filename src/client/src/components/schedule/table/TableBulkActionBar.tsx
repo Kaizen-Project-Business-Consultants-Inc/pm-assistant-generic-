@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckSquare, Trash2, X } from 'lucide-react';
 import { statusOptions, priorityOptions } from './types';
+import { STATUS_LABEL } from '../../../utils/taskStatus';
 
 interface TableBulkActionBarProps {
   selectedCount: number;
@@ -53,7 +54,7 @@ export const TableBulkActionBar = React.memo(function TableBulkActionBar({
         >
           <option value="">Status...</option>
           {statusOptions.map(s => (
-            <option key={s} value={s}>{s.replace('_', ' ')}</option>
+            <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
           ))}
         </select>
         {bulkStatus && (

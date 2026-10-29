@@ -125,6 +125,7 @@ const sections: Section[] = [
       'Add, edit, and delete tasks with dependencies',
       'Assign resources and track progress percentages',
       'Drag-and-drop tasks in Kanban and Gantt views',
+      'Task status is one of five: Not Started, On Track, Late, Completed, Blocked. An open task past its end date shows as Late by itself; a project manager can also mark a task Late by hand',
       'Changed your mind while dragging a bar or drawing a link in the Gantt (or moving a Table row)? Press Escape before letting go — nothing is saved',
       'Table: switch on Est Days and Work in Columns (saved, and shared with the Gantt); click any column header to sort — empty values always go last',
       'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',

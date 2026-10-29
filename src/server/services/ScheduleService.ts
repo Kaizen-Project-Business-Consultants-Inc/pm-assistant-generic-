@@ -54,7 +54,7 @@ function rollupProgressAndStatus(children: Task[], useWorkMode: boolean): { roll
   const rollupProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
   if (active.length === 0) return { rollupProgress, rollupStatus: 'cancelled' };
   if (active.every(c => c.status === 'completed')) return { rollupProgress, rollupStatus: 'completed' };
-  const started = active.some(c => c.status === 'in_progress' || c.status === 'completed');
+  const started = active.some(c => c.status === 'in_progress' || c.status === 'late' || c.status === 'completed');
   return { rollupProgress, rollupStatus: started ? 'in_progress' : 'pending' };
 }
 export interface Schedule {
@@ -87,7 +87,7 @@ export interface Task {
   scheduleId: string;
   name: string;
   description?: string;
-  status: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'completed' | 'blocked' | 'cancelled';
+  status: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'late' | 'completed' | 'blocked' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   taskType: 'task' | 'story' | 'bug' | 'epic';
   epicId?: string;
@@ -167,7 +167,7 @@ export interface CreateTaskData {
   /** For imports: the parent is a phase this same import just created in this schedule — no need to re-read it */
   parentCreatedHere?: boolean;
   description?: string;
-  status?: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'completed' | 'blocked' | 'cancelled';
+  status?: 'pending' | 'in_progress' | 'in_review' | 'testing' | 'late' | 'completed' | 'blocked' | 'cancelled';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   taskType?: 'task' | 'story' | 'bug' | 'epic';
   epicId?: string;

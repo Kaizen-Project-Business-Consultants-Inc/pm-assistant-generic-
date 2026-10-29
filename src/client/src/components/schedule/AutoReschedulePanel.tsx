@@ -7,6 +7,7 @@ import { announce } from '../../utils/announce';
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
+import { STATUS_LABEL } from '../../utils/taskStatus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,7 +35,6 @@ interface Delay {
   isSummary?: boolean;
 }
 
-const STATUS_LABEL: Record<string, string> = { pending: 'Not started', in_progress: 'In progress', in_review: 'In review', testing: 'Testing', blocked: 'Blocked' };
 
 interface TaskChange {
   taskId: string;

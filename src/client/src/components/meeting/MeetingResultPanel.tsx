@@ -7,6 +7,7 @@ import {
   ListChecks,
   Check,
 } from 'lucide-react';
+import { STATUS_LABEL } from '../../utils/taskStatus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,13 +52,12 @@ interface TaskUpdate {
   description?: string;
 }
 
-const STATUS_WORDS: Record<string, string> = { pending: 'Not started', in_progress: 'In progress', completed: 'Done', cancelled: 'Cancelled' };
 
 /** What the update would change, in words (the analysis sends fields, not a sentence) */
 function describeTaskUpdate(tu: TaskUpdate): string {
   if (tu.proposedChanges) return tu.proposedChanges;
   const parts: string[] = [];
-  if (tu.newStatus) parts.push(`Status → ${STATUS_WORDS[tu.newStatus] ?? tu.newStatus}`);
+  if (tu.newStatus) parts.push(`Status → ${STATUS_LABEL[tu.newStatus] ?? tu.newStatus}`);
   if (tu.newStartDate) parts.push(`Start → ${tu.newStartDate}`);
   if (tu.newEndDate) parts.push(`End → ${tu.newEndDate}`);
   if (tu.assignee) parts.push(`Assigned to ${tu.assignee}`);

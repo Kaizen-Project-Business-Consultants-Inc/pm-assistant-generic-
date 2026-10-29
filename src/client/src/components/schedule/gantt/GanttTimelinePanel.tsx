@@ -1,5 +1,6 @@
 import type { WorkCalendar } from '../../../utils/workingDays';
 import type { TaskRiskLevel } from '../../../utils/taskRiskAssessment';
+import { effectiveTaskStatus } from '../../../utils/taskStatus';
 import {
   type GanttTask,
   type ZoomLevel,
@@ -285,7 +286,7 @@ export function GanttTimelinePanel({
           const floatDays = taskFloatMap?.[task.id] ?? 0;
           const colors = isCritical
             ? { bg: '#fef2f2', fill: '#dc2626', text: '#991b1b' }
-            : barColors[task.status] || barColors.pending;
+            : barColors[effectiveTaskStatus(task)] || barColors.pending;
           const isParent = parentTaskIds.has(task.id);
           const top = rowTop(idx) + 6;
           const barH = ROW_H - 12;

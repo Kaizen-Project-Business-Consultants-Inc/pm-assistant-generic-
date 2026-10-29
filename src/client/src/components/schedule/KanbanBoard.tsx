@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useMemo, useId } from 'react';
 import { Avatar } from '../ui/Avatar';
-import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
+import { isCalendarOverdue, formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
+import { effectiveTaskStatus } from '../../utils/taskStatus';
 
 export interface KanbanTask {
   id: string;
@@ -29,15 +30,17 @@ interface KanbanBoardProps {
   overbookedNotes?: Map<string, string[]>;
 }
 
-const COLUMNS: { id: string; label: string; color: string; bg: string; border: string }[] = [
-  { id: 'pending', label: 'Pending', color: 'text-gray-700 dark:text-gray-200', bg: 'bg-gray-50 dark:bg-gray-800/50', border: 'border-gray-200 dark:border-gray-600' },
-  { id: 'in_progress', label: 'In Progress', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700' },
-  { id: 'in_review', label: 'In Review', color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-900/20', border: 'border-purple-200 dark:border-purple-700' },
-  { id: 'testing', label: 'Testing', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700' },
-  { id: 'completed', label: 'Completed', color: 'text-green-700 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-700' },
+type Column = { id: string; label: string; color: string; bg: string; border: string };
+const COLUMNS: Column[] = [
+  { id: 'pending', label: 'Not Started', color: 'text-gray-700 dark:text-gray-200', bg: 'bg-gray-50 dark:bg-gray-800/50', border: 'border-gray-200 dark:border-gray-600' },
+  { id: 'in_progress', label: 'On Track', color: 'text-green-700 dark:text-green-300', bg: 'bg-green-50 dark:bg-green-900/20', border: 'border-green-200 dark:border-green-700' },
+  { id: 'late', label: 'Late', color: 'text-amber-800 dark:text-amber-300', bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-700' },
+  { id: 'completed', label: 'Completed', color: 'text-blue-700 dark:text-blue-300', bg: 'bg-blue-50 dark:bg-blue-900/20', border: 'border-blue-200 dark:border-blue-700' },
   { id: 'blocked', label: 'Blocked', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-700' },
-  { id: 'cancelled', label: 'Cancelled', color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-800/50', border: 'border-gray-300 dark:border-gray-600' },
 ];
+/** No longer offered for new work: shown only while a task on the board still has it */
+const CANCELLED_COLUMN: Column = { id: 'cancelled', label: 'Cancelled', color: 'text-gray-500 dark:text-gray-400', bg: 'bg-gray-50 dark:bg-gray-800/50', border: 'border-gray-300 dark:border-gray-600' };
+const columnsFor = (taskList: KanbanTask[]): Column[] => (taskList.some(t => t.status === 'cancelled') ? [...COLUMNS, CANCELLED_COLUMN] : COLUMNS);
 
 const priorityOrder: Record<string, number> = {
   urgent: 0,
@@ -83,10 +86,12 @@ const byPriority = (a: KanbanTask, b: KanbanTask) =>
  */
 export function groupTasksByStatus(taskList: KanbanTask[]): Record<string, KanbanTask[]> {
   const grouped: Record<string, KanbanTask[]> = {};
-  for (const col of COLUMNS) grouped[col.id] = [];
-  for (const t of taskList) grouped[t.status]?.push(t);
-  // eslint-disable-next-line no-restricted-syntax -- small: the 7 status columns; each sorts only its own cards
-  for (const col of COLUMNS) grouped[col.id].sort(byPriority);
+  const columns = columnsFor(taskList);
+  const asOf = toLocalDate();
+  for (const col of columns) grouped[col.id] = [];
+  for (const t of taskList) grouped[effectiveTaskStatus(t, asOf)]?.push(t);
+  // eslint-disable-next-line no-restricted-syntax -- small: the status columns; each sorts only its own cards
+  for (const col of columns) grouped[col.id].sort(byPriority);
   return grouped;
 }
 
@@ -363,7 +368,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
       e.preventDefault();
       setDragOverColumn(null);
       const taskId = e.dataTransfer.getData('text/plain');
-      if (taskId && onStatusChange) {
+      if (taskId && onStatusChange && columnId !== 'cancelled') {
         const task = tasks.find((t) => t.id === taskId);
         if (task && task.status !== columnId) {
           onStatusChange(taskId, columnId);
@@ -375,6 +380,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
 
   // Group tasks by status and sort by priority (once per tasks change)
   const grouped = useMemo(() => groupTasksByStatus(tasks), [tasks]);
+  const columns = useMemo(() => columnsFor(tasks), [tasks]);
 
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden">
@@ -404,7 +410,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
           {/* Column headers */}
           <div className="flex gap-3 px-4 pt-3 pb-2 overflow-x-auto">
             <div className="w-32 flex-shrink-0" />
-            {COLUMNS.map(col => (
+            {columns.map(col => (
               <div key={col.id} className="flex-1 min-w-[200px]">
                 <span className={`text-xs font-semibold uppercase tracking-wide ${col.color}`}>{col.label}</span>
               </div>
@@ -419,7 +425,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
                   <span className="block text-xs text-gray-500 dark:text-gray-400">{laneTasks.length} tasks</span>
                 </div>
                 {/* Mini columns */}
-                {COLUMNS.map(col => {
+                {columns.map(col => {
                   const columnTasks = laneGrouped[col.id] || [];
                   return (
                     <div
@@ -455,7 +461,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
         </div>
       ) : (
       <div className="flex gap-3 p-4 overflow-x-auto" style={{ minHeight: '400px' }}>
-        {COLUMNS.map((col) => {
+        {columns.map((col) => {
           const columnTasks = grouped[col.id] || [];
           const isOver = dragOverColumn === col.id;
           const wipLimit = wipLimits[col.id] || 0;

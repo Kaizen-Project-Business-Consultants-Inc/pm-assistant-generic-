@@ -82,7 +82,7 @@ class PortalService {
       const cnt = Number(r.count);
       taskStats.total += cnt;
       if (r.status === 'completed' || r.status === 'done') taskStats.completed += cnt;
-      else if (r.status === 'in_progress' || r.status === 'in-progress') taskStats.inProgress += cnt;
+      else if (r.status === 'in_progress' || r.status === 'in-progress' || r.status === 'late') taskStats.inProgress += cnt;
       else taskStats.notStarted += cnt;
     }
 

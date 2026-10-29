@@ -73,8 +73,8 @@ describe('AI Reschedule panel', () => {
 
   it('shows the task status so a forgotten "complete" can be spotted', async () => {
     setup();
-    expect(await screen.findByText(/Not started · 0% done/)).toBeTruthy();
-    expect(screen.getByText(/In progress · 40% done/)).toBeTruthy();
+    expect(await screen.findByText(/Not Started · 0% done/)).toBeTruthy();
+    expect(screen.getByText(/On Track · 40% done/)).toBeTruthy();
   });
 
   it('Mark complete closes the task with the chosen finish date and refreshes the late list', async () => {

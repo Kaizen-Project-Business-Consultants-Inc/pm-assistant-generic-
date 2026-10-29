@@ -1687,6 +1687,11 @@ If it fails: load the new code only where it's needed (`lazy()` / `await import(
 - E2E: `e2e/landing.spec.ts` checks the hero copy and that "See how it compares" opens the page.
 - By hand, every quarter: re-check each Microsoft Project / Asana cell on microsoft.com and asana.com, then update `CHECKED_ON`. A claim you can't find there says "Not listed on its plan page".
 
+## Task statuses (Oct 2026)
+
+- **Unit:** `__tests__/utils/taskStatus.test.ts` (the five, labels, auto-Late on the day after the end date, never for Completed/Blocked/Cancelled, a status set to Late by hand, no end date), `__tests__/components/taskStatusPickers.test.ts` (every picker and the Kanban columns offer exactly the five), server `__tests__/routes/taskStatusLate.test.ts` (`late` accepted, others still accepted).
+- **By hand:** make a task with an end date in the past and status On Track: it must show Late (amber, with the word) in Gantt, Table, Kanban and Task calendar. Complete it: it shows Completed. A task that still has Cancelled/In Review shows Cancelled/On Track and can be edited in the task form.
+
 ## Project cover and one Owner (Oct 2026)
 
 - **Unit:** `__tests__/middleware/projectCoverAccess.test.ts` (a cover is a Manager on that project only, never Owner; read-only account types; executive; expired or other project; creator after hand-over; `applyCoverRole`), `__tests__/services/ProjectCoverService.test.ts` (dates, 90-day limit, who may be cover, overlap, notices), `__tests__/services/ProjectMemberServiceOneOwner.test.ts` (second Owner refused, hand-over), client `ProjectCoverCard.test.tsx`.

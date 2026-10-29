@@ -39,7 +39,7 @@ describe('groupTasksByStatus', () => {
     expect(g.pending.map(t => t.id)).toEqual(['b', 'd', 'e', 'a']);
     expect(g.in_progress.map(t => t.id)).toEqual(['c']);
     expect(g.completed).toEqual([]);
-    expect(Object.keys(g)).toEqual(['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled']);
+    expect(Object.keys(g)).toEqual(['pending', 'in_progress', 'late', 'completed', 'blocked']);
     expect(Object.values(g).flat().some(t => t.id === 'x')).toBe(false);
   });
 });
@@ -51,7 +51,7 @@ describe('KanbanBoard drag highlight and card re-renders', () => {
   it('dragging over a column highlights it without re-rendering the cards', () => {
     const { container } = render(<KanbanBoard tasks={TASKS} onTaskClick={() => {}} onStatusChange={() => {}} />);
     const before = avatarRenders.n;
-    const col = column(container, 'Pending');
+    const col = column(container, 'Not Started');
     fireEvent.dragOver(col, { dataTransfer: { dropEffect: '' } });
     expect(col.className).toContain('ring-primary-400');
     fireEvent.dragOver(col, { dataTransfer: { dropEffect: '' } });
@@ -60,7 +60,7 @@ describe('KanbanBoard drag highlight and card re-renders', () => {
 
   it('moving onto a card inside the column keeps the highlight; leaving the column clears it', () => {
     const { container, getByText } = render(<KanbanBoard tasks={TASKS} onStatusChange={() => {}} />);
-    const col = column(container, 'Pending');
+    const col = column(container, 'Not Started');
     fireEvent.dragOver(col, { dataTransfer: { dropEffect: '' } });
     leave(col, getByText('Alpha'));
     expect(col.className).toContain('ring-primary-400');

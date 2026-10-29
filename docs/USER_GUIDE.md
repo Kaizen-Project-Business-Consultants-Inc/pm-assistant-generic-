@@ -419,7 +419,7 @@ The **⋯ overflow menu** (the "More actions" button at the right of the toolbar
 1. Within a schedule, click **Add Task**.
 2. Fill in the task form:
    - **Name** (required) -- Task description.
-   - **Status** -- Pending, In Progress, Completed, or Cancelled.
+   - **Status** -- Not Started, On Track, Late, Completed, or Blocked.
    - **Priority** -- Low, Medium, High, or Urgent.
    - **Start Date / End Date** -- Task timeline. If a date falls on a day off in the project's working calendar (a weekend or holiday), an amber note says so, e.g. "Saturday 10 Oct isn't a working day in this project's calendar". You can still save it — sometimes weekend work is real.
    - **Estimated Days** -- Duration estimate. A new task with a start but no end finishes after this many **working days**, counting the start day: 1 day finishes the day it starts, 2 days from a Friday finishes on Monday. A task added without a start date starts on the plan's first working day.
@@ -637,10 +637,12 @@ On mobile, the Schedule tab switches to a dedicated mobile experience with a **v
 
 Drag-and-drop card view organized by status columns:
 
-- **Pending** -- Tasks not yet started.
-- **In Progress** -- Active work items.
+- **Not Started** -- Tasks not yet started.
+- **On Track** -- Work under way and going to plan.
+- **Late** -- Open tasks past their planned finish (they move here by themselves), or tasks you marked Late.
 - **Completed** -- Finished tasks.
-- **Cancelled** -- Removed tasks.
+- **Blocked** -- Tasks that cannot move until something is cleared.
+- A **Cancelled** column appears only while a task on the board still has that status.
 
 Drag a card between columns to update its status. The card moves to its new column once the change has saved; if it can't be saved, it stays where it was and a red message says so. Each card shows the task name, priority badge, assignee, due date, **subtask count badge**, and **dependency count badge**.
 
@@ -3783,23 +3785,21 @@ Epics let you group related stories and tasks into larger bodies of work.
 **Epic progress API:**
 - `GET /api/v1/projects/:projectId/schedules/:scheduleId/epics` returns all epics with child task counts and completion percentages.
 
-### Custom Workflow Statuses
+### Task statuses (October 2026)
 
-Tasks support 7 workflow statuses instead of the basic 3:
+A task has one of five statuses, the same everywhere you pick one (Gantt, Table, Kanban, bulk change, task form):
 
-| Status | Color | Description |
-|--------|-------|-------------|
-| Pending | Grey | Not yet started |
-| In Progress | Blue | Work is underway |
-| In Review | Amber | Awaiting review |
-| Testing | Purple | Being tested / QA |
-| Completed | Green | Done |
-| Blocked | Red | Cannot proceed |
-| Cancelled | Dark grey | No longer needed |
+| Status | Colour | Meaning |
+|--------|--------|---------|
+| Not Started | Grey | Planned, nobody has begun |
+| On Track | Green | Started and going to plan |
+| Late | Amber | Past its planned finish and not done, or running behind plan |
+| Completed | Blue | Finished and accepted |
+| Blocked | Red | Cannot move until something is cleared |
 
-**How statuses appear on boards:**
-- **Sprint Board** -- 5 columns: Pending, In Progress, In Review, Testing, Completed. Blocked and cancelled tasks show a badge overlay in their current column.
-- **Kanban Board** -- All 7 statuses appear as separate columns.
+**Late is automatic and manual.** An open task (Not Started or On Track) whose end date is before today shows as **Late** on its own, so a late task can never sit on On Track. A project manager can also set **Late** by hand when they expect a task to slip. Completed and Blocked tasks never turn Late by themselves.
+
+**What changed.** *In Progress* is now called *On Track*. *In Review* and *Testing* are no longer offered (tasks that still have them show as On Track), and *Cancelled* can no longer be picked (a task that already has it still shows Cancelled). Nothing was converted in your data. Imports still understand "In Progress", "Done" and the older words. The Sprint Board for Scrum/Agile projects keeps its own columns, including In Review and Testing.
 
 Drag cards between columns to change status. The color coding is consistent across Gantt, Table, Sprint Board, Kanban Board, and Backlog views.
 

@@ -5,6 +5,7 @@ import type { GanttTask } from '../GanttChart';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { formatCalendarDate } from '../../../utils/dateUtils';
+import { PICKABLE_STATUSES } from '../../../utils/taskStatus';
 import { SUMMARY_ROLLUP_FIELD_NAMES } from '../summaryRollup';
 
 export type SortDir = 'asc' | 'desc';
@@ -77,11 +78,20 @@ export interface TableViewProps {
   workCalendar?: WorkCalendar | null;
 }
 
+const ON_TRACK = { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' };
+const NOT_STARTED = { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' };
+const COMPLETED = { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400' };
 export const barColors: Record<string, { bg: string; text: string }> = {
-  completed: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400' },
-  in_progress: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400' },
-  pending: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-600 dark:text-gray-300' },
-  cancelled: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-600 dark:text-red-400' },
+  completed: COMPLETED,
+  done: COMPLETED,
+  in_progress: ON_TRACK,
+  in_review: ON_TRACK,
+  testing: ON_TRACK,
+  late: { bg: 'bg-amber-100 dark:bg-amber-900/20', text: 'text-amber-800 dark:text-amber-300' },
+  pending: NOT_STARTED,
+  not_started: NOT_STARTED,
+  blocked: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400' },
+  cancelled: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-500 dark:text-gray-400' },
 };
 
 export const priorityColors: Record<string, string> = {
@@ -91,7 +101,7 @@ export const priorityColors: Record<string, string> = {
   low: 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400',
 };
 
-export const statusOptions = ['pending', 'in_progress', 'completed'];
+export const statusOptions: readonly string[] = PICKABLE_STATUSES;
 export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
 /** The one list lives in ../summaryRollup.ts (the Gantt grid uses it too). */

@@ -4,6 +4,7 @@ import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 import { isLockedCell } from '../summaryRollup';
 import { cellEditLabel } from '../cellEditLabel';
+import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel } from '../../../utils/taskStatus';
 import {
   type GanttTask,
   type GanttColDef,
@@ -733,26 +734,18 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 onKeyDown={e => onKeyDown(e, task.id, 'status')}
               >
                 {statusOptions.map(o => (
-                  <option key={o} value={o}>
-                    {o === 'in_progress' ? 'Active' : o === 'completed' ? 'Done' : o === 'pending' ? 'Pending' : o}
-                  </option>
+                  <option key={o} value={o}>{STATUS_LABEL[o] ?? o}</option>
                 ))}
               </select>
             ) : (
               <span
                 className="text-xs font-medium px-1.5 py-0.5 rounded-full"
                 style={{
-                  backgroundColor: barColors[task.status]?.bg || '#f3f4f6',
-                  color: barColors[task.status]?.text || '#374151',
+                  backgroundColor: barColors[effectiveTaskStatus(task)]?.bg || '#f3f4f6',
+                  color: barColors[effectiveTaskStatus(task)]?.text || '#374151',
                 }}
               >
-                {task.status === 'in_progress'
-                  ? 'Active'
-                  : task.status === 'completed'
-                    ? 'Done'
-                    : task.status === 'pending'
-                      ? 'Pending'
-                      : task.status}
+                {taskStatusLabel(task)}
               </span>
             )}
           </div>

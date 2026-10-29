@@ -131,7 +131,7 @@ export class TaskPrioritizationService {
 
     // Filter to active tasks only (pending or in_progress with dates)
     const activeTasks = tasks.filter(
-      (t) => (t.status === 'pending' || t.status === 'in_progress') && t.startDate && t.endDate,
+      (t) => (t.status === 'pending' || t.status === 'in_progress' || t.status === 'late') && t.startDate && t.endDate,
     );
 
     if (activeTasks.length === 0) {

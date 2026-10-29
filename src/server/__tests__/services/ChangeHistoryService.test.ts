@@ -98,7 +98,7 @@ describe('ChangeHistoryService', () => {
       await changeHistoryService.record({ projectId: 'p-1', scheduleId: 's-1', kind: 'bulk_update', summary: 'Edited 1 task', taskIds: ['t1'],
         undo: { previous: [{ id: 't1', values: { status: 'in_progress', priority: 'medium' } }] } });
       const insert = query.mock.calls.find(([q]) => String(q).includes('INSERT INTO change_batches'))!;
-      expect(JSON.parse(insert[1][10])).toEqual(['Design: status In progress → Done, priority Medium → High']);
+      expect(JSON.parse(insert[1][10])).toEqual(['Design: status On Track → Completed, priority Medium → High']);
     });
 
     it('a Schedule Review fix says what it did: the fix, what it added, and dates before → after (2026-10-01)', async () => {

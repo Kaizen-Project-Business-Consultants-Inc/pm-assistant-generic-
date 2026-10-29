@@ -21,9 +21,11 @@ interface TaskListMobileProps {
 
 const statusFilters = [
   { value: '', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'completed', label: 'Done' },
+  { value: 'pending', label: 'Not Started' },
+  { value: 'in_progress', label: 'On Track' },
+  { value: 'late', label: 'Late' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'blocked', label: 'Blocked' },
 ];
 
 export const TaskListMobile: React.FC<TaskListMobileProps> = ({

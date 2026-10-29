@@ -1,3 +1,5 @@
+import { PICKABLE_STATUSES, STATUS_LABEL } from '../../../utils/taskStatus';
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -166,33 +168,23 @@ export function buildFlatRows(tasks: GanttTask[], collapsedIds?: Set<string>): F
 // complete=#059669, active=#2563eb, not-started=#78716c (stone-500),
 // cancelled=#a8a29e (stone-400), overdue=#dc2626
 export const barColors: Record<string, { bg: string; fill: string; text: string }> = {
-  completed: { bg: '#ecfdf5', fill: '#059669', text: '#064e3b' },
-  done: { bg: '#ecfdf5', fill: '#059669', text: '#064e3b' },
-  in_progress: { bg: '#dbeafe', fill: '#2563eb', text: '#1e3a8a' },
-  in_review: { bg: '#f3e8ff', fill: '#a855f7', text: '#6b21a8' },
-  testing: { bg: '#fef3c7', fill: '#f59e0b', text: '#92400e' },
+  completed: { bg: '#dbeafe', fill: '#2563eb', text: '#1e3a8a' },
+  done: { bg: '#dbeafe', fill: '#2563eb', text: '#1e3a8a' },
+  in_progress: { bg: '#dcfce7', fill: '#16a34a', text: '#14532d' },
+  in_review: { bg: '#dcfce7', fill: '#16a34a', text: '#14532d' },
+  testing: { bg: '#dcfce7', fill: '#16a34a', text: '#14532d' },
+  late: { bg: '#fef3c7', fill: '#d97706', text: '#78350f' },
   pending: { bg: '#f5f5f4', fill: '#78716c', text: '#44403c' },
   not_started: { bg: '#f5f5f4', fill: '#78716c', text: '#44403c' },
   blocked: { bg: '#fee2e2', fill: '#dc2626', text: '#991b1b' },
   cancelled: { bg: '#f5f5f4', fill: '#a8a29e', text: '#44403c' },
 };
 
-/** The task statuses a person sees, once each, in order — the colour key and the status filter.
- *  (statusLabels/barColors also hold older spellings — done, not_started — so lookups still work,
- *  which made the key show "Complete" and "Not Started" twice.) */
-export const TASK_STATUSES = ['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'] as const;
+/** The task statuses a person can pick, once each, in order — the colour key and the status filter.
+ *  (In Review, Testing and Cancelled are no longer offered; tasks that still have them show as On Track / Cancelled.) */
+export const TASK_STATUSES = PICKABLE_STATUSES;
 
-export const statusLabels: Record<string, string> = {
-  completed: 'Complete',
-  done: 'Complete',
-  in_progress: 'In Progress',
-  in_review: 'In Review',
-  testing: 'Testing',
-  pending: 'Not Started',
-  not_started: 'Not Started',
-  blocked: 'Blocked',
-  cancelled: 'Cancelled',
-};
+export const statusLabels = STATUS_LABEL;
 
 // Priority dot colours mapped to risk.* design tokens from tailwind.config.js
 export const priorityDot: Record<string, string> = {
@@ -388,7 +380,7 @@ export function buildTimescale(zoom: ZoomLevel, minDate: Date, maxDate: Date, da
 
 export type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDays' | 'estimatedDurationHours' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
 export const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage', 'priority', 'assignedTo', 'status'];
-export const statusOptions = ['pending', 'in_progress', 'in_review', 'testing', 'completed', 'blocked', 'cancelled'];
+export const statusOptions: readonly string[] = PICKABLE_STATUSES;
 export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 
 // ---------------------------------------------------------------------------

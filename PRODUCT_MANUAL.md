@@ -3061,7 +3061,7 @@ A **search bar** in the Gantt toolbar provides instant type-ahead filtering on t
 
 Click the **Filter** button (funnel icon) in the Gantt toolbar to open a collapsible filter panel. Available filters:
 
-- **Status** — Multi-select checkboxes (Pending, In Progress, Completed, Cancelled).
+- **Status** — Multi-select checkboxes (Not Started, On Track, Late, Completed, Blocked).
 - **Priority** — Multi-select checkboxes (Low, Medium, High, Critical).
 - **Assignee** — Free-text search to filter by assignee name.
 - **Date Range** — "Start After" and "Start Before" date pickers to narrow tasks by their start date.
@@ -4359,7 +4359,9 @@ Tasks support 7 workflow statuses: **pending**, **in_progress**, **in_review**, 
 | blocked | red |
 | cancelled | dark grey |
 
-**Sprint Board** renders 5 columns: Pending, In Progress, In Review, Testing, and Completed. Tasks with **blocked** or **cancelled** status appear in their current column with a status badge overlay rather than a dedicated column. **Kanban Board** renders all 7 statuses as separate columns. Status colors are consistent across Gantt, Table, Sprint Board, Kanban Board, and Backlog views.
+**Task statuses (Oct 2026).** Five choices everywhere a status is picked: Not Started (`pending`), On Track (`in_progress`), Late (`late`, T097), Completed (`completed`), Blocked (`blocked`). Only the labels changed; stored values, imports, reports and AI tools are unchanged. A task that is Not Started or On Track and past its end date is shown as Late automatically (shared helper `utils/taskStatus.ts`, calendar days in the viewer's day); a PM can also store Late. In Review, Testing and Cancelled are no longer offered; tasks that still have them show as On Track / Cancelled. The Sprint Board keeps its own columns.
+
+**Sprint Board** renders 5 columns: Pending, In Progress, In Review, Testing, and Completed. Tasks with **blocked** or **cancelled** status appear in their current column with a status badge overlay rather than a dedicated column. **Kanban Board** renders the five statuses (Not Started, On Track, Late, Completed, Blocked) as columns, plus Cancelled while a task still has it. Status colors are consistent across Gantt, Table, Sprint Board, Kanban Board, and Backlog views.
 
 ### Burnup Chart
 

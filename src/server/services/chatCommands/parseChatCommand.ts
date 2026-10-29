@@ -22,18 +22,19 @@ export type ChatCommand =
   /** the words are a command but a value in them is wrong: the app says what is allowed, still free */
   | { kind: 'invalid'; message: string };
 
-export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'blocked';
+export type TaskStatus = 'pending' | 'in_progress' | 'late' | 'completed' | 'cancelled' | 'blocked';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 const STATUS_WORDS: Record<string, TaskStatus> = {
   'not started': 'pending', pending: 'pending',
-  'in progress': 'in_progress',
+  'in progress': 'in_progress', 'on track': 'in_progress',
+  late: 'late',
   completed: 'completed', complete: 'completed', done: 'completed',
   cancelled: 'cancelled', canceled: 'cancelled',
   blocked: 'blocked',
 };
 export const STATUS_LABEL: Record<TaskStatus, string> = {
-  pending: 'not started', in_progress: 'in progress', completed: 'completed', cancelled: 'cancelled', blocked: 'blocked',
+  pending: 'not started', in_progress: 'on track', late: 'late', completed: 'completed', cancelled: 'cancelled', blocked: 'blocked',
 };
 const PRIORITY_WORDS: Record<string, TaskPriority> = { low: 'low', medium: 'medium', high: 'high', urgent: 'urgent', critical: 'urgent' };
 

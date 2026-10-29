@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-29 — Task statuses: Not Started, On Track, Late, Completed, Blocked
+- User chose the waterfall list (mock https://claude.ai/artifact/AHc3J8cJZh1eYVEHpDMZX7). Label-only rename: stored `in_progress` shows as On Track, `pending` as Not Started; new stored value `late` (**T097**, ENUM on `tasks.status`).
+- Late is automatic AND manual: `utils/taskStatus.ts` (`effectiveTaskStatus`, one shared helper, calendar days in the viewer's day) shows Late for an open task (pending/in_progress/in_review/testing) past its end date; a PM can store `late`. Completed/Blocked/Cancelled never auto-Late.
+- In Review, Testing, Cancelled are no longer offered in pickers/filters/legend/bulk bars/Kanban (Cancelled column only while a task has it); tasks that still have them show as On Track / Cancelled. No data migrated. Sprint Board / epics keep their own columns (Scrum).
+- Server: zod enums + `ScheduleService` types accept `late`; `constants/taskStatus.ts` labels; AI tool enums accept late/blocked; chat command "late"/"on track".
+
 ## 2026-10-29 — One Owner per project, hand-over, temporary cover for a PM who is away
 - User settled the PM rights (not a member = not visible; Owner = the one accountable PM; Owner/Manager same rights except making Owners; cover for vacation/sick). Mock https://claude.ai/artifact/HRX1M9PiF3HLntuqRzCY2a approved.
 - Table `project_cover` + view `project_managers_now` (**T096**: T090 was taken upstream). Rights at request time in `middleware/requireProjectAccess.ts` (`coverMembership`, `applyCoverRole`, `editableProjectIds`); `ProjectCoverService` (start/end/finish, notices, audit), `routes/core/projectCover.ts` (cover + `reassign-owner`, `coverGate`), daily `pm-cron@project-cover.timer` (06:00, on the cron watch list).
