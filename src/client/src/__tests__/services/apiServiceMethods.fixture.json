@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 675,
+  "count": 679,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -676,6 +676,10 @@
     "verifyAuditChain",
     "verifyEmail",
     "voteRetroItem",
-    "withdrawChangeRequest"
+    "withdrawChangeRequest",
+    "getProjectCover",
+    "startProjectCover",
+    "endProjectCover",
+    "reassignProjectOwner"
   ]
 }
