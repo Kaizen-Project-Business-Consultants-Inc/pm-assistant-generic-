@@ -26,7 +26,7 @@ import { paginate } from '../../dto/responses';
 import { parsePagination } from '../../schemas/paginationSchema';
 import logger from '../../utils/logger';
 import { toDateString } from '../../utils/calendarDate';
-import { changeHistoryService } from '../../services/ChangeHistoryService';
+import { changeHistoryService, DeleteTooLargeError } from '../../services/ChangeHistoryService';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 
 const createScheduleSchema = z.object({
@@ -416,18 +416,25 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const { taskId } = request.params as { taskId: string };
+      // A summary's tasks stay (moved up a level) unless the caller asks for them to go too (?children=delete)
+      const { children } = z.object({ children: z.enum(['keep', 'delete']).default('keep') }).parse(request.query ?? {});
       // Recorded in Schedule History (changeId): Undo there, or Ctrl+Z, puts the task back
-      const { deleted, changeId } = await changeHistoryService.deleteTaskWithHistory(taskId);
+      const { deleted, kept, changeId, deletedIds } = await changeHistoryService.deleteTaskWithHistory(taskId, children);
       if (!deleted) return reply.status(404).send({ error: 'Not found', message: 'Task not found' });
       const { scheduleId } = request.params as { scheduleId: string };
       const schedule = await scheduleService.findById(scheduleId);
       // with the plan, so open screens reload only that plan (2026-10-10 audit: every plan reloaded)
-      WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId, scheduleId } }, schedule?.projectId);
       const user = request.user!;
-      webhookService.dispatch('task.deleted', { taskId }, user?.userId);
-      automationEventBus.emit({ type: 'task.deleted', entityType: 'task', entityId: taskId, projectId: schedule?.projectId || '', userId: user.userId, payload: { taskId }, timestamp: new Date().toISOString() }).catch(() => {});
-      return { message: 'Task deleted successfully', changeId };
+      // Every task that went (the heading's tasks too, when they were deleted with it) is announced
+      for (const id of deletedIds.length > 0 ? deletedIds : [taskId]) {
+        WebSocketService.broadcast({ type: 'task_deleted', payload: { taskId: id, scheduleId } }, schedule?.projectId);
+        webhookService.dispatch('task.deleted', { taskId: id }, user?.userId);
+        automationEventBus.emit({ type: 'task.deleted', entityType: 'task', entityId: id, projectId: schedule?.projectId || '', userId: user.userId, payload: { taskId: id }, timestamp: new Date().toISOString() }).catch(() => {});
+      }
+      return { message: 'Task deleted successfully', kept, changeId };
     } catch (error) {
+      if (error instanceof z.ZodError) throw error;
+      if (error instanceof DeleteTooLargeError) return reply.status(400).send({ error: 'Too many tasks', message: error.message });
       logger.error('Delete task error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to delete task' });
     }

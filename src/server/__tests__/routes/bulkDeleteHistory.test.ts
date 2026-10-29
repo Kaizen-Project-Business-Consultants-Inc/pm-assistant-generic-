@@ -55,10 +55,45 @@ describe('DELETE /bulk/tasks — copies, deletes, records for Undo', () => {
     });
   });
 
+  it('children: "delete" takes the tasks under a heading with it; the default keeps them and moves them up', async () => {
+    const seen: string[] = [];
+    queryOn.mockImplementation(async (_conn: any, sql: string, params: any[]) => {
+      seen.push(sql);
+      if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND parent_task_id IN')) return params.includes('sum') ? [{ id: 'kid' }] : [];
+      if (sql.startsWith('SELECT * FROM tasks')) return params.slice(0, -1).map((id: string) => ({ id, name: id, parent_task_id: id === 'sum' ? null : 'sum' }));
+      return [];
+    });
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', taskIds: ['sum'], children: 'delete' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ deleted: 2, kept: 0 });
+    expect(seen.some(q => q.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND parent_task_id IN'))).toBe(true);
+
+    seen.length = 0;
+    const keep = await app.inject({ method: 'DELETE', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', taskIds: ['sum'] } });
+    expect(keep.statusCode).toBe(200);
+    expect(seen.some(q => q.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND parent_task_id IN'))).toBe(false); // no cascade
+  });
+
+  it('children: "delete" over the size limit: a plain 400 message, nothing deleted', async () => {
+    queryOn.mockImplementation(async (_conn: any, sql: string) => {
+      if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND parent_task_id IN')) return Array.from({ length: 1001 }, (_, i) => ({ id: `k${i}` }));
+      return [];
+    });
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', taskIds: ['sum'], children: 'delete' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/too many to delete in one step with Undo/);
+  });
+
+  it('refuses a children value that is neither keep nor delete', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', taskIds: ['t1'], children: 'all' } });
+    expect(res.statusCode).toBeGreaterThanOrEqual(400); // the test app has no error handler, so a refused body surfaces as 500 here
+    expect(queryOn).not.toHaveBeenCalled();
+  });
+
   it('reads the copy before deleting, on the same connection, then records it with the change id', async () => {
     const res = await app.inject({ method: 'DELETE', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', taskIds: ['t1', 't2'] } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ deleted: 2, changeId: 'chg-1' });
+    expect(res.json()).toEqual({ deleted: 2, kept: 0, changeId: 'chg-1' });
 
     const sql = queryOn.mock.calls.map(c => String(c[1]));
     expect(queryOn.mock.calls.every(c => c[0] === 'conn')).toBe(true); // one transaction, tenant-safe queryOn
@@ -85,7 +120,7 @@ describe('DELETE /bulk/tasks — copies, deletes, records for Undo', () => {
   it('tasks not on this schedule: nothing deleted, nothing recorded', async () => {
     queryOn.mockImplementation(async () => []);
     const res = await app.inject({ method: 'DELETE', url: '/api/v1/bulk/tasks', payload: { scheduleId: 's1', taskIds: ['elsewhere'] } });
-    expect(res.json()).toEqual({ deleted: 0, changeId: null });
+    expect(res.json()).toEqual({ deleted: 0, kept: 0, changeId: null });
     expect(queryOn.mock.calls.some(c => String(c[1]).startsWith('DELETE'))).toBe(false);
     expect(record).not.toHaveBeenCalled();
   });

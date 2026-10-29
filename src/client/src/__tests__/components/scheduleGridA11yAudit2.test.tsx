@@ -321,7 +321,7 @@ describe('M4: the focus stays in the grid after common actions', () => {
     del.focus();
     fireEvent.click(del);
     await act(async () => { fireEvent.click(within(getByRole('dialog')).getByRole('button', { name: 'Delete' })); });
-    expect(onBulkDelete).toHaveBeenCalledWith(['a']);
+    expect(onBulkDelete).toHaveBeenCalledWith(['a'], 'keep');
     const g = grid(container);
     await waitFor(() => expect(document.activeElement).toBe(g));
     await waitFor(() => expect(g.getAttribute('aria-activedescendant') ?? '').toMatch(/-cell-b-name$/));
@@ -334,7 +334,7 @@ describe('M4: the focus stays in the grid after common actions', () => {
     const del = within(container.querySelector('[role="row"][data-task-id="a"]') as HTMLElement).getByRole('button', { name: 'Delete Alpha' });
     fireEvent.click(del);
     await act(async () => { fireEvent.click(within(getByRole('dialog')).getByRole('button', { name: 'Delete' })); });
-    expect(onBulkDelete).toHaveBeenCalledWith(['a']);
+    expect(onBulkDelete).toHaveBeenCalledWith(['a'], 'keep');
     const g = grid(container);
     await waitFor(() => expect(document.activeElement).toBe(g));
     await waitFor(() => expect(g.getAttribute('aria-activedescendant') ?? '').toMatch(/-cell-b-name$/));

@@ -14,7 +14,7 @@ import { type IsWorking, weekdaysOnly, utcDay, ymdOf, finishFor } from '../../ut
 import { planChanged } from '../../services/domainEvents';
 import { groupBy } from '../../utils/groupBy';
 import {
-  changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary,
+  changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary, DeleteTooLargeError,
   ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries, type LinksBefore,
 } from '../../services/ChangeHistoryService';
 
@@ -797,12 +797,14 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       const body = z.object({
         scheduleId: z.string().min(1),
         taskIds: z.array(z.string().min(1)).min(1).max(MAX_BULK),
+        // What happens to the tasks under a deleted summary: they stay (moved up a level) or go with it
+        children: z.enum(['keep', 'delete']).default('keep'),
       }).parse(request.body);
 
       // One transaction: copy everything the delete removes (for Undo in Schedule History), then
       // delete. The copy is read under a lock so it matches exactly what is deleted.
       const snapshot = await databaseService.transaction(async (connection) =>
-        deleteTasksKeepingCopy((sql, params) => databaseService.queryOn(connection, sql, params), body.scheduleId, body.taskIds));
+        deleteTasksKeepingCopy((sql, params) => databaseService.queryOn(connection, sql, params), body.scheduleId, body.taskIds, { children: body.children }));
       const deletedIds = new Set(snapshot.tasks.map((t: any) => String(t.id)));
 
       // Summary tasks above the deleted ones: their dates and totals follow (awaited, so History
@@ -827,10 +829,11 @@ export async function bulkRoutes(fastify: FastifyInstance) {
           undo: snapshot,
         });
       }
-      return { deleted: deletedIds.size, changeId };
+      return { deleted: deletedIds.size, kept: snapshot.reparented?.length ?? 0, changeId };
     } catch (error) {
       // Bad input is the caller's mistake: the app's error handler answers 400 with the field
       if (error instanceof z.ZodError) throw error;
+      if (error instanceof DeleteTooLargeError) return reply.status(400).send({ error: 'Too many tasks', message: error.message });
       logger.error('Bulk delete tasks error', { error });
       return reply.status(500).send({ error: 'Failed to bulk delete tasks' });
     }

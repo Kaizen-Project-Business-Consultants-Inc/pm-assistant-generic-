@@ -238,6 +238,7 @@ const sections: Section[] = [
       'Deleted tasks (one or many, from anywhere in the plan) come back exactly as they were — with their links, booked hours and comments',
       'An import can be undone too: its tasks, its baseline and any people it created for unknown names',
       'Changing a task\'s dates pushes the tasks after it later only if they would now start too early — gaps you left are kept, nothing is pulled earlier, finished tasks stay — and Undo in History puts them all back',
+      'Deleting a heading that has tasks under it asks first: Delete the heading only (the tasks stay, moved up a level) or Delete the heading and its tasks; History and Ctrl+Z undo either',
       'Ctrl+Z on a predecessor change or a "Link selected tasks" goes through History too, so it follows the same rule: newest change only, nothing edited since',
       'Undo puts hours bookings back on exactly the days they had, even one that had been cut to fit a shorter task',
       'Accepting an AI reschedule, promoting a what-if scenario and baselines or approved timesheets: the first two are History entries you can undo; the last two are not plan edits and no longer block Undo',

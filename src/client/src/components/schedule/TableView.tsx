@@ -8,7 +8,8 @@ import { apiService } from '../../services/api';
 import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
 import { useColumnDragReorder } from '../../hooks/useColumnDragReorder';
-import { ConfirmModal } from '../ui/ConfirmModal';
+import { DeleteTasksModal } from './DeleteTasksModal';
+import { deletedHeadingMessage, summariesNeedingChoice, type DeleteChildren } from '../../utils/deleteSummaryChoice';
 import { ResourceQuickAssign } from './ResourceQuickAssign';
 import { ResourcePickerDropdown } from './ResourcePickerDropdown';
 import { TableToolbar } from './table/TableToolbar';
@@ -626,18 +627,25 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     }
   }, [selectedIds, onBulkUpdate, scheduleId, queryClient, showBulkDone, clearBulkState, later, focusGridOn, rowTasks]);
 
-  const confirmAndDeleteTasks = useCallback(async (taskIds: string[]) => {
+  const confirmAndDeleteTasks = useCallback(async (taskIds: string[], children: DeleteChildren) => {
     // The row the focus lands on afterwards: the next one that stays (worked out before they go)
-    const landOn = rowAfterRemoval(rowTasks, new Set(taskIds));
+    // (a heading deleted with its tasks takes them too; the message says what happened to them)
+    const everyTask = allTasks ?? tasks;
+    const choice = summariesNeedingChoice(everyTask, taskIds);
+    const gone = new Set(taskIds);
+    if (children === 'delete') choice?.below.forEach(t => gone.add(t.id));
+    const landOn = rowAfterRemoval(rowTasks, gone);
     setBulkLoading(true);
     try {
       if (onBulkDelete) {
-        await onBulkDelete(taskIds); // the Schedule screen's delete refreshes every view of the plan
+        await onBulkDelete(taskIds, children); // the Schedule screen's delete refreshes every view of the plan
       } else {
-        await apiService.bulkDeleteTasks(scheduleId, taskIds);
+        await apiService.bulkDeleteTasks(scheduleId, taskIds, children);
         refreshAfterScheduleChange(queryClient, { scheduleId, projectId: undefined });
       }
-      showBulkDone(`Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`, !!onBulkDelete);
+      showBulkDone(choice
+        ? deletedHeadingMessage(everyTask.filter(t => taskIds.includes(t.id)), choice.below.length, children)
+        : `Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`, !!onBulkDelete);
       clearBulkState();
       focusGridOn(landOn);
     } catch (err) {
@@ -647,7 +655,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     } finally {
       setBulkLoading(false);
     }
-  }, [onBulkDelete, scheduleId, queryClient, showBulkDone, clearBulkState, later, focusGridOn, rowTasks]);
+  }, [onBulkDelete, scheduleId, queryClient, showBulkDone, clearBulkState, later, focusGridOn, rowTasks, allTasks, tasks]);
 
   const handleDeleteTasks = useCallback((taskIds: string[]) => {
     if (taskIds.length === 0) return;
@@ -1766,14 +1774,11 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       )}
 
       {pendingDeleteIds && (
-        <ConfirmModal
-          title="Delete Tasks"
-          message={pendingDeleteIds.length === 1
-            ? 'Are you sure you want to delete this task?'
-            : `Are you sure you want to delete ${pendingDeleteIds.length} tasks?`}
-          confirmLabel="Delete"
+        <DeleteTasksModal
+          tasks={allTasks ?? tasks}
+          ids={pendingDeleteIds}
           isPending={bulkLoading}
-          onConfirm={() => { confirmAndDeleteTasks(pendingDeleteIds); setPendingDeleteIds(null); }}
+          onConfirm={children => { confirmAndDeleteTasks(pendingDeleteIds, children); setPendingDeleteIds(null); }}
           onCancel={() => setPendingDeleteIds(null)}
         />
       )}

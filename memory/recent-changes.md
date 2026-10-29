@@ -1,5 +1,13 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-29 — Deleting a heading asks: heading only, or its tasks too
+- User report: deleting summary "test" left "child" as a standalone row with no question. Mock https://claude.ai/artifact/1fu4ybTNFtFujCL93wXa5y approved ("go").
+- Server: `deleteTasksKeepingCopy(..., { children: 'keep' | 'delete' })`. keep (default) moves the tasks to the nearest surviving ancestor and records `reparented` in the copy so Undo puts them back; delete takes every descendant in one transaction and one History entry. `DELETE /bulk/tasks` (body `children`) and `DELETE /schedules/:id/tasks/:taskId` (`?children=`); responses gain `kept`. `ScheduleService.removeTask` (no-copy path) also moves children up. Mjuzi `delete_task` never cascades.
+- Client: `DeleteTasksModal` (alert dialog) in Gantt, Table and the task form (via `requestDeleteTask` in ScheduleWorkspace; Kanban has no delete); the Review panel's delete keeps children; `utils/deleteSummaryChoice.ts`. Toast: "Deleted 'x'. N tasks kept" / "Deleted 'x' and N tasks".
+- Review fixes: cascade capped (1,000 tasks / 5 MB copy → plain 400, nothing deleted); child lookups `FOR UPDATE`; one UPDATE per parent; every deleted task announced + audited on a cascade; Gantt dialog counts the whole plan; focus/toast follow the cascade; task form asks once. Guard also catches `DELETE t FROM tasks t` and a tasks-based BaseRepository.
+- Guard: `taskDeleteLeavesNoOrphans.test.ts`. e2e: `delete-summary.spec.ts` (added to the full staging config). Staging only.
+
+
 ## 2026-10-29 — Task statuses: Not Started, On Track, Late, Completed, Blocked
 - User chose the waterfall list (mock https://claude.ai/artifact/AHc3J8cJZh1eYVEHpDMZX7). Label-only rename: stored `in_progress` shows as On Track, `pending` as Not Started; new stored value `late` (**T097**, ENUM on `tasks.status`).
 - Late is automatic AND manual: `utils/taskStatus.ts` (`effectiveTaskStatus`, one shared helper, calendar days in the viewer's day) shows Late for an open task (pending/in_progress/in_review/testing) past its end date; a PM can store `late`. Completed/Blocked/Cancelled never auto-Late.

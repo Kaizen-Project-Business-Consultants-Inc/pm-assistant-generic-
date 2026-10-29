@@ -20,6 +20,7 @@ import { useUndoRedo } from '../../../hooks/useUndoRedo';
 import { buildRowNumberMap } from '../../../components/schedule/gantt/types';
 import { buildBulkLinks, type BulkLinkMode } from '../../../components/schedule/bulkLink';
 import { announce } from '../../../utils/announce';
+import { deletedHeadingMessage, summariesNeedingChoice, type DeleteChildren } from '../../../utils/deleteSummaryChoice';
 import { firstByKey } from '../../../utils/lookup';
 import { SHOWN_AGAIN, TRY_AGAIN, saveFailedMessage } from '../../../utils/saveFailedMessage';
 import { beginOwnTaskSave, endOwnTaskSave } from '../../../utils/ownTaskSaves';
@@ -330,22 +331,25 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
   // Ctrl+Z goes through the History undo: the task comes back under its old id with its links,
   // booked hours, people and comments
   const deleteMutation = useMutation({
-    mutationFn: (taskId: string) => apiService.deleteTask(schedule.id, taskId),
-    onError: (error: unknown, taskId) => {
+    mutationFn: ({ taskId, children }: { taskId: string; children?: DeleteChildren }) => apiService.deleteTask(schedule.id, taskId, children),
+    onError: (error: unknown, { taskId }) => {
       const name = taskName(taskId);
       showSaveError(saveFailedMessage(`${name ? `"${name}"` : 'The task'} was not deleted`, error, TRY_AGAIN));
     },
-    onSuccess: (res, taskId) => {
+    onSuccess: (res, { taskId, children = 'keep' }) => {
       planChanged();
       setEditingTask(null);
       setActiveTaskId(null);
-      announce('Task deleted');
       let changeId = res?.changeId ?? null;
-      const name = tasks.find(t => t.id === taskId)?.name;
+      const task = tasks.find(t => t.id === taskId);
+      const name = task?.name;
+      // The tasks that were under a heading (counted before the delete took them away or moved them up)
+      const below = task ? summariesNeedingChoice(tasks, [taskId])?.below.length ?? 0 : 0;
+      announce(below > 0 && task ? deletedHeadingMessage([task], below, children) : 'Task deleted');
       pushAction({
-        description: name ? `Delete ${name}` : 'Delete 1 task',
+        description: below > 0 && task ? deletedHeadingMessage([task], below, children) : name ? `Delete ${name}` : 'Delete 1 task',
         undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); planChanged(); },
-        redo: async () => { changeId = (await apiService.deleteTask(schedule.id, taskId)).changeId; planChanged(); },
+        redo: async () => { changeId = (await apiService.deleteTask(schedule.id, taskId, children)).changeId; planChanged(); },
       });
     },
   });
@@ -620,10 +624,13 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
 
   // Bulk delete; undo goes through Schedule History, which puts the tasks back under their old
   // ids with their links, booked hours, people and comments (it used to recreate them as new tasks)
-  const handleBulkDelete = useCallback(async (taskIds: string[]) => {
+  const handleBulkDelete = useCallback(async (taskIds: string[], children: DeleteChildren = 'keep') => {
     let changeId: Awaited<ReturnType<typeof apiService.bulkDeleteTasks>>['changeId'];
+    // Headings with tasks under them: the Undo message says what happened to those tasks
+    const choice = summariesNeedingChoice(tasks, taskIds);
+    const picked = new Set(taskIds);
     try {
-      changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId;
+      changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds, children)).changeId;
     } catch (error) {
       // Nothing leaves the screen before the server agrees, so there is nothing to put back
       const n = taskIds.length;
@@ -633,11 +640,13 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
     planChanged();
 
     pushAction({
-      description: `Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
+      description: choice
+        ? deletedHeadingMessage(tasks.filter(t => picked.has(t.id)), choice.below.length, children)
+        : `Deleted ${taskIds.length} task${taskIds.length > 1 ? 's' : ''}`,
       undo: async () => { if (changeId) await apiService.undoScheduleChange(schedule.id, changeId); planChanged(); },
-      redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds)).changeId; planChanged(); },
+      redo: async () => { changeId = (await apiService.bulkDeleteTasks(schedule.id, taskIds, children)).changeId; planChanged(); },
     });
-  }, [schedule.id, planChanged, pushAction, showSaveError]);
+  }, [schedule.id, tasks, planChanged, pushAction, showSaveError]);
 
   // Duplicate/paste tasks — creates copies with "(copy)" suffix
   const handleDuplicateTasks = useCallback(async (srcTasks: GanttTask[]) => {

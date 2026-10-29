@@ -11,6 +11,8 @@ interface AccessibleModalProps {
   labelledBy?: string;
   /** id of the element that describes the dialog (optional). */
   describedBy?: string;
+  /** `alertdialog` for a question that needs an answer before anything else (default `dialog`). */
+  role?: 'dialog' | 'alertdialog';
   /** While true (saving), Escape and a backdrop click do not close the dialog, and it is aria-busy. */
   busy?: boolean;
   /** While true, Escape and a backdrop click do not close the dialog (e.g. unsaved edits) — not announced as busy. */
@@ -42,6 +44,7 @@ export const AccessibleModal: React.FC<AccessibleModalProps> = ({
   ariaLabel,
   labelledBy,
   describedBy,
+  role = 'dialog',
   busy = false,
   preventClose = false,
   closeOnBackdrop = true,
@@ -65,10 +68,9 @@ export const AccessibleModal: React.FC<AccessibleModalProps> = ({
         onClick={closeOnBackdrop ? requestClose : undefined}
         aria-hidden="true"
       />
-      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <div
         ref={dialogRef}
-        role="dialog"
+        role={role}
         aria-modal="true"
         aria-label={labelledBy ? undefined : ariaLabel}
         aria-labelledby={labelledBy}

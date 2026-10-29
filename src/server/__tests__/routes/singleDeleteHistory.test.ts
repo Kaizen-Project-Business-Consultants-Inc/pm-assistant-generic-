@@ -95,6 +95,45 @@ describe('DELETE /schedules/:id/tasks/:taskId — recorded in History, undone li
     });
   });
 
+  /** The plan has a heading "phase" with one task under it ("t2"); the child lookup finds it */
+  function withHeading(extraKids: string[] = []) {
+    const base = queryOn.getMockImplementation()!;
+    const PHASE = { id: 'phase', schedule_id: 's1', name: 'Phase', parent_task_id: null, start_date: '2026-10-05', end_date: '2026-10-16' };
+    queryOn.mockImplementation(async (conn: any, sql: string, params: any[] = []) => {
+      if (sql.startsWith('SELECT id FROM tasks WHERE schedule_id = ? AND parent_task_id IN')) {
+        return params.includes('phase') ? [{ id: 't2' }, ...extraKids.map(id => ({ id }))] : [];
+      }
+      if (sql.startsWith('SELECT * FROM tasks WHERE id IN')) return [PHASE, BUILD].filter(t => params.includes(t.id));
+      return base(conn, sql, params);
+    });
+  }
+
+  it('?children=delete: every task that went is announced (websocket, webhook, automation, audit), not just the heading', async () => {
+    withHeading();
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/schedules/s1/tasks/phase?children=delete' });
+    expect(res.statusCode).toBe(200);
+    for (const id of ['phase', 't2']) {
+      expect(broadcast).toHaveBeenCalledWith({ type: 'task_deleted', payload: { taskId: id, scheduleId: 's1' } }, 'p1');
+      expect(dispatch).toHaveBeenCalledWith('task.deleted', { taskId: id }, 'u1');
+      expect(emit).toHaveBeenCalledWith(expect.objectContaining({ type: 'task.deleted', entityId: id }));
+      expect(append).toHaveBeenCalledWith(expect.objectContaining({ action: 'task.delete', entityId: id }));
+    }
+  });
+
+  it('?children=delete over the size limit: a plain 400 message, nothing deleted', async () => {
+    withHeading(Array.from({ length: 1001 }, (_, i) => `k${i}`));
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/schedules/s1/tasks/phase?children=delete' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toMatch(/too many to delete in one step with Undo/);
+    expect(queryOn.mock.calls.some(c => String(c[1]).startsWith('DELETE FROM tasks'))).toBe(false);
+  });
+
+  it('a children value that is not keep or delete is refused', async () => {
+    const res = await app.inject({ method: 'DELETE', url: '/api/v1/schedules/s1/tasks/t2?children=everything' });
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(queryOn.mock.calls.some(c => String(c[1]).startsWith('DELETE FROM tasks'))).toBe(false);
+  });
+
   it('copies before deleting on the same connection, records after the roll-up, and Undo restores it', async () => {
     const res = await app.inject({ method: 'DELETE', url: '/api/v1/schedules/s1/tasks/t2' });
     expect(res.statusCode).toBe(200);

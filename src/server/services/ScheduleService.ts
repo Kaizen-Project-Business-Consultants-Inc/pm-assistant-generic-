@@ -1247,7 +1247,7 @@ export class ScheduleService {
    * roll-up, the audit entry and the "plan changed" notice. `deleteKeepingCopy` (History's
    * deleteTasksKeepingCopy, for a delete a person makes — ChangeHistoryService.deleteTaskWithHistory)
    * does the delete inside this transaction and returns the copy Undo needs. Deleting a summary
-   * task removes only that row; its tasks keep pointing at it, so Undo re-attaches them.
+   * task removes only that row (or, when the caller says so, its tasks too): the tasks that stay move up a level, and Undo puts them back.
    */
   async removeTask<S extends { tasks: any[] }>(
     id: string,
@@ -1265,6 +1265,8 @@ export class ScheduleService {
         return copy.tasks.length > 0;
       }
 
+      // The tasks under it move up a level, so none is left pointing at a deleted row
+      if (existing) await q('UPDATE tasks SET parent_task_id = ? WHERE parent_task_id = ?', [existing.parentTaskId ?? null, id]);
       const result: any = await q('DELETE FROM tasks WHERE id = ?', [id]);
       const wasDeleted = (result.affectedRows ?? 0) > 0;
 
@@ -1301,6 +1303,20 @@ export class ScheduleService {
         payload: { before: existing },
         source: getActorSource(),
       }).catch(err => deadLetterService.capture('audit.append', {}, err));
+      // The tasks deleted with it (a heading's tasks) each get their own entry, not waited for
+      for (const t of ((copy as S | null)?.tasks ?? []) as any[]) {
+        if (String(t.id) === id) continue;
+        auditLedgerService.append({
+          actorId: getRequestContext()?.userId || existing.createdBy,
+          actorType: 'user',
+          action: 'task.delete',
+          entityType: 'task',
+          entityId: String(t.id),
+          projectId: schedule?.projectId ?? null,
+          payload: { before: t },
+          source: getActorSource(),
+        }).catch(err => deadLetterService.capture('audit.append', {}, err));
+      }
       projectId = schedule?.projectId ?? null;
     }
 

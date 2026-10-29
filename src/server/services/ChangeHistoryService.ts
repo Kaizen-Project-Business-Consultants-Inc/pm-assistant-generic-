@@ -121,6 +121,15 @@ export class NotLatestChangeError extends Error {
 }
 export class ChangeStateError extends Error {}
 
+/** Deleting a heading together with its tasks is capped so the copy for Undo is always kept */
+export const MAX_CASCADE_TASKS = 1000;
+/** The delete was refused, nothing changed: too many tasks under the heading to delete (and undo) in one step */
+export class DeleteTooLargeError extends Error {
+  constructor(public readonly below: number) {
+    super(`This heading has ${below} tasks under it, too many to delete in one step with Undo.`);
+  }
+}
+
 /** A (task id, previous column values) pair for bulk update / status undo */
 export interface PreviousValues { id: string; values: Record<string, unknown> }
 
@@ -164,7 +173,16 @@ export interface DeleteSnapshot {
   activities: Row[];
   /** Tasks whose old single-predecessor columns named a deleted task (the delete clears them) */
   successors: Array<{ id: string; dependency: string; dependency_type: string | null; dependency_lag_days: number | null }>;
+  /**
+   * Tasks that stayed when their summary was deleted: each moved up to the nearest summary that
+   * is still there (or to the top). Undo puts them back under the deleted summary.
+   * (Absent on copies taken before 2026-10-30, whose children kept pointing at the deleted row.)
+   */
+  reparented?: Array<{ id: string; from: string; to: string | null }>;
 }
+
+/** What happens to the tasks under a deleted summary: they stay (moved up a level) or go with it */
+type DeleteChildren = 'keep' | 'delete';
 
 /** What an import added */
 export interface ImportUndo {
@@ -217,11 +235,24 @@ export async function snapshotTasksForDelete(run: Run, scheduleId: string, taskI
  * that connection) so the copy and the delete see the same rows. Returns the copy; nothing is
  * deleted when none of the tasks is on this schedule.
  */
-export async function deleteTasksKeepingCopy(run: Run, scheduleId: string, taskIds: string[]): Promise<DeleteSnapshot> {
-  const snap = await snapshotTasksForDelete(run, scheduleId, taskIds);
+export async function deleteTasksKeepingCopy(
+  run: Run, scheduleId: string, taskIds: string[], opts: { children?: DeleteChildren } = {},
+): Promise<DeleteSnapshot> {
+  const cascade = opts.children === 'delete';
+  const wanted = cascade ? await withDescendants(run, scheduleId, taskIds) : taskIds;
+  const below = Math.max(0, wanted.length - new Set(taskIds).size);
+  if (cascade && wanted.length > MAX_CASCADE_TASKS) throw new DeleteTooLargeError(below);
+  const snap = await snapshotTasksForDelete(run, scheduleId, wanted);
   if (snap.tasks.length === 0) return snap;
+  // A cascade is always undoable: if its copy would be too big to keep, nothing is deleted
+  // (the throw rolls the transaction back); a plain delete keeps the old "recorded, can't undo" way
+  if (cascade && JSON.stringify(snap).length > MAX_UNDO_BYTES) throw new DeleteTooLargeError(below);
   const ids = snap.tasks.map(t => String(t.id));
   const inIds = ph(ids.length);
+  // The tasks that stay under a deleted summary move up to the nearest summary that stays
+  // (or to the top), so no task is left pointing at a row that no longer exists
+  const reparented = await moveKeptChildrenUp(run, scheduleId, snap.tasks);
+  if (reparented.length > 0) snap.reparented = reparented;
   await run(
     `UPDATE tasks SET dependency = NULL, dependency_type = NULL, dependency_lag_days = 0 WHERE dependency IN (${inIds}) AND schedule_id = ?`,
     [...ids, scheduleId]);
@@ -229,6 +260,52 @@ export async function deleteTasksKeepingCopy(run: Run, scheduleId: string, taskI
   // A delete leaves no trace on the remaining tasks: History must still see the plan changed
   await touchScheduleForDelete(run, scheduleId);
   return snap;
+}
+
+/** The tasks and every task below them, any depth (a summary's tasks can hold summaries) */
+async function withDescendants(run: Run, scheduleId: string, taskIds: string[]): Promise<string[]> {
+  const all = new Set(taskIds);
+  let frontier = [...all];
+  for (let depth = 0; frontier.length > 0 && depth < 50; depth++) {
+    // eslint-disable-next-line no-await-in-loop -- one query per level of the outline (a handful), each needs the previous level's ids
+    const kids = await run(`SELECT id FROM tasks WHERE schedule_id = ? AND parent_task_id IN (${ph(frontier.length)}) FOR UPDATE`, [scheduleId, ...frontier]);
+    // eslint-disable-next-line no-restricted-syntax -- small: `all` is a Set (constant-time lookup); this only walks one level of the outline per pass
+    frontier = (Array.isArray(kids) ? kids : []).map((k: any) => String(k.id)).filter(id => !all.has(id));
+    frontier.forEach(id => all.add(id));
+  }
+  return [...all];
+}
+
+function groupBy<T, K>(items: T[], key: (item: T) => K): Map<K, T[]> {
+  const groups = new Map<K, T[]>();
+  for (const item of items) {
+    const k = key(item);
+    const list = groups.get(k);
+    if (list) list.push(item); else groups.set(k, [item]);
+  }
+  return groups;
+}
+
+/** Tasks (not being deleted) under the deleted ones move to the nearest parent that stays; returns what moved */
+async function moveKeptChildrenUp(run: Run, scheduleId: string, deleted: Row[]): Promise<NonNullable<DeleteSnapshot['reparented']>> {
+  const ids = deleted.map(t => String(t.id));
+  const gone = new Set(ids);
+  const parentOf = new Map(deleted.map(t => [String(t.id), (t.parent_task_id as string | null) ?? null]));
+  const kids = await run(
+    `SELECT id, parent_task_id FROM tasks WHERE schedule_id = ? AND parent_task_id IN (${ph(ids.length)}) AND id NOT IN (${ph(ids.length)}) FOR UPDATE`,
+    [scheduleId, ...ids, ...ids]);
+  const moved: NonNullable<DeleteSnapshot['reparented']> = [];
+  for (const k of Array.isArray(kids) ? kids : []) {
+    let to = parentOf.get(String(k.parent_task_id)) ?? null;
+    for (let i = 0; to && gone.has(to) && i < 50; i++) to = parentOf.get(to) ?? null;
+    moved.push({ id: String(k.id), from: String(k.parent_task_id), to });
+  }
+  // One update per new parent, not one per task
+  for (const [to, group] of groupBy(moved, m => m.to)) {
+    // eslint-disable-next-line no-await-in-loop -- a handful of new parents, inside the delete's own transaction
+    await run(`UPDATE tasks SET parent_task_id = ? WHERE id IN (${ph(group.length)}) AND schedule_id = ?`, [to, ...group.map(m => m.id), scheduleId]);
+  }
+  return moved;
 }
 
 /** "Deleted 1 task: Design", "Deleted 2 tasks: Design and Build", "Deleted 5 tasks: Design, Build and 3 more" */
@@ -340,6 +417,14 @@ async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Pr
     // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
     for (const a of snap.activities ?? []) await insertRow(run, 'task_activities', a, columns, true);
 
+    // Tasks that stayed went up a level: back under the restored summary (only if nobody moved them since)
+    for (const group of groupBy(snap.reparented ?? [], m => `${m.from}|${m.to ?? '(top)'}`).values()) {
+      const { from, to } = group[0];
+      // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; one update per old/new parent pair
+      await run(
+        `UPDATE tasks SET parent_task_id = ? WHERE id IN (${ph(group.length)}) AND schedule_id = ? AND ${to === null ? 'parent_task_id IS NULL' : 'parent_task_id = ?'}`,
+        to === null ? [from, ...group.map(m => m.id), scheduleId] : [from, ...group.map(m => m.id), scheduleId, to]);
+    }
     // The old single-predecessor columns the delete cleared on the tasks that followed
     for (const s of snap.successors ?? []) {
       // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; runs only when a user undoes a delete
@@ -352,7 +437,11 @@ async function restoreDeletedTasks(scheduleId: string, snap: DeleteSnapshot): Pr
     logger.info('[ChangeHistory] delete undone; some links/people were gone', { scheduleId, skippedLinks, skippedPeople });
   }
   // Summary tasks the deleted tasks sat under get their dates and totals back
-  const parents = new Set(tasks.map(t => t.parent_task_id as string | null).filter((p): p is string => !!p && !ids.includes(p)));
+  const parents = new Set<string>((snap.reparented ?? []).map(m => m.from));
+  for (const t of tasks) {
+    const p = t.parent_task_id as string | null;
+    if (p && !ids.includes(p)) parents.add(p);
+  }
   await rollUpSummaries(parents, scheduleId);
   return tasks.length;
 }
@@ -418,10 +507,10 @@ class ChangeHistoryService {
    * Build") recorded after the roll-up. Undo puts it back exactly like a bulk delete.
    * (Moved here from ScheduleService in step 1D, so the schedule code doesn't call History.)
    */
-  async deleteTaskWithHistory(taskId: string): Promise<{ deleted: boolean; changeId: string | null }> {
-    const r = await scheduleService.removeTask(taskId, deleteTasksKeepingCopy);
+  async deleteTaskWithHistory(taskId: string, children: DeleteChildren = 'keep'): Promise<{ deleted: boolean; kept: number; changeId: string | null; deletedIds: string[] }> {
+    const r = await scheduleService.removeTask(taskId, (q, scheduleId, ids) => deleteTasksKeepingCopy(q, scheduleId, ids, { children }));
     const snap = r.copy;
-    if (!r.deleted || !snap || !r.projectId || !r.scheduleId) return { deleted: r.deleted, changeId: null };
+    if (!r.deleted || !snap || !r.projectId || !r.scheduleId) return { deleted: r.deleted, kept: 0, changeId: null, deletedIds: snap ? snap.tasks.map(t => String(t.id)) : [] };
     const changeId = await this.record({
       projectId: r.projectId,
       scheduleId: r.scheduleId,
@@ -430,7 +519,7 @@ class ChangeHistoryService {
       taskIds: snap.tasks.map(t => String(t.id)),
       undo: snap,
     });
-    return { deleted: true, changeId };
+    return { deleted: true, kept: snap.reparented?.length ?? 0, changeId, deletedIds: snap.tasks.map(t => String(t.id)) };
   }
 
   async record(input: RecordInput): Promise<string | null> {

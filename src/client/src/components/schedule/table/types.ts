@@ -2,6 +2,7 @@ import type { WorkCalendar } from '../../../utils/workingDays';
 import type { OnBulkLink } from '../BulkLinkControls';
 import type { OnGroupTasks } from '../BulkGroupControls';
 import type { GanttTask } from '../GanttChart';
+import type { DeleteChildren } from '../../../utils/deleteSummaryChoice';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { formatCalendarDate } from '../../../utils/dateUtils';
@@ -49,7 +50,7 @@ export interface TableViewProps {
   baselineData?: { taskVariances: BaselineTaskVariance[] };
   scheduleStartDate?: string;
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
-  onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  onBulkDelete?: (taskIds: string[], children?: DeleteChildren) => Promise<void>;
   /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
   onBulkLink?: OnBulkLink;
   /** Put the selected tasks under a new summary task */

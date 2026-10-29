@@ -147,8 +147,8 @@ describe('create / update / delete / baseline mutations', () => {
 
   it('deleteMutation deletes, refreshes every view of the plan, and Undo goes through Schedule History', async () => {
     const { result, s } = setup();
-    await act(async () => { await result.current.deleteMutation.mutateAsync('b'); });
-    expect(api.deleteTask).toHaveBeenCalledWith('s1', 'b');
+    await act(async () => { await result.current.deleteMutation.mutateAsync({ taskId: 'b' }); });
+    expect(api.deleteTask).toHaveBeenCalledWith('s1', 'b', undefined);
     expect(invalidated).toEqual(PLAN_VIEWS);
     expect(s.setEditingTask).toHaveBeenCalledWith(null);
     expect(s.setActiveTaskId).toHaveBeenCalledWith(null);
@@ -161,7 +161,7 @@ describe('create / update / delete / baseline mutations', () => {
     api.deleteTask.mockResolvedValue({ changeId: 'ch2' });
     await act(async () => { result.current.redo(); });
     await flush();
-    expect(api.deleteTask).toHaveBeenLastCalledWith('s1', 'b');
+    expect(api.deleteTask).toHaveBeenLastCalledWith('s1', 'b', 'keep');
   });
 
   it('createBaselineMutation names the baseline by date and refreshes only this schedule\'s baselines', async () => {
@@ -364,7 +364,7 @@ describe('edits with undo', () => {
     api.bulkDeleteTasks.mockResolvedValue({ changeId: 'd1' });
     const { result } = setup();
     await act(async () => { await result.current.handleBulkDelete(['a', 'c']); });
-    expect(api.bulkDeleteTasks).toHaveBeenCalledWith('s1', ['a', 'c']);
+    expect(api.bulkDeleteTasks).toHaveBeenCalledWith('s1', ['a', 'c'], 'keep');
     expect(invalidated).toEqual(PLAN_VIEWS);
     expect(result.current.undoDescription).toBe('Deleted 2 tasks');
     await act(async () => { result.current.undo(); });
@@ -615,7 +615,7 @@ describe('a failed save', () => {
     await flush();
     expect(result.current.saveError).toBe('The new task "New" was not created: Nope. Please try again.');
     expect(s.setShowAddForm).not.toHaveBeenCalled();
-    act(() => { result.current.deleteMutation.mutate('b'); });
+    act(() => { result.current.deleteMutation.mutate({ taskId: 'b' }); });
     await flush();
     expect(result.current.saveError).toBe('"Beta" was not deleted: Nope. Please try again.');
     expect(result.current.canUndo).toBe(false);

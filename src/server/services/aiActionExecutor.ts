@@ -429,11 +429,15 @@ export class AIActionExecutor {
     }
 
     // Recorded in Schedule History like a delete in the app, so it can be undone there
-    const { deleted, changeId } = await changeHistoryService.deleteTaskWithHistory(taskId);
+    // Never cascades: the tasks under a deleted heading stay in the plan (moved up a level) — only a person
+    // choosing "heading and its tasks" in the app deletes them too
+    const { deleted, kept, changeId } = await changeHistoryService.deleteTaskWithHistory(taskId);
     return {
       success: deleted,
       toolName: 'delete_task',
-      summary: deleted ? `Deleted task "${existing.name}" (${taskId})` : `Failed to delete task ${taskId}`,
+      summary: deleted
+        ? `Deleted task "${existing.name}" (${taskId})${kept > 0 ? `. The ${kept} task${kept === 1 ? '' : 's'} under it ${kept === 1 ? 'stays' : 'stay'} in the plan` : ''}`
+        : `Failed to delete task ${taskId}`,
       // changeId: the History entry a typed "delete task 5" offers Undo for
       data: { taskId, name: existing.name, changeId },
     };

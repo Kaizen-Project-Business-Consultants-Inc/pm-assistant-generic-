@@ -91,9 +91,10 @@ export class SchedulesApi extends ApiBase {
     return response.data;
   }
 
-  /** `changeId`: the Schedule History entry — undoing it puts the task back (same id) */
-  async deleteTask(scheduleId: string, taskId: string): Promise<{ message: string; changeId: string | null }> {
-    const response = await this.api.delete(`/schedules/${scheduleId}/tasks/${taskId}`);
+  /** `changeId`: the Schedule History entry — undoing it puts the task back (same id).
+   *  `children`: what happens to tasks under a heading — they stay (default, moved up) or go with it */
+  async deleteTask(scheduleId: string, taskId: string, children: 'keep' | 'delete' = 'keep'): Promise<{ message: string; kept: number; changeId: string | null }> {
+    const response = await this.api.delete(`/schedules/${scheduleId}/tasks/${taskId}`, { params: { children } });
     return response.data;
   }
 
@@ -188,8 +189,8 @@ export class SchedulesApi extends ApiBase {
   }
 
   /** `changeId`: the Schedule History entry — undoing it puts the tasks back (same ids) */
-  async bulkDeleteTasks(scheduleId: string, taskIds: string[]): Promise<{ deleted: number; changeId: string | null }> {
-    const response = await this.api.delete('/bulk/tasks', { data: { scheduleId, taskIds } });
+  async bulkDeleteTasks(scheduleId: string, taskIds: string[], children: 'keep' | 'delete' = 'keep'): Promise<{ deleted: number; kept: number; changeId: string | null }> {
+    const response = await this.api.delete('/bulk/tasks', { data: { scheduleId, taskIds, children } });
     return response.data;
   }
 

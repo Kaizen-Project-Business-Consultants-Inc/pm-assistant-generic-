@@ -11,7 +11,8 @@ import { useGridKeyboard } from './gantt/hooks/useGridKeyboard';
 import { useInlineCellEdit, GANTT_EDIT_RULES } from './shared/hooks/useInlineCellEdit';
 import { useUnmountSafeTimeouts } from './shared/hooks/useUnmountSafeTimeouts';
 import type { SavedView } from './SavedViewsDropdown';
-import { ConfirmModal } from '../ui/ConfirmModal';
+import { DeleteTasksModal } from './DeleteTasksModal';
+import { summariesNeedingChoice, type DeleteChildren } from '../../utils/deleteSummaryChoice';
 // Extracted sub-modules
 import {
   type GanttTask,
@@ -123,7 +124,7 @@ export function GanttChart({
   /** Called when a task name is typed into an inline empty row */
   onQuickAdd?: (name: string) => void;
   /** Called when the delete button is clicked for the active task */
-  onDeleteTask?: (taskId: string) => void;
+  onDeleteTask?: (taskId: string, children?: DeleteChildren) => void;
   /** Shared column state (for future left-panel column rendering) */
   columnState?: ColumnState;
   /** Task IDs that are on the critical path (rendered in red) */
@@ -143,7 +144,7 @@ export function GanttChart({
   /** Called when bulk field update is applied to selected tasks */
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
   /** Called when bulk delete is applied to selected tasks */
-  onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  onBulkDelete?: (taskIds: string[], children?: DeleteChildren) => Promise<void>;
   /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
   onBulkLink?: OnBulkLink;
   /** Put the selected tasks under a new summary task */
@@ -499,16 +500,19 @@ export function GanttChart({
     setPendingDeleteIds(Array.from(selectedIds));
   }, [selectedIds, onBulkDelete]);
 
-  const confirmBulkDelete = useCallback(async () => {
+  const confirmBulkDelete = useCallback(async (children: DeleteChildren) => {
     if (pendingDeleteIds.length === 0) return;
     const idsToDelete = [...pendingDeleteIds];
     // The row the focus lands on afterwards: the next one that stays (worked out before they go)
-    const landOn = rowAfterRemoval(rows.map(r => r.task), new Set(idsToDelete));
+    // (a heading deleted with its tasks takes them too)
+    const gone = new Set(idsToDelete);
+    if (children === 'delete') summariesNeedingChoice(allTasks ?? tasks, idsToDelete)?.below.forEach(t => gone.add(t.id));
+    const landOn = rowAfterRemoval(rows.map(r => r.task), gone);
     setPendingDeleteIds([]);
     if (onBulkDelete) {
       setBulkLoading(true);
       try {
-        await onBulkDelete(idsToDelete);
+        await onBulkDelete(idsToDelete, children);
         clearBulkState();
         setRefocusTo({ taskId: landOn });
       } catch {
@@ -517,10 +521,10 @@ export function GanttChart({
         setBulkLoading(false);
       }
     } else if (onDeleteTask && idsToDelete.length === 1) {
-      onDeleteTask(idsToDelete[0]);
+      onDeleteTask(idsToDelete[0], children);
       setRefocusTo({ taskId: landOn });
     }
-  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, clearBulkState, rows]);
+  }, [pendingDeleteIds, onBulkDelete, onDeleteTask, showBulkMessage, clearBulkState, rows, allTasks, tasks]);
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const leftPanelRef = useRef<HTMLDivElement>(null);
@@ -1361,12 +1365,9 @@ export function GanttChart({
       )}
 
       {pendingDeleteIds.length > 0 && (
-        <ConfirmModal
-          title={pendingDeleteIds.length === 1 ? 'Delete Task' : 'Delete Tasks'}
-          message={pendingDeleteIds.length === 1
-            ? `Delete "${tasks.find(t => t.id === pendingDeleteIds[0])?.name || 'this task'}"?`
-            : `Are you sure you want to delete ${pendingDeleteIds.length} tasks?`}
-          confirmLabel="Delete"
+        <DeleteTasksModal
+          tasks={allTasks ?? tasks} // the whole plan, not just the rows the filter shows: the server deletes the whole tree
+          ids={pendingDeleteIds}
           onConfirm={confirmBulkDelete}
           onCancel={() => setPendingDeleteIds([])}
         />

@@ -455,6 +455,21 @@ describe('ChangeHistoryService — bulk delete and import', () => {
       expect(query.mock.calls.some(([sql]) => String(sql).includes("SET status = 'undone'"))).toBe(true);
     });
 
+    it('tasks that stayed when their summary went are put back under it (only if nobody moved them since)', async () => {
+      db();
+      const withMoves = { ...snapshot, reparented: [{ id: 'a-kid', from: 'ph', to: 'top' }, { id: 'b-kid', from: 'ph', to: null }] };
+      withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(withMoves) }));
+      await changeHistoryService.undo('s-1', 'c-1');
+      const moves = queryOn.mock.calls.filter(c => String(c[1]).startsWith('UPDATE tasks SET parent_task_id = ?'));
+      expect(moves).toHaveLength(2);
+      expect(moves[0][1]).toContain('parent_task_id = ?');
+      expect(moves[0][2]).toEqual(['ph', 'a-kid', 's-1', 'top']);
+      expect(moves[1][1]).toContain('parent_task_id IS NULL');
+      expect(moves[1][2]).toEqual(['ph', 'b-kid', 's-1']);
+      // the summary they come back under rolls up again
+      expect(recomputeParentRollup).toHaveBeenCalledWith('ph', 0, expect.anything());
+    });
+
     it('a link comes back only when both of its tasks exist; bookings only when the person still exists', async () => {
       db();
       withChange(row({ kind: 'bulk_delete', undo_payload: JSON.stringify(snapshot) }));

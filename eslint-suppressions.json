@@ -1286,9 +1286,6 @@
     "prefer-const": {
       "count": 1
     },
-    "react-hooks/exhaustive-deps": {
-      "count": 6
-    },
     "sonarjs/cognitive-complexity": {
       "count": 1
     }

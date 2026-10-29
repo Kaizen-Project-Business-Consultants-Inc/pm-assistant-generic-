@@ -55,6 +55,8 @@ import { deadlineTasks } from '../../../utils/deadlineDigest';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
 import { AccessibleModal } from '../../../components/ui/AccessibleModal';
+import { DeleteTasksModal } from '../../../components/schedule/DeleteTasksModal';
+import { summariesNeedingChoice } from '../../../utils/deleteSummaryChoice';
 import { useResourceConflicts } from '../../../hooks/useResourceConflicts';
 
 /** task id -> the ids it waits for, built once per render of the open AI Reschedule panel */
@@ -196,7 +198,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     queryFn: () => apiService.getTasks(schedule.id),
   });
 
-  const tasks: GanttTask[] = tasksData?.data || tasksData?.tasks || [];
+  const tasks: GanttTask[] = useMemo(() => tasksData?.data || tasksData?.tasks || [], [tasksData]);
 
   // Non-working dates for Gantt shading
   const taskDateRange = useMemo(() => {
@@ -288,6 +290,14 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     rowNumbers, handleBulkLink, handleGroupTasks, handleBulkDelete, handleDuplicateTasks,
     handleKanbanStatusChange,
   } = useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
+
+  // Deleting from the task form: a heading with tasks under it asks "heading only, or its tasks too?"
+  // first (the Gantt and Table ask in their own delete dialog; the Kanban has no delete, its cards open the task form)
+  const [askDeleteId, setAskDeleteId] = useState<string | null>(null);
+  const requestDeleteTask = useCallback((taskId: string) => {
+    if (summariesNeedingChoice(tasks, [taskId])) setAskDeleteId(taskId);
+    else deleteMutation.mutate({ taskId });
+  }, [tasks, deleteMutation]);
 
   // Unique values for filter dropdowns
   const uniqueStatuses = useMemo(() => [...PICKABLE_STATUSES] as string[], []);
@@ -771,7 +781,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             setCreateTaskDates({ startDate, endDate, parentTaskId });
             setShowAddForm(true);
           } : undefined}
-          onDeleteTask={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
+          onDeleteTask={canEdit ? (taskId, children) => deleteMutation.mutate({ taskId, children }) : undefined}
           onInlineInsert={canEdit ? (name, afterTaskId, parentTaskId) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
           } : undefined}
@@ -859,7 +869,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           scheduleStartDate={schedule.startDate}
           onBulkUpdate={canEdit ? handleBulkUpdate : undefined}
           onBulkDelete={canEdit ? handleBulkDelete : undefined}
-          onDeleteTask={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
+          onDeleteTask={canEdit ? requestDeleteTask : undefined}
           onInlineInsert={canEdit ? (name, afterTaskId, parentTaskId) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '', afterTaskId, parentTaskId: parentTaskId || undefined } as any);
           } : undefined}
@@ -926,7 +936,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           projectId={projectId}
           workCalendar={workCalendar}
           onSave={canEdit ? (data) => updateMutation.mutate({ taskId: editingTask.id, data }) : undefined}
-          onDelete={canEdit ? (taskId) => deleteMutation.mutate(taskId) : undefined}
+          onDelete={canEdit ? requestDeleteTask : undefined}
           onClose={() => setEditingTask(null)}
           isSaving={updateMutation.isPending}
         />
@@ -1007,10 +1017,20 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onHighlightTasks={handleHighlightTasks}
           rowNumberOf={rowNumberOf}
           taskInfoOf={taskInfoOf}
+          // The review's delete keeps the tasks under a heading (heading only, no question)
           onDeleteTasks={canEdit ? handleBulkDelete : undefined}
           // Edit project opens over the plan: the review closes first so the dialog isn't behind it
           onEditProject={onEditProject ? () => { setShowReviewPanel(false); handleHighlightTasks(null); onEditProject(); } : undefined}
           onSaveBaseline={canEdit ? () => createBaselineMutation.mutateAsync() : undefined}
+        />
+      )}
+
+      {askDeleteId && (
+        <DeleteTasksModal
+          tasks={tasks}
+          ids={[askDeleteId]}
+          onConfirm={children => { deleteMutation.mutate({ taskId: askDeleteId, children }); setAskDeleteId(null); }}
+          onCancel={() => setAskDeleteId(null)}
         />
       )}
 
