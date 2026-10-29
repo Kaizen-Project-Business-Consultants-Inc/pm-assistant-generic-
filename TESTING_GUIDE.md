@@ -1687,6 +1687,12 @@ If it fails: load the new code only where it's needed (`lazy()` / `await import(
 - E2E: `e2e/landing.spec.ts` checks the hero copy and that "See how it compares" opens the page.
 - By hand, every quarter: re-check each Microsoft Project / Asana cell on microsoft.com and asana.com, then update `CHECKED_ON`. A claim you can't find there says "Not listed on its plan page".
 
+## Project cover and one Owner (Oct 2026)
+
+- **Unit:** `__tests__/middleware/projectCoverAccess.test.ts` (a cover is a Manager on that project only, never Owner; read-only account types; executive; expired or other project; creator after hand-over; `applyCoverRole`), `__tests__/services/ProjectCoverService.test.ts` (dates, 90-day limit, who may be cover, overlap, notices), `__tests__/services/ProjectMemberServiceOneOwner.test.ts` (second Owner refused, hand-over), client `ProjectCoverCard.test.tsx`.
+- **Staging:** `e2e/project-cover.spec.ts` (in the full suite): qa.team (a team member) cannot see the project, then covers it, edits it, cannot make Owners, loses access when cover ends; one-Owner 409; hand-over; qa.outsider gets 404 throughout.
+- **By hand:** start cover with an end date of today, then check the next day that access has gone without the daily job; check the banner under the project title for the Owner and for the cover person.
+
 ## Client resource pools (Oct 2026, U8)
 
 Unit: `resourcesViewerScope.test.ts` (a viewer or guest sees only their projects' people), `raidOwnerResource.test.ts` (an assigned client staff member can change only the status, and only while on the project), `ProjectTeamService.test.ts` (other clients' people refused; leaving removes only the viewing the team gave), `rateCard.test.ts` (pool-scoped rates), `clientPools.test.ts` (which plans use pools), `poolFit.test.ts` (another client's person can't be put on a task), `TaskBudgetService.test.ts` (placeholder roles costed on the client's card).

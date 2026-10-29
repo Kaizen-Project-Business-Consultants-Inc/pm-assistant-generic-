@@ -8,7 +8,7 @@ import { apiService } from '../services/api';
  * The server enforces the rule; this only decides what to show.
  */
 export function useProjectRole(projectId?: string | null) {
-  const { data, isSuccess } = useQuery<{ role: string; isManager?: boolean; canEdit: boolean; canManageOwners: boolean }>({
+  const { data, isSuccess } = useQuery<{ role: string; isManager?: boolean; canEdit: boolean; canManageOwners: boolean; acting?: boolean; coverUntil?: string; coveringFor?: string }>({
     queryKey: ['my-project-role', projectId],
     queryFn: () => apiService.getMyProjectRole(projectId!),
     enabled: !!projectId,
@@ -20,6 +20,9 @@ export function useProjectRole(projectId?: string | null) {
     isManager: !!data?.isManager,
     canEdit: !!data?.canEdit,
     canManageOwners: !!data?.canManageOwners,
+    /** Covering for the project's Owner today: may change the project, but not Owners */
+    acting: !!data?.acting,
+    coverUntil: data?.coverUntil ?? null,
     loaded: isSuccess,
   };
 }

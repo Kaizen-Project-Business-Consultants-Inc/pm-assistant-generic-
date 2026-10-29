@@ -1,6 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 import { requireScope } from './requireScope';
-import { requireProjectAccess } from './requireProjectAccess';
+import { requireProjectAccess, applyCoverRole } from './requireProjectAccess';
 
 /**
  * Middleware factory for viewer/team_member assignment-based write permissions.
@@ -15,6 +15,7 @@ import { requireProjectAccess } from './requireProjectAccess';
  */
 export function viewerWriteBypass(writeRole: 'viewer' | 'manager' = 'manager') {
   return async (request: FastifyRequest, reply: FastifyReply) => {
+    await applyCoverRole(request); // covering for this project's Owner today: handled as a project manager
     const role = request.user?.role;
     if (role === 'viewer' || role === 'team_member') {
       await requireScope('read')(request, reply);

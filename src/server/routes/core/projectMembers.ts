@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { projectMemberService, LastOwnerError } from '../../services/ProjectMemberService';
+import { projectMemberService, LastOwnerError, OneOwnerError } from '../../services/ProjectMemberService';
 import { projectService } from '../../services/ProjectService';
 import { emailService } from '../../services/EmailService';
 import { authMiddleware } from '../../middleware/auth';
@@ -36,7 +36,20 @@ const updateRoleSchema = z.object({
 
 /** Owner is granted only by an Owner of the project, or an admin/PMO */
 function canGrantOwner(request: FastifyRequest): boolean {
+  // someone covering for the Owner (membership.acting) never makes or changes Owners
+  if (request.projectMembership?.acting) return false;
   return ['admin', 'pmo'].includes(request.user!.role) || request.projectMembership?.role === 'owner';
+}
+
+function refuseSecondOwner(reply: FastifyReply) {
+  return reply.status(409).send({ error: 'one_owner', message: new OneOwnerError().message });
+}
+/** Someone covering for the Owner may add Viewers only: a Manager row would outlive the cover's end date */
+function coverMayNotGrant(request: FastifyRequest, role: string, targetRole?: string): boolean {
+  return !!request.projectMembership?.acting && (role !== 'viewer' || (targetRole !== undefined && targetRole !== 'viewer'));
+}
+function refuseCoverGrant(reply: FastifyReply) {
+  return reply.status(403).send({ error: 'cover_limit', message: 'While covering, you can add Viewers only. Ask the Owner to give anyone more rights.' });
 }
 function refuseOwnerGrant(reply: FastifyReply) {
   return reply.status(403).send({ error: 'owner_only', message: "Only the project's Owner can make someone Owner or change an Owner's role." });
@@ -52,13 +65,20 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
     schema: { description: "The caller's role on this project", tags: ['members'] },
   }, async (request: FastifyRequest) => {
     const { projectId } = request.params as { projectId: string };
-    const pm = await checkProjectRole(request, projectId, 'manager');
+    const decision = await checkProjectRole(request, projectId, 'manager');
+    const pm = { ok: decision.ok, membership: decision.ok ? decision.membership : undefined };
     const role = pm.ok ? (pm.membership?.role ?? 'manager') : (request.projectMembership?.role === 'editor' ? 'viewer' : request.projectMembership?.role ?? 'viewer');
     // Changing project data also needs a role that may change data ('write'): a team member or
     // viewer made the project's Manager is refused by the change routes, which also need 'write' (audit 2 review)
-    const roleMayChange = effectiveScopes(request.user?.role, request.apiKeyScopes).includes('write');
+    // (someone covering for the Owner today may change this project whatever their account type — project_cover)
+    const roleMayChange = effectiveScopes(request.user?.role, request.apiKeyScopes).includes('write') || !!pm.membership?.acting;
     // isManager alone opens the Manager's read views (RAID Review, weekly review) and timesheet flags, which need only 'read'
-    return { role, isManager: pm.ok, canEdit: pm.ok && roleMayChange, canManageOwners: roleMayChange && (canGrantOwner(request) || (pm.ok && pm.membership?.role === 'owner')) };
+    const acting = !!pm.membership?.acting;
+    return {
+      role, isManager: pm.ok, canEdit: pm.ok && roleMayChange,
+      canManageOwners: !acting && roleMayChange && (canGrantOwner(request) || (pm.ok && pm.membership?.role === 'owner')),
+      acting, coverUntil: acting ? pm.membership?.coverUntil : undefined, coveringFor: acting ? pm.membership?.coveringFor : undefined,
+    };
   });
 
   // GET /api/v1/projects/:projectId/members
@@ -85,6 +105,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       const { projectId } = request.params as { projectId: string };
       const data = addMemberSchema.parse(request.body);
       if (data.role === 'owner' && !canGrantOwner(request)) return refuseOwnerGrant(reply);
+      if (coverMayNotGrant(request, data.role)) return refuseCoverGrant(reply);
 
       // Resolve userId from email if not provided
       let userId = data.userId;
@@ -150,6 +171,7 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ error: 'Validation error', message: memberValidationMessage(error) });
       }
+      if (error instanceof OneOwnerError) return refuseSecondOwner(reply);
       logger.error('Add member error', { error: error?.message || error, stack: error?.stack });
       return reply.status(500).send({ error: 'Internal server error', message: error?.message });
     }
@@ -167,11 +189,13 @@ export async function projectMemberRoutes(fastify: FastifyInstance) {
       if (!target || target.projectId !== projectId) return reply.status(404).send({ error: 'Member not found' });
       // Making someone Owner, or changing an Owner, is for Owners (or admin/PMO) only
       if ((data.role === 'owner' || target.role === 'owner') && !canGrantOwner(request)) return refuseOwnerGrant(reply);
+      if (coverMayNotGrant(request, data.role, target.role)) return refuseCoverGrant(reply);
       const member = await projectMemberService.updateRole(memberId, data.role);
       if (!member) return reply.status(404).send({ error: 'Member not found' });
       return { member };
     } catch (error) {
       if (error instanceof LastOwnerError) return reply.status(409).send({ error: 'last_owner', message: error.message });
+      if (error instanceof OneOwnerError) return refuseSecondOwner(reply);
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: memberValidationMessage(error) });
       logger.error('Update member error', { error });
       return reply.status(500).send({ error: 'Internal server error' });

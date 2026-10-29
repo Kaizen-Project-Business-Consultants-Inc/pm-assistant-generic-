@@ -76,8 +76,8 @@ export async function runPmWeeklyReviews(opts: { orgId?: string | null; now?: Da
   // One notification per PM (the project's Manager/Owner members)
   const ids = [...done.keys()];
   const members = await databaseService.query<{ project_id: string; user_id: string }>(
-    `SELECT project_id, user_id FROM project_members
-      WHERE role IN ('owner', 'manager') AND project_id IN (${ids.map(() => '?').join(',')})`,
+    `SELECT project_id, user_id FROM project_managers_now
+      WHERE project_id IN (${ids.map(() => '?').join(',')})`,
     ids,
   );
   const byPm = new Map<string, string[]>();

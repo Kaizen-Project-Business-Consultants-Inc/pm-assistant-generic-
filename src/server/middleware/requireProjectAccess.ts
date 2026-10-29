@@ -2,6 +2,11 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 import { projectMemberService, ProjectRole } from '../services/ProjectMemberService';
 import { scheduleService } from '../services/ScheduleService';
 import { projectService } from '../services/ProjectService';
+import { projectMemberRepository } from '../database/ProjectMemberRepository';
+import { activeCoverFor, activeCoverProjectIds } from '../services/projectCoverAccess';
+import { effectiveScopes } from '../constants/roleScopes';
+import { getRequestContext } from './requestContext';
+import type { ProjectCover } from '../database/ProjectCoverRepository';
 
 /**
  * Project roles. Only the project's Manager or Owner may change project data (user's
@@ -26,7 +31,7 @@ export type ProjectResolver = (request: FastifyRequest) => Promise<string | stri
  * Extract projectId from various route param patterns.
  * Handles :projectId, :id (on project routes), and :scheduleId (resolved via DB).
  */
-async function extractProjectId(request: FastifyRequest): Promise<string | null> {
+async function extractProjectId(request: FastifyRequest, opts: { fromBody?: boolean } = { fromBody: true }): Promise<string | null> {
   const params = request.params as Record<string, string>;
 
   if (params.projectId) return params.projectId;
@@ -43,7 +48,7 @@ async function extractProjectId(request: FastifyRequest): Promise<string | null>
 
   // Check request body for projectId (e.g. sprint/schedule creation)
   const body = request.body as Record<string, unknown> | undefined;
-  if (body?.projectId && typeof body.projectId === 'string') {
+  if (opts.fromBody && body?.projectId && typeof body.projectId === 'string') {
     return body.projectId;
   }
 
@@ -68,6 +73,46 @@ type Membership = NonNullable<FastifyRequest['projectMembership']>;
 type Decision = { ok: true; membership?: Membership } | { ok: false; status: number; body: Record<string, string> };
 
 /**
+ * A person covering for the Owner today holds a stand-in Manager membership on that project: they
+ * may change it, but never make or remove Owners or hand it over (those gates ask for 'owner', and
+ * `acting` is checked by canGrantOwner). Not a stored row — it lapses by date (project_cover).
+ */
+function coverMembership(cover: ProjectCover, userId: string): Membership {
+  return {
+    id: cover.id, projectId: cover.projectId, userId, userName: cover.coverUserName, email: cover.coverUserEmail,
+    role: 'manager', addedAt: cover.startedAt, acting: true, coveringFor: cover.ownerUserId, coverId: cover.id, coverUntil: cover.endDate,
+  };
+}
+
+/** What a cover may do here: anything up to Manager, nothing that needs the Owner */
+function coverDecision(cover: ProjectCover, userId: string, minRole: ProjectRole): Decision {
+  return ROLE_HIERARCHY[minRole] <= ROLE_HIERARCHY.manager
+    ? { ok: true, membership: coverMembership(cover, userId) }
+    : { ok: false, status: 403, body: { error: 'Insufficient project role', message: "Only the project's Owner can do this. Covering for the Owner doesn't include it." } };
+}
+
+/**
+ * Someone signed in (not an API key: a key never does more than its owner's role) who covers the
+ * project this request is about gets a project-manager role for THIS request, so every later
+ * check — the 'write' scope, handlers that look at request.user.role — treats them as a PM here.
+ * Their own role is kept in accountRole. Returns whether it applied. A request whose project isn't in the
+ * URL (a body projectId, bulk tools with their own resolver) is not helped: it stays refused.
+ */
+export async function applyCoverRole(request: FastifyRequest): Promise<boolean> {
+  const user = request.user;
+  if (!user || user.isGuest || request.apiKeyScopes || request.apiKeyId) return false;
+  if (effectiveScopes(user.role).includes('write')) return false;
+  // Only the route's own project: a projectId in the body is the caller's word, so it must never lift a role
+  const projectId = await extractProjectId(request, { fromBody: false });
+  if (!projectId) return false;
+  const cover = await activeCoverFor(projectId, user.userId);
+  if (!cover) return false;
+  user.accountRole = user.accountRole ?? user.role;
+  user.role = 'project_manager';
+  return true;
+}
+
+/**
  * The caller's effective role on one project, and whether it meets `minRole`.
  * Shared by the middleware and by handlers that allow item owners (RAID, action items).
  */
@@ -86,23 +131,29 @@ export async function editableProjectIds(
   projects: Array<{ id: string; createdBy?: string | null }>,
 ): Promise<Set<string>> {
   if (!user.isGuest && GLOBAL_FULL_ACCESS.includes(user.role)) return new Set(projects.map(p => p.id));
-  if (!user.isGuest && GLOBAL_READ_ONLY.includes(user.role)) return new Set();
-  const memberships = await projectMemberService.findByUserId(user.userId);
-  const roleOf = new Map(memberships.map(m => [m.projectId, m.role as ProjectRole]));
   const out = new Set<string>();
-  for (const p of projects) {
-    const role = roleOf.get(p.id) ?? (p.createdBy === user.userId ? 'owner' : undefined);
-    if (role && ROLE_HIERARCHY[role] >= ROLE_HIERARCHY.manager) out.add(p.id);
+  if (!(!user.isGuest && GLOBAL_READ_ONLY.includes(user.role))) {
+    const memberships = await projectMemberService.findByUserId(user.userId);
+    const roleOf = new Map(memberships.map(m => [m.projectId, m.role as ProjectRole]));
+    for (const p of projects) {
+      const role = roleOf.get(p.id) ?? (p.createdBy === user.userId ? 'owner' : undefined);
+      if (role && ROLE_HIERARCHY[role] >= ROLE_HIERARCHY.manager) out.add(p.id);
+    }
+  }
+  // Covering for an Owner today also counts (their account type may be read-only: the cover grants this project only)
+  if (!user.isGuest && out.size < projects.length) {
+    const covered = new Set(await activeCoverProjectIds(user.userId));
+    for (const p of projects) if (covered.has(p.id)) out.add(p.id);
   }
   return out;
 }
 
-/** The same rule for callers without a web request (the AI tool runner, agents). */
-export async function checkProjectRoleFor(
+/** Admin/PMO see every project of their company, an executive reads (and may cover); null = not a global role */
+async function globalRoleDecision(
   user: { userId: string; role: string; isGuest?: boolean },
   projectId: string,
   minRole: ProjectRole,
-): Promise<Decision> {
+): Promise<Decision | null> {
   const notFound: Decision = { ok: false, status: 404, body: { error: 'Not found', message: 'The requested resource was not found' } };
   // Global roles see every project of THEIR company — but only projects that exist there: a
   // project id from another company used to pass, and the route then answered with an empty
@@ -117,14 +168,36 @@ export async function checkProjectRoleFor(
   }
   if (!user.isGuest && GLOBAL_READ_ONLY.includes(user.role)) {
     if (ROLE_HIERARCHY[minRole] <= ROLE_HIERARCHY.viewer) return { ok: true, membership: { projectId, userId: user.userId, role: 'viewer' } as Membership };
+    const executiveCover = await activeCoverFor(projectId, user.userId);
+    if (executiveCover && ROLE_HIERARCHY[minRole] <= ROLE_HIERARCHY.manager) return coverDecision(executiveCover, user.userId, minRole);
     return { ok: false, status: 403, body: { error: 'Insufficient project role', message: 'Your organisation role can view projects but not change them.' } };
   }
+  return null;
+}
+
+/** The same rule for callers without a web request (the AI tool runner, agents). */
+export async function checkProjectRoleFor(
+  user: { userId: string; role: string; isGuest?: boolean },
+  projectId: string,
+  minRole: ProjectRole,
+): Promise<Decision> {
+  const global = await globalRoleDecision(user, projectId, minRole);
+  if (global) return global;
 
   const foundMembership = await projectMemberService.findMembership(projectId, user.userId);
   const project = foundMembership ? null : await projectService.findById(projectId);
-  const membership = (foundMembership ?? (project && project.createdBy === user.userId
+  // The creator counts as Owner only while the project has no Owner of its own: once it has been
+  // handed to someone else (reassign-owner), the creator no longer keeps Owner rights
+  const creatorIsOwner = !!project && project.createdBy === user.userId && !(await projectMemberRepository.hasOwner(projectId));
+  const membership = (foundMembership ?? (creatorIsOwner
     ? { projectId, userId: user.userId, role: 'owner' as ProjectRole }
     : null)) as Membership | null;
+
+  // Covering for the Owner today: a Manager on this project, at most (never Owner)
+  if (!user.isGuest && (!membership || ROLE_HIERARCHY[membership.role as ProjectRole] < ROLE_HIERARCHY.manager)) {
+    const cover = await activeCoverFor(projectId, user.userId);
+    if (cover) return coverDecision(cover, user.userId, minRole);
+  }
 
   if (!membership) {
     // Allow all authenticated users viewer-level access to demo projects
@@ -197,5 +270,14 @@ export function requireProjectAccess(minRole: ProjectRole = 'viewer', opts: { re
 
     // Attach membership to request for downstream use
     if (membership) request.projectMembership = membership;
+    if (membership?.acting && membership.coveringFor && membership.coverId) {
+      const ctx = getRequestContext();
+      if (ctx) ctx.cover = { coveringFor: membership.coveringFor, coverId: membership.coverId };
+    }
+    // A cover whose account type can't write is a project manager for this request (see applyCoverRole)
+    if (membership?.acting && request.user && !request.apiKeyScopes && !effectiveScopes(request.user.role).includes('write')) {
+      request.user.accountRole = request.user.accountRole ?? request.user.role;
+      request.user.role = 'project_manager';
+    }
   };
 }

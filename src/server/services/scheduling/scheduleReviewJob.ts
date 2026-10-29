@@ -67,7 +67,7 @@ export async function runScheduleReview(): Promise<number> {
       try {
         // eslint-disable-next-line no-await-in-loop -- only for a schedule being alerted (a few a week), after its dedup check
         recipients = await databaseService.query(
-          `SELECT user_id FROM project_members WHERE project_id = ? AND role IN ('owner','manager')`,
+          `SELECT user_id FROM project_managers_now WHERE project_id = ?`,
           [row.project_id],
         );
       } catch { /* no members table access — skip */ }

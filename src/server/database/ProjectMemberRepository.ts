@@ -21,6 +21,13 @@ export interface ProjectMember {
   email: string;
   role: 'owner' | 'manager' | 'editor' | 'viewer';
   addedAt: string;
+  /** Set only on the stand-in membership of someone covering for the Owner (project_cover): not a stored row */
+  acting?: boolean;
+  /** The Owner being covered */
+  coveringFor?: string;
+  coverId?: string;
+  /** Last day of the cover, 'YYYY-MM-DD' */
+  coverUntil?: string;
 }
 
 function rowToMember(row: any): ProjectMember {
@@ -95,6 +102,10 @@ export class ProjectMemberRepository extends BaseRepository<ProjectMember> {
       'UPDATE project_members SET role = ? WHERE id = ?',
       [role, memberId],
     );
+  }
+
+  async hasOwner(projectId: string): Promise<boolean> {
+    return (await this.countOwners(projectId)) > 0;
   }
 
   async countOwners(projectId: string): Promise<number> {

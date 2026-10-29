@@ -115,7 +115,7 @@ class WeeklyReviewRepository {
               (SELECT COUNT(*) FROM weekly_review_responses r WHERE r.review_id = w.id) AS done
          FROM weekly_reviews w
          JOIN projects p ON p.id = w.project_id AND p.archived_at IS NULL
-         JOIN project_members m ON m.project_id = w.project_id AND m.user_id = ? AND m.role IN ('owner', 'manager')
+         JOIN project_managers_now m ON m.project_id = w.project_id AND m.user_id = ?
         WHERE w.created_at = (SELECT MAX(w2.created_at) FROM weekly_reviews w2 WHERE w2.project_id = w.project_id)
         LIMIT 200`,
       [userId],

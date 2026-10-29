@@ -1,6 +1,7 @@
 import { FastifyRequest, FastifyReply } from 'fastify';
 
 import { effectiveScopes, type Scope } from '../constants/roleScopes';
+import { applyCoverRole } from './requireProjectAccess';
 
 /**
  * Middleware factory that enforces scope-based access on routes.
@@ -13,6 +14,9 @@ export function requireScope(scope: Scope) {
   return async function scopeCheck(request: FastifyRequest, reply: FastifyReply) {
     // The role's rights; for an API key (incl. a Claude connection) the key's rights limited to
     // the role — a key never does more than its owner can (constants/roleScopes.ts)
+    // Covering for a project's Owner today lets a read-only account change THAT project: the person
+    // becomes a project manager for this request (applyCoverRole). Only a change needs it.
+    if ((scope === 'write') && await applyCoverRole(request)) return;
     const scopes: string[] = effectiveScopes(request.user?.role, request.apiKeyScopes);
 
     // Check scope hierarchy: admin > write > read

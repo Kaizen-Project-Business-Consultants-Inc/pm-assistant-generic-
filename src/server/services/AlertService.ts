@@ -52,6 +52,7 @@ const EXPECTED_CRON_JOBS: Array<{ job: string; maxQuietHours: number }> = [
   { job: 'trial-reminder', maxQuietHours: 30 },
   { job: 'pending-payment', maxQuietHours: 30 },
   { job: 'timesheet-compliance', maxQuietHours: 30 },
+  { job: 'project-cover', maxQuietHours: 30 },
   { job: 'utilization-coaching', maxQuietHours: 8 * 24 },
   { job: 'weekly-review-pack', maxQuietHours: 8 * 24 },
   { job: 'schedule-review', maxQuietHours: 8 * 24 },

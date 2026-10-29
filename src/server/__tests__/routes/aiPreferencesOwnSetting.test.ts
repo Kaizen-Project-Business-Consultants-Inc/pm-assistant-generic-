@@ -11,7 +11,7 @@ const who = vi.hoisted(() => ({ user: { userId: 'u-a', role: 'team_member' } as 
 vi.mock('../../middleware/auth', () => ({
   authMiddleware: vi.fn(async (req: any) => { req.user = who.user; req.tenantOrg = { id: 'org-a' }; req.apiKeyScopes = who.keyScopes; }),
 }));
-vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRole: vi.fn(async () => ({ ok: true })) }));
+vi.mock('../../middleware/requireProjectAccess', () => ({ checkProjectRole: vi.fn(async () => ({ ok: true })), applyCoverRole: vi.fn(async () => false) }));
 vi.mock('../../database/connection', () => ({ databaseService: { queryControlPlane: vi.fn(async () => []), query: vi.fn(async () => []) } }));
 const upsertConfig = vi.hoisted(() => vi.fn(async () => ({})));
 vi.mock('../../services/context/ContextConfigService', () => ({

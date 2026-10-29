@@ -24,6 +24,8 @@ vi.mock('../../services/RiskService', () => ({ riskService: risks }));
 vi.mock('../../services/MeetingIntelligenceService', () => ({ meetingIntelligenceService: {} }));
 vi.mock('../../database/MeetingRepository', () => ({ meetingRepository: {} }));
 vi.mock('../../services/EmailService', () => ({ emailService: {}, EmailRejectedError: class extends Error {} }));
+vi.mock('../../services/projectCoverAccess', () => ({ activeCoverFor: vi.fn().mockResolvedValue(undefined), activeCoverProjectIds: vi.fn().mockResolvedValue([]) }));
+vi.mock('../../database/ProjectMemberRepository', () => ({ projectMemberRepository: { hasOwner: vi.fn().mockResolvedValue(false) } }));
 vi.mock('../../middleware/checkEntityProjectAccess', () => ({ checkEntityProjectAccess: vi.fn() }));
 
 import { meetingRoutes } from '../../routes/collaboration/meetings';

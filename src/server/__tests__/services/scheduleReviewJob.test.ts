@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const query = vi.fn(async (sql: string) => {
   if (/FROM schedules/i.test(sql)) return [{ id: 's1', project_id: 'p1' }];
-  if (/project_members/i.test(sql)) return [{ user_id: 'u1' }, { user_id: 'u2' }];
+  if (/project_managers_now/i.test(sql)) return [{ user_id: 'u1' }, { user_id: 'u2' }];
   return [];
 });
 vi.mock('../../database/connection', () => ({ databaseService: { query } }));

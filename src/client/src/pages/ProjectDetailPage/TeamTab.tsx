@@ -15,6 +15,7 @@ import { ReplaceResourceDialog } from '../../components/resources/ReplaceResourc
 import { ProjectTeamPicker } from '../../components/project/ProjectTeamPicker';
 import { usesClientPools } from '../../utils/clientPools';
 import { useAuthStore } from '../../stores/authStore';
+import { ProjectCoverCard } from './ProjectCoverCard';
 
 function SectionSpinner() {
   return (
@@ -303,6 +304,9 @@ export function TeamTab({ projectId }: { projectId: string }) {
           onClose={() => setReplacing(null)}
         />
       )}
+
+      {/* Cover while the PM is away, and handing the project to a new Owner */}
+      <ProjectCoverCard projectId={projectId} />
 
       {/* Resource Usage (MPP-style) */}
       <ResourceUsageView projectId={projectId} />

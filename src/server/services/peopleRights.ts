@@ -64,7 +64,7 @@ async function companyLoginFor(email: string | undefined | null): Promise<string
 }
 
 /** Is this user id a login of THIS company? */
-async function isCompanyLogin(userId: string): Promise<boolean> {
+export async function isCompanyLogin(userId: string): Promise<boolean> {
   const orgId = getRequestContext()?.organizationId;
   if (!orgId) return false;
   const [u] = await databaseService.queryControlPlane<{ id: string }>(

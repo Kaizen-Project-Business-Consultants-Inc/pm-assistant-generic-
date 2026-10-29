@@ -145,7 +145,7 @@ describe('timesheet reminders and escalations', () => {
     h.answer = (sql, params) => {
       if (/SELECT DISTINCT pm.user_id/.test(sql)) return members;
       if (/FROM time_entries/.test(sql)) return [{ user_id: 'c', date: '2026-10-08', total_hours: 8 }];
-      if (/FROM project_members/.test(sql)) {
+      if (/FROM project_managers_now/.test(sql)) {
         const mgrs: Record<string, string[]> = { p1: ['m1', 'a'], p2: ['m2'] };
         return params.flatMap((p: string) => (mgrs[p] ?? []).map(u => ({ project_id: p, user_id: u })));
       }
@@ -160,7 +160,7 @@ describe('timesheet reminders and escalations', () => {
       ['compliance:reminder:a:2026-10-08', 'compliance:reminder:b:2026-10-08'],
       ['compliance:escalation:a:p1:2026-10-08', 'compliance:escalation:a:p2:2026-10-08'],
     ]);
-    const mgrReads = stmts(/FROM project_members WHERE project_id IN/);
+    const mgrReads = stmts(/FROM project_managers_now WHERE project_id IN/);
     expect(mgrReads).toHaveLength(1);
     expect(mgrReads[0].params).toEqual(['p1']);
     // Ann reminded, then p1's manager told (not Ann herself, not p2 which was already told)
@@ -294,20 +294,20 @@ describe('weekly review pack', () => {
   it('every project\'s managers in one read; each project\'s managers notified, quiet weeks skipped', async () => {
     h.answer = (sql, params) => {
       if (/FROM projects/.test(sql)) return [{ id: 'p1', name: 'One' }, { id: 'p2', name: 'Two' }, { id: 'p3', name: 'Three' }];
-      if (/FROM project_members/.test(sql)) return params.flatMap((p: string) => (p === 'p3' ? [] : [{ project_id: p, user_id: `m-${p}` }]));
+      if (/FROM project_managers_now/.test(sql)) return params.flatMap((p: string) => (p === 'p3' ? [] : [{ project_id: p, user_id: `m-${p}` }]));
       return [];
     };
     h.weekly.mockImplementation(async (id: string) => ({ totalHours: id === 'p2' ? 0 : 10, hoursByUser: [1], anomalyCount: 0, overBudgetTasks: [], compliancePercent: 90 }));
     expect(await runWeeklyReviewPack()).toBe(1);
-    expect(stmts(/FROM project_members/)).toHaveLength(1);
-    expect(stmts(/FROM project_members/)[0].params).toEqual(['p1', 'p2', 'p3']);
+    expect(stmts(/FROM project_managers_now/)).toHaveLength(1);
+    expect(stmts(/FROM project_managers_now/)[0].params).toEqual(['p1', 'p2', 'p3']);
     expect(h.notify.mock.calls.map(c => [c[0].userId, c[0].projectId])).toEqual([['m-p1', 'p1']]);
   });
 
   it('managers can\'t be read: nobody is notified (as when each project\'s read failed)', async () => {
     h.answer = (sql) => {
       if (/FROM projects/.test(sql)) return [{ id: 'p1', name: 'One' }];
-      if (/FROM project_members/.test(sql)) throw new Error('down');
+      if (/FROM project_managers_now/.test(sql)) throw new Error('down');
       return [];
     };
     expect(await runWeeklyReviewPack()).toBe(0);

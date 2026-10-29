@@ -151,7 +151,28 @@ export class ProjectsApi extends ApiBase {
     return response.data;
   }
 
-  /** The caller's role on a project: { role, canEdit, canManageOwners } */
+  /** The current or next cover for the project's Owner, and whether the caller may start/end it or hand the project over */
+  async getProjectCover(projectId: string): Promise<{
+    cover: { id: string; coverUserId: string; coverUserName: string; startDate: string; endDate: string; active: boolean; ownerUserId: string } | null;
+    canManage: boolean; canHandOver: boolean;
+  }> {
+    return (await this.api.get(`/projects/${projectId}/cover`)).data;
+  }
+
+  async startProjectCover(projectId: string, data: { coverUserId: string; startDate: string; endDate: string }) {
+    return (await this.api.post(`/projects/${projectId}/cover`, data)).data;
+  }
+
+  async endProjectCover(projectId: string) {
+    return (await this.api.delete(`/projects/${projectId}/cover`)).data;
+  }
+
+  /** Hand the project to a new Owner (the old Owner becomes a Manager) */
+  async reassignProjectOwner(projectId: string, userId: string) {
+    return (await this.api.post(`/projects/${projectId}/reassign-owner`, { userId })).data;
+  }
+
+  /** The caller's role on a project: { role, canEdit, canManageOwners, acting, coverUntil } */
   async getMyProjectRole(projectId: string) {
     const response = await this.api.get(`/projects/${projectId}/members/me`);
     return response.data;

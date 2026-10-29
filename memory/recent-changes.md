@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-29 — One Owner per project, hand-over, temporary cover for a PM who is away
+- User settled the PM rights (not a member = not visible; Owner = the one accountable PM; Owner/Manager same rights except making Owners; cover for vacation/sick). Mock https://claude.ai/artifact/HRX1M9PiF3HLntuqRzCY2a approved.
+- Table `project_cover` + view `project_managers_now` (**T096**: T090 was taken upstream). Rights at request time in `middleware/requireProjectAccess.ts` (`coverMembership`, `applyCoverRole`, `editableProjectIds`); `ProjectCoverService` (start/end/finish, notices, audit), `routes/core/projectCover.ts` (cover + `reassign-owner`, `coverGate`), daily `pm-cron@project-cover.timer` (06:00, on the cron watch list).
+- One Owner: `ProjectMemberService.refuseSecondOwner` (409 `one_owner`; existing multi-Owner projects untouched); the creator is Owner only while no Owner member exists.
+- Limit to remember: a cover whose ACCOUNT is read-only is not recognised on routes with their own project resolver (sprints, meeting analysis, AI proposals, some AI tools): refused there. RAID and standup notices still go to stored Owners and Managers only (the SQL jobs use the view).
+- UI: `ProjectDetailPage/ProjectCoverCard.tsx` (Team tab card + project banner).
+
 ## 2026-10-22 — Round 6 part 3: AI answers no longer thrown away (U79)
 - Found in the staging log right after the round-6 release (not caused by it). Portfolio Intelligence (crossProjectIntelligenceService), anomaly detection, AI accuracy insights (aiLearningService) and the strategic risk scan parsed `complete().content` themselves; a ```json-fenced reply threw → deterministic fallback, the AI call paid for nothing. All four now `completeWithJsonSchema` with a small schema of the fields they use (anomalies reuse `AIAnomalyReportSchema.pick`). An empty AI list keeps the rules-based one. Guard in aiJsonShapes.test.ts. Reviewer follow-ups done: strategic index must be a whole number ≥ 0; Portfolio prompt no longer asks for similarProjectInsights (thrown away). Known, not changed: anomaly detection asks the AI to send every anomaly back in full — on a big portfolio the reply can hit the output limit (pre-existing; better: ask only for index + wording).
 

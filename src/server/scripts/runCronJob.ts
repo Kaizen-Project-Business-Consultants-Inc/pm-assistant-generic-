@@ -16,6 +16,7 @@
  *   timesheet-compliance — Nudge people who have not logged time (recipient's 16:00)
  *   utilization-coaching — Weekly utilization coaching tips
  *   weekly-review-pack   — Friday review pack for project owners
+ *   project-cover        — daily: ends project cover whose end date has passed and tells the people involved
  *   scheduled-automations — every 5 min: automations with a time trigger (interval/daily/weekly)
  *   calendar-sync        — every 15 min: Google Calendar for users who connected it
  *   storage-sync         — every 15 min: connected document storage
@@ -42,7 +43,7 @@ const JOB_NAME = process.argv[2];
 
 if (!JOB_NAME) {
   console.error('Usage: node dist/server/scripts/runCronJob.js <job-name>');
-  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, pm-weekly-review, scheduled-automations, calendar-sync, storage-sync, alert-check, deadline-check, schedule-review, data-retention');
+  console.error('Jobs: agent-scan, overdue-scan, recurrence, digest, reports, health-snapshot, trial-reminder, pending-payment, timesheet-compliance, utilization-coaching, weekly-review-pack, project-cover, pm-weekly-review, scheduled-automations, calendar-sync, storage-sync, alert-check, deadline-check, schedule-review, data-retention');
   process.exit(1);
 }
 
@@ -160,6 +161,15 @@ async function run() {
         await forEachTenant(async (tenant) => {
           const count = await runUtilizationCoaching();
           console.log(`[cron-runner] Utilization coaching: ${count} sent (${tenant?.slug ?? 'default'})`);
+        });
+        break;
+      }
+
+      case 'project-cover': {
+        const { projectCoverService } = await import('../services/ProjectCoverService');
+        await forEachTenant(async (tenant) => {
+          const count = await projectCoverService.finishPastCover();
+          console.log(`[cron-runner] Project cover: ${count} finished (${tenant?.slug ?? 'default'})`);
         });
         break;
       }

@@ -99,8 +99,9 @@ export class ProjectRepository extends BaseRepository<Project> {
       `SELECT p.id FROM projects p
          LEFT JOIN project_members m ON m.project_id = p.id AND m.user_id = ?
         WHERE p.id IN (${projectIds.map(() => '?').join(',')}) AND p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0
-          AND (m.role IN ('owner', 'manager') OR (m.user_id IS NULL AND p.created_by = ?))`,
-      [userId, ...projectIds, userId],
+          AND (m.role IN ('owner', 'manager') OR (m.user_id IS NULL AND p.created_by = ?)
+               OR p.id IN (SELECT project_id FROM project_managers_now WHERE user_id = ?))`,
+      [userId, ...projectIds, userId, userId],
     );
     return rows.map((r: any) => r.id);
   }
@@ -116,13 +117,16 @@ export class ProjectRepository extends BaseRepository<Project> {
    * so every call read the whole projects table; 2026-10-08). Two placeholders: the user id twice.
    * Callers join it FIRST (STRAIGHT_JOIN): the short list, then one key lookup per project.
    */
-  private static readonly READABLE = `SELECT id FROM projects WHERE created_by = ?
+  private static readonly OWN_READABLE = `SELECT id FROM projects WHERE created_by = ?
        UNION SELECT project_id FROM project_members WHERE user_id = ?
        UNION SELECT id FROM projects WHERE is_demo = 1`;
+  /** The same, plus projects this person covers for an Owner today (project_cover; the database's date). Three placeholders: the user id three times. */
+  private static readonly READABLE = `${ProjectRepository.OWN_READABLE}
+       UNION SELECT project_id FROM project_cover WHERE cover_user_id = ? AND ended_at IS NULL AND start_date <= CURDATE() AND end_date >= CURDATE()`;
 
   /** Only the ids — for permission checks across projects (readableProjectIds) */
   async findReadableIds(userId: string): Promise<string[]> {
-    const rows: Array<{ id: string }> = await this.queryRaw(ProjectRepository.READABLE, [userId, userId]);
+    const rows: Array<{ id: string }> = await this.queryRaw(ProjectRepository.READABLE, [userId, userId, userId]);
     return rows.map(r => r.id);
   }
 
@@ -131,7 +135,7 @@ export class ProjectRepository extends BaseRepository<Project> {
       `SELECT STRAIGHT_JOIN p.* FROM (${ProjectRepository.READABLE}) r
        JOIN projects p ON p.id = r.id
        ORDER BY p.is_demo ASC, p.created_at DESC`,
-      [userId, userId],
+      [userId, userId, userId],
     );
     return this.mapRows(rows);
   }
@@ -139,7 +143,7 @@ export class ProjectRepository extends BaseRepository<Project> {
   /** Live projects this person has (trial limit) — the sample project never counts */
   async countByUser(userId: string): Promise<number> {
     const rows = await this.queryRaw(
-      `SELECT STRAIGHT_JOIN COUNT(*) as count FROM (${ProjectRepository.READABLE}) r
+      `SELECT STRAIGHT_JOIN COUNT(*) as count FROM (${ProjectRepository.OWN_READABLE}) r
        JOIN projects p ON p.id = r.id
        WHERE p.archived_at IS NULL AND COALESCE(p.is_demo, 0) = 0`,
       [userId, userId],
@@ -153,7 +157,7 @@ export class ProjectRepository extends BaseRepository<Project> {
       `SELECT STRAIGHT_JOIN COUNT(*) as count FROM (${ProjectRepository.READABLE}) r
        JOIN projects p ON p.id = r.id
        WHERE 1 = 1${archiveFilter}`,
-      [userId, userId],
+      [userId, userId, userId],
     );
     const total = Number(countRows[0]?.count ?? 0);
     const rows = await this.queryRaw(
@@ -162,7 +166,7 @@ export class ProjectRepository extends BaseRepository<Project> {
        WHERE 1 = 1${archiveFilter}
        ORDER BY p.is_demo ASC, p.created_at DESC
        LIMIT ? OFFSET ?`,
-      [userId, userId, limit, offset],
+      [userId, userId, userId, limit, offset],
     );
     return { rows: this.mapRows(rows), total };
   }

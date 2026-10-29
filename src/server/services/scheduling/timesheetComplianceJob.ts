@@ -201,8 +201,8 @@ async function managersOf(projectIds: string[]): Promise<Map<string, string[]> |
     for (const chunk of chunksOf(projectIds, 200)) {
       // eslint-disable-next-line no-await-in-loop -- one read per 200 projects
       const rows = await databaseService.query<{ project_id: string; user_id: string }>(
-        `SELECT project_id, user_id FROM project_members
-         WHERE project_id IN (${chunk.map(() => '?').join(',')}) AND role IN ('owner', 'manager')`,
+        `SELECT project_id, user_id FROM project_managers_now
+         WHERE project_id IN (${chunk.map(() => '?').join(',')})`,
         chunk,
       );
       for (const [projectId, members] of groupBy(rows, r => r.project_id)) out.set(projectId, members.map(r => r.user_id));

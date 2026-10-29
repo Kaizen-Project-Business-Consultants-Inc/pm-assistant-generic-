@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+vi.mock('../../services/projectCoverAccess', () => ({ activeCoverFor: vi.fn().mockResolvedValue(undefined), activeCoverProjectIds: vi.fn().mockResolvedValue([]) }));
+vi.mock('../../database/ProjectMemberRepository', () => ({ projectMemberRepository: { hasOwner: vi.fn().mockResolvedValue(false) } }));
 import { requireProjectAccess } from '../../middleware/requireProjectAccess';
 
 // Mock dependencies

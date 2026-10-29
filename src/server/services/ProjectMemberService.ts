@@ -17,6 +17,10 @@ export class LastOwnerError extends Error {
   constructor() { super('A project needs at least one Owner. Make someone else Owner first.'); }
 }
 
+export class OneOwnerError extends Error {
+  constructor() { super('A project has one Owner. To hand the project over, use "Make Owner" (the company owner can do it too).'); }
+}
+
 export class ProjectMemberService {
   async findByProjectId(projectId: string): Promise<ProjectMember[]> {
     return projectMemberRepository.findByProjectId(projectId);
@@ -53,7 +57,15 @@ export class ProjectMemberService {
     return ROLE_HIERARCHY[membership.role] >= ROLE_HIERARCHY[minRole];
   }
 
-  async addMember(projectId: string, data: { userId: string; userName: string; email: string; role: ProjectRole }): Promise<ProjectMember> {
+  /** One Owner per project (2026-10-29): a second one is refused unless the project is being handed over. Projects that already have several keep them. */
+  private async refuseSecondOwner(projectId: string, userId: string, role: ProjectRole, handOver?: boolean): Promise<void> {
+    if (role !== 'owner' || handOver) return;
+    const owners = (await projectMemberRepository.findByProjectId(projectId)).filter(m => m.role === 'owner');
+    if (owners.length > 0 && !owners.some(o => o.userId === userId)) throw new OneOwnerError();
+  }
+
+  async addMember(projectId: string, data: { userId: string; userName: string; email: string; role: ProjectRole }, opts: { handOver?: boolean } = {}): Promise<ProjectMember> {
+    await this.refuseSecondOwner(projectId, data.userId, data.role, opts.handOver);
     const existing = await this.findMembership(projectId, data.userId);
     if (existing) {
       await projectMemberRepository.updateRole(existing.id, data.role);
@@ -81,12 +93,28 @@ export class ProjectMemberService {
   async updateRole(memberId: string, role: ProjectRole): Promise<ProjectMember | null> {
     const member = await projectMemberRepository.findById(memberId);
     if (!member) return null;
+    await this.refuseSecondOwner(member.projectId, member.userId, role);
     if (member.role === 'owner' && role !== 'owner') {
       const ownerCount = await projectMemberRepository.countOwners(member.projectId);
       if (ownerCount <= 1) throw new LastOwnerError();
     }
     await projectMemberRepository.updateRole(memberId, role);
     return { ...member, role };
+  }
+
+  /**
+   * Hands the project to a new Owner: they become Owner, every other Owner becomes a Manager (they keep
+   * their place on the team). Refuses someone who has not registered yet. Returns who lost the Owner role.
+   */
+  async reassignOwner(projectId: string, target: { userId: string; userName: string; email: string }): Promise<{ owner: ProjectMember; previousOwners: ProjectMember[] }> {
+    if (target.userId.startsWith('pending_')) throw new Error('pending_user');
+    const previousOwners = (await projectMemberRepository.findByProjectId(projectId)).filter(m => m.role === 'owner' && m.userId !== target.userId);
+    const owner = await this.addMember(projectId, { ...target, role: 'owner' }, { handOver: true });
+    for (const o of previousOwners) {
+      // eslint-disable-next-line no-await-in-loop -- one Owner, rarely a few on older projects
+      await projectMemberRepository.updateRole(o.id, 'manager');
+    }
+    return { owner, previousOwners };
   }
 
   async removeMember(memberId: string): Promise<boolean> {

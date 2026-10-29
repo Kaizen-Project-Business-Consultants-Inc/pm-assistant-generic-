@@ -34,8 +34,8 @@ export async function runWeeklyReviewPack(): Promise<number> {
   let managersByProject: Map<string, any[]>;
   try {
     managersByProject = groupBy(await databaseService.query<{ project_id: string; user_id: string }>(
-      `SELECT project_id, user_id FROM project_members
-       WHERE project_id IN (${projects.map(() => '?').join(',')}) AND role IN ('owner', 'manager')`,
+      `SELECT project_id, user_id FROM project_managers_now
+       WHERE project_id IN (${projects.map(() => '?').join(',')})`,
       projects.map(p => p.id),
     ), r => r.project_id);
   } catch {

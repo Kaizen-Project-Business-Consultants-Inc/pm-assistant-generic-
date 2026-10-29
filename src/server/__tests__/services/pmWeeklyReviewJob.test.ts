@@ -48,7 +48,7 @@ describe('runPmWeeklyReviews', () => {
     m.zone.mockResolvedValue('UTC');
     m.query.mockImplementation(async (sql: string) => {
       if (sql.includes('FROM projects')) return [{ id: 'p1', name: 'DBJ-Loans' }, { id: 'p2', name: 'NSWMA' }, { id: 'p3', name: 'Broken' }];
-      if (sql.includes('FROM project_members')) return [
+      if (sql.includes('FROM project_managers_now')) return [
         { project_id: 'p1', user_id: 'pm1' }, { project_id: 'p2', user_id: 'pm1' },
         { project_id: 'p2', user_id: 'pm2' }, { project_id: 'p3', user_id: 'pm3' },
       ];

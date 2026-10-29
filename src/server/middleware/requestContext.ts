@@ -11,6 +11,8 @@ export interface RequestContext {
   actorSource?: 'web' | 'mcp';
   /** How many workflows deep this work is (a workflow's action that changes a task → 1, …) */
   workflowDepth?: number;
+  /** Set while someone is covering for a project's Owner: audit entries made in this request say so (services/AuditLedgerService) */
+  cover?: { coveringFor: string; coverId: string };
   /** Projects each user may read, worked out once per request (utils/readableProjects) */
   readableProjects?: Map<string, Promise<string[]>>;
   /** Hours bookings this request's date writes moved, by booking id (database/bookingDates — Schedule History keeps them for Undo) */

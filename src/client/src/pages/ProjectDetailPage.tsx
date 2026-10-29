@@ -38,6 +38,8 @@ import { refreshProjectLists } from '../utils/projectListCache';
 import { seedIfOlder } from '../utils/scheduleChanged';
 import { ChooseTeamDialog } from '../components/getStarted/ChooseTeamDialog';
 
+import { ProjectCoverBanner } from './ProjectDetailPage/ProjectCoverCard';
+
 // Lazy-loaded tab components
 const OverviewTab = lazy(() => import('./ProjectDetailPage/OverviewTab').then(m => ({ default: m.OverviewTab })));
 const InsightsTab = lazy(() => import('./ProjectDetailPage/InsightsTab').then(m => ({ default: m.InsightsTab })));
@@ -123,7 +125,7 @@ export function ProjectDetailPage() {
 
   const { user } = useAuthStore();
   // Project Manager/Owner (or admin/PMO) of THIS project — not the organisation role
-  const { canEdit: canEditStatus, isManager, loaded: roleLoaded } = useProjectRole(id);
+  const { canEdit: canEditStatus, isManager, loaded: roleLoaded, acting: coveringNow, coverUntil } = useProjectRole(id);
   // Get started step 3 (U48): "Who's on it?" opens from the card, or right after creating a project
   // while still setting up — only for this project's managers, and only if the company has others
   const askedFromCard = !!(location.state as any)?.chooseTeam;
@@ -522,6 +524,8 @@ export function ProjectDetailPage() {
           </div>
         </div>
       </div>
+
+      {id && <ProjectCoverBanner projectId={id} acting={coveringNow} coverUntil={coverUntil} />}
 
       {/* Summary: cards on Overview; one line on the other tabs unless "Show details" (2026-10-01) */}
       {!showCards && (

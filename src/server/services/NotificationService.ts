@@ -39,6 +39,7 @@ const NOTIFICATION_TYPE_TO_CATEGORY: Record<string, string> = {
   timesheet_approved: 'tasks',
   timesheet_rejected: 'tasks',
   member_added: 'collaboration',
+  project_cover: 'collaboration',
   standup_submitted: 'tasks',
   mention: 'collaboration',
   ai_report_ready: 'system_alerts',

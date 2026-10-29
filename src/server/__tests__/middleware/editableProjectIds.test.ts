@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+vi.mock('../../services/projectCoverAccess', () => ({ activeCoverFor: vi.fn().mockResolvedValue(undefined), activeCoverProjectIds: vi.fn().mockResolvedValue([]) }));
+vi.mock('../../database/ProjectMemberRepository', () => ({ projectMemberRepository: { hasOwner: vi.fn().mockResolvedValue(false) } }));
+
 vi.mock('../../services/ProjectMemberService', () => ({ projectMemberService: { findByUserId: vi.fn(), findMembership: vi.fn() } }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: { findById: vi.fn() } }));
 vi.mock('../../services/ProjectService', () => ({ projectService: { findById: vi.fn() } }));

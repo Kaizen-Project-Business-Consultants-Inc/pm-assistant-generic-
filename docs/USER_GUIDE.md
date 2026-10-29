@@ -947,6 +947,20 @@ A consultant works for several clients, and each client has its own people. Kova
 
 The **Team Members** card on the project's Overview, the Team tab and the owner lists show each person by their **current full name** (from their account), with their email on a smaller line below (Oct 2026). Someone who hasn't signed up yet shows the name you typed when you invited them, or their email.
 
+### One Owner, cover while the PM is away, and handing a project over (October 2026)
+
+Every project has **one Owner**, the PM who is accountable for it. Managers and Viewers can be added as before, but a second Owner can't (projects that already had several keep them).
+
+**When the PM is on leave or sick**, start **cover** on the project's **Team** tab (the **Cover while the PM is away** card): choose any person from your company, a start date and an end date (up to 90 days) and click **Start cover**. The Owner, the company owner, or the Owner's line manager can do this, so someone can set it up for a PM who is off sick.
+- The person covering can **edit that project only**, from the start date to the end date. Their access to other projects does not change.
+- If their account normally can't change data (a Viewer or Team member, for example), the form tells you in plain words that they will be able to edit this project, and until when.
+- They **can't make or remove Owners**, hand the project over, or delete it.
+- The project shows **Covered by ...** under its title to everyone, and **You are covering this project** to the person covering.
+- The Owner and the person covering get an email when cover starts and again when it ends. Everything the person covering changes is recorded as made **while covering for the Owner**.
+- Access **ends by itself** after the end date. Use **End cover now** if the PM returns early.
+
+**Handing a project to a new PM.** The Owner or the company owner picks **New Owner** on the Team tab's cover card and clicks **Make Owner**. The old Owner becomes a Manager.
+
 ### Line managers (October 2026)
 
 Every person on the Resources list has a **line manager** — the one person who approves their weekly timesheet. Anyone with a login can be a line manager, a PM included. Choose it in **Add person** / **Edit person** (it's required). People who were on the list before got the company owner as their line manager, shown with an orange **Set by default — check** tag; open the person and save to confirm, or pick someone else. Nobody can be their own line manager (except the company owner, who has no one above them). Generic roles have none.

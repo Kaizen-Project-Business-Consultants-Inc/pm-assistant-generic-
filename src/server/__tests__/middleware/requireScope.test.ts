@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+
+vi.mock('../../middleware/requireProjectAccess', () => ({ applyCoverRole: vi.fn().mockResolvedValue(false) }));
 import { keyChangesNeed, requireScope, signedInOnly } from '../../middleware/requireScope';
 
 function makeRequest(overrides: any = {}) {

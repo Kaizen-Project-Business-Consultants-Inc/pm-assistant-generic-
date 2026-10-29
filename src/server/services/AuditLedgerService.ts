@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createHash } from 'crypto';
 import { auditLedgerRepository, AuditEntry } from '../database/AuditLedgerRepository';
 import logger from '../utils/logger';
+import { getRequestContext } from '../middleware/requestContext';
 
 export type { AuditEntry } from '../database/AuditLedgerRepository';
 
@@ -49,6 +50,9 @@ export class AuditLedgerService {
   }
 
   private async appendNow(input: AppendInput): Promise<AuditEntry> {
+    // Made while covering for a project's Owner: the entry says so ("X covering for Y")
+    const cover = getRequestContext()?.cover;
+    if (cover && input.payload.coveringFor === undefined) input = { ...input, payload: { ...input.payload, coveringFor: cover.coveringFor, coverId: cover.coverId } };
     const entryUuid = uuidv4();
     const envelope = JSON.stringify({
       entryUuid,

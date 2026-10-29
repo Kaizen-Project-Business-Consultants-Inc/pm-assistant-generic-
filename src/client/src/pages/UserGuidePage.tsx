@@ -727,6 +727,8 @@ const sections: Section[] = [
       'Who can see and change a project.',
     items: [
       'Add people on the project\'s Team tab as Owner, Manager or Viewer',
+      'A project has one Owner. When the PM is away, the Owner, the company owner or the PM\'s line manager can start Cover on the Team tab: someone you choose can edit that project until the end date, then loses access by itself',
+      'To hand a project to a new PM, the Owner or company owner chooses New Owner on the Team tab; the old Owner becomes a Manager',
       'Only a project\'s Owner or Manager can change its plan; Viewers see it read-only (buttons they can\'t use are hidden)',
       'Workload shows hours on other projects, but not their names or costs, unless you are on those projects',
     ],
