@@ -9,6 +9,7 @@ import { renderHook, act } from '@testing-library/react';
 import { useTaskFiltering } from '../../components/schedule/gantt/hooks/useTaskFiltering';
 import { buildFlatRows, type FlatRow, type GanttFilters, type GanttTask } from '../../components/schedule/gantt/types';
 import { workingDaysBetween, type WorkCalendar } from '../../utils/workingDays';
+import { effectiveTaskStatus } from '../../utils/taskStatus';
 
 // ---------------------------------------------------------------------------
 // Reference: the pre-move inline logic from GanttChart.tsx (fc363c7f), verbatim apart from
@@ -61,7 +62,7 @@ function REFERENCE_PIPELINE(
   const filteredRows = (() => {
     if (activeFilterCount === 0) return searchedRows;
     const matchesFilters = (t: GanttTask): boolean => {
-      if (filters.statuses.size > 0 && !filters.statuses.has(t.status)) return false;
+      if (filters.statuses.size > 0 && !filters.statuses.has(effectiveTaskStatus(t))) return false;
       if (filters.priorities.size > 0 && !filters.priorities.has(t.priority || 'medium')) return false;
       if (filters.assignee && !(t.assignedTo || '').toLowerCase().includes(filters.assignee.toLowerCase())) return false;
       if (filters.startAfter && (!t.startDate || t.startDate < filters.startAfter)) return false;
@@ -79,7 +80,7 @@ function REFERENCE_PIPELINE(
 
   if (!sortField || !sortDirection) return filteredRows;
   const priorityOrder: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
-  const statusOrder: Record<string, number> = { pending: 0, in_progress: 1, in_review: 2, testing: 3, completed: 4, blocked: 5, cancelled: 6 };
+  const statusOrder: Record<string, number> = { pending: 0, in_progress: 1, late: 2, completed: 3, blocked: 4, cancelled: 5 }; // five-status change: filter and sort use the status shown
   const getSortValue = (task: GanttTask): string | number => {
     switch (sortField) {
       case 'name': return (task.name || '').toLowerCase();
@@ -90,7 +91,7 @@ function REFERENCE_PIPELINE(
       case 'estimatedDurationHours': return task.estimatedDurationHours ?? 0;
       case 'progressPercentage': return task.progressPercentage ?? 0;
       case 'priority': return priorityOrder[task.priority || 'medium'] ?? 1;
-      case 'status': return statusOrder[task.status] ?? 0;
+      case 'status': return statusOrder[effectiveTaskStatus(task)] ?? 0;
       case 'assignedTo': return (task.assignedTo || '').toLowerCase();
       default: return '';
     }

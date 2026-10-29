@@ -12,6 +12,7 @@ import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { groupBy } from '../../utils/groupBy';
+import { isActiveWork, TASK_STATUS_LABEL } from '../../constants/taskStatus';
 
 export const RULES_VERSION = '1.11';
 
@@ -445,8 +446,8 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     const e = ymd(t.endDate);
     if (st === 'completed' && p < 100) {
       findings.push(make('R08', [t.id], `'${t.name}' is Completed but shows ${p}%.`));
-    } else if (st === 'in_progress' && e && e < today && p === 0) {
-      findings.push(make('R08', [t.id], `'${t.name}' is In Progress, ended ${e}, and shows 0%.`));
+    } else if (isActiveWork(st) && e && e < today && p === 0) {
+      findings.push(make('R08', [t.id], `'${t.name}' is ${TASK_STATUS_LABEL[st]}, ended ${e}, and shows 0%.`));
     } else if (st === 'pending' && p > 0) {
       findings.push(make('R08', [t.id], `'${t.name}' is Pending but shows ${p}%.`));
     }
@@ -649,7 +650,7 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
 
   // R24 — Stale task
   const staleCutoff = new Date(input.today.getTime() - STALE_DAYS * DAY_MS);
-  const stale = leaves.filter(t => norm(t.status) === 'in_progress' && t.updatedAt && new Date(t.updatedAt) < staleCutoff);
+  const stale = leaves.filter(t => isActiveWork(norm(t.status)) && t.updatedAt && new Date(t.updatedAt) < staleCutoff);
   if (stale.length > 0) {
     findings.push(make('R24', stale.map(t => t.id), `${plural(stale.length, 'task')} in progress ${agree(stale.length, 'has', 'have')} not been touched in ${STALE_DAYS} days: ${listNames(stale)}.`));
   }

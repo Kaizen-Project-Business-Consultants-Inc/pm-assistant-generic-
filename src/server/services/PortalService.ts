@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import crypto from 'crypto';
 import { portalRepository, PortalLink, PortalComment } from '../database/PortalRepository';
+import { isActiveWork } from '../constants/taskStatus';
 
 export type { PortalLink, PortalComment } from '../database/PortalRepository';
 
@@ -82,7 +83,7 @@ class PortalService {
       const cnt = Number(r.count);
       taskStats.total += cnt;
       if (r.status === 'completed' || r.status === 'done') taskStats.completed += cnt;
-      else if (r.status === 'in_progress' || r.status === 'in-progress' || r.status === 'late') taskStats.inProgress += cnt;
+      else if (isActiveWork(r.status) || r.status === 'in-progress') taskStats.inProgress += cnt;
       else taskStats.notStarted += cnt;
     }
 

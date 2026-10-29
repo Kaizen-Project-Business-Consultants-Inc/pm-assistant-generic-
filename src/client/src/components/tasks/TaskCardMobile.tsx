@@ -1,6 +1,6 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { Calendar, User, Check } from 'lucide-react';
-import { effectiveTaskStatus, taskStatusLabel } from '../../utils/taskStatus';
+import { effectiveTaskStatus, foldStatus, taskStatusLabel } from '../../utils/taskStatus';
 
 interface TaskCardMobileProps {
   task: {
@@ -77,7 +77,7 @@ export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCy
   const handleStatusTap = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onStatusCycle && task.status !== 'cancelled') {
-      const nextStatus = statusCycle[task.status] || 'pending';
+      const nextStatus = statusCycle[foldStatus(task.status)] || 'pending';
       onStatusCycle(task.id, nextStatus);
     }
   };

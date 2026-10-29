@@ -232,7 +232,7 @@ export default function PortalViewPage() {
           />
           <StatCard
             icon={<AlertTriangle className="w-5 h-5 text-blue-600 dark:text-blue-400" />}
-            label="In Progress"
+            label="On Track"
             value={taskStats.inProgress}
             bg="bg-blue-50 dark:bg-blue-900/30"
           />

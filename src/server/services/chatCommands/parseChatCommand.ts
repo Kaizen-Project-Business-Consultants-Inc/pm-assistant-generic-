@@ -6,6 +6,8 @@
  * "link 5 to 7" means task 5 must finish before task 7 starts (5 is the predecessor of 7).
  */
 
+import { TASK_STATUS_LABEL } from '../../constants/taskStatus';
+
 export type ChatCommand =
   | { kind: 'help' }
   | { kind: 'delete'; row: number }
@@ -33,9 +35,9 @@ const STATUS_WORDS: Record<string, TaskStatus> = {
   cancelled: 'cancelled', canceled: 'cancelled',
   blocked: 'blocked',
 };
-export const STATUS_LABEL: Record<TaskStatus, string> = {
-  pending: 'not started', in_progress: 'on track', late: 'late', completed: 'completed', cancelled: 'cancelled', blocked: 'blocked',
-};
+export const STATUS_LABEL: Record<TaskStatus, string> = Object.fromEntries(
+  (Object.keys(TASK_STATUS_LABEL) as string[]).filter(k => k !== 'in_review' && k !== 'testing').map(k => [k, TASK_STATUS_LABEL[k].toLowerCase()]),
+) as Record<TaskStatus, string>;
 const PRIORITY_WORDS: Record<string, TaskPriority> = { low: 'low', medium: 'medium', high: 'high', urgent: 'urgent', critical: 'urgent' };
 
 /** Most days an added task may have (a typo like 30000 should not make a 80-year task) */

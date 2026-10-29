@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TaskCardMobile } from './TaskCardMobile';
+import { effectiveTaskStatus } from '../../utils/taskStatus';
 
 interface Task {
   id: string;
@@ -38,7 +39,7 @@ export const TaskListMobile: React.FC<TaskListMobileProps> = ({
   const [myTasksOnly, setMyTasksOnly] = useState(false);
 
   const filtered = tasks.filter((t) => {
-    if (statusFilter && t.status !== statusFilter) return false;
+    if (statusFilter && effectiveTaskStatus(t) !== statusFilter) return false;
     if (myTasksOnly && currentUser) {
       const assignee = t.assignedTo || t.assigned_to || '';
       if (assignee !== currentUser) return false;

@@ -403,7 +403,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
               in_progress: 'in_progress', 'in progress': 'in_progress', on_track: 'in_progress', ahead: 'in_progress',
               completed: 'completed', done: 'completed', finished: 'completed',
               cancelled: 'cancelled', canceled: 'cancelled',
-              delayed: 'in_progress',
+              delayed: 'late', behind: 'late', late: 'late',
             };
             const mapped = statusAliases[s];
             if (mapped) status = mapped;

@@ -19,7 +19,7 @@ import { firstByKey } from '../../utils/lookup';
 import { useModal } from '../../hooks/useModal';
 import { isWorkingDay, type WorkCalendar } from '../../utils/workingDays';
 import { formatCalendarDate } from '../../utils/dateUtils';
-import { PICKABLE_STATUSES, STATUS_LABEL } from '../../utils/taskStatus';
+import { STATUS_LABEL, statusChoices } from '../../utils/taskStatus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -473,13 +473,13 @@ export function TaskFormModal({
               <select
                 id={`${uid}-status`}
                 name="status"
-                value={form.status}
+                value={statusChoices(form.status).value}
                 onChange={handleChange}
                 disabled={isSummary}
                 className="input w-full"
               >
-                {/* a status no longer offered (In Review, Testing, Cancelled) stays selectable while the task has it */}
-                {[...(PICKABLE_STATUSES as readonly string[]).includes(form.status) ? [] : [form.status], ...PICKABLE_STATUSES].map(s => (
+                {/* In Review / Testing show as On Track; Cancelled stays selectable only while the task has it */}
+                {statusChoices(form.status).options.map(s => (
                   <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
                 ))}
               </select>

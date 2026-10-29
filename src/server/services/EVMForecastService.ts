@@ -19,6 +19,7 @@ import {
   type EVMForecastAIResponse,
 } from '../schemas/evmForecastSchemas';
 import { companyCacheKey } from '../utils/companyCacheKey';
+import { isActiveWork } from '../constants/taskStatus';
 
 const AI_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes
 /** After the AI turned out to be unreachable (no credit, overload…), don't ask again for this long */
@@ -618,7 +619,7 @@ export class EVMForecastService {
       // --- Task summary stats ---
       const totalTasks = allTasks.filter(t => !t.isSummary).length;
       const completedTasks = allTasks.filter(t => t.status === 'completed' && !t.isSummary).length;
-      const inProgressTasks = allTasks.filter(t => (t.status === 'in_progress' || t.status === 'late') && !t.isSummary).length;
+      const inProgressTasks = allTasks.filter(t => isActiveWork(t.status) && !t.isSummary).length;
 
       // --- Build the text ---
       const sections: string[] = ['Schedule analysis (from actual project tasks):'];

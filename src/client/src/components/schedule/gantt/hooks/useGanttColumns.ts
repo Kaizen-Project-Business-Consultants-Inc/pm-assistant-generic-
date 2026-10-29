@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
 import { COLUMN_DEFS } from '../../tableColumns';
+import { taskStatusLabel } from '../../../../utils/taskStatus';
 import { GANTT_TO_TABLE_KEY, TABLE_TO_GANTT_KEY, mergeGanttOrderIntoTableOrder } from '../../columnKeyMap';
 
 /**
@@ -256,7 +257,7 @@ export function useGanttColumnAutoFit({
       case 'pct': return `${task.progressPercentage ?? 0}%`;
       case 'priority': return task.priority || '';
       case 'assigned': return task.assignedTo || '';
-      case 'status': return task.status?.replace('_', ' ') || '';
+      case 'status': return taskStatusLabel(task);
       case 'notes': return task.description || '';
       default: return '';
     }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { STATUS_LABEL } from '../../../utils/taskStatus';
 
 interface ScheduleFilterBarProps {
   filterStatus: string;
@@ -38,7 +39,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
       >
         <option value="">All statuses</option>
         {uniqueStatuses.map(s => (
-          <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+          <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
         ))}
       </select>
       <select

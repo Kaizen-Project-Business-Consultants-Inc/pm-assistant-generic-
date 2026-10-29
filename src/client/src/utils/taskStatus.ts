@@ -52,3 +52,14 @@ export function effectiveTaskStatus(
 export function taskStatusLabel(task: { status?: string | null; endDate?: string | null }, asOf?: string): string {
   return STATUS_LABEL[effectiveTaskStatus(task, asOf)] ?? String(task.status ?? '');
 }
+
+/**
+ * What a status dropdown shows for a task: the stored status folded to the five (In Review and
+ * Testing show as On Track), plus Cancelled while the task has it, so the box never shows a wrong label.
+ */
+export function statusChoices(current: string | undefined | null): { value: string; options: string[] } {
+  const value = foldStatus(current);
+  const options: string[] = [...PICKABLE_STATUSES];
+  if (!options.includes(value)) options.push(value);
+  return { value, options };
+}

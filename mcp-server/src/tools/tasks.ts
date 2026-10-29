@@ -13,7 +13,7 @@ export function registerTaskTools(server: McpServer) {
     scheduleId: z.string().describe('Schedule ID'),
     name: z.string().describe('Task name'),
     description: z.string().optional().describe('Task description'),
-    status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional().describe('Task status'),
+    status: z.enum(['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled']).optional().describe('Task status (in_progress shows as On Track, pending as Not Started, late = marked Late by the PM)'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority'),
     assignedTo: z.string().optional().describe('Assigned resource ID'),
     dueDate: z.string().optional().describe('Due date (YYYY-MM-DD)'),
@@ -34,7 +34,7 @@ export function registerTaskTools(server: McpServer) {
     taskId: z.string().describe('Task ID'),
     name: z.string().optional().describe('Task name'),
     description: z.string().optional().describe('Task description'),
-    status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional().describe('Task status'),
+    status: z.enum(['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled']).optional().describe('Task status (in_progress shows as On Track, pending as Not Started, late = marked Late by the PM)'),
     priority: z.enum(['low', 'medium', 'high', 'urgent']).optional().describe('Priority'),
     assignedTo: z.string().optional().describe('Assigned resource ID'),
     dueDate: z.string().optional().describe('Due date (YYYY-MM-DD)'),
@@ -64,7 +64,7 @@ export function registerTaskTools(server: McpServer) {
     scheduleId: z.string().describe('Schedule ID — all tasks in this call are created in the same schedule'),
     tasks: z.array(z.object({
       name: z.string(),
-      status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+      status: z.enum(['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled']).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
       assignedTo: z.string().optional(),
       estimatedDays: z.number().optional(),
@@ -85,7 +85,7 @@ export function registerTaskTools(server: McpServer) {
       id: z.string(),
       scheduleId: z.string().describe('Schedule the task belongs to'),
       name: z.string().optional(),
-      status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+      status: z.enum(['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled']).optional(),
       priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
       assignedTo: z.string().optional(),
       estimatedDays: z.number().optional(),
@@ -104,7 +104,7 @@ export function registerTaskTools(server: McpServer) {
   server.tool('bulk-status-update', 'Batch status change for multiple tasks', {
     scheduleId: z.string().describe('Schedule ID the tasks are in'),
     taskIds: z.array(z.string()).max(100).describe('Task IDs to update (max 100)'),
-    status: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).describe('New status'),
+    status: z.enum(['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled']).describe('New status'),
   }, async (params, extra) =>
     jsonResult(await getApiClientFromExtra(extra).put('/bulk/tasks/status', params))
   );

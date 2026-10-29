@@ -3,6 +3,7 @@
 import { projectService, type Project } from './ProjectService';
 import { scheduleService, type Task } from './ScheduleService';
 import { utcDay } from '../utils/workingDays';
+import { isActiveWork } from '../constants/taskStatus';
 
 export interface ProactiveAlert {
   id: string;
@@ -155,7 +156,7 @@ export class ProactiveAlertService {
           }
 
           // Stalled tasks (in_progress but 0% for tasks with start dates in the past)
-          if (task.status === 'in_progress' && (task.progressPercentage === 0 || task.progressPercentage === undefined)) {
+          if (isActiveWork(task.status) && (task.progressPercentage === 0 || task.progressPercentage === undefined)) {
             if (task.startDate && new Date(task.startDate).getTime() <= now.getTime() - 7 * 24 * 60 * 60 * 1000) {
               alerts.push({
                 id: `alert-stalled-${task.id}`,

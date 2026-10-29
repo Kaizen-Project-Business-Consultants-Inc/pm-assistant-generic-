@@ -1,4 +1,5 @@
 import { databaseService } from './connection';
+import { ACTIVE_STATUS_SQL } from '../constants/taskStatus';
 
 export interface DigestUserRow {
   id: string;
@@ -73,7 +74,7 @@ class DigestRepository {
       return await databaseService.query<any>(
         `SELECT s.name, s.project_id,
                 SUM(CASE WHEN t.status = 'pending' THEN 1 ELSE 0 END) AS pending,
-                SUM(CASE WHEN t.status = 'in_progress' THEN 1 ELSE 0 END) AS in_progress,
+                SUM(CASE WHEN t.status IN ${ACTIVE_STATUS_SQL} THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed,
                 COUNT(t.id) AS total
          FROM sprints s

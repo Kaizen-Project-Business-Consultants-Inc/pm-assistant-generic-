@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Inbox, Plus, ArrowRight, Shield } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { plansOnly } from '../../hooks/useOnlySchedule';
+import { STATUS_LABEL } from '../../utils/taskStatus';
 
 interface BacklogTask {
   id: string;
@@ -37,10 +38,11 @@ const priorityBadge: Record<string, { bg: string; text: string }> = {
 
 const statusBadge: Record<string, { bg: string; text: string }> = {
   pending: { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300' },
-  in_progress: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
-  in_review: { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400' },
-  testing: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-400' },
-  completed: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
+  in_progress: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
+  in_review: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
+  testing: { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' },
+  late: { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-800 dark:text-amber-300' },
+  completed: { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-400' },
   blocked: { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-400' },
   cancelled: { bg: 'bg-gray-200 dark:bg-gray-600', text: 'text-gray-500 dark:text-gray-400' },
 };
@@ -359,7 +361,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${sBadge.bg} ${sBadge.text}`}>
-                        {(task.status || 'pending').replace('_', ' ')}
+                        {STATUS_LABEL[task.status || 'pending'] ?? task.status}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hidden md:table-cell">

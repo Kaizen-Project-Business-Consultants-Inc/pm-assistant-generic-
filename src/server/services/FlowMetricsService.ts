@@ -1,4 +1,5 @@
 import { databaseService } from '../database/connection';
+import { isActiveWork } from '../constants/taskStatus';
 
 interface FlowMetrics {
   avgLeadTimeDays: number;
@@ -66,9 +67,9 @@ class FlowMetricsService {
         if (lt >= 0) leadTimes.push(Math.round(lt * 10) / 10);
       }
 
-      // Cycle time: first in_progress -> completed
+      // Cycle time: first active (On Track or Late) -> completed
       // eslint-disable-next-line no-restricted-syntax -- small: one task's own status-change rows
-      const startAct = acts.find(a => a.newValue === 'in_progress');
+      const startAct = acts.find(a => isActiveWork(a.newValue));
       if (startAct && completedAct) {
         const startedAt = new Date(startAct.createdAt).getTime();
         const completedAt = new Date(completedAct.createdAt).getTime();

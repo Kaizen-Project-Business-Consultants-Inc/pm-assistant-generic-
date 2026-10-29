@@ -30,6 +30,7 @@ import { utcDay, weekEndOf } from '../utils/workingDays';
 import { hoursInWeek, calendarsFor } from './weeklyLoad';
 import { readableProjectIds } from '../utils/readableProjects';
 import { databaseService } from '../database/connection';
+import { isActiveWork } from '../constants/taskStatus';
 
 const REPORT_TITLES: Record<string, string> = {
   'milestone-report': 'Milestone Report',
@@ -186,7 +187,7 @@ export class InstantReportService {
 
     const slippingTasks = tasks
       .filter(t => {
-        if (t.status !== 'in_progress' && t.status !== 'late') return false;
+        if (!isActiveWork(t.status)) return false;
         if (!t.startDate) return false;
         const daysSinceStart = Math.ceil((nowTime - new Date(t.startDate).getTime()) / (1000 * 60 * 60 * 24));
         return daysSinceStart >= 7 && (t.progressPercentage ?? 0) < 25;

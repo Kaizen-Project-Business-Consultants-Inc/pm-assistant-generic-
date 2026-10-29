@@ -2,16 +2,17 @@ import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { formatCalendarDate } from '../../utils/dateUtils';
-import { effectiveTaskStatus } from '../../utils/taskStatus';
+import { effectiveTaskStatus, taskStatusLabel } from '../../utils/taskStatus';
 import { moveKeepingWorkingLength, type WorkCalendar } from '../../utils/workingDays';
 
 const barColors: Record<string, string> = {
-  completed: 'bg-blue-500',
-  in_progress: 'bg-green-500',
-  late: 'bg-amber-500',
-  blocked: 'bg-red-500',
-  pending: 'bg-gray-400',
-  cancelled: 'bg-gray-300',
+  // dark enough for the white task name on top (4.5:1 or better)
+  completed: 'bg-blue-700',
+  in_progress: 'bg-green-700',
+  late: 'bg-amber-700',
+  blocked: 'bg-red-700',
+  pending: 'bg-gray-600',
+  cancelled: 'bg-gray-500',
 };
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -150,7 +151,8 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
           onDragStart={draggable ? (e) => handleDragStart(e, task.id) : undefined}
           onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
           className={`w-full text-left rounded px-1.5 py-0.5 text-xs font-medium text-white truncate ${color} hover:opacity-80 transition-opacity ${draggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
-          title={task.name}
+          title={`${task.name} — ${taskStatusLabel(task)}`}
+          aria-label={`${task.name} — ${taskStatusLabel(task)}`}
         >
           {task.name}
         </button>
@@ -164,7 +166,8 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
         onDragStart={draggable ? (e) => handleDragStart(e, task.id) : undefined}
         className={`w-full h-[18px] rounded-sm ${color} opacity-40 cursor-pointer hover:opacity-60`}
         onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
-        title={task.name}
+        title={`${task.name} — ${taskStatusLabel(task)}`}
+        aria-label={`${task.name} — ${taskStatusLabel(task)}`}
       />
     );
   };
@@ -337,6 +340,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{task.name}</div>
                     <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">{taskStatusLabel(task)}</span>
                       {task.priority && (
                         <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{task.priority}</span>
                       )}

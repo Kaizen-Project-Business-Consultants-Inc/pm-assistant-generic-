@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, ChevronDown, BarChart3 } from 'lucide-react';
 import { apiService } from '../../services/api';
 import { roleLabel } from '../../constants/branding';
+import { STATUS_LABEL } from '../../utils/taskStatus';
 
 interface TaskDetail {
   taskId: string;
@@ -26,8 +27,9 @@ interface ResourceUsage {
 
 const STATUS_COLORS: Record<string, string> = {
   not_started: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-  in_progress: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  completed: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  in_progress: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  late: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   on_hold: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
   cancelled: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-300',
 };
@@ -147,7 +149,7 @@ export function ResourceUsageView({ projectId }: { projectId: string }) {
                             </td>
                             <td className="py-1.5 pl-2 text-center">
                               <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium capitalize ${STATUS_COLORS[t.status] || STATUS_COLORS.not_started}`}>
-                                {t.status.replace(/_/g, ' ')}
+                                {STATUS_LABEL[t.status] ?? t.status.replace(/_/g, ' ')}
                               </span>
                             </td>
                           </tr>

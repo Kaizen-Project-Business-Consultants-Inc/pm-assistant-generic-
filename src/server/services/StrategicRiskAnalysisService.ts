@@ -9,6 +9,7 @@ import logger from '../utils/logger';
 import { z } from 'zod';
 import { isOverdue } from '../utils/calendarDate';
 import { utcDay } from '../utils/workingDays';
+import { isActiveWork } from '../constants/taskStatus';
 
 // U79 (2026-10-22): completeWithJsonSchema, not JSON.parse(complete()): a reply wrapped in ```json
 // fences made the parse throw and the paid answer was thrown away
@@ -65,7 +66,7 @@ function detectScheduleRisks(tasks: Task[], cpm: CriticalPathResult | null): Str
   const atRiskCritical: Task[] = [];
   for (const t of criticalTasks) {
     const pastDue = t.endDate && isOverdue(t.endDate) && t.status !== 'completed';
-    const stalled = t.status === 'in_progress' && t.progressPercentage != null && t.progressPercentage < 20
+    const stalled = isActiveWork(t.status) && t.progressPercentage != null && t.progressPercentage < 20
       && t.startDate && (now.getTime() - new Date(t.startDate).getTime()) >= 7 * 86_400_000;
     if (pastDue || stalled) atRiskCritical.push(t);
   }

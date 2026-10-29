@@ -103,7 +103,7 @@ export const MeetingTaskUpdateSchema = z.object({
   type: z.enum(['create', 'update_status', 'reschedule']),
   taskName: z.string(),
   existingTaskId: z.string().optional(),
-  newStatus: z.enum(['pending', 'in_progress', 'completed', 'cancelled']).optional(),
+  newStatus: z.enum(['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled']).optional(),
   newStartDate: z.string().optional(),
   newEndDate: z.string().optional(),
   assignee: z.string().optional(),

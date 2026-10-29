@@ -3,6 +3,7 @@ import { getTenantContext } from '../middleware/requestContext';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { toDateString } from '../utils/calendarDate';
 import { readableProjectJoin } from '../utils/readableProjects';
+import { ACTIVE_STATUS_SQL } from '../constants/taskStatus';
 
 const globalRoles = ['admin', 'executive', 'pmo'];
 const managerRoles = ['admin', 'pmo', 'executive', 'project_manager', 'scrum_master'];
@@ -494,7 +495,7 @@ class DailyBriefingService {
          ${resourceJoin}
          ${assignedJoin}
          ${memberJoin}
-         WHERE t.status = 'in_progress' AND COALESCE(t.progress_percentage, 0) = 0
+         WHERE t.status IN ${ACTIVE_STATUS_SQL} AND COALESCE(t.progress_percentage, 0) = 0
            AND t.start_date < DATE_SUB(CURDATE(), INTERVAL 7 DAY)
            ${NOT_PARENT}
          ORDER BY t.start_date ASC LIMIT ${ITEM_CAP}`,

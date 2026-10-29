@@ -23,6 +23,7 @@ import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
+import { isActiveWork } from '../constants/taskStatus';
 
 
 /** A project already has its schedule — a project has exactly one (U26) */
@@ -54,7 +55,7 @@ function rollupProgressAndStatus(children: Task[], useWorkMode: boolean): { roll
   const rollupProgress = totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
   if (active.length === 0) return { rollupProgress, rollupStatus: 'cancelled' };
   if (active.every(c => c.status === 'completed')) return { rollupProgress, rollupStatus: 'completed' };
-  const started = active.some(c => c.status === 'in_progress' || c.status === 'late' || c.status === 'completed');
+  const started = active.some(c => isActiveWork(c.status) || c.status === 'completed');
   return { rollupProgress, rollupStatus: started ? 'in_progress' : 'pending' };
 }
 export interface Schedule {

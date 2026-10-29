@@ -3799,6 +3799,8 @@ A task has one of five statuses, the same everywhere you pick one (Gantt, Table,
 
 **Late is automatic and manual.** An open task (Not Started or On Track) whose end date is before today shows as **Late** on its own, so a late task can never sit on On Track. A project manager can also set **Late** by hand when they expect a task to slip. Completed and Blocked tasks never turn Late by themselves.
 
+**Where Late shows by itself.** Automatic Late is worked out on your screen, from your own calendar day, in the schedule views (Gantt, Table, Kanban, Task calendar, mobile list and the status filter). Reports and summaries made on the server (the client portal, the daily digest, Mjuzi and Claude connections, instant reports, earned-value text) do not know about it: they count such a task as On Track or Not Started unless a PM marked it Late. Marking it Late by hand makes it Late everywhere.
+
 **What changed.** *In Progress* is now called *On Track*. *In Review* and *Testing* are no longer offered (tasks that still have them show as On Track), and *Cancelled* can no longer be picked (a task that already has it still shows Cancelled). Nothing was converted in your data. Imports still understand "In Progress", "Done" and the older words. The Sprint Board for Scrum/Agile projects keeps its own columns, including In Review and Testing.
 
 Drag cards between columns to change status. The color coding is consistent across Gantt, Table, Sprint Board, Kanban Board, and Backlog views.

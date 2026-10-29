@@ -19,6 +19,8 @@ import {
   sortByValue,
 } from '../../sortValues';
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
+import { toLocalDate } from '../../../../utils/dateUtils';
+import { effectiveTaskStatus } from '../../../../utils/taskStatus';
 
 const EMPTY_NAMES = new Map<string, string>();
 
@@ -32,7 +34,7 @@ export interface GanttSortContext {
 }
 
 const PRIORITY_ORDER: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
-const STATUS_ORDER: Record<string, number> = { pending: 0, in_progress: 1, in_review: 2, testing: 3, completed: 4, blocked: 5, cancelled: 6 };
+const STATUS_ORDER: Record<string, number> = { pending: 0, in_progress: 1, late: 2, completed: 3, blocked: 4, cancelled: 5 };
 
 /**
  * The value a Gantt row sorts by for one sort field (null = blank, sorts last). Every field in
@@ -53,7 +55,7 @@ export function ganttSortValue(task: GanttTask, sortField: string, ctx: GanttSor
     case 'estimatedDurationHours': return workHoursSortValue(task);
     case 'progressPercentage': return task.progressPercentage ?? 0;
     case 'priority': return PRIORITY_ORDER[task.priority || 'medium'] ?? 1;
-    case 'status': return STATUS_ORDER[task.status] ?? 0;
+    case 'status': return STATUS_ORDER[effectiveTaskStatus(task)] ?? 0;
     case 'assignedTo': return assignedSortName(task, ctx.resourceNameOf);
     case 'totalFloat': return ctx.slackOf?.get(task.id) ?? null;
     default: return '';
@@ -180,8 +182,9 @@ export function useTaskFiltering({
   // Step 2: Multi-field filters
   const filteredRows = useMemo(() => {
     if (activeFilterCount === 0) return searchedRows;
+    const asOf = toLocalDate();
     const matchesFilters = (t: GanttTask): boolean => {
-      if (filters.statuses.size > 0 && !filters.statuses.has(t.status)) return false;
+      if (filters.statuses.size > 0 && !filters.statuses.has(effectiveTaskStatus(t, asOf))) return false;
       if (filters.priorities.size > 0 && !filters.priorities.has(t.priority || 'medium')) return false;
       if (filters.assignee && !(t.assignedTo || '').toLowerCase().includes(filters.assignee.toLowerCase())) return false;
       if (filters.startAfter && (!t.startDate || t.startDate < filters.startAfter)) return false;

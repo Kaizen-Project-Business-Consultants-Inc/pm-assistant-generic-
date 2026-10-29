@@ -49,7 +49,8 @@ import { useCanOpenPage } from '../../../hooks/useCanOpenPage';
 import { ROUTES } from '../../../routes';
 import { announce } from '../../../utils/announce';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
-import { isCalendarOverdue, toCalendarDate, formatCalendarDate } from '../../../utils/dateUtils';
+import { isCalendarOverdue, toCalendarDate, formatCalendarDate, toLocalDate } from '../../../utils/dateUtils';
+import { PICKABLE_STATUSES, effectiveTaskStatus } from '../../../utils/taskStatus';
 import { deadlineTasks } from '../../../utils/deadlineDigest';
 import type { WorkCalendar } from '../../../utils/workingDays';
 
@@ -289,7 +290,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   } = useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
 
   // Unique values for filter dropdowns
-  const uniqueStatuses = useMemo(() => [...new Set(tasks.map(t => t.status))].sort(), [tasks]);
+  const uniqueStatuses = useMemo(() => [...PICKABLE_STATUSES] as string[], []);
   const uniquePriorities = useMemo(() => [...new Set(tasks.map(t => t.priority).filter((p): p is string => !!p))].sort(), [tasks]);
   const uniqueAssignees = useMemo(() => [...new Set(tasks.map(t => t.assignedTo).filter(Boolean))].sort() as string[], [tasks]);
 
@@ -303,7 +304,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
       const q = searchQuery.toLowerCase();
       result = result.filter(t => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q) || t.assignedTo?.toLowerCase().includes(q));
     }
-    if (filterStatus) result = result.filter(t => t.status === filterStatus);
+    if (filterStatus) { const asOf = toLocalDate(); result = result.filter(t => effectiveTaskStatus(t, asOf) === filterStatus); }
     if (filterPriority) result = result.filter(t => t.priority === filterPriority);
     if (filterAssignee) result = result.filter(t => t.assignedTo === filterAssignee);
     return result;

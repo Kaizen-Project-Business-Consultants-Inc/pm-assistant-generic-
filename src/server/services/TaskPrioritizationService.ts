@@ -1,3 +1,4 @@
+import { isActiveWork } from '../constants/taskStatus';
 import { scheduleService, Task } from './ScheduleService';
 import { criticalPathService, CPMTaskResult } from './CriticalPathService';
 import { autoRescheduleService } from './AutoRescheduleService';
@@ -131,7 +132,7 @@ export class TaskPrioritizationService {
 
     // Filter to active tasks only (pending or in_progress with dates)
     const activeTasks = tasks.filter(
-      (t) => (t.status === 'pending' || t.status === 'in_progress' || t.status === 'late') && t.startDate && t.endDate,
+      (t) => (t.status === 'pending' || isActiveWork(t.status)) && t.startDate && t.endDate,
     );
 
     if (activeTasks.length === 0) {

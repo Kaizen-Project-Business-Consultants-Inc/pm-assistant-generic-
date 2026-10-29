@@ -324,6 +324,8 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
     return counts;
   }, [sourceTasks]);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  // Said when a drop can't take a card out of Late (it is Late because its planned finish has passed)
+  const [lateNote, setLateNote] = useState<string | null>(null);
   const [wipLimits, setWipLimits] = useState<Record<string, number>>(() =>
     loadWipLimits(scheduleId || 'default')
   );
@@ -373,6 +375,11 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
         if (task && task.status !== columnId) {
           onStatusChange(taskId, columnId);
         }
+        if (task && effectiveTaskStatus(task) === 'late' && columnId !== 'late' && columnId !== 'completed') {
+          setLateNote(`"${task.name}" is still Late: it is past its planned finish. Move its end date or complete it to take it out of Late.`);
+        } else {
+          setLateNote(null);
+        }
       }
     },
     [tasks, onStatusChange],
@@ -403,6 +410,8 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
           </select>
         </div>
       </div>
+
+      <div role="status" aria-live="polite" className={lateNote ? 'px-4 py-2 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700' : 'sr-only'}>{lateNote ?? ''}</div>
 
       {swimlaneColumns ? (
         // Swimlane view

@@ -26,13 +26,13 @@ import { useTableKeyboard } from './table/hooks/useTableKeyboard';
 import { planRowDrop } from './table/rowDrop';
 import { GridKeyboardHelp, TABLE_GRID_HELP_ID, TABLE_GRID_CELLS, gridCellId } from './shared/GridKeyboardHelp';
 import {
-  barColors, priorityColors, statusOptions, priorityOptions,
+  barColors, priorityColors, priorityOptions,
   formatDate,
   type TableViewProps, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
 import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
-import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel } from '../../utils/taskStatus';
+import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel, statusChoices } from '../../utils/taskStatus';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { isLockedCell, CALCULATED_CELL_HINTS } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
@@ -832,12 +832,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 aria-label={cellEditLabel('status', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
-                value={editValue}
+                value={statusChoices(editValue).value}
                 onChange={e => handleSelectChange(task.id, 'status', e.target.value)}
                 onBlur={() => cancelEditing()}
                 onKeyDown={e => { if (e.key === 'Escape') cancelEditing(); }}
               >
-                {statusOptions.map(s => (
+                {statusChoices(editValue).options.map(s => (
                   <option key={s} value={s}>{STATUS_LABEL[s] ?? s}</option>
                 ))}
               </select>

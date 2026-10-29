@@ -72,8 +72,9 @@ function saveWipLimits(sprintId: string, limits: Record<string, number>) {
   localStorage.setItem(`${WIP_STORAGE_KEY}-${sprintId}`, JSON.stringify(limits));
 }
 
-/** Which column a card is in (blocked/cancelled cards sit in Todo with a badge). */
+/** Which column a card is in (blocked/cancelled cards sit in Todo with a badge; Late sits with work in progress). */
 function columnOf(status: string): string {
+  if (status === 'late') return 'in_progress';
   return status === 'blocked' || status === 'cancelled' ? 'pending' : status;
 }
 
@@ -552,12 +553,7 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
           <div className="flex gap-3 p-4 overflow-x-auto" style={{ minHeight: group.label ? '200px' : '400px' }}>
             {COLUMNS.map((col) => {
               // eslint-disable-next-line no-restricted-syntax -- small: the 5 status columns, one pass over the lane's cards each
-              const columnTasks = group.tasks.filter((t) => {
-                if (t.status === col.id) return true;
-                // blocked/cancelled tasks show in Todo column with a badge
-                if (col.id === 'pending' && (t.status === 'blocked' || t.status === 'cancelled')) return true;
-                return false;
-              });
+              const columnTasks = group.tasks.filter((t) => columnOf(t.status) === col.id);
               const isOver = dragOverColumn === col.id;
               const colPoints = columnTasks.reduce((sum, t) => sum + getPoints(t), 0);
               const wipLimit = wipLimits[col.id];

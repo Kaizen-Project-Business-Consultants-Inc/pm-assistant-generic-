@@ -4,6 +4,7 @@
 - User chose the waterfall list (mock https://claude.ai/artifact/AHc3J8cJZh1eYVEHpDMZX7). Label-only rename: stored `in_progress` shows as On Track, `pending` as Not Started; new stored value `late` (**T097**, ENUM on `tasks.status`).
 - Late is automatic AND manual: `utils/taskStatus.ts` (`effectiveTaskStatus`, one shared helper, calendar days in the viewer's day) shows Late for an open task (pending/in_progress/in_review/testing) past its end date; a PM can store `late`. Completed/Blocked/Cancelled never auto-Late.
 - In Review, Testing, Cancelled are no longer offered in pickers/filters/legend/bulk bars/Kanban (Cancelled column only while a task has it); tasks that still have them show as On Track / Cancelled. No data migrated. Sprint Board / epics keep their own columns (Scrum).
+- Known limits (documented in USER_GUIDE): automatic Late is client-side only, so server reports (portal, digest, Mjuzi/MCP, InstantReport, EVM text) count such tasks as On Track/Not Started; Late uses the viewer's local day. A stored `late` counts everywhere via `isActiveWork` in `constants/taskStatus.ts` (R08/R24, alerts, digest buckets, cycle time). T097 puts `late` in the middle of the ENUM, so the first apply copies the tasks table once (migrations are immutable; left as is).
 - Server: zod enums + `ScheduleService` types accept `late`; `constants/taskStatus.ts` labels; AI tool enums accept late/blocked; chat command "late"/"on track".
 
 ## 2026-10-29 — One Owner per project, hand-over, temporary cover for a PM who is away

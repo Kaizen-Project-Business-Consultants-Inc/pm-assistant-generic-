@@ -6,6 +6,7 @@ import { statusDateFor } from './StatusDateService';
 import { toCalendarDate } from '../utils/calendarDate';
 import { scheduleService } from './ScheduleService';
 import { type IsWorking, weekdaysOnly, shiftWorking, utcDay, workingDaysAfter, ymdOf } from '../utils/workingDays';
+import { isActiveWork } from '../constants/taskStatus';
 
 export interface Sprint {
   id: string;
@@ -316,7 +317,7 @@ export class SprintService {
       if (status === 'completed') return 'completed';
       if (status === 'testing') return 'testing';
       if (status === 'in_review') return 'in_review';
-      if (status === 'in_progress' || status === 'late') return 'in_progress';
+      if (isActiveWork(status)) return 'in_progress';
       if (status === 'blocked') return 'blocked';
       if (status === 'cancelled') return 'not_started';
       return 'not_started'; // pending

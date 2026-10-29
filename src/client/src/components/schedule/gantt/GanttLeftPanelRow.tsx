@@ -4,7 +4,7 @@ import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 import { isLockedCell } from '../summaryRollup';
 import { cellEditLabel } from '../cellEditLabel';
-import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel } from '../../../utils/taskStatus';
+import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel, statusChoices } from '../../../utils/taskStatus';
 import {
   type GanttTask,
   type GanttColDef,
@@ -15,7 +15,6 @@ import {
   barColors,
   priorityDot,
   ROW_H,
-  statusOptions,
   priorityOptions,
   healthColor,
 } from './types';
@@ -715,7 +714,9 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           </div>
         );
 
-        if (col.key === 'status') return (
+        if (col.key === 'status') {
+          const shownStatus = effectiveTaskStatus(task);
+          return (
           <div
             key="status"
             {...cellA11y('status')}
@@ -728,12 +729,12 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 aria-label={cellEditLabel('status', task.name)}
                 ref={el => { inputRef.current = el; }}
                 className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset"
-                value={editValue}
+                value={statusChoices(editValue).value}
                 onChange={e => onSelectChange(task.id, 'status', e.target.value)}
                 onBlur={() => onCancelEditing()}
                 onKeyDown={e => onKeyDown(e, task.id, 'status')}
               >
-                {statusOptions.map(o => (
+                {statusChoices(editValue).options.map(o => (
                   <option key={o} value={o}>{STATUS_LABEL[o] ?? o}</option>
                 ))}
               </select>
@@ -741,15 +742,16 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               <span
                 className="text-xs font-medium px-1.5 py-0.5 rounded-full"
                 style={{
-                  backgroundColor: barColors[effectiveTaskStatus(task)]?.bg || '#f3f4f6',
-                  color: barColors[effectiveTaskStatus(task)]?.text || '#374151',
+                  backgroundColor: barColors[shownStatus]?.bg || '#f3f4f6',
+                  color: barColors[shownStatus]?.text || '#374151',
                 }}
               >
                 {taskStatusLabel(task)}
               </span>
             )}
           </div>
-        );
+          );
+        }
 
         return null;
       })}
