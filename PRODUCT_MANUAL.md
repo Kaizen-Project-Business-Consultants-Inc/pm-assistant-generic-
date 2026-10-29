@@ -154,7 +154,7 @@ A **pill-based quick filter bar** sits above the schedule views with 7 one-click
 | **Due This Week** | Tasks with end date within the current calendar week |
 | **Due 2 Weeks** | Tasks due within the next 14 days |
 | **Late** | Tasks past their end date and not completed |
-| **At Risk** | Tasks where actual progress lags expected progress beyond the configurable threshold |
+| **Behind plan** | Tasks where actual progress lags expected progress beyond the configurable threshold (a progress check, not a status; it was called "At Risk" until Oct 2026) |
 | **My Tasks** | Tasks assigned to the currently logged-in user |
 | **Unassigned** | Tasks with no assignee |
 
@@ -162,7 +162,7 @@ A **pill-based quick filter bar** sits above the schedule views with 7 one-click
 
 **Visual highlighting** — Late and critical tasks receive a **red left border** (Table view), **red bar border** (Gantt), or **red card border** (Kanban). At-risk tasks receive an **orange** equivalent highlight. Highlighting applies regardless of which filter pill is active.
 
-**Configurable thresholds** — Click the gear icon next to the pill bar to open the threshold settings popover. Adjust the **At Risk % gap** (default 20) and **Critical % gap** (default 50). Settings persist to `localStorage`.
+**Configurable thresholds** — Click the gear icon next to the pill bar to open the threshold settings popover. Adjust the **Behind plan % gap** (default 20) and **Critical % gap** (default 50). Settings persist to `localStorage`.
 
 **Persistence** — The active filter pill is saved to `localStorage` and reflected in the URL as `?qf=<filter>` (e.g. `?qf=late`), so sharing or refreshing a URL restores the same filter view.
 

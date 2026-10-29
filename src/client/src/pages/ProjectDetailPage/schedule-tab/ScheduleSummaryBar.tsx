@@ -34,7 +34,7 @@ export const ScheduleSummaryBar = React.memo(function ScheduleSummaryBar({ stats
       </span>
       <span className="w-px h-3 bg-gray-200 dark:bg-gray-600" />
       <span className="text-blue-600 dark:text-blue-400">
-        <span className="font-semibold">{stats.inProgress}</span> in progress
+        <span className="font-semibold">{stats.inProgress}</span> on track
       </span>
       {stats.overdue > 0 && (
         <>

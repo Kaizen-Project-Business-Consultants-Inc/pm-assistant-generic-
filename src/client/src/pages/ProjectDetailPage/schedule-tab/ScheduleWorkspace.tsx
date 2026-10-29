@@ -338,7 +338,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         const end = toCalendarDate(t.endDate);
         if (end && end >= now && end <= dueEnd) counts.due++;
       }
-      if (risk === 'late') counts.late++;
+      if (risk === 'late' || effectiveTaskStatus(t) === 'late') counts.late++;
       if (risk === 'at_risk' || risk === 'critical') counts.at_risk++;
       if (isMine(t.assignedTo)) counts.my_tasks++;
       if (!t.assignedTo) counts.unassigned++;
@@ -363,7 +363,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           const dueEnd = new Date(now); dueEnd.setDate(dueEnd.getDate() + dueWeeks * 7);
           return !!end && end >= now && end <= dueEnd;
         }
-        case 'late': return risk === 'late';
+        case 'late': return risk === 'late' || effectiveTaskStatus(t) === 'late';
         case 'at_risk': return risk === 'at_risk' || risk === 'critical';
         case 'my_tasks': return !!t.assignedTo && (t.assignedTo === userId || myResourceIds.has(t.assignedTo));
         case 'unassigned': return !t.assignedTo;
@@ -423,7 +423,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   const taskStats = (() => {
     const total = filteredTasks.length;
     const completed = filteredTasks.filter(t => t.status === 'completed' || t.status === 'done').length;
-    const inProgress = filteredTasks.filter(t => t.status === 'in_progress').length;
+    const asOf = toLocalDate();
+    const inProgress = filteredTasks.filter(t => effectiveTaskStatus(t, asOf) === 'in_progress').length;
     const pending = filteredTasks.filter(t => t.status === 'pending' || t.status === 'not_started').length;
     const overdue = filteredTasks.filter(t => {
       if (t.status === 'completed' || t.status === 'done' || t.status === 'cancelled') return false;

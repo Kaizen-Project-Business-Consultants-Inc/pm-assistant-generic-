@@ -16,7 +16,7 @@ interface QuickFilterPillsProps {
 const PILLS: { type: QuickFilterType; label: string; tint?: 'danger' | 'warning' }[] = [
   { type: 'all', label: 'All' },
   { type: 'late', label: 'Late', tint: 'danger' },
-  { type: 'at_risk', label: 'At Risk', tint: 'warning' },
+  { type: 'at_risk', label: 'Behind plan', tint: 'warning' }, // progress behind where the dates say it should be (not a status)
   { type: 'my_tasks', label: 'My Tasks' },
   { type: 'unassigned', label: 'Unassigned' },
 ];

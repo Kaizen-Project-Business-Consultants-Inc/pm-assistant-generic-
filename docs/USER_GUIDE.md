@@ -615,13 +615,13 @@ A row of **quick filter pills** above the schedule views lets you narrow tasks w
 - **Due This Week** — tasks ending within the current calendar week.
 - **Due 2 Weeks** — tasks due within the next 14 days.
 - **Late** — tasks past their end date and not yet completed. Days are counted in your own time zone: a task due today is not late until tomorrow.
-- **At Risk** — tasks where actual progress is trailing expected progress by more than the threshold.
+- **Behind plan** — tasks where actual progress is trailing where the dates say it should be, by more than the threshold. This is a progress check, not a task status (the statuses are Not Started, On Track, Late, Completed, Blocked). The **Late** pill lists tasks that are Late: past their finish date, or marked Late by a PM.
 - **My Tasks** — tasks assigned to you.
 - **Unassigned** — tasks with no assignee.
 
 **Visual highlighting** — Late/critical tasks show a red border (left border in Table view, bar border in Gantt, card border in Kanban). At-risk tasks show an orange border. Highlighting is always on — it is independent of the active filter pill.
 
-**Adjust thresholds** — Click the **gear icon** beside the pill bar to set the At Risk gap % (default 20) and Critical gap % (default 50). These are saved in your browser.
+**Adjust thresholds** — Click the **gear icon** beside the pill bar to set the Behind plan gap % (default 20) and Critical gap % (default 50). These are saved in your browser.
 
 **Persistence** — Your selected pill is remembered across page refreshes and encoded in the URL as `?qf=late` (or the relevant filter name), so you can share or bookmark a filtered view.
 
@@ -3285,7 +3285,7 @@ Each project can name its **sponsor** — the person who signs off budget and sc
 
 ### More room on the project page
 
-The four summary cards (Progress, Budget, Timeline, Risks) always show on a project's **Overview** tab. On every other tab (Schedule, Team, Risks & Issues and so on) they shrink to one line under the project name, for example **9% done | $0K of $25K | 148 days left | 11 risks open · 1 critical**, so the work area starts higher. Click a figure to open Overview. Click **Show details** to bring the cards back on those tabs too, and **Hide details** to fold them away again; Kovarti remembers your choice in this browser. On the Schedule tab the quick filters (Due, Late, At Risk…) and the task counts now share one row.
+The four summary cards (Progress, Budget, Timeline, Risks) always show on a project's **Overview** tab. On every other tab (Schedule, Team, Risks & Issues and so on) they shrink to one line under the project name, for example **9% done | $0K of $25K | 148 days left | 11 risks open · 1 critical**, so the work area starts higher. Click a figure to open Overview. Click **Show details** to bring the cards back on those tabs too, and **Hide details** to fold them away again; Kovarti remembers your choice in this browser. On the Schedule tab the quick filters (Due, Late, Behind plan…) and the task counts now share one row.
 
 **AI Reschedule limit.** Each reschedule proposal is a paid AI call, so you can ask for 10 an hour. If you reach it the panel says so and tells you to try again later; the proposals you already have stay open.
 
