@@ -37,6 +37,8 @@ function coverGate(allowLineManager: boolean) {
     const { projectId } = request.params as { projectId: string };
     if (!(await projectService.findById(projectId))) return reply.status(404).send({ error: 'Not found', message: 'The requested resource was not found' });
     if (!(await mayManage(request, projectId, allowLineManager))) {
+      // Someone who isn't on the project can't tell it exists
+      if (!(await checkProjectRole(request, projectId, 'viewer')).ok) return reply.status(404).send({ error: 'Not found', message: 'The requested resource was not found' });
       return reply.status(403).send({
         error: 'cover_not_allowed',
         message: allowLineManager
