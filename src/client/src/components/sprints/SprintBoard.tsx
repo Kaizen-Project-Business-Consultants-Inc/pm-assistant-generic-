@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
+import { ToggleButton } from '../ui/ToggleButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Kanban, Settings, Users, ShieldCheck, AlertTriangle, ArrowRightLeft } from 'lucide-react';
 import { apiService } from '../../services/api';
@@ -520,20 +521,16 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
           {totalPoints > 0 && <> · {totalPoints} pts</>}
         </span>
         <div className="ml-auto">
-          <button
+          <ToggleButton
+            on={swimlane !== 'none'}
             onClick={() => setSwimlane((s) => (s === 'none' ? 'assignee' : 'none'))}
-            className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md transition-colors ${
-              swimlane !== 'none'
-                ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+            size="sm"
             title="Toggle swimlanes by assignee"
-            aria-pressed={swimlane !== 'none'}
           >
             <Users className="w-3 h-3" aria-hidden="true" />
             <span className="hidden sm:inline">Swimlane</span>
             <span className="sr-only sm:hidden">Swimlanes by assignee</span>
-          </button>
+          </ToggleButton>
         </div>
       </div>
 

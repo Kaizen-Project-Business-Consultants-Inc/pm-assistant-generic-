@@ -7,6 +7,7 @@ import { getApiErrorMessage } from '../utils/getApiErrorMessage';
 import { formatCalendarDate } from '../utils/dateUtils';
 import { routeTo, ROUTES } from '../routes';
 import { SectionCard, TH, TD, type StripeTone } from '../components/ui/SectionCard';
+import { ToggleButton } from '../components/ui/ToggleButton';
 import { MetaPill } from '../components/ui/MetaPill';
 
 /**
@@ -102,7 +103,7 @@ function ChangeTable({ s }: { s: AiSuggestion }) {
 const Was = ({ a, b }: { a: string; b: string }) =>
   a === b ? <>{b}</> : <><span className="text-gray-500 dark:text-gray-400 line-through">{a}</span> <span className="font-semibold">{b}</span></>;
 
-const BTN = 'rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700';
+const BTN = 'rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700';
 
 /** A reminder email as it will go out, editable before Send */
 function EmailDraft({ to, editing, subject, body, onSubject, onBody }: {
@@ -169,7 +170,7 @@ function Choices({ s, busy, accepting, editing, onAccept, onToggleEdit, onReject
         {accepting ? 'Working…' : email ? 'Send' : 'Accept'}
       </button>
       {email ? (
-        <button type="button" onClick={onToggleEdit} disabled={busy} aria-pressed={editing} className={BTN}>{editing ? 'Done editing' : 'Edit first'}</button>
+        <ToggleButton on={editing} onClick={onToggleEdit} disabled={busy} size="lg">Edit first</ToggleButton>
       ) : (
         <Link to={editLink(s)} className={BTN}>Change it myself</Link>
       )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useId } from 'react';
+import { ToggleButton } from '../components/ui/ToggleButton';
 import { Bell, Shield, DollarSign, Clock, Users, Info, Check, RefreshCw, TrendingDown, BarChart2, MessageSquare, Filter, CheckCheck, UserPlus, CheckCircle, AlertTriangle, MessageCircle, Bot, AlertCircle, CheckCircle2, XCircle, RotateCcw, Flag, GitBranch, AtSign, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore, Notification } from '../stores/uiStore';
@@ -216,13 +217,10 @@ export function NotificationsPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowFilters(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors ${showFilters ? 'text-primary-700 bg-primary-50 border-primary-300' : 'text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-          >
-            <Filter className="w-3.5 h-3.5" />
+          <ToggleButton on={showFilters} onClick={() => setShowFilters(v => !v)}>
+            <Filter className="w-3.5 h-3.5" aria-hidden="true" />
             Filter
-          </button>
+          </ToggleButton>
           {unreadCount > 0 && (
             <button
               onClick={handleMarkAllRead}

@@ -657,6 +657,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onToggleFilters={() => setShowFilters(!showFilters)}
+          showFilters={showFilters}
           hasActiveFilters={hasActiveFilters}
           activeFilterCount={[filterStatus, filterPriority, filterAssignee].filter(Boolean).length}
           columnState={columnState}
@@ -664,8 +665,6 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           reviewActive={showReviewPanel || !!reviewRowFilter}
           onOpenCalendar={() => setShowCalendarPanel(true)}
           calendarActive={showCalendarPanel}
-          showCriticalPath={showCriticalPath}
-          onCriticalPathChange={setShowCriticalPath}
           overflowMenu={scheduleOverflowMenu}
           onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
           filteredCount={filteredTasks.length}

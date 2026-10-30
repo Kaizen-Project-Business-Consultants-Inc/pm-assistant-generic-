@@ -1,4 +1,5 @@
 import React from 'react';
+import { ToggleButton, TOGGLE_BADGE_CLASS } from '../../../components/ui/ToggleButton';
 import { Search, Filter, X, Download, ClipboardCheck } from 'lucide-react';
 import { WorkingCalendarButton } from '../../../components/schedule/calendar/WorkingCalendarButton';
 import { OverbookedToggle } from '../../../components/schedule/OverbookedToggle';
@@ -12,6 +13,8 @@ interface ScheduleToolbarProps {
   searchQuery: string;
   onSearchChange: (value: string) => void;
   onToggleFilters: () => void;
+  /** The filter panel is open */
+  showFilters: boolean;
   hasActiveFilters: boolean;
   activeFilterCount: number;
   columnState: ColumnState;
@@ -20,8 +23,6 @@ interface ScheduleToolbarProps {
   /** Opens the project's working calendar */
   onOpenCalendar?: () => void;
   calendarActive?: boolean;
-  showCriticalPath: boolean;
-  onCriticalPathChange: (value: boolean) => void;
   overflowMenu: React.ReactNode;
   onExportCSV: () => void;
   filteredCount: number;
@@ -36,6 +37,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   searchQuery,
   onSearchChange,
   onToggleFilters,
+  showFilters,
   hasActiveFilters,
   activeFilterCount,
   columnState,
@@ -43,8 +45,6 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   reviewActive,
   onOpenCalendar,
   calendarActive,
-  showCriticalPath,
-  onCriticalPathChange,
   overflowMenu,
   onExportCSV,
   filteredCount,
@@ -75,22 +75,15 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
 
       {/* Filter toggle */}
       {tasksCount > 0 && (
-        <button
-          onClick={onToggleFilters}
-          className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-            hasActiveFilters
-              ? 'border-primary-300 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-        >
+        <ToggleButton on={showFilters} onClick={onToggleFilters}>
           <Filter className="w-3 h-3" />
           Filters
           {hasActiveFilters && (
-            <span className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-primary-600 text-white text-[10px] font-bold">
+            <span className={`ml-0.5 w-4 h-4 flex items-center justify-center rounded-full ${TOGGLE_BADGE_CLASS} text-[10px] font-bold`}>
               {activeFilterCount}
             </span>
           )}
-        </button>
+        </ToggleButton>
       )}
 
       <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
@@ -107,42 +100,15 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
       />
 
       {onOpenReview && (
-        <button
-          type="button"
-          onClick={onOpenReview}
-          aria-pressed={!!reviewActive}
-          className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-            reviewActive
-              ? 'border-primary-300 dark:border-primary-600 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400'
-              : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-          }`}
-          title="Review schedule quality"
-        >
+        <ToggleButton on={!!reviewActive} onClick={onOpenReview} title="Review schedule quality">
           <ClipboardCheck className="w-3 h-3" />
           Review
-        </button>
+        </ToggleButton>
       )}
       {onOpenCalendar && <WorkingCalendarButton onClick={onOpenCalendar} active={calendarActive} />}
       {overbooked && (viewMode === 'table' || viewMode === 'kanban') && <OverbookedToggle {...overbooked} />}
 
-      {viewMode === 'gantt' && (
-        <button
-          type="button"
-          role="switch"
-          aria-checked={showCriticalPath}
-          onClick={() => onCriticalPathChange(!showCriticalPath)}
-          className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md transition-colors ${
-            showCriticalPath
-              ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
-              : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
-          }`}
-        >
-          <span className={`w-2 h-2 rounded-full ${showCriticalPath ? 'bg-primary-500' : 'bg-gray-400 dark:bg-gray-500'}`} />
-          Critical Path
-        </button>
-      )}
-
-      {/* Overflow menu (gantt only) */}
+      {/* Overflow menu (baselines, scenarios, import ...) */}
       {overflowMenu}
 
       {/* CSV export for non-gantt views */}

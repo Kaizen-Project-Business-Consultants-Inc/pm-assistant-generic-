@@ -34,7 +34,7 @@ describe('Projects page: archived projects leave the active list (U1)', () => {
   it('Show archived keeps the active cards and adds an Archived section, newest first', async () => {
     show();
     expect(await screen.findByText('Live build')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /Show Archived/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Show archived/i }));
     expect(await screen.findByText(/1 active · 2 archived/, {}, { timeout: 4000 })).toBeTruthy();
     // archived ones are not cards in the active grid: folded away until opened
     expect(screen.queryByText('Old fit-out')).toBeNull();

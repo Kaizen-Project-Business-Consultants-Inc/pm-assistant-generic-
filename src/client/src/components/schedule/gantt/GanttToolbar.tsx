@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback, useId } from 'react';
+import { ToggleButton, TOGGLE_BADGE_CLASS } from '../../ui/ToggleButton';
 import type { ColumnState } from '../../../hooks/useColumnState';
 import { SavedViewsDropdown } from '../SavedViewsDropdown';
 import type { SavedView } from '../SavedViewsDropdown';
@@ -296,19 +297,15 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           )}
         </div>
         {/* Filter toggle */}
-        <button
-          onClick={handleSetShowFilters}
-          className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors border ${showFilters || activeFilterCount > 0 ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-700' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-          title="Filter tasks"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <ToggleButton on={showFilters} onClick={handleSetShowFilters} title="Filter tasks">
+          <svg className="w-3.5 h-3.5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
           </svg>
           Filter
           {activeFilterCount > 0 && (
-            <span className="ml-0.5 px-1.5 py-0 text-xs font-bold bg-primary-600 text-white rounded-full">{activeFilterCount}</span>
+            <span className={`ml-0.5 px-1.5 py-0 text-xs font-bold ${TOGGLE_BADGE_CLASS} rounded-full`}>{activeFilterCount}</span>
           )}
-        </button>
+        </ToggleButton>
         {/* Shared column picker -- same control and column state as Table view, so
             visibility/order stay in sync across views (the outer ScheduleToolbar is
             hidden in Gantt mode). */}
@@ -395,17 +392,16 @@ export const GanttToolbar = React.memo(function GanttToolbar({
         </div>
         )}
         {onOpenReview && (
-          <button
+          <ToggleButton
+            on={!!reviewActive}
             onClick={onOpenReview}
-            aria-pressed={!!reviewActive}
-            className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg transition-colors border ${reviewActive ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 border-primary-300 dark:border-primary-700' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
             title="Review schedule quality"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
             </svg>
             Review
-          </button>
+          </ToggleButton>
         )}
         {onOpenCalendar && <WorkingCalendarButton onClick={onOpenCalendar} active={calendarActive} />}
         {onAddTask && (
@@ -445,17 +441,17 @@ export const GanttToolbar = React.memo(function GanttToolbar({
         />
         <OverbookedToggle on={showOverallocation} onToggle={() => setShowOverallocation(v => !v)} count={overallocatedCount} anyoneAssigned={anyoneAssigned} />
         {/* Timeline strip toggle (replaced the minimap 2026-10-01) */}
-        <button
+        <ToggleButton
+          on={showTimeline}
           onClick={() => setShowTimeline(v => !v)}
-          aria-pressed={showTimeline}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${showTimeline ? 'text-primary-700 dark:text-primary-300 bg-primary-50 dark:bg-primary-900/20 border-primary-300 dark:border-primary-700 hover:bg-primary-100 dark:hover:bg-primary-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+          className="print:hidden"
           title="Show the whole project on one line: phases, milestones and today"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M7 8v8M12 6v12M17 9v6" />
           </svg>
           Timeline
-        </button>
+        </ToggleButton>
         {/* Saved views */}
         {scheduleId && (
           <SavedViewsDropdown

@@ -9,6 +9,10 @@
 - Not built: a typed (no-AI-cost) command like "indent 3-5 under 2" — would need its own confirm step; do only if asked.
 - Tests: `aiActionExecutorIndent.test.ts`, `ChangeHistoryReparent.test.ts`, `aiChatService.test.ts`; `e2e/mjuzi-indent.spec.ts` (in the full staging config; not yet run on staging).
 
+## 2026-10-29 — Switched-on buttons look the same everywhere
+- User asked for a clear ON state on toggle buttons, universally (mock waived). New `components/ui/ToggleButton.tsx`: ON = solid teal (primary-600, white text 4.9:1; dark theme primary-400 with gray-950 text) + tick + `aria-pressed`; OFF = outline.
+- Converted: Gantt Timeline, Review and Filter; Table/Kanban Review and Filters; Overbooked people; sprint-board Swimlane; Projects Show archived; Notifications Filter; AI Inbox Edit first. Gantt Critical path stays red on purpose (red = critical bars). Removed the dead gantt-only Critical Path button in ScheduleToolbar. The guard test only catches buttons that already carry `aria-pressed` or `role="switch"`; a toggle written without them would not be caught. Left alone on purpose (tab-like groups, colour pickers, row-pointing buttons, buttons already solid): list with reasons in `ui/toggleButtonGuard.test.ts`, which fails on any new hand-styled `aria-pressed` file.
+
 ## 2026-10-29 — Deleting a heading asks: heading only, or its tasks too
 - User report: deleting summary "test" left "child" as a standalone row with no question. Mock https://claude.ai/artifact/1fu4ybTNFtFujCL93wXa5y approved ("go").
 - Server: `deleteTasksKeepingCopy(..., { children: 'keep' | 'delete' })`. keep (default) moves the tasks to the nearest surviving ancestor and records `reparented` in the copy so Undo puts them back; delete takes every descendant in one transaction and one History entry. `DELETE /bulk/tasks` (body `children`) and `DELETE /schedules/:id/tasks/:taskId` (`?children=`); responses gain `kept`. `ScheduleService.removeTask` (no-copy path) also moves children up. Mjuzi `delete_task` never cascades.

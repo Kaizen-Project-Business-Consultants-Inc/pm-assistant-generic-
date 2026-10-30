@@ -8,6 +8,7 @@ import { FilterBarPM } from '../components/pm/FilterBarPM';
 import { ProjectCardPM } from '../components/pm/ProjectCardPM';
 import { ArchivedProjectsList } from '../components/pm/ArchivedProjectsList';
 import { SectionCard, TH, TD } from '../components/ui/SectionCard';
+import { ToggleButton } from '../components/ui/ToggleButton';
 import { MetaPill } from '../components/ui/MetaPill';
 import { TemplatePicker } from '../components/templates/TemplatePicker';
 import { ProjectGroupManager } from '../components/projects/ProjectGroupManager';
@@ -318,14 +319,10 @@ export function ProjectsPM() {
               {word.many}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => setShowArchived(v => !v)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${showArchived ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400' : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'}`}
-          >
+          <ToggleButton on={showArchived} onClick={() => setShowArchived(v => !v)} size="lg">
             <Archive className="w-4 h-4" />
-            {showArchived ? 'Hide Archived' : 'Show Archived'}
-          </button>
+            Show archived
+          </ToggleButton>
           {canChange && <button
             type="button"
             onClick={() => setTemplatePickerOpen(true)}

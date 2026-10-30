@@ -1,3 +1,4 @@
+import { ToggleButton, TOGGLE_BADGE_CLASS } from '../ui/ToggleButton';
 import { useCanOpenPage } from '../../hooks/useCanOpenPage';
 import { ROUTES } from '../../routes';
 
@@ -16,11 +17,10 @@ export function OverbookedToggle({ on, onToggle, count, anyoneAssigned }: {
   const canOpenResources = useCanOpenPage()(ROUTES.resources);
   return (
     <>
-      <button
-        type="button"
+      <ToggleButton
+        on={on}
         onClick={onToggle}
-        aria-pressed={on}
-        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border rounded-lg transition-colors print:hidden ${on ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900/30' : 'text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+        className="print:hidden"
         title="Mark tasks that book someone over 100% in a week (all projects)"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -28,9 +28,9 @@ export function OverbookedToggle({ on, onToggle, count, anyoneAssigned }: {
         </svg>
         Overbooked people
         {on && count > 0 && (
-          <span className="ml-0.5 px-1.5 py-0.5 text-xs font-bold bg-amber-200 text-amber-800 rounded-full">{count}</span>
+          <span className={`ml-0.5 px-1.5 py-0.5 text-xs font-bold ${TOGGLE_BADGE_CLASS} rounded-full`}>{count}</span>
         )}
-      </button>
+      </ToggleButton>
       {on && !anyoneAssigned && (
         <span className="text-xs text-gray-600 dark:text-gray-300 print:hidden">No one is assigned to tasks yet, so there&apos;s nothing to check.</span>
       )}
