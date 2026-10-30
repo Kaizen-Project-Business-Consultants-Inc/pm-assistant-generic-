@@ -75,8 +75,8 @@ test('a refused children value changes nothing', async () => {
 test('in the Gantt: Delete on a heading asks; Cancel and Escape change nothing; "heading only" keeps the tasks', async () => {
   await openSchedule(page, projectId, scheduleId, 'gantt');
   const pick = async () => {
-    await ganttRow(page, ids.head).locator(':scope > div').first().click({ modifiers: ['Control'] });
-    await page.getByRole('button', { name: 'Delete', exact: true }).first().click();
+    await ganttRow(page, ids.head).hover();
+    await ganttRow(page, ids.head).getByRole('button', { name: 'Delete Heading' }).click();
   };
 
   await pick();
@@ -104,16 +104,16 @@ test('in the Gantt: Delete on a heading asks; Cancel and Escape change nothing; 
 
 test('in the Gantt: "heading and its tasks" deletes them all with one Undo; a plain task gets no choice', async () => {
   await openSchedule(page, projectId, scheduleId, 'gantt');
-  await ganttRow(page, ids.head).locator(':scope > div').first().click({ modifiers: ['Control'] });
-  await page.getByRole('button', { name: 'Delete', exact: true }).first().click();
+  await ganttRow(page, ids.head).hover();
+  await ganttRow(page, ids.head).getByRole('button', { name: 'Delete Heading' }).click();
   await page.getByRole('alertdialog', { name: 'Delete "Heading"?' }).getByRole('button', { name: /Delete the heading and its 3 tasks/ }).click();
   await expect.poll(names).toEqual(['Phase', 'Plain']);
   await expect(page.getByText("Deleted 'Heading' and 3 tasks").first()).toBeVisible();
   await page.keyboard.press('Control+z');
   await expect.poll(names).toEqual(['Child', 'Deep child', 'Heading', 'Inner heading', 'Phase', 'Plain']);
 
-  await ganttRow(page, ids.plain).locator(':scope > div').first().click({ modifiers: ['Control'] });
-  await page.getByRole('button', { name: 'Delete', exact: true }).first().click();
+  await ganttRow(page, ids.plain).hover();
+  await ganttRow(page, ids.plain).getByRole('button', { name: 'Delete Plain' }).click();
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   await expect(page.getByRole('dialog', { name: /Delete/ })).toBeVisible();
 });
