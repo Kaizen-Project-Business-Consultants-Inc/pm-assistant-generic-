@@ -189,7 +189,7 @@ describe('guard', () => {
       'services/agents/ActionProposalService.ts': /proposalEvent\('proposal_created'/,
       'services/agents/ActionExecutor.ts': /proposalEvent\('proposal_executed'/,
     };
-    expect(src('services/ScheduleService.ts').match(/taskChanged\(/g)?.length, 'task created + task updated').toBe(2);
+    expect(src('services/ScheduleService.ts').match(/taskChanged\(/g)?.length, 'task created + task updated + links added in bulk').toBe(3);
     for (const [file, re] of Object.entries(posts)) expect(src(file), file).toMatch(re);
   });
 });
