@@ -524,7 +524,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       }
       const schedule = await scheduleService.findById(scheduleId);
       if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
-      const result = await scheduleService.bulkAddDependencies(scheduleId, parsed.data.links);
+      const result = await scheduleService.bulkAddDependencies(scheduleId, schedule.projectId ?? null, parsed.data.links);
       let moved: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
       let changeId: string | null = null;
       if (result.added.length > 0) {

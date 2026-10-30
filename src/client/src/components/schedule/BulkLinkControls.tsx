@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link2, Loader2 } from 'lucide-react';
 import type { BulkLinkMode } from './bulkLink';
 
 export type OnBulkLink = (mode: BulkLinkMode, taskIds: string[], target?: string) => Promise<string>;
@@ -21,14 +21,33 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
   const [target, setTarget] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  // Buttons are switched off while saving, which drops keyboard focus; put it back on the one used
+  const refs = { chain: useRef<HTMLButtonElement>(null), allWaitOn: useRef<HTMLButtonElement>(null), waitsOnAll: useRef<HTMLButtonElement>(null) };
+  const targetRef = useRef<HTMLInputElement>(null);
+  const refocus = useRef<BulkLinkMode | null>(null);
+  // Linking worked and the bar may go away with the selection (onLinked): focus must land on the grid then
+  const gridOnUnmount = useRef(false);
+  useEffect(() => {
+    if (busy || !refocus.current) return;
+    // still here: the button used, or the Row # box when that button is off until a row is typed
+    const button = refs[refocus.current].current;
+    (button && !button.disabled ? button : targetRef.current)?.focus();
+    refocus.current = null;
+    gridOnUnmount.current = false;
+  });
+  useEffect(() => () => {
+    if (gridOnUnmount.current) document.querySelector<HTMLElement>('[role="treegrid"]')?.focus();
+  }, []);
 
   const run = async (mode: BulkLinkMode) => {
+    refocus.current = mode;
     setBusy(true);
     setMessage(null);
     try {
       const text = await onBulkLink(mode, selectedIds, mode === 'chain' ? undefined : target);
       setMessage({ text, ok: true });
       setTarget('');
+      gridOnUnmount.current = true;
       onLinked?.();
     } catch (e) {
       setMessage({ text: e instanceof Error ? e.message : 'Linking failed. Nothing was changed.', ok: false });
@@ -53,6 +72,7 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
       <span className="text-xs font-bold text-indigo-700 dark:text-indigo-200 whitespace-nowrap">Link tasks</span>
       <button
         type="button"
+        ref={refs.chain}
         className={btn}
         onClick={() => run('chain')}
         disabled={off || selectedIds.length < 2}
@@ -61,6 +81,7 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
         Link in order
       </button>
       <input
+        ref={targetRef}
         type="text"
         inputMode="numeric"
         aria-label="Row to link to, for example 3 or 3FS+2d"
@@ -73,6 +94,7 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
       />
       <button
         type="button"
+        ref={refs.allWaitOn}
         className={btn}
         onClick={() => run('allWaitOn')}
         disabled={off || !target.trim()}
@@ -82,6 +104,7 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
       </button>
       <button
         type="button"
+        ref={refs.waitsOnAll}
         className={btn}
         onClick={() => run('waitsOnAll')}
         disabled={off || !target.trim()}
@@ -89,15 +112,19 @@ export function BulkLinkControls({ selectedIds, onBulkLink, onLinked, disabled }
       >
         It waits on all
       </button>
-      {message && (
-        <span
-          role="status"
-          aria-live="polite"
-          className={`text-xs font-medium px-2 py-1 rounded ${message.ok ? 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/20' : 'text-red-700 bg-red-50 dark:text-red-300 dark:bg-red-900/20'}`}
-        >
-          {message.text}
-        </span>
-      )}
+      {/* One live region that is always on the page, so "Linking…" and then the result are both announced */}
+      <span
+        role="status"
+        aria-live="polite"
+        className={busy
+          ? 'inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 dark:text-indigo-200 px-2 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30'
+          : message
+            ? `text-xs font-medium px-2 py-1 rounded ${message.ok ? 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/20' : 'text-red-700 bg-red-50 dark:text-red-300 dark:bg-red-900/20'}`
+            : undefined}
+      >
+        {busy && <Loader2 className="w-3.5 h-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
+        {busy ? 'Linking…' : message?.text}
+      </span>
     </div>
   );
 }

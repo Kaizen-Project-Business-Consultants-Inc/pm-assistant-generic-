@@ -9,15 +9,15 @@ const ph = (n: number) => Array.from({ length: n }, () => '?').join(',');
  * and the Table, Gantt, sorting and the task form fall back to it when a task has no links). Any
  * write that replaces links directly in task_dependencies calls this afterwards, on the same
  * connection, so the two never disagree: the first link (as the task list reads them), or
- * nothing (NULL / NULL / 0) when the task has none. Review 2026-10-10: History's Undo put the
+ * nothing (NULL / NULL / 0) when the task has none. Returns the first link it kept for each task (so a caller can describe exactly what is stored). Review 2026-10-10: History's Undo put the
  * links back but left the copy on the task, so a removed first predecessor still showed.
  */
-export async function syncDependencyMirror(run: Run, taskIds: string[]): Promise<void> {
+export async function syncDependencyMirror(run: Run, taskIds: string[]): Promise<Map<string, { dep: string; type: string; lag: number }>> {
   const ids = [...new Set(taskIds.filter(Boolean))];
-  if (ids.length === 0) return;
+  const first = new Map<string, { dep: string; type: string; lag: number }>();
+  if (ids.length === 0) return first;
   const rows = await run(
     `SELECT task_id, dependency_id, dependency_type, lag_days FROM task_dependencies WHERE task_id IN (${ph(ids.length)})`, ids);
-  const first = new Map<string, { dep: string; type: string; lag: number }>();
   for (const r of Array.isArray(rows) ? rows : []) {
     if (!first.has(r.task_id)) first.set(r.task_id, { dep: r.dependency_id, type: r.dependency_type || 'FS', lag: Number(r.lag_days ?? 0) });
   }
@@ -31,4 +31,5 @@ export async function syncDependencyMirror(run: Run, taskIds: string[]): Promise
       [...by(id => first.get(id)?.dep ?? null), ...by(id => first.get(id)?.type ?? null), ...by(id => first.get(id)?.lag ?? 0), ...chunk],
     );
   }
+  return first;
 }

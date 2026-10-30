@@ -1,5 +1,12 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-30 — Linking tasks is faster, and the Link bar says "Linking…"
+- Why: linking 2+ selected tasks ("Link in order") took ~10 s on a 37-task plan (DBJ-LMS Implementation on staging) with nothing on screen saying it was working; the two task reloads after it took 2.5 s and 4.9 s.
+- Cause: `ScheduleService.bulkAddDependencies` saved every linked task with a full `updateTask` (task + dependency re-reads, per-link checks, rollup, audit, events: dozens of queries per task, one task after another). Fix: the batch is already checked as a whole (tasks in this plan, no loop, max 20 predecessors), so the links are written in ONE transaction (delete + multi-row insert for all affected tasks, then `syncDependencyMirror`); the per-task `task.update` audit entries (hash-chained) and `task.changed` events still happen, one task at a time in the background (`trackBackground`; a burst of events swamped the DB pool in review); one `planChanged`. Date re-flow, History line and Undo are unchanged.
+- UI: `BulkLinkControls` shows a spinner + "Linking…" (one always-present `role="status"` line, focus returned to the button used) while saving; buttons were already disabled.
+- The slow reloads were most likely the server busy with the 37 chained audit writes of the old save; no change to the task list query (0.2 s on a quiet staging server for 40 tasks). Measured on staging: baseline 35 links 3.9 s on a quiet server (before the fix); after: see the line added after release.
+- Tests: `ScheduleServiceBulkLink.test.ts` (same rows written, statement count does not grow with the number of tasks), `BulkLinkControls.test.tsx`, `e2e/link-speed.spec.ts` (in the full staging config).
+
 ## 2026-10-29 — Mjuzi can indent / outdent existing tasks (`indent_tasks`)
 - Why: Mjuzi had no tool to change a task's parent, so she said tasks "would need to be rebuilt" under a heading (delete + recreate loses links, history, comments). User: "yes add the indent tool".
 - Tool `indent_tasks` (`aiToolDefinitions.ts`, `aiActionExecutor.indentTasks`): `taskIds[]` (max 50, one schedule) + `direction` indent|outdent OR `underTaskId`. Indent = under the row above the FIRST named task (the Gantt's Tab); a task whose own heading is also named stays with it. Outdent = parent's parent. Refuses loops, other-schedule ids, viewers/team members (`AI_WRITE_TOOLS` + `projectsForTool` now checks every id in `taskIds` and `underTaskId`).

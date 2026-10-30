@@ -23,6 +23,7 @@ import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
+import { trackBackground } from '../utils/backgroundWork';
 import { isActiveWork } from '../constants/taskStatus';
 
 
@@ -502,6 +503,7 @@ export class ScheduleService {
 
   async bulkAddDependencies(
     scheduleId: string,
+    projectId: string | null,
     links: Array<{ taskId: string; dependencyId: string; dependencyType?: 'FS' | 'SS' | 'FF' | 'SF'; lagDays?: number }>,
   ): Promise<{ added: Array<{ taskId: string; dependencyId: string; dependencyType: 'FS' | 'SS' | 'FF' | 'SF'; lagDays: number }>; skipped: number }> {
     const tasks = await this.findTasksByScheduleId(scheduleId);
@@ -547,19 +549,59 @@ export class ScheduleService {
       throw new DependencyValidationError(`These links would create a loop: ${loop}. Nothing was linked.`);
     }
 
-    // Write through updateTask so legacy columns, rollups and the audit trail behave exactly
-    // as for a single edit. Everything that could fail validation has been checked above.
+    // One transaction for the whole batch (it was a full task save per task: ~10 s on 37 tasks,
+    // 2026-10-29). The checks updateTask would repeat per task are done above: every task is in
+    // this plan, no loop, at most 20 predecessors. Only the NEW links are inserted (links a task
+    // already has are not touched, so a change made at the same moment is not undone). The rest of
+    // a task save still happens per task, in the background: audit entry and "task changed" event;
+    // one "plan changed" notice.
+    const touched = [...newPerTask.keys()];
+    const mirror = await databaseService.transaction(async (conn) => {
+      const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
+      for (const chunk of chunksOf(added, 200)) {
+        // ON DUPLICATE: a link someone else added a moment ago (unique task + predecessor) is already there;
+        // any other failure (a task deleted meanwhile) rolls the batch back
+        // eslint-disable-next-line no-await-in-loop -- one statement per 200 links, on one connection
+        await q(`INSERT INTO task_dependencies (id, task_id, dependency_id, dependency_type, lag_days) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')} ON DUPLICATE KEY UPDATE id = id`,
+          chunk.flatMap(a => [uuidv4(), a.taskId, a.dependencyId, a.dependencyType, a.lagDays]));
+      }
+      return syncDependencyMirror(q, touched);
+    });
     const addedByTask = new Map<string, typeof added>();
     for (const a of added) addedByTask.set(a.taskId, [...(addedByTask.get(a.taskId) ?? []), a]);
-    for (const [taskId] of newPerTask) {
-      const task = byId.get(taskId)!;
-      const merged = [
-        ...task.dependencies.map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType, lagDays: d.lagDays })),
+    const changes = touched.map(taskId => {
+      const oldTask = byId.get(taskId)!;
+      const dependencies = [
+        ...oldTask.dependencies,
         ...(addedByTask.get(taskId) ?? []).map(a => ({ dependencyId: a.dependencyId, dependencyType: a.dependencyType, lagDays: a.lagDays })),
       ];
-      // eslint-disable-next-line no-await-in-loop -- each task's links are a full task save (history, re-flow), in order
-      await this.updateTask(taskId, { dependencies: merged } as any);
-    }
+      const first = mirror.get(taskId); // what was stored on the task, so the audit entry matches the database
+      const updated = { ...oldTask, dependencies, dependency: first?.dep, dependencyType: first?.type, dependencyLagDays: first?.lag ?? 0 } as Task;
+      return { taskId, oldTask, updated, dependencies };
+    });
+    const actorId = getRequestContext()?.userId;
+    const source = getActorSource();
+    // Background, one task at a time: the audit ledger is hash-chained, and each "task changed"
+    // event runs queries of its own — all 40 at once would swamp the connection pool
+    void trackBackground((async () => {
+      for (const c of changes) {
+        // eslint-disable-next-line no-await-in-loop -- hash chain: one entry at a time (background)
+        await auditLedgerService.append({
+          actorId: actorId || c.oldTask.createdBy,
+          actorType: 'user',
+          action: 'task.update',
+          entityType: 'task',
+          entityId: c.taskId,
+          projectId,
+          payload: { before: c.oldTask, after: c.updated, changes: { dependencies: c.dependencies } },
+          source,
+        }).catch(err => deadLetterService.capture('audit.append', {}, err));
+        taskChanged(c.updated, c.oldTask);
+        // eslint-disable-next-line no-await-in-loop -- let this task's event start its queries before the next one
+        await new Promise<void>(resolve => { setImmediate(resolve); });
+      }
+    })().catch(err => logger.warn('[ScheduleService] bulk link follow-up failed', { error: err?.message })));
+    planChanged(scheduleId);
     return { added, skipped };
   }
 
