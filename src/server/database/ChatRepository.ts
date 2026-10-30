@@ -210,5 +210,8 @@ export function actionRefsOf(data: unknown): ActionRef[] {
  */
 function storedAction(a: { success?: boolean; toolName?: string; summary?: string; error?: string; data?: unknown }) {
   const refs = a.success ? actionRefsOf(a.data) : []; // a failed action named nothing that was done
-  return { success: a.success, toolName: a.toolName, summary: a.summary, error: a.error, ...(refs.length ? { refs } : {}) };
+  // a bulk move that waits for the user's yes: the next message may confirm exactly this list (aiChatService)
+  const proposalKey = (a.data as { needsConfirmation?: boolean; proposalKey?: unknown } | undefined)?.needsConfirmation === true
+    ? (a.data as { proposalKey?: unknown }).proposalKey : undefined;
+  return { success: a.success, toolName: a.toolName, summary: a.summary, error: a.error, ...(refs.length ? { refs } : {}), ...(typeof proposalKey === 'string' ? { proposalKey } : {}) };
 }

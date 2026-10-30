@@ -15,7 +15,7 @@ import { planChanged } from '../../services/domainEvents';
 import { groupBy } from '../../utils/groupBy';
 import {
   changeHistoryService, BULK_UPDATE_COLUMNS, type PreviousValues, deleteTasksKeepingCopy, deleteSummary, DeleteTooLargeError,
-  ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries, type LinksBefore,
+  ROLLUP_COLUMNS, parentIdsOf, rollUpSummaries, readHeadingsBefore, type HeadingBefore, type LinksBefore,
 } from '../../services/ChangeHistoryService';
 
 import { TASK_STATUS_LABEL as STATUS_LABEL } from '../../constants/taskStatus';
@@ -576,9 +576,13 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         }
       };
 
+      // A task that becomes a heading gets its dates, % and totals overwritten by the roll-up:
+      // kept for Undo (read inside the transaction, before the parent is written)
+      let headingsBefore: HeadingBefore[] = [];
       await databaseService.transaction(async (connection) => {
         const run = (sql: string, params: any[]) => databaseService.queryOn(connection, sql, params);
         await readParents(run);
+        headingsBefore = await readHeadingsBefore(run, body.updates.map(u => u.parentTaskId).filter((p): p is string => !!p));
         const datesBefore = await taskDatesOf(run, body.updates.filter(u => u.startDate !== undefined || u.endDate !== undefined).map(u => u.id));
         // Every link/parent named in the batch, looked up once (it was one query per task, 2026-10-08)
         const allRefs = [...new Set(body.updates.flatMap(u => [u.dependency, u.parentTaskId]).filter((r): r is string => !!r))];
@@ -708,6 +712,8 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             undo: {
               // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
               previous: previous.filter(p => idSet.has(p.id)),
+              // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one)
+              headings: headingsBefore.filter(h => h.scheduleId === sid),
               // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
               links: oldLinks.filter(l => idSet.has(l.taskId)),
               moved: moved.map(d => ({ taskId: d.taskId, startDate: d.oldStart, endDate: d.oldEnd })),

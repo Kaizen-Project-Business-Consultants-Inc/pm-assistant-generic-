@@ -87,6 +87,20 @@ export const AI_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'indent_tasks',
+    description: "Change which heading (summary task) existing tasks sit under, WITHOUT deleting or recreating them (their links, history and comments stay). direction 'indent' = each task goes under the row above the first named task, like the Tab key; 'outdent' = each task moves up one level; or give underTaskId to put them under a named heading in the same schedule. Use this instead of rebuilding tasks. Each call is ONE Schedule History line (only the newest change can be undone), so put everything that belongs together in one call. More than 3 tasks moved: the call only lists the moves and stops; show the list to the user, and only after they answer yes in their NEXT message call again with the same arguments and userConfirmed true (it is ignored otherwise, and only one confirmed call is allowed per message). Use task ids from list_tasks (call it first: rows change).",
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        taskIds: { type: 'array', items: { type: 'string' }, description: 'The IDs of the tasks to move (at most 50, all in one schedule)' },
+        direction: { type: 'string', enum: ['indent', 'outdent'], description: "'indent' or 'outdent'. Leave out when giving underTaskId." },
+        underTaskId: { type: 'string', description: 'The ID of the heading to put the tasks under (same schedule). Leave out when giving direction.' },
+        userConfirmed: { type: 'boolean', description: "Set true ONLY in the call that follows the user's yes to the list you showed them in your previous message. Never set it on the first call." },
+      },
+      required: ['taskIds'],
+    },
+  },
+  {
     name: 'delete_task',
     description: 'Delete a task from a schedule. Use this when asked to remove a task. This action cannot be undone.',
     input_schema: {
@@ -343,5 +357,5 @@ export const AI_TOOLS: Anthropic.Tool[] = [
 
 // Tool categories for permission checking
 export const DESTRUCTIVE_TOOLS = ['delete_task', 'clear_all_dependencies'];
-export const MUTATING_TOOLS = ['create_task', 'split_task', 'update_task', 'update_tasks', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
+export const MUTATING_TOOLS = ['create_task', 'split_task', 'update_task', 'update_tasks', 'indent_tasks', 'delete_task', 'create_project', 'update_project', 'reschedule_task', 'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies'];
 export const READ_ONLY_TOOLS = ['list_projects', 'get_project_details', 'list_tasks', 'get_dependency_chain', 'get_projects_due_today', 'get_overdue_projects', 'get_projects_by_status', 'get_overdue_tasks', 'get_high_risk_projects', 'get_portfolio_summary', 'remember_user_preference', 'remember_correction', 'search_knowledge_base'];

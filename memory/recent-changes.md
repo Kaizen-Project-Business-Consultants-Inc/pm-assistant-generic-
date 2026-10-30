@@ -1,5 +1,14 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-29 — Mjuzi can indent / outdent existing tasks (`indent_tasks`)
+- Why: Mjuzi had no tool to change a task's parent, so she said tasks "would need to be rebuilt" under a heading (delete + recreate loses links, history, comments). User: "yes add the indent tool".
+- Tool `indent_tasks` (`aiToolDefinitions.ts`, `aiActionExecutor.indentTasks`): `taskIds[]` (max 50, one schedule) + `direction` indent|outdent OR `underTaskId`. Indent = under the row above the FIRST named task (the Gantt's Tab); a task whose own heading is also named stays with it. Outdent = parent's parent. Refuses loops, other-schedule ids, viewers/team members (`AI_WRITE_TOOLS` + `projectsForTool` now checks every id in `taskIds` and `underTaskId`).
+- Write: `ChangeHistoryService.reparentTasksWithHistory` (parent_task_id only, one transaction, `rollUpSummaries` before the History line, one `bulk_update` line with the old parents so Undo works).
+- Safeguard: more than `MAX_MOVES_WITHOUT_OK` (3, `aiToolLimits.ts`) moves in a message: tool only lists them (`needsConfirmation`); Mjuzi repeats with `userConfirmed: true` after the user's yes (model-set flag; Undo in History is the backstop). `aiChatService` also stops further unconfirmed calls after 3 tasks moved in one message.
+- Review fixes (2026-10-29): Undo restores a task that became a heading (`headings` in the History payload; the Gantt bulk Tab path too via `readHeadingsBefore`); refuse a heading the moved task is linked to, a milestone parent, outlines over 10 deep; the plan is read FOR UPDATE inside the transaction and all checks use that read; the >3 confirmation is checked by the server (proposalKey stored with the chat message, accepted only from the previous message; one confirmed call per message); prompt 3.3.0.
+- Not built: a typed (no-AI-cost) command like "indent 3-5 under 2" — would need its own confirm step; do only if asked.
+- Tests: `aiActionExecutorIndent.test.ts`, `ChangeHistoryReparent.test.ts`, `aiChatService.test.ts`; `e2e/mjuzi-indent.spec.ts` (in the full staging config; not yet run on staging).
+
 ## 2026-10-29 — Deleting a heading asks: heading only, or its tasks too
 - User report: deleting summary "test" left "child" as a standalone row with no question. Mock https://claude.ai/artifact/1fu4ybTNFtFujCL93wXa5y approved ("go").
 - Server: `deleteTasksKeepingCopy(..., { children: 'keep' | 'delete' })`. keep (default) moves the tasks to the nearest surviving ancestor and records `reparented` in the copy so Undo puts them back; delete takes every descendant in one transaction and one History entry. `DELETE /bulk/tasks` (body `children`) and `DELETE /schedules/:id/tasks/:taskId` (`?children=`); responses gain `kept`. `ScheduleService.removeTask` (no-copy path) also moves children up. Mjuzi `delete_task` never cascades.

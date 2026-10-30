@@ -5,6 +5,7 @@ import { AIContextBuilder, CHAT_PROMPT_TASK_LIMIT } from './aiContextBuilder';
 import { logAIUsage } from './aiUsageLogger';
 import { AI_TOOLS, MUTATING_TOOLS } from './aiToolDefinitions';
 import { AIActionExecutor, type ActionResult } from './aiActionExecutor';
+import { MAX_MOVES_WITHOUT_OK } from './aiToolLimits';
 import { chatRepository, type ChatConversation, type ChatMessage } from '../database/ChatRepository';
 import { agentMemoryService } from './AgentMemoryService';
 import { InterAgentQueryService } from './agents/InterAgentQueryService';
@@ -55,6 +56,12 @@ const shortened = (s: string) => {
  */
 const MAX_LINK_CHANGES_PER_MESSAGE = 3;
 const LINK_TOOLS = new Set(['set_dependency', 'remove_dependency']);
+
+/** The bulk-move lists a Mjuzi reply showed the user and asked about (stored with the reply): only these can be confirmed in the next message */
+function proposalKeysOf(actions: Array<{ toolName?: string; proposalKey?: unknown }> | null | undefined): string[] {
+  return (actions ?? []).flatMap(a => (a?.toolName === 'indent_tasks' && typeof a.proposalKey === 'string' ? [a.proposalKey] : []));
+}
+
 
 // ---------------------------------------------------------------------------
 // Types
@@ -113,14 +120,16 @@ export class AIChatService {
       };
     }
 
-    const { systemPrompt, history } = await this.prepareConversation(req);
+    const { systemPrompt, history, approvedMoves } = await this.prepareConversation(req);
     const enableTools = req.enableTools !== false; // tools enabled by default
 
     try {
       if (enableTools) {
         // Use the tool loop — Claude can call tools and we execute them
-        const actionContext = { userId: req.userId, userRole: req.userRole };
+        const actionContext = { userId: req.userId, userRole: req.userRole, approvedMoves };
+        let confirmedMoves = 0;
         const allActions: ActionResult[] = [];
+        let movedWithoutOk = 0;
 
         const result = await claudeService.completeToolLoop({
       feature: 'chat-tools',
@@ -140,7 +149,31 @@ export class AIChatService {
               allActions.push(stopped);
               return JSON.stringify(stopped);
             }
+            // Same for moving tasks under other headings (indent_tasks): a few without asking, then the list first
+            const unconfirmedMove = toolName === 'indent_tasks' && toolInput.userConfirmed !== true;
+            // ...and the user's yes is one go per message: a second confirmed call is refused
+            if (toolName === 'indent_tasks' && toolInput.userConfirmed === true && confirmedMoves++ >= 1) {
+              const stopped: ActionResult = {
+                success: false,
+                toolName,
+                summary: "Stopped: only one confirmed bulk move is allowed per message. Tell the user what was done, and ask them again for the rest.",
+                error: 'Only one confirmed bulk move per message',
+              };
+              allActions.push(stopped);
+              return JSON.stringify(stopped);
+            }
+            if (unconfirmedMove && movedWithoutOk >= MAX_MOVES_WITHOUT_OK) {
+              const stopped: ActionResult = {
+                success: false,
+                toolName,
+                summary: `Stopped: more than ${MAX_MOVES_WITHOUT_OK} tasks moved in one message needs the user's OK. List the moves you propose (task row → new heading row) and ask them to confirm; after they say yes, call indent_tasks with userConfirmed true.`,
+                error: "Bulk move needs the user's OK",
+              };
+              allActions.push(stopped);
+              return JSON.stringify(stopped);
+            }
             const actionResult = await this.actionExecutor.execute(toolName, toolInput, actionContext);
+            if (unconfirmedMove && actionResult.success) movedWithoutOk += actionResult.data?.moved?.length ?? 0;
             allActions.push(actionResult);
             // Return the result as a string for Claude to interpret
             return JSON.stringify(actionResult);
@@ -371,6 +404,8 @@ export class AIChatService {
   private async prepareConversation(req: ChatRequest): Promise<{
     systemPrompt: string;
     history: Array<{ role: 'user' | 'assistant'; content: string }>;
+    /** Bulk moves the previous Mjuzi message of THIS chat showed the user and asked about: only these can be confirmed now */
+    approvedMoves: Set<string>;
   }> {
     let projectContext = 'No specific project context.';
     let agentInsightsContext = '';
@@ -455,6 +490,7 @@ export class AIChatService {
     });
 
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    const approvedMoves = new Set<string>();
     if (req.conversationId) {
       try {
         const messages = await chatRepository.getMessages(req.conversationId, CHAT_HISTORY_MESSAGES);
@@ -464,6 +500,7 @@ export class AIChatService {
           // the items line on the last ITEMS_REPLIES replies only: older ones are rarely what a
           // follow-up means, and every line is resent on every step
           const replies = messages.filter(m => m.role === 'assistant');
+          for (const key of proposalKeysOf(replies[replies.length - 1]?.actions)) approvedMoves.add(key);
           const recent = new Set(replies.slice(-ITEMS_REPLIES));
           history = messages.map((m, i) => {
             const body = i >= messages.length - 2 ? m.content : shortened(m.content); // the newest exchange stays whole
@@ -475,7 +512,7 @@ export class AIChatService {
       }
     }
 
-    return { systemPrompt, history };
+    return { systemPrompt, history, approvedMoves };
   }
 
   private async persistConversation(

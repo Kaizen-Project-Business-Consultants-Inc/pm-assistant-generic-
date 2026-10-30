@@ -988,7 +988,7 @@ describe('ClaudeService', () => {
       expect(prompt).toContain('split_task');            // never create_task + delete_task for a split
       expect(prompt).toContain('WARNING');               // a link pointing down the plan is passed on
       expect(prompt).toContain('directSuccessors');      // 2026-10-24: "Launch depends on Build" on a plain chain
-      expect(promptTemplates.conversational.getVersion()).toBe('3.2.0');
+      expect(promptTemplates.conversational.getVersion()).toBe('3.3.0');
     });
 
     it('all templates are PromptTemplate instances', () => {

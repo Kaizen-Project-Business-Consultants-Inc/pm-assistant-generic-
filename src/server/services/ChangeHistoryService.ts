@@ -9,6 +9,7 @@ import { auditLedgerService } from './AuditLedgerService';
 import { planChanged } from './domainEvents';
 import logger from '../utils/logger';
 import { TASK_STATUS_LABEL } from '../constants/taskStatus';
+import { isUnderItself, PARENT_LOOP_MESSAGE } from '../utils/parentLoop';
 
 /**
  * Schedule History — one line per GROUP change, with an Undo that works later (the
@@ -84,6 +85,58 @@ export async function rollUpSummaries(parentIds: Iterable<string>, scheduleId?: 
     await scheduleService.recomputeParentRollup(pid, 0, { isWorking }).catch((err: any) =>
       logger.error('[Rollup] recomputeParentRollup error after a bulk change', { pid, error: err?.message }));
   }
+}
+
+/** What a task gets overwritten with when it BECOMES a heading (the roll-up of its new children) — kept so Undo can put it back */
+const HEADING_COLUMNS = ['start_date', 'end_date', 'progress_percentage', 'status', 'estimated_days', 'budget_allocated', 'actual_cost', 'is_summary'];
+export interface HeadingBefore { id: string; scheduleId: string; values: Record<string, unknown> }
+
+/** The given tasks that are NOT headings yet, with the columns a roll-up would overwrite (read BEFORE a task is moved under them) */
+export async function readHeadingsBefore(run: Run, parentIds: string[]): Promise<HeadingBefore[]> {
+  const ids = [...new Set(parentIds.filter(Boolean))];
+  if (ids.length === 0) return [];
+  const rows = await run(
+    `SELECT id, schedule_id, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date,
+            progress_percentage, status, estimated_days, budget_allocated, actual_cost, is_summary
+       FROM tasks WHERE id IN (${ph(ids.length)}) AND (is_summary = 0 OR is_summary IS NULL)`, ids) as any[];
+  return (Array.isArray(rows) ? rows : []).map(r => ({
+    id: String(r.id), scheduleId: String(r.schedule_id), values: Object.fromEntries(HEADING_COLUMNS.map(c => [c, r[c] ?? null])),
+  }));
+}
+
+/** Undo of a move: tasks that had become headings are put back exactly as they were (dates, %, status, budget, cost) */
+async function putHeadingsBack(run: Run, scheduleId: string, headings: HeadingBefore[]): Promise<void> {
+  for (const h of headings) {
+    // eslint-disable-next-line no-restricted-syntax -- small: the eight heading columns
+    const cols = HEADING_COLUMNS.filter(c => c in h.values);
+    if (!cols.length) continue;
+    // eslint-disable-next-line no-await-in-loop -- undo restore inside one transaction on one connection; a few headings at most
+    await run(`UPDATE tasks SET ${cols.map(c => `${c} = ?`).join(', ')}, updated_at = NOW() WHERE id = ? AND schedule_id = ?`,
+      [...cols.map(c => h.values[c]), h.id, scheduleId]);
+  }
+}
+
+/** A move that is refused with a plain reason (nothing was saved) */
+class ReparentRefusedError extends Error {
+  readonly refused = true;
+}
+/** The roll-up climbs this many levels (ScheduleService.recomputeParentRollup); deeper than that, the top headings stop updating */
+const MAX_OUTLINE_DEPTH = 10;
+
+/** Would any moved task end up with more than MAX_OUTLINE_DEPTH levels (headings above it + its own sub-tree) in the plan as it will stand? */
+function outlineTooDeep(movedIds: string[], parentOf: Map<string, string | null>): boolean {
+  const childrenOf = new Map<string, string[]>();
+  for (const [id, p] of parentOf) if (p) childrenOf.set(p, [...(childrenOf.get(p) ?? []), id]);
+  const below = (id: string, seen = new Set<string>()): number => {
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    return Math.max(0, ...(childrenOf.get(id) ?? []).map(c => 1 + below(c, seen)));
+  };
+  return movedIds.some(id => {
+    let above = 0;
+    for (let cur = parentOf.get(id) ?? null; cur && above <= MAX_OUTLINE_DEPTH; cur = parentOf.get(cur) ?? null) above++;
+    return above + below(id) > MAX_OUTLINE_DEPTH;
+  });
 }
 
 export interface RecordInput {
@@ -522,6 +575,59 @@ class ChangeHistoryService {
     return { deleted: true, kept: snap.reparented?.length ?? 0, changeId, deletedIds: snap.tasks.map(t => String(t.id)) };
   }
 
+  /**
+   * Move tasks to a new parent (indent / outdent / "put these under that heading") for Mjuzi: the
+   * same write as the Gantt's Tab key (parent_task_id only; links, history and comments stay),
+   * the summary tasks above the old and new parents rolled up, and ONE History line whose Undo
+   * puts every task back under its old parent, and a task that became a heading back as it was.
+   * The plan is read FOR UPDATE inside the transaction and every check runs on that read; nothing
+   * is saved when any move is refused (ReparentRefusedError).
+   */
+  async reparentTasksWithHistory(input: {
+    projectId: string; scheduleId: string; summary: string; moves: Array<{ id: string; parentId: string | null }>;
+  }): Promise<{ changeId: string | null }> {
+    const { projectId, scheduleId, moves } = input;
+    const ids = moves.map(m => m.id);
+    const parents: string[] = [];
+    let previous: PreviousValues[] = [];
+    let headings: HeadingBefore[] = [];
+    await databaseService.transaction(async (conn) => {
+      const run = (sql: string, params: any[]) => databaseService.queryOn(conn, sql, params);
+      const rows = await run('SELECT id, parent_task_id, is_milestone FROM tasks WHERE schedule_id = ? FOR UPDATE', [scheduleId]) as Array<{ id: string; parent_task_id: string | null; is_milestone: unknown }>;
+      const parentOf = new Map(rows.map(r => [String(r.id), r.parent_task_id ?? null]));
+      const milestones = new Set(rows.filter(r => Number(r.is_milestone) === 1).map(r => String(r.id)));
+      for (const m of moves) {
+        if (!parentOf.has(m.id) || (m.parentId && !parentOf.has(m.parentId))) throw new ReparentRefusedError('Every task and parent must be in the same schedule');
+        if (m.parentId && milestones.has(m.parentId)) throw new ReparentRefusedError("A milestone can't have tasks under it.");
+      }
+      previous = ids.map(id => ({ id, values: { parent_task_id: parentOf.get(id) ?? null } }));
+      headings = await readHeadingsBefore(run, moves.map(m => m.parentId).filter((p): p is string => !!p));
+      // every move applied in turn: two harmless moves can close a loop between them
+      for (const m of moves) {
+        if (isUnderItself(m.id, m.parentId, parentOf)) throw new ReparentRefusedError(PARENT_LOOP_MESSAGE);
+        parentOf.set(m.id, m.parentId);
+      }
+      if (outlineTooDeep(ids, parentOf)) throw new ReparentRefusedError(`That would nest tasks more than ${MAX_OUTLINE_DEPTH} levels deep, which the schedule can't roll up.`);
+
+      parents.push(...await parentIdsOf(run, scheduleId, ids));
+      for (const group of groupBy(moves, m => m.parentId ?? '').values()) {
+        // eslint-disable-next-line no-await-in-loop -- one statement per new parent, on the transaction's one connection
+        await run(
+          `UPDATE tasks SET parent_task_id = ?, updated_at = NOW() WHERE schedule_id = ? AND id IN (${group.map(() => '?').join(',')})`,
+          [group[0].parentId, scheduleId, ...group.map(m => m.id)]);
+      }
+      parents.push(...await parentIdsOf(run, scheduleId, ids));
+    });
+    // awaited BEFORE History records the change, so it doesn't look "changed since"
+    await rollUpSummaries(parents, scheduleId);
+    planChanged(scheduleId);
+    const changeId = await this.record({
+      projectId, scheduleId, kind: 'bulk_update', summary: input.summary, taskIds: ids,
+      undo: { previous, headings, links: [], moved: [] },
+    });
+    return { changeId };
+  }
+
   async record(input: RecordInput): Promise<string | null> {
     try {
       if (input.taskIds.length === 0) return null;
@@ -705,6 +811,7 @@ class ChangeHistoryService {
               [...cols.map(c => p.values[c]), p.id, scheduleId]);
             restored++;
           }
+          await putHeadingsBack(run, scheduleId, (p.headings ?? []) as HeadingBefore[]);
           // booked hours move back with their tasks
           await moveBookingsWithTasks(run, datesBefore);
           await putLinksBack(run, scheduleId, (p.links ?? []) as LinksBefore);

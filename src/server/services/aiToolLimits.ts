@@ -10,6 +10,9 @@ import { databaseService } from '../database/connection';
 
 export const MAX_TOOL_ROWS = 200;
 
+/** Tasks Mjuzi may re-parent (indent / outdent) in one message before the user has seen the list and said yes */
+export const MAX_MOVES_WITHOUT_OK = 3;
+
 interface LimitedRows<T> {
   rows: T[];
   total: number;

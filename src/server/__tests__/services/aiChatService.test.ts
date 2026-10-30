@@ -321,6 +321,58 @@ describe('AIChatService', () => {
       expect(result.actions).toHaveLength(4);
     });
 
+    it('stops further unconfirmed indent_tasks calls after 3 tasks moved, but lets a confirmed one through', async () => {
+      mockExecute.mockResolvedValue({ success: true, toolName: 'indent_tasks', summary: 'Moved', data: { moved: [{}, {}, {}] } });
+      let second = '';
+      let confirmed = '';
+      mockCompleteToolLoop.mockImplementation(async (opts: any) => {
+        await opts.executeToolFn('indent_tasks', { taskIds: ['a', 'b', 'c'], direction: 'indent' });
+        second = await opts.executeToolFn('indent_tasks', { taskIds: ['d'], direction: 'indent' });
+        confirmed = await opts.executeToolFn('indent_tasks', { taskIds: ['d'], direction: 'indent', userConfirmed: true });
+        return { finalText: 'done', toolResults: [], totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1 };
+      });
+
+      await service.sendMessage(makeRequest());
+
+      expect(JSON.parse(second)).toMatchObject({ success: false, toolName: 'indent_tasks' });
+      expect(JSON.parse(second).summary).toMatch(/needs the user's OK/);
+      expect(JSON.parse(confirmed)).toMatchObject({ success: true });
+      expect(mockExecute).toHaveBeenCalledTimes(2); // the first and the confirmed one
+    });
+
+    it('only one confirmed indent_tasks call per message, and the chat hands the executor the keys the previous reply stored', async () => {
+      mockFindByIdForUser.mockResolvedValue({ id: 'conv-existing', userId: 'user-1' });
+      mockGetMessages.mockResolvedValue([
+        { id: 'm1', role: 'user', content: 'indent all of those', actions: null },
+        { id: 'm2', role: 'assistant', content: 'Shall I?', actions: [{ success: false, toolName: 'indent_tasks', summary: 'Stopped', proposalKey: 'key-from-last-reply' }] },
+      ]);
+      mockExecute.mockResolvedValue({ success: true, toolName: 'indent_tasks', summary: 'Moved', data: { moved: [{}, {}, {}, {}] } });
+      let second = '';
+      mockCompleteToolLoop.mockImplementation(async (opts: any) => {
+        await opts.executeToolFn('indent_tasks', { taskIds: ['a'], direction: 'indent', userConfirmed: true });
+        second = await opts.executeToolFn('indent_tasks', { taskIds: ['b'], direction: 'indent', userConfirmed: true });
+        return { finalText: 'done', toolResults: [], totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1 };
+      });
+
+      await service.sendMessage(makeRequest({ conversationId: 'conv-existing' }));
+
+      expect(mockExecute).toHaveBeenCalledTimes(1);
+      expect(mockExecute.mock.calls[0][2].approvedMoves).toEqual(new Set(['key-from-last-reply']));
+      expect(JSON.parse(second).summary).toMatch(/only one confirmed bulk move/);
+    });
+
+    it('a new chat has no approved moves, so a confirmation made up in the same turn cannot pass', async () => {
+      mockExecute.mockResolvedValue({ success: false, toolName: 'indent_tasks', summary: 'Stopped', data: { needsConfirmation: true } });
+      mockCompleteToolLoop.mockImplementation(async (opts: any) => {
+        await opts.executeToolFn('indent_tasks', { taskIds: ['a'], direction: 'indent', userConfirmed: true });
+        return { finalText: 'done', toolResults: [], totalUsage: { inputTokens: 1, outputTokens: 1 }, totalLatencyMs: 1 };
+      });
+
+      await service.sendMessage(makeRequest());
+
+      expect(mockExecute.mock.calls[0][2].approvedMoves.size).toBe(0);
+    });
+
     it('persists new conversation when no conversationId provided', async () => {
       mockCompleteToolLoop.mockResolvedValue({
         finalText: 'Hello!',

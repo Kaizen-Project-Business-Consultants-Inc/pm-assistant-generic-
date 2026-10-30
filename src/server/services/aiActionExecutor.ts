@@ -17,7 +17,9 @@ import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { scheduleRecomputeService } from './ScheduleRecomputeService';
 import logger from '../utils/logger';
 import { utcDay, ymdOf, finishFor, shiftWorking, workingDaysAfter } from '../utils/workingDays';
-import { limitRows, limitGrouped, MAX_TOOL_ROWS, filterTasks, describeTaskFilter, TASK_FILTER_HINT } from './aiToolLimits';
+import { limitRows, limitGrouped, MAX_TOOL_ROWS, MAX_MOVES_WITHOUT_OK, filterTasks, describeTaskFilter, TASK_FILTER_HINT } from './aiToolLimits';
+import { createHash } from 'crypto';
+import { planMoves } from './indentPlan';
 
 export interface ActionResult {
   success: boolean;
@@ -30,12 +32,18 @@ export interface ActionResult {
 export interface ActionContext {
   userId: string;
   userRole: string;
+  /**
+   * The chat sets this: the bulk moves (indent_tasks) the user was shown and answered in THIS chat's
+   * previous message. A model-set userConfirmed counts only for one of these; without the set (a direct
+   * call such as an alert's action button) the flag is the user's own click.
+   */
+  approvedMoves?: Set<string>;
 }
 
 /** Tools that change an existing project's data */
 const AI_WRITE_TOOLS = new Set([
   'create_task', 'split_task', 'update_task', 'delete_task', 'update_project', 'reschedule_task',
-  'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies',
+  'cascade_reschedule', 'set_dependency', 'remove_dependency', 'clear_all_dependencies', 'indent_tasks',
 ]);
 
 /**
@@ -76,6 +84,15 @@ function limitListResult(result: ActionResult): ActionResult {
   return limited.note ? { ...result, data: limited.rows, summary: `${result.summary}. ${limited.note}` } : result;
 }
 
+/** What the audit line says a tool call touched: a bulk move is about its schedule; others about the task, project or schedule named */
+function auditEntity(toolName: string, input: Record<string, any>, result: ActionResult): { entityType: string; entityId: string } {
+  if (toolName === 'indent_tasks') return { entityType: 'schedule', entityId: result.data?.scheduleId || 'unknown' };
+  return {
+    entityType: input.taskId ? 'task' : input.projectId ? 'project' : input.scheduleId ? 'schedule' : 'unknown',
+    entityId: input.taskId || input.projectId || input.scheduleId || result.data?.taskId || result.data?.projectId || 'unknown',
+  };
+}
+
 export class AIActionExecutor {
   /** Which project a tool call touches: projectId, else via scheduleId, else via taskId */
   private async projectsForTool(input: Record<string, any>): Promise<string[] | null> {
@@ -86,12 +103,24 @@ export class AIActionExecutor {
       if (!sch) return null;
       projects.add(sch.projectId);
     }
-    for (const key of ['taskId', 'dependsOnTaskId', 'dependencyId', 'predecessorId']) {
+    // a list of tasks (indent_tasks): every one must exist, and its plan's project counts
+    const listed: string[] = Array.isArray(input.taskIds) ? [...new Set<string>(input.taskIds.filter((t: unknown): t is string => typeof t === 'string' && t.length > 0))].slice(0, MAX_BULK_TASKS + 1) : [];
+    if (listed.length) {
+      const found = await taskRepository.findByIds(listed);
+      if (found.length !== listed.length) return null;
+      for (const scheduleId of new Set(found.map(t => t.scheduleId))) {
+        // eslint-disable-next-line no-await-in-loop -- one look-up per plan named; a list of tasks is almost always in one plan
+        const sch = await scheduleService.findById(scheduleId);
+        if (!sch) return null;
+        projects.add(sch.projectId);
+      }
+    }
+    for (const key of ['taskId', 'underTaskId', 'dependsOnTaskId', 'dependencyId', 'predecessorId']) {
       if (!input[key]) continue;
-      // eslint-disable-next-line no-await-in-loop -- at most four id fields on one tool call, and it stops at the first one that is missing
+      // eslint-disable-next-line no-await-in-loop -- at most five id fields on one tool call, and it stops at the first one that is missing
       const t = await scheduleService.findTaskById(String(input[key]));
       if (!t) return null;
-      // eslint-disable-next-line no-await-in-loop -- at most four id fields on one tool call, and it stops at the first one that is missing
+      // eslint-disable-next-line no-await-in-loop -- at most five id fields on one tool call, and it stops at the first one that is missing
       const sch = await scheduleService.findById(t.scheduleId);
       if (!sch) return null;
       projects.add(sch.projectId);
@@ -178,6 +207,7 @@ export class AIActionExecutor {
         case 'split_task': result = await this.splitTask(input, context); break;
         case 'update_task': result = await this.updateTask(input, context); break;
         case 'delete_task': result = await this.deleteTask(input, context); break;
+        case 'indent_tasks': result = await this.indentTasks(input, context); break;
         case 'create_project': result = await this.createProject(input, context); break;
         case 'update_project': result = await this.updateProject(input, context); break;
         case 'reschedule_task': result = await this.rescheduleTask(input, context); break;
@@ -210,8 +240,7 @@ export class AIActionExecutor {
         actorId: context.userId,
         actorType: 'user',
         action: `ai.action.${toolName}`,
-        entityType: input.taskId ? 'task' : input.projectId ? 'project' : input.scheduleId ? 'schedule' : 'unknown',
-        entityId: input.taskId || input.projectId || input.scheduleId || result.data?.taskId || result.data?.projectId || 'unknown',
+        ...auditEntity(toolName, input, result),
         projectId: input.projectId || result.data?.projectId || null,
         payload: { input, result: { success: result.success, summary: result.summary, data: result.data } },
         source: 'api',
@@ -418,6 +447,91 @@ export class AIActionExecutor {
     let summary = done.length > 0 ? `Updated ${done.length} task(s) (${what}): ${names}` : 'No task was changed.';
     if (failed.length > 0) summary += `. Not changed (${failed.length}): ${failed.map(f => f.reason).join('; ')}`;
     return { success: done.length > 0, toolName: 'update_tasks', summary, data: { updated: done.map(d => ({ id: d.taskId, name: d.name, scheduleId: d.scheduleId, projectId: d.projectId })), failed } };
+  }
+
+  /**
+   * More than MAX_MOVES_WITHOUT_OK moves: the list goes back to the user first. The yes counts only if it is for
+   * this same list (hashed) and, inside a chat, the chat's previous reply showed it (context.approvedMoves);
+   * one yes covers one go. Returns the stop, or null when the moves may go ahead.
+   */
+  private bulkMoveNeedsOk(
+    scheduleId: string, moves: Array<{ id: string; parentId: string | null }>, input: Record<string, any>, context: ActionContext,
+    rowOf: Map<string, number>, describe: (m: { id: string; parentId: string | null }) => string,
+  ): ActionResult | null {
+    const key = createHash('sha256').update(JSON.stringify([scheduleId, ...moves.map(m => `${m.id}>${m.parentId ?? ''}`).sort()])).digest('hex');
+    if (input.userConfirmed === true && (!context.approvedMoves || context.approvedMoves.has(key))) {
+      context.approvedMoves?.delete(key); // one yes covers one go
+      return null;
+    }
+    return {
+      success: false,
+      toolName: 'indent_tasks',
+      summary: `Stopped: moving ${moves.length} tasks in one message needs the user's OK. Nothing was moved. Show the user this list, and ask them to confirm: ${moves.map(describe).join('; ')}. Only after they answer yes in their NEXT message, call indent_tasks again with the same arguments and userConfirmed true.`,
+      error: "Bulk move needs the user's OK",
+      data: { needsConfirmation: true, proposalKey: key, scheduleId, proposed: moves.map(m => ({ taskId: m.id, row: rowOf.get(m.id), newParentId: m.parentId })) },
+    };
+  }
+
+  /**
+   * Indent / outdent / "put these under that heading" for existing tasks, with the Gantt's own
+   * meaning: indent = under the row above the first named task (Tab), outdent = up one level.
+   * Nothing is deleted or recreated (links, History and comments stay); one Schedule History
+   * line, so Undo puts every task back. More than MAX_MOVES_WITHOUT_OK moves wait for the user's yes.
+   */
+  private async indentTasks(input: Record<string, any>, context: ActionContext): Promise<ActionResult> {
+    const fail = (summary: string, error: string): ActionResult => ({ success: false, toolName: 'indent_tasks', summary, error });
+    const ids: string[] = Array.isArray(input.taskIds) ? [...new Set<string>(input.taskIds.filter((t: unknown): t is string => typeof t === 'string' && t.length > 0))] : [];
+    if (ids.length === 0) return fail('No tasks were named, so nothing was moved.', 'taskIds is required');
+    if (ids.length > MAX_BULK_TASKS) return fail(`That is ${ids.length} tasks; at most ${MAX_BULK_TASKS} can be moved in one step.`, 'Too many tasks');
+    const { direction, underTaskId } = input;
+    if ((direction ? 1 : 0) + (underTaskId ? 1 : 0) !== 1) return fail("Say either 'indent' or 'outdent', or which heading to put the tasks under (not both), so nothing was moved.", 'direction or underTaskId is required');
+    if (direction && direction !== 'indent' && direction !== 'outdent') return fail("The direction must be 'indent' or 'outdent'.", 'Bad direction');
+
+    const first = await scheduleService.findTaskById(ids[0]);
+    if (!first) return fail(`Task '${ids[0]}' not found`, 'Task not found');
+    const all = await scheduleService.findTasksByScheduleId(first.scheduleId);
+    const byId = new Map(all.map(t => [t.id, t]));
+    if (ids.some(id => !byId.has(id))) return fail('All the tasks must be in the same schedule, so nothing was moved.', 'Tasks in different schedules');
+    const rowOf = computeScheduleRowNumbers(all);
+    const label = (id: string) => `row ${rowOf.get(id) ?? 0} "${byId.get(id)?.name ?? id}"`;
+
+    const plan = planMoves(ids, all, rowOf, { direction, underTaskId });
+    if ('refuse' in plan) return fail(plan.refuse, plan.error);
+    const { moves, target } = plan;
+    if (moves.length === 0) {
+      return { success: true, toolName: 'indent_tasks', summary: 'Nothing to move: the tasks are already where you asked (or, for outdent, already at the top level).', data: { moved: [] } };
+    }
+
+    const describe = (m: { id: string; parentId: string | null }) => `${label(m.id)} → ${m.parentId ? `under ${label(m.parentId)}` : 'top level'}`;
+    const waiting = moves.length > MAX_MOVES_WITHOUT_OK ? this.bulkMoveNeedsOk(first.scheduleId, moves, input, context, rowOf, describe) : null;
+    if (waiting) return waiting;
+
+    const schedule = await scheduleService.findById(first.scheduleId);
+    if (!schedule) return fail("I couldn't find that schedule.", 'Schedule not found');
+    const n = moves.length;
+    const what = target ? `under ${label(target)}` : 'up one level';
+    const verb = direction === 'outdent' ? 'Outdented' : direction === 'indent' ? 'Indented' : 'Moved';
+    let changeId: string | null;
+    try {
+      ({ changeId } = await changeHistoryService.reparentTasksWithHistory({
+        projectId: schedule.projectId,
+        scheduleId: first.scheduleId,
+        summary: `${verb} ${n} task${n === 1 ? '' : 's'} ${what}: ${moves.map(m => `row ${rowOf.get(m.id)}`).join(', ')}`,
+        moves,
+      }));
+    } catch (err: any) {
+      if (err?.refused === true) return { ...fail(`${err.message} Nothing was moved.`, 'Move refused'), data: { scheduleId: first.scheduleId } };
+      throw err;
+    }
+    return {
+      success: true,
+      toolName: 'indent_tasks',
+      summary: `Moved ${n} task${n === 1 ? '' : 's'} ${what}: ${moves.map(describe).join('; ')}. Nothing was deleted or recreated.${changeId ? ' Schedule History can undo it (the newest change only).' : ''}`,
+      data: {
+        moved: moves.map(m => ({ taskId: m.id, name: byId.get(m.id)?.name, row: rowOf.get(m.id), newParentId: m.parentId })),
+        scheduleId: first.scheduleId, projectId: schedule.projectId, changeId,
+      },
+    };
   }
 
   private async deleteTask(input: Record<string, any>, _context: ActionContext): Promise<ActionResult> {
