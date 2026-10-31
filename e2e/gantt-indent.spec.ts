@@ -1,7 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 import { signedIn, makeProject, makeTask, archiveProject } from './qa-data';
 import { STAGING_USER } from './staging-helpers';
-import { openSchedule, getTasks, ganttCell, ganttRow, tableRow } from './schedule-helpers';
+import { openSchedule, getTasks, ganttCell, ganttRow, tableRow, tableCell } from './schedule-helpers';
 
 /**
  * Indent / outdent in the Gantt and Table (2026-10-30): right-click Outdent / Indent, the message
@@ -70,6 +70,7 @@ test('Gantt right-click: no Outdent / Indent where they would do nothing', async
 });
 
 test('Gantt: Shift+Tab on a top-level task says why nothing moved', async () => {
+  await openSchedule(page, projectId, scheduleId, 'gantt'); // fresh screen: no selection, grid scrolled to the start
   await (await ganttCell(page, ids.solo, 'Task Name')).click();
   await page.keyboard.press('Shift+Tab');
   await expect(notice()).toContainText('Nothing to outdent: "Solo" is already at the top level.');
@@ -78,13 +79,18 @@ test('Gantt: Shift+Tab on a top-level task says why nothing moved', async () => 
 
 test('Gantt: a line names the selected rows; Tab moves them; Escape clears the selection', async () => {
   const hint = page.getByTestId('gantt-selection-hint');
-  await ganttRow(page, ids.solo).locator('input[type="checkbox"]').first().check();
+  await openSchedule(page, projectId, scheduleId, 'gantt');
+  // row boxes show once something is selected: select all, then leave only Solo
+  await page.getByLabel('Select all tasks').check();
+  for (const name of ['Phase', 'Task A', 'Task B']) await page.getByLabel(`Select ${name}`, { exact: true }).uncheck();
   await expect(hint).toContainText('1 task selected: "Solo". Tab / Shift+Tab indent or outdent. Esc clears.');
   await page.keyboard.press('Tab');
   await expect(toast()).toContainText('Indented "Solo" under "Task B".');
   await expect.poll(() => parentOf(ids.solo)).toBe(ids.b);
+  // Shift+Tab is worked out from what is drawn: wait for Task B to show as a heading
+  await expect(ganttRow(page, ids.b).getByTitle('Collapse children')).toBeVisible();
   await page.keyboard.press('Shift+Tab');
-  await expect.poll(() => parentOf(ids.solo)).toBeNull();
+  await expect.poll(() => parentOf(ids.solo)).toBe(ids.phase);
   await page.keyboard.press('Escape');
   await expect(hint).toHaveCount(0);
 });
@@ -98,7 +104,9 @@ test('Table: right-click Outdent says what it did; Shift+Tab on a top-level task
   await toast().getByRole('button', { name: 'Undo' }).click();
   await expect.poll(() => parentOf(ids.b)).toBe(ids.phase);
 
-  await tableRow(page, ids.solo).click();
+  // the right-click left Task B selected, and Shift+Tab acts on the selection: start from a fresh screen
+  await openSchedule(page, projectId, scheduleId, 'table');
+  await (await tableCell(page, ids.phase, 'Task Name')).click();
   await page.keyboard.press('Shift+Tab');
-  await expect(notice()).toContainText('Nothing to outdent: "Solo" is already at the top level.');
+  await expect(notice()).toContainText('Nothing to outdent: "Phase" is already at the top level.');
 });

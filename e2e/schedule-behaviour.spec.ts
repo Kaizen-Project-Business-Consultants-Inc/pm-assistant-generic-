@@ -451,6 +451,8 @@ test('Gantt indent (Tab) makes a summary that rolls up; Shift+Tab outdents one l
   await (await ganttCell(page, ids.fix, 'Task Name')).click();
   await page.keyboard.press('Tab');
   await expectTask(page, scheduleId, 'Fix bug', t => t.parentTaskId === ids.docs);
+  // the screen has to show Docs as a heading before the next key: Shift+Tab is worked out from what is drawn
+  await expect(ganttRow(page, ids.docs).getByTitle('Collapse children')).toBeVisible();
   await page.keyboard.press('Shift+Tab');
   await expectTask(page, scheduleId, 'Fix bug', t => t.parentTaskId === ids.launch);
   // Today's behaviour: while Docs was Fix bug's summary its dates rolled up to Fix bug's (5–9 Oct),
@@ -479,7 +481,7 @@ test('Table indent and outdent (keyboard and right-click menu)', async ({ page }
 
   // right-click → Indent: Docs under Launch
   await tableRow(page, ids.docs).click({ button: 'right', position: { x: 300, y: 10 } });
-  await page.getByRole('button', { name: 'Indent' }).click();
+  await page.getByRole('menuitem', { name: 'Indent' }).click();
   await expectTask(page, scheduleId, 'Docs', t => t.parentTaskId === ids.launch);
   await expect(tableRow(page, ids.launch).getByTitle('Collapse children')).toBeVisible();
 
@@ -501,7 +503,7 @@ test('Table indent and outdent (keyboard and right-click menu)', async ({ page }
   await expectTask(page, scheduleId, 'Fix bug', t => t.parentTaskId === ids.docs);
   await expect.poll(() => tableLevel(page, ids.fix)).toBe(2);
   await tableRow(page, ids.fix).click({ button: 'right', position: { x: 300, y: 10 } });
-  await page.getByRole('button', { name: 'Outdent' }).click();
+  await page.getByRole('menuitem', { name: 'Outdent' }).click();
   await expectTask(page, scheduleId, 'Fix bug', t => t.parentTaskId === ids.launch);
 });
 
@@ -511,7 +513,7 @@ test('Table indent rolls the new summary\'s dates up', async ({ page }) => {
   await open(page, 'table');
   const { ids, scheduleId } = plan;
   await tableRow(page, ids.docs).click({ button: 'right', position: { x: 300, y: 10 } });
-  await page.getByRole('button', { name: 'Indent' }).click();
+  await page.getByRole('menuitem', { name: 'Indent' }).click();
   await expectTask(page, scheduleId, 'Docs', t => t.parentTaskId === ids.launch);
   await expectTask(page, scheduleId, 'Launch', t => !!t.isSummary && ymd(t.startDate) === '2026-11-09' && ymd(t.endDate) === '2026-11-13');
 });
@@ -521,7 +523,7 @@ test('Table right-click Outdent moves a task to the top level', async ({ page })
   await open(page, 'table');
   const { ids, scheduleId } = plan;
   await tableRow(page, ids.design).click({ button: 'right', position: { x: 300, y: 10 } });
-  await page.getByRole('button', { name: 'Outdent' }).click();
+  await page.getByRole('menuitem', { name: 'Outdent' }).click();
   await expectTask(page, scheduleId, 'Design', t => !t.parentTaskId);
 });
 
