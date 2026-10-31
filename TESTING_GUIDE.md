@@ -1073,7 +1073,7 @@ npx playwright test --config playwright.staging-full.config.ts
 npx playwright test --config playwright.staging-full.config.ts schedule-behaviour
 ```
 
-**Screenshot baselines** live in `e2e/schedule-behaviour.spec.ts-snapshots/` (`*-chromium-win32.png` — they are per operating system; a run on Linux/macOS writes its own the first time). After an **intended** visual change to the Gantt or Table, re-take them and commit the new images (`*.png` is git-ignored, so add them with `git add -f`):
+**Row look (Oct 2026):** client test `ganttTableLook.test.tsx` pins the Gantt's checkbox on every row (box, Shift+click range, header box, hidden without bulk rights) and the Table's one-line rows, ellipsis + hover name, short dates and centring; the e2e test "Gantt shows a checkbox on every row; Table rows are one line at the Gantt row height" checks the same on a real plan. **Screenshot baselines** live in `e2e/schedule-behaviour.spec.ts-snapshots/` (`*-chromium-win32.png` — they are per operating system; a run on Linux/macOS writes its own the first time). After an **intended** visual change to the Gantt or Table, re-take them and commit the new images (`*.png` is git-ignored, so add them with `git add -f`):
 
 ```bash
 npx playwright test --config playwright.staging-full.config.ts schedule-behaviour -g "Screenshot" --update-snapshots=all

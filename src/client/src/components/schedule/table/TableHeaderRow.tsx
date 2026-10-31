@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
-import type { ColumnKey, ColumnDef, SortDir } from './types';
+import { NOT_CENTERED_COLUMNS, type ColumnKey, type ColumnDef, type SortDir } from './types';
 
 interface TableHeaderRowProps {
   visibleColumns: ColumnDef[];
@@ -68,10 +68,10 @@ export const TableHeaderRow = React.memo(function TableHeaderRow({
           onDragEnd={colDrag.handleDragEnd}
           scope="col"
           aria-sort={col.sortable ? (sortField === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none') : undefined}
-          className={`px-3 py-2.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide select-none relative group/th hover:bg-gray-100 dark:hover:bg-gray-700 ${colDrag.isDraggable(col.key) ? 'cursor-grab active:cursor-grabbing' : ''} ${colDrag.dragColKey === col.key ? 'opacity-40' : ''} ${colDrag.overColKey === col.key && colDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
-          style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : { minWidth: col.key === 'name' ? 200 : 100 }}
+          className={`px-3 py-2.5 ${NOT_CENTERED_COLUMNS.has(col.key) ? 'text-left' : 'text-center'} text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide select-none relative group/th hover:bg-gray-100 dark:hover:bg-gray-700 ${colDrag.isDraggable(col.key) ? 'cursor-grab active:cursor-grabbing' : ''} ${colDrag.dragColKey === col.key ? 'opacity-40' : ''} ${colDrag.overColKey === col.key && colDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
+          style={colWidths[col.key] ? { width: colWidths[col.key], minWidth: colWidths[col.key], maxWidth: colWidths[col.key] } : col.key === 'name' ? { minWidth: 200, width: '100%' } : { minWidth: 100 }}
         >
-          <div className="flex items-center gap-1 whitespace-nowrap">
+          <div className={`flex items-center gap-1 whitespace-nowrap ${NOT_CENTERED_COLUMNS.has(col.key) ? '' : 'justify-center'}`}>
             {/* Mouse shortcuts to move the column, shown on hover. Kept out of the header's name and the
                 Tab order (they used to read "Move column left Move column right Task Name"); the
                 keyboard way to move a column is the Columns menu, which names the column (audit 2 H10). */}

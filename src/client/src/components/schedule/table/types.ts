@@ -6,7 +6,7 @@ import type { GanttTask } from '../GanttChart';
 import type { DeleteChildren } from '../../../utils/deleteSummaryChoice';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
-import { formatCalendarDate } from '../../../utils/dateUtils';
+import { formatShortDate, toDate } from '../gantt/types';
 import { PICKABLE_STATUSES } from '../../../utils/taskStatus';
 import { SUMMARY_ROLLUP_FIELD_NAMES } from '../summaryRollup';
 
@@ -111,9 +111,13 @@ export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 /** The one list lives in ../summaryRollup.ts (the Gantt grid uses it too). */
 export const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set<EditableField>(SUMMARY_ROLLUP_FIELD_NAMES);
 
+/** Columns whose cells stay left (or right, for money) aligned; every other column is centred, as in the Gantt */
+export const NOT_CENTERED_COLUMNS: ReadonlySet<ColumnKey> = new Set<ColumnKey>(['name', 'assignedTo', 'notes', 'resource', 'budgetAllocated', 'actualCost', 'budgetVariance']);
+
+/** A calendar date as the Gantt shows it ("Jun 26", with the year only when it is not this year) */
 export function formatDate(d?: string): string {
-  if (!d) return '-';
-  return formatCalendarDate(d, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US');
+  const date = toDate(d);
+  return date ? formatShortDate(date, new Date().getFullYear()) : '-';
 }
 
 export type { GanttTask, ColumnKey, ColumnDef, ColumnState };

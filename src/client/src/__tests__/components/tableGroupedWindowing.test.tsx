@@ -70,7 +70,7 @@ describe('Table grouped: windowed', () => {
     expect(taskRows().length).toBeGreaterThan(10);
     expect(taskRows().length).toBeLessThan(100);
     // the rows not on screen are stood in for by a spacer, so the scroll height stays right
-    const spacer = container.querySelector('tbody tr[style*="height"]') as HTMLElement;
+    const spacer = container.querySelector('tbody tr[style*="height"]:not([aria-rowindex])') as HTMLElement;
     expect(spacer).toBeTruthy();
     expect(parseInt(spacer.style.height, 10)).toBeGreaterThan(400 * 35);
   });

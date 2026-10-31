@@ -228,7 +228,7 @@ describe('M3: treegrid semantics', () => {
     const after = check();
     expect(Number(after[0].getAttribute('aria-rowindex'))).toBeGreaterThan(200);
     // the spacer rows that stand in for the rows not on screen are not rows to a screen reader
-    for (const sp of container.querySelectorAll('tbody tr[style*="height"]')) expect(sp.getAttribute('aria-hidden')).toBe('true');
+    for (const sp of container.querySelectorAll('tbody tr[style*="height"]:not([aria-rowindex])')) expect(sp.getAttribute('aria-hidden')).toBe('true');
   });
 });
 

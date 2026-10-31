@@ -450,10 +450,13 @@ export function GanttChart({
   }, [allSelected, rows]);
 
   const toggleSelect = useCallback((taskId: string, shiftKey: boolean) => {
+    // Read before the update runs: React may run the updater after the ref below has moved on
+    // (then Shift+click ticked only the one row, never the range)
+    const lastClickedId = lastClickedIdRef.current;
     setSelectedIds(prev => {
       const next = new Set(prev);
-      if (shiftKey && lastClickedIdRef.current) {
-        const lastIdx = rows.findIndex(r => r.task.id === lastClickedIdRef.current);
+      if (shiftKey && lastClickedId) {
+        const lastIdx = rows.findIndex(r => r.task.id === lastClickedId);
         const curIdx = rows.findIndex(r => r.task.id === taskId);
         if (lastIdx !== -1 && curIdx !== -1) {
           const [from, to] = lastIdx < curIdx ? [lastIdx, curIdx] : [curIdx, lastIdx];

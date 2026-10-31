@@ -3,7 +3,7 @@ import { BulkDoneToast } from './shared/BulkDoneToast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Pencil, Check, Loader2, Trash2, ChevronDown, ChevronRight, PlusCircle, GripVertical } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
-import { buildRowNumberMap } from './gantt/types';
+import { buildRowNumberMap, ROW_H } from './gantt/types';
 import { apiService } from '../../services/api';
 import type { SavedView } from './SavedViewsDropdown';
 import type { ColumnKey, ColumnDef } from './tableColumns';
@@ -32,7 +32,7 @@ import {
   type TableViewProps, type GroupByField, type EditableField,
   type CpmTaskData, type BaselineTaskVariance,
 } from './table/types';
-import { isCalendarOverdue, formatCalendarDate } from '../../utils/dateUtils';
+import { isCalendarOverdue } from '../../utils/dateUtils';
 import { STATUS_LABEL, effectiveTaskStatus, taskStatusLabel, statusChoices } from '../../utils/taskStatus';
 import { workingDaysBetween, cpmOffsetToDate } from '../../utils/workingDays';
 import { isLockedCell, CALCULATED_CELL_HINTS } from './summaryRollup';
@@ -345,7 +345,6 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   const tableRef = useRef<HTMLTableElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const ROW_H = 35;
   const OVERSCAN = 20;
 
   // Virtualization: only the rows on screen (plus overscan) are rendered. Grouped or not, the body
@@ -455,8 +454,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'name': return task.name || '';
       case 'status': return task.status?.replace('_', ' ') || '';
       case 'priority': return task.priority || 'medium';
-      case 'startDate': return task.startDate ? formatCalendarDate(task.startDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : '\u2014';
-      case 'endDate': return task.endDate ? formatCalendarDate(task.endDate, { month: 'short', day: 'numeric', year: 'numeric' }, 'en-US') : '\u2014';
+      case 'startDate': return task.startDate ? formatDate(task.startDate) : '\u2014';
+      case 'endDate': return task.endDate ? formatDate(task.endDate) : '\u2014';
       case 'progressPercentage': return `${task.progressPercentage ?? 0}%`;
       case 'assignedTo': return task.assignedTo || '\u2014';
       case 'duration': {
@@ -775,7 +774,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] ${overbookedNotes?.has(task.id) ? 'border-l-[3px] border-l-amber-500' : ''} ${editableCellClass(task.id, 'name', task)}`}
+            className={`px-3 py-2 font-medium text-gray-900 dark:text-white min-w-[200px] max-w-0 overflow-hidden !text-left ${overbookedNotes?.has(task.id) ? 'border-l-[3px] border-l-amber-500' : ''} ${editableCellClass(task.id, 'name', task)}`}
             {...cellA11y(task, 'name')}
             role="rowheader"
             onClick={() => handleCellClick(task.id, 'name', task)}
@@ -785,14 +784,14 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 aria-label={cellEditLabel('name', task.name)}
                 ref={el => { inputRef.current = el; }}
                 type="text"
-                className="w-full text-sm border-0 bg-transparent px-0 py-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset font-medium text-gray-900 dark:text-white"
+                className="w-full text-xs border-0 bg-transparent px-0 py-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-inset font-medium text-gray-900 dark:text-white"
                 value={editValue}
                 onChange={e => setEditValue(e.target.value)}
                 onKeyDown={e => handleKeyDown(e, task.id, 'name')}
                 onBlur={() => saveEdit(task.id, 'name', editValue)}
               />
             ) : (
-              <div className="flex items-center gap-1" style={{ paddingLeft: `${(levelMap.get(task.id) || 0) * 20}px` }}>
+              <div className="flex items-center gap-1 min-w-0" style={{ paddingLeft: `${(levelMap.get(task.id) || 0) * 20}px` }}>
                 {summaryTaskIds.has(task.id) ? (
                   <button
                     type="button"
@@ -812,9 +811,9 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 {task.isMilestone && (
                   <span className="inline-block w-2.5 h-2.5 rotate-45 bg-amber-500 flex-shrink-0" title="Milestone" />
                 )}
-                <span>{task.name}</span>
+                <span className="truncate min-w-0" title={task.name}>{task.name}</span>
                 {overbookedNotes?.has(task.id) && (
-                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">· {overbookedNotes.get(task.id)!.join('; ')}</span>
+                  <span className="truncate min-w-0 text-xs font-semibold text-amber-700 dark:text-amber-400" title={overbookedNotes.get(task.id)!.join('; ')}>· {overbookedNotes.get(task.id)!.join('; ')}</span>
                 )}
               </div>
             )}
@@ -982,7 +981,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td
             key={col.key}
-            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 relative ${editableCellClass(task.id, 'assignedTo', task)}`}
+            className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-32 relative !text-left ${editableCellClass(task.id, 'assignedTo', task)}`}
             {...cellA11y(task, 'assignedTo')}
             onClick={() => handleCellClick(task.id, 'assignedTo', task)}
           >
@@ -1146,10 +1145,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       }
 
       case 'baselineDuration':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '\u2014'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 !text-right font-mono">{(task as any).baselineDurationDays != null ? `${Number((task as any).baselineDurationDays)}d` : '\u2014'}</td>;
 
       case 'baselineCost':
-        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 text-right font-mono">{(task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '\u2014'}</td>;
+        return <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300 !text-right font-mono">{(task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '\u2014'}</td>;
 
       case 'dependency': {
         const hasDepError = depError?.taskId === task.id;
@@ -1254,7 +1253,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         return (
           <td key={col.key}
             {...cellA11y(task, notesField)}
-            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] group/cell relative ${editableCellClass(task.id, notesField, task)}`}
+            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 max-w-[200px] group/cell relative !text-left ${editableCellClass(task.id, notesField, task)}`}
             onClick={(e) => {
               if (!isNotesOpen) {
                 const rect = e.currentTarget.getBoundingClientRect();
@@ -1275,7 +1274,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
 
       case 'resource':
         return (
-          <td key={col.key} className="px-3 py-2 text-xs overflow-visible" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+          <td key={col.key} className="px-3 py-2 text-xs overflow-visible !text-left" style={{ position: 'relative' }} onClick={(e) => e.stopPropagation()}>
             {!task.isSummary && onTaskUpdate && (
               <ResourceQuickAssign
                 taskId={task.id}
@@ -1293,7 +1292,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         const formatted = val != null ? `$${Number(val).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}` : '\u2014';
         return (
           <td key={col.key}
-            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 text-right font-mono w-28 ${editableCellClass(task.id, col.key, task)}`}
+            className={`px-3 py-2 text-xs text-gray-700 dark:text-gray-300 !text-right font-mono w-28 ${editableCellClass(task.id, col.key, task)}`}
             title={CALCULATED_CELL_HINTS[col.key]}
             aria-describedby={`${calcHintId}-${col.key}`}
             {...cellA11y(task, col.key as EditableField)}
@@ -1307,10 +1306,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'budgetVariance': {
         const budget = (task as any).budgetAllocated;
         const actual = (task as any).actualCost;
-        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 text-right">{'\u2014'}</td>;
+        if (budget == null && actual == null) return <td key={col.key} className="px-3 py-2 text-xs text-gray-500 !text-right">{'\u2014'}</td>;
         const variance = (budget ?? 0) - (actual ?? 0);
         const color = variance < 0 ? 'text-red-600 dark:text-red-400' : variance > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-500';
-        return <td key={col.key} className={`px-3 py-2 text-xs font-mono text-right ${color}`}>{variance >= 0 ? '+' : ''}${Math.abs(variance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>;
+        return <td key={col.key} className={`px-3 py-2 text-xs font-mono !text-right ${color}`}>{variance >= 0 ? '+' : ''}${Math.abs(variance).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>;
       }
 
       case 'constraintType': {
@@ -1367,7 +1366,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                 onKeyDown={e => handleKeyDown(e, task.id, 'constraintDate' as EditableField)}
                 onBlur={() => saveEdit(task.id, 'constraintDate' as EditableField, editValue)}
               />
-            ) : cd ? formatCalendarDate(cd + 'T00:00') : (needsDate ? '\u2014' : '')}
+            ) : cd ? formatDate(cd) : (needsDate ? '\u2014' : '')}
           </td>
         );
       }
@@ -1469,7 +1468,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
             A treegrid: the rows are an outline (summaries open and close) and the table is operable. */}
         <table
           ref={tableRef}
-          className="text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
+          className="text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500"
           // eslint-disable-next-line jsx-a11y/no-noninteractive-element-to-interactive-role -- an editable outline table is a treegrid (WAI-ARIA); the rule only lists "grid" for <table>
           role="treegrid"
           aria-describedby={TABLE_GRID_HELP_ID}
@@ -1520,7 +1519,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                     // grouped: nothing is nested under a summary, so it has no open/closed state
                     aria-expanded={isSummary && !groupBy ? !collapsedSummaries.has(task.id) : undefined}
                     aria-selected={isSelected}
-                    className={`border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-all duration-150 group cursor-pointer ${riskBorder} ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${focusTaskId === task.id || highlightTaskIds?.has(task.id) ? '!bg-amber-100 dark:!bg-amber-900/40 ring-2 ring-inset ring-amber-400 dark:ring-amber-500' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
+                    style={{ height: ROW_H }}
+                    className={`border-b border-gray-100 dark:border-gray-700 hover:bg-blue-50/40 dark:hover:bg-blue-900/10 transition-all duration-150 group cursor-pointer [&>td]:py-0 [&>td]:whitespace-nowrap [&>td]:text-center ${riskBorder} ${summaryTaskIds.has(task.id) ? 'font-semibold bg-gray-100/80 dark:bg-gray-700/40' : rowIdx % 2 === 1 ? 'bg-gray-50/60 dark:bg-gray-800/30' : ''} ${isSelected ? 'bg-primary-50/40 dark:bg-primary-900/20' : ''} ${activeTaskId === task.id ? 'ring-1 ring-inset ring-primary-200 dark:ring-primary-700 bg-primary-50/60 dark:bg-primary-900/30' : ''} ${focusTaskId === task.id || highlightTaskIds?.has(task.id) ? '!bg-amber-100 dark:!bg-amber-900/40 ring-2 ring-inset ring-amber-400 dark:ring-amber-500' : ''} ${isDragTarget ? 'border-t-2 border-t-primary-400' : ''} ${rowDrag?.taskId === task.id ? 'relative z-10 scale-[1.02] shadow-lg shadow-primary-200/40 dark:shadow-primary-900/60 bg-primary-50 dark:bg-primary-900/40 opacity-90' : ''}`}
                     onClick={() => onTaskSelect?.(task)}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -1652,9 +1652,10 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
                   aria-level={1}
                   aria-expanded={!isCollapsed}
                   className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700"
+                  style={{ height: ROW_H }}
                   onClick={() => toggleGroupCollapse(groupKey)}
                 >
-                  <td colSpan={visibleColumns.length + 2} className="px-3 py-2">
+                  <td colSpan={visibleColumns.length + 2} className="px-3 py-0">
                     <button
                       type="button"
                       aria-expanded={!isCollapsed}

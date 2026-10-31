@@ -165,6 +165,31 @@ test('Gantt, Table and Kanban each show every task, without errors', async ({ pa
   expect(errors).toEqual([]);
 });
 
+test('Gantt shows a checkbox on every row; Table rows are one line at the Gantt row height', async ({ page }) => {
+  await open(page, 'gantt');
+  await expect(ganttRows(page)).toHaveCount(7);
+  // a box beside every row number before anything is selected; Shift+click ticks a range
+  const boxes = ganttRows(page).locator('input[type="checkbox"][aria-label^="Select "]');
+  await expect(boxes).toHaveCount(7);
+  await expect(page.locator('input[aria-label="Select all tasks"]').first()).toBeVisible();
+  await boxes.nth(1).check();
+  await boxes.nth(3).click({ modifiers: ['Shift'] });
+  await expect(ganttRows(page).locator('input[type="checkbox"]:checked')).toHaveCount(3);
+
+  const ganttH = (await ganttRows(page).first().boundingBox())!.height;
+  await viewButton(page, 'Table').click();
+  await waitForRows(page, 'table');
+  const rows = tableRows(page);
+  await expect(rows).toHaveCount(7);
+  for (let i = 0; i < 7; i++) {
+    const row = rows.nth(i);
+    expect((await row.boundingBox())!.height, `table row ${i} height`).toBeLessThanOrEqual(ganttH + 1);
+    // the name is cut on one line, with the full name on hover
+    const name = row.locator('td span.truncate').first();
+    await expect(name).toHaveAttribute('title', /.+/);
+  }
+});
+
 // ---------------------------------------------------------------------------------------
 // 2. Inline editing
 // ---------------------------------------------------------------------------------------

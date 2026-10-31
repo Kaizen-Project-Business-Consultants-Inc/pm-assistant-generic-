@@ -37,9 +37,9 @@ describe('useGanttColumns — persistence (same keys and formats as before the m
     expect(result.current.isColVisible(col('dur'))).toBe(false);
     expect(result.current.isColVisible(col('name'))).toBe(true); // always visible
     expect(result.current.getColWidth(col('pct'))).toBe(99);
-    expect(result.current.getColWidth(col('rowNum'))).toBe(40); // fixed columns ignore saved widths
-    // rowNum 40 + name 250 + pct 99 + notes 120 + editIcon 72
-    expect(result.current.minRowWidth).toBe(40 + 250 + 99 + 120 + 72);
+    expect(result.current.getColWidth(col('rowNum'))).toBe(68); // fixed columns ignore saved widths
+    // rowNum 68 + name 250 + pct 99 + notes 120 + editIcon 72
+    expect(result.current.minRowWidth).toBe(68 + 250 + 99 + 120 + 72);
     // Round trip: what was read is written back in the same format
     expect(JSON.parse(localStorage.getItem('gantt-col-order:s1')!)).toEqual(expectedOrder);
     expect(JSON.parse(localStorage.getItem('gantt-col-widths:s1')!)).toEqual({ pct: 99, rowNum: 500 });

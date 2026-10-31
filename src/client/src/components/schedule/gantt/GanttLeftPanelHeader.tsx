@@ -86,7 +86,7 @@ export const GanttLeftPanelHeader = React.memo(function GanttLeftPanelHeader({
             onDragOver={(e) => ganttColDrag.handleDragOver(e, col.key)}
             onDrop={(e) => ganttColDrag.handleDrop(e, col.key)}
             onDragEnd={ganttColDrag.handleDragEnd}
-            className={`shrink-0 px-1 text-center relative select-none group/gh ${col.key === 'name' ? 'px-2 text-left' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${colIsDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${ganttColDrag.dragColKey === col.key ? 'opacity-40' : ''} ${ganttColDrag.overColKey === col.key && ganttColDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
+            className={`shrink-0 px-1 text-center relative select-none group/gh ${col.key === 'rowNum' && hasOnBulkUpdate ? '!text-left !pl-2' : ''} ${col.key === 'name' ? 'px-2 text-left' : ''} ${isSortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : ''} ${colIsDraggable ? 'cursor-grab active:cursor-grabbing' : ''} ${ganttColDrag.dragColKey === col.key ? 'opacity-40' : ''} ${ganttColDrag.overColKey === col.key && ganttColDrag.dragColKey !== col.key ? 'ring-2 ring-inset ring-primary-400' : ''}`}
             style={{ width: w }}
           >
             {col.key === 'rowNum' && hasOnBulkUpdate ? (

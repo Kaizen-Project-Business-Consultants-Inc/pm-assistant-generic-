@@ -45,7 +45,7 @@ In **Table**, **Kanban**, and **Calendar** modes, the ScheduleToolbar is shown i
 
 When **Critical Path** is enabled, a styled banner appears below the toolbar showing total project duration (days) and the number of critical tasks.
 
-**Date formatting**: dates in the Gantt left panel show month and day (e.g. "Aug 19"). When a date falls in a different year than the current year, a 2-digit year is appended (e.g. "Jan 15, '27") for cross-year visibility.
+**Date formatting**: dates in the Gantt left panel show month and day (e.g. "Aug 19"). When a date falls in a different year than the current year, a 2-digit year is appended (e.g. "Jan 15, 27") for cross-year visibility. **Row checkboxes (Oct 2026):** when the viewer may make bulk changes, every Gantt row has a checkbox beside its row number from the start (the first column is 68 px wide to fit box, number and review dot; the drag handle still replaces the number on hover while nothing is ticked); Shift+click on a box ticks the range from the last row ticked. The **Table** shares this look: rows are one line at the Gantt's row height (`ROW_H`), names are cut with an ellipsis and carry the full name as hover text, dates use the Gantt's short format (`formatShortDate`, via `table/types.ts` `formatDate`), small-number columns are centred, and the column picker, editing, filters, grouping and virtualisation are unchanged.
 
 The **⋯ overflow menu** exposes infrequently-used actions in grouped sections:
 

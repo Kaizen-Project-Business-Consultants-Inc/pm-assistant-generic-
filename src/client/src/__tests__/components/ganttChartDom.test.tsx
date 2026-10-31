@@ -229,8 +229,8 @@ describe('GanttChart handlers still reach the same callbacks', () => {
     const nameCell = row.querySelectorAll(':scope > div')[1] as HTMLElement;
     fireEvent.click(nameCell);
     await settle();
-    expect(row.querySelector('input')).toBeTruthy();
-    fireEvent.keyDown(row.querySelector('input')!, { key: 'Escape' });
+    expect(row.querySelector('input:not([type="checkbox"])')).toBeTruthy(); // the edit box (every row also has its checkbox)
+    fireEvent.keyDown(row.querySelector('input:not([type="checkbox"])')!, { key: 'Escape' });
     await settle();
     fireEvent.doubleClick(row.querySelectorAll(':scope > div')[2] as HTMLElement);
     expect(p.onTaskClick).toHaveBeenCalledWith(expect.objectContaining({ id: 't3' }));

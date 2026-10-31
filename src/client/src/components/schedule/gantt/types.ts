@@ -223,7 +223,7 @@ export interface GanttColDef {
 }
 
 export const GANTT_COLUMNS: GanttColDef[] = [
-  { key: 'rowNum',    label: '#',        defaultWidth: 40,  minWidth: 30,  resizable: false, fixed: true, alwaysVisible: true },
+  { key: 'rowNum',    label: '#',        defaultWidth: 68,  minWidth: 30,  resizable: false, fixed: true, alwaysVisible: true },
   { key: 'name',      label: 'Task Name',defaultWidth: 250, minWidth: 120, resizable: true, alwaysVisible: true },
   { key: 'pred',      label: 'Pred',     defaultWidth: 56,  minWidth: 40,  resizable: true },
   { key: 'succ',      label: 'Succ',     defaultWidth: 56,  minWidth: 40,  resizable: true },

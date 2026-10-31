@@ -208,6 +208,8 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   const inputRef = useRef<HTMLInputElement | HTMLSelectElement | null>(null);
   // Fixed row number (position in the full plan), not the position in the current view
   const rowNumber = rowNumMap.get(task.id) ?? rowIdx + 1;
+  // The drag handle shows over the number on hover while the row can be dragged (not with rows ticked or a sort on)
+  const canShowHandle = hasOnTaskReorder && !editingField && !sortField && !someSelected;
   // Hover text of the Predecessors / Successors cells: the linked tasks' names
   const predTitle = (task.dependencies || []).map(d => taskById.get(d.dependencyId)?.name || '').filter(Boolean).join(', ') || undefined;
   const succTitle = (successorMap.get(task.id) || []).map(s => taskById.get(s.successorId)?.name || '').filter(Boolean).join(', ') || undefined;
@@ -257,31 +259,31 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
       onDragEnd={onRowDragEnd}
       onContextMenu={(e) => onRowContextMenu(e, task, rowIdx)}
     >
-      {/* Row # / Checkbox / Drag handle */}
+      {/* Checkbox (every row, when bulk changes are allowed) / row # / drag handle (shown over the number on hover) */}
       <div
         role="gridcell"
-        className="shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 font-mono flex items-center justify-center"
+        className={`shrink-0 text-xs text-gray-500 dark:text-gray-400 font-mono flex items-center gap-1 ${hasOnBulkUpdate ? 'justify-start pl-2 pr-1' : 'justify-center px-1'}`}
         style={{ width: getColWidth(GANTT_COLUMNS[0]) }}
       >
-        {someSelected && hasOnBulkUpdate ? (
+        {hasOnBulkUpdate && (
           <input
             type="checkbox"
             checked={isSelected}
             aria-label={`Select ${task.name}`}
             onChange={() => {}}
             onClick={(e) => { e.stopPropagation(); toggleSelect(task.id, e.shiftKey); }}
-            className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
+            className="w-3.5 h-3.5 shrink-0 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500 cursor-pointer"
           />
-        ) : hasOnTaskReorder && !editingField && !sortField ? (
-          <span className="hidden group-hover:inline cursor-grab text-gray-500" title="Drag to reorder" aria-hidden="true">&#x2807;</span>
-        ) : null}
-        {!(someSelected && hasOnBulkUpdate) && !(hasOnTaskReorder && !editingField && !sortField) && rowNumber}
-        {!(someSelected && hasOnBulkUpdate) && hasOnTaskReorder && !editingField && !sortField && (
-          <span className="group-hover:hidden">{rowNumber}</span>
         )}
+        {canShowHandle ? (
+          <>
+            <span className="hidden group-hover:inline cursor-grab text-gray-500" title="Drag to reorder" aria-hidden="true">&#x2807;</span>
+            <span className="group-hover:hidden">{rowNumber}</span>
+          </>
+        ) : rowNumber}
         {reviewFlagMap?.has(task.id) && (
           <span
-            className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
+            className="inline-block w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0"
             role="img"
             aria-label={`Schedule Review: ${reviewFlagMap.get(task.id)}`}
             title={`Schedule Review: ${reviewFlagMap.get(task.id)}`}
