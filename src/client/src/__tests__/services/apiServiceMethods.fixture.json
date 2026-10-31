@@ -1,6 +1,6 @@
 {
   "source": "src/client/src/services/api.ts at 503da6d9 (before the split)",
-  "count": 679,
+  "count": 680,
   "methods": [
     "acceptInvite",
     "acceptRescheduleProposal",
@@ -479,6 +479,7 @@
     "importResources",
     "importStructured",
     "importTasks",
+    "indentTasks",
     "initializeTaskChecklist",
     "initiateOneDriveAuth",
     "initiateStorageAuth",
