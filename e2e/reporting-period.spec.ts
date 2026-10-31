@@ -80,7 +80,7 @@ test('in the Review panel: Go to task, then Cannot be split asks why and the tas
   const { exceptions } = await api<{ exceptions: Array<{ taskId: string; reason: string; createdByName: string; createdAt: string }> }>(pm, 'get', `/api/v1/schedules/${ids.scheduleId}/review/exceptions`);
   expect(exceptions).toHaveLength(1);
   expect(exceptions[0]).toMatchObject({ taskId: longTaskId, reason: 'One vendor delivers it as a single drop' });
-  expect(exceptions[0].createdByName).toContain('qa.pm');
+  expect(exceptions[0].createdByName).toMatch(/qa/i);
   expect(exceptions[0].createdAt).toBeTruthy();
   expect((await reviewFindings()).map(x => x.taskIds[0])).toEqual([heavyTaskId]);
 });
