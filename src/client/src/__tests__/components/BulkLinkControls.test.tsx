@@ -27,7 +27,8 @@ describe('Link tasks bar while linking', () => {
     expect(screen.getByRole('status')).toBe(status);
     const again = screen.getByRole('button', { name: 'Link in order' }) as HTMLButtonElement;
     expect(again.disabled).toBe(false);
-    expect(document.activeElement).toBe(again); // keyboard focus comes back to the button that was used
+    // keyboard focus comes back to the button that was used (a passive effect: it lands just after the render)
+    await waitFor(() => expect(document.activeElement).toBe(again));
   });
 
   it('drops the working state and shows the reason when linking fails', async () => {
@@ -53,7 +54,7 @@ describe('keyboard focus after linking', () => {
     render(<Page />);
     fireEvent.click(screen.getByRole('button', { name: 'Link in order' }));
     await waitFor(() => expect(screen.queryByRole('group', { name: 'Link selected tasks' })).toBeNull());
-    expect(document.activeElement).toBe(screen.getByRole('treegrid'));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('treegrid')));
   });
 
   it('goes to the Row # box when the bar stays but the button used is off until a row is typed', async () => {
@@ -63,6 +64,6 @@ describe('keyboard focus after linking', () => {
     fireEvent.click(screen.getByRole('button', { name: 'All wait on it' }));
     await screen.findByText('Linked');
     expect((screen.getByRole('button', { name: 'All wait on it' }) as HTMLButtonElement).disabled).toBe(true); // the box was cleared
-    expect(document.activeElement).toBe(box);
+    await waitFor(() => expect(document.activeElement).toBe(box));
   });
 });
