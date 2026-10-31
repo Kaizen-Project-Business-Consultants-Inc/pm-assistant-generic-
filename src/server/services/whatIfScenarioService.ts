@@ -246,8 +246,8 @@ export class WhatIfScenarioService {
       if (isCritical) score += 30;
 
       // Low float = high sensitivity
-      if (cpm && cpm.totalFloat <= 2) score += 20;
-      else if (cpm && cpm.totalFloat <= 5) score += 10;
+      if (cpm && cpm.totalFloat !== null && cpm.totalFloat <= 2) score += 20;
+      else if (cpm && cpm.totalFloat !== null && cpm.totalFloat <= 5) score += 10;
 
       // Budget scenarios: prioritize tasks with highest remaining cost
       if (params?.budgetChangePct !== undefined) {
@@ -404,7 +404,7 @@ export class WhatIfScenarioService {
         if (!cp) break;
         if (cp.criticalPathTaskIds.length > 0) {
           // eslint-disable-next-line no-restricted-syntax -- small: runs once — the loop stops at the first schedule with a critical path
-          const cpTasks = cp.tasks.filter(t => t.isCritical).map(t => `${t.name} (${t.duration}d, float: ${t.totalFloat}d)`);
+          const cpTasks = cp.tasks.filter(t => t.isCritical).map(t => `${t.name} (${t.duration}d, float: ${t.totalFloat ?? 0}d)`);
           criticalPathInfo = `Project duration: ${cp.projectDuration} days. Critical tasks: ${cpTasks.join(', ')}`;
           break;
         }

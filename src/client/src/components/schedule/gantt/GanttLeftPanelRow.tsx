@@ -59,8 +59,8 @@ export interface GanttLeftPanelRowProps {
   rowNumMap: Map<string, number>;
   reviewFlagMap?: Map<string, string>;
   successorMap: Map<string, Array<{ successorId: string; type: string; lag: number }>>;
-  /** Total slack in working days (undefined until the critical path is worked out) */
-  slack?: number;
+  /** Total slack in working days (undefined until the critical path is worked out; null for a completed task: shows a dash) */
+  slack?: number | null;
   taskById: ReadonlyMap<string, GanttTask>; // for dependency name tooltips
   // Feature flags
   sortField: string | null;

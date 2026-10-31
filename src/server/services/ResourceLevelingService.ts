@@ -252,7 +252,7 @@ export class ResourceLevelingService {
    */
   async levelResources(scheduleId: string): Promise<LevelingResult> {
     const cp = await criticalPathService.calculateCriticalPath(scheduleId);
-    const floatOf = new Map(cp.tasks.map(t => [t.taskId, t.totalFloat]));
+    const floatOf = new Map(cp.tasks.map(t => [t.taskId, t.totalFloat ?? 0]));
     const critical = new Set(cp.criticalPathTaskIds);
     const maxFloat = Math.max(0, ...cp.tasks.map(t => t.totalFloat || 0));
     const m = await this.model(scheduleId, Math.min(maxFloat, 365) + 7);

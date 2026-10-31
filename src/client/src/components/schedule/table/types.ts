@@ -22,8 +22,9 @@ export interface CpmTaskData {
   LF: number;
   /** Working days, start day counted; 0 for a milestone */
   duration?: number;
-  totalFloat: number;
-  freeFloat: number;
+  /** Null for a completed task: no slack */
+  totalFloat: number | null;
+  freeFloat: number | null;
   isCritical: boolean;
 }
 

@@ -1088,13 +1088,13 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
       case 'totalFloat':
         return (
           <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-            {cpm ? <span className={cpm.totalFloat <= 0 ? 'text-red-600 dark:text-red-400 font-semibold' : undefined}>{cpm.totalFloat} d</span> : '\u2014'}
+            {cpm && cpm.totalFloat !== null ? <span className={cpm.totalFloat <= 0 ? 'text-red-600 dark:text-red-400 font-semibold' : undefined}>{cpm.totalFloat} d</span> : '\u2014'}
           </td>
         );
       case 'freeFloat':
         return (
           <td key={col.key} className="px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
-            {cpm ? `${cpm.freeFloat}d` : '\u2014'}
+            {cpm && cpm.freeFloat !== null ? `${cpm.freeFloat}d` : '\u2014'}
           </td>
         );
 

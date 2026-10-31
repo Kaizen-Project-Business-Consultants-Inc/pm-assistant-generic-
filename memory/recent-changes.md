@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-10-31 — Slack follows the dates; completed tasks have none
+- Why: `CriticalPathService` used links and durations only, so every chain's first task started on project day one; a chain dated months later got a false huge slack (DBJ-LMS Phase 3: 147 d, true is about 5), and finished tasks showed 162-193 d.
+- Forward pass: a task's own start date (actual start once started/finished) is a floor, in working days from the same origin as constraint offsets. Links push later, never earlier; MSO/SNLT/FNLT/MFO still override. Completed tasks (status completed or 100%): `totalFloat`/`freeFloat` null, `isCompleted: true`, `isCritical` false; actual dates give their duration.
+- Type change: `CPMTaskResult.totalFloat/freeFloat` are `number | null`. Client: Gantt Slack cell, Table Total/Free slack, NetworkDiagram, CriticalPathView show a dash / skip null; Schedule Review (floatByTask skips completed; R20 ignores them), ResourceLeveling, InstantReport, StrategicRisk, whatIf handle null. mcp-server reads none of it.
+- Tests: CriticalPathService.test.ts (dated shapes), slackColumn.test.tsx, e2e/slack-dates.spec.ts (staging).
 
 ## 2026-10-31 - No task longer than one reporting period (warn only)
 - Why: the user wants a business rule that a task should not need more working time than one reporting period. Warn only, per project; nothing is blocked or edited.

@@ -262,7 +262,7 @@ function detectMilestoneRisks(tasks: Task[], cpm: CriticalPathResult | null): St
   // Zero-float milestones
   const zeroFloatMilestones = milestones.filter(t => {
     const ct = cpmMap.get(t.id);
-    return ct && ct.totalFloat <= 0;
+    return ct && ct.totalFloat !== null && ct.totalFloat <= 0;
   });
   if (zeroFloatMilestones.length > 0) {
     risks.push({

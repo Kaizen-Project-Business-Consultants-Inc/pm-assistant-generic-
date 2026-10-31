@@ -256,7 +256,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   // Each task's total slack for the Gantt's Slack column (U69)
   // A plan with no links has no critical path (every task would start on day 0): no slack shown
   const slackByTask = useMemo(
-    () => (cpmData?.tasks && cpmData.hasLinks !== false ? new Map<string, number>(cpmData.tasks.map((t: { taskId: string; totalFloat: number }) => [t.taskId, t.totalFloat])) : undefined),
+    () => (cpmData?.tasks && cpmData.hasLinks !== false ? new Map<string, number | null>(cpmData.tasks.map((t: { taskId: string; totalFloat: number | null }) => [t.taskId, t.totalFloat])) : undefined),
     [cpmData],
   );
 
@@ -810,7 +810,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onRedo={redo}
           criticalPathTaskIds={showCriticalPath && cpmData?.hasLinks !== false ? cpmData?.criticalPathTaskIds : undefined}
           slackByTask={slackByTask}
-          taskFloatMap={showCriticalPath && slackByTask ? Object.fromEntries(slackByTask) : undefined}
+          taskFloatMap={showCriticalPath && slackByTask ? Object.fromEntries([...slackByTask].filter((e): e is [string, number] => e[1] !== null)) : undefined}
           baselineTasks={selectedBaseline?.tasks?.map((bt: any) => ({
             taskId: bt.taskId,
             startDate: bt.startDate,

@@ -110,7 +110,7 @@ export interface GanttGridPanelProps {
   workCalendar?: WorkCalendar | null;
   reviewFlagMap?: Map<string, string>;
   successorMap: Links['successorMap'];
-  slackByTask?: ReadonlyMap<string, number>;
+  slackByTask?: ReadonlyMap<string, number | null>;
   getDepHealth: Links['getDepHealth'];
   // GanttChart's own callbacks (for most of the grid only whether they exist matters)
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;

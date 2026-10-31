@@ -11,7 +11,7 @@ import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
  * Same critical-path calculation (and cache) as the Gantt's Critical path button.
  */
 interface ViewTask { id: string; name: string; startDate?: string | null; endDate?: string | null; status?: string; assignedTo?: string | null; progressPercentage?: number; isSummary?: boolean; isMilestone?: boolean }
-interface CpmTask { taskId: string; ES: number; totalFloat: number; isCritical: boolean }
+interface CpmTask { taskId: string; ES: number; totalFloat: number | null; isCritical: boolean }
 
 const NEAR = 5; // working days of slack that still count as "near-critical"
 const DONE = new Set(['completed', 'cancelled']);
@@ -22,7 +22,7 @@ export function criticalPathRows(tasks: ViewTask[], cpm: { tasks?: CpmTask[] } |
   const rows = (cpm?.tasks ?? []).map(c => ({ cpm: c, task: byId.get(c.taskId) })).filter(r => r.task && !r.task.isSummary) as Array<{ cpm: CpmTask; task: ViewTask }>;
   const byStart = (a: { cpm: CpmTask }, b: { cpm: CpmTask }) => a.cpm.ES - b.cpm.ES;
   const critical = rows.filter(r => r.cpm.isCritical).sort(byStart);
-  const near = rows.filter(r => !r.cpm.isCritical && r.cpm.totalFloat > 0 && r.cpm.totalFloat <= NEAR).sort((a, b) => a.cpm.totalFloat - b.cpm.totalFloat || byStart(a, b));
+  const near = rows.filter(r => !r.cpm.isCritical && r.cpm.totalFloat !== null && r.cpm.totalFloat > 0 && r.cpm.totalFloat <= NEAR).sort((a, b) => (a.cpm.totalFloat ?? 0) - (b.cpm.totalFloat ?? 0) || byStart(a, b));
   const watch: Array<{ task: ViewTask; why: string }> = [];
   for (const { task } of critical) {
     if (DONE.has(task.status ?? '')) continue;

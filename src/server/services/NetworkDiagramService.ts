@@ -13,7 +13,7 @@ export interface NetworkNode {
   EF: number;
   LS: number;
   LF: number;
-  totalFloat: number;
+  totalFloat: number | null;
   duration: number;
 }
 

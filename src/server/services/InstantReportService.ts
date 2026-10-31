@@ -135,7 +135,7 @@ export class InstantReportService {
         return {
           name: cpmTask.name,
           duration: cpmTask.duration,
-          totalFloat: cpmTask.totalFloat,
+          totalFloat: cpmTask.totalFloat ?? 0,
           status: task?.status || 'pending',
           startDate: task?.startDate || null,
           endDate: task?.endDate || null,

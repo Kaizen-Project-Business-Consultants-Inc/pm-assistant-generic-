@@ -175,7 +175,7 @@ export function NetworkDiagramView({ scheduleId }: NetworkDiagramViewProps) {
                   {node.name.length > 22 ? node.name.slice(0, 22) + '...' : node.name}
                 </text>
                 <text x={nx + node.width / 2} y={ny + 38} textAnchor="middle" fontSize="9" fill="#6b7280">
-                  Duration: {node.duration}d · Float: {node.totalFloat}d
+                  Duration: {node.duration}d · Float: {node.totalFloat ?? '—'}{node.totalFloat === null ? '' : 'd'}
                 </text>
                 <text x={nx + node.width / 2} y={ny + 52} textAnchor="middle" fontSize="9" fill="#9ca3af">
                   ES:{node.ES} EF:{node.EF} LS:{node.LS} LF:{node.LF}
@@ -199,7 +199,7 @@ export function NetworkDiagramView({ scheduleId }: NetworkDiagramViewProps) {
             <span>EF:</span><span>Day {tooltip.node.EF}</span>
             <span>LS:</span><span>Day {tooltip.node.LS}</span>
             <span>LF:</span><span>Day {tooltip.node.LF}</span>
-            <span>Float:</span><span>{tooltip.node.totalFloat} days</span>
+            <span>Float:</span><span>{tooltip.node.totalFloat === null ? '—' : `${tooltip.node.totalFloat} days`}</span>
           </div>
           {tooltip.node.isCritical && (
             <p className="mt-1 text-red-300 font-medium">On Critical Path</p>

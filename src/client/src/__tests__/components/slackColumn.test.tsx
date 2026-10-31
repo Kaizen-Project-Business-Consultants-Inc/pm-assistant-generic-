@@ -26,6 +26,10 @@ const TASKS: GanttTask[] = [
   { id: 'a', name: 'Build', status: 'pending', startDate: '2026-11-02', endDate: '2026-11-20', sortOrder: 1, dependencies: [] },
   { id: 'b', name: 'Test', status: 'pending', startDate: '2026-11-23', endDate: '2026-11-25', sortOrder: 2, dependencies: [] },
 ];
+const DONE_TASKS: GanttTask[] = [
+  { id: 'a', name: 'Build', status: 'completed', startDate: '2026-11-02', endDate: '2026-11-20', sortOrder: 1, dependencies: [] },
+  { id: 'b', name: 'Test', status: 'pending', startDate: '2026-11-23', endDate: '2026-11-25', sortOrder: 2, dependencies: [] },
+];
 const cpm = (hasLinks: boolean) => ({
   hasLinks,
   criticalPathTaskIds: ['a'],
@@ -35,12 +39,14 @@ const cpm = (hasLinks: boolean) => ({
   ],
 });
 
-function Table({ hasLinks }: { hasLinks: boolean }) {
+function Table({ hasLinks, done }: { hasLinks: boolean; done?: boolean }) {
   const columnState = useColumnState('s-slack');
-  return <TableView tasks={TASKS} scheduleId="s-slack" columnState={columnState} cpmData={cpm(hasLinks) as never} onTaskClick={() => {}} />;
+  const data = cpm(hasLinks);
+  if (done) data.tasks[0] = { ...data.tasks[0], totalFloat: null as never, freeFloat: null as never, isCritical: false };
+  return <TableView tasks={done ? DONE_TASKS : TASKS} scheduleId="s-slack" columnState={columnState} cpmData={data as never} onTaskClick={() => {}} />;
 }
-const show = (hasLinks: boolean) => render(
-  <QueryClientProvider client={new QueryClient()}><MemoryRouter><Table hasLinks={hasLinks} /></MemoryRouter></QueryClientProvider>,
+const show = (hasLinks: boolean, done = false) => render(
+  <QueryClientProvider client={new QueryClient()}><MemoryRouter><Table hasLinks={hasLinks} done={done} /></MemoryRouter></QueryClientProvider>,
 );
 const slackOf = (name: string) => {
   const row = screen.getByRole('rowheader', { name: new RegExp(name) }).closest('tr')!;
@@ -60,5 +66,11 @@ describe('Total slack column', () => {
     show(false);
     expect(slackOf('Build')).toBe('—');
     expect(slackOf('Test')).toBe('—');
+  });
+
+  it('a completed task has no slack: a dash, not red "0 d" and not critical', () => {
+    show(true, true);
+    expect(slackOf('Build')).toBe('—');
+    expect(slackOf('Test')).toBe('12 d');
   });
 });

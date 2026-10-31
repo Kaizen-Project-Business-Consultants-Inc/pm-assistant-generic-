@@ -207,6 +207,7 @@ The `CriticalPathService` performs a full forward and backward pass across the t
 
 - **Early Start (ES)** and **Early Finish (EF)** for every task
 - **Late Start (LS)** and **Late Finish (LF)**
+- **Float is dated (2026-10-31):** `CriticalPathService` treats a task's own start date (its actual start once started) as a "cannot start earlier" floor in the forward pass, in working days from the plan's origin; links still push it later, hard constraints (MSO, SNLT, FNLT, MFO) still override it. A completed task (status completed or 100%) returns `totalFloat`/`freeFloat` null, `isCompleted: true`, never critical; its actual dates give its duration. Before this a chain dated months later showed a huge false slack. Consumers treat null as "no slack" (dash on screens, skipped in Schedule Review float rules)
 - **Total float** and **free float** — shown as the **Total slack** (Table) / **Slack** (Gantt, sortable, 0 d in red) column, on by default since 21 Oct 2026 (U69) together with **Successors**; `tableColumns.DEFAULTS_ADDED_LATER` switches them on once for schedules whose columns were already saved (`useColumnState`, saved as `addedDefaults`)
 - **Critical path identification** -- tasks with zero total float
 - **Project duration** -- the minimum schedule span

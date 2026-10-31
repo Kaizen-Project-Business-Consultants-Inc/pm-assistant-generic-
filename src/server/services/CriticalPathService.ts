@@ -1,5 +1,5 @@
 import { scheduleService, Task } from './ScheduleService';
-import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, taskWorkingDuration, finishFor } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, taskWorkingDuration, finishFor, addCalendarDays, calendarDaysBetween } from '../utils/workingDays';
 
 /**
  * All numbers are WORKING days on the project calendar (weekends and holidays off unless
@@ -15,9 +15,14 @@ export interface CPMTaskResult {
   EF: number; // Early Finish (working-day offset)
   LS: number; // Late Start (working-day offset)
   LF: number; // Late Finish (working-day offset)
-  totalFloat: number;
-  freeFloat: number;
+  /** Working days the task can slip before the finish moves. Null for a completed task: it has no slack */
+  totalFloat: number | null;
+  /** Working days it can slip before delaying a successor. Null for a completed task */
+  freeFloat: number | null;
+  /** Never true for a completed task */
   isCritical: boolean;
+  /** Done (status completed, or 100%): shown with a dash instead of slack, never critical */
+  isCompleted: boolean;
   constraintType?: string;
   constraintDate?: string;
 }
@@ -69,8 +74,13 @@ export class CriticalPathService {
 
     // Durations in working days, as the Duration column shows them (dates first,
     // then the estimate; a milestone is 0). Lags are working days too.
+    // A finished task keeps its real dates: the days it actually took.
     const durations = new Map<string, number>();
-    for (const t of tasks) durations.set(t.id, taskWorkingDuration(t, isWorking));
+    for (const t of tasks) {
+      const real = isDone(t) && t.actualStartDate && t.actualEndDate && !t.isMilestone
+        ? { ...t, startDate: t.actualStartDate, endDate: t.actualEndDate } : t;
+      durations.set(t.id, taskWorkingDuration(real, isWorking));
+    }
     const getDuration = (t: Task): number => durations.get(t.id) ?? 1;
 
     // Topological sort (Kahn's algorithm)
@@ -114,12 +124,26 @@ export class CriticalPathService {
       return !min || d < min ? d : min;
     }, '' as string);
     const origin = projStartStr ? onOrAfterWorking(utcDay(projStartStr), isWorking) : null;
+    // Working days after the origin up to and including each calendar day, built once as far as
+    // the plan reaches: every task asks for its own date, so walking from the origin each time
+    // would cost tasks x plan length.
+    const cum: number[] = [0];
+    const offsetOf = (d: Date): number => {
+      if (!origin) return 0;
+      const originYmd = ymdOf(origin);
+      const i = calendarDaysBetween(originYmd, ymdOf(d));
+      if (i < 0 || i > 36_600) return workingDaysAfter(origin, d, isWorking);
+      while (cum.length <= i) {
+        cum.push(cum[cum.length - 1] + (isWorking(utcDay(addCalendarDays(originYmd, cum.length))) ? 1 : 0));
+      }
+      return cum[i];
+    };
     /** Offset of the first working day on or after `date` (a start limit) */
     const startOffset = (date: unknown): number =>
-      origin ? workingDaysAfter(origin, onOrAfterWorking(utcDay(date), isWorking), isWorking) : 0;
+      origin ? offsetOf(onOrAfterWorking(utcDay(date), isWorking)) : 0;
     /** EF limit for a task that must finish by the end of `date` (last working day on or before it) */
     const finishOffset = (date: unknown, dur: number): number =>
-      origin ? workingDaysAfter(origin, utcDay(date), isWorking) + (dur > 0 ? 1 : 0) : 0;
+      origin ? offsetOf(utcDay(date)) + (dur > 0 ? 1 : 0) : 0;
 
     for (const id of topoOrder) {
       const t = taskMap.get(id)!;
@@ -143,6 +167,13 @@ export class CriticalPathService {
         es = Math.max(es, constraint);
       }
       es = Math.max(0, es);
+
+      // The task's own date is a "cannot start earlier" floor (a chain dated months after day one
+      // is not free to start on day one). Links can still push it later, never earlier. Work that
+      // has started or finished counts from the day it really started. Hard constraints below
+      // still win over the floor: MSO / SNLT / FNLT / MFO may place it earlier or exactly.
+      const ownStart = (isStartedOrDone(t) && t.actualStartDate) || t.startDate;
+      if (ownStart) es = Math.max(es, startOffset(ownStart));
 
       // Apply task constraints
       const ct = t.constraintType || 'ASAP';
@@ -228,6 +259,7 @@ export class CriticalPathService {
       const ef = efMap.get(id)!;
       const ls = lsMap.get(id)!;
       const lf = lfMap.get(id)!;
+      const done = isDone(t);
       const totalFloat = ls - es;
 
       // Free float = min(ES of successors) - EF of this task
@@ -241,7 +273,7 @@ export class CriticalPathService {
         freeFloat = minSuccES - ef;
       }
 
-      const isCritical = totalFloat === 0;
+      const isCritical = !done && totalFloat === 0;
       if (isCritical) criticalIds.push(id);
 
       results.push({
@@ -252,9 +284,10 @@ export class CriticalPathService {
         EF: ef,
         LS: ls,
         LF: lf,
-        totalFloat,
-        freeFloat: Math.max(0, freeFloat),
+        totalFloat: done ? null : totalFloat,
+        freeFloat: done ? null : Math.max(0, freeFloat),
         isCritical,
+        isCompleted: done,
         constraintType: t.constraintType || 'ASAP',
         constraintDate: t.constraintDate,
       });
@@ -276,6 +309,15 @@ export class CriticalPathService {
       lengthWorkingDays,
     };
   }
+}
+
+/** Finished: status completed (or cancelled), or 100% done. A finished task has no slack */
+function isDone(t: Task): boolean {
+  return t.status === 'completed' || t.status === 'cancelled' || (t.progressPercentage ?? 0) >= 100;
+}
+
+function isStartedOrDone(t: Task): boolean {
+  return isDone(t) || t.status === 'in_progress' || (t.progressPercentage ?? 0) > 0;
 }
 
 /** The schedule's project calendar; Mon–Fri when it cannot be read */

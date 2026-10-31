@@ -135,7 +135,7 @@ export function GanttChart({
   /** Map of taskId → total float days (from CPM analysis) */
   taskFloatMap?: Record<string, number>;
   /** Each task's total slack in working days, for the Slack column (U69) */
-  slackByTask?: ReadonlyMap<string, number>;
+  slackByTask?: ReadonlyMap<string, number | null>;
   /** Baseline task data for ghost bars */
   baselineTasks?: Array<{ taskId: string; startDate: string; endDate: string }>;
   /** Called when a task bar is dragged to new dates */

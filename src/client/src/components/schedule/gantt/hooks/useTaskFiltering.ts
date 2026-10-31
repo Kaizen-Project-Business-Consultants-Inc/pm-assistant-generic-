@@ -30,7 +30,7 @@ export interface GanttSortContext {
   resourceNameOf: Map<string, string>;
   workCalendar?: WorkCalendar | null;
   /** Each task's total slack (Slack column); missing = not worked out yet, sorts last */
-  slackOf?: ReadonlyMap<string, number>;
+  slackOf?: ReadonlyMap<string, number | null>;
 }
 
 const PRIORITY_ORDER: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
@@ -86,7 +86,7 @@ export function useTaskFiltering({
   /** Resource / person id → name, for the Assigned and Resource sorts */
   resourceNameOf?: Map<string, string>;
   /** Each task's total slack, for the Slack sort (U69) */
-  slackOf?: ReadonlyMap<string, number>;
+  slackOf?: ReadonlyMap<string, number | null>;
 }) {
   // -----------------------------------------------------------------------
   // Quick search state

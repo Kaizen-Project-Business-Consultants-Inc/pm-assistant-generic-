@@ -109,7 +109,7 @@ const sections: Section[] = [
       'Create new projects with name, dates, and budget',
       'Importing a spreadsheet maps its columns for you; any it can\'t place get a Suggest … with AI button — the AI is asked only if you press it',
       'Switch between Gantt, Kanban, Table, and Task calendar views (Task calendar shows tasks on dates; working days are set in the Working calendar)',
-      'Successors and Total slack columns show by default: slack is how many working days a task can slip before the finish moves (0 d in red = critical)',
+      'Successors and Total slack columns show by default: slack is how many working days a task can slip before the finish moves (0 d in red = critical); it follows the dates you set, and a completed task shows a dash',
       'Timeline: the whole project on one line (phases, milestones, today) — click to jump, export as an image for reports',
       'The summary cards show on Overview; other tabs show one line (Show details brings the cards back) so the work area starts higher',
       'Fewer tabs show in the bar; the rest (Hours, Files, Forecast, Resources, Agent Activity, Changes and more) are under More at the end of the tab bar',

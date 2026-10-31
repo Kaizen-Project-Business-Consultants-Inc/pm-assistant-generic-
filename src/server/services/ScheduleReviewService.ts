@@ -147,7 +147,7 @@ export class ScheduleReviewService {
   private async safeFloat(scheduleId: string): Promise<Map<string, number> | null> {
     try {
       const cpm = await criticalPathService.calculateCriticalPath(scheduleId);
-      return new Map(cpm.tasks.map(t => [t.taskId, t.totalFloat]));
+      return new Map(cpm.tasks.flatMap(t => (t.totalFloat === null ? [] : [[t.taskId, t.totalFloat] as [string, number]])));
     } catch (err: any) {
       logger.warn('[ScheduleReview] critical path unavailable', { scheduleId, error: err?.message });
       return null;

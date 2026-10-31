@@ -18,6 +18,10 @@ function makeTask(id: string, name: string, opts: {
   isMilestone?: boolean;
   constraintType?: string;
   constraintDate?: string;
+  status?: string;
+  progressPercentage?: number;
+  actualStartDate?: string;
+  actualEndDate?: string;
   dependencies?: Array<{ dependencyId: string; dependencyType?: string; lagDays?: number }>;
 } = {}) {
   return {
@@ -30,7 +34,10 @@ function makeTask(id: string, name: string, opts: {
     constraintType: opts.constraintType,
     constraintDate: opts.constraintDate,
     dependencies: opts.dependencies ?? [],
-    status: 'not_started',
+    status: opts.status ?? 'not_started',
+    progressPercentage: opts.progressPercentage,
+    actualStartDate: opts.actualStartDate,
+    actualEndDate: opts.actualEndDate,
   };
 }
 
@@ -229,5 +236,122 @@ describe('CriticalPathService', () => {
     expect(t2.isCritical).toBe(true);
     expect(t3.isCritical).toBe(false);
     expect(t3.totalFloat).toBe(2);
+  });
+
+  describe('slack respects the dates the user set', () => {
+    const slackOf = (r: { tasks: Array<{ taskId: string; totalFloat: number | null }> }, id: string) => r.tasks.find(t => t.taskId === id)!.totalFloat;
+
+    it('a chain dated later than the longest chain gets small positive slack, not the whole gap', async () => {
+      // long chain: Mon 5 Jan - Fri 23 Jan (15 d). C has no predecessor, dated Mon 12 - Fri 16 Jan (5 d).
+      mockFindTasks.mockResolvedValue([
+        makeTask('a', 'A', { startDate: '2026-01-05', endDate: '2026-01-16' }),
+        makeTask('b', 'B', { startDate: '2026-01-19', endDate: '2026-01-23', dependencies: [{ dependencyId: 'a' }] }),
+        makeTask('c', 'C', { startDate: '2026-01-12', endDate: '2026-01-16' }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect(slackOf(r, 'a')).toBe(0);
+      expect(slackOf(r, 'b')).toBe(0);
+      expect(slackOf(r, 'c')).toBe(5); // 19-23 Jan is still free; it used to say 10
+    });
+
+    it('the DBJ-LMS shape: a later-dated chain ending a week before the project end has a few days, not 147', async () => {
+      mockFindTasks.mockResolvedValue([
+        makeTask('x1', 'Phase 2 a', { startDate: '2026-10-05', endDate: '2026-12-25' }),
+        makeTask('x2', 'Phase 2 b', { startDate: '2026-12-28', endDate: '2027-04-26', dependencies: [{ dependencyId: 'x1' }] }),
+        makeTask('y1', 'Phase 3 a', { startDate: '2026-12-28', endDate: '2027-02-26' }), // no predecessor
+        makeTask('y2', 'Phase 3 b', { startDate: '2027-03-01', endDate: '2027-04-19', dependencies: [{ dependencyId: 'y1' }] }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect(slackOf(r, 'x1')).toBe(0);
+      expect(slackOf(r, 'x2')).toBe(0);
+      expect(slackOf(r, 'y1')).toBe(5); // Tue 20 Apr - Mon 26 Apr
+      expect(slackOf(r, 'y2')).toBe(5);
+      expect([...r.criticalPathTaskIds].sort()).toEqual(['x1', 'x2']);
+    });
+
+    it('undated tasks give the same numbers as before (A->B with C: 0, 0, 3)', async () => {
+      mockFindTasks.mockResolvedValue([
+        makeTask('a', 'A', { estimatedDays: 3 }),
+        makeTask('b', 'B', { estimatedDays: 4, dependencies: [{ dependencyId: 'a' }] }),
+        makeTask('c', 'C', { estimatedDays: 4 }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect([slackOf(r, 'a'), slackOf(r, 'b'), slackOf(r, 'c')]).toEqual([0, 0, 3]);
+    });
+
+    it('a link can still push a task later than its date, never earlier than it', async () => {
+      // B is dated before A ends (broken plan): the link wins, and nothing goes negative
+      mockFindTasks.mockResolvedValue([
+        makeTask('a', 'A', { startDate: '2026-01-05', endDate: '2026-01-16' }),
+        makeTask('b', 'B', { startDate: '2026-01-07', endDate: '2026-01-09', dependencies: [{ dependencyId: 'a' }] }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect(r.tasks.find(t => t.taskId === 'b')!.ES).toBe(10);
+      expect(r.tasks.every(t => (t.totalFloat ?? 0) >= 0)).toBe(true);
+    });
+
+    it('completed tasks have no slack and are not critical, but still hold their successors back', async () => {
+      mockFindTasks.mockResolvedValue([
+        makeTask('d', 'Done', { startDate: '2026-01-05', endDate: '2026-01-09', status: 'completed', actualStartDate: '2026-01-05', actualEndDate: '2026-01-14' }),
+        makeTask('n', 'Next', { startDate: '2026-01-12', endDate: '2026-01-16', dependencies: [{ dependencyId: 'd' }] }),
+        makeTask('p', 'Hundred', { startDate: '2026-01-05', endDate: '2026-01-09', progressPercentage: 100 }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect(r.tasks.find(t => t.taskId === 'd')).toMatchObject({ totalFloat: null, freeFloat: null, isCritical: false, isCompleted: true });
+      expect(r.tasks.find(t => t.taskId === 'p')).toMatchObject({ totalFloat: null, isCompleted: true });
+      expect(r.criticalPathTaskIds).not.toContain('d');
+      // it really took until Wed 14 Jan (8 working days from 5 Jan), so Next starts at offset 8
+      expect(r.tasks.find(t => t.taskId === 'n')!.ES).toBe(8);
+      expect(slackOf(r, 'n')).toBe(0);
+    });
+
+    it('counts working days: a holiday inside the span is not a day', async () => {
+      mockWorkingDayTest.mockResolvedValue((d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6 && d.toISOString().slice(0, 10) !== '2026-01-21');
+      mockFindTasks.mockResolvedValue([
+        makeTask('l1', 'L1', { startDate: '2026-01-05', endDate: '2026-01-23' }),
+        makeTask('l2', 'L2', { startDate: '2026-01-26', endDate: '2026-01-30', dependencies: [{ dependencyId: 'l1' }] }),
+        makeTask('s1', 'S1', { startDate: '2026-01-19', endDate: '2026-01-23' }),
+        makeTask('s2', 'S2', { startDate: '2026-01-26', endDate: '2026-01-28', dependencies: [{ dependencyId: 's1' }] }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect(slackOf(r, 'l2')).toBe(0);
+      expect(slackOf(r, 's2')).toBe(2); // Thu 29 and Fri 30 Jan
+    });
+
+    it('a hard constraint still wins over the date floor (MSO places it on its date)', async () => {
+      mockFindTasks.mockResolvedValue([
+        makeTask('a', 'A', { startDate: '2026-01-05', endDate: '2026-01-09' }),
+        makeTask('m', 'M', { startDate: '2026-01-19', endDate: '2026-01-23', constraintType: 'MSO', constraintDate: '2026-01-12', dependencies: [{ dependencyId: 'a' }] }),
+      ]);
+      expect((await service.calculateCriticalPath('s')).tasks.find(t => t.taskId === 'm')!.ES).toBe(5);
+    });
+
+    it('a cancelled task has no slack', async () => {
+      mockFindTasks.mockResolvedValue([makeTask('a', 'A', { startDate: '2026-01-05', endDate: '2026-01-09', status: 'cancelled' })]);
+      expect((await service.calculateCriticalPath('s')).tasks[0]).toMatchObject({ totalFloat: null, isCritical: false });
+    });
+
+    it('a big dated plan is worked out quickly (no walk from the origin per task)', async () => {
+      const many = Array.from({ length: 3000 }, (_, i) => makeTask(`t${i}`, `T${i}`, { startDate: '2026-01-05', endDate: '2026-01-09', dependencies: i % 3 ? [{ dependencyId: `t${i - 1}` }] : [] }))
+        .map((t, i) => ({ ...t, startDate: new Date(Date.UTC(2026, 0, 5 + i)).toISOString().slice(0, 10), endDate: new Date(Date.UTC(2026, 0, 5 + i)).toISOString().slice(0, 10) }));
+      mockFindTasks.mockResolvedValue(many);
+      const t0 = Date.now();
+      await service.calculateCriticalPath('s');
+      expect(Date.now() - t0).toBeLessThan(1500);
+    });
+
+    it('no links: hasLinks stays false', async () => {
+      mockFindTasks.mockResolvedValue([makeTask('a', 'A', { startDate: '2026-01-05', endDate: '2026-01-09' }), makeTask('b', 'B', { startDate: '2026-03-02', endDate: '2026-03-06' })]);
+      expect((await service.calculateCriticalPath('s')).hasLinks).toBe(false);
+    });
+
+    it('a cycle does not crash', async () => {
+      mockFindTasks.mockResolvedValue([
+        makeTask('a', 'A', { startDate: '2026-01-05', endDate: '2026-01-09', dependencies: [{ dependencyId: 'b' }] }),
+        makeTask('b', 'B', { startDate: '2026-01-12', endDate: '2026-01-16', dependencies: [{ dependencyId: 'a' }] }),
+      ]);
+      const r = await service.calculateCriticalPath('s');
+      expect(r.tasks).toHaveLength(2);
+    });
   });
 });
