@@ -76,15 +76,19 @@ test.describe('Gantt Table — MPP Columns', () => {
     const row = label.locator('..');
     const checkbox = row.locator('input[type="checkbox"]');
 
-    // Should be unchecked by default (not in defaultVisible)
+    // Off by default (not in defaultVisible); the choice is saved for the login, so a run that
+    // failed half-way must not leave it on for the next one
+    if (await checkbox.isChecked()) await checkbox.click();
     await expect(checkbox).not.toBeChecked();
 
-    // Toggle it on
-    await checkbox.click();
-    await expect(checkbox).toBeChecked();
-
-    // Toggle it back off to leave clean state
-    await checkbox.click();
+    try {
+      // Toggle it on
+      await checkbox.click();
+      await expect(checkbox).toBeChecked();
+    } finally {
+      // Toggle it back off to leave clean state, even when the check above failed
+      if (await checkbox.isChecked()) await checkbox.click();
+    }
     await expect(checkbox).not.toBeChecked();
   });
 
@@ -96,12 +100,17 @@ test.describe('Gantt Table — MPP Columns', () => {
     const row = label.locator('..');
     const checkbox = row.locator('input[type="checkbox"]');
 
+    // The choice is saved for the login: a run that failed half-way used to leave it on and then
+    // fail every run after it, so start from a known state
+    if (await checkbox.isChecked()) await checkbox.click();
     await expect(checkbox).not.toBeChecked();
-    await checkbox.click();
-    await expect(checkbox).toBeChecked();
-
-    // Clean up
-    await checkbox.click();
+    try {
+      await checkbox.click();
+      await expect(checkbox).toBeChecked();
+    } finally {
+      // Clean up, even when the check above failed
+      if (await checkbox.isChecked()) await checkbox.click();
+    }
     await expect(checkbox).not.toBeChecked();
   });
 
