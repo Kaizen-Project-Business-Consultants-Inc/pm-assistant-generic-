@@ -52,7 +52,8 @@ function setup(over: Partial<Props> = {}) {
     onTaskReorder: vi.fn(),
     onTaskSelect: vi.fn(),
     onDuplicateTasks: vi.fn(),
-    onBulkUpdate: vi.fn(async () => {}),
+    onIndent: vi.fn(),
+    clearSelection: vi.fn(),
     startEditing: vi.fn(),
     getTaskFieldValue,
     rowNumToTaskId,
@@ -254,31 +255,54 @@ describe('useGridKeyboard — copy / paste', () => {
 });
 
 describe('useGridKeyboard — indent / outdent / reorder', () => {
-  it('Tab indents the active task under the row above; Shift+Tab outdents to its grandparent', () => {
+  it('Tab and Shift+Tab hand the active row to the shared indent step (it decides, and says what moved)', () => {
     const s = setup({ activeTaskId: 'c' });
     const e = key('Tab');
     expect(e.defaultPrevented).toBe(true);
-    expect(s.props.onTaskUpdate).toHaveBeenLastCalledWith('c', { parentTaskId: 'b' });
-    s.rerender({ ...s.props, activeTaskId: 'a' });
+    expect(s.props.onIndent).toHaveBeenLastCalledWith('indent', ['c']);
     key('Tab', { shiftKey: true });
-    expect(s.props.onTaskUpdate).toHaveBeenLastCalledWith('a', { parentTaskId: null });
-  });
-
-  it('Tab on a task already under the row above, or Shift+Tab on a top-level task, does nothing', () => {
-    const s = setup({ activeTaskId: 'a' });
-    key('Tab'); // a is already under p
-    s.rerender({ ...s.props, activeTaskId: 'c' });
-    key('Tab', { shiftKey: true });
+    expect(s.props.onIndent).toHaveBeenLastCalledWith('outdent', ['c']);
     expect(s.props.onTaskUpdate).not.toHaveBeenCalled();
   });
 
-  it('several selected: indent and outdent through the bulk update', () => {
-    const s = setup({ selectedIds: new Set(['b', 'c']) });
+  it('the selected rows are used first, in row order (Tab and Alt+Shift+arrows alike)', () => {
+    const s = setup({ selectedIds: new Set(['c', 'b']) });
     key('Tab');
-    expect(s.props.onBulkUpdate).toHaveBeenLastCalledWith(['b', 'c'], 'parentTaskId', 'a');
-    key('Tab', { shiftKey: true });
-    expect(s.props.onBulkUpdate).toHaveBeenLastCalledWith(['b'], 'parentTaskId', '');
+    expect(s.props.onIndent).toHaveBeenLastCalledWith('indent', ['b', 'c']);
+    key('ArrowRight', { altKey: true, shiftKey: true });
+    expect(s.props.onIndent).toHaveBeenLastCalledWith('indent', ['b', 'c']);
+    key('ArrowLeft', { altKey: true, shiftKey: true });
+    expect(s.props.onIndent).toHaveBeenLastCalledWith('outdent', ['b', 'c']);
+  });
+
+  it('with no way to move tasks (no onIndent) Tab is left alone', () => {
+    const s = setup({ activeTaskId: 'c', onIndent: undefined });
+    expect(key('Tab').defaultPrevented).toBe(false);
     expect(s.props.onTaskUpdate).not.toHaveBeenCalled();
+  });
+
+  it('Escape in the grid clears the selected rows (and leaves the grid, as before)', () => {
+    const s = setup({ selectedIds: new Set(['b']) });
+    key('Escape');
+    expect(s.props.clearSelection).toHaveBeenCalledTimes(1);
+    key('Tab');
+    expect(s.props.onIndent).not.toHaveBeenCalled(); // the next Tab moves on
+  });
+
+  it('Escape pressed with the focus on a row checkbox clears the selection too', () => {
+    const s = setup({ selectedIds: new Set(['b']) });
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    grid.appendChild(box);
+    key('Escape', {}, box);
+    expect(s.props.clearSelection).toHaveBeenCalledTimes(1);
+    box.remove();
+  });
+
+  it('Escape with nothing selected does not clear anything', () => {
+    const s = setup({ activeTaskId: 'b' });
+    key('Escape');
+    expect(s.props.clearSelection).not.toHaveBeenCalled();
   });
 
   it('Tab still indents when the focus is on a row checkbox', () => {
@@ -287,11 +311,11 @@ describe('useGridKeyboard — indent / outdent / reorder', () => {
     box.type = 'checkbox';
     grid.appendChild(box);
     key('Tab', {}, box);
-    expect(s.props.onTaskUpdate).toHaveBeenCalledWith('c', { parentTaskId: 'b' });
+    expect(s.props.onIndent).toHaveBeenCalledWith('indent', ['c']);
     // and Escape on the checkbox leaves the grid: the next Tab moves on (no keyboard trap)
     key('Escape', {}, box);
     expect(key('Tab', {}, box).defaultPrevented).toBe(false);
-    expect(s.props.onTaskUpdate).toHaveBeenCalledTimes(1);
+    expect(s.props.onIndent).toHaveBeenCalledTimes(1);
     box.remove();
   });
 
@@ -320,6 +344,7 @@ describe('useGridKeyboard — when it stays out of the way', () => {
       el.remove();
     }
     expect(s.props.onTaskUpdate).not.toHaveBeenCalled();
+    expect(s.props.onIndent).not.toHaveBeenCalled();
     expect(s.props.onDuplicateTasks).not.toHaveBeenCalled();
     expect(s.props.setBulkMessage).not.toHaveBeenCalled();
     expect(s.result.current.focusedCell).toBeNull();
@@ -332,6 +357,7 @@ describe('useGridKeyboard — when it stays out of the way', () => {
     key('ArrowDown', { altKey: true });
     key('d', { ctrlKey: true });
     expect(s.props.onTaskUpdate).not.toHaveBeenCalled();
+    expect(s.props.onIndent).not.toHaveBeenCalled();
     expect(s.props.onTaskReorder).not.toHaveBeenCalled();
     expect(s.props.onDuplicateTasks).not.toHaveBeenCalled();
     expect(s.result.current.focusedCell).toBeNull();
@@ -354,6 +380,7 @@ describe('useGridKeyboard — when it stays out of the way', () => {
     key('Tab');
     key('d', { ctrlKey: true });
     expect(s.props.onTaskUpdate).not.toHaveBeenCalled();
+    expect(s.props.onIndent).not.toHaveBeenCalled();
     expect(s.props.onDuplicateTasks).not.toHaveBeenCalled();
   });
 });

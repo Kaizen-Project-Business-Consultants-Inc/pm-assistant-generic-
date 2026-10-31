@@ -2,7 +2,6 @@ import { useMemo, useEffect, useCallback } from 'react';
 import { type GanttTask, type FlatRow, type EditableField, type GanttColDef } from '../types';
 import { type WorkCalendar } from '../../../../utils/workingDays';
 import { useUnmountSafeTimeouts } from '../../shared/hooks/useUnmountSafeTimeouts';
-import { firstByKey } from '../../../../utils/lookup';
 import {
   useGridCellState, useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell,
   handleGridNavKey, GANTT_KEYBOARD_RULES, useGridFocusScope, indentDirection, keyboardEntryCell,
@@ -36,7 +35,8 @@ export function useGridKeyboard({
   onTaskReorder,
   onTaskSelect,
   onDuplicateTasks,
-  onBulkUpdate,
+  onIndent,
+  clearSelection,
   startEditing,
   getTaskFieldValue,
   rowNumToTaskId,
@@ -55,7 +55,9 @@ export function useGridKeyboard({
   onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
   onTaskSelect?: (task: GanttTask) => void;
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
-  onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
+  /** Indent / outdent these tasks (useIndentTasks); none: the keys are left alone */
+  onIndent?: (direction: 'indent' | 'outdent', ids: string[]) => void;
+  clearSelection?: () => void;
   startEditing: (taskId: string, field: EditableField, task: GanttTask) => void;
   getTaskFieldValue: (task: GanttTask, field: EditableField) => string;
   rowNumToTaskId: Map<number, string>;
@@ -106,9 +108,9 @@ export function useGridKeyboard({
       const target = e.target as HTMLElement;
       // Tab / Alt+Shift+arrows (indent / outdent) — or null for any other key
       const indent = indentDirection(e);
-      // Allow indent/outdent through even when a checkbox is focused
+      // Allow indent/outdent (and Escape: clear the selection) through even when a checkbox is focused
       const isCheckbox = target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox';
-      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && indent)) return;
+      if ((target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') && !(isCheckbox && (indent || e.key === 'Escape'))) return;
       // Not working in the grid: the key does what it does anywhere else (Tab moves focus)
       if (!inGrid) return;
 
@@ -175,70 +177,19 @@ export function useGridKeyboard({
         return;
       }
 
-      // Indent/outdent with Tab/Shift+Tab or Alt+Shift+Right/Left (works with multi-select, focusedCell, or activeTaskId)
-      if (indent && (someSelected || focusedCell || activeTaskId)) {
+      // Indent/outdent with Tab/Shift+Tab or Alt+Shift+Right/Left: the selected rows first, else the
+      // focused cell's row, else the active row (useIndentTasks decides, says what moved or why nothing did)
+      if (indent && onIndent && (someSelected || focusedCell || activeTaskId)) {
         e.preventDefault();
-
-        // Determine which task IDs to indent/outdent
         const idsToProcess = someSelected
           ? rows.filter(r => selectedIds.has(r.task.id)).map(r => r.task.id)
           : [focusedCell?.taskId || activeTaskId].filter(Boolean) as string[];
-
-        if (idsToProcess.length === 1) {
-          // Single task indent/outdent
-          const rowIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
-          if (rowIdx === -1) return;
-          const task = rows[rowIdx].task;
-          if (indent === 'outdent') {
-            if (task.parentTaskId) {
-              const parent = tasks.find(t => t.id === task.parentTaskId);
-              onTaskUpdate(task.id, { parentTaskId: parent?.parentTaskId || null });
-            }
-          } else if (rowIdx > 0) {
-            const aboveTask = rows[rowIdx - 1].task;
-            if (aboveTask.id !== task.parentTaskId) {
-              onTaskUpdate(task.id, { parentTaskId: aboveTask.id });
-            }
-          }
-        } else if (onBulkUpdate) {
-          // Multi-task indent/outdent via bulk API
-          if (indent === 'outdent') {
-            // Outdent: all selected tasks that share the same parent get promoted
-            // Group by parent and outdent each group
-            const grouped = new Map<string, string[]>();
-            const rowByTaskId = firstByKey(rows, r => r.task.id);
-            const taskById = firstByKey(tasks, t => t.id);
-            for (const taskId of idsToProcess) {
-              const task = rowByTaskId.get(taskId)?.task;
-              if (!task?.parentTaskId) continue;
-              const parent = taskById.get(task.parentTaskId);
-              const newParent = parent?.parentTaskId || '';
-              const list = grouped.get(newParent) || [];
-              list.push(taskId);
-              grouped.set(newParent, list);
-            }
-            for (const [newParentId, taskIds] of grouped) {
-              onBulkUpdate(taskIds, 'parentTaskId', newParentId || '');
-            }
-          } else {
-            // Indent: find the task above the first selected one
-            const firstIdx = rows.findIndex(r => r.task.id === idsToProcess[0]);
-            if (firstIdx > 0) {
-              let parentTask: GanttTask | null = null;
-              for (let i = firstIdx - 1; i >= 0; i--) {
-                if (!selectedIds.has(rows[i].task.id)) {
-                  parentTask = rows[i].task;
-                  break;
-                }
-              }
-              if (parentTask) {
-                onBulkUpdate(idsToProcess, 'parentTaskId', parentTask.id);
-              }
-            }
-          }
-        }
+        onIndent(indent, idsToProcess);
         return;
       }
+
+      // Escape also clears the selected rows (the bar above the grid says so)
+      if (e.key === 'Escape' && someSelected) clearSelection?.();
 
       // Arrows, Enter/F2 to edit, Escape to leave the cell; Enter on a row focuses its first field
       handleGridNavKey(e, {
@@ -248,7 +199,7 @@ export function useGridKeyboard({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, workCalendar, rowNumToTaskId, later, grid]);
+  }, [focusedCell, editingCell, rows, rowTasks, visibleFieldOrder, onTaskUpdate, activeTaskId, onTaskSelect, startEditing, tasks, getTaskFieldValue, copiedValue, copiedTasks, onDuplicateTasks, someSelected, selectedIds, onTaskReorder, onIndent, clearSelection, workCalendar, rowNumToTaskId, later, grid]);
 
   // When editing ends, restore focus to that cell
   useRestoreFocusAfterEdit(editingCell, setFocusedCell, grid.refocusAfterEdit);

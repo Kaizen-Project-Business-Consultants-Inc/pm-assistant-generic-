@@ -110,6 +110,12 @@ export class SchedulingApi extends ApiBase {
     return response.data;
   }
 
+  /** Indent / outdent tasks as one Schedule History change (undo with undoScheduleChange). Refused moves come back as a 400 with the reason. */
+  async indentTasks(scheduleId: string, input: { taskIds: string[]; direction: 'indent' | 'outdent'; underTaskId?: string }) {
+    const response = await this.api.post(`/schedules/${scheduleId}/indent`, input);
+    return response.data as { moved: Array<{ taskId: string; newParentId: string | null }>; changeId: string | null };
+  }
+
   async rejectScheduleFixProposal(scheduleId: string, proposalId: string, feedback?: string) {
     const response = await this.api.post(`/schedules/${scheduleId}/review/proposals/${proposalId}/reject`, { feedback });
     return response.data;

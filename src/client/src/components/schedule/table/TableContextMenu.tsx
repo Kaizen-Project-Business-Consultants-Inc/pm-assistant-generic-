@@ -1,19 +1,21 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { PlusCircle, Pencil, Trash2, CornerDownLeft, CornerDownRight } from 'lucide-react';
 import type { GanttTask } from './types';
+import { useMenuKeyboard } from '../shared/hooks/useMenuKeyboard';
+import type { IndentDirection } from '../shared/indentPlan';
 
 interface TableContextMenuProps {
   x: number;
   y: number;
   task: GanttTask;
   selectedIds: Set<string>;
-  visibleSorted: GanttTask[];
   onInsertBefore?: (taskId: string, parentTaskId?: string) => void;
   onInsertAfter?: (taskId: string, parentTaskId?: string) => void;
   onInlineInsert?: (afterTaskId: string, parentTaskId?: string) => void;
   onTaskClick: (task: GanttTask) => void;
-  onOutdent: (taskId: string) => void;
-  onIndent: (taskId: string, aboveTaskId: string) => void;
+  /** Which of Outdent / Indent apply to the right-clicked row (or the selection it is in) */
+  indentItems: { outdent: boolean; indent: boolean };
+  onIndent: (direction: IndentDirection) => void;
   onDelete: (taskIds: string[]) => void;
   onClose: () => void;
 }
@@ -23,26 +25,33 @@ export const TableContextMenu = React.memo(function TableContextMenu({
   y,
   task,
   selectedIds,
-  visibleSorted,
   onInsertBefore,
   onInsertAfter,
   onInlineInsert,
   onTaskClick,
-  onOutdent,
+  indentItems,
   onIndent,
   onDelete,
   onClose,
 }: TableContextMenuProps) {
-  const idx = visibleSorted.findIndex(t => t.id === task.id);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const onKeyDown = useMenuKeyboard(menuRef, onClose);
 
   return (
     <div
+      ref={menuRef}
+      role="menu"
+      aria-label="Row menu"
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
       className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[180px]"
       style={{ left: x, top: y }}
       onClick={(e) => e.stopPropagation()}
     >
       {onInsertBefore && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
           onClick={() => { onInsertBefore(task.id, task.parentTaskId || undefined); onClose(); }}
         >
@@ -51,6 +60,8 @@ export const TableContextMenu = React.memo(function TableContextMenu({
       )}
       {(onInlineInsert || onInsertAfter) && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
           onClick={() => {
             if (onInlineInsert) {
@@ -65,29 +76,37 @@ export const TableContextMenu = React.memo(function TableContextMenu({
         </button>
       )}
       <button
+          type="button"
+          role="menuitem"
         className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
         onClick={() => { onTaskClick(task); onClose(); }}
       >
         <Pencil className="w-3.5 h-3.5" /> Edit Task
       </button>
-      {task.parentTaskId && (
+      {indentItems.outdent && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-          onClick={() => { onOutdent(task.id); onClose(); }}
+          onClick={() => { onIndent('outdent'); onClose(); }}
         >
           <CornerDownLeft className="w-3.5 h-3.5" /> Outdent
         </button>
       )}
-      {idx > 0 && (
+      {indentItems.indent && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-          onClick={() => { onIndent(task.id, visibleSorted[idx - 1].id); onClose(); }}
+          onClick={() => { onIndent('indent'); onClose(); }}
         >
           <CornerDownRight className="w-3.5 h-3.5" /> Indent
         </button>
       )}
-      <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+      <div role="separator" className="border-t border-gray-200 dark:border-gray-700 my-1" />
       <button
+          type="button"
+          role="menuitem"
         className="w-full text-left px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
         onClick={() => {
           const ids = new Set(selectedIds);

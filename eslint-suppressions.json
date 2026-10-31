@@ -667,7 +667,7 @@
   },
   "src/client/src/components/schedule/TableView.tsx": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 3
+      "count": 2
     },
     "jsx-a11y/no-autofocus": {
       "count": 2
@@ -703,14 +703,6 @@
   "src/client/src/components/schedule/calendar/WorkingCalendarPanel.tsx": {
     "@typescript-eslint/no-floating-promises": {
       "count": 2
-    }
-  },
-  "src/client/src/components/schedule/gantt/GanttContextMenu.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
     }
   },
   "src/client/src/components/schedule/gantt/GanttGridPanel.tsx": {
@@ -797,9 +789,6 @@
     }
   },
   "src/client/src/components/schedule/gantt/hooks/useGridKeyboard.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 2
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },
@@ -833,14 +822,6 @@
       "count": 1
     }
   },
-  "src/client/src/components/schedule/table/TableContextMenu.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "src/client/src/components/schedule/table/TableHeaderRow.tsx": {
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
@@ -855,9 +836,6 @@
     }
   },
   "src/client/src/components/schedule/table/hooks/useTableKeyboard.ts": {
-    "@typescript-eslint/no-floating-promises": {
-      "count": 2
-    },
     "react-hooks/exhaustive-deps": {
       "count": 1
     },

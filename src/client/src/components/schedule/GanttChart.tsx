@@ -47,6 +47,8 @@ import { isLockedCell } from './summaryRollup';
 import { savedViewSortField } from './sortValues';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 import { firstByKey } from '../../utils/lookup';
+import { useIndentTasks, IndentNotice, type MoveTasksUnder } from './shared/hooks/useIndentTasks';
+import { menuTargetIds, indentAvailability, selectionHint } from './shared/indentPlan';
 
 // Re-export types for external consumers
 export type { TaskDependencyRef, GanttTask } from './gantt/types';
@@ -77,6 +79,7 @@ export function GanttChart({
   onTaskUpdate,
   onTaskReorder,
   onBulkUpdate,
+  onMoveTasks,
   onBulkDelete,
   canUndo,
   canRedo,
@@ -143,6 +146,8 @@ export function GanttChart({
   onTaskReorder?: (updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => void;
   /** Called when bulk field update is applied to selected tasks */
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
+  /** Indent / outdent: move these tasks to their new parents in one save, with one Undo message */
+  onMoveTasks?: MoveTasksUnder;
   /** Called when bulk delete is applied to selected tasks */
   onBulkDelete?: (taskIds: string[], children?: DeleteChildren) => Promise<void>;
   /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
@@ -696,9 +701,18 @@ export function GanttChart({
   // Grid keyboard: focused cell + arrow keys, Enter/F2/Escape, copy/paste (cell and row),
   // Ctrl+D, Tab/Shift+Tab and Alt+Shift+Right/Left indent/outdent, Alt+Up/Down reorder; focus back
   // on a cell after editing
+  const rowTasksShown = useMemo(() => rows.map(r => r.task), [rows]);
+  // "the row above" is the plan's only while the list is neither sorted nor filtered
+  const inPlanOrder = !sortField && !searchQuery && activeFilterCount === 0 && (allTasks ?? tasks).length === tasks.length;
+  const { move: moveRows, notice: indentNotice } = useIndentTasks({ rowTasks: rowTasksShown, allTasks: allTasks ?? tasks, onMoveTasks, inPlanOrder });
+  // worked out once per open menu, not on every render
+  const menuIndentItems = useMemo(
+    () => (contextMenu && moveRows ? indentAvailability(menuTargetIds(contextMenu.task.id, selectedIds), rowTasksShown, allTasks ?? tasks, inPlanOrder) : undefined),
+    [contextMenu, moveRows, selectedIds, rowTasksShown, allTasks, tasks, inPlanOrder],
+  );
   const { focusedCell, pasteFlash, grid, focusRow } = useGridKeyboard({
     tasks, rows, editingCell, activeTaskId, onTaskUpdate, onTaskReorder, onTaskSelect,
-    onDuplicateTasks, onBulkUpdate, startEditing, getTaskFieldValue, rowNumToTaskId, workCalendar,
+    onDuplicateTasks, onIndent: moveRows, clearSelection: clearBulkState, startEditing, getTaskFieldValue, rowNumToTaskId, workCalendar,
     someSelected, selectedIds, setBulkMessage, orderedColumns, isColVisible,
   });
 
@@ -1124,6 +1138,18 @@ export function GanttChart({
         />
       )}
 
+      {/* Which rows Tab / Shift+Tab will move, and why a key did nothing */}
+      {onMoveTasks && (
+        <div role="status">
+          {someSelected && (
+            <div data-testid="gantt-selection-hint" className="flex items-center gap-2 px-3 py-1.5 text-xs border border-primary-300 dark:border-primary-700 bg-primary-50 dark:bg-primary-900/30 text-primary-900 dark:text-primary-100 rounded">
+              {selectionHint(rowTasksShown.filter(t => selectedIds.has(t.id)), selectedIds.size)}
+            </div>
+          )}
+        </div>
+      )}
+      {onMoveTasks && <IndentNotice notice={indentNotice} />}
+
       {/* Bulk action toolbar */}
       {someSelected && onBulkUpdate && (
         <GanttBulkActionBar
@@ -1327,6 +1353,8 @@ export function GanttChart({
           onTaskClick={onTaskClick}
           onDeleteTask={onDeleteTask}
           onBulkDelete={onBulkDelete}
+          indentItems={menuIndentItems}
+          onIndent={(direction) => moveRows?.(direction, menuTargetIds(contextMenu.task.id, selectedIds))}
           onClose={() => setContextMenu(null)}
           setPendingDeleteIds={setPendingDeleteIds}
         />

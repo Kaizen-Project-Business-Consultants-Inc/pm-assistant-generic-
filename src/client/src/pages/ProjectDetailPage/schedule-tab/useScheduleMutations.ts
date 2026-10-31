@@ -17,6 +17,7 @@ import { describeOverload } from '../../../utils/resourceLoad';
 import type { GanttTask } from '../../../components/schedule/GanttChart';
 import type { TaskFormData } from '../../../components/schedule/TaskFormModal';
 import { useUndoRedo } from '../../../hooks/useUndoRedo';
+import type { MoveTasksRequest } from '../../../components/schedule/shared/hooks/useIndentTasks';
 import { buildRowNumberMap } from '../../../components/schedule/gantt/types';
 import { buildBulkLinks, type BulkLinkMode } from '../../../components/schedule/bulkLink';
 import { announce } from '../../../utils/announce';
@@ -565,6 +566,37 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
     }
   }, [tasks, schedule.id, pushAction, dropFailedAction, queryClient, showSaveError]);
 
+  // Indent / outdent (keys, right-click menu, Gantt and Table): the server moves the tasks in one
+  // transaction with the outline rules (loops, milestones, links, depth) and records ONE Schedule
+  // History change, so Undo (here, Ctrl+Z, or History) puts every task back as it was, a task that
+  // became a heading included. A refusal comes back with its reason and nothing is moved or announced.
+  const handleMoveUnder = useCallback(async ({ direction, ids, underTaskId, message }: MoveTasksRequest) => {
+    const send = () => apiService.indentTasks(schedule.id, { taskIds: ids, direction, underTaskId });
+    let res;
+    try {
+      res = await send();
+    } catch (error) {
+      showSaveError(saveFailedMessage(`The change to ${ids.length} task${ids.length === 1 ? '' : 's'} was not saved`, error, TRY_AGAIN));
+      throw error;
+    }
+    planChanged();
+    if (res.moved.length === 0) {
+      // the plan changed since the screen was drawn: say so rather than stay silent
+      showSaveError('Nothing was moved: the plan changed since you last looked. Try again.');
+      return;
+    }
+    let changeId = res.changeId;
+    const action = {
+      description: message,
+      undo: async () => {
+        if (!changeId) { showSaveError('This move could not be undone: it was not recorded in Schedule History. Move the tasks back by hand.'); dropFailedAction(action); return; }
+        if (!(await undoThroughHistory(changeId))) dropFailedAction(action);
+      },
+      redo: async () => { changeId = (await send()).changeId; planChanged(); },
+    };
+    pushAction(action);
+  }, [schedule.id, planChanged, pushAction, dropFailedAction, undoThroughHistory, showSaveError]);
+
   // Link selected tasks (chain / all wait on a row / a row waits on all) with undo.
   // Rows are the fixed row numbers, so this works the same under any sort or filter.
   const rowNumbers = useMemo(() => buildRowNumberMap(tasks), [tasks]);
@@ -682,7 +714,7 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
     saveError, setSaveError,
     deleteMutation,
     loadWarning, setLoadWarning, loadTimerRef, warnIfOverloaded,
-    patchTaskInCache, updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate,
+    patchTaskInCache, updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate, handleMoveUnder,
     rowNumbers, handleBulkLink, handleGroupTasks, handleBulkDelete, handleDuplicateTasks,
     handleKanbanStatusChange,
   };

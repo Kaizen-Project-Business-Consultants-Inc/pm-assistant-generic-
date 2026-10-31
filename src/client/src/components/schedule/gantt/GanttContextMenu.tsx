@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import { CornerDownLeft, CornerDownRight } from 'lucide-react';
+import { useMenuKeyboard } from '../shared/hooks/useMenuKeyboard';
+import type { IndentDirection } from '../shared/indentPlan';
 import type { GanttTask } from './types';
 
 interface GanttContextMenuProps {
@@ -12,6 +15,9 @@ interface GanttContextMenuProps {
   onTaskClick?: (task: GanttTask) => void;
   onDeleteTask?: (taskId: string) => void;
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  /** Which of Outdent / Indent apply to the right-clicked row (or the selection it is in); none: the plan is read-only */
+  indentItems?: { outdent: boolean; indent: boolean };
+  onIndent?: (direction: IndentDirection) => void;
   onClose: () => void;
   setPendingDeleteIds: (ids: string[]) => void;
 }
@@ -27,17 +33,28 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
   onTaskClick,
   onDeleteTask,
   onBulkDelete,
+  indentItems,
+  onIndent,
   onClose,
   setPendingDeleteIds,
 }: GanttContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const onKeyDown = useMenuKeyboard(menuRef, onClose);
   return (
     <div
+      ref={menuRef}
+      role="menu"
+      aria-label="Row menu"
+      tabIndex={-1}
+      onKeyDown={onKeyDown}
       className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl py-1 min-w-[160px]"
       style={{ left: contextMenu.x, top: contextMenu.y }}
       onClick={(e) => e.stopPropagation()}
     >
       {onInsertBefore && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
           onClick={() => { onInsertBefore(contextMenu.task.id, contextMenu.task.parentTaskId); onClose(); }}
         >
@@ -49,6 +66,8 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
       )}
       {onInsertAfter && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
           onClick={() => { onInsertAfter(contextMenu.task.id, contextMenu.task.parentTaskId); onClose(); }}
         >
@@ -60,9 +79,11 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
       )}
       {(onInsertBeforeModal || onInsertAfterModal) && (
         <>
-          <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+          <div role="separator" className="border-t border-gray-200 dark:border-gray-600 my-1" />
           {onInsertBeforeModal && (
             <button
+          type="button"
+          role="menuitem"
               className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
               onClick={() => { onInsertBeforeModal(contextMenu.task.id, contextMenu.task.parentTaskId); onClose(); }}
             >
@@ -74,6 +95,8 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
           )}
           {onInsertAfterModal && (
             <button
+          type="button"
+          role="menuitem"
               className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
               onClick={() => { onInsertAfterModal(contextMenu.task.id, contextMenu.task.parentTaskId); onClose(); }}
             >
@@ -86,10 +109,12 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
         </>
       )}
       {(onInsertBefore || onInsertAfter || onInsertBeforeModal || onInsertAfterModal) && onDeleteTask && (
-        <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+        <div role="separator" className="border-t border-gray-200 dark:border-gray-600 my-1" />
       )}
       {onTaskClick && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
           onClick={() => { onTaskClick(contextMenu.task); onClose(); }}
         >
@@ -99,8 +124,30 @@ export const GanttContextMenu = React.memo(function GanttContextMenu({
           Edit Task
         </button>
       )}
+      {onIndent && indentItems?.outdent && (
+        <button
+          type="button"
+          role="menuitem"
+          className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+          onClick={() => { onIndent('outdent'); onClose(); }}
+        >
+          <CornerDownLeft className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" /> Outdent
+        </button>
+      )}
+      {onIndent && indentItems?.indent && (
+        <button
+          type="button"
+          role="menuitem"
+          className="w-full px-3 py-1.5 text-left text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+          onClick={() => { onIndent('indent'); onClose(); }}
+        >
+          <CornerDownRight className="w-3.5 h-3.5 text-gray-500" aria-hidden="true" /> Indent
+        </button>
+      )}
       {(onBulkDelete || onDeleteTask) && (
         <button
+          type="button"
+          role="menuitem"
           className="w-full px-3 py-1.5 text-left text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2"
           onClick={() => {
             if (onBulkDelete) {

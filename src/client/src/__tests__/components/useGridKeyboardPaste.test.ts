@@ -78,7 +78,9 @@ type Step =
 const KEYS: Array<Omit<Extract<Step, { kind: 'key' }>, 'kind'>> = [
   { key: 'ArrowUp' }, { key: 'ArrowDown' }, { key: 'ArrowUp' }, { key: 'ArrowDown' },
   { key: 'ArrowLeft' }, { key: 'ArrowRight' }, { key: 'Enter' }, { key: 'F2' }, { key: 'Escape' },
-  { key: 'Tab' }, { key: 'Tab', shift: true }, { key: 'Delete' }, { key: 'x' },
+  // Tab / Shift+Tab (indent) left out since 2026-10-30: indent and outdent now go through one shared
+  // plan with messages (indentPlan.test.ts, useGridKeyboard.test.ts), not the old per-key updates
+  { key: 'Delete' }, { key: 'x' },
   { key: 'c', ctrl: true }, { key: 'v', ctrl: true }, { key: 'c', ctrl: true }, { key: 'v', ctrl: true },
   { key: 'v', meta: true }, { key: 'd', ctrl: true }, { key: 'ArrowUp', alt: true }, { key: 'ArrowDown', alt: true },
   { key: 'ArrowRight', ctrl: true },
@@ -140,12 +142,14 @@ interface Harness {
   apply: (step: Exclude<Step, { kind: 'key' }>) => void;
 }
 
-function run(steps: Step[], mount: (trace: Trace) => Harness & { unmount: () => void }, { ignoreTabPrevent = false } = {}): Trace {
+function run(steps: Step[], mount: (trace: Trace) => Harness & { unmount: () => void }, { ignoreTabPrevent = false, skipCheckboxEscape = false } = {}): Trace {
   const trace: Trace = [];
   clipboardLog = [];
   const h = mount(trace);
   let target: HTMLElement = document.body;
   for (const step of steps) {
+    // Gantt only, since 2026-10-30: Escape on a row checkbox now also clears the selection (the old code ignored it)
+    if (skipCheckboxEscape && step.kind === 'key' && step.key === 'Escape' && (target as HTMLInputElement).type === 'checkbox') continue;
     if (step.kind === 'key') {
       const e = new KeyboardEvent('keydown', {
         key: step.key, ctrlKey: !!step.ctrl, metaKey: !!step.meta, shiftKey: !!step.shift, altKey: !!step.alt,
@@ -176,7 +180,7 @@ function run(steps: Step[], mount: (trace: Trace) => Harness & { unmount: () => 
 // ---------------------------------------------------------------------------------------------
 // Gantt: useGridKeyboard (new) vs the reference copy
 // ---------------------------------------------------------------------------------------------
-type GanttProps = Parameters<typeof useGridKeyboard>[0];
+type GanttProps = Parameters<typeof useGridKeyboard>[0] & { onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void> };
 interface GanttScenario { name: string; readOnly?: boolean; noBulk?: boolean; noDuplicate?: boolean; noReorder?: boolean; hidden?: string[] }
 
 function mountGantt(useHook: (p: GanttProps) => { focusedCell: unknown; pasteFlash: unknown }, sc: GanttScenario) {
@@ -235,8 +239,8 @@ describe('Gantt grid keyboard: same results as before the share', () => {
       let updates = 0; let flashes = 0;
       for (let seed = 1; seed <= 12; seed++) {
         const steps = script(seed * 7919 + sc.name.length, 220);
-        const before = run(steps, mountGantt(useGridKeyboardBefore as unknown as (p: GanttProps) => { focusedCell: unknown; pasteFlash: unknown }, sc));
-        const after = run(steps, mountGantt(useGridKeyboard, sc));
+        const before = run(steps, mountGantt(useGridKeyboardBefore as unknown as (p: GanttProps) => { focusedCell: unknown; pasteFlash: unknown }, sc), { skipCheckboxEscape: true });
+        const after = run(steps, mountGantt(useGridKeyboard, sc), { skipCheckboxEscape: true });
         expect(after).toEqual(before);
         updates += before.filter(t => Array.isArray(t) && t[0] === 'onTaskUpdate').length;
         flashes += before.filter(t => Array.isArray(t) && t[0] === 'key' && (t[3] as { p: unknown }).p).length;

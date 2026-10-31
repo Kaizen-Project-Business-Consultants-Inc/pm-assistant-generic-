@@ -286,7 +286,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     saveError, setSaveError,
     deleteMutation,
     loadWarning, setLoadWarning, loadTimerRef,
-    updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate,
+    updateTaskWithUndo, handleTaskDragEndWithUndo, handleTaskReorder, handleBulkUpdate, handleMoveUnder,
     rowNumbers, handleBulkLink, handleGroupTasks, handleBulkDelete, handleDuplicateTasks,
     handleKanbanStatusChange,
   } = useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
@@ -800,6 +800,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onTaskUpdate={canEdit ? updateTaskWithUndo : undefined}
           onTaskReorder={canEdit ? handleTaskReorder : undefined}
           onBulkUpdate={canEdit ? handleBulkUpdate : undefined}
+          onMoveTasks={canEdit ? handleMoveUnder : undefined}
           onBulkDelete={canEdit ? handleBulkDelete : undefined}
           canUndo={canUndo}
           canRedo={canRedo}
@@ -867,6 +868,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           baselineData={comparison}
           scheduleStartDate={schedule.startDate}
           onBulkUpdate={canEdit ? handleBulkUpdate : undefined}
+          onMoveTasks={canEdit ? handleMoveUnder : undefined}
           onBulkDelete={canEdit ? handleBulkDelete : undefined}
           onDeleteTask={canEdit ? requestDeleteTask : undefined}
           onInlineInsert={canEdit ? (name, afterTaskId, parentTaskId) => {

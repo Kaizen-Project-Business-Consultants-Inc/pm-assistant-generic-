@@ -127,6 +127,7 @@ const sections: Section[] = [
       'Drag-and-drop tasks in Kanban and Gantt views',
       'Task status is one of five: Not Started, On Track, Late, Completed, Blocked. An open task past its end date shows as Late by itself; a project manager can also mark a task Late by hand',
       'Changed your mind while dragging a bar or drawing a link in the Gantt (or moving a Table row)? Press Escape before letting go — nothing is saved',
+      'Indent or outdent a task in the Gantt or Table: right-click it and choose Indent or Outdent, or click in the list and press Tab / Shift+Tab (selected rows first). A message says what moved, with Undo, or why nothing could (for example "Nothing to outdent: ... is already at the top level"); a line above the Gantt names the selected rows the keys will move, and Escape clears them',
       'Table: switch on Est Days and Work in Columns (saved, and shared with the Gantt); click any column header to sort — empty values always go last',
       'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',
       'Tick several tasks and use Group to put them under a new heading (summary task)',

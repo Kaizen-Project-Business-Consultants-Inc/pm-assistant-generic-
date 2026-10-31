@@ -42,8 +42,10 @@ import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
 import { firstByKey } from '../../utils/lookup';
 import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
+import { useIndentTasks, IndentNotice } from './shared/hooks/useIndentTasks';
+import { menuTargetIds, indentAvailability } from './shared/indentPlan';
 
-export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, overbookedNotes, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
+export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onMoveTasks, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, overbookedNotes, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -669,23 +671,17 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   // Context menu state
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; task: GanttTask } | null>(null);
 
+  // Indent / outdent (keys and the right-click menu): one decision shared with the Gantt, one Undo
+  // message, and a line saying why when nothing can move
+  // "the row above" is the plan's only while the list is neither sorted, grouped nor filtered
+  const inPlanOrder = !sortField && !groupBy && (allTasks ?? tasks).length === tasks.length;
+  const { move: moveRows, notice: indentNotice } = useIndentTasks({ rowTasks: visibleSorted, allTasks: allTasks ?? tasks, onMoveTasks, inPlanOrder });
+  const menuIndentItems = useMemo(
+    () => (contextMenu && moveRows ? indentAvailability(menuTargetIds(contextMenu.task.id, selectedIds), visibleSorted, allTasks ?? tasks, inPlanOrder) : { outdent: false, indent: false }),
+    [contextMenu, moveRows, selectedIds, visibleSorted, allTasks, tasks, inPlanOrder],
+  );
+
   // Context menu handlers
-  const handleContextOutdent = useCallback((taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
-    if (task?.parentTaskId) {
-      const parent = tasks.find(t => t.id === task.parentTaskId);
-      onTaskUpdate?.(taskId, { parentTaskId: parent?.parentTaskId || null });
-    }
-  }, [tasks, onTaskUpdate]);
-
-  const handleContextIndent = useCallback((taskId: string, aboveTaskId: string) => {
-    if (onBulkUpdate) {
-      onBulkUpdate([taskId], 'parentTaskId', aboveTaskId);
-    } else {
-      onTaskUpdate?.(taskId, { parentTaskId: aboveTaskId });
-    }
-  }, [onBulkUpdate, onTaskUpdate]);
-
   const handleContextInlineInsert = useCallback((afterTaskId: string, parentTaskId?: string) => {
     setInlineInsert({ afterTaskId, parentTaskId });
   }, []);
@@ -696,7 +692,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   useTableKeyboard({
     tasks, visibleSorted, rowTasks, visibleFieldOrder, selectedIds, activeTaskId, editingCell,
     focusedCell, setFocusedCell, copiedValue, setCopiedValue, copiedTasks, setCopiedTasks, flashPaste,
-    contextMenu, setContextMenu, onTaskUpdate, onBulkUpdate, onDuplicateTasks, onTaskSelect,
+    contextMenu, setContextMenu, onTaskUpdate, onIndent: moveRows, onDuplicateTasks, onTaskSelect,
     startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess,
     workCalendar, rowNumToTaskId,
   });
@@ -1437,6 +1433,8 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         onLoadView={loadSavedView}
       />
 
+      {onMoveTasks && <IndentNotice notice={indentNotice} />}
+
       {/* Bulk action bar */}
       {someSelected && (
         <TableBulkActionBar
@@ -1761,13 +1759,12 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
           y={contextMenu.y}
           task={contextMenu.task}
           selectedIds={selectedIds}
-          visibleSorted={visibleSorted}
           onInsertBefore={onInsertBefore}
           onInsertAfter={onInsertAfter}
           onInlineInsert={onInlineInsert ? handleContextInlineInsert : undefined}
           onTaskClick={onTaskClick}
-          onOutdent={handleContextOutdent}
-          onIndent={handleContextIndent}
+          indentItems={menuIndentItems}
+          onIndent={(direction) => moveRows?.(direction, menuTargetIds(contextMenu.task.id, selectedIds))}
           onDelete={handleDeleteTasks}
           onClose={() => setContextMenu(null)}
         />

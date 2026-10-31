@@ -6,7 +6,6 @@ import {
   useRestoreFocusAfterEdit, rowsToCopy, copyFocusedCell, pasteIntoFocusedCell, handleGridNavKey,
   TABLE_KEYBOARD_RULES, useGridFocusScope, indentDirection, keyboardEntryCell, type GridCell,
 } from '../../shared/hooks/useGridKeyboardPaste';
-import { firstByKey, firstIndexByKey } from '../../../../utils/lookup';
 
 /**
  * The Table view's keyboard: Delete (the selection or the active row, after a confirm), cell
@@ -43,7 +42,7 @@ export function useTableKeyboard({
   contextMenu,
   setContextMenu,
   onTaskUpdate,
-  onBulkUpdate,
+  onIndent,
   onDuplicateTasks,
   onTaskSelect,
   startEditing,
@@ -73,7 +72,8 @@ export function useTableKeyboard({
   contextMenu: unknown;
   setContextMenu: (v: null) => void;
   onTaskUpdate?: (taskId: string, data: Record<string, unknown>) => void;
-  onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
+  /** Indent / outdent these tasks (useIndentTasks); none: the keys are left alone */
+  onIndent?: (direction: 'indent' | 'outdent', ids: string[]) => void;
   onDuplicateTasks?: (tasks: GanttTask[]) => void;
   onTaskSelect?: (task: GanttTask) => void;
   startEditing: (taskId: string, field: EditableField, task: GanttTask) => void;
@@ -157,47 +157,18 @@ export function useTableKeyboard({
       }
 
       // Tab / Shift+Tab (after a click in the grid) or Alt+Shift+Right / Left indent / outdent the
-      // selection, else the focused cell's row, else the active row — only when there is something
-      // to move and a way to save it; otherwise Tab moves the focus on as usual
+      // selection, else the focused cell's row, else the active row (useIndentTasks decides and says
+      // what moved, or why nothing did) — only when there is a way to save it; otherwise Tab moves
+      // the focus on as usual
       const indent = indentDirection(e);
-      const tabIds = indent && !isInput && (onBulkUpdate || onTaskUpdate)
+      const tabIds = indent && !isInput && onIndent
         ? (selectedIds.size > 0 ? Array.from(selectedIds)
           : focusedCell?.taskId ? [focusedCell.taskId]
           : activeTaskId ? [activeTaskId] : [])
         : [];
-      if (tabIds.length > 0) {
+      if (indent && tabIds.length > 0) {
         e.preventDefault();
-        if (indent === 'outdent') {
-          const taskById = firstByKey(tasks, t => t.id);
-          for (const id of tabIds) {
-            const task = taskById.get(id);
-            if (task?.parentTaskId) {
-              const parent = taskById.get(task.parentTaskId);
-              if (onBulkUpdate) {
-                onBulkUpdate([id], 'parentTaskId', parent?.parentTaskId || '');
-              } else {
-                onTaskUpdate?.(id, { parentTaskId: parent?.parentTaskId || null });
-              }
-            }
-          }
-        } else {
-          const flatList = visibleSorted;
-          const rowIndexById = firstIndexByKey(flatList, t => t.id);
-          const isTarget = new Set(tabIds);
-          for (const id of tabIds) {
-            const idx = rowIndexById.get(id) ?? -1;
-            if (idx > 0) {
-              const above = flatList[idx - 1];
-              if (!isTarget.has(above.id)) {
-                if (onBulkUpdate) {
-                  onBulkUpdate([id], 'parentTaskId', above.id);
-                } else {
-                  onTaskUpdate?.(id, { parentTaskId: above.id });
-                }
-              }
-            }
-          }
-        }
+        onIndent?.(indent, tabIds);
         return;
       }
       // Alt+Shift+arrows with nothing to move (or read-only) don't move the focused cell either
@@ -216,7 +187,7 @@ export function useTableKeyboard({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [selectedIds, activeTaskId, tasks, contextMenu, onBulkUpdate, onTaskUpdate, focusedCell, editingCell, visibleSorted, rowTasks, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar, rowNumToTaskId, grid]);
+  }, [selectedIds, activeTaskId, tasks, contextMenu, onIndent, focusedCell, editingCell, visibleSorted, rowTasks, visibleFieldOrder, copiedValue, copiedTasks, onDuplicateTasks, onTaskSelect, startEditing, getTaskFieldValue, handleBulkDelete, handleDeleteTasks, showBulkSuccess, workCalendar, rowNumToTaskId, grid]);
 
   // Restore focusedCell when editing ends
   useRestoreFocusAfterEdit(editingCell, setFocusedCell, grid.refocusAfterEdit);

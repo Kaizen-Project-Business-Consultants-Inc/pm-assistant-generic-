@@ -81,12 +81,12 @@ const gantt: View = {
   name: 'Gantt',
   mount: ({ activeTaskId = null, selected = [], readOnly = false }) => {
     const rows = buildFlatRows(TASKS);
-    const fns = { onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}), onTaskReorder: vi.fn(), onDuplicateTasks: vi.fn() };
+    const fns = { onTaskUpdate: vi.fn(), onIndent: vi.fn(), onTaskReorder: vi.fn(), onDuplicateTasks: vi.fn() };
     const hook = renderHook(() => useGridKeyboard({
       tasks: TASKS, rows, editingCell: null, activeTaskId,
       onTaskUpdate: readOnly ? undefined : fns.onTaskUpdate,
       onTaskReorder: fns.onTaskReorder, onTaskSelect: vi.fn(), onDuplicateTasks: fns.onDuplicateTasks,
-      onBulkUpdate: fns.onBulkUpdate, startEditing: vi.fn(), getTaskFieldValue: (t, f) => String((t as unknown as Record<string, unknown>)[f] ?? ''),
+      onIndent: fns.onIndent, startEditing: vi.fn(), getTaskFieldValue: (t, f) => String((t as unknown as Record<string, unknown>)[f] ?? ''),
       rowNumToTaskId: new Map(rows.map((r, i) => [i + 1, r.task.id])), workCalendar: null,
       someSelected: selected.length > 0, selectedIds: new Set(selected), setBulkMessage: vi.fn(),
       orderedColumns: GANTT_COLUMNS, isColVisible: () => true,
@@ -102,7 +102,7 @@ const table: View = {
   name: 'Table',
   mount: ({ activeTaskId = null, selected = [], readOnly = false, contextMenu = false }) => {
     const fns = {
-      onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}), onDuplicateTasks: vi.fn(),
+      onTaskUpdate: vi.fn(), onIndent: vi.fn(), onDuplicateTasks: vi.fn(),
       handleBulkDelete: vi.fn(), handleDeleteTasks: vi.fn(),
     };
     const setContextMenu = vi.fn();
@@ -111,7 +111,7 @@ const table: View = {
       useTableKeyboard({
         tasks: TASKS, visibleSorted: TASKS, visibleFieldOrder: ['name', 'status'], selectedIds: new Set(selected),
         activeTaskId, editingCell: null, ...cell, contextMenu: contextMenu ? { x: 1, y: 1 } : null, setContextMenu,
-        onTaskUpdate: readOnly ? undefined : fns.onTaskUpdate, onBulkUpdate: readOnly ? undefined : fns.onBulkUpdate,
+        onTaskUpdate: readOnly ? undefined : fns.onTaskUpdate, onIndent: readOnly ? undefined : fns.onIndent,
         onDuplicateTasks: fns.onDuplicateTasks, onTaskSelect: vi.fn(), startEditing: vi.fn(),
         getTaskFieldValue: () => '', handleBulkDelete: fns.handleBulkDelete, handleDeleteTasks: fns.handleDeleteTasks,
         showBulkSuccess: vi.fn(), workCalendar: null, rowNumToTaskId: new Map(),
@@ -157,7 +157,7 @@ for (const view of [gantt, table]) {
       mouseDown(page.row);
       const e = key('Tab'); // the browser focuses <body> after a click on a row
       expect(e.defaultPrevented).toBe(true);
-      // (the Gantt sends one task as an update, the Table through the bulk update)
+      // (both hand the rows to the shared indent step, once)
       expect(v.changed().length).toBe(1);
       // a click on a row checkbox counts as the grid too (the Gantt also takes Tab from the
       // checkbox itself, useGridKeyboard.test.ts; the Table leaves keys typed in any input alone)
@@ -287,8 +287,8 @@ for (const view of [gantt, table]) {
       expect(v.changed()).toEqual([]);
       const e = key('ArrowRight', page.grid, { altKey: true, shiftKey: true });
       expect(e.defaultPrevented).toBe(true);
-      expect(v.changed().length).toBe(1); // B goes under A (one update, or one bulk update)
-      expect(JSON.stringify(v.changed()[0])).toContain('"a"');
+      expect(v.changed().length).toBe(1); // B is handed to the shared indent step
+      expect(v.changed()[0]).toEqual(['indent', ['b']]);
       // Tab and Shift+Tab move out of the grid: not taken, nothing indented
       expect(key('Tab', page.grid).defaultPrevented).toBe(false);
       expect(key('Tab', page.grid, { shiftKey: true }).defaultPrevented).toBe(false);

@@ -28,6 +28,7 @@ const api = vi.hoisted(() => ({
   undoScheduleChange: vi.fn(),
   bulkUpdateTasks: vi.fn(),
   bulkLinkTasks: vi.fn(),
+  indentTasks: vi.fn(),
   groupTasks: vi.fn(),
   bulkDeleteTasks: vi.fn(),
   checkResourceLoad: vi.fn(),
@@ -848,5 +849,27 @@ describe('savedChangedOtherTasks', () => {
     expect(savedChangedOtherTasks({ task: {} }, { parentTaskId: null })).toBe(true);
     expect(savedChangedOtherTasks({ task: {}, cascadedChanges: { affectedTasks: [] } }, { name: 'x' })).toBe(true);
     expect(savedChangedOtherTasks({ task: {}, rescheduled: [{}] }, { name: 'x' })).toBe(true);
+  });
+});
+
+describe('indent / outdent (handleMoveUnder)', () => {
+  it('an empty answer says the plan changed, and records no Undo', async () => {
+    api.indentTasks.mockResolvedValue({ moved: [], changeId: null });
+    const { result } = setup();
+    await act(async () => { await result.current.handleMoveUnder({ direction: 'outdent', ids: ['b'], message: 'Outdented "Beta" to the top level.' }); });
+    expect(api.indentTasks).toHaveBeenCalledWith('s1', { taskIds: ['b'], direction: 'outdent', underTaskId: undefined });
+    expect(result.current.saveError).toBe('Nothing was moved: the plan changed since you last looked. Try again.');
+    expect(result.current.canUndo).toBe(false);
+  });
+
+  it('a move is saved once and Undo goes through Schedule History', async () => {
+    api.indentTasks.mockResolvedValue({ moved: [{ taskId: 'b', newParentId: null }], changeId: 'M1' });
+    api.undoScheduleChange.mockResolvedValue({});
+    const { result } = setup();
+    await act(async () => { await result.current.handleMoveUnder({ direction: 'outdent', ids: ['b'], message: 'Outdented "Beta" to the top level.' }); });
+    expect(result.current.canUndo).toBe(true);
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(api.undoScheduleChange).toHaveBeenCalledWith('s1', 'M1');
   });
 });

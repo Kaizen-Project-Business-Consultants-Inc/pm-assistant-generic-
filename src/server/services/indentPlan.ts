@@ -5,13 +5,11 @@ type MovePlan = { moves: Move[]; target: string } | { refuse: string; error: str
 
 const refuse = (text: string, error: string): MovePlan => ({ refuse: text, error });
 
-/** indent: under the row above the FIRST named task (the Tab key); a task whose own heading is also named stays with it */
-function planIndent(ordered: PlanTask[], all: PlanTask[], row: (id: string) => number, selected: Set<string>): MovePlan {
+/** indent: under the row above the FIRST named task (the Tab key) */
+function planIndent(ordered: PlanTask[], all: PlanTask[], row: (id: string) => number): MovePlan {
   const above = all.find(t => row(t.id) === row(ordered[0].id) - 1);
   if (!above) return refuse('There is no row above the first task to put it under, so nothing was moved.', 'Nothing above');
-  const moves = ordered
-    .filter(t => !(t.parentTaskId && selected.has(t.parentTaskId)) && t.parentTaskId !== above.id)
-    .map(t => ({ id: t.id, parentId: above.id }));
+  const moves = ordered.filter(t => t.parentTaskId !== above.id).map(t => ({ id: t.id, parentId: above.id }));
   return { moves, target: above.id };
 }
 
@@ -19,6 +17,19 @@ function planIndent(ordered: PlanTask[], all: PlanTask[], row: (id: string) => n
 function planOutdent(ordered: PlanTask[], byId: Map<string, PlanTask>): MovePlan {
   const moves = ordered.filter(t => t.parentTaskId).map(t => ({ id: t.id, parentId: byId.get(t.parentTaskId!)?.parentTaskId ?? null }));
   return { moves, target: '' };
+}
+
+/** A named task whose heading (at any level) is also named moves with it: only the topmost are moved */
+function withoutPickedDescendants(ordered: PlanTask[], byId: Map<string, PlanTask>, selected: Set<string>): PlanTask[] {
+  const hasPickedAncestor = (t: PlanTask) => {
+    const seen = new Set<string>();
+    for (let cur = t.parentTaskId; cur && !seen.has(cur); cur = byId.get(cur)?.parentTaskId) {
+      if (selected.has(cur)) return true;
+      seen.add(cur);
+    }
+    return false;
+  };
+  return ordered.filter(t => !hasPickedAncestor(t));
 }
 
 /** Every named task goes under the named heading, which must be in the same plan and not one of them */
@@ -37,10 +48,10 @@ export function planMoves(
   const row = (id: string) => rowOf.get(id) ?? 0;
   const label = (id: string) => `row ${row(id)} "${byId.get(id)?.name ?? id}"`;
   const selected = new Set(ids);
-  const ordered = ids.map(id => byId.get(id)!).sort((a, b) => row(a.id) - row(b.id));
+  const ordered = withoutPickedDescendants(ids.map(id => byId.get(id)!).sort((a, b) => row(a.id) - row(b.id)), byId, selected);
 
   const planned = how.underTaskId ? planUnder(ordered, byId, selected, String(how.underTaskId), label)
-    : how.direction === 'indent' ? planIndent(ordered, all, row, selected)
+    : how.direction === 'indent' ? planIndent(ordered, all, row)
       : planOutdent(ordered, byId);
   if ('refuse' in planned) return planned;
 

@@ -1,6 +1,7 @@
 import type { WorkCalendar } from '../../../utils/workingDays';
 import type { OnBulkLink } from '../BulkLinkControls';
 import type { OnGroupTasks } from '../BulkGroupControls';
+import type { MoveTasksUnder } from '../shared/hooks/useIndentTasks';
 import type { GanttTask } from '../GanttChart';
 import type { DeleteChildren } from '../../../utils/deleteSummaryChoice';
 import type { ColumnKey, ColumnDef } from '../tableColumns';
@@ -50,6 +51,8 @@ export interface TableViewProps {
   baselineData?: { taskVariances: BaselineTaskVariance[] };
   scheduleStartDate?: string;
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
+  /** Indent / outdent: move these tasks to their new parents in one save, with one Undo message */
+  onMoveTasks?: MoveTasksUnder;
   onBulkDelete?: (taskIds: string[], children?: DeleteChildren) => Promise<void>;
   /** Link the selected tasks (chain / all wait on a row / a row waits on all) */
   onBulkLink?: OnBulkLink;

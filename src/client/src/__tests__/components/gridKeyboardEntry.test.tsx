@@ -42,7 +42,7 @@ beforeEach(() => { localStorage.clear(); });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); document.body.innerHTML = ''; });
 
 function renderGantt(over: Partial<Parameters<typeof GanttChart>[0]> = {}) {
-  const fns = { onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}), onBulkDelete: vi.fn(async () => {}), onDeleteTask: vi.fn() };
+  const fns = { onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}), onMoveTasks: vi.fn(async () => {}), onBulkDelete: vi.fn(async () => {}), onDeleteTask: vi.fn() };
   const utils = wrap(<GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s-kbd" activeTaskId="b" {...fns} {...over} />);
   const grid = utils.container.querySelector('[role="treegrid"]') as HTMLElement;
   const confirmOpen = () => utils.queryByText('Delete Task') !== null;
@@ -96,7 +96,7 @@ describe('Gantt: Delete only acts while working in the list', () => {
   });
 });
 
-function TableHarness(props: { onTaskUpdate?: (id: string, d: Record<string, unknown>) => void; onBulkUpdate?: (ids: string[], f: string, v: string) => Promise<void>; onTaskSelect?: (t: GanttTask) => void }) {
+function TableHarness(props: { onTaskUpdate?: (id: string, d: Record<string, unknown>) => void; onBulkUpdate?: (ids: string[], f: string, v: string) => Promise<void>; onMoveTasks?: (req: { direction: 'indent' | 'outdent'; ids: string[]; underTaskId?: string; message: string }) => Promise<void>; onTaskSelect?: (t: GanttTask) => void }) {
   const columnState = useColumnState('s-kbd-table');
   return <TableView tasks={TASKS} scheduleId="s-kbd-table" onTaskClick={() => {}} columnState={columnState} {...props} />;
 }
@@ -105,8 +105,8 @@ const views = [
   {
     name: 'Gantt',
     mount: (editable: boolean) => {
-      const g = renderGantt(editable ? {} : { onTaskUpdate: undefined, onBulkUpdate: undefined, activeTaskId: null });
-      return { grid: g.grid, changed: () => [...g.fns.onTaskUpdate.mock.calls, ...g.fns.onBulkUpdate.mock.calls] };
+      const g = renderGantt(editable ? {} : { onTaskUpdate: undefined, onBulkUpdate: undefined, onMoveTasks: undefined, activeTaskId: null });
+      return { grid: g.grid, changed: () => [...g.fns.onTaskUpdate.mock.calls, ...g.fns.onMoveTasks.mock.calls] };
     },
     mountUnselected: () => {
       const onTaskSelect = vi.fn();
@@ -117,13 +117,13 @@ const views = [
   {
     name: 'Table',
     mount: (editable: boolean) => {
-      const fns = { onTaskUpdate: vi.fn(), onBulkUpdate: vi.fn(async () => {}) };
+      const fns = { onTaskUpdate: vi.fn(), onMoveTasks: vi.fn(async () => {}) };
       const utils = wrap(<TableHarness {...(editable ? fns : {})} />);
-      return { grid: utils.container.querySelector('[role="treegrid"]') as HTMLElement, changed: () => [...fns.onTaskUpdate.mock.calls, ...fns.onBulkUpdate.mock.calls] };
+      return { grid: utils.container.querySelector('[role="treegrid"]') as HTMLElement, changed: () => [...fns.onTaskUpdate.mock.calls, ...fns.onMoveTasks.mock.calls] };
     },
     mountUnselected: () => {
       const onTaskSelect = vi.fn();
-      const utils = wrap(<TableHarness onTaskUpdate={vi.fn()} onTaskSelect={onTaskSelect} />);
+      const utils = wrap(<TableHarness onTaskUpdate={vi.fn()} onMoveTasks={vi.fn(async () => {})} onTaskSelect={onTaskSelect} />);
       return { grid: utils.container.querySelector('[role="treegrid"]') as HTMLElement, selected: () => onTaskSelect.mock.calls.map(c => (c[0] as GanttTask).id) };
     },
   },
@@ -196,23 +196,24 @@ for (const view of views) {
  * only (the Gantt's grid listener is off while a cell is edited; the Table's left Escape in a text
  * field alone), so "working in the list" stayed on. Now Escape always ends a mouse-started list mode.
  */
-function SelectingGantt({ onTaskUpdate }: { onTaskUpdate: (id: string, d: Record<string, unknown>) => void }) {
+type Move = (req: { direction: 'indent' | 'outdent'; ids: string[]; underTaskId?: string; message: string }) => Promise<void>;
+function SelectingGantt({ onMove }: { onMove: Move }) {
   const [active, setActive] = useState<string | null>(null);
   return <GanttChart tasks={TASKS} scheduleName="Plan" scheduleId="s-kbd-esc" activeTaskId={active}
-    onTaskSelect={t => setActive(t.id)} onTaskUpdate={onTaskUpdate} />;
+    onTaskSelect={t => setActive(t.id)} onTaskUpdate={() => {}} onMoveTasks={onMove} />;
 }
-function SelectingTable({ onTaskUpdate }: { onTaskUpdate: (id: string, d: Record<string, unknown>) => void }) {
+function SelectingTable({ onMove }: { onMove: Move }) {
   const [active, setActive] = useState<string | undefined>(undefined);
   const columnState = useColumnState('s-kbd-esc-table');
   return <TableView tasks={TASKS} scheduleId="s-kbd-esc-table" onTaskClick={() => {}} columnState={columnState}
-    activeTaskId={active} onTaskSelect={t => setActive(t.id)} onTaskUpdate={onTaskUpdate} />;
+    activeTaskId={active} onTaskSelect={t => setActive(t.id)} onTaskUpdate={() => {}} onMoveTasks={onMove} />;
 }
 
 for (const [name, View] of [['Gantt', SelectingGantt], ['Table', SelectingTable]] as const) {
   describe(`${name}: Escape after an indent ends list mode (click → Tab → Shift+Tab → click → Escape → Tab)`, () => {
     it('the last Tab moves on and indents nothing', () => {
-      const onTaskUpdate = vi.fn();
-      const utils = wrap(<View onTaskUpdate={onTaskUpdate} />);
+      const onTaskUpdate = vi.fn(async () => {});
+      const utils = wrap(<View onMove={onTaskUpdate} />);
       const nameCell = () => utils.getAllByText('Bravo')[0];
       const click = () => { fireEvent.mouseDown(nameCell()); fireEvent.click(nameCell()); };
       click(); // selects Bravo
@@ -229,8 +230,8 @@ for (const [name, View] of [['Gantt', SelectingGantt], ['Table', SelectingTable]
     });
 
     it('on a freshly loaded page, click → Escape → Tab moves on too (unchanged)', () => {
-      const onTaskUpdate = vi.fn();
-      const utils = wrap(<View onTaskUpdate={onTaskUpdate} />);
+      const onTaskUpdate = vi.fn(async () => {});
+      const utils = wrap(<View onMove={onTaskUpdate} />);
       fireEvent.mouseDown(utils.getAllByText('Bravo')[0]); fireEvent.click(utils.getAllByText('Bravo')[0]);
       keyOn(document.body, 'Escape');
       expect(keyOn(document.body, 'Tab').defaultPrevented).toBe(false);
