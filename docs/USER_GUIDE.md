@@ -3629,6 +3629,12 @@ The **AI Scan** button in the RAID toolbar triggers a project-scoped analysis:
 
 AI Scan does not overwrite or modify existing records — it only proposes new ones.
 
+### One reporting period per task (Oct 2026)
+
+**For the project's Manager and Owner only.** A task should not need more working time than you report on. In **Edit -> Reporting period** choose **1 week** (default), **2 weeks** or **1 month**, and tick **Warn about tasks longer than one reporting period**. The **Limit used for this project** (for example "5 working days / 37.5 hours") is worked out from the project calendar and working hours, at the project's status date; holidays shorten it, and you cannot type a number. New projects start with the warning on; older projects have it off until you turn it on. It only warns: nothing is blocked or changed.
+
+When it is on, **Review** shows **Tasks longer than one reporting period** (a Medium finding, so open the Medium group). A task is listed when its working days are over the limit, or its planned effort (Work Hours, or the hours planned on its people) shared between the people booked is over the hours limit per person; the finding says which, and suggests splitting by deliverable. Phases, milestones, zero-length rows, finished tasks and recurring or standing work (status reports, meetings) are never listed. **Go to task** lights the task in the plan. **Cannot be split** asks for a short reason, then takes the task out of the count and lists it under **Accepted exceptions** with the reason, who and when; **Remove** there puts it back into the count.
+
 ### Weekly PM review (Oct 2026)
 
 **For the project's Manager and Owner only** (and admins/PMO). Team members, viewers and executives don't see it.
@@ -3637,6 +3643,7 @@ Every Friday at about 7 am (your company's time zone) Kovarti does the PM's week
 
 What it looks for:
 - **Finish date at risk** — a task on the critical path behind where it should be by now (working days)
+- **Not finished this period** (a list under the decisions, not one of the 5) — tasks planned to finish on or before the status date that are not Completed: task, planned finish, status, owner. Read-only; tasks finished on time are not listed
 - **Task slipping** — a task more than 5 working days behind that still has slack
 - **Someone is overloaded** — a person over their hours in the next two weeks, all projects counted
 - **Cost running over** — cost efficiency (CPI) below 0.90 (only when the project has a budget)

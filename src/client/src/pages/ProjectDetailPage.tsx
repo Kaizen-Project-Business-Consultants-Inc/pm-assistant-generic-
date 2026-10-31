@@ -281,6 +281,8 @@ export function ProjectDetailPage() {
         void queryClient.invalidateQueries({ queryKey: ['tasks'] });
         void queryClient.invalidateQueries({ queryKey: ['project-team-pool', id] });
       }
+      // the reporting-period warning changed: the server re-runs the plan's review shortly after (the usual re-run notice refreshes it)
+      if ('reportingPeriod' in data) void queryClient.invalidateQueries({ queryKey: ['reporting-period-limit', id] });
       setShowEditProject(false);
     },
   });

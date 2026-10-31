@@ -23,6 +23,9 @@ import { projectRepository } from '../../database/ProjectRepository';
 import { userService } from '../../services/UserService';
 import logger from '../../utils/logger';
 import { PROJECT_TYPES } from '../../constants/projectTypes';
+import { scheduleReviewService } from '../../services/ScheduleReviewService';
+import { REPORTING_PERIODS, describeLimit } from '../../services/scheduleReview/reportingPeriod';
+import { planChanged } from '../../services/domainEvents';
 import { duplicateProjectNameReply } from '../../utils/duplicateProject';
 import { projectGroupRepository } from '../../database/ProjectGroupRepository';
 import { projectGroupService } from '../../services/ProjectGroupService';
@@ -104,12 +107,23 @@ export const updateProjectSchema = createProjectSchema.partial().extend({
    * A plain calendar date — never a timestamp.
    */
   statusDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Status date must be YYYY-MM-DD').nullable().optional(),
+  /** "No task longer than one reporting period" (warn only): the period, and whether to warn */
+  reportingPeriod: z.enum(REPORTING_PERIODS).optional(),
+  periodRuleEnabled: z.boolean().optional(),
 });
 
 const statusUpdateSchema = z.object({
   status: z.enum(['planning', 'active', 'on_hold', 'completed', 'cancelled']),
   cancellationReason: z.string().max(2000).optional(),
 });
+
+/** The reporting-period rule changed: each plan's Schedule Review is re-run (debounced) so it shows the new limit */
+function rerunReviewIfPeriodRuleChanged(projectId: string, changed: { reportingPeriod?: string; periodRuleEnabled?: boolean }): void {
+  if (changed.reportingPeriod === undefined && changed.periodRuleEnabled === undefined) return;
+  scheduleService.findByProjectId(projectId)
+    .then(list => list.filter(sc => !sc.isScenario).forEach(sc => planChanged(sc.id)))
+    .catch(err => logger.warn('Reporting period change: review re-run not queued', { projectId, error: err?.message }));
+}
 
 async function rejectIfDemo(projectId: string, reply: FastifyReply): Promise<boolean> {
   const p = await projectService.findById(projectId);
@@ -306,6 +320,7 @@ export async function projectRoutes(fastify: FastifyInstance) {
       if (!project) {
         return reply.status(404).send({ error: 'Project not found', message: 'Project does not exist or you do not have access' });
       }
+      rerunReviewIfPeriodRuleChanged(id, updateData);
       // the client: the project's Manager/Owner sets or clears it (this route requires manager)
       if (clientId !== undefined) {
         if (clientId) await projectGroupService.assignProject(id, clientId);
@@ -333,6 +348,24 @@ export async function projectRoutes(fastify: FastifyInstance) {
       }
       logger.error('Update project error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to update project' });
+    }
+  });
+
+  // GET /:id/reporting-period-limit?period=week — what one reporting period holds on this project's calendar
+  // ("5 working days / 37.5 hours"), shown read-only next to the Reporting period choice in Edit project
+  fastify.get('/:id/reporting-period-limit', {
+    preHandler: [requireScope('read'), requireProjectAccess('manager')],
+    schema: { description: 'Working days and hours in one reporting period', tags: ['projects'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { id } = request.params as { id: string };
+      const { period } = z.object({ period: z.enum(REPORTING_PERIODS).default('week') }).parse(request.query ?? {});
+      const limit = await scheduleReviewService.periodLimitFor(id, period);
+      return { ...limit, text: describeLimit(limit) };
+    } catch (error) {
+      if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', message: 'period must be week, two_weeks or month' });
+      logger.error('Reporting period limit error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to work out the reporting period limit' });
     }
   });
 

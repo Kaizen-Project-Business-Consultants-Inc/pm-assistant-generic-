@@ -9,7 +9,11 @@ import { sprintService } from './SprintService';
 import { scheduleReviewRepository, type ReviewTrigger, type ScheduleReviewRecord, type ScheduleReviewSummary } from '../database/ScheduleReviewRepository';
 import { reviewSchedule, PRE_REVIEW_BASELINE_NAME, type ReviewInput, type ReviewTask } from './scheduleReview/rules';
 import logger from '../utils/logger';
-import { type IsWorking, weekdaysOnly } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, ymdOf } from '../utils/workingDays';
+import { calendarService } from './CalendarService';
+import { statusDateFor } from './StatusDateService';
+import { periodLimit, REPORTING_PERIOD_LABEL, type PeriodLimit, type ReportingPeriod } from './scheduleReview/reportingPeriod';
+import { taskSplitExceptionRepository, type TaskSplitException } from '../database/TaskSplitExceptionRepository';
 
 /**
  * Runs the deterministic Schedule Review over a schedule, stores the result and
@@ -65,10 +69,11 @@ export class ScheduleReviewService {
     ]);
 
     const hasLogic = tasks.some(t => (t.dependencies || []).length > 0);
-    const [floatByTask, overAllocations, isWorking] = await Promise.all([
+    const [floatByTask, overAllocations, isWorking, periodRule] = await Promise.all([
       hasLogic ? this.safeFloat(scheduleId) : Promise.resolve(null),
       this.safeOverAllocations(scheduleId),
       this.safeCalendar(scheduleId),
+      project?.periodRuleEnabled ? this.safePeriodRule(project.id, project.reportingPeriod ?? 'week', scheduleId) : Promise.resolve(null),
     ]);
 
     const latest = baselines.latest;
@@ -87,8 +92,48 @@ export class ScheduleReviewService {
       overAllocations,
       today: new Date(),
       isWorking,
+      periodRule,
     };
     return { input, tasks, projectId: schedule.projectId };
+  }
+
+  /**
+   * What one reporting period holds on this project's calendar (holidays inside it shorten it), measured at
+   * the project's status date. Shown read-only in Edit project, and used by R42.
+   */
+  async periodLimitFor(projectId: string, period: ReportingPeriod): Promise<PeriodLimit> {
+    // one after the other: a project with no calendar row yet gets its default made once, not twice
+    const calendar = await calendarService.getOrCreateDefault(projectId);
+    const [asOf, check] = await Promise.all([statusDateFor(projectId), calendarService.workingDayChecker(projectId)]);
+    return periodLimit(period, asOf, d => check(ymdOf(d)), calendar.hoursPerDay);
+  }
+
+  /** The PM's "Cannot be split" tasks on a schedule, with the reason, who and when */
+  async splitExceptions(scheduleId: string): Promise<TaskSplitException[]> {
+    return taskSplitExceptionRepository.findBySchedule(scheduleId);
+  }
+
+  /** Takes a task back into the count. False when it had no exception on this schedule. */
+  async removeSplitException(scheduleId: string, taskId: string): Promise<boolean> {
+    return taskSplitExceptionRepository.remove(scheduleId, taskId);
+  }
+
+  /** The task must be on this schedule (the route's gate checked the schedule, not the task) */
+  async markCannotBeSplit(scheduleId: string, taskId: string, reason: string, user: { userId: string; username: string }): Promise<boolean> {
+    const task = await scheduleService.findTaskById(taskId);
+    if (!task || task.scheduleId !== scheduleId) return false;
+    await taskSplitExceptionRepository.upsert(taskId, reason, user.userId, user.username);
+    return true;
+  }
+
+  private async safePeriodRule(projectId: string, period: ReportingPeriod, scheduleId: string): Promise<ReviewInput['periodRule']> {
+    try {
+      const [limit, exceptions] = await Promise.all([this.periodLimitFor(projectId, period), taskSplitExceptionRepository.findBySchedule(scheduleId)]);
+      return { limitDays: limit.workingDays, limitHours: limit.hours, periodLabel: REPORTING_PERIOD_LABEL[period], exceptionTaskIds: exceptions.map(e => e.taskId) };
+    } catch (err: any) {
+      logger.warn('[ScheduleReview] reporting period limit unavailable, rule skipped', { scheduleId, error: err?.message });
+      return null;
+    }
   }
 
   async latest(scheduleId: string): Promise<ScheduleReviewRecord | null> {
@@ -150,7 +195,8 @@ export function toReviewTask(t: Task): ReviewTask {
     estimatedDurationHours: t.estimatedDurationHours,
     progressPercentage: t.progressPercentage,
     assignedTo: t.assignedTo,
-    assignments: t.assignments?.map(a => ({ resourceId: a.resourceId, allocationPct: a.allocationPct })),
+    assignments: t.assignments?.map(a => ({ resourceId: a.resourceId, allocationPct: a.allocationPct, hoursPlanned: a.hoursPlanned })),
+    workHours: t.workHours,
     isMilestone: t.isMilestone,
     isSummary: t.isSummary,
     parentTaskId: t.parentTaskId,

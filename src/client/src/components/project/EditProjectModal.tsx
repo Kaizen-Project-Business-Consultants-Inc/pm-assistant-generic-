@@ -22,6 +22,9 @@ interface ProjectData {
   endDate?: string | null;
   statusDate?: string | null;
   status_date?: string | null;
+  /** 'week' | 'two_weeks' | 'month' — for the "no task longer than one reporting period" warning */
+  reportingPeriod?: string;
+  periodRuleEnabled?: boolean;
   location?: string;
   /** The client (project group) this project is for; null clears it */
   clientId?: string | null;
@@ -60,6 +63,9 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
   const [statusDate, setStatusDate] = useState(
     (project.statusDate || project.status_date || '').slice(0, 10)
   );
+  // Reporting period (Oct 2026): the warning for tasks longer than one period; its limit is worked out, never typed
+  const [reportingPeriod, setReportingPeriod] = useState<string>(project.reportingPeriod || 'week');
+  const [periodRuleEnabled, setPeriodRuleEnabled] = useState<boolean>(!!project.periodRuleEnabled);
   const [location, setLocation] = useState(project.location || '');
   // Client (Oct 2026): who the project is for — one of the company's clients (project groups)
   const origClientId: string = project.clientId || project.groupId || '';
@@ -81,6 +87,12 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
   useEffect(() => { if (sponsor === null && sponsorQ.isSuccess) setSponsor(currentSponsor); }, [sponsorQ.isSuccess, currentSponsor, sponsor]);
   const [sponsorError, setSponsorError] = useState<string | null>(null);
   const [sponsorSaving, setSponsorSaving] = useState(false);
+  const limitQ = useQuery({
+    queryKey: ['reporting-period-limit', project.id, reportingPeriod],
+    queryFn: () => apiService.getReportingPeriodLimit(project.id, reportingPeriod),
+    enabled: !!project.id,
+    staleTime: 60_000,
+  });
   const candidates = candidatesQ.data?.candidates ?? [];
   const withLogin = candidates.filter(c => c.kind === 'user');
   const withoutLogin = candidates.filter(c => c.kind === 'person');
@@ -123,6 +135,9 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
 
     const origStatus = (project.statusDate || project.status_date || '').slice(0, 10);
     if (statusDate !== origStatus) data.statusDate = statusDate || null;
+
+    if (reportingPeriod !== (project.reportingPeriod || 'week')) data.reportingPeriod = reportingPeriod;
+    if (periodRuleEnabled !== !!project.periodRuleEnabled) data.periodRuleEnabled = periodRuleEnabled;
 
     if (location !== (project.location || '')) data.location = location;
 
@@ -258,6 +273,47 @@ export function EditProjectModal({ project, onSave, onClose, saving, onDelete, d
             against today.
           </p>
         </div>
+
+        {projectId && (
+          <fieldset className="space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+            <legend className="px-1 text-sm font-medium text-gray-700 dark:text-gray-300">Reporting period</legend>
+            <div>
+              <label htmlFor={`${uid}-reporting-period`} className={labelClass}>How often you report status</label>
+              <select id={`${uid}-reporting-period`} value={reportingPeriod} onChange={(e) => setReportingPeriod(e.target.value)} className={inputClass} aria-describedby={`${uid}-reporting-period-help`}>
+                <option value="week">1 week (default)</option>
+                <option value="two_weeks">2 weeks</option>
+                <option value="month">1 month</option>
+              </select>
+              <p id={`${uid}-reporting-period-help`} className="mt-1 text-xs text-gray-500 dark:text-gray-400">A task should not need more working time than this.</p>
+            </div>
+            <div>
+              <label htmlFor={`${uid}-period-limit`} className={labelClass}>Limit used for this project</label>
+              <input
+                id={`${uid}-period-limit`}
+                type="text"
+                readOnly
+                aria-readonly="true"
+                value={limitQ.data?.text ?? (limitQ.isError ? 'Not available right now' : 'Working it out…')}
+                className={`${inputClass} bg-gray-50 dark:bg-gray-800`}
+                aria-describedby={`${uid}-period-limit-help`}
+              />
+              <p id={`${uid}-period-limit-help`} className="mt-1 text-xs text-gray-500 dark:text-gray-400">Worked out from the project calendar and working hours. Holidays shorten it. You cannot type a number here.</p>
+            </div>
+            <div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={periodRuleEnabled}
+                  onChange={(e) => setPeriodRuleEnabled(e.target.checked)}
+                  aria-describedby={`${uid}-period-rule-help`}
+                  className="rounded border-gray-300 text-primary-600"
+                />
+                Warn about tasks longer than one reporting period
+              </label>
+              <p id={`${uid}-period-rule-help`} className="mt-1 text-xs text-gray-500 dark:text-gray-400">Per project. On for new projects. Warn only: nothing is blocked.</p>
+            </div>
+          </fieldset>
+        )}
 
         {projectId && (
           <div>

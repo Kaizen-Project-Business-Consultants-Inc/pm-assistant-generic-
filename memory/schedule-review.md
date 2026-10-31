@@ -2,6 +2,9 @@
 
 Source of truth: Claude Doc "Schedule Review Spec" (https://claude.ai/code/artifact/3ca60bdf-7674-4668-b205-020981c1edc7), also exported as PDF to the user on 2026-09-16. This file carries enough of it to keep building without the doc.
 
+## Rules v1.12 (2026-10-31) — R42 tasks longer than one reporting period
+- R42 (medium, warn only, one finding per task): leaf task whose working days > the period's day limit or whose effort (`workHours`, else sum of assignment `hoursPlanned`) > hours limit. Only when the project has `period_rule_enabled` (T098; off for old projects, on for new). Limit = working days of the period (week / 2 weeks / month, from the status date) on the project calendar x hours per day (`scheduleReview/reportingPeriod.ts`). Exempt: phases, milestones, zero length, done tasks, recurring/level-of-effort names (as R13), and `task_split_exceptions` rows ("Cannot be split": reason, who, when; POST/GET `/schedules/:id/review/exceptions`, manager only). No "wait" flag exists on tasks, so waits are only exempt if named like level-of-effort work.
+
 ## Rules v1.11 (2026-10-20) — R41 links the dates don't follow (U61)
 - R41 (high, per task): a finish-to-start link where the task starts on or before its predecessor's finish (SS / FF by their own dates; leads/lags and finished tasks left out). `linksDatesBreak()` in rules.ts, also used by the fix preview (`brokenLinks`, `brokenExample`, `maxShiftDays`, `moves`). No fix offered yet. The UAT case: 4 new links moved 21 tasks up to 89 days because the re-flow enforced these.
 

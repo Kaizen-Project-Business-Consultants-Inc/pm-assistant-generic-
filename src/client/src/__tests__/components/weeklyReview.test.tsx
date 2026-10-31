@@ -6,6 +6,7 @@ const api = vi.hoisted(() => ({
   getPmWeeklyReview: vi.fn(),
   runPmWeeklyReview: vi.fn(),
   dismissPmWeeklyReviewItem: vi.fn(),
+  getPmNotFinished: vi.fn(async () => ({ asOf: '2026-10-09', tasks: [], total: 0 })),
 }));
 vi.mock('../../services/api', () => ({ apiService: api }));
 vi.mock('../../utils/announce', () => ({ announce: vi.fn() }));

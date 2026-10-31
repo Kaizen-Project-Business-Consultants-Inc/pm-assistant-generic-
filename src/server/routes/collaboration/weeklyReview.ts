@@ -48,6 +48,16 @@ export async function weeklyReviewRoutes(fastify: FastifyInstance) {
     } catch (error) { return fail(reply, error, 'load the weekly review'); }
   });
 
+  // GET /:projectId/weekly-review/not-finished — tasks planned to finish by the status date and not Completed (read-only)
+  fastify.get('/:projectId/weekly-review/not-finished', {
+    preHandler: [requireScope('read'), requireProjectAccess('manager')],
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { projectId } = request.params as { projectId: string };
+      return await weeklyReviewService.notFinished(projectId);
+    } catch (error) { return fail(reply, error, 'load the unfinished tasks'); }
+  });
+
   // POST /:projectId/weekly-review/run — "Run my weekly review" (any day)
   fastify.post('/:projectId/weekly-review/run', {
     preHandler: [requireScope('write'), requireProjectAccess('manager')],

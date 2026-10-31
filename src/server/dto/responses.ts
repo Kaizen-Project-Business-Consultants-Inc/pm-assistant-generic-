@@ -49,6 +49,10 @@ export interface ProjectDTO {
   endDate?: string;
   /** The day progress is measured as at. Absent means "measure against today". */
   statusDate?: string;
+  /** 'week' | 'two_weeks' | 'month' — the period for "no task longer than one reporting period" */
+  reportingPeriod: string;
+  /** Warn about tasks longer than one reporting period (Schedule Review) */
+  periodRuleEnabled: boolean;
   projectManagerId?: string;
   createdBy: string;
   createdAt: string;
@@ -81,6 +85,8 @@ export function toProjectDTO(row: Record<string, any>): ProjectDTO {
     startDate: row.startDate ?? row.start_date ?? undefined,
     endDate: row.endDate ?? row.end_date ?? undefined,
     statusDate: row.statusDate ?? row.status_date ?? undefined,
+    reportingPeriod: row.reportingPeriod ?? row.reporting_period ?? 'week',
+    periodRuleEnabled: row.periodRuleEnabled ?? (row.period_rule_enabled === 1 || row.period_rule_enabled === true),
     projectManagerId: row.projectManagerId ?? row.project_manager_id ?? undefined,
     createdBy: row.createdBy ?? row.created_by,
     createdAt: String(row.createdAt ?? row.created_at),

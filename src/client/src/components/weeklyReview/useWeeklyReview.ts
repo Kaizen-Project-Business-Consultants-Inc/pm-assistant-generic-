@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
-import { weeklyReviewKey, type WeeklyReview, type DismissReason } from './weeklyReviewTypes';
+import { weeklyReviewKey, notFinishedKey, type WeeklyReview, type DismissReason } from './weeklyReviewTypes';
 
 /** The project's latest Weekly PM review (null = never run). PM-only: pass enabled=false otherwise. */
 export function useWeeklyReview(projectId: string, enabled = true) {
@@ -19,6 +19,7 @@ export function useRunWeeklyReview(projectId: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(weeklyReviewKey(projectId), data.review);
       queryClient.invalidateQueries({ queryKey: ['pm-weekly-reviews-mine'] });
+      void queryClient.invalidateQueries({ queryKey: notFinishedKey(projectId) });
       // a run also refreshes the AI inbox's ready-made fixes (Phase 2)
       void queryClient.invalidateQueries({ queryKey: ['ai-inbox'] });
       void queryClient.invalidateQueries({ queryKey: ['ai-inbox-count'] });

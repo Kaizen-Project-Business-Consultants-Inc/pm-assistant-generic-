@@ -530,7 +530,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.11') // 1.11: R41 links the dates don't follow; 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.12') // 1.12: R42 tasks longer than one reporting period (only when the project switches it on); 1.11: R41 links the dates don't follow; 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {

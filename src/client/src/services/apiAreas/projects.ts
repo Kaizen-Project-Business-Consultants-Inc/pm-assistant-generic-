@@ -1,5 +1,5 @@
 import { ApiBase } from './http';
-import type { WeeklyReview, WeeklyResponse, DismissReason, MyWeeklyReview } from '../../components/weeklyReview/weeklyReviewTypes';
+import type { WeeklyReview, WeeklyResponse, DismissReason, MyWeeklyReview, NotFinishedTask } from '../../components/weeklyReview/weeklyReviewTypes';
 
 /**
  * Projects, members, links, groups, sample project, templates, custom fields, attachments, portal, intake, guests and lessons learned.
@@ -609,5 +609,15 @@ export class ProjectsApi extends ApiBase {
 
   async dismissPmWeeklyReviewItem(projectId: string, reviewId: string, itemKey: string, reason: DismissReason): Promise<{ responses: WeeklyResponse[] }> {
     return (await this.api.post(`/projects/${projectId}/weekly-review/${reviewId}/dismiss`, { itemKey, reason })).data;
+  }
+
+  // Weekly review: tasks planned to finish by the status date that are not Completed (read-only)
+  async getPmNotFinished(projectId: string): Promise<{ asOf: string; tasks: NotFinishedTask[]; total: number }> {
+    return (await this.api.get(`/projects/${projectId}/weekly-review/not-finished`)).data;
+  }
+
+  // Reporting period rule: what one period holds on this project's calendar ("5 working days / 37.5 hours")
+  async getReportingPeriodLimit(projectId: string, period: string): Promise<{ workingDays: number; hours: number; text: string }> {
+    return (await this.api.get(`/projects/${projectId}/reporting-period-limit`, { params: { period } })).data;
   }
 }

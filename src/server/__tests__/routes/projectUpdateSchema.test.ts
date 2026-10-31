@@ -25,3 +25,17 @@ describe('updateProjectSchema', () => {
     expect(() => updateProjectSchema.parse({ methodology: 'not-a-real-methodology' })).toThrow();
   });
 });
+
+describe('updateProjectSchema - reporting period rule', () => {
+  it('accepts the three periods and the switch, and leaves them out when not sent', () => {
+    expect(updateProjectSchema.parse({ reportingPeriod: 'two_weeks', periodRuleEnabled: false })).toMatchObject({ reportingPeriod: 'two_weeks', periodRuleEnabled: false });
+    const none = updateProjectSchema.parse({ name: 'Only a rename' });
+    expect(none.reportingPeriod).toBeUndefined();
+    expect(none.periodRuleEnabled).toBeUndefined();
+  });
+
+  it('rejects a period that is not offered', () => {
+    expect(() => updateProjectSchema.parse({ reportingPeriod: 'fortnight' })).toThrow();
+    expect(() => updateProjectSchema.parse({ periodRuleEnabled: 'yes' })).toThrow();
+  });
+});

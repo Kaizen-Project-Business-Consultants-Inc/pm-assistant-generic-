@@ -1119,3 +1119,6 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 - The PM escalates any RAID item with their own note; recorded on the item, tagged for everyone
 - **Benchmark:** PMI/PRINCE2 escalation to the sponsor/project board when tolerances are threatened; most tools either auto-notify executives (noise) or leave escalation to email outside the log
 
+### One reporting period per task (Oct 2026)
+
+Warn-only business rule that no task should need more working time (or planned hours per person) than one reporting period (1 week, 2 weeks or 1 month), per project. The limit is worked out from the project calendar and hours, never typed; Schedule Review lists the offenders with Go to task and Cannot be split (reason, who, when, and Remove), and the weekly review lists what was not finished. Nothing is blocked or edited automatically.

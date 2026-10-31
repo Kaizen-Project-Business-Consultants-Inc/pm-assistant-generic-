@@ -160,6 +160,7 @@ const sections: Section[] = [
       'A quality check of your plan with a 0–100 score — the same plan always gets the same result.',
     items: [
       'Click Review in the schedule toolbar (it also re-runs by itself shortly after you edit)',
+      'Edit project, Reporting period: pick 1 week, 2 weeks or 1 month and tick the warning (on for new projects). Review then lists Tasks longer than one reporting period, by working days or planned hours; Go to task, or Cannot be split (asks why, then listed as an accepted exception)',
       'Findings point to the rows involved: missing links, long tasks, milestones with a duration, overloaded people, and more',
       'A milestone takes zero days — name it as the outcome ("Design Approved"); name tasks verb + object ("Review Design")',
       'Propose fixes suggests changes you can tick and apply, e.g. splitting a "gate" that spans days into Review → Approve → Approved, or linking the next step after a task that feeds nothing',
@@ -201,6 +202,7 @@ const sections: Section[] = [
       'Every Friday Kovarti checks each of your projects and lists at most 5 decisions that need you.',
     items: [
       'For the project Manager/Owner only: Overview → Weekly PM review → Run my weekly review (any day)',
+      'Not finished this period: a read-only list of tasks planned to finish by the status date that are not Completed (task, planned finish, status, owner)',
       "Friday about 7 am you get one notification for all your projects; the dashboard shows This week's reviews",
       'Looks at the finish date, slipping tasks, overloaded people, cost, plan quality, risks, overdue RAID items, waiting change requests and timesheets',
       'Why? shows the facts behind each decision; the main button opens the tab where you fix it — nothing changes until you act',

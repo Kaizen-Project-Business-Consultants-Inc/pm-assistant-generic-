@@ -40,6 +40,10 @@ export interface Project {
   endDate?: string;
   /** The day progress is measured as at. Null = today in the organisation's zone. */
   statusDate?: string | null;
+  /** How often status is reported — sets the limit for "no task longer than one reporting period" */
+  reportingPeriod?: 'week' | 'two_weeks' | 'month';
+  /** Warn (Schedule Review R42) about tasks longer than one reporting period. On for new projects, off for older ones. */
+  periodRuleEnabled?: boolean;
   projectManagerId?: string;
   createdBy: string;
   createdAt: string;

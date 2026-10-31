@@ -15,6 +15,7 @@ import { mondayOf, addCalendarDays, calendarDaysBetween } from '../utils/working
 import logger from '../utils/logger';
 import { dismissReviewItem, DISMISS_REASONS, WeeklyReviewNotFoundError, type DismissReason } from './weeklyReview/dismissItem';
 import { hasRaidOwner } from '../utils/raidOwner';
+import { notFinishedThisPeriod, type NotFinishedTask } from './weeklyReview/notFinished';
 
 interface WeeklyReview extends WeeklyReviewRow {
   projectName: string;
@@ -135,6 +136,20 @@ export class WeeklyReviewService {
         taskCount,
       },
     };
+  }
+
+  /**
+   * "Not finished this period": tasks planned to finish on or before the project's status date that are
+   * not Completed. Read live (not stored with the review), so it is right even before the review is run.
+   */
+  async notFinished(projectId: string): Promise<{ asOf: string; tasks: NotFinishedTask[]; total: number }> {
+    const asOf = await statusDateFor(projectId);
+    const schedules = (await scheduleService.findByProjectId(projectId)).filter(s => !s.isScenario);
+    const [tasks, resources] = await Promise.all([
+      scheduleService.findTasksByScheduleIds(schedules.map(s => s.id)),
+      resourceService.findAllResources().catch(() => []),
+    ]);
+    return { asOf, ...notFinishedThisPeriod(tasks, asOf, new Map(resources.map(r => [r.id, r.name]))) };
   }
 
   /** Run the review now, store it, return it */

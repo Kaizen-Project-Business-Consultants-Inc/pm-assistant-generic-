@@ -81,3 +81,15 @@ export function openDecisions(review: WeeklyReview): WeeklyItem[] {
 }
 
 export const weeklyReviewKey = (projectId: string) => ['pm-weekly-review', projectId] as const;
+
+/** One row of "Not finished this period" — mirrors the server's NotFinishedTask */
+export interface NotFinishedTask {
+  taskId: string;
+  scheduleId: string;
+  name: string;
+  plannedFinish: string;
+  status: string;
+  owner: string | null;
+}
+
+export const notFinishedKey = (projectId: string) => ['pm-weekly-not-finished', projectId] as const;

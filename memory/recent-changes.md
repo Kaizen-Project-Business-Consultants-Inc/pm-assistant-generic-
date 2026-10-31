@@ -1,5 +1,11 @@
 # Recent changes and open items (rolling log — newest first)
 
+
+## 2026-10-31 - No task longer than one reporting period (warn only)
+- Why: the user wants a business rule that a task should not need more working time than one reporting period. Warn only, per project; nothing is blocked or edited.
+- What: Edit project has Reporting period (1 week / 2 weeks / 1 month) and a switch (T098: old projects off, new on); the limit is read-only, worked out from the project calendar and hours. Schedule Review rules 1.12 adds R42 (duration or Work Hours over the limit) with Go to task and Cannot be split (reason, who, when in `task_split_exceptions`; manager only). Weekly review shows a read-only Not finished this period list (`GET /projects/:id/weekly-review/not-finished`).
+- Notes: planned effort = task Work Hours, else assignment planned hours. No wait flag exists on tasks, so only level-of-effort names are exempt (as R13). Done tasks are not checked. Accepted exceptions have no remove button yet. e2e: `e2e/reporting-period.spec.ts`.
+
 ## 2026-10-30 — Gantt right-click Indent / Outdent, and every indent says what it did
 - Why: the Gantt's right-click menu had no Indent / Outdent (earlier notes wrongly implied it did; only the Table's menu had them), Shift+Tab on a top-level task did nothing and said nothing, and Tab acted on the selected rows without showing which.
 - Review fixes (same day): the move now goes through a new route `POST /schedules/:scheduleId/indent` (routes/scheduling/changeHistory.ts) = `planMoves` + `reparentTasksWithHistory` (milestone, loop, linked-heading, depth rules; one History change; Undo through History). `planMoves` and the client `planIndent` drop a picked task whose heading is also picked. Indent hidden while sorted/grouped; the menu restores focus on close; Escape from a row checkbox clears the selection.

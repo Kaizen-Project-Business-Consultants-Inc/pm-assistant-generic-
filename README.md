@@ -646,6 +646,9 @@ All API endpoints are versioned under `/api/v1/`. Endpoint groups (50+ route mod
 | Goals / OKR | `/api/v1/goals` | Objectives and Key Results CRUD |
 | Task Import | `/api/v1/schedules/:id/import` | Bulk CSV task import (response includes a Schedule Review summary) |
 | Schedule Review | `/api/v1/schedules/:id/review` | Deterministic schedule quality check: run (POST), latest, history |
+| Schedule Review exceptions | `/api/v1/schedules/:id/review/exceptions` | "Cannot be split" tasks for the reporting-period rule: list (GET), mark with a reason (POST) |
+| Reporting period limit | `/api/v1/projects/:id/reporting-period-limit` | Working days and hours one reporting period holds on the project calendar |
+| Weekly review: not finished | `/api/v1/projects/:id/weekly-review/not-finished` | Tasks planned to finish by the status date that are not Completed (read-only) |
 | User Preferences | `/api/v1/users/me/preferences` | Timezone and locale preferences |
 | Admin Tenants | `/api/v1/admin/tenants` | Multi-tenant org management (list, update, provision, migrate) |
 | Admin Users | `/api/v1/admin/users` | User listing with login status, unlock stuck login tokens, subscription status |

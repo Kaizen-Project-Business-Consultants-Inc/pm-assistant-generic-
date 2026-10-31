@@ -15,6 +15,11 @@ const historyQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(8),
 });
 
+const cannotSplitSchema = z.object({
+  taskId: z.string().min(1).max(36),
+  reason: z.string().trim().min(3, 'Give a short reason (at least 3 characters)').max(500, 'Keep the reason under 500 characters'),
+});
+
 /**
  * Schedule Review — deterministic schedule quality check.
  * Mounted under /api/v1/schedules.
@@ -122,6 +127,67 @@ export async function scheduleReviewRoutes(fastify: FastifyInstance) {
       if (error instanceof z.ZodError) return reply.status(400).send({ error: 'Validation error', details: error.issues });
       logger.error('Schedule review history error', { error });
       return reply.status(500).send({ error: 'Internal server error', message: 'Failed to load schedule review history' });
+    }
+  });
+
+  // GET /:scheduleId/review/exceptions — the tasks the PM marked "Cannot be split", with reason, who and when
+  fastify.get('/:scheduleId/review/exceptions', {
+    preHandler: [requireScope('read'), requireProjectAccess('manager')],
+    schema: { description: 'Tasks accepted as longer than one reporting period', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      return { exceptions: await scheduleReviewService.splitExceptions(scheduleId) };
+    } catch (error) {
+      logger.error('Schedule review exceptions error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to load the accepted exceptions' });
+    }
+  });
+
+  // POST /:scheduleId/review/exceptions — "Cannot be split": needs a reason; the review is re-run so the task drops out
+  fastify.post('/:scheduleId/review/exceptions', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    schema: { description: 'Mark a task as one that cannot be split', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId } = request.params as { scheduleId: string };
+      const { taskId, reason } = cannotSplitSchema.parse(request.body);
+      const user = request.user!;
+      if (!(await scheduleReviewService.markCannotBeSplit(scheduleId, taskId, reason, user))) {
+        return reply.status(404).send({ error: 'Task not found', message: 'That task is not on this schedule.' });
+      }
+      const [review, exceptions] = await Promise.all([
+        scheduleReviewService.run(scheduleId, 'manual', user.userId),
+        scheduleReviewService.splitExceptions(scheduleId),
+      ]);
+      return { review, exceptions };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const first = error.issues[0];
+        return reply.status(400).send({ error: 'Validation error', message: first?.message ?? 'Invalid request', details: error.issues });
+      }
+      logger.error('Schedule review cannot-split error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to save the exception' });
+    }
+  });
+  // DELETE /:scheduleId/review/exceptions/:taskId — take a task back into the count; the review is re-run
+  fastify.delete('/:scheduleId/review/exceptions/:taskId', {
+    preHandler: [requireScope('write'), requireProjectAccess('manager')],
+    schema: { description: 'Remove a Cannot be split exception', tags: ['schedules'] },
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const { scheduleId, taskId } = request.params as { scheduleId: string; taskId: string };
+      if (!(await scheduleReviewService.removeSplitException(scheduleId, taskId))) {
+        return reply.status(404).send({ error: 'Exception not found', message: 'That task is not marked as one that cannot be split.' });
+      }
+      const [review, exceptions] = await Promise.all([
+        scheduleReviewService.run(scheduleId, 'manual', request.user!.userId),
+        scheduleReviewService.splitExceptions(scheduleId),
+      ]);
+      return { review, exceptions };
+    } catch (error) {
+      logger.error('Schedule review remove exception error', { error });
+      return reply.status(500).send({ error: 'Internal server error', message: 'Failed to remove the exception' });
     }
   });
 }

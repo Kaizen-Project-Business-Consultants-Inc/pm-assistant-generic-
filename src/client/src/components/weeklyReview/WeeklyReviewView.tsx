@@ -3,6 +3,7 @@ import { ArrowLeft, Loader2, ChevronDown, ChevronRight, RefreshCw } from 'lucide
 import { getApiErrorMessage } from '../../utils/getApiErrorMessage';
 import { announce } from '../../utils/announce';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { NotFinishedList } from './NotFinishedList';
 import { useWeeklyReview, useRunWeeklyReview, useDismissWeeklyItem } from './useWeeklyReview';
 import {
   AREA_TAB, DISMISS_REASONS, openDecisions,
@@ -228,6 +229,8 @@ export function WeeklyReviewView({ projectId, onBack, onNavigateToTab, canEdit }
           {review.quietened > 0 && `${review.quietened} ${review.quietened === 1 ? 'thing you dismissed is' : 'things you dismissed are'} still there but no worse, so not shown.`}
         </p>
       )}
+
+      <NotFinishedList projectId={projectId} />
 
       {review.fine.length > 0 && (
         <section aria-labelledby="weekly-fine" className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-5 py-4">

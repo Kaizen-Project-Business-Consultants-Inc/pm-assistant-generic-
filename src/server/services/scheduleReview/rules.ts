@@ -14,7 +14,12 @@ import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { groupBy } from '../../utils/groupBy';
 import { isActiveWork, TASK_STATUS_LABEL } from '../../constants/taskStatus';
 
-export const RULES_VERSION = '1.11';
+export const RULES_VERSION = '1.12';
+
+// 1.12 (2026-10-31): R42 — a task longer than one reporting period ('medium', warn only), by duration
+// AND by planned effort hours, when the project switched "Warn about tasks longer than one reporting
+// period" on. The limit comes from the project calendar (reportingPeriod.ts); a task the PM marked
+// "Cannot be split" is left out. Off for projects that have not switched it on, so scores don't move.
 
 // 1.11 (2026-10-20, U61): R41 — links the plan's own dates don't follow ('high'). An imported plan
 // can carry links its dates break; the first fix that re-plans the dates then moves everything
@@ -58,7 +63,9 @@ export interface ReviewTask {
   estimatedDurationHours?: number | null;
   progressPercentage?: number | null;
   assignedTo?: string | null;
-  assignments?: Array<{ resourceId: string; allocationPct?: number | null }> | null;
+  assignments?: Array<{ resourceId: string; allocationPct?: number | null; hoursPlanned?: number | null }> | null;
+  /** Planned effort in hours (the task's Work Hours); R42 falls back to the hours planned on its assignments */
+  workHours?: number | null;
   isMilestone?: boolean | null;
   isSummary?: boolean | null;
   parentTaskId?: string | null;
@@ -114,6 +121,18 @@ export interface ReviewInput {
   today: Date;
   /** Which days are worked (the project calendar). Mon–Fri when not given. */
   isWorking?: IsWorking;
+  /** R42. Absent = the project has the rule switched off. */
+  periodRule?: PeriodRuleInput | null;
+}
+
+export interface PeriodRuleInput {
+  /** What one reporting period holds on the project calendar */
+  limitDays: number;
+  limitHours: number;
+  /** "week", "2 weeks" or "month", for the message */
+  periodLabel: string;
+  /** Tasks the PM marked "Cannot be split" */
+  exceptionTaskIds: string[];
 }
 
 export interface Finding {
@@ -194,6 +213,7 @@ export const RULES: Record<string, RuleMeta> = {
   R38: { id: 'R38', name: 'Bottleneck task', severity: 'info', scope: 'task' },
   R40: { id: 'R40', name: 'Sprint left open after its end', severity: 'low', scope: 'schedule' },
   R41: { id: 'R41', name: "Dates don't follow a link", severity: 'high', scope: 'task' },
+  R42: { id: 'R42', name: 'Tasks longer than one reporting period', severity: 'medium', scope: 'task' },
 };
 
 const MAX_DEDUCTION: Record<Severity, number> = { critical: 25, high: 12, medium: 6, low: 2, info: 0 };
@@ -804,7 +824,49 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     findings.push(make('R41', tasksAffected.map(t => t.id), `${plural(broken.length, 'link')} ${agree(broken.length, "isn't", "aren't")} followed by the dates, for example '${ex.task.name}' starts before '${ex.waitsFor.name}' finishes. Any fix that re-plans the dates will move these tasks; check the links or the dates first.`));
   }
 
+  if (input.periodRule) findings.push(...periodRuleFindings(leaves, input.periodRule, span));
+
   return { findings, skipped, leafTaskCount: n };
+}
+
+/** Planned effort: the task's Work Hours, else the hours planned on its assignments */
+function plannedEffortHours(t: ReviewTask): number {
+  const work = Number(t.workHours ?? 0);
+  if (work > 0) return work;
+  return (t.assignments || []).reduce((sum, a) => sum + Number(a.hoursPlanned ?? 0), 0);
+}
+
+/** People the effort is shared between (one when no one is booked): the hours limit is what ONE person can do in a period */
+function peopleOn(t: ReviewTask): number {
+  return Math.max(1, (t.assignments || []).length);
+}
+
+/**
+ * R42 — one finding per task longer than a reporting period, by working days OR planned effort hours.
+ * Left out: phases and templates (not leaves), milestones, zero-length rows, finished tasks, recurring and
+ * level-of-effort work (the same exemptions as R13), and tasks the PM marked "Cannot be split".
+ */
+function periodRuleFindings(leaves: ReviewTask[], rule: PeriodRuleInput, span: (s: string, e: string) => number): RawFinding[] {
+  const accepted = new Set(rule.exceptionTaskIds);
+  const out: RawFinding[] = [];
+  for (const t of leaves) {
+    if (accepted.has(t.id) || isMilestoneLike(t) || DONE_STATUSES.has(norm(t.status)) || t.recurrenceParentId || LEVEL_OF_EFFORT.test(t.name || '')) continue;
+    const s = ymd(t.startDate);
+    const e = ymd(t.endDate);
+    const days = s && e ? span(s, e) : Number(t.estimatedDays ?? 0);
+    const hours = plannedEffortHours(t);
+    const people = peopleOn(t);
+    const each = Math.round((hours / people) * 10) / 10;
+    const tooLong = days > rule.limitDays;
+    const tooMuch = each > rule.limitHours;
+    if (!tooLong && !tooMuch) continue;
+    const parts: string[] = [];
+    if (tooLong) parts.push(`it runs ${plural(days, 'working day')}, and one reporting period (${rule.periodLabel}) allows ${plural(rule.limitDays, 'working day')}`);
+    if (tooMuch) parts.push(`its planned effort is ${hours} hours${people > 1 ? ` for ${people} people (${each} each)` : ''}, and one reporting period allows ${rule.limitHours} hours per person`);
+    const fix = tooMuch && !tooLong ? (people > 1 ? 'Split the work by deliverable.' : 'Add people or split the work by deliverable.') : 'Split it by deliverable, so each piece can finish and be reported inside one period.';
+    out.push(make('R42', [t.id], `'${t.name}': ${parts.join('; ')}. ${fix}`));
+  }
+  return out;
 }
 
 /** The re-plan keeps these where they are (ScheduleRecomputeService: completed, started or finished, a fixed date) */

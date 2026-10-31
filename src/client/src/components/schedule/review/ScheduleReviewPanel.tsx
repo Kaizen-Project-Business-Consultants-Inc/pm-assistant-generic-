@@ -8,6 +8,8 @@ import { getApiErrorMessage } from '../../../utils/getApiErrorMessage';
 import { ScheduleScoreChip, BAND_LABELS, type ReviewBand } from './ScheduleScoreChip';
 import { ScheduleFixProposalPanel } from './ScheduleFixProposalPanel';
 import { TickBar, useTicks, type TaskPickingProps } from './reviewTaskPicking';
+import { PeriodRuleActions, AcceptedExceptions } from './PeriodRuleActions';
+import { PERIOD_RULE_ID } from './periodRuleTypes';
 
 // ---------------------------------------------------------------------------
 // Types (mirror the server's ScheduleReviewRecord)
@@ -170,11 +172,13 @@ function useFindingPicking(reviewId: string | undefined, onHighlightTasks: ((tas
     setPointed(off ? null : key);
     highlight.current?.(off ? null : f.taskIds);
   };
-  return { picks, pointed, point, dropLit, dropAll };
+  // "Go to task": light the task's row in the plan (and stay lit; clicking the finding again puts it out)
+  const goTo = (key: string, f: ReviewFinding) => { setPointed(key); highlight.current?.(f.taskIds); };
+  return { picks, pointed, point, goTo, dropLit, dropAll };
 }
 
 /** One level of findings: its header (open/close, Select all) and its rows, each ticked or clicked */
-function SeverityGroup({ sev, items, open, onToggle, ticked, toggle, setMany, pointed, onPoint }: {
+function SeverityGroup({ sev, items, open, onToggle, ticked, toggle, setMany, pointed, onPoint, scheduleId, canEdit, taskInfoOf, onGoTo, onPeriodSaved }: {
   sev: ReviewSeverity;
   items: ReviewFinding[];
   open: boolean;
@@ -184,6 +188,11 @@ function SeverityGroup({ sev, items, open, onToggle, ticked, toggle, setMany, po
   setMany: (keys: string[], on: boolean) => void;
   pointed: string | null;
   onPoint: (key: string, f: ReviewFinding) => void;
+  scheduleId: string;
+  canEdit: boolean;
+  taskInfoOf: TaskPickingProps['taskInfoOf'];
+  onGoTo: (key: string, f: ReviewFinding) => void;
+  onPeriodSaved: (review: unknown) => void;
 }) {
   if (items.length === 0) return null;
   return (
@@ -226,6 +235,7 @@ function SeverityGroup({ sev, items, open, onToggle, ticked, toggle, setMany, po
                       className="mt-0.5 rounded border-gray-300 text-primary-600"
                     />
                   )}
+                  <div className="min-w-0 flex-1">
                   <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
                     {f.taskIds.length > 0 ? (
                       <button type="button" onClick={() => onPoint(key, f)} aria-pressed={pointed === key} aria-label={`Show rows in the plan: ${f.rule}`} className="min-w-0 text-left" title="Show these rows in the plan">
@@ -235,6 +245,17 @@ function SeverityGroup({ sev, items, open, onToggle, ticked, toggle, setMany, po
                     {f.pointsDeducted > 0 && (
                       <span className="shrink-0 text-xs tabular-nums text-gray-500 dark:text-gray-400" title="Points deducted">−{f.pointsDeducted}</span>
                     )}
+                  </div>
+                  {f.ruleId === PERIOD_RULE_ID && f.taskIds.length === 1 && (
+                    <PeriodRuleActions
+                      scheduleId={scheduleId}
+                      taskId={f.taskIds[0]}
+                      taskName={taskInfoOf?.(f.taskIds[0])?.name ?? 'this task'}
+                      canEdit={canEdit}
+                      onGoTo={() => onGoTo(key, f)}
+                      onSaved={onPeriodSaved}
+                    />
+                  )}
                   </div>
                 </li>
               );
@@ -343,7 +364,7 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
   }, []);
 
   const review = latestQuery.data ?? null;
-  const { picks, pointed, point, dropLit, dropAll } = useFindingPicking(review?.id, onHighlightTasks);
+  const { picks, pointed, point, goTo, dropLit, dropAll } = useFindingPicking(review?.id, onHighlightTasks);
   const grouped = useMemo(() => groupLive(review?.findings ?? [], taskInfoOf), [review, taskInfoOf]);
   const { taskIds: tickedTaskIds, label: tickedLabel } = useMemo(() => tickedFrom(grouped, picks.ticked), [grouped, picks.ticked]);
 
@@ -355,6 +376,12 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
     if (next.has(s)) next.delete(s); else next.add(s);
     return next;
   });
+
+  // "Cannot be split" re-ran the review on the server: show that run
+  const onPeriodSaved = (fresh: unknown) => {
+    queryClient.setQueryData(['schedule-review', scheduleId, 'latest'], fresh);
+    setRerunMessage('Accepted exceptions updated. The review was re-run.');
+  };
 
   const busy = runMutation.isPending || latestQuery.isLoading;
   // What the last proposal left, for the Propose fixes button — only while it is about this review (a new review may find new things)
@@ -458,8 +485,15 @@ export function ScheduleReviewPanel({ scheduleId, projectId, canEdit, onClose, o
               setMany={picks.setMany}
               pointed={pointed}
               onPoint={point}
+              scheduleId={scheduleId}
+              canEdit={canEdit}
+              taskInfoOf={taskInfoOf}
+              onGoTo={goTo}
+              onPeriodSaved={onPeriodSaved}
             />
           ))}
+
+          <AcceptedExceptions scheduleId={scheduleId} canEdit={canEdit} onChanged={onPeriodSaved} />
 
           {/* Skipped rules */}
           {review && review.skippedRules.filter(s => s.reason === 'needs_logic').length > 0 && (

@@ -1,4 +1,5 @@
 import { ApiBase } from './http';
+import type { SplitException } from '../../components/schedule/review/periodRuleTypes';
 
 /**
  * Scheduling extras: working calendar and holidays, calendar templates, Schedule Review and fixes, change history, CSV import, Monte Carlo, EVM, auto-reschedule.
@@ -64,6 +65,19 @@ export class SchedulingApi extends ApiBase {
   async getScheduleReviewHistory(scheduleId: string, limit = 8) {
     const response = await this.api.get(`/schedules/${scheduleId}/review/history`, { params: { limit } });
     return response.data;
+  }
+
+  // Reporting period rule: tasks the PM accepted as longer than one period ("Cannot be split")
+  async getScheduleSplitExceptions(scheduleId: string): Promise<{ exceptions: SplitException[] }> {
+    return (await this.api.get(`/schedules/${scheduleId}/review/exceptions`)).data;
+  }
+
+  async removeSplitException(scheduleId: string, taskId: string) {
+    return (await this.api.delete(`/schedules/${scheduleId}/review/exceptions/${taskId}`)).data;
+  }
+
+  async markTaskCannotBeSplit(scheduleId: string, taskId: string, reason: string) {
+    return (await this.api.post(`/schedules/${scheduleId}/review/exceptions`, { taskId, reason })).data;
   }
 
   // Schedule Review Phase 3 — structural fix proposals

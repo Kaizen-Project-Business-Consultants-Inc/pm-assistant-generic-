@@ -33,6 +33,8 @@ function rowToProject(row: any): Project {
     endDate: row.end_date ? String(row.end_date) : undefined,
     // The day progress is measured "as at" — see services/StatusDateService.ts.
     statusDate: row.status_date ? String(row.status_date).slice(0, 10) : undefined,
+    reportingPeriod: row.reporting_period || 'week',
+    periodRuleEnabled: row.period_rule_enabled === 1 || row.period_rule_enabled === true,
     projectManagerId: row.project_manager_id ?? undefined,
     createdBy: row.created_by,
     createdAt: String(row.created_at),
@@ -62,6 +64,8 @@ const PROJECT_COLUMN_MAP: Record<string, string> = {
   startDate: 'start_date',
   endDate: 'end_date',
   statusDate: 'status_date',
+  reportingPeriod: 'reporting_period',
+  periodRuleEnabled: 'period_rule_enabled',
   projectManagerId: 'project_manager_id',
 };
 
@@ -195,8 +199,8 @@ export class ProjectRepository extends BaseRepository<Project> {
     await this.queryRaw(
       `INSERT INTO projects (id, name, project_code, description, category, project_type, methodology, status, priority,
         budget_allocated, budget_spent, currency, location, location_lat, location_lon,
-        start_date, end_date, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        start_date, end_date, created_by, period_rule_enabled)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         id,
         data.name,
