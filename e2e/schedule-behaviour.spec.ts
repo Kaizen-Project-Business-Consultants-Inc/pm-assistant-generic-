@@ -202,7 +202,7 @@ test('Gantt grid: inline edit name, start, finish, duration and status; the assi
   const name = await ganttCell(page, ids.design, 'Task Name');
   await name.click();
   await name.click();
-  await ganttRow(page, ids.design).locator('input').fill('Design v2');
+  await ganttRow(page, ids.design).locator('input:not([type="checkbox"])').fill('Design v2');
   await page.keyboard.press('Enter');
   await expectTask(page, scheduleId, 'Design v2', t => t.id === ids.design);
   await expect(ganttRow(page, ids.design)).toContainText('Design v2');
@@ -225,7 +225,7 @@ test('Gantt grid: inline edit name, start, finish, duration and status; the assi
   const dur = await ganttCell(page, ids.build, 'Dur');
   await dur.click();
   await dur.click();
-  await ganttRow(page, ids.build).locator('input').fill('3');
+  await ganttRow(page, ids.build).locator('input:not([type="checkbox"])').fill('3');
   await page.keyboard.press('Enter');
   await expectTask(page, scheduleId, 'Build', t => ymd(t.startDate) === '2026-10-15' && ymd(t.endDate) === '2026-10-19');
   await expect(await ganttCell(page, ids.build, 'Dur')).toHaveText('3d');
@@ -320,7 +320,7 @@ test('Gantt keyboard: arrows move between cells, Enter edits, Escape cancels, Ta
 
   // Enter edits; typing then Escape leaves the value as it was
   await page.keyboard.press('Enter');
-  const input = ganttRow(page, ids.design).locator('input');
+  const input = ganttRow(page, ids.design).locator('input:not([type="checkbox"])');
   await expect(input).toBeFocused();
   await input.fill('Should not save');
   await page.keyboard.press('Escape');
