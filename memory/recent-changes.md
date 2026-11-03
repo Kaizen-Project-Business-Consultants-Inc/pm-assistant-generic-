@@ -1,5 +1,8 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-11-03 — Downloads show names in Assigned To
+- Why: the Table's CSV download (and Gantt/schedule CSV) wrote the stored user/resource ID in Assigned To. `exportTasksCSV` now takes the `useResourceNameMap()` names (same lookup as the screen); the project export CSV, JSON and MS Project XML (`routes/core/exports.ts`, `assigneeNames()`) map IDs to names too. Unknown ID stays as stored. Test: `exportUtils.test.ts`.
+
 ## 2026-10-31 — Slack follows the dates; completed tasks have none
 - Why: `CriticalPathService` used links and durations only, so every chain's first task started on project day one; a chain dated months later got a false huge slack (DBJ-LMS Phase 3: 147 d, true is about 5), and finished tasks showed 162-193 d.
 - Forward pass: a task's own start date (actual start once started/finished) is a floor, in working days from the same origin as constraint offsets. Links push later, never earlier; MSO/SNLT/FNLT/MFO still override. Completed tasks (status completed or 100%): `totalFloat`/`freeFloat` null, `isCompleted: true`, `isCritical` false; actual dates give their duration.

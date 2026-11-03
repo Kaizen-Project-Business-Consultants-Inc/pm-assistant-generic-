@@ -27,13 +27,13 @@ export function exportTasksCSV(tasks: Array<{
   startDate?: string;
   endDate?: string;
   progressPercentage?: number;
-}>, scheduleName: string): void {
+}>, scheduleName: string, names?: ReadonlyMap<string, string>): void {
   const headers = ['Name', 'Status', 'Priority', 'Assigned To', 'Start Date', 'End Date', 'Progress %'];
   const rows = tasks.map(t => [
     t.name || '',
     t.status || '',
     t.priority || '',
-    t.assignedTo || '',
+    (t.assignedTo && names?.get(t.assignedTo)) || t.assignedTo || '', // the name, as on screen — not the stored id
     t.startDate || '',
     t.endDate || '',
     String(t.progressPercentage ?? 0),

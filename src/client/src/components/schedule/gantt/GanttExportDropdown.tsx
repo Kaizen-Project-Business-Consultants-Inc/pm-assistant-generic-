@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, ChevronDown } from 'lucide-react';
 import { exportTasksCSV } from '../../../utils/exportUtils';
+import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
 import { TIMELINE_STRIP_ID } from './GanttTimelineStrip';
 
 interface GanttExportDropdownProps {
@@ -12,6 +13,7 @@ interface GanttExportDropdownProps {
 }
 
 export const GanttExportDropdown = React.memo(function GanttExportDropdown({ ganttContainerId, scheduleName, tasks, timelineShown }: GanttExportDropdownProps) {
+  const resourceNames = useResourceNameMap();
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -122,7 +124,7 @@ export const GanttExportDropdown = React.memo(function GanttExportDropdown({ gan
 
   const handleCsvExport = () => {
     setOpen(false);
-    exportTasksCSV(tasks, scheduleName);
+    exportTasksCSV(tasks, scheduleName, resourceNames);
   };
 
   const btnClass = 'w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';

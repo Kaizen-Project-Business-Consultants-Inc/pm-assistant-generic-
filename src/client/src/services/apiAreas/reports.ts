@@ -14,6 +14,9 @@ export function criticalPathNames(s: { tasks: any[]; criticalPath: { criticalPat
  * Reports (AI, instant, status, custom, scheduled), exports, portfolio, analytics and dashboard data.
  * Mixed into the one `apiService` (see ../api.ts); `this.api` is the shared axios instance.
  */
+/** Typed-in text going into the report's HTML (names are typed by people) */
+const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+
 export class ReportsApi extends ApiBase {
   // -------------------------------------------------------------------------
   // AI Reports endpoints
@@ -201,11 +204,11 @@ export class ReportsApi extends ApiBase {
       for (const t of sch.tasks) {
         const color = statusColor[t.status] || '#9ca3af';
         taskRowsHtml += `<tr>
-          <td>${sch.name}</td>
-          <td>${t.name}</td>
+          <td>${esc(sch.name)}</td>
+          <td>${esc(t.name)}</td>
           <td><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px"></span>${t.status.replace('_', ' ')}</td>
           <td>${t.priority}</td>
-          <td>${t.assignedTo}</td>
+          <td>${esc(t.assignedToName ?? t.assignedTo)}</td>
           <td>${t.startDate}</td>
           <td>${t.endDate}</td>
           <td>

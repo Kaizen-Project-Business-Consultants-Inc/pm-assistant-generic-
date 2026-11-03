@@ -33,6 +33,7 @@ import { ScheduleHistoryPanel } from '../../../components/schedule/ScheduleHisto
 import { useProjectRole } from '../../../hooks/useProjectRole';
 import { useColumnState } from '../../../hooks/useColumnState';
 import { exportTasksCSV } from '../../../utils/exportUtils';
+import { useResourceNameMap } from '../../../components/schedule/shared/hooks/useResourceNameMap';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { ScheduleToolbar } from './ScheduleToolbar';
 import { ScheduleOverflowMenu } from './ScheduleOverflowMenu';
@@ -73,6 +74,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
   const canOpenResources = useCanOpenPage()(ROUTES.resources);
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
+  const resourceNames = useResourceNameMap();
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [createTaskDates, setCreateTaskDates] = useState<{ startDate: string; endDate: string; parentTaskId?: string; afterTaskId?: string; beforeTaskId?: string } | null>(null);
@@ -606,7 +608,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             setLevelingBusy(false);
           }
         }}
-        exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+        exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks', resourceNames)}
         queryClient={queryClient}
         onDeleteSchedule={() => setShowDeleteConfirm(true)}
         onCreateScenario={() => {
@@ -666,7 +668,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onOpenCalendar={() => setShowCalendarPanel(true)}
           calendarActive={showCalendarPanel}
           overflowMenu={scheduleOverflowMenu}
-          onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks')}
+          onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks', resourceNames)}
           filteredCount={filteredTasks.length}
           totalCount={tasks.length}
           overbooked={overbooked}

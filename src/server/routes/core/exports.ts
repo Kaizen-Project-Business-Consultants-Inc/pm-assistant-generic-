@@ -9,6 +9,20 @@ import { requireFeature } from '../../middleware/requireTier';
 import logger from '../../utils/logger';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
 import { mspdiPredecessorLink } from '../../utils/mspdiLinks';
+import { resourceService } from '../../services/ResourceService';
+
+/**
+ * Assigned To holds a resource id or a user id; a file wants the person's name (as the screen
+ * shows). Returns id → name (an unknown id stays as stored). One query, first 1,000 resources.
+ */
+async function assigneeNamer(): Promise<(v?: string | null) => string> {
+  const names = new Map<string, string>();
+  for (const r of await resourceService.findAllResources()) {
+    if (r.userId) names.set(r.userId, r.name);
+    names.set(r.id, r.name);
+  }
+  return (v) => (v ? names.get(v) ?? v : '');
+}
 
 export async function exportRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authMiddleware);
@@ -25,6 +39,7 @@ export async function exportRoutes(fastify: FastifyInstance) {
 
       if (format === 'json') {
         // JSON export — full project report data for client-side PDF rendering
+        const nameOf = await assigneeNamer();
         const project = await projectService.findById(id);
 
         const schedulesWithTasks = [];
@@ -53,6 +68,7 @@ export async function exportRoutes(fastify: FastifyInstance) {
               status: t.status,
               priority: t.priority,
               assignedTo: t.assignedTo || '',
+              assignedToName: nameOf(t.assignedTo),
               startDate: t.startDate ? new Date(t.startDate).toISOString().slice(0, 10) : '',
               endDate: t.endDate ? new Date(t.endDate).toISOString().slice(0, 10) : '',
               progressPercentage: t.progressPercentage ?? 0,
@@ -120,13 +136,14 @@ export async function exportRoutes(fastify: FastifyInstance) {
           }
         }
 
+        const nameOf = await assigneeNamer();
         // Build UID maps
         const taskUidMap = new Map<string, number>();
         allTasks.forEach((t, i) => taskUidMap.set(t.id, i + 1));
 
         const resourceNames = [...new Set(allTasks.map(t => t.assignedTo).filter(Boolean))] as string[];
         const resourceUidMap = new Map<string, number>();
-        resourceNames.forEach((name, i) => resourceUidMap.set(name, i + 1));
+        resourceNames.forEach((id, i) => resourceUidMap.set(id, i + 1));
 
         // Build XML
         const tasksXml = allTasks.map(t => {
@@ -156,10 +173,10 @@ export async function exportRoutes(fastify: FastifyInstance) {
 ${predLinks ? predLinks + '\n' : ''}      </Task>`;
         }).join('\n');
 
-        const resourcesXml = resourceNames.map(name => {
-          const uid = resourceUidMap.get(name);
+        const resourcesXml = resourceNames.map(id => {
+          const uid = resourceUidMap.get(id);
           if (!uid) return '';
-          return `      <Resource><UID>${uid}</UID><ID>${uid}</ID><Name>${xmlEscape(name)}</Name><Type>1</Type></Resource>`;
+          return `      <Resource><UID>${uid}</UID><ID>${uid}</ID><Name>${xmlEscape(nameOf(id))}</Name><Type>1</Type></Resource>`;
         }).filter(Boolean).join('\n');
 
         let assignmentUid = 0;
@@ -205,6 +222,7 @@ ${assignmentsXml}
         return reply.status(400).send({ error: 'Supported formats: csv, json, xml' });
       }
 
+      const nameOf = await assigneeNamer();
       const headers = [
         'Schedule',
         'Task ID',
@@ -246,7 +264,7 @@ ${assignmentsXml}
             task.name,
             task.status,
             task.priority,
-            task.assignedTo || '',
+            nameOf(task.assignedTo),
             task.startDate ? new Date(task.startDate).toISOString().slice(0, 10) : '',
             task.endDate ? new Date(task.endDate).toISOString().slice(0, 10) : '',
             String(task.progressPercentage ?? 0),

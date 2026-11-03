@@ -2,6 +2,7 @@ import React from 'react';
 import { Layers, Undo2, Redo2, Download } from 'lucide-react';
 import { SavedViewsDropdown, type SavedView } from '../SavedViewsDropdown';
 import { exportTasksCSV } from '../../../utils/exportUtils';
+import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
 import type { GanttTask, ColumnKey, SortDir, GroupByField } from './types';
 
 interface TableToolbarProps {
@@ -43,6 +44,7 @@ export const TableToolbar = React.memo(function TableToolbar({
   sortDir,
   onLoadView,
 }: TableToolbarProps) {
+  const resourceNames = useResourceNameMap();
   return (
     <div className="flex items-center justify-end gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
       {/* Group by */}
@@ -99,7 +101,7 @@ export const TableToolbar = React.memo(function TableToolbar({
         </div>
       )}
       <button
-        onClick={() => exportTasksCSV(visibleSorted, 'tasks')}
+        onClick={() => exportTasksCSV(visibleSorted, 'tasks', resourceNames)}
         className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
         title="Export to CSV"
       >
