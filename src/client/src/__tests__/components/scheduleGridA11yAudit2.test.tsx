@@ -98,6 +98,7 @@ describe('H10: Table header — sort by keyboard, move arrows out of the way', (
 describe('M2: toggle groups say which option is on', () => {
   function toolbar(zoom: 'day' | 'week' | 'month', panelMode: 'table' | 'split' | 'gantt') {
     return render(
+      <QueryClientProvider client={qc()}>
       <GanttToolbar
         scheduleName="Plan" onAddTask={() => {}} rowCount={3} baseRowCount={3} parentTaskCount={0} collapsedCount={0}
         expandAll={() => {}} collapseAll={() => {}} zoom={zoom} setZoom={() => {}} handleZoomToFit={() => {}}
@@ -107,7 +108,8 @@ describe('M2: toggle groups say which option is on', () => {
         setGanttColOrder={() => {}} tasks={[]} showOverallocation={false} setShowOverallocation={() => {}}
         overallocatedCount={0} anyoneAssigned showTimeline={false} setShowTimeline={() => {}} handleLoadView={() => {}}
         panelMode={panelMode} setPanelMode={() => {}} sortField={null} sortDirection={null}
-      />,
+      />
+      </QueryClientProvider>,
     );
   }
 

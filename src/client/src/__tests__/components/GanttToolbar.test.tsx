@@ -1,6 +1,7 @@
 import { createRef } from 'react';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GanttToolbar } from '../../components/schedule/gantt/GanttToolbar';
 import { DEFAULT_VISIBLE_KEYS, COLUMN_DEFS } from '../../components/schedule/tableColumns';
 import type { ColumnState } from '../../hooks/useColumnState';
@@ -27,6 +28,7 @@ function makeColumnState(): ColumnState {
 
 function renderToolbar(columnState?: ColumnState) {
   return render(
+    <QueryClientProvider client={new QueryClient()}>
     <GanttToolbar
       scheduleName="Test schedule"
       onAddTask={() => {}}
@@ -66,6 +68,7 @@ function renderToolbar(columnState?: ColumnState) {
       sortField={null}
       sortDirection={null}
     />
+    </QueryClientProvider>
   );
 }
 
