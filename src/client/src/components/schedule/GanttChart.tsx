@@ -3,6 +3,7 @@ import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
 import { useResourceConflicts } from '../../hooks/useResourceConflicts';
 import type { ColumnState } from '../../hooks/useColumnState';
 import { useGanttColumns, useGanttColumnAutoFit } from './gantt/hooks/useGanttColumns';
+import { buildExtraColumnCtx, type ExtraColumnData } from './gantt/extraColumns';
 import { useTaskFiltering } from './gantt/hooks/useTaskFiltering';
 import { useGanttLayout } from './gantt/hooks/useGanttLayout';
 import { useDependencyDraw } from './gantt/hooks/useDependencyDraw';
@@ -74,6 +75,8 @@ export function GanttChart({
   criticalPathTaskIds,
   taskFloatMap,
   slackByTask,
+  cpmData,
+  baselineData,
   baselineTasks,
   onTaskDragEnd,
   onTaskUpdate,
@@ -136,6 +139,9 @@ export function GanttChart({
   taskFloatMap?: Record<string, number>;
   /** Each task's total slack in working days, for the Slack column (U69) */
   slackByTask?: ReadonlyMap<string, number | null>;
+  /** The critical path and baseline comparison, for the columns once found only in the Table */
+  cpmData?: ExtraColumnData['cpmData'];
+  baselineData?: ExtraColumnData['baselineData'];
   /** Baseline task data for ghost bars */
   baselineTasks?: Array<{ taskId: string; startDate: string; endDate: string }>;
   /** Called when a task bar is dragged to new dates */
@@ -423,6 +429,12 @@ export function GanttChart({
   const resourceNameMap = useResourceNameMap();
 
   // Quick search, filter panel, column-header sort → the visible rows (search → filters → sort)
+  // Lookups for the columns once found only in the Table (critical path dates, baseline, cost, WBS)
+  const extraCtx = useMemo(
+    () => buildExtraColumnCtx({ cpmData, baselineData }, allTasks ?? tasks, workCalendar),
+    [cpmData, baselineData, allTasks, tasks, workCalendar],
+  );
+
   const {
     searchQuery,
     setSearchQuery,
@@ -440,7 +452,7 @@ export function GanttChart({
     handleHeaderSort,
     baseRows,
     rows,
-  } = useTaskFiltering({ tasks, allTasks, collapsedIds, workCalendar, resourceNameOf: resourceNameMap, slackOf: slackByTask });
+  } = useTaskFiltering({ tasks, allTasks, collapsedIds, workCalendar, resourceNameOf: resourceNameMap, slackOf: slackByTask, extraCtx });
 
   const allSelected = rows.length > 0 && rows.every(r => selectedIds.has(r.task.id));
 
@@ -642,7 +654,7 @@ export function GanttChart({
   }, [rowNumMap, workCalendar]);
 
   // Column auto-fit: measure text width and set width to max + padding
-  const autoFitGanttColumn = useGanttColumnAutoFit({ rows, getTaskFieldValue, workCalendar, setGanttColWidths });
+  const autoFitGanttColumn = useGanttColumnAutoFit({ rows, getTaskFieldValue, workCalendar, setGanttColWidths, extraCtx });
 
   // -----------------------------------------------------------------------
   // Inline editing state & helpers (shared with the Table view: shared/hooks/useInlineCellEdit)
@@ -1271,6 +1283,7 @@ export function GanttChart({
           reviewFlagMap={reviewFlagMap}
           successorMap={successorMap}
           slackByTask={slackByTask}
+          extraCtx={extraCtx}
           getDepHealth={getDepHealth}
           onBulkUpdate={onBulkUpdate}
           onTaskClick={onTaskClick}

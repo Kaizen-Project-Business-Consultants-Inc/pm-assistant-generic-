@@ -27,6 +27,27 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
   ['resource', 'resource'],
   ['status', 'status'],
   ['notes', 'notes'],
+  // Once Table-only; the Gantt grid has them too (gantt/extraColumns.ts), off until ticked
+  ['actualStartDate', 'actualStartDate'],
+  ['actualEndDate', 'actualEndDate'],
+  ['earlyStart', 'earlyStart'],
+  ['earlyFinish', 'earlyFinish'],
+  ['lateStart', 'lateStart'],
+  ['lateFinish', 'lateFinish'],
+  ['freeFloat', 'freeFloat'],
+  ['critical', 'critical'],
+  ['constraintType', 'constraintType'],
+  ['constraintDate', 'constraintDate'],
+  ['baselineStart', 'baselineStart'],
+  ['baselineEnd', 'baselineEnd'],
+  ['startVariance', 'startVariance'],
+  ['endVariance', 'endVariance'],
+  ['baselineDuration', 'baselineDuration'],
+  ['baselineCost', 'baselineCost'],
+  ['budgetAllocated', 'budgetAllocated'],
+  ['actualCost', 'actualCost'],
+  ['budgetVariance', 'budgetVariance'],
+  ['wbs', 'wbs'],
 ];
 
 /**
@@ -36,15 +57,8 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
  */
 export const GANTT_ONLY_KEYS: ReadonlySet<string> = new Set(['editIcon']);
 
-/** Table columns with no Gantt column (CPM, baseline, cost, actual dates, constraints, WBS) */
-export const TABLE_ONLY_KEYS: ReadonlySet<ColumnKey> = new Set<ColumnKey>([
-  'actualStartDate', 'actualEndDate',
-  'earlyStart', 'earlyFinish', 'lateStart', 'lateFinish', 'freeFloat', 'critical',
-  'constraintType', 'constraintDate',
-  'baselineStart', 'baselineEnd', 'startVariance', 'endVariance', 'baselineDuration', 'baselineCost',
-  'budgetAllocated', 'actualCost', 'budgetVariance',
-  'wbs',
-]);
+/** Table columns with no Gantt column: none since 2026-11-03 (the Gantt grid can show every Table column). Kept so the guard test stays meaningful if one is added to the Table first. */
+export const TABLE_ONLY_KEYS: ReadonlySet<ColumnKey> = new Set<ColumnKey>();
 
 export const GANTT_TO_TABLE_KEY: Readonly<Record<string, ColumnKey>> =
   Object.fromEntries(GANTT_TABLE_KEY_PAIRS.map(([g, t]) => [g, t]));

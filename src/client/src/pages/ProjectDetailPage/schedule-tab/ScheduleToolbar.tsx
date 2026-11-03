@@ -6,6 +6,7 @@ import { OverbookedToggle } from '../../../components/schedule/OverbookedToggle'
 import { ColumnPickerDropdown } from '../../../components/schedule/ColumnPickerDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS } from '../../../components/schedule/tableColumns';
 import type { ColumnState } from '../../../hooks/useColumnState';
+import { MONEY_COLUMN_KEYS, useSeesMoneyColumns } from '../../../components/schedule/gantt/extraColumns';
 
 interface ScheduleToolbarProps {
   viewMode: string;
@@ -51,6 +52,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   totalCount,
   overbooked,
 }: ScheduleToolbarProps) {
+  const seesMoney = useSeesMoneyColumns();
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {/* Search — hidden in Gantt mode (GanttChart has its own Ctrl+F search) */}
@@ -89,7 +91,7 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
       <div className="h-4 w-px bg-gray-200 dark:bg-gray-700" />
 
       <ColumnPickerDropdown
-        columns={COLUMN_DEFS}
+        columns={seesMoney ? COLUMN_DEFS : COLUMN_DEFS.filter(c => !MONEY_COLUMN_KEYS.has(c.key))}
         visibleKeys={columnState.visibleKeys}
         onToggle={columnState.toggleColumn}
         onToggleGroup={columnState.toggleGroup}

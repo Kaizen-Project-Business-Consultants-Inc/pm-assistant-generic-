@@ -129,6 +129,7 @@ const sections: Section[] = [
       'Changed your mind while dragging a bar or drawing a link in the Gantt (or moving a Table row)? Press Escape before letting go — nothing is saved',
       'Indent or outdent a task in the Gantt or Table: right-click it and choose Indent or Outdent, or click in the list and press Tab / Shift+Tab (selected rows first). A message says what moved, with Undo, or why nothing could (for example "Nothing to outdent: ... is already at the top level"); a line above the Gantt names the selected rows the keys will move, and Escape clears them',
       'Table: switch on Est Days and Work in Columns (saved, and shared with the Gantt); click any column header to sort — empty values always go last',
+      'Gantt: the Columns menu lists every Table column (critical-path dates, free slack, Critical, baseline, variances, cost, WBS and more); tick one and it shows in the Gantt grid and the Table. All are off until you tick them',
       'Tick several tasks to link them in one go (Link in order / All wait on it / It waits on all)',
       'Tick several tasks and use Group to put them under a new heading (summary task)',
       'Progress chart: Burndown for Agile, S-curve (planned vs earned vs actual cost) for Waterfall, both for Hybrid; an empty chart says what it needs',

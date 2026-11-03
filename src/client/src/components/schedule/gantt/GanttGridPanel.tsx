@@ -5,6 +5,7 @@ import { type GanttTask, type EditableField, ROW_H, GANTT_COLUMNS } from './type
 import { GanttLeftPanelHeader } from './GanttLeftPanelHeader';
 import { GanttLeftPanelRow, type GanttLeftPanelRowProps } from './GanttLeftPanelRow';
 import type { PanelMode } from './GanttToolbar';
+import type { ExtraColumnCtx } from './extraColumns';
 import type { useGanttColumns, useGanttColumnAutoFit } from './hooks/useGanttColumns';
 import type { useTaskFiltering } from './hooks/useTaskFiltering';
 import type { useGanttLayout } from './hooks/useGanttLayout';
@@ -111,6 +112,7 @@ export interface GanttGridPanelProps {
   reviewFlagMap?: Map<string, string>;
   successorMap: Links['successorMap'];
   slackByTask?: ReadonlyMap<string, number | null>;
+  extraCtx?: ExtraColumnCtx;
   getDepHealth: Links['getDepHealth'];
   // GanttChart's own callbacks (for most of the grid only whether they exist matters)
   onBulkUpdate?: (taskIds: string[], field: string, value: string) => Promise<void>;
@@ -136,7 +138,7 @@ export function GanttGridPanel({
   setEditValue, saveEdit, cancelEditing, handleSelectChange, handleDateChange, handleCellClick, handleKeyDown,
   rowDrag, handleRowDragStart, handleRowDragOver, handleRowDrop, handleRowDragEnd,
   handleRowClick, handleRowDoubleClick, handleRowContextMenu, handleInsertAfter, setNotesPopup, setPendingDeleteIds,
-  workCalendar, reviewFlagMap, successorMap, slackByTask, getDepHealth,
+  workCalendar, reviewFlagMap, successorMap, slackByTask, extraCtx, getDepHealth,
   onBulkUpdate, onTaskClick, onTaskReorder, onTaskUpdate, onInsertAfter, onDeleteTask,
 }: GanttGridPanelProps) {
   // Row positions for screen readers (aria-rowcount / aria-rowindex): the header is row 1, then the
@@ -263,6 +265,7 @@ export function GanttGridPanel({
             reviewFlagMap={reviewFlagMap}
             successorMap={successorMap}
             slack={slackByTask?.get(task.id)}
+            extraCtx={extraCtx}
             taskById={taskById}
             sortField={sortField}
             hasOnBulkUpdate={!!onBulkUpdate}

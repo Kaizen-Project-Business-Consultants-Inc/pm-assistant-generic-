@@ -1,5 +1,10 @@
 # Recent changes and open items (rolling log — newest first)
 
+## 2026-11-03 — The Gantt grid can show every Table column
+- Why: the Gantt's Columns menu listed all Table columns but ticking the Table-only ones (CPM dates, baseline, cost, actual dates, constraints, WBS) showed nothing. Now each is a real Gantt column (`gantt/extraColumns.ts` cell text from the Table's CPM / baseline data; `extraSort.ts` header sorts; `schedule/wbs.ts` shared with the Table). Off by default; shared with the Table; `TABLE_ONLY_KEYS` is empty and the guard test pairs every column.
+- Money columns (budget, actual cost, baseline cost, cost variance) are hidden from roles `canSeePayRates` refuses, in the Gantt picker and grid (the Table does not apply this itself; the server sends no values to those roles).
+- Tests: `ganttExtraColumns.test.tsx`, `columnKeyMap.test.ts`, `scheduleSortColumns.test.tsx`.
+
 ## 2026-11-03 — Downloads show names in Assigned To
 - Why: the Table's CSV download (and Gantt/schedule CSV) wrote the stored user/resource ID in Assigned To. `exportTasksCSV` now takes the `useResourceNameMap()` names (same lookup as the screen); the project export CSV, JSON and MS Project XML (`routes/core/exports.ts`, `assigneeNames()`) map IDs to names too. Unknown ID stays as stored. Test: `exportUtils.test.ts`.
 

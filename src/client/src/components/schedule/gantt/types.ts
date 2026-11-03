@@ -220,6 +220,8 @@ export interface GanttColDef {
   fixed?: boolean;
   /** If true, column cannot be hidden via column picker */
   alwaysVisible?: boolean;
+  /** Shown only on a project schedule (shared Table column state) and only when ticked: needs the plan's critical path / baseline / cost data */
+  planOnly?: boolean;
 }
 
 export const GANTT_COLUMNS: GanttColDef[] = [
@@ -240,6 +242,27 @@ export const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'resource',  label: 'Resource', defaultWidth: 110, minWidth: 70,  resizable: true },
   { key: 'status',    label: 'Status',   defaultWidth: 64,  minWidth: 50,  resizable: true },
   { key: 'notes',     label: 'Notes',    defaultWidth: 120, minWidth: 60,  resizable: true },
+  // Columns that used to exist only in the Table (extraColumns.ts): off until ticked in the Columns menu
+  { key: 'actualStartDate', label: 'Act Start', defaultWidth: 80, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'actualEndDate', label: 'Act Finish', defaultWidth: 80, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'earlyStart', label: 'Early Start', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'earlyFinish', label: 'Early Finish', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'lateStart', label: 'Late Start', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'lateFinish', label: 'Late Finish', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'freeFloat', label: 'Free Slack', defaultWidth: 64, minWidth: 44, resizable: true, planOnly: true },
+  { key: 'critical', label: 'Critical', defaultWidth: 60, minWidth: 44, resizable: true, planOnly: true },
+  { key: 'constraintType', label: 'Constraint', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'constraintDate', label: 'Constr Date', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'baselineStart', label: 'Base Start', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'baselineEnd', label: 'Base End', defaultWidth: 84, minWidth: 60, resizable: true, planOnly: true },
+  { key: 'startVariance', label: 'Start Var', defaultWidth: 68, minWidth: 48, resizable: true, planOnly: true },
+  { key: 'endVariance', label: 'End Var', defaultWidth: 68, minWidth: 48, resizable: true, planOnly: true },
+  { key: 'baselineDuration', label: 'Base Dur', defaultWidth: 64, minWidth: 44, resizable: true, planOnly: true },
+  { key: 'baselineCost', label: 'Base Cost', defaultWidth: 84, minWidth: 56, resizable: true, planOnly: true },
+  { key: 'budgetAllocated', label: 'Budget', defaultWidth: 84, minWidth: 56, resizable: true, planOnly: true },
+  { key: 'actualCost', label: 'Actual Cost', defaultWidth: 84, minWidth: 56, resizable: true, planOnly: true },
+  { key: 'budgetVariance', label: 'Cost Var', defaultWidth: 84, minWidth: 56, resizable: true, planOnly: true },
+  { key: 'wbs', label: 'WBS', defaultWidth: 64, minWidth: 44, resizable: true, planOnly: true },
   { key: 'editIcon',  label: '',         defaultWidth: 72,  minWidth: 72,  resizable: false, fixed: true, alwaysVisible: true },
 ];
 

@@ -21,6 +21,8 @@ import {
 import { workingDaysBetween, type WorkCalendar } from '../../../../utils/workingDays';
 import { toLocalDate } from '../../../../utils/dateUtils';
 import { effectiveTaskStatus } from '../../../../utils/taskStatus';
+import { extraSortValue } from '../extraSort';
+import type { ExtraColumnCtx } from '../extraColumns';
 
 const EMPTY_NAMES = new Map<string, string>();
 
@@ -31,6 +33,8 @@ export interface GanttSortContext {
   workCalendar?: WorkCalendar | null;
   /** Each task's total slack (Slack column); missing = not worked out yet, sorts last */
   slackOf?: ReadonlyMap<string, number | null>;
+  /** The Table-sourced columns' data (extraColumns.ts) */
+  extra?: ExtraColumnCtx;
 }
 
 const PRIORITY_ORDER: Record<string, number> = { low: 0, medium: 1, high: 2, urgent: 3 };
@@ -58,7 +62,7 @@ export function ganttSortValue(task: GanttTask, sortField: string, ctx: GanttSor
     case 'status': return STATUS_ORDER[effectiveTaskStatus(task)] ?? 0;
     case 'assignedTo': return assignedSortName(task, ctx.resourceNameOf);
     case 'totalFloat': return ctx.slackOf?.get(task.id) ?? null;
-    default: return '';
+    default: return ctx.extra ? extraSortValue(task, sortField, ctx.extra) : '';
   }
 }
 
@@ -77,6 +81,7 @@ export function useTaskFiltering({
   workCalendar,
   resourceNameOf,
   slackOf,
+  extraCtx,
 }: {
   tasks: GanttTask[];
   /** The whole plan, for the fixed row numbers Pred / Succ sort by (defaults to tasks) */
@@ -87,6 +92,8 @@ export function useTaskFiltering({
   resourceNameOf?: Map<string, string>;
   /** Each task's total slack, for the Slack sort (U69) */
   slackOf?: ReadonlyMap<string, number | null>;
+  /** Lookups for the Table-sourced columns, for their sorts */
+  extraCtx?: ExtraColumnCtx;
 }) {
   // -----------------------------------------------------------------------
   // Quick search state
@@ -218,7 +225,7 @@ export function useTaskFiltering({
   const rows = useMemo(() => {
     if (!sortField || !sortDirection) return filteredRows;
     // Sort within sibling groups to preserve hierarchy
-    const ctx: GanttSortContext = { rowNumOf, successorIds, resourceNameOf: names, workCalendar, slackOf };
+    const ctx: GanttSortContext = { rowNumOf, successorIds, resourceNameOf: names, workCalendar, slackOf, extra: extraCtx };
     const getSortValue = (task: GanttTask) => ganttSortValue(task, sortField, ctx);
 
     // Group rows by parentTaskId, sort within each group, reassemble
@@ -254,7 +261,7 @@ export function useTaskFiltering({
       }
     }
     return result;
-  }, [filteredRows, sortField, sortDirection, workCalendar, rowNumOf, successorIds, names, slackOf]);
+  }, [filteredRows, sortField, sortDirection, workCalendar, rowNumOf, successorIds, names, slackOf, extraCtx]);
 
   return {
     searchQuery,

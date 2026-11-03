@@ -15,6 +15,10 @@ import { workingDaysBetween, type WorkCalendar } from '../../../../utils/working
 import { COLUMN_DEFS } from '../../tableColumns';
 import { taskStatusLabel } from '../../../../utils/taskStatus';
 import { GANTT_TO_TABLE_KEY, TABLE_TO_GANTT_KEY, mergeGanttOrderIntoTableOrder } from '../../columnKeyMap';
+import { MONEY_COLUMN_KEYS, extraCell, useSeesMoneyColumns, type ExtraColumnCtx } from '../extraColumns';
+
+/** Gantt columns that show only on a project schedule, when ticked (extraColumns.ts) */
+const PLAN_ONLY_KEYS: ReadonlySet<string> = new Set(GANTT_COLUMNS.filter(c => c.planOnly).map(c => c.key));
 
 /**
  * Gantt grid columns: widths (resize), visibility, order (move + drag reorder), the
@@ -92,11 +96,15 @@ export function useGanttColumns({
     }
   }, [ganttVisibleCols, scheduleId]);
 
+  const seesMoney = useSeesMoneyColumns();
+
   // Gantt key → Table key (shared column state); one list for both directions: columnKeyMap.ts
   const ganttKeyToTableKey: Record<string, string> = GANTT_TO_TABLE_KEY;
 
   const isColVisible = useCallback((col: GanttColDef): boolean => {
     if (col.alwaysVisible) return true;
+    // Table-sourced columns need the project's plan data; money ones are hidden from roles that see no pay rates
+    if (col.planOnly && (!_columnState || (!seesMoney && MONEY_COLUMN_KEYS.has(col.key)))) return false;
     // If external columnState is provided, use its visibility
     if (_columnState) {
       const tableKey = GANTT_TO_TABLE_KEY[col.key];
@@ -106,7 +114,7 @@ export function useGanttColumns({
       return false;
     }
     return ganttVisibleCols.has(col.key);
-  }, [ganttVisibleCols, _columnState]);
+  }, [ganttVisibleCols, _columnState, seesMoney]);
 
   const toggleColVisibility = useCallback((key: string) => {
     setGanttVisibleCols(prev => {
@@ -233,11 +241,13 @@ export function useGanttColumnAutoFit({
   getTaskFieldValue,
   workCalendar,
   setGanttColWidths,
+  extraCtx,
 }: {
   rows: FlatRow[];
   getTaskFieldValue: (task: GanttTask, field: EditableField) => string;
   workCalendar?: WorkCalendar | null;
   setGanttColWidths: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  extraCtx?: ExtraColumnCtx;
 }) {
   const measureCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -259,9 +269,9 @@ export function useGanttColumnAutoFit({
       case 'assigned': return task.assignedTo || '';
       case 'status': return taskStatusLabel(task);
       case 'notes': return task.description || '';
-      default: return '';
+      default: return extraCtx && PLAN_ONLY_KEYS.has(colKey) ? extraCell(colKey, task, extraCtx).text : '';
     }
-  }, [getTaskFieldValue, workCalendar]);
+  }, [getTaskFieldValue, workCalendar, extraCtx]);
 
   const autoFitGanttColumn = useCallback((colKey: string) => {
     if (!measureCanvasRef.current) {

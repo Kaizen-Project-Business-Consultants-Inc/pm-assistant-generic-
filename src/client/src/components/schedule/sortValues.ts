@@ -1,4 +1,5 @@
 import type { GanttTask } from './gantt/types';
+import { EXTRA_SORT_KEYS } from './gantt/extraSort';
 
 /**
  * Column sort, shared by the Gantt grid and the Table.
@@ -24,6 +25,8 @@ export const GANTT_SORT_FIELD: Readonly<Record<string, string>> = {
   status: 'status',
   notes: 'notes',
   slack: 'totalFloat',
+  // Columns once found only in the Table: same key on both sides (WBS does not sort, as in the Table)
+  ...Object.fromEntries(EXTRA_SORT_KEYS.map(k => [k, k])),
 };
 
 /** Can this Gantt column's header sort? */

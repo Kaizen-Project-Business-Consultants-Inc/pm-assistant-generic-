@@ -31,6 +31,7 @@ import { GanttLeftPanelHeader } from '../../components/schedule/gantt/GanttLeftP
 import { GANTT_COLUMNS, buildRowNumberMap, type GanttTask } from '../../components/schedule/gantt/types';
 import { COLUMN_DEFS, type ColumnKey } from '../../components/schedule/tableColumns';
 import { GANTT_TO_TABLE_KEY } from '../../components/schedule/columnKeyMap';
+import { buildExtraColumnCtx } from '../../components/schedule/gantt/extraColumns';
 
 const dep = (dependencyId: string) => ({ dependencyId, dependencyType: 'FS', lagDays: 0 });
 const asg = (resourceId: string) => ({ id: `as-${resourceId}`, resourceId, allocationPct: 100 });
@@ -75,9 +76,9 @@ describe('sort value helpers', () => {
 });
 
 describe('guards: one shared map, every column sorts, every sort has a value', () => {
-  it('every Gantt column sorts except # and the row-actions column', () => {
+  it('every Gantt column sorts except #, WBS (as in the Table) and the row-actions column', () => {
     for (const c of GANTT_COLUMNS) {
-      expect(isGanttColSortable(c.key), c.key).toBe(c.key !== 'rowNum' && c.key !== 'editIcon');
+      expect(isGanttColSortable(c.key), c.key).toBe(c.key !== 'rowNum' && c.key !== 'editIcon' && c.key !== 'wbs');
     }
     expect(ganttSortFieldFor('rowNum')).toBeNull();
   });
@@ -102,7 +103,11 @@ describe('guards: one shared map, every column sorts, every sort has a value', (
   const plan = [y, full, z];
 
   it('every Gantt sort field has a sort value (none falls through)', () => {
-    const ctx = { rowNumOf: buildRowNumberMap(plan), successorIds: buildSuccessorIds(plan), resourceNameOf: NAMES, workCalendar: null, slackOf: new Map([['x', 3]]) };
+    const ctx = { rowNumOf: buildRowNumberMap(plan), successorIds: buildSuccessorIds(plan), resourceNameOf: NAMES, workCalendar: null, slackOf: new Map([['x', 3]]),
+      extra: buildExtraColumnCtx({
+        cpmData: { tasks: [{ taskId: 'x', ES: 0, EF: 4, LS: 1, LF: 5, totalFloat: 1, freeFloat: 0, isCritical: false }] },
+        baselineData: { taskVariances: [{ taskId: 'x', baselineStart: '2026-03-01', baselineEnd: '2026-03-05', startVarianceDays: 1, endVarianceDays: 1 }] },
+      }, plan) };
     for (const field of Object.values(GANTT_SORT_FIELD)) {
       expect(ganttSortValue(full, field, ctx), field).not.toBe('');
       expect(ganttSortValue(full, field, ctx), field).not.toBeNull();
@@ -233,7 +238,7 @@ describe('Gantt header: Succ, Resource and Notes are sortable headers', () => {
     );
     const headers = Array.from(container.querySelectorAll('[role="columnheader"]'));
     const sortable = headers.filter(h => h.getAttribute('aria-sort') === 'none').length;
-    expect(sortable).toBe(GANTT_COLUMNS.filter(c => c.key !== 'rowNum' && c.key !== 'editIcon').length);
+    expect(sortable).toBe(GANTT_COLUMNS.filter(c => c.key !== 'rowNum' && c.key !== 'editIcon' && c.key !== 'wbs').length);
     for (const label of ['Succ', 'Resource', 'Notes', 'Pred', 'Work']) {
       const h = headers.find(x => x.textContent?.includes(label))!;
       expect(h.getAttribute('aria-sort'), label).toBe('none');

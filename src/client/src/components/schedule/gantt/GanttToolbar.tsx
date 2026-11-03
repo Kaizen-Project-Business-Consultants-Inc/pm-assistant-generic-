@@ -5,6 +5,7 @@ import { SavedViewsDropdown } from '../SavedViewsDropdown';
 import type { SavedView } from '../SavedViewsDropdown';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, type ColumnKey } from '../tableColumns';
 import { ColumnPickerDropdown } from '../ColumnPickerDropdown';
+import { MONEY_COLUMN_KEYS, useSeesMoneyColumns } from './extraColumns';
 import { GanttExportDropdown } from './GanttExportDropdown';
 import { WorkingCalendarButton } from '../calendar/WorkingCalendarButton';
 import { OverbookedToggle } from '../OverbookedToggle';
@@ -134,6 +135,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
   calendarActive,
 }: GanttToolbarProps) {
   const colPickerId = useId();
+  const seesMoney = useSeesMoneyColumns();
   // The Workload Heatmap is on the Resources page — linked only for roles that may open it (constants/roleRoutes.ts)
   const [showColPicker, setShowColPicker] = useState(false);
   const colPickerRef = useRef<HTMLDivElement>(null);
@@ -311,7 +313,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
             hidden in Gantt mode). */}
         {columnState && (
           <ColumnPickerDropdown
-            columns={COLUMN_DEFS}
+            columns={seesMoney ? COLUMN_DEFS : COLUMN_DEFS.filter(c => !MONEY_COLUMN_KEYS.has(c.key))}
             visibleKeys={columnState.visibleKeys}
             onToggle={columnState.toggleColumn}
             onToggleGroup={columnState.toggleGroup}
@@ -336,7 +338,7 @@ export const GanttToolbar = React.memo(function GanttToolbar({
           </button>
           {showColPicker && (
             <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-30 py-1 min-w-[200px]">
-              {orderedColumns.filter(c => !c.alwaysVisible).map((col, idx, arr) => (
+              {orderedColumns.filter(c => !c.alwaysVisible && !c.planOnly).map((col, idx, arr) => (
                 <div key={col.key} className="flex items-center gap-1 px-2 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 text-xs text-gray-700 dark:text-gray-300">
                   <input
                     type="checkbox"

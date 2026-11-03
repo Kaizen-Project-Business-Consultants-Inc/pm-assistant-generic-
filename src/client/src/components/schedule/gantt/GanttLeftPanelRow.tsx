@@ -20,6 +20,9 @@ import {
 } from './types';
 import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
 import { gridCellId, GANTT_GRID_CELLS } from '../shared/GridKeyboardHelp';
+import { extraCell, type ExtraColumnCtx } from './extraColumns';
+
+const EXTRA_TONE = { bad: 'text-red-600 dark:text-red-400', good: 'text-green-600 dark:text-green-400', muted: 'text-gray-500 dark:text-gray-400' } as const;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -61,6 +64,8 @@ export interface GanttLeftPanelRowProps {
   successorMap: Map<string, Array<{ successorId: string; type: string; lag: number }>>;
   /** Total slack in working days (undefined until the critical path is worked out; null for a completed task: shows a dash) */
   slack?: number | null;
+  /** Lookups for the columns once found only in the Table (critical path dates, baseline, cost, WBS …) */
+  extraCtx?: ExtraColumnCtx;
   taskById: ReadonlyMap<string, GanttTask>; // for dependency name tooltips
   // Feature flags
   sortField: string | null;
@@ -173,6 +178,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   reviewFlagMap,
   successorMap,
   slack,
+  extraCtx,
   taskById,
   sortField,
   hasOnBulkUpdate,
@@ -752,6 +758,22 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
               </span>
             )}
           </div>
+          );
+        }
+
+        // Columns once found only in the Table: read-only text, the Table's values
+        if (col.planOnly && extraCtx) {
+          const cell = extraCell(col.key, task, extraCtx);
+          return (
+            <div
+              key={col.key}
+              {...CELL}
+              className={`shrink-0 px-1 text-center text-xs tabular-nums truncate ${cell.tone ? EXTRA_TONE[cell.tone] : 'text-gray-500 dark:text-gray-400'}`}
+              style={{ width: w }}
+              title={cell.title ?? cell.text}
+            >
+              {cell.text}
+            </div>
           );
         }
 

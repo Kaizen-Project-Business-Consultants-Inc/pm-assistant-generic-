@@ -812,6 +812,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onRedo={redo}
           criticalPathTaskIds={showCriticalPath && cpmData?.hasLinks !== false ? cpmData?.criticalPathTaskIds : undefined}
           slackByTask={slackByTask}
+          cpmData={cpmData}
+          baselineData={comparison}
           taskFloatMap={showCriticalPath && slackByTask ? Object.fromEntries([...slackByTask].filter((e): e is [string, number] => e[1] !== null)) : undefined}
           baselineTasks={selectedBaseline?.tasks?.map((bt: any) => ({
             taskId: bt.taskId,

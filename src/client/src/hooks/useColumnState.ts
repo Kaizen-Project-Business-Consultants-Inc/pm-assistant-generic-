@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { MONEY_COLUMN_KEYS, useSeesMoneyColumns } from '../components/schedule/gantt/extraColumns';
 import { COLUMN_DEFS, DEFAULT_VISIBLE_KEYS, SCHEDULING_KEYS, DEFAULTS_ADDED_LATER } from '../components/schedule/tableColumns';
 import type { ColumnKey, ColumnGroup, ColumnDef } from '../components/schedule/tableColumns';
 import { apiService } from '../services/api';
@@ -49,6 +50,7 @@ function doSyncToServer(scheduleId: string, state: PerScheduleColumnState) {
 }
 
 export function useColumnState(scheduleId: string): ColumnState {
+  const seesMoney = useSeesMoneyColumns();
   const [visibleKeys, setVisibleKeys] = useState<Set<ColumnKey>>(() => {
     try {
       const stored = localStorage.getItem(`tableview-cols:${scheduleId}`);
@@ -192,7 +194,8 @@ export function useColumnState(scheduleId: string): ColumnState {
     // Always include rowNum even if somehow missing from visibleKeys
     const keysWithRowNum = new Set(visibleKeys);
     keysWithRowNum.add('rowNum');
-    const visible = COLUMN_DEFS.filter(c => keysWithRowNum.has(c.key));
+    // Money columns stay hidden from roles that see no pay rates (ticked or not)
+    const visible = COLUMN_DEFS.filter(c => keysWithRowNum.has(c.key) && (seesMoney || !MONEY_COLUMN_KEYS.has(c.key)));
     if (columnOrder.length === 0) return visible;
     const orderMap = new Map(columnOrder.map((k, i) => [k, i]));
     // rowNum always first (use -1 so it sorts before everything)
@@ -201,7 +204,7 @@ export function useColumnState(scheduleId: string): ColumnState {
       const ib = b.key === 'rowNum' ? -1 : (orderMap.get(b.key) ?? 999);
       return ia - ib;
     });
-  }, [visibleKeys, columnOrder]);
+  }, [visibleKeys, columnOrder, seesMoney]);
 
   const moveColumn = useCallback((colKey: ColumnKey, direction: 'left' | 'right') => {
     const currentOrder = visibleColumns.map(c => c.key);
