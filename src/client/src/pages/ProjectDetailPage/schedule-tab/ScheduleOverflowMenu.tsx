@@ -2,7 +2,7 @@
  * delete). Moved out of ScheduleTab.tsx unchanged (code health item 4, Phase 1, 2026-10-04). */
 import { useState, useRef, useEffect, useId } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Upload, BarChart3, Save, Bot, Download, Trash2, MoreVertical } from 'lucide-react';
+import { Upload, BarChart3, Save, Bot, Download, FileSpreadsheet, Trash2, MoreVertical } from 'lucide-react';
 import { apiService } from '../../../services/api';
 
 // ---------------------------------------------------------------------------
@@ -28,6 +28,8 @@ export interface ScheduleOverflowMenuProps {
   levelingBusy: boolean;
   onLevelResources: () => void;
   exportCSV: () => void;
+  /** Left out in the Table, which has its own Excel button with the columns on screen */
+  exportExcel?: () => Promise<void>;
   queryClient: ReturnType<typeof useQueryClient>;
   onDeleteSchedule: () => void;
   onCreateScenario: () => void;
@@ -158,6 +160,15 @@ export function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
             <Download className="w-3.5 h-3.5" />
             Export visible tasks (CSV)
           </button>
+          {props.exportExcel && (
+            <button
+              onClick={() => { void props.exportExcel?.(); setOpen(false); }}
+              className={itemClass}
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              Export visible tasks (Excel)
+            </button>
+          )}
 
           <div className={divider} />
 

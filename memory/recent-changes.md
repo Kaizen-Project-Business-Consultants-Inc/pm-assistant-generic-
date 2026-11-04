@@ -5,6 +5,12 @@
 - Money columns (budget, actual cost, baseline cost, cost variance) are hidden from roles `canSeePayRates` refuses, in the Gantt picker and grid (the Table does not apply this itself; the server sends no values to those roles).
 - Tests: `ganttExtraColumns.test.tsx`, `columnKeyMap.test.ts`, `scheduleSortColumns.test.tsx`.
 
+## 2026-11-03 — Export to Excel (.xlsx)
+- Why: approved mock (user "Perfect", 2026-11-03). An **Excel** button beside CSV in the Table toolbar and the schedule toolbar, an **Excel (.xlsx)** entry in the Gantt Export menu, and "Export visible tasks (Excel)" in More actions.
+- How: `utils/exportExcel.ts` builds the sheet with ExcelJS, loaded by dynamic `import('exceljs')` only on click (lazy chunk). Table: its visible columns/rows via `components/schedule/table/tableExport.ts`; Gantt and schedule toolbar: the CSV's seven columns (`BASIC_COLUMNS`). Real date cells from YYYY-MM-DD parts (no time zone), numbers for duration/percent/money, names not ids, Status colours, indent by outline level, money columns only with `canSeePayRates`. `safeFileName` is shared with the CSV.
+- Dependencies: `exceljs` (client), `uuid` ^11 (client runtime; `DefinitionsPanel` imports it and only got it by hoisting). The service worker no longer precaches the exceljs chunk (`globIgnores`). Table mode shows only the Table's own Excel button; rows follow the group-by order; CSV and xlsx file names use the same local day. Dead-code baseline shrank by 2 (COST_KEYS now used, uuid now listed).
+- Test: `exportExcel.test.ts`.
+
 ## 2026-11-03 — Downloads show names in Assigned To
 - Why: the Table's CSV download (and Gantt/schedule CSV) wrote the stored user/resource ID in Assigned To. `exportTasksCSV` now takes the `useResourceNameMap()` names (same lookup as the screen); the project export CSV, JSON and MS Project XML (`routes/core/exports.ts`, `assigneeNames()`) map IDs to names too. Unknown ID stays as stored. Test: `exportUtils.test.ts`.
 

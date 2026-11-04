@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Download, ChevronDown } from 'lucide-react';
 import { exportTasksCSV } from '../../../utils/exportUtils';
+import { downloadTasksExcel, basicValue, BASIC_COLUMNS } from '../../../utils/exportExcel';
 import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
 import { TIMELINE_STRIP_ID } from './GanttTimelineStrip';
 
@@ -127,6 +128,16 @@ export const GanttExportDropdown = React.memo(function GanttExportDropdown({ gan
     exportTasksCSV(tasks, scheduleName, resourceNames);
   };
 
+  const handleExcelExport = async () => {
+    setOpen(false);
+    setExporting('excel');
+    try {
+      await downloadTasksExcel({ tasks, columns: BASIC_COLUMNS, value: basicValue(resourceNames), canSeePay: false }, scheduleName);
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const btnClass = 'w-full text-left px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors';
 
   return (
@@ -160,6 +171,9 @@ export const GanttExportDropdown = React.memo(function GanttExportDropdown({ gan
           <div className="border-t border-gray-100 dark:border-gray-700 my-0.5" />
           <button onClick={handleCsvExport} className={btnClass}>
             CSV (Task Data)
+          </button>
+          <button onClick={handleExcelExport} className={btnClass}>
+            Excel (.xlsx)
           </button>
         </div>
       )}

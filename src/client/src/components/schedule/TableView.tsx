@@ -40,13 +40,17 @@ import { cellEditLabel } from './cellEditLabel';
 import { buildWbsMap } from './wbs';
 import { listenForEscapeCancel } from './shared/escapeCancel';
 import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
+import { useAuthStore } from '../../stores/authStore';
+import { canSeePayRates } from '../../utils/rateCard';
+import { downloadTasksExcel, levelsByParent } from '../../utils/exportExcel';
+import { tableExportValue } from './table/tableExport';
 import { firstByKey } from '../../utils/lookup';
 import { refreshAfterScheduleChange } from '../../utils/scheduleChanged';
 import { rowAfterRemoval, refocusGrid } from './shared/gridFocus';
 import { useIndentTasks, IndentNotice } from './shared/hooks/useIndentTasks';
 import { menuTargetIds, indentAvailability } from './shared/indentPlan';
 
-export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onMoveTasks, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, overbookedNotes, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
+export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onMoveTasks, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, overbookedNotes, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -301,25 +305,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
   } = useTableGrouping({ tasks, cpmMap, baselineMap, workCalendar, rowNumMap, resourceNameOf: resourceNameMap });
 
   // Build hierarchical ordering
-  const levelMap = useMemo(() => {
-    const map = new Map<string, number>();
-    const taskIds = new Set(tasks.map(t => t.id));
-    const childrenOf = new Map<string | null, GanttTask[]>();
-    for (const t of tasks) {
-      const parent = (t.parentTaskId && taskIds.has(t.parentTaskId)) ? t.parentTaskId : null;
-      if (!childrenOf.has(parent)) childrenOf.set(parent, []);
-      childrenOf.get(parent)!.push(t);
-    }
-    const assign = (parentId: string | null, level: number) => {
-      const children = childrenOf.get(parentId) || [];
-      for (const child of children) {
-        map.set(child.id, level);
-        assign(child.id, level + 1);
-      }
-    };
-    assign(null, 0);
-    return map;
-  }, [tasks]);
+  const levelMap = useMemo(() => levelsByParent(tasks), [tasks]);
 
   // Row drag reorder state: the dragged task and the task under the pointer, by id (the rows on
   // screen are not the plan's rows by position once grouped or windowed)
@@ -344,6 +330,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     () => (groupBy ? bodyRows.flatMap(r => (r.kind === 'task' ? [r.task] : [])) : visibleSorted),
     [groupBy, bodyRows, visibleSorted],
   );
+
   // Not while sorted or grouped: the rows are not in plan order then, so "drop between these two"
   // has no place in the plan (audit 2: a grouped drop used to move the wrong tasks)
   const canDragRows = !!onTaskReorder && !editingCell && selectedIds.size === 0 && !sortField && !groupBy;
@@ -419,6 +406,26 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
     }
     return map;
   }, [tasks]);
+
+  // Export to Excel: the columns on screen, in order, for the rows on screen (grouped as shown)
+  const seesPay = canSeePayRates(useAuthStore(s => s.user));
+  const exportExcel = useCallback(() => {
+    const dateCache = new Map<string, string | null>();
+    return downloadTasksExcel({
+      tasks: rowTasks,
+      columns: visibleColumns,
+      canSeePay: seesPay,
+      levelOf: t => levelMap.get(t.id) ?? 0,
+      value: (task, key) => tableExportValue(task, key, {
+        names: resourceNameMap, rowNumMap, wbsMap, successorMap, cpmMap, baselineMap, cpmOrigin, workCalendar, dateCache,
+        dependencyText: t => getTaskFieldValue(t, 'dependency'),
+        durationDays: t => {
+          const days = t.startDate && t.endDate ? (workingDaysBetween(t.startDate, t.endDate, workCalendar) ?? 0) : 0;
+          return days > 0 ? days : (t.estimatedDays ?? null);
+        },
+      }),
+    }, scheduleName || 'tasks');
+  }, [rowTasks, visibleColumns, seesPay, levelMap, resourceNameMap, rowNumMap, wbsMap, successorMap, cpmMap, baselineMap, cpmOrigin, workCalendar, getTaskFieldValue, scheduleName]);
 
   const getDepHealth = useCallback((depTaskId: string): 'satisfied' | 'in_progress' | 'at_risk' => {
     // the lookup built once above (it searched the whole plan for every predecessor shown; 2026-10-10)
@@ -1408,6 +1415,7 @@ export function TableView({ tasks, allTasks, onBulkLink, onGroupTasks, scheduleI
         onUndo={onUndo}
         onRedo={onRedo}
         visibleSorted={visibleSorted}
+        onExportExcel={exportExcel}
         scheduleId={scheduleId}
         visibleKeys={visibleKeys}
         sortField={sortField}

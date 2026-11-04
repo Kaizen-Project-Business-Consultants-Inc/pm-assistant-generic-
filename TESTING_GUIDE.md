@@ -172,6 +172,10 @@ Manual check on staging (Stripe test mode, card 4242 4242 4242 4242):
 
 ---
 
+### Export to Excel (Nov 2026)
+
+Unit test: `src/client/src/__tests__/utils/exportExcel.test.ts` builds a workbook from sample tasks and reads it back with ExcelJS (indent per level, bold phase rows, real date cells, name not id, frozen header and auto-filter, money columns left out without the right to see pay rates). By hand on staging: in Table click **Excel** next to **CSV**, open the file in Excel, and check that the columns, order, filters, sorting and collapsed phases match the screen, dates sort as dates, and a team member (no pay-rate right) gets no Budget / Actual Cost / Baseline Cost / Cost Variance columns even if they are shown. Repeat from the Gantt **Export** menu and the schedule toolbar. After `npm run build` in `src/client`, `npm run bundle-budget` must show no new failure: ExcelJS is a separate lazy chunk, loaded only on the click.
+
 ## 4. Testing the Workflow Engine
 
 The workflow engine is a DAG-based system at `/api/v1/workflows`. Workflows are composed of nodes (trigger, condition, action, approval, delay, agent) connected by edges. Workflows fire automatically on task create/update events, project budget/status changes, and via a 15-minute overdue-task scanner.

@@ -45,6 +45,8 @@ export default defineConfig(({ mode }) => ({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Excel export (ExcelJS, ~0.9 MB) loads only when someone clicks it, not in every user's background download
+        globIgnores: ['**/exceljs*.js'],
       },
     }),
   ],

@@ -409,7 +409,7 @@ The **⋯ overflow menu** (the "More actions" button at the right of the toolbar
 |-------|-------|
 | **Baseline** | Save baseline, Select baseline, Show variance |
 | **Scenarios** | Create scenario, Select scenario, Compare |
-| **Data** | Import (CSV / Excel / XML), Export CSV |
+| **Data** | Import (CSV / Excel / XML), Export CSV, Export Excel |
 | **Automation** | AI Reschedule, Level Resources, % Mode |
 | **Help** | Keyboard shortcuts |
 | **Danger** | Delete schedule (shown in red) |
@@ -567,7 +567,7 @@ The default schedule view. Displays tasks as horizontal bars on a timeline:
 - **Interactive dependency drawing**: Hover over a task bar to see connector dots at the left (start) and right (finish) edges. Drag from a dot to another task bar to create a dependency link. The dependency type (FS/SS/FF/SF) is determined by which edges you drag from and to. A dashed blue preview line and target row highlight guide you during the drag. Press **Escape** before letting go to cancel — no link is made.
 - **Recurring task indicator**: Template tasks display a repeat icon on their bar.
 - **Milestones**: Tasks marked as milestones appear as diamonds instead of bars.
-- **Export**: Click the **Export** dropdown in the toolbar to access four options: **PDF** (A3 landscape, auto-scaled via html2pdf.js), **PNG** (high-quality 2x image via html-to-image), **Print** (browser print dialog), and **CSV** (task data download, with the assigned person's name). All export modes temporarily expand the Gantt to capture the full schedule before reverting to the normal view.
+- **Export**: Click the **Export** dropdown in the toolbar to access four options: **PDF** (A3 landscape, auto-scaled via html2pdf.js), **PNG** (high-quality 2x image via html-to-image), **Print** (browser print dialog), **CSV** (task data download, with the assigned person's name) and **Excel** (a real .xlsx workbook of the task list, see Export to Excel below). All export modes temporarily expand the Gantt to capture the full schedule before reverting to the normal view.
 - Hover over a bar to see task details including all predecessors (row number, task name, dependency type, lag, and health status per predecessor). Click to edit.
 - **Column header sort**: Click any column header in the left panel (or Tab to it and press Enter) to sort rows ascending, then descending, then back to default (none). A ▲ or ▼ indicator appears in the header to show the active sort direction. Sort preserves task hierarchy — children are sorted within their own sibling group, not mixed across levels. Row drag reorder is disabled while a sort is active. Every column except # sorts: **Pred** and **Succ** by the row number of the first task listed, **Resource** by the first person's name, **Notes** by their text, and **Assigned** by the name you see. Tasks with no predecessor, successor, resource, notes, Est or Work always go to the bottom, whichever direction you sort (a 0 counts as a value).
 - **Copy/Paste cells**: Press **Ctrl+C** to copy the focused cell's value to the clipboard. Press **Ctrl+V** to paste the clipboard value into the focused cell (paste only applies when the field types match). A green flash confirms the paste. A pasted **Predecessors** value is read exactly like a typed one ("3", "3SS+2d", "4, 7FF") and makes the same links as typing it would; if it can't be used (for example a row that doesn't exist, or the task itself), nothing changes. A summary task's Start, Finish, Duration, % complete and Status can't be pasted into.
@@ -607,6 +607,16 @@ A cross-view **filter bar** appears above all schedule views (Gantt, Kanban, Cal
 - **Clear all** — resets all filters in one click.
 - **Task count** — "X of Y tasks" indicator.
 - **CSV Export** — downloads the currently filtered tasks as a CSV file named after the schedule.
+- **Excel Export** — the **Excel** button beside **CSV** (in the Table toolbar, the schedule toolbar and the Gantt **Export** menu) downloads an .xlsx workbook named `<schedule name>_<date>.xlsx`.
+
+#### Export to Excel
+
+The **Excel** button (Table toolbar, schedule toolbar, the **More actions** menu, and **Export > Excel (.xlsx)** in the Gantt) saves the tasks you are looking at as a formatted workbook:
+
+- **Table:** the same columns, in the same order, for the same rows in the order on screen (your filters, sorting, grouping and collapsed phases carry over). In the Table, only its own **Excel** button is shown. The Gantt and the schedule toolbar export the same seven columns as CSV (name, status, priority, assigned to, start, end, progress).
+- **Looks:** a bold white header on a dark teal band, frozen at the top, with filter arrows on; phases are bold on a light fill; tasks are indented by outline level; milestones start with a diamond; Status cells use the same colours as on screen.
+- **Real values:** dates are real Excel dates (sort and filter work), durations, percentages and money are numbers, and Assigned To shows the person's name.
+- **Money columns** (Budget, Actual Cost, Baseline Cost, Cost Variance) are included only if your role can see pay rates.
 
 #### Quick Filter Pills & At-Risk Highlighting
 

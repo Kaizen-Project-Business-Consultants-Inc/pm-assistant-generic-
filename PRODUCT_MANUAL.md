@@ -41,7 +41,7 @@ In **Gantt mode**, the GanttToolbar is the sole toolbar — the outer ScheduleTo
 
 The **[Columns]** control in Gantt mode is the same shared column picker used by Table view (`ColumnPickerDropdown`), bound to the same per-schedule column state — hiding, reordering, or resetting columns in one view applies to the other. Every Gantt column with a Table counterpart follows it, Resource and Notes included (both were missed until Oct 2026); the Gantt↔Table key pairs are one list in `components/schedule/columnKeyMap.ts`, with a guard test that every column of both views is paired or listed as one-view-only. Dragging columns into a new order in the Gantt reorders the shared list (every Table column is now in the Gantt, so the Table order follows). Est Days and Work were Gantt-only until Oct 2026 and couldn't be switched on from the shared picker; the Table now has **Est Days** (`estimatedDays`) and **Work** (`estimatedDurationHours`) columns paired with the Gantt's Est / Work, so the only one-view-only Gantt column is the row-actions column. **Nov 2026: the Gantt grid can show every Table column** -- the columns once Table-only (actual dates, CPM dates, free slack, critical, constraint, baseline, variances, cost, WBS) are Gantt columns too (`gantt/extraColumns.ts`: cell text from the Table's data -- critical path, baseline comparison, `buildWbsMap` in `schedule/wbs.ts` -- and `extraSort.ts` for the header sorts; WBS does not sort), paired in `GANTT_TABLE_KEY_PAIRS` (`TABLE_ONLY_KEYS` is now empty). They are `planOnly` (never shown on a Gantt without the shared column state, e.g. the portfolio Gantt) and off by default; the money ones (budget, actual cost, baseline cost, cost variance) are hidden from roles `canSeePayRates` refuses, in both views' pickers and grids (`useColumnState` drops them from the visible columns). The left grid scrolls sideways when wide (`minRowWidth`).
 
-In **Table**, **Kanban**, and **Calendar** modes, the ScheduleToolbar is shown instead (with search, filters, column picker, and CSV export).
+In **Table**, **Kanban**, and **Calendar** modes, the ScheduleToolbar is shown instead (with search, filters, column picker, and CSV / Excel export).
 
 When **Critical Path** is enabled, a styled banner appears below the toolbar showing total project duration (days) and the number of critical tasks.
 
@@ -53,7 +53,7 @@ The **⋯ overflow menu** exposes infrequently-used actions in grouped sections:
 |-------|---------|
 | **Baseline** | Save baseline, Select baseline, Show variance |
 | **Scenarios** | Create scenario, Select scenario, Compare |
-| **Data** | Import (CSV / Excel / XML), Export CSV |
+| **Data** | Import (CSV / Excel / XML), Export CSV, Export Excel |
 | **Automation** | AI Reschedule, Level Resources, % Mode |
 | **Help** | Keyboard shortcuts |
 | **Danger** | Delete schedule (red, destructive) |
@@ -141,6 +141,7 @@ A cross-view **filter bar** appears above all schedule views (Gantt, Kanban, Cal
 - **Clear all** — resets all active filters in one click.
 - **Task count** — displays "X of Y tasks" to show how many tasks match the current filters.
 - **CSV Export** — a download button exports the currently filtered task list as a CSV file. The filename includes the schedule name.
+- **Excel Export** — an **Excel** button beside CSV (Table toolbar, schedule toolbar and More actions menu, Gantt Export menu) builds an .xlsx workbook with ExcelJS, loaded only when clicked (`utils/exportExcel.ts`, separate lazy chunk). Table: the visible columns and rows (`visibleSorted`, so filters, sorting and collapsed phases carry over; cell values from `table/tableExport.ts`). Gantt and schedule toolbar: the CSV's seven columns. Header on a teal band, frozen, auto-filter; phases bold on a light fill; indent by outline level via cell alignment; real date cells (calendar days built from the YYYY-MM-DD parts, no time zone); numeric duration, percent and money; Status cells in the app's status colours; milestones marked with a diamond; Assigned To by name. Money columns are dropped unless `canSeePayRates`.
 
 All filters apply to whichever view is active — the same `filteredTasks` array is passed to Gantt, Kanban, Calendar, and Table views.
 

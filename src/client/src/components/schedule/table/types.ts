@@ -41,6 +41,8 @@ export interface TableViewProps {
   /** The schedule's complete task list, when `tasks` is filtered — row numbers come from this */
   allTasks?: GanttTask[];
   scheduleId: string;
+  /** Names the Excel file; the CSV precedent falls back to 'tasks' */
+  scheduleName?: string;
   onTaskClick: (task: GanttTask) => void;
   onTaskSelect?: (task: GanttTask) => void;
   activeTaskId?: string | null;

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Layers, Undo2, Redo2, Download } from 'lucide-react';
+import React, { useState } from 'react';
+import { Layers, Undo2, Redo2, Download, FileSpreadsheet } from 'lucide-react';
 import { SavedViewsDropdown, type SavedView } from '../SavedViewsDropdown';
 import { exportTasksCSV } from '../../../utils/exportUtils';
 import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
@@ -18,6 +18,7 @@ interface TableToolbarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   visibleSorted: GanttTask[];
+  onExportExcel: () => Promise<void>;
   scheduleId: string;
   visibleKeys: Set<ColumnKey>;
   sortField: ColumnKey | null;
@@ -38,6 +39,7 @@ export const TableToolbar = React.memo(function TableToolbar({
   onUndo,
   onRedo,
   visibleSorted,
+  onExportExcel,
   scheduleId,
   visibleKeys,
   sortField,
@@ -45,6 +47,11 @@ export const TableToolbar = React.memo(function TableToolbar({
   onLoadView,
 }: TableToolbarProps) {
   const resourceNames = useResourceNameMap();
+  const [excelBusy, setExcelBusy] = useState(false);
+  const exportExcel = async () => {
+    setExcelBusy(true);
+    try { await onExportExcel(); } finally { setExcelBusy(false); }
+  };
   return (
     <div className="flex items-center justify-end gap-1.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
       {/* Group by */}
@@ -107,6 +114,17 @@ export const TableToolbar = React.memo(function TableToolbar({
       >
         <Download className="w-3.5 h-3.5" />
         CSV
+      </button>
+      <button
+        type="button"
+        onClick={exportExcel}
+        disabled={excelBusy}
+        aria-busy={excelBusy}
+        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+        title="Export to Excel (.xlsx)"
+      >
+        <FileSpreadsheet className="w-3.5 h-3.5" aria-hidden="true" />
+        Excel
       </button>
       <SavedViewsDropdown
         scheduleId={scheduleId}

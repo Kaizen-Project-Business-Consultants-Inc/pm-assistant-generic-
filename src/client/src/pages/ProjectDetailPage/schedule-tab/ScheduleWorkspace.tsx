@@ -33,6 +33,7 @@ import { ScheduleHistoryPanel } from '../../../components/schedule/ScheduleHisto
 import { useProjectRole } from '../../../hooks/useProjectRole';
 import { useColumnState } from '../../../hooks/useColumnState';
 import { exportTasksCSV } from '../../../utils/exportUtils';
+import { downloadTasksExcel, basicValue, BASIC_COLUMNS } from '../../../utils/exportExcel';
 import { useResourceNameMap } from '../../../components/schedule/shared/hooks/useResourceNameMap';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { ScheduleToolbar } from './ScheduleToolbar';
@@ -576,6 +577,12 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     );
   }
 
+  // Excel export of the visible tasks: the CSV's columns, with names, dates and numbers as real cells
+  const exportExcel = () => downloadTasksExcel(
+    { tasks: filteredTasks, columns: BASIC_COLUMNS, value: basicValue(resourceNames), canSeePay: false },
+    schedule.name || 'tasks',
+  );
+
   // One "More actions" menu (baselines, scenarios, import/export, AI Reschedule, Level
   // Resources) shared by the Gantt and Table toolbars — the Table used to get none.
   const scheduleMoreMenu = canEdit ? (
@@ -609,6 +616,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           }
         }}
         exportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks', resourceNames)}
+        exportExcel={viewMode === 'table' ? undefined : exportExcel}
         queryClient={queryClient}
         onDeleteSchedule={() => setShowDeleteConfirm(true)}
         onCreateScenario={() => {
@@ -669,6 +677,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           calendarActive={showCalendarPanel}
           overflowMenu={scheduleOverflowMenu}
           onExportCSV={() => exportTasksCSV(filteredTasks, schedule.name || 'tasks', resourceNames)}
+          onExportExcel={exportExcel}
           filteredCount={filteredTasks.length}
           totalCount={tasks.length}
           overbooked={overbooked}
@@ -851,6 +860,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
         <TableView
           tasks={filteredTasks}
           allTasks={tasks}
+          scheduleName={schedule.name}
           onBulkLink={canEdit ? handleBulkLink : undefined}
           onGroupTasks={canEdit ? handleGroupTasks : undefined}
           scheduleId={schedule.id}

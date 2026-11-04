@@ -18,7 +18,7 @@ import { gzipSync } from 'node:zlib';
 const LIMITS = {
   firstLoadGzipKB: 260,
   largestChunkKB: 1100,
-  totalJsMB: 5.6,
+  totalJsMB: 6.3, // raised from 5.6 on 2026-11-04 (user OK): the lazy ExcelJS chunk (937 KB, loaded only on Excel click)
 };
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');

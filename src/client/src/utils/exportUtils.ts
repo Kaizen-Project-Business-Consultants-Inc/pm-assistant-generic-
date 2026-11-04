@@ -1,3 +1,5 @@
+import { todayYmd } from './rateCard';
+
 function escapeCSV(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
     return `"${value.replace(/"/g, '""')}"`;
@@ -19,6 +21,11 @@ export function downloadCSV(filename: string, headers: string[], rows: string[][
   URL.revokeObjectURL(url);
 }
 
+/** A schedule name made safe for a file name (shared by the CSV and Excel exports) */
+export function safeFileName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, '_') || 'tasks';
+}
+
 export function exportTasksCSV(tasks: Array<{
   name?: string;
   status?: string;
@@ -38,6 +45,5 @@ export function exportTasksCSV(tasks: Array<{
     t.endDate || '',
     String(t.progressPercentage ?? 0),
   ]);
-  const safeName = scheduleName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'tasks';
-  downloadCSV(`${safeName}_${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  downloadCSV(`${safeFileName(scheduleName)}_${todayYmd()}.csv`, headers, rows);
 }

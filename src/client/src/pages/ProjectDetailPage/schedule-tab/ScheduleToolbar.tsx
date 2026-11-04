@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ToggleButton, TOGGLE_BADGE_CLASS } from '../../../components/ui/ToggleButton';
-import { Search, Filter, X, Download, ClipboardCheck } from 'lucide-react';
+import { Search, Filter, X, Download, FileSpreadsheet, ClipboardCheck } from 'lucide-react';
 import { WorkingCalendarButton } from '../../../components/schedule/calendar/WorkingCalendarButton';
 import { OverbookedToggle } from '../../../components/schedule/OverbookedToggle';
 import { ColumnPickerDropdown } from '../../../components/schedule/ColumnPickerDropdown';
@@ -26,6 +26,7 @@ interface ScheduleToolbarProps {
   calendarActive?: boolean;
   overflowMenu: React.ReactNode;
   onExportCSV: () => void;
+  onExportExcel: () => Promise<void>;
   filteredCount: number;
   totalCount: number;
   /** Overbooked people on the Table and Kanban (the Gantt has its own toolbar) — U65 */
@@ -48,11 +49,13 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
   calendarActive,
   overflowMenu,
   onExportCSV,
+  onExportExcel,
   filteredCount,
   totalCount,
   overbooked,
 }: ScheduleToolbarProps) {
   const seesMoney = useSeesMoneyColumns();
+  const [excelBusy, setExcelBusy] = useState(false);
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {/* Search — hidden in Gantt mode (GanttChart has its own Ctrl+F search) */}
@@ -122,6 +125,20 @@ export const ScheduleToolbar = React.memo(function ScheduleToolbar({
         >
           <Download className="w-3 h-3" />
           CSV
+        </button>
+      )}
+      {/* The Table has its own Excel button with the columns on screen */}
+      {viewMode !== 'gantt' && viewMode !== 'table' && (
+        <button
+          type="button"
+          onClick={async () => { setExcelBusy(true); try { await onExportExcel(); } finally { setExcelBusy(false); } }}
+          disabled={excelBusy}
+          aria-busy={excelBusy}
+          className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors disabled:opacity-50"
+          title="Export tasks to Excel (.xlsx)"
+        >
+          <FileSpreadsheet className="w-3 h-3" aria-hidden="true" />
+          Excel
         </button>
       )}
 

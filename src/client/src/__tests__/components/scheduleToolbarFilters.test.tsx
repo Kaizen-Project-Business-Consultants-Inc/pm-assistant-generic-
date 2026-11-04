@@ -20,6 +20,7 @@ function Toolbar({ showFilters, hasActiveFilters }: { showFilters: boolean; hasA
         columnState={columnState}
         overflowMenu={null}
         onExportCSV={vi.fn()}
+        onExportExcel={vi.fn()}
         filteredCount={5}
         totalCount={5}
       />
