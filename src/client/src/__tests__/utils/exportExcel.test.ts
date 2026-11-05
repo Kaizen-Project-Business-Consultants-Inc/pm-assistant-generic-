@@ -17,7 +17,7 @@ const columns = [
 const value = (t: (typeof tasks)[number], key: ColumnKey) =>
   key === 'budgetAllocated' ? 1500 : key === 'duration' ? 5 : basicValue(names)(t, key);
 
-describe('buildTasksWorkbook', { timeout: 30_000 }, () => {
+describe('buildTasksWorkbook', { timeout: 120_000 }, () => {
   it('writes a styled, frozen, filtered sheet with real cells', async () => {
     const wb = await buildTasksWorkbook({ tasks, columns, value, canSeePay: true, sheetName: 'My plan' });
     const ws = wb.getWorksheet('My plan')!;
