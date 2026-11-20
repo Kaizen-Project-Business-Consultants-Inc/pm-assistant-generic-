@@ -4,7 +4,7 @@ import { summariesNeedingChoice, deletedHeadingMessage, headingTitle, headingBod
 const t = (id: string, parentTaskId: string | null = null) => ({ id, name: id, parentTaskId });
 const plan = [t('phase'), t('sum', 'phase'), t('kid', 'sum'), t('sub', 'sum'), t('deep', 'sub'), t('plain')];
 
-describe('summariesNeedingChoice — when deleting asks "heading only, or its tasks too?"', () => {
+describe('summariesNeedingChoice — when deleting needs the "heading and its tasks" confirmation', () => {
   it('a task with nothing under it needs no question', () => {
     expect(summariesNeedingChoice(plan, ['plain'])).toBeNull();
     expect(summariesNeedingChoice(plan, ['kid'])).toBeNull();

@@ -49,23 +49,19 @@ describe('Gantt delete of a heading', () => {
     open();
     const dlg = screen.getByRole('alertdialog', { name: 'Delete "Heading"?' });
     expect(dlg.textContent).toContain('This heading has 6 tasks under it');
-    expect(within(dlg).getByRole('button', { name: /Delete the heading and its 6 tasks/ })).toBeTruthy();
+    expect(within(dlg).getByRole('button', { name: 'Delete heading and 6 tasks' })).toBeTruthy();
+    expect(within(dlg).queryByRole('button', { name: /heading only/i })).toBeNull();
   });
 
-  it('"heading and its tasks" sends delete; the focus lands on the row after the heading and all its tasks', async () => {
+  it('Delete sends delete (the tasks go with the heading); the focus lands on the row after the heading and all its tasks', async () => {
     const { container, onBulkDelete } = open();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Delete the heading and its 6 tasks/ })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Delete heading and 6 tasks' })); });
     expect(onBulkDelete).toHaveBeenCalledWith(['h'], 'delete');
     const grid = container.querySelector('[role="treegrid"]') as HTMLElement;
     await waitFor(() => expect(document.activeElement).toBe(grid));
     await waitFor(() => expect(grid.getAttribute('aria-activedescendant') ?? '').toMatch(/-cell-z-name$/));
   });
 
-  it('"heading only" sends keep', async () => {
-    const { onBulkDelete } = open();
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: /Delete the heading only/ })); });
-    expect(onBulkDelete).toHaveBeenCalledWith(['h'], 'keep');
-  });
 });
 
 describe('task form delete', () => {

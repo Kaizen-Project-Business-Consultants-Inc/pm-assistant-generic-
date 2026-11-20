@@ -1,10 +1,10 @@
 /**
- * The delete question (2026-10-29): deleting a heading that has tasks under it asks whether the
- * tasks stay or go with it. Plain tasks keep the usual "are you sure". It is an alert dialog:
- * the first option has focus, Escape cancels, nothing is remembered.
+ * Deleting a heading that has tasks under it (2026-11-19, like Microsoft Project): the tasks go with
+ * it, and the dialog says how many. Plain tasks keep the usual "are you sure". It is an alert dialog:
+ * Cancel has focus, Escape cancels.
  */
 import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
 import { DeleteTasksModal } from '../../components/schedule/DeleteTasksModal';
 
 const offsetParent = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetParent');
@@ -27,22 +27,23 @@ describe('DeleteTasksModal', () => {
     expect(dlg.getAttribute('aria-labelledby')).toBeTruthy();
     expect(screen.getByRole('alertdialog', { name: 'Delete "test"?' })).toBeTruthy();
     expect(dlg.textContent).toContain('This heading has 1 task under it ("child").');
-    expect(dlg.textContent).toContain('Either choice can be undone from History');
+    expect(dlg.textContent).toContain('deleted with the heading');
+    expect(dlg.textContent).toContain('Can be undone from History');
   });
 
-  it('"heading only" confirms with keep; "and its task" confirms with delete', () => {
+  it('there is one way to delete a heading: with its tasks (no "heading only" button)', () => {
     const onConfirm = vi.fn();
     render(<DeleteTasksModal tasks={tasks} ids={['sum']} onConfirm={onConfirm} onCancel={vi.fn()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Delete the heading only/ }));
-    expect(onConfirm).toHaveBeenLastCalledWith('keep');
-    fireEvent.click(screen.getByRole('button', { name: /Delete the heading and its 1 task/ }));
-    expect(onConfirm).toHaveBeenLastCalledWith('delete');
+    expect(screen.queryByRole('button', { name: /heading only/i })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete heading and 1 task' }));
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onConfirm).toHaveBeenCalledWith('delete');
   });
 
-  it('the first option has focus; Escape and Cancel cancel without deleting', () => {
+  it('Cancel has focus (the safe choice); Escape and Cancel cancel without deleting', async () => {
     const onConfirm = vi.fn(); const onCancel = vi.fn();
     render(<DeleteTasksModal tasks={tasks} ids={['sum']} onConfirm={onConfirm} onCancel={onCancel} />);
-    expect(document.activeElement?.textContent).toContain('Delete the heading only');
+    await waitFor(() => expect(document.activeElement?.textContent).toBe('Cancel')); // focus moves in on the next tick
     fireEvent.keyDown(screen.getByRole('alertdialog'), { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));

@@ -1,5 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
+
+## 2026-11-19 — Deleting a heading always takes its tasks (like Microsoft Project)
+- User: "delete heading and all subtasks", then confirmed Project's behaviour. The Gantt, Table and task form show one confirmation ("Delete heading and N tasks", Cancel focused) instead of the two-option question from 2026-10-29. Server unchanged: `children: 'keep'` still serves Mjuzi and the Review panel. Tests: `deleteTasksModal.test.tsx`, `deleteHeadingGanttAndForm.test.tsx`, `e2e/delete-summary.spec.ts`.
+
 ## 2026-11-03 — The Gantt grid can show every Table column
 - Why: the Gantt's Columns menu listed all Table columns but ticking the Table-only ones (CPM dates, baseline, cost, actual dates, constraints, WBS) showed nothing. Now each is a real Gantt column (`gantt/extraColumns.ts` cell text from the Table's CPM / baseline data; `extraSort.ts` header sorts; `schedule/wbs.ts` shared with the Table). Off by default; shared with the Table; `TABLE_ONLY_KEYS` is empty and the guard test pairs every column.
 - Money columns (budget, actual cost, baseline cost, cost variance) are hidden from roles `canSeePayRates` refuses, in the Gantt picker and grid (the Table does not apply this itself; the server sends no values to those roles).

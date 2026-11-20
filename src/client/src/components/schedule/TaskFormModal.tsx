@@ -995,7 +995,7 @@ export function TaskFormModal({
             {isEdit && onDelete && (
               <button
                 type="button"
-                // A heading with tasks under it asks "heading only, or its tasks too?" in the Schedule screen's own dialog: one question, not two
+                // A heading with tasks under it is confirmed (with its tasks) in the Schedule screen's own dialog: one question, not two
                 onClick={() => (task && summariesNeedingChoice(allTasks, [task.id]) ? onDelete(task.id) : setShowDeleteConfirm(true))}
                 className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-1.5 rounded-lg transition-colors"
               >

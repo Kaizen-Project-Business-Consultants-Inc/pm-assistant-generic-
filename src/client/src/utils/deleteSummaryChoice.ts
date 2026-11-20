@@ -16,7 +16,7 @@ interface DeleteChoice {
 
 /**
  * Which of the tasks about to be deleted are headings with tasks under them that are NOT being
- * deleted too — the only case that needs the "heading only, or heading and its tasks?" question.
+ * deleted too — the only case that needs the "delete the heading and its tasks?" confirmation.
  * Returns null when there is nothing to ask (no headings, empty headings, or their tasks are all
  * selected as well).
  */

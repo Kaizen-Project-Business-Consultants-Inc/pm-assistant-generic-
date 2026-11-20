@@ -294,7 +294,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     handleKanbanStatusChange,
   } = useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
 
-  // Deleting from the task form: a heading with tasks under it asks "heading only, or its tasks too?"
+  // Deleting from the task form: a heading with tasks under it asks to delete it with its tasks
   // first (the Gantt and Table ask in their own delete dialog; the Kanban has no delete, its cards open the task form)
   const [askDeleteId, setAskDeleteId] = useState<string | null>(null);
   const requestDeleteTask = useCallback((taskId: string) => {

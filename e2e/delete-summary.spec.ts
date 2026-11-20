@@ -4,7 +4,7 @@ import { STAGING_USER } from './staging-helpers';
 import { openSchedule, getTasks, ganttRow } from './schedule-helpers';
 
 /**
- * Deleting a summary task that has tasks under it asks "heading only, or its tasks too?" (2026-10-29).
+ * Deleting a summary task that has tasks under it asks first and takes its tasks with it (2026-11-19; before that it offered "heading only" too). The API still has children:'keep' for the assistant and Review panel.
  * Own QA project on staging; every step is checked against the server's task list, not just the screen.
  */
 test.describe.configure({ mode: 'serial' });
@@ -72,7 +72,7 @@ test('a refused children value changes nothing', async () => {
   expect(await names()).toHaveLength(6);
 });
 
-test('in the Gantt: Delete on a heading asks; Cancel and Escape change nothing; "heading only" keeps the tasks', async () => {
+test('in the Gantt: Delete on a heading asks; Cancel and Escape change nothing', async () => {
   await openSchedule(page, projectId, scheduleId, 'gantt');
   const pick = async () => {
     await ganttRow(page, ids.head).hover();
@@ -83,7 +83,8 @@ test('in the Gantt: Delete on a heading asks; Cancel and Escape change nothing; 
   const dlg = page.getByRole('alertdialog', { name: 'Delete "Heading"?' });
   await expect(dlg).toBeVisible();
   await expect(dlg).toContainText('This heading has 3 tasks under it');
-  await expect(dlg.getByRole('button', { name: /Delete the heading only/ })).toBeFocused();
+  await expect(dlg.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await expect(dlg.getByRole('button', { name: /heading only/i })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(dlg).toBeHidden();
   expect(await names()).toHaveLength(6);
@@ -91,22 +92,13 @@ test('in the Gantt: Delete on a heading asks; Cancel and Escape change nothing; 
   await pick();
   await dlg.getByRole('button', { name: 'Cancel' }).click();
   expect(await names()).toHaveLength(6);
-
-  await pick();
-  await dlg.getByRole('button', { name: /Delete the heading only/ }).click();
-  await expect.poll(names).toEqual(['Child', 'Deep child', 'Inner heading', 'Phase', 'Plain']);
-  await expect(page.getByText("Deleted 'Heading'. 3 tasks kept").first()).toBeVisible();
-  expect(await parentOf('Child')).toBe(ids.phase);
-
-  await page.keyboard.press('Control+z');
-  await expect.poll(names).toEqual(['Child', 'Deep child', 'Heading', 'Inner heading', 'Phase', 'Plain']);
 });
 
-test('in the Gantt: "heading and its tasks" deletes them all with one Undo; a plain task gets no choice', async () => {
+test('in the Gantt: Delete takes the heading and all its tasks, with one Undo; a plain task gets the usual question', async () => {
   await openSchedule(page, projectId, scheduleId, 'gantt');
   await ganttRow(page, ids.head).hover();
   await ganttRow(page, ids.head).getByRole('button', { name: 'Delete Heading' }).click();
-  await page.getByRole('alertdialog', { name: 'Delete "Heading"?' }).getByRole('button', { name: /Delete the heading and its 3 tasks/ }).click();
+  await page.getByRole('alertdialog', { name: 'Delete "Heading"?' }).getByRole('button', { name: 'Delete heading and 3 tasks' }).click();
   await expect.poll(names).toEqual(['Phase', 'Plain']);
   await expect(page.getByText("Deleted 'Heading' and 3 tasks").first()).toBeVisible();
   await page.keyboard.press('Control+z');
