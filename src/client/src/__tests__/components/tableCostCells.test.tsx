@@ -18,6 +18,7 @@ import { TableView } from '../../components/schedule/TableView';
 import type { GanttTask } from '../../components/schedule/GanttChart';
 import { useColumnState } from '../../hooks/useColumnState';
 import { COLUMN_DEFS } from '../../components/schedule/tableColumns';
+import { useAuthStore } from '../../stores/authStore';
 
 const SID = 's-cost-cells';
 
@@ -47,6 +48,8 @@ function setup(activeTaskId?: string) {
 }
 
 beforeEach(() => {
+  // The money columns show only to people who may see pay rates (a project manager does)
+  useAuthStore.setState({ user: { id: 'u1', username: 'pat', email: 'pat@example.com', fullName: 'Pat', role: 'project_manager' } as never });
   localStorage.clear();
   localStorage.setItem(`tableview-cols:${SID}`, JSON.stringify(['rowNum', 'name', 'estimatedDurationHours', 'budgetAllocated', 'actualCost']));
 });
