@@ -10,7 +10,7 @@ import { requireFeature } from '../../middleware/requireTier';
 import { claudeService } from '../../services/claudeService';
 import { config } from '../../config';
 import logger from '../../utils/logger';
-import { resolveAssigneeResources, assigneeToResourceId } from '../../utils/assigneeResources';
+import { resolveAssigneeResources, assigneeToResourceId, normalizeAssigneeName } from '../../utils/assigneeResources';
 import { makePlaceholderEmail } from '../../utils/placeholderEmail';
 import { scheduleReviewService } from '../../services/ScheduleReviewService';
 import { baselineService } from '../../services/BaselineService';
@@ -24,6 +24,7 @@ import {
 import {
   isLegendRow,
   cleanAssignee,
+  isNotAPerson,
   workingDaySpan,
   decideDurationUnit,
   importedStatusAndProgress,
@@ -67,6 +68,21 @@ function fixMojibake(text: string): string {
 
 const VALID_STATUSES = ['pending', 'in_progress', 'late', 'completed', 'blocked', 'cancelled'];
 const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+/** An assignee that is a real name; a status or placeholder word ("Completed") is no one */
+/** The names of the people this import created, once each ("Bob" and "bob" are one person) */
+function peopleAddedNames(names: Iterable<string>, idByName: Map<string, string>, createdIds: string[]): string[] {
+  const created = new Set(createdIds);
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const n of names) {
+    const key = normalizeAssigneeName(n);
+    if (seen.has(key) || !created.has(idByName.get(key) ?? '')) continue;
+    seen.add(key);
+    out.push(n);
+  }
+  return out;
+}
+const personOrNull = (v: string | null): string | null => (v && !isNotAPerson(v) ? v : null);
 
 /** Normalise a CSV header to a known task field name, applying columnMap overrides first. */
 function mapColumn(header: string, columnMap: Record<string, string> | undefined): string | null {
@@ -299,11 +315,20 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
       // linked to real resources (creating any that don't exist yet). Cell-ref
       // artefacts (e.g. "DBJ & JV+D9:D27") are cleaned before resolution.
       const importedAssignees = new Set<string>();
+      // status / placeholder words ("Completed", "TBD") are left blank, not made into people; counted per word for the result
+      const notPeople = new Map<string, { word: string; count: number }>();
       for (const rawRow of records) {
         for (const [header, value] of Object.entries(rawRow)) {
           if (mapColumn(header, columnMap) === 'assignedTo') {
             const cleaned = cleanAssignee(value);
-            if (cleaned) importedAssignees.add(cleaned);
+            if (!cleaned) continue;
+            if (isNotAPerson(cleaned)) {
+              const key = cleaned.toLowerCase();
+              const seen = notPeople.get(key);
+              notPeople.set(key, { word: seen?.word ?? cleaned, count: (seen?.count ?? 0) + 1 });
+            } else {
+              importedAssignees.add(cleaned);
+            }
           }
         }
       }
@@ -455,7 +480,7 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
             description: row.description || undefined,
             status,
             priority,
-            assignedTo: cleanAssignee(row.assignedTo),
+            assignedTo: personOrNull(cleanAssignee(row.assignedTo)),
             startDate,
             endDate,
             dueDate: toDateStr(row.dueDate),
@@ -651,6 +676,9 @@ async function refuseIfAlreadyImported(scheduleId: string, reply: FastifyReply) 
         warnings,
         total: records.length,
         resourcesCreated,
+        // who was added (Undo removes them) and the words left blank because they are not names — shown in the Import finished box
+        peopleAdded: peopleAddedNames(importedAssignees, assigneeIdByName, createdResourceIds),
+        notPeople: [...notPeople.values()],
         dependenciesCreated,
         baselineCreated,
         durationNote,

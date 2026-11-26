@@ -87,6 +87,26 @@ describe('imports are recorded in Schedule History', () => {
     expect(phaseOrLoose.every((d: any) => !d.parentCreatedHere)).toBe(true);
   });
 
+  it('a status word in Responsibility ("Completed") is left blank, not made a person; the answer says who was added and what was left', async () => {
+    const csv = [
+      'Name,Owner,Start,Finish',
+      'Design,Ana,2026-10-05,2026-10-09',
+      'Build,Completed,2026-10-12,2026-10-16',
+      'Test,completed,2026-10-19,2026-10-23',
+      'Ship,DBJ & JV,2026-10-26,2026-10-30',
+    ].join('\n');
+    const res = await app.inject({ method: 'POST', url: '/api/v1/schedules/s1/import', payload: { csv, fileName: 'plan.csv' } });
+    expect(res.statusCode).toBe(200);
+    expect(resources.createResource.mock.calls.map((c: any[]) => c[0].name)).toEqual(['DBJ & JV']); // Ana exists; "Completed" is no one
+    const body = res.json();
+    expect(body.peopleAdded).toEqual(['DBJ & JV']);
+    expect(body.notPeople).toEqual([{ word: 'Completed', count: 2 }]);
+    const owners = Object.fromEntries(svc.createTask.mock.calls.map((c: any[]) => [c[0].name, c[0].assignedTo]));
+    expect(owners.Build).toBeUndefined();
+    expect(owners.Test).toBeUndefined();
+    expect(owners.Design).toBe('r-known');
+  });
+
   it('MS Project / AI extraction: every task it created', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/v1/schedules/s1/import-structured', payload: {
       fileName: 'plan.xml',

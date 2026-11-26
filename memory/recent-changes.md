@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-26 — Import leaves status words out of the people list
+- Why: importing the DBJ spreadsheet made "Completed" (and "DBJ", "JV", "DBJ & JV", "DBJ / JV") people, and Schedule Review then raised "Suspicious names". Fix: `isNotAPerson` (utils/importHeuristics.ts; one word list, also used by the review's resource check) — the Responsibility cell is left blank; the import answer carries `peopleAdded` and `notPeople`, shown in the Import finished box. Joint entries stay one person (splitting is a later change, in todo).
+
 ## 2026-11-26 — Assigned To shows names, never raw ids
 - Why: after importing a plan, Assigned To showed a long code until the page was reloaded (user screenshot 2026-11-25). Causes: the cached people list did not refresh after an import, and the list stopped at 50 people. Fix: `getResources` reads every page; an import refreshes `['resources']` (`refreshAfterScheduleChange(..., {people:true})`); one shared `assigneeLabel`/`useAssigneeLabel` (name, older plain text as is, id with no match = "Unknown person") used by Table, Gantt row + bar, Calendar, Critical Path, sort/group and CSV/Excel export.
 

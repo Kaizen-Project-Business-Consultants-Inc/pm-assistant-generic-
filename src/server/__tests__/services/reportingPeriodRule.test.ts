@@ -113,7 +113,7 @@ describe('R42 - tasks longer than one reporting period', () => {
   });
 
   it('bumps the rules version', () => {
-    expect(RULES_VERSION).toBe('1.12');
+    expect(RULES_VERSION).toBe('1.13');
   });
 });
 

@@ -3,6 +3,7 @@ import {
   isLegendRow,
   isCellRef,
   cleanAssignee,
+  isNotAPerson,
   workingDaySpan,
   decideDurationUnit,
   importedStatusAndProgress,
@@ -116,5 +117,18 @@ describe('importAsMilestone', () => {
   it('needs both the name and a start date', () => {
     expect(importAsMilestone(false, '2027-01-22', '2027-01-22')).toBe(false);
     expect(importAsMilestone(true, null, null)).toBe(false);
+  });
+});
+
+describe('isNotAPerson', () => {
+  it('a status or placeholder word is not a person, whatever its case or spacing', () => {
+    for (const w of ['Completed', ' DONE ', 'In progress', 'pending', 'TBD', 'n/a', 'Unassigned', '-', '—', 'On Track', 'Late', 'n/a']) expect(isNotAPerson(w)).toBe(true);
+  });
+  it('a real name stays a person, even one that contains such a word or looks like a company', () => {
+    for (const n of ['Dan Done', 'Ana', 'DBJ', 'JV', 'DBJ & JV', 'DBJ / JV', 'Latesha Brown', 'Open Source Team', 'NA']) expect(isNotAPerson(n)).toBe(false);
+  });
+  it('nothing is not a person', () => {
+    expect(isNotAPerson(null)).toBe(false);
+    expect(isNotAPerson('')).toBe(false);
   });
 });

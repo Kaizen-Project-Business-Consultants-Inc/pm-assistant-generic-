@@ -8,13 +8,15 @@
  * where one exists.
  */
 
+import { isNotAPerson } from '../../utils/importHeuristics';
 import { profileFor, matchesAny, type DomainProfile } from './domainProfiles';
 import { type IsWorking, weekdaysOnly, workingDaysAfter } from '../../utils/workingDays';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { groupBy } from '../../utils/groupBy';
 import { isActiveWork, TASK_STATUS_LABEL } from '../../constants/taskStatus';
 
-export const RULES_VERSION = '1.12';
+// 1.13: R22 also flags a resource named like a status or placeholder word (TBD, Unassigned, Completed…): the same words an import no longer turns into people
+export const RULES_VERSION = '1.13';
 
 // 1.12 (2026-10-31): R42 — a task longer than one reporting period ('medium', warn only), by duration
 // AND by planned effort hours, when the project switched "Warn about tasks longer than one reporting
@@ -656,12 +658,12 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     const isHeading = !!t.isSummary || (g.childrenOf.get(t.id) || []).length > 0;
     return isHeading && HEADING_CODE.test(nm) && !PHASE_ACRONYMS.has(nm);
   });
-  const suspiciousResources = resources.filter(r => CELL_REF.test(r.name) || LEGEND_WORDS.has(r.name.trim().toLowerCase()));
+  const suspiciousResources = resources.filter(r => CELL_REF.test(r.name) || isNotAPerson(r.name));
   if (suspiciousTasks.length > 0 || suspiciousResources.length > 0) {
     const parts: string[] = [];
     if (suspiciousTasks.length) parts.push(`${plural(suspiciousTasks.length, 'task')} (${listNames(suspiciousTasks)})`);
     if (suspiciousResources.length) parts.push(`${plural(suspiciousResources.length, 'resource')} (${suspiciousResources.slice(0, 3).map(r => `'${r.name}'`).join(', ')})`);
-    findings.push(make('R22', suspiciousTasks.map(t => t.id), `${parts.join(' and ')} look like spreadsheet leftovers: legend words or cell references.`));
+    findings.push(make('R22', suspiciousTasks.map(t => t.id), `${parts.join(' and ')} look like spreadsheet leftovers: status or placeholder words, or cell references.`));
   }
 
   // R23 — Flat hierarchy

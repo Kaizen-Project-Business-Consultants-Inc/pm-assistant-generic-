@@ -28,6 +28,21 @@ export function isLegendRow(name: string, otherValues: Array<string | null | und
   return otherValues.every(v => v == null || String(v).trim() === '');
 }
 
+/**
+ * Words that are a status or a placeholder, not a person: a Responsibility cell holding one is left
+ * blank instead of becoming a person on the Resources page (2026-11-26: "Completed" became one).
+ */
+const NOT_A_PERSON_WORDS = new Set([
+  ...[...LABEL_WORDS].filter(w => w !== 'na'), // bare "NA" can be a person's initials; "n/a" is the placeholder
+  'pending', 'delayed', 'ahead', 'late', 'on track', 'on-track', 'cancelled', 'canceled', 'on hold',
+  'tba', 'tbc', 'n.a.', 'none', 'nobody', 'unassigned', 'not assigned', 'open', '-', '—', '?',
+]);
+
+/** True when the whole value is a status or placeholder word ("Completed", "TBD"), not a name. A name that merely contains one ("Dan Done") is a person. */
+export function isNotAPerson(value: string | null | undefined): boolean {
+  return !!value && NOT_A_PERSON_WORDS.has(value.trim().toLowerCase());
+}
+
 /** True when the entire value is just a spreadsheet cell/range reference. */
 export function isCellRef(value: string | null | undefined): boolean {
   if (!value) return false;

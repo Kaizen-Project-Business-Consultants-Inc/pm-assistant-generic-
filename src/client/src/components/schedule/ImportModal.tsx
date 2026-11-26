@@ -43,6 +43,9 @@ interface ImportResult {
   skipped?: { row: number; name: string; reason: string }[];
   warnings?: string[];
   resourcesCreated?: number;
+  /** the people this import added, and the Responsibility words left blank because they are not names */
+  peopleAdded?: string[];
+  notPeople?: { word: string; count: number }[];
   dependenciesCreated?: number;
   baselineCreated?: boolean;
   durationNote?: string | null;
@@ -62,6 +65,20 @@ interface ExtractedTask {
 
 const DOCUMENT_EXTS = ['pdf', 'docx', 'doc', 'txt'];
 
+const hasPeopleNotes = (r: ImportResult): boolean => !!(r.peopleAdded?.length || r.notPeople?.length);
+
+/** Who the import added as people, and the Responsibility words it left blank because they are not names */
+function PeopleNotes({ result }: { result: ImportResult }) {
+  const added = result.peopleAdded ?? [];
+  const notPeople = result.notPeople ?? [];
+  return (
+    <>
+      {added.length > 0 && <p><b>{added.length} {added.length === 1 ? 'person' : 'people'} added:</b> {added.join(', ')}. Undo removes them again.</p>}
+      {notPeople.length > 0 && (<p><b>Left blank, not people:</b> {notPeople.map(n => `“${n.word}” in ${n.count} ${n.count === 1 ? 'task' : 'tasks'}`).join(', ')}. {notPeople.length === 1 ? 'It reads' : 'They read'} like a status, not a name.</p>)}
+    </>
+  );
+}
+
 /** Normalise any import response into the shape the result panel renders. */
 function toImportResult(res: any): ImportResult {
   return {
@@ -70,6 +87,8 @@ function toImportResult(res: any): ImportResult {
     skipped: res?.skipped ?? [],
     warnings: res?.warnings ?? [],
     resourcesCreated: res?.resourcesCreated ?? 0,
+    peopleAdded: res?.peopleAdded ?? [],
+    notPeople: res?.notPeople ?? [],
     dependenciesCreated: res?.dependenciesCreated ?? 0,
     baselineCreated: res?.baselineCreated ?? false,
     durationNote: res?.durationNote ?? null,
@@ -363,8 +382,9 @@ export function ImportModal({ isOpen, onClose, scheduleId, projectId, onOpenRevi
                 {result.succeeded} task{result.succeeded !== 1 ? 's' : ''} imported successfully.
                 {result.resourcesCreated ? ` ${result.resourcesCreated} resource${result.resourcesCreated !== 1 ? 's' : ''} added.` : ''}
               </div>
-              {(result.dependenciesCreated || result.baselineCreated || result.durationNote || (result.skipped && result.skipped.length > 0)) && (
+              {(result.dependenciesCreated || result.baselineCreated || result.durationNote || hasPeopleNotes(result) || (result.skipped && result.skipped.length > 0)) && (
                 <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-sm space-y-1">
+                  <PeopleNotes result={result} />
                   {result.dependenciesCreated ? (
                     <p>{result.dependenciesCreated} {result.dependenciesCreated === 1 ? 'dependency' : 'dependencies'} linked from predecessors.</p>
                   ) : null}

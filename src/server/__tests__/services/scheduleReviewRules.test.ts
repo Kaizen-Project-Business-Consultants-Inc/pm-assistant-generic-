@@ -360,6 +360,18 @@ describe('R22 / R23 / R25 / R26 / R27 — hygiene', () => {
     expect(f.message).toContain("'DBJ & JV+D9:D27'");
   });
 
+  it('R22 (1.13) flags a resource named like a status or placeholder word, not a person whose name only contains one', () => {
+    seq = 0;
+    const { findings } = evaluateRules(input([task({ name: 'Real', startDate: '2026-08-01', endDate: '2026-08-02' })], {
+      resources: [{ id: 'a', name: 'Completed', email: '', userId: null }, { id: 'b', name: 'TBD', email: '', userId: null }, { id: 'c', name: 'Dan Done', email: '', userId: null }, { id: 'd', name: 'NA', email: '', userId: null }],
+    }));
+    const msg = rule(findings, 'R22')[0].message;
+    expect(msg).toContain("'Completed'");
+    expect(msg).toContain("'TBD'");
+    expect(msg).not.toContain('Dan Done');
+    expect(msg).not.toContain("'NA'"); // initials of a real person
+  });
+
   it('R22 (1.10) flags a heading named only by a letter code ("PG"), not a real phase acronym or a leaf', () => {
     seq = 0;
     const pg = task({ name: 'PG', isSummary: true });
@@ -530,7 +542,7 @@ describe('1.2 project-type profiles and summary checks', () => {
   }
 
   it('bumps the rules version', () => {
-    expect(reviewSchedule(input([])).rulesVersion).toBe('1.12') // 1.12: R42 tasks longer than one reporting period (only when the project switches it on); 1.11: R41 links the dates don't follow; 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
+    expect(reviewSchedule(input([])).rulesVersion).toBe('1.13') // 1.13: R22 flags resources named like a status or placeholder word (TBD, Completed); 1.12: R42 tasks longer than one reporting period (only when the project switches it on); 1.11: R41 links the dates don't follow; 1.10: R22 flags a heading named only by a 2–3 letter code ("PG"), not real phase acronyms (UAT, QA…); 1.9: buffers are never milestones; the Pre-review baseline isn't the PM's (R18/R19); 1.8: R38 bottleneck + R40 open sprint from the retired agents; 1.7: R37 generic role on work starting soon; 1.6: working days throughout; 1.3: R33 milestone names state an outcome; R04 suggests a split;
   });
 
   it('a complete IT/SDLC plan raises no phase or milestone findings', () => {
