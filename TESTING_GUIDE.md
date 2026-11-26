@@ -1390,20 +1390,19 @@ Five MS Project-parity features added to the scheduling engine: Task-Level Budge
 - [ ] Adding a "working" exception on a weekend → that day counts as a working day
 - [ ] `addWorkingDays(startDate, 5, calendar)` skips weekends and holidays correctly
 
-### 28e. Multi-Resource Assignment (T014)
+### 28e. Assigned To list (T014, merged Nov 2026)
 
 **Task Form Modal:**
 
-- [ ] Open Add Task → "Assignments" section visible with "Add Assignment" button
-- [ ] Click "Add Assignment" → row appears with Resource ID input, Allocation % (default 100), and Role input
-- [ ] Add multiple assignment rows (up to 10) → all render correctly
-- [ ] Remove an assignment row → row disappears
-- [ ] Save task with 3 assignments → values persist on reload
-- [ ] Edit task → assignments pre-filled with correct values
+- [ ] Open Add Task → one "Assigned To (0/10)" list with a person picker, %, Role and a "+ Add person" button (no separate Resource Assignments section)
+- [ ] Add a second person → the first is marked "Main person"; the list holds up to 10
+- [ ] Remove a person → the row disappears; save, reload: they are gone from the Table too (also removing back to one person, and to nobody)
+- [ ] Save a task with 3 people → values persist on reload
+- [ ] Edit a task → list pre-filled, main person first
 
 **Inline display:**
 
-- [ ] Table view "Assigned To" column shows primary assignee name
+- [ ] Table and Gantt "Assigned To" show the main person and "+N" for the others (hover lists everyone with their %); there is no Resource column
 - [ ] Tasks with multiple assignments show the primary (first) assignee
 
 **API:**

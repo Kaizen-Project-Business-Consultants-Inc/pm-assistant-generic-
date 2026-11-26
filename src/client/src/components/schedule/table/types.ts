@@ -115,7 +115,7 @@ export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 export const SUMMARY_ROLLUP_FIELDS: Set<EditableField> = new Set<EditableField>(SUMMARY_ROLLUP_FIELD_NAMES);
 
 /** Columns whose cells stay left (or right, for money) aligned; every other column is centred, as in the Gantt */
-export const NOT_CENTERED_COLUMNS: ReadonlySet<ColumnKey> = new Set<ColumnKey>(['name', 'assignedTo', 'notes', 'resource', 'budgetAllocated', 'actualCost', 'budgetVariance']);
+export const NOT_CENTERED_COLUMNS: ReadonlySet<ColumnKey> = new Set<ColumnKey>(['name', 'assignedTo', 'notes', 'budgetAllocated', 'actualCost', 'budgetVariance']);
 
 /** A calendar date as the Gantt shows it ("Jun 26", with the year only when it is not this year) */
 export function formatDate(d?: string): string {

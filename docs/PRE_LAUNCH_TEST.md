@@ -25,7 +25,7 @@
 - [ ] Drag a task bar to reschedule it
 - [ ] Click a task to edit inline (name, dates, priority)
 - [ ] Set a dependency between two tasks (e.g., "Architecture design" blocks "API gateway development")
-- [ ] Assign a resource to a task via the Resource column
+- [ ] Give a task two people in the task form's Assigned To list (the Table shows "Name +1")
 - [ ] Add a new task via the empty row at the bottom of the Gantt
 - [ ] Indent a task (Tab) to make it a subtask
 - [ ] Delete a task

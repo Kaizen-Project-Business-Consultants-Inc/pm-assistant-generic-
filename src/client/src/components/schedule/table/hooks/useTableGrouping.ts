@@ -8,7 +8,6 @@ import {
   buildSuccessorIds,
   firstPredecessorRowNum,
   firstSuccessorRowNum,
-  resourceSortName,
   assignedSortName,
   notesSortText,
   estimatedDaysSortValue,
@@ -114,7 +113,6 @@ export function useTableGrouping({
       case 'notes': return notesSortText(task);
       case 'dependency': return firstPredecessorRowNum(task, rowNumMap);
       case 'successor': return firstSuccessorRowNum(task.id, successorIds, rowNumMap);
-      case 'resource': return resourceSortName(task, resourceNameOf);
       case 'estimatedDays': return estimatedDaysSortValue(task);
       case 'estimatedDurationHours': return workHoursSortValue(task);
       case 'budgetAllocated': return (task as any).budgetAllocated ?? null;

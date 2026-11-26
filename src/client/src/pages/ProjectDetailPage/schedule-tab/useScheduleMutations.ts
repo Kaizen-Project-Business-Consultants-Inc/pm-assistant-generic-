@@ -216,7 +216,7 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
           constraintDate: d.constraintDate || undefined,
           workHours: d.workHours ? parseFloat(d.workHours) : undefined,
           effortDriven: d.effortDriven || undefined,
-          assignments: d.assignments?.filter(a => a.resourceId).length ? d.assignments.filter(a => a.resourceId) : undefined,
+          assignments: d.assignments?.filter(a => a.resourceId), // [] = take everyone off; undefined = leave the saved list alone
           dependencies: deps,
         };
         return apiService.updateTask(schedule.id, taskId, payload);

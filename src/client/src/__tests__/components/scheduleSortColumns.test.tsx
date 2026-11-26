@@ -20,7 +20,6 @@ import {
   buildSuccessorIds,
   firstPredecessorRowNum,
   firstSuccessorRowNum,
-  resourceSortName,
   assignedSortName,
   notesSortText,
   compareSortValues,
@@ -55,12 +54,11 @@ describe('sort value helpers', () => {
     expect(compareSortValues('a', 'a', 1)).toBe(0);
   });
 
-  it('first predecessor / successor row number, resource name, notes text, assigned name', () => {
+  it('first predecessor / successor row number, notes text, assigned name', () => {
     const t = (id: string) => TASKS.find(x => x.id === id)!;
     expect(TASKS.map(x => firstPredecessorRowNum(x, ROWS))).toEqual([null, 3, 1, 2]);
     const succ = buildSuccessorIds(TASKS);
     expect(TASKS.map(x => firstSuccessorRowNum(x.id, succ, ROWS))).toEqual([3, 4, 2, null]);
-    expect(TASKS.map(x => resourceSortName(x, NAMES))).toEqual(['amy', null, 'zed', null]);
     expect(TASKS.map(x => notesSortText(x))).toEqual(['zeta', null, 'alpha', null]);
     expect(assignedSortName(t('a'), NAMES)).toBe('abe'); // the name shown, not the stored id
     expect(assignedSortName(t('b'), NAMES)).toBe('adam');
@@ -143,7 +141,6 @@ describe('Gantt: Pred, Succ, Resource, Notes and Assigned sort', () => {
   it.each([
     ['pred', ['c', 'd', 'b', 'a'], ['b', 'd', 'c', 'a']],
     ['succ', ['c', 'a', 'b', 'd'], ['b', 'a', 'c', 'd']],
-    ['resource', ['a', 'c', 'b', 'd'], ['c', 'a', 'b', 'd']],
     ['notes', ['c', 'a', 'b', 'd'], ['a', 'c', 'b', 'd']],
   ])('%s: ascending, descending, blanks last', (col, asc, desc) => {
     expect(sortedBy(col, 'asc')).toEqual(asc);
@@ -205,7 +202,6 @@ describe('Table: Predecessor, Successor, Resource, Notes, cost and constraint co
   it.each([
     ['dependency', ['c', 'd', 'b', 'a'], ['b', 'd', 'c', 'a']],
     ['successor', ['c', 'a', 'b', 'd'], ['b', 'a', 'c', 'd']],
-    ['resource', ['a', 'c', 'b', 'd'], ['c', 'a', 'b', 'd']],
     ['notes', ['c', 'a', 'b', 'd'], ['a', 'c', 'b', 'd']],
     ['budgetAllocated', ['c', 'd', 'a', 'b'], ['a', 'd', 'c', 'b']],
     ['budgetVariance', ['c', 'd', 'a', 'b'], ['a', 'd', 'c', 'b']], // -50, 300, 500; b has neither
@@ -239,7 +235,7 @@ describe('Gantt header: Succ, Resource and Notes are sortable headers', () => {
     const headers = Array.from(container.querySelectorAll('[role="columnheader"]'));
     const sortable = headers.filter(h => h.getAttribute('aria-sort') === 'none').length;
     expect(sortable).toBe(GANTT_COLUMNS.filter(c => c.key !== 'rowNum' && c.key !== 'editIcon' && c.key !== 'wbs').length);
-    for (const label of ['Succ', 'Resource', 'Notes', 'Pred', 'Work']) {
+    for (const label of ['Succ', 'Notes', 'Pred', 'Work']) {
       const h = headers.find(x => x.textContent?.includes(label))!;
       expect(h.getAttribute('aria-sort'), label).toBe('none');
     }

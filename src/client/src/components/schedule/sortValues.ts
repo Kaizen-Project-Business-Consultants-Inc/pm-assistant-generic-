@@ -22,7 +22,6 @@ export const GANTT_SORT_FIELD: Readonly<Record<string, string>> = {
   pct: 'progressPercentage',
   priority: 'priority',
   assigned: 'assignedTo',
-  resource: 'resource',
   status: 'status',
   notes: 'notes',
   slack: 'totalFloat',
@@ -86,15 +85,6 @@ export function firstSuccessorRowNum(
   for (const id of successorIds.get(taskId) || []) {
     const n = rowNumOf.get(id);
     if (n != null) return n;
-  }
-  return null;
-}
-
-/** Name of the first resource on the task's Resource chips, lower-cased (blank when none) */
-export function resourceSortName(task: GanttTask, resourceNameOf: Map<string, string>): string | SortBlank {
-  for (const a of task.assignments || []) {
-    const name = resourceNameOf.get(a.resourceId);
-    if (name) return name.toLowerCase();
   }
   return null;
 }

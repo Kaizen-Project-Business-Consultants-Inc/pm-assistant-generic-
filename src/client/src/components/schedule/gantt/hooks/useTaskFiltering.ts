@@ -11,7 +11,6 @@ import {
   buildSuccessorIds,
   firstPredecessorRowNum,
   firstSuccessorRowNum,
-  resourceSortName,
   assignedSortName,
   notesSortText,
   estimatedDaysSortValue,
@@ -49,7 +48,6 @@ export function ganttSortValue(task: GanttTask, sortField: string, ctx: GanttSor
     case 'name': return (task.name || '').toLowerCase();
     case 'dependency': return firstPredecessorRowNum(task, ctx.rowNumOf);
     case 'successor': return firstSuccessorRowNum(task.id, ctx.successorIds, ctx.rowNumOf);
-    case 'resource': return resourceSortName(task, ctx.resourceNameOf);
     case 'notes': return notesSortText(task);
     case 'startDate': return task.startDate || '';
     case 'endDate': return task.endDate || '';

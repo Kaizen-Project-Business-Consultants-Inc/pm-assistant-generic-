@@ -24,7 +24,6 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
   ['pct', 'progressPercentage'],
   ['priority', 'priority'],
   ['assigned', 'assignedTo'],
-  ['resource', 'resource'],
   ['status', 'status'],
   ['notes', 'notes'],
   // Once Table-only; the Gantt grid has them too (gantt/extraColumns.ts), off until ticked

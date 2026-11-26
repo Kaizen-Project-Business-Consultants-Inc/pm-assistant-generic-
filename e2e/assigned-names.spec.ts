@@ -15,7 +15,8 @@ let page: Page;
 let projectId = '';
 let scheduleId = '';
 const stamp = Date.now().toString(36);
-const WHO = [`Quinn Import ${stamp}`, `Riley Import ${stamp}`];
+// the names end in a word: the import strips a trailing cell reference ("gp6", "D9") from a name, and a random suffix can look like one
+const WHO = [`Quinn Import ${stamp} Test`, `Riley Import ${stamp} Test`];
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 

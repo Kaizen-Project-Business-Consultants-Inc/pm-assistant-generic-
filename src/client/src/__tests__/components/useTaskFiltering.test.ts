@@ -252,7 +252,7 @@ describe('useTaskFiltering — filter panel and header sort state', () => {
     const map: Record<string, string> = {
       name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate', dur: 'duration', est: 'estimatedDays',
       work: 'estimatedDurationHours', pct: 'progressPercentage', priority: 'priority', assigned: 'assignedTo', status: 'status',
-      succ: 'successor', resource: 'resource', notes: 'notes',
+      succ: 'successor', notes: 'notes',
     };
     const { result } = renderHook(() => useTaskFiltering({ tasks: TASKS, collapsedIds: new Set() }));
     for (const [k, field] of Object.entries(map)) {

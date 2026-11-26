@@ -4,7 +4,7 @@ export type ColumnKey =
   | 'lateStart' | 'lateFinish' | 'totalFloat' | 'freeFloat' | 'critical'
   | 'baselineStart' | 'baselineEnd' | 'startVariance' | 'endVariance'
   | 'actualStartDate' | 'actualEndDate' | 'baselineDuration' | 'baselineCost'
-  | 'notes' | 'dependency' | 'successor' | 'wbs' | 'resource'
+  | 'notes' | 'dependency' | 'successor' | 'wbs'
   | 'budgetAllocated' | 'actualCost' | 'budgetVariance'
   | 'constraintType' | 'constraintDate'
   | 'estimatedDays' | 'estimatedDurationHours';
@@ -70,7 +70,6 @@ export const COLUMN_DEFS: ColumnDef[] = [
   { key: 'notes', label: 'Notes', group: 'standard', defaultVisible: false, editable: true, sortable: true },
   { key: 'successor', label: 'Successors', group: 'standard', defaultVisible: true, editable: false, sortable: true },
   { key: 'wbs', label: 'WBS', group: 'other', defaultVisible: false, editable: false, sortable: false },
-  { key: 'resource', label: 'Resource', group: 'standard', defaultVisible: false, editable: false, sortable: true },
 ];
 
 export const DEFAULT_VISIBLE_KEYS = new Set<ColumnKey>(

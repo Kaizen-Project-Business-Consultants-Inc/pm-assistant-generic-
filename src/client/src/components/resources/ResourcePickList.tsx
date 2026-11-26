@@ -65,15 +65,3 @@ export function ResourcePickList<T extends PickableResource>({ resources, curren
   );
 }
 
-/** The same grouping for a plain <select>: <optgroup>s of people and generic roles */
-export function ResourceOptionGroups<T extends PickableResource>({ resources }: { resources: T[] }) {
-  const { people, generic } = splitPeopleAndGeneric(resources);
-  const option = (r: T) => <option key={r.id} value={r.id}>{r.name}{r.role ? ` — ${roleLabel(r.role)}` : ''}</option>;
-  if (generic.length === 0) return <>{people.map(option)}</>;
-  return (
-    <>
-      <optgroup label="People">{people.map(option)}</optgroup>
-      <optgroup label="Generic roles">{generic.map(option)}</optgroup>
-    </>
-  );
-}

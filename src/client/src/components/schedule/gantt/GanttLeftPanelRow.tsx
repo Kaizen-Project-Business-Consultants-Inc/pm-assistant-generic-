@@ -1,5 +1,4 @@
 import React, { useRef, useEffect } from 'react';
-import { ResourceQuickAssign } from '../ResourceQuickAssign';
 import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
 import { isLockedCell } from '../summaryRollup';
@@ -18,7 +17,8 @@ import {
   priorityOptions,
   healthColor,
 } from './types';
-import { useAssigneeLabel } from '../shared/hooks/useResourceNameMap';
+import { changeMain } from '../../../utils/taskPeople';
+import { useAssigneeSummary } from '../shared/hooks/useResourceNameMap';
 import { gridCellId, GANTT_GRID_CELLS } from '../shared/GridKeyboardHelp';
 import { extraCell, type ExtraColumnCtx } from './extraColumns';
 
@@ -221,7 +221,8 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   const succTitle = (successorMap.get(task.id) || []).map(s => taskById.get(s.successorId)?.name || '').filter(Boolean).join(', ') || undefined;
 
   // Resource / person id → name (shared cache)
-  const assigneeText = useAssigneeLabel();
+  const assigneeOf = useAssigneeSummary();
+  const who = assigneeOf(task);
 
   // Auto-focus input when entering edit mode
   useEffect(() => {
@@ -664,9 +665,9 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate relative ${cellClass('assignedTo')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'assignedTo', task)}
-            title={assigneeText(task.assignedTo) || undefined}
+            title={who.title || who.text || undefined}
           >
-            {assigneeText(task.assignedTo) || '\u2014'}
+            {who.text || '\u2014'}
             {isEditingField(editingField, 'assignedTo') && onTaskUpdate && (
               // floating: this cell clips what it holds (truncate), so the list opens in a layer
               // above the page, under the cell \u2014 inside the cell it was cut off (2026-10-04)
@@ -675,31 +676,13 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 value={task.assignedTo || null}
                 onSelect={(userId) => {
                   onCancelEditing();
-                  onTaskUpdate(task.id, { assignedTo: userId });
+                  onTaskUpdate(task.id, changeMain(task.assignments, userId));
                 }}
                 onClear={() => {
                   onCancelEditing();
-                  onTaskUpdate(task.id, { assignedTo: '' });
+                  onTaskUpdate(task.id, changeMain(task.assignments, ''));
                 }}
                 onClose={onCancelEditing}
-              />
-            )}
-          </div>
-        );
-
-        if (col.key === 'resource') return (
-          <div
-            key="resource"
-            {...CELL}
-            className="shrink-0 px-1 text-xs overflow-visible"
-            style={{ width: w }}
-            onClick={e => e.stopPropagation()}
-          >
-            {!task.isSummary && onTaskUpdate && (
-              <ResourceQuickAssign
-                taskId={task.id}
-                assignments={task.assignments || []}
-                onUpdate={onTaskUpdate}
               />
             )}
           </div>

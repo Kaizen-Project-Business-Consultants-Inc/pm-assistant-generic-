@@ -54,9 +54,9 @@ describe('Gantt ↔ Table column key map', () => {
     for (const t of [...ts, ...TABLE_ONLY_KEYS]) expect(tableKeys).toContain(t);
   });
 
-  it('the two reported gaps are closed: resource and notes map both ways', () => {
-    expect(GANTT_TO_TABLE_KEY.resource).toBe('resource');
-    expect(TABLE_TO_GANTT_KEY.resource).toBe('resource');
+  it('notes maps both ways, and there is no Resource column any more', () => {
+    expect(GANTT_TO_TABLE_KEY.resource).toBeUndefined();
+    expect(TABLE_TO_GANTT_KEY.resource).toBeUndefined();
     expect(GANTT_TO_TABLE_KEY.notes).toBe('notes');
     expect(TABLE_TO_GANTT_KEY.notes).toBe('notes');
   });
@@ -74,10 +74,10 @@ describe('mergeGanttOrderIntoTableOrder', () => {
   const all = tableKeys as ColumnKey[];
 
   it('moves only the shared columns; Table-only columns keep their slots; rowNum first; no duplicates or Gantt keys', () => {
-    const current: ColumnKey[] = ['rowNum', 'name', 'earlyStart', 'status', 'notes', 'wbs', 'resource'];
-    const gantt = ['rowNum', 'name', 'resource', 'status', 'notes', 'est', 'editIcon'];
+    const current: ColumnKey[] = ['rowNum', 'name', 'earlyStart', 'status', 'notes', 'wbs', 'priority'];
+    const gantt = ['rowNum', 'name', 'priority', 'status', 'notes', 'est', 'editIcon'];
     const next = mergeGanttOrderIntoTableOrder(current, all, gantt);
-    expect(next.slice(0, 7)).toEqual(['rowNum', 'name', 'earlyStart', 'resource', 'status', 'wbs', 'notes']);
+    expect(next.slice(0, 7)).toEqual(['rowNum', 'name', 'earlyStart', 'priority', 'status', 'wbs', 'notes']);
     expect(new Set(next).size).toBe(next.length);
     expect([...next].sort()).toEqual([...all].sort());
   });

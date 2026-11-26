@@ -40,3 +40,29 @@ export function assigneeLabel(value: string | null | undefined, names: ReadonlyM
   if (!ID_LIKE.test(v)) return v;
   return loaded ? 'Unknown person' : '';
 }
+
+interface PeopleOnTask {
+  assignedTo?: string | null;
+  assignments?: ReadonlyArray<{ resourceId: string; allocationPct?: number }> | null;
+}
+
+/**
+ * Everyone on a task as one list for the single Assigned To column: the main person first (the
+ * Assigned To value, else the first person listed), then the others. `text` is "Main +N", `title`
+ * lists everyone with their %, `names` is everyone's name (exports, search).
+ */
+export function assigneeSummary(
+  task: PeopleOnTask, names: ReadonlyMap<string, string>, loaded = true,
+): { text: string; title: string; names: string[] } {
+  const label = (id: string) => assigneeLabel(id, names, loaded);
+  const pctOf = new Map((task.assignments ?? []).map(a => [label(a.resourceId), a.allocationPct ?? 100]));
+  const main = label(task.assignedTo ?? '') || label(task.assignments?.[0]?.resourceId ?? '');
+  const others = [...new Set((task.assignments ?? []).map(a => label(a.resourceId)).filter(n => n && n !== main))];
+  const all = main ? [main, ...others] : others;
+  const show = (n: string) => (pctOf.has(n) ? `${n} ${pctOf.get(n)}%` : n);
+  return {
+    text: others.length > 0 && main ? `${main} +${others.length}` : main,
+    title: all.length > 1 ? all.map(show).join(', ') : '',
+    names: all,
+  };
+}

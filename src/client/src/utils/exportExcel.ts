@@ -73,7 +73,7 @@ const NUM_FMT: Record<Kind, string | undefined> = {
   varMoney: '+$#,##0;-$#,##0;$0',
 };
 
-const WIDTH: Partial<Record<ColumnKey, number>> = { rowNum: 6, name: 46, notes: 40, dependency: 14, successor: 14, assignedTo: 22, resource: 24, status: 14 };
+const WIDTH: Partial<Record<ColumnKey, number>> = { rowNum: 6, name: 46, notes: 40, dependency: 14, successor: 14, assignedTo: 22, status: 14 };
 const TEAL_BAND = 'FF0F766E';
 const PHASE_FILL = 'FFE6F4F1';
 const MILESTONE_MARK = '◆ ';

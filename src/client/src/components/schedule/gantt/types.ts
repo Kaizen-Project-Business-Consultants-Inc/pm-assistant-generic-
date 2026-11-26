@@ -239,7 +239,6 @@ export const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'pct',       label: '%',        defaultWidth: 48,  minWidth: 36,  resizable: true },
   { key: 'priority',  label: 'Priority', defaultWidth: 64,  minWidth: 50,  resizable: true },
   { key: 'assigned',  label: 'Assigned', defaultWidth: 96,  minWidth: 60,  resizable: true },
-  { key: 'resource',  label: 'Resource', defaultWidth: 110, minWidth: 70,  resizable: true },
   { key: 'status',    label: 'Status',   defaultWidth: 64,  minWidth: 50,  resizable: true },
   { key: 'notes',     label: 'Notes',    defaultWidth: 120, minWidth: 60,  resizable: true },
   // Columns that used to exist only in the Table (extraColumns.ts): off until ticked in the Columns menu

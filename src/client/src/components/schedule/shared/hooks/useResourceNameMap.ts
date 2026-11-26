@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../../../services/api';
-import { assigneeLabel } from '../../../../utils/resourceLookup';
+import { assigneeLabel, assigneeSummary } from '../../../../utils/resourceLookup';
 
 /**
  * Resource / person id → name, from the shared `['resources']` cache (one request for every
@@ -17,6 +17,12 @@ export function useResourceNameMap(): Map<string, string> {
 export function useAssigneeLabel(): (value: string | null | undefined) => string {
   const { names, loaded } = useResourceNames();
   return useMemo(() => (value) => assigneeLabel(value, names, loaded), [names, loaded]);
+}
+
+/** Everyone on a task for the one Assigned To column: main person first, "+N" for the others. */
+export function useAssigneeSummary() {
+  const { names, loaded } = useResourceNames();
+  return useMemo(() => (task: Parameters<typeof assigneeSummary>[0]) => assigneeSummary(task, names, loaded), [names, loaded]);
 }
 
 function useResourceNames(): { names: Map<string, string>; loaded: boolean } {

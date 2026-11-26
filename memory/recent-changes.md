@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-26 — One Assigned To instead of Assigned To + Resource
+- Why: two columns/sections for the same idea. The form shows one list (first = main, saved as assignedTo; a single person at 100% with no role stores no list); Table/Gantt show "Main +N"; Table export lists everyone; the Resource column, its cell (ResourceQuickAssign) and ResourceOptionGroups are removed. Extra people are added in the task form only. No data migration. Helpers: utils/taskPeople.ts, assigneeSummary in utils/resourceLookup.ts. Test: e2e/assigned-merge.spec.ts.
+
 ## 2026-11-26 — Import leaves status words out of the people list
 - Why: importing the DBJ spreadsheet made "Completed" (and "DBJ", "JV", "DBJ & JV", "DBJ / JV") people, and Schedule Review then raised "Suspicious names". Fix: `isNotAPerson` (utils/importHeuristics.ts; one word list, also used by the review's resource check) — the Responsibility cell is left blank; the import answer carries `peopleAdded` and `notPeople`, shown in the Import finished box. Joint entries stay one person (splitting is a later change, in todo).
 

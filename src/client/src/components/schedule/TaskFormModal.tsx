@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useId, useMemo } from 'react';
 import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
-import { ResourcePickList, ResourceOptionGroups } from '../resources/ResourcePickList';
+import { ResourcePickList } from '../resources/ResourcePickList';
 import { isPlaceholderEmail } from '../../utils/placeholderEmail';
 import { progressFromHours } from '../../utils/progressFromHours';
 import { X, Save, Trash2, Sparkles, ChevronDown } from 'lucide-react';
@@ -16,6 +16,7 @@ import { apiService } from '../../services/api';
 import { useInProjectPool } from '../../hooks/useInProjectPool';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { firstByKey } from '../../utils/lookup';
+import { peopleRows, peopleToSave, type PersonRow } from '../../utils/taskPeople';
 import { useModal } from '../../hooks/useModal';
 import { isWorkingDay, type WorkCalendar } from '../../utils/workingDays';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -60,7 +61,7 @@ export interface TaskFormData {
   constraintDate: string;
   workHours: string;
   effortDriven: boolean;
-  assignments: Array<{ resourceId: string; allocationPct: number; roleOnTask: string }>;
+  assignments: Array<{ resourceId: string; allocationPct: number; roleOnTask: string; hoursPlanned?: number }>;
 }
 
 interface TaskFormModalProps {
@@ -90,7 +91,7 @@ interface TaskFormModalProps {
 // Assigned To — resource picker for the form
 // ---------------------------------------------------------------------------
 
-function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+function AssignedToPicker({ value, onChange, ariaLabel }: { value: string; onChange: (id: string) => void; ariaLabel: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -127,14 +128,14 @@ function AssignedToPicker({ value, onChange }: { value: string; onChange: (id: s
 
   return (
     <div ref={ref} className="relative">
-      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Assigned To</label>
       <button
         type="button"
+        aria-label={ariaLabel}
         className="input w-full text-left flex items-center justify-between gap-2"
         onClick={() => setOpen(!open)}
       >
         <span className={current ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400'}>
-          {current ? current.name : 'Select resource...'}
+          {current ? current.name : 'Select person...'}
         </span>
         <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 shrink-0" aria-hidden="true" />
       </button>
@@ -285,6 +286,7 @@ export function TaskFormModal({
           resourceId: a.resourceId,
           allocationPct: a.allocationPct ?? 100,
           roleOnTask: a.roleOnTask || '',
+          hoursPlanned: a.hoursPlanned,
         })) || [],
       });
     }
@@ -346,36 +348,43 @@ export function TaskFormModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim() || !onSave) return;
-    onSave(form);
+    // people list not here yet: save what the form holds, never guess the main person
+    if (!resourceData) { onSave(form); return; }
+    const saved = peopleToSave(rows, assignedResource ? '' : form.assignedTo, (task?.assignments?.length ?? 0) > 0);
+    // same main person as saved: send the saved value as it was (a linked user id or an older name), so no false "assigned to you" notice
+    const assignedTo = task && saved.assignedTo === savedMain ? (task.assignedTo ?? '') : saved.assignedTo;
+    onSave({ ...form, assignedTo, assignments: saved.assignments as typeof form.assignments });
   };
 
   // Filter tasks for dependency/parent dropdowns (exclude self)
   const otherTasks = allTasks.filter((t) => t.id !== task?.id);
 
-  // People for the Resource Assignments rows, and the over-100% warnings (not for headings or
+  // People for the Assigned To rows, and the over-100% warnings (not for headings or
   // milestones — they book no time)
   const { data: resourceData } = useQuery({ queryKey: ['resources'], queryFn: () => apiService.getResources(), staleTime: 60_000 });
   const resourceList = useMemo<{ id: string; name: string; role: string; userId?: string | null; email?: string; isGeneric?: boolean }[]>(
     () => resourceData?.resources || [], [resourceData]);
   const resourceById = useMemo(() => firstByKey(resourceList, r => r.id), [resourceList]);
-  // who can be picked: this project's client's people and My resources (U8)
-  const inPool = useInProjectPool();
-  const poolList = useMemo(() => resourceList.filter(r => inPool(r as { clientId?: string | null })), [resourceList, inPool]);
-  const poolIds = useMemo(() => new Set(poolList.map(r => r.id)), [poolList]);
   const assignedResource = findResourceForAssignee(resourceList, form.assignedTo);
+  // Assigned To is one list: the main person first, then the others (see utils/taskPeople)
+  const rows = useMemo(() => peopleRows(assignedResource?.id ?? '', form.assignments), [assignedResource?.id, form.assignments]);
+  const people = rows.length > 0 ? rows : [{ resourceId: '', allocationPct: 100, roleOnTask: '' }];
+  const setPeople = (next: PersonRow[]) => setForm(f => ({ ...f, assignedTo: next.find(r => r.resourceId)?.resourceId ?? '', assignments: next }));
   // % complete on a task with planned hours comes from approved hours: shown, not typed. The
   // server's answer while dates and people are as saved; the screen's own guess once they change.
-  const plannedPeople = form.assignments.filter(a => a.resourceId);
-  const lockInputsAsSaved = !!task && JSON.stringify([form.startDate, form.endDate, !!form.isMilestone, form.assignedTo.trim(), plannedPeople.map(a => a.resourceId)])
-    === JSON.stringify([toInputDate(task.startDate), toInputDate(task.endDate), !!task.isMilestone, (task.assignedTo || '').trim(), (task.assignments ?? []).map(a => a.resourceId).filter(Boolean)]);
+  const plannedPeople = rows.filter(a => a.resourceId);
+  const idsOf = (ids: string[]) => JSON.stringify([...new Set(ids)].sort());
+  const savedMain = findResourceForAssignee(resourceList, task?.assignedTo)?.id ?? '';
+  const lockInputsAsSaved = !!task && JSON.stringify([form.startDate, form.endDate, !!form.isMilestone])
+    === JSON.stringify([toInputDate(task.startDate), toInputDate(task.endDate), !!task.isMilestone])
+    && idsOf(plannedPeople.map(a => a.resourceId)) === idsOf([savedMain, ...(task.assignments ?? []).map(a => a.resourceId)].filter(Boolean));
   const lockedProgress = !isSummary && progressFromHours({
     startDate: form.startDate, endDate: form.endDate, isMilestone: form.isMilestone,
-    assignedTo: form.assignedTo, assignments: plannedPeople,
+    assignedTo: plannedPeople[0]?.resourceId ?? form.assignedTo, assignments: plannedPeople,
     progressFromHours: lockInputsAsSaved ? task?.progressFromHours : undefined,
   });
-  const assignedResourceId = assignedResource?.id ?? '';
   // Picked someone whose email is still a placeholder? They won't hear about this task
-  const unreachable = [assignedResource, ...form.assignments.map(a => resourceById.get(a.resourceId))]
+  const unreachable = rows.map(a => resourceById.get(a.resourceId))
     // eslint-disable-next-line no-restricted-syntax -- small: the few people picked on this one task
     .filter((r, i, all): r is NonNullable<typeof r> => !!r && !r.isGeneric && isPlaceholderEmail(r.email) && all.findIndex(x => x?.id === r.id) === i);
   const checkLoad = !isSummary && !form.isMilestone;
@@ -667,52 +676,32 @@ export function TaskFormModal({
             </div>
           </div>
 
-          {/* Assigned To (primary) — resource picker dropdown */}
-          <AssignedToPicker
-            value={form.assignedTo}
-            onChange={(resourceId) => setForm(f => ({ ...f, assignedTo: resourceId }))}
-          />
-          {/* Over-100% warning for Assigned To (100%) — unless the same person has a % below */}
-          {checkLoad && assignedResourceId && !form.assignments.some(a => a.resourceId === assignedResourceId) && (
-            <ResourceLoadWarning resourceId={assignedResourceId} startDate={form.startDate} endDate={form.endDate} allocationPct={100} excludeTaskId={task?.id} />
-          )}
-
+          {/* Assigned To — everyone on the task in one list; the first person is the main one */}
           {unreachable.length > 0 && (
             <p role="status" className="rounded-lg border border-amber-500 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-500/70 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
               {unreachable.map(r => r.name).join(', ')} {unreachable.length === 1 ? 'has' : 'have'} a placeholder email, so {unreachable.length === 1 ? "they won't" : "they won't"} be notified or see this task. Add the real email on the Resources page or the project's Team tab.
             </p>
           )}
 
-          {/* Multi-Resource Assignments */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-              Resource Assignments ({form.assignments.length}/10)
-            </label>
-            {form.assignments.map((a, idx) => (
+            <span className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              Assigned To ({people.filter(a => a.resourceId).length}/10)
+            </span>
+            {people.map((a, idx) => (
               <div key={idx} className="mb-2">
               <div className="flex items-center gap-2">
-                <select
-                  value={a.resourceId}
-                  onChange={(e) => {
-                    const updated = [...form.assignments];
-                    updated[idx] = { ...updated[idx], resourceId: e.target.value };
-                    setForm(f => ({ ...f, assignments: updated }));
-                  }}
-                  aria-label="Resource"
-                  className="input flex-1 text-xs"
-                >
-                  <option value="">Select resource...</option>
-                  {a.resourceId && !poolIds.has(a.resourceId) && <option value={a.resourceId}>{resourceById.get(a.resourceId)?.name ?? a.resourceId}</option>}
-                  <ResourceOptionGroups resources={poolList} />
-                </select>
+                <div className="flex-1 min-w-0">
+                  <AssignedToPicker
+                    value={a.resourceId}
+                    ariaLabel={idx === 0 ? 'Assigned To' : `Assigned To, person ${idx + 1}`}
+                    onChange={(id) => setPeople(people.map((p, i) => (i === idx ? { ...p, resourceId: id } : p)))}
+                  />
+                </div>
                 <input
+                  aria-label={`Allocation % for person ${idx + 1}`}
                   type="number"
                   value={a.allocationPct}
-                  onChange={(e) => {
-                    const updated = [...form.assignments];
-                    updated[idx] = { ...updated[idx], allocationPct: Math.min(100, Math.max(1, parseInt(e.target.value) || 100)) };
-                    setForm(f => ({ ...f, assignments: updated }));
-                  }}
+                  onChange={(e) => setPeople(people.map((p, i) => (i === idx ? { ...p, allocationPct: Math.min(100, Math.max(1, parseInt(e.target.value) || 100)) } : p)))}
                   min="1"
                   max="100"
                   className="input w-16 text-xs"
@@ -720,14 +709,10 @@ export function TaskFormModal({
                 />
                 <span className="text-xs text-gray-500">%</span>
                 <input
-                  aria-label={`Role on task for assignment ${idx + 1}`}
+                  aria-label={`Role on task for person ${idx + 1}`}
                   type="text"
                   value={a.roleOnTask}
-                  onChange={(e) => {
-                    const updated = [...form.assignments];
-                    updated[idx] = { ...updated[idx], roleOnTask: e.target.value };
-                    setForm(f => ({ ...f, assignments: updated }));
-                  }}
+                  onChange={(e) => setPeople(people.map((p, i) => (i === idx ? { ...p, roleOnTask: e.target.value } : p)))}
                   placeholder="Role"
                   className="input w-24 text-xs"
                 />
@@ -735,33 +720,31 @@ export function TaskFormModal({
                   type="button"
                   onClick={() => {
                     // eslint-disable-next-line no-restricted-syntax -- small: runs once on this click, over the few people picked on this task
-                    const updated = form.assignments.filter((_, i) => i !== idx);
-                    setForm(f => ({ ...f, assignments: updated }));
+                    setPeople(people.filter((_, i) => i !== idx));
                   }}
                   className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-xs px-1"
-                  title="Remove resource"
+                  title="Remove person"
+                  aria-label={`Remove person ${idx + 1}`}
                 >
                   &times;
                 </button>
               </div>
+              {idx === 0 && a.resourceId && people.length > 1 && (
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Main person (shown first in the schedule)</p>
+              )}
               {/* eslint-disable-next-line no-restricted-syntax -- small: the few people picked on this one task */}
-              {checkLoad && a.resourceId && form.assignments.findIndex(x => x.resourceId === a.resourceId) === idx && (
+              {checkLoad && a.resourceId && people.findIndex(x => x.resourceId === a.resourceId) === idx && (
                 <ResourceLoadWarning resourceId={a.resourceId} startDate={form.startDate} endDate={form.endDate} allocationPct={a.allocationPct} excludeTaskId={task?.id} />
               )}
               </div>
             ))}
-            {form.assignments.length < 10 && (
+            {people.length < 10 && (
               <button
                 type="button"
-                onClick={() => {
-                  setForm(f => ({
-                    ...f,
-                    assignments: [...f.assignments, { resourceId: '', allocationPct: 100, roleOnTask: '' }],
-                  }));
-                }}
+                onClick={() => setPeople([...people, { resourceId: '', allocationPct: 100, roleOnTask: '' }])}
                 className="text-xs text-primary-700 dark:text-primary-400 hover:text-primary-800 dark:hover:text-primary-300 font-medium"
               >
-                + Add Resource
+                + Add person
               </button>
             )}
           </div>

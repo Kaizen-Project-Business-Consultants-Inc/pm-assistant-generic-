@@ -1,4 +1,4 @@
-import { assigneeLabel } from '../../../utils/resourceLookup';
+import { assigneeSummary } from '../../../utils/resourceLookup';
 import type { GanttTask } from '../GanttChart';
 import type { ColumnKey } from '../tableColumns';
 import type { CellRaw } from '../../../utils/exportExcel';
@@ -48,7 +48,7 @@ export function tableExportValue(task: GanttTask, key: ColumnKey, ctx: TableExpo
     case 'startDate': return task.startDate;
     case 'endDate': return task.endDate;
     case 'progressPercentage': return task.progressPercentage ?? 0;
-    case 'assignedTo': return assigneeLabel(task.assignedTo, ctx.names); // the name, as on screen
+    case 'assignedTo': return assigneeSummary(task, ctx.names).names.join(', ');  // the name, as on screen
     case 'notes': return task.description;
     case 'duration': return ctx.durationDays(task);
     case 'estimatedDays': return task.estimatedDays;
@@ -60,7 +60,6 @@ export function tableExportValue(task: GanttTask, key: ColumnKey, ctx: TableExpo
         return `${ctx.rowNumMap.get(s.successorId) ?? '?'}${type !== 'FS' ? type : ''}${s.lag !== 0 ? `${s.lag > 0 ? '+' : ''}${s.lag}d` : ''}`;
       }).join(',');
     case 'wbs': return ctx.wbsMap.get(task.id);
-    case 'resource': return (task.assignments ?? []).map(a => ctx.names.get(a.resourceId) || a.resourceId).join(', ');
     case 'actualStartDate': return t.actualStartDate;
     case 'actualEndDate': return t.actualEndDate;
     case 'constraintType': return t.constraintType || 'ASAP';
