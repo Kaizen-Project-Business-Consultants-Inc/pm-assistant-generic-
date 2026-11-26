@@ -1,3 +1,4 @@
+import { useAssigneeLabel } from '../schedule/shared/hooks/useResourceNameMap';
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Inbox, Plus, ArrowRight, Shield } from 'lucide-react';
@@ -54,6 +55,7 @@ const taskTypeBadge: Record<string, { bg: string; text: string; label: string }>
 };
 
 export function BacklogView({ projectId }: BacklogViewProps) {
+  const assigneeText = useAssigneeLabel();
   const queryClient = useQueryClient();
   const [selectedScheduleId, setSelectedScheduleId] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -365,7 +367,7 @@ export function BacklogView({ projectId }: BacklogViewProps) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-gray-500 dark:text-gray-400 hidden md:table-cell">
-                      {task.assignedTo || '—'}
+                      {assigneeText(task.assignedTo) || '—'}
                     </td>
                     <td className="px-3 py-2.5 text-center hidden lg:table-cell">
                       {dorReadiness[task.id] ? (

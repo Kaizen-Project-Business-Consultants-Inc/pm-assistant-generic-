@@ -1,3 +1,4 @@
+import { useAssigneeLabel } from '../schedule/shared/hooks/useResourceNameMap';
 import React, { useState, useCallback, useMemo, useRef, useEffect, memo } from 'react';
 import { ToggleButton } from '../ui/ToggleButton';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -208,6 +209,7 @@ const SprintCard = memo(function SprintCard({
   task, dodReady, editingPointsTaskId, editingPointsValue,
   onDragStart, onPointsClick, onPointsSave, onPointsKeyDown, onPointsValueChange, onMove, canEdit,
 }: SprintCardProps) {
+  const assigneeText = useAssigneeLabel();
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
   const points = getPoints(task);
 
@@ -282,8 +284,8 @@ const SprintCard = memo(function SprintCard({
       </div>
       {task.assignedTo && (
         <div className="mt-2 flex items-center gap-1.5">
-          <Avatar name={task.assignedTo} size="xs" />
-          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{task.assignedTo}</span>
+          <Avatar name={assigneeText(task.assignedTo)} size="xs" />
+          <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{assigneeText(task.assignedTo)}</span>
         </div>
       )}
     </div>
@@ -291,6 +293,7 @@ const SprintCard = memo(function SprintCard({
 });
 
 export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
+  const assigneeText = useAssigneeLabel();
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
   const [localTaskOverrides, setLocalTaskOverrides] = useState<Record<string, string>>({});
   const [wipLimits, setWipLimits] = useState<Record<string, number>>(() => loadWipLimits(sprintId));
@@ -336,12 +339,12 @@ export function SprintBoard({ sprintId, canEdit = true }: SprintBoardProps) {
     const groups: { key: string; label: string; tasks: BoardTask[] }[] = [];
     const byAssignee = groupByKey(tasks, (t) => t.assignedTo);
     for (const a of assignees) {
-      groups.push({ key: a, label: a, tasks: byAssignee.get(a) ?? [] });
+      groups.push({ key: a, label: assigneeText(a) || a, tasks: byAssignee.get(a) ?? [] });
     }
     const unassigned = tasks.filter((t) => !t.assignedTo);
     if (unassigned.length > 0) groups.push({ key: '__unassigned', label: 'Unassigned', tasks: unassigned });
     return groups;
-  }, [swimlane, tasks, assignees]);
+  }, [swimlane, tasks, assignees, assigneeText]);
 
   const updatePointsMutation = useMutation({
     mutationFn: ({ taskId, storyPoints }: { taskId: string; storyPoints: number }) =>

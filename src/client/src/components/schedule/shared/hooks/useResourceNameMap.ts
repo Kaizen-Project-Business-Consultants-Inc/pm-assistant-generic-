@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../../../services/api';
+import { assigneeLabel } from '../../../../utils/resourceLookup';
 
 /**
  * Resource / person id → name, from the shared `['resources']` cache (one request for every
@@ -9,7 +10,17 @@ import { apiService } from '../../../../services/api';
  * them (Assigned, Resource) in the Gantt and the Table.
  */
 export function useResourceNameMap(): Map<string, string> {
-  const { data: resourceData } = useQuery({
+  return useResourceNames().names;
+}
+
+/** The text to show in an Assigned To cell, bar or export: a name, never a raw id (see assigneeLabel). */
+export function useAssigneeLabel(): (value: string | null | undefined) => string {
+  const { names, loaded } = useResourceNames();
+  return useMemo(() => (value) => assigneeLabel(value, names, loaded), [names, loaded]);
+}
+
+function useResourceNames(): { names: Map<string, string>; loaded: boolean } {
+  const { data: resourceData, isSuccess, isError } = useQuery({
     queryKey: ['resources'],
     queryFn: () => apiService.getResources(),
     staleTime: 60_000,
@@ -20,6 +31,7 @@ export function useResourceNameMap(): Map<string, string> {
       if (r.userId) map.set(r.userId, r.name);
       map.set(r.id, r.name);
     }
-    return map;
-  }, [resourceData]);
+    // a failed request counts as loaded: an id then reads "Unknown person" instead of staying blank for ever
+    return { names: map, loaded: isSuccess || isError };
+  }, [resourceData, isSuccess, isError]);
 }

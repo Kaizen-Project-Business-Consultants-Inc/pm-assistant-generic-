@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { GanttTask } from './GanttChart';
 import { formatCalendarDate } from '../../utils/dateUtils';
+import { useAssigneeLabel } from './shared/hooks/useResourceNameMap';
 import { effectiveTaskStatus, taskStatusLabel } from '../../utils/taskStatus';
 import { moveKeepingWorkingLength, type WorkCalendar } from '../../utils/workingDays';
 
@@ -64,6 +65,7 @@ function taskStartsOnDay(task: GanttTask, day: Date): boolean {
 }
 
 export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalendar, onOpenWorkingCalendar }: CalendarViewProps) {
+  const assigneeText = useAssigneeLabel();
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [mode, setMode] = useState<CalendarMode>('month');
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
@@ -345,7 +347,7 @@ export function CalendarView({ tasks, onTaskClick, onTaskReschedule, workCalenda
                         <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">{task.priority}</span>
                       )}
                       {task.assignedTo && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">{task.assignedTo}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{assigneeText(task.assignedTo)}</span>
                       )}
                       {task.startDate && task.endDate && (
                         <span className="text-xs text-gray-500 dark:text-gray-400">

@@ -3,6 +3,7 @@ import { barColors } from '../components/schedule/gantt/types';
 import { STATUS_LABEL, effectiveTaskStatus } from './taskStatus';
 import { safeFileName } from './exportUtils';
 import { todayYmd } from './rateCard';
+import { assigneeLabel } from './resourceLookup';
 
 /**
  * Export tasks to an Excel (.xlsx) file. ExcelJS is loaded only when a person clicks the button
@@ -108,7 +109,7 @@ export function basicValue(names?: ReadonlyMap<string, string>) {
   return (task: ExportTask & { priority?: string; assignedTo?: string; startDate?: string; progressPercentage?: number }, key: ColumnKey): CellRaw => {
     switch (key) {
       case 'priority': return task.priority || '';
-      case 'assignedTo': return (task.assignedTo && names?.get(task.assignedTo)) || task.assignedTo || ''; // the name, not the stored id
+      case 'assignedTo': return assigneeLabel(task.assignedTo, names ?? new Map()); // the name, not the stored id
       case 'startDate': return task.startDate;
       case 'endDate': return task.endDate;
       case 'progressPercentage': return task.progressPercentage ?? 0;

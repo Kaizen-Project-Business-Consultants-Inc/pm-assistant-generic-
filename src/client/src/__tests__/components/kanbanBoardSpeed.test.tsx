@@ -6,7 +6,12 @@
  * column highlight (two board renders per card edge).
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, cleanup, fireEvent, createEvent, screen } from '@testing-library/react';
+import { render as rtlRender, cleanup, fireEvent, createEvent, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// the board looks names up through the shared people list, so it needs a query client (2026-11-26)
+const people = new QueryClient();
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: ({ children }) => <QueryClientProvider client={people}>{children}</QueryClientProvider> });
 
 const avatarRenders = vi.hoisted(() => ({ n: 0 }));
 vi.mock('../../components/ui/Avatar', () => ({

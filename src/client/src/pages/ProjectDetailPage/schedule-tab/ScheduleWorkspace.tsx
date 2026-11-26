@@ -34,7 +34,7 @@ import { useProjectRole } from '../../../hooks/useProjectRole';
 import { useColumnState } from '../../../hooks/useColumnState';
 import { exportTasksCSV } from '../../../utils/exportUtils';
 import { downloadTasksExcel, basicValue, BASIC_COLUMNS } from '../../../utils/exportExcel';
-import { useResourceNameMap } from '../../../components/schedule/shared/hooks/useResourceNameMap';
+import { useResourceNameMap, useAssigneeLabel } from '../../../components/schedule/shared/hooks/useResourceNameMap';
 import { ConfirmModal } from '../../../components/ui/ConfirmModal';
 import { ScheduleToolbar } from './ScheduleToolbar';
 import { ScheduleOverflowMenu } from './ScheduleOverflowMenu';
@@ -76,6 +76,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   const canOpenResources = useCanOpenPage()(ROUTES.resources);
   const [editingTask, setEditingTask] = useState<GanttTask | null>(null);
   const resourceNames = useResourceNameMap();
+  const assigneeText = useAssigneeLabel();
   const [showAddForm, setShowAddForm] = useState(false);
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [createTaskDates, setCreateTaskDates] = useState<{ startDate: string; endDate: string; parentTaskId?: string; afterTaskId?: string; beforeTaskId?: string } | null>(null);
@@ -315,13 +316,13 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     let result = tasks;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(t => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q) || t.assignedTo?.toLowerCase().includes(q));
+      result = result.filter(t => t.name.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q) || assigneeText(t.assignedTo).toLowerCase().includes(q));
     }
     if (filterStatus) { const asOf = toLocalDate(); result = result.filter(t => effectiveTaskStatus(t, asOf) === filterStatus); }
     if (filterPriority) result = result.filter(t => t.priority === filterPriority);
     if (filterAssignee) result = result.filter(t => t.assignedTo === filterAssignee);
     return result;
-  }, [tasks, searchQuery, filterStatus, filterPriority, filterAssignee]);
+  }, [tasks, searchQuery, filterStatus, filterPriority, filterAssignee, assigneeText]);
 
   // Quick filter counts (computed from dropdown-filtered tasks)
   // Tasks are assigned to a resource, which may be linked to a login. "My tasks" used to compare the

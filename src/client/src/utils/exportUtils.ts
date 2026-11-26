@@ -1,4 +1,5 @@
 import { todayYmd } from './rateCard';
+import { assigneeLabel } from './resourceLookup';
 
 function escapeCSV(value: string): string {
   if (value.includes(',') || value.includes('"') || value.includes('\n') || value.includes('\r')) {
@@ -40,7 +41,7 @@ export function exportTasksCSV(tasks: Array<{
     t.name || '',
     t.status || '',
     t.priority || '',
-    (t.assignedTo && names?.get(t.assignedTo)) || t.assignedTo || '', // the name, as on screen — not the stored id
+    assigneeLabel(t.assignedTo, names ?? new Map()), // the name, as on screen — not the stored id
     t.startDate || '',
     t.endDate || '',
     String(t.progressPercentage ?? 0),

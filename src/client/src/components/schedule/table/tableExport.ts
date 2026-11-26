@@ -1,3 +1,4 @@
+import { assigneeLabel } from '../../../utils/resourceLookup';
 import type { GanttTask } from '../GanttChart';
 import type { ColumnKey } from '../tableColumns';
 import type { CellRaw } from '../../../utils/exportExcel';
@@ -47,7 +48,7 @@ export function tableExportValue(task: GanttTask, key: ColumnKey, ctx: TableExpo
     case 'startDate': return task.startDate;
     case 'endDate': return task.endDate;
     case 'progressPercentage': return task.progressPercentage ?? 0;
-    case 'assignedTo': return (task.assignedTo && ctx.names.get(task.assignedTo)) || task.assignedTo || ''; // the name, as on screen
+    case 'assignedTo': return assigneeLabel(task.assignedTo, ctx.names); // the name, as on screen
     case 'notes': return task.description;
     case 'duration': return ctx.durationDays(task);
     case 'estimatedDays': return task.estimatedDays;

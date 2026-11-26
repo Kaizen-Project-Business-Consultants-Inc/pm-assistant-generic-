@@ -122,7 +122,7 @@ function parseCSV(text: string): ParsedCSV {
 export function ImportModal({ isOpen, onClose, scheduleId, projectId, onOpenReview }: ImportModalProps) {
   const queryClient = useQueryClient();
   // Imported tasks (and their links) change the whole plan: every view of it fetches again (U38)
-  const onImported = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId });
+  const onImported = () => refreshAfterScheduleChange(queryClient, { scheduleId, projectId, people: true });
   const a11yId = useId();
   const [csvText, setCsvText] = useState('');
   const [parsed, setParsed] = useState<ParsedCSV | null>(null);

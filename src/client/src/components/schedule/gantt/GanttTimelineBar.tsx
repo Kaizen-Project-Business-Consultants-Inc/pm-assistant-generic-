@@ -9,7 +9,7 @@ import {
 } from './types';
 import { getInitials, getAvatarHex } from '../../ui/Avatar';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
-import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
+import { useAssigneeLabel } from '../shared/hooks/useResourceNameMap';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -90,9 +90,9 @@ export const GanttTimelineBar = React.memo(function GanttTimelineBar({
   workCalendar,
 }: GanttTimelineBarProps) {
   // Resource / person id → name (shared cache)
-  const resourceNameMap = useResourceNameMap();
+  const assigneeText = useAssigneeLabel();
 
-  const assigneeName = task.assignedTo ? (resourceNameMap.get(task.assignedTo) || task.assignedTo) : '';
+  const assigneeName = assigneeText(task.assignedTo);
 
   const start = toDate(task.startDate);
   const end = toDate(task.endDate);

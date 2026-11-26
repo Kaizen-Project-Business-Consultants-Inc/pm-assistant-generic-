@@ -1,3 +1,4 @@
+import { useAssigneeLabel } from '../../../components/schedule/shared/hooks/useResourceNameMap';
 import React from 'react';
 import { X } from 'lucide-react';
 import { STATUS_LABEL } from '../../../utils/taskStatus';
@@ -29,6 +30,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
   hasActiveFilters,
   onClearAll,
 }: ScheduleFilterBarProps) {
+  const assigneeText = useAssigneeLabel();
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <select
@@ -61,7 +63,7 @@ export const ScheduleFilterBar = React.memo(function ScheduleFilterBar({
       >
         <option value="">All assignees</option>
         {uniqueAssignees.map(a => (
-          <option key={a} value={a}>{a}</option>
+          <option key={a} value={a}>{assigneeText(a) || a}</option>
         ))}
       </select>
       {hasActiveFilters && (

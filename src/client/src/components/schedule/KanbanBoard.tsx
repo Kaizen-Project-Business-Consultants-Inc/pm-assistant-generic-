@@ -1,3 +1,4 @@
+import { useAssigneeLabel } from './shared/hooks/useResourceNameMap';
 import React, { useState, useCallback, useEffect, useMemo, useId } from 'react';
 import { Avatar } from '../ui/Avatar';
 import { isCalendarOverdue, formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
@@ -138,10 +139,11 @@ const CARD_FOCUS_RING = 'focus:outline-none focus-visible:ring-2 focus-visible:r
  * re-renders only the cards whose props changed, not every card on the board (2026-10-11).
  */
 const KanbanCard = React.memo(function KanbanCard({ task, isActive, risk, overbooked, subtaskCount, dependencyCount, onCardClick, onCardDragStart }: CardProps & { subtaskCount: number; dependencyCount: number }) {
+  const assigneeText = useAssigneeLabel();
   const pBadge = priorityBadge[task.priority || 'medium'] || priorityBadge.medium;
   const due = task.dueDate || task.endDate;
   const overdue = (task.status !== 'completed' && task.status !== 'cancelled') && isOverdue(due);
-  const label = `Open ${task.name}, ${task.priority || 'medium'} priority${due ? `, ${overdue ? 'overdue' : 'due'} ${formatDate(due)}` : ''}${task.assignedTo ? `, ${task.assignedTo}` : ''}${overbooked ? `, overbooked: ${overbooked}` : ''}`;
+  const label = `Open ${task.name}, ${task.priority || 'medium'} priority${due ? `, ${overdue ? 'overdue' : 'due'} ${formatDate(due)}` : ''}${task.assignedTo ? `, ${assigneeText(task.assignedTo)}` : ''}${overbooked ? `, overbooked: ${overbooked}` : ''}`;
 
   return (
     <div
@@ -211,8 +213,8 @@ const KanbanCard = React.memo(function KanbanCard({ task, isActive, risk, overbo
       {/* Assignee */}
       {task.assignedTo && (
         <div className="mt-2 flex items-center gap-1.5">
-          <Avatar name={task.assignedTo} size="xs" />
-          <span className="text-xs text-gray-500 dark:text-gray-300 truncate">{task.assignedTo}</span>
+          <Avatar name={assigneeText(task.assignedTo)} size="xs" />
+          <span className="text-xs text-gray-500 dark:text-gray-300 truncate">{assigneeText(task.assignedTo)}</span>
         </div>
       )}
     </div>
@@ -253,6 +255,7 @@ function saveWipLimits(scheduleId: string, limits: Record<string, number>) {
 type SwimlaneSetting = '' | 'assignee' | 'priority';
 
 export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQuickAdd, scheduleId, activeTaskId, taskRiskMap, overbookedNotes }: KanbanBoardProps) {
+  const assigneeText = useAssigneeLabel();
   const uid = useId();
   const [quickAddColumn, setQuickAddColumn] = useState<string | null>(null);
   const [quickAddValue, setQuickAddValue] = useState('');
@@ -265,7 +268,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
     const groups = new Map<string, KanbanTask[]>();
     for (const task of tasks) {
       let key: string;
-      if (swimlane === 'assignee') key = task.assignedTo || 'Unassigned';
+      if (swimlane === 'assignee') key = assigneeText(task.assignedTo) || 'Unassigned';
       else key = task.priority || 'medium';
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(task);
@@ -276,7 +279,7 @@ export function KanbanBoard({ tasks, allTasks, onTaskClick, onStatusChange, onQu
       return new Map([...groups.entries()].sort((a, b) => (order.indexOf(a[0]) ?? 99) - (order.indexOf(b[0]) ?? 99)));
     }
     return new Map([...groups.entries()].sort((a, b) => a[0].localeCompare(b[0])));
-  }, [tasks, swimlane]);
+  }, [tasks, swimlane, assigneeText]);
   // each lane's tasks by status column, worked out with the lanes rather than on every render
   const swimlaneColumns = useMemo(
     () => (swimlaneGroups ? [...swimlaneGroups.entries()].map(([laneKey, laneTasks]) => ({ laneKey, laneTasks, laneGrouped: groupTasksByStatus(laneTasks) })) : null),

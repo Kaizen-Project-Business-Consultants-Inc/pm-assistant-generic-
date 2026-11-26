@@ -1,5 +1,6 @@
 import type { GanttTask } from './gantt/types';
 import { EXTRA_SORT_KEYS } from './gantt/extraSort';
+import { assigneeLabel } from '../../utils/resourceLookup';
 
 /**
  * Column sort, shared by the Gantt grid and the Table.
@@ -100,8 +101,7 @@ export function resourceSortName(task: GanttTask, resourceNameOf: Map<string, st
 
 /** The Assigned name as shown (the person's name when assignedTo holds their id), lower-cased */
 export function assignedSortName(task: GanttTask, resourceNameOf: Map<string, string>): string {
-  const raw = task.assignedTo || '';
-  return (resourceNameOf.get(raw) || raw).toLowerCase();
+  return assigneeLabel(task.assignedTo, resourceNameOf).toLowerCase();
 }
 
 /** Notes text, lower-cased; blank notes are blank */

@@ -18,7 +18,7 @@ import {
   priorityOptions,
   healthColor,
 } from './types';
-import { useResourceNameMap } from '../shared/hooks/useResourceNameMap';
+import { useAssigneeLabel } from '../shared/hooks/useResourceNameMap';
 import { gridCellId, GANTT_GRID_CELLS } from '../shared/GridKeyboardHelp';
 import { extraCell, type ExtraColumnCtx } from './extraColumns';
 
@@ -221,7 +221,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   const succTitle = (successorMap.get(task.id) || []).map(s => taskById.get(s.successorId)?.name || '').filter(Boolean).join(', ') || undefined;
 
   // Resource / person id → name (shared cache)
-  const resourceNameMap = useResourceNameMap();
+  const assigneeText = useAssigneeLabel();
 
   // Auto-focus input when entering edit mode
   useEffect(() => {
@@ -664,9 +664,9 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 truncate relative ${cellClass('assignedTo')}`}
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'assignedTo', task)}
-            title={resourceNameMap.get(task.assignedTo || '') || task.assignedTo || undefined}
+            title={assigneeText(task.assignedTo) || undefined}
           >
-            {resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '\u2014'}
+            {assigneeText(task.assignedTo) || '\u2014'}
             {isEditingField(editingField, 'assignedTo') && onTaskUpdate && (
               // floating: this cell clips what it holds (truncate), so the list opens in a layer
               // above the page, under the cell \u2014 inside the cell it was cut off (2026-10-04)

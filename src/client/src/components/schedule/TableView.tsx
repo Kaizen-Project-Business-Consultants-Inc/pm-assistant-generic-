@@ -39,7 +39,7 @@ import { isLockedCell, CALCULATED_CELL_HINTS } from './summaryRollup';
 import { cellEditLabel } from './cellEditLabel';
 import { buildWbsMap } from './wbs';
 import { listenForEscapeCancel } from './shared/escapeCancel';
-import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
+import { useResourceNameMap, useAssigneeLabel } from './shared/hooks/useResourceNameMap';
 import { useAuthStore } from '../../stores/authStore';
 import { canSeePayRates } from '../../utils/rateCard';
 import { downloadTasksExcel, levelsByParent } from '../../utils/exportExcel';
@@ -56,6 +56,7 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
 
   // Resource / person id → name (shared cache)
   const resourceNameMap = useResourceNameMap();
+  const assigneeText = useAssigneeLabel();
 
 
   // Focus a task from a link: open its collapsed phases and groups, then scroll its row
@@ -447,7 +448,7 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
       case 'startDate': return task.startDate ? formatDate(task.startDate) : '\u2014';
       case 'endDate': return task.endDate ? formatDate(task.endDate) : '\u2014';
       case 'progressPercentage': return `${task.progressPercentage ?? 0}%`;
-      case 'assignedTo': return task.assignedTo || '\u2014';
+      case 'assignedTo': return assigneeText(task.assignedTo) || '\u2014';
       case 'duration': {
         if (task.startDate && task.endDate) {
           const diff = (workingDaysBetween(task.startDate, task.endDate, workCalendar) ?? 0);
@@ -477,7 +478,7 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
       case 'estimatedDurationHours': return task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '\u2014';
       default: return '\u2014';
     }
-  }, [wbsMap, rowNumMap, getTaskFieldValue, successorMap, workCalendar]);
+  }, [wbsMap, rowNumMap, getTaskFieldValue, successorMap, workCalendar, assigneeText]);
 
   const autoFitColumn = useCallback((colKey: ColumnKey) => {
     if (!measureCanvasRef.current) {
@@ -992,7 +993,7 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
                 onClose={cancelEditing}
               />
             ) : (
-              resourceNameMap.get(task.assignedTo || '') || task.assignedTo || '\u2014'
+              assigneeText(task.assignedTo) || '\u2014'
             )}
             {renderSaveIndicator(task.id, 'assignedTo')}
             {renderHoverPencil(task.id, 'assignedTo')}

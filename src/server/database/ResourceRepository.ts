@@ -83,7 +83,7 @@ export class ResourceRepository extends BaseRepository<Resource> {
     const where = conds.length ? ` WHERE ${conds.join(' AND ')}` : '';
     const [[{ cnt }], rows] = await Promise.all([
       this.queryRaw(`SELECT COUNT(*) AS cnt FROM resources${where}`, params),
-      this.queryRaw(`SELECT * FROM resources${where} ORDER BY name LIMIT ? OFFSET ?`, [...params, limit, offset]),
+      this.queryRaw(`SELECT * FROM resources${where} ORDER BY name, id LIMIT ? OFFSET ?`, [...params, limit, offset]),
     ]);
     return { resources: this.mapRows(rows), total: Number(cnt) };
   }

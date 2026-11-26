@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-26 — Assigned To shows names, never raw ids
+- Why: after importing a plan, Assigned To showed a long code until the page was reloaded (user screenshot 2026-11-25). Causes: the cached people list did not refresh after an import, and the list stopped at 50 people. Fix: `getResources` reads every page; an import refreshes `['resources']` (`refreshAfterScheduleChange(..., {people:true})`); one shared `assigneeLabel`/`useAssigneeLabel` (name, older plain text as is, id with no match = "Unknown person") used by Table, Gantt row + bar, Calendar, Critical Path, sort/group and CSV/Excel export.
+
 ## 2026-11-19 — Deleting a heading always takes its tasks (like Microsoft Project)
 - User: "delete heading and all subtasks", then confirmed Project's behaviour. The Gantt, Table and task form show one confirmation ("Delete heading and N tasks", Cancel focused) instead of the two-option question from 2026-10-29. Server unchanged: `children: 'keep'` still serves Mjuzi and the Review panel. Tests: `deleteTasksModal.test.tsx`, `deleteHeadingGanttAndForm.test.tsx`, `e2e/delete-summary.spec.ts`.
 

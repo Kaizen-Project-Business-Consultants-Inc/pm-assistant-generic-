@@ -1,3 +1,4 @@
+import { useAssigneeLabel } from '../schedule/shared/hooks/useResourceNameMap';
 import React, { useRef, useState, useCallback } from 'react';
 import { Calendar, User, Check } from 'lucide-react';
 import { effectiveTaskStatus, foldStatus, taskStatusLabel } from '../../utils/taskStatus';
@@ -39,6 +40,7 @@ const priorityStyles: Record<string, string> = {
 };
 
 export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCycle, onClick }) => {
+  const assigneeText = useAssigneeLabel();
   const [swipeX, setSwipeX] = useState(0);
   const [swiped, setSwiped] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
@@ -114,7 +116,7 @@ export const TaskCardMobile: React.FC<TaskCardMobileProps> = ({ task, onStatusCy
             {task.assignedTo && (
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                 <User className="w-3 h-3" />
-                {task.assignedTo}
+                {assigneeText(task.assignedTo)}
               </span>
             )}
             {task.endDate && (

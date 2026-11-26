@@ -70,10 +70,10 @@ describe('Sprint Board', () => {
 describe('Calendar view', () => {
   it('names the status on each task, not just its colour', () => {
     const today = toLocalDate();
-    const { container } = render(<CalendarView tasks={[
+    const { container } = render(<QueryClientProvider client={new QueryClient()}><CalendarView tasks={[
       { id: 'a', name: 'Steady task', status: 'in_progress', startDate: today, endDate: today },
       { id: 'b', name: 'Slipping task', status: 'late', startDate: today, endDate: today },
-    ] as GanttTask[]} onTaskClick={() => {}} />);
+    ] as GanttTask[]} onTaskClick={() => {}} /></QueryClientProvider>);
     const labels = Array.from(container.querySelectorAll('[aria-label]')).map(e => e.getAttribute('aria-label'));
     expect(labels).toContain('Steady task — On Track');
     expect(labels).toContain('Slipping task — Late');

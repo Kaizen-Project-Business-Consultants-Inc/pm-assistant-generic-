@@ -29,8 +29,20 @@ export class ResourcesApi extends ApiBase {
 
   /** pool: a client's id, 'mine' = My resources, left out = everyone (U8) */
   async getResources(pool?: string) {
-    const response = await this.api.get('/resources', { params: pool ? { pool } : {} });
-    return response.data;
+    // The server sends 50 people a page (200 at most). Read every page, so a company with more
+    // people than that still gets every name (an Assigned To past person 50 showed a raw id).
+    const PAGE = 200;
+    const MAX_PAGES = 50;
+    const fetchPage = async (offset: number) =>
+      (await this.api.get('/resources', { params: { ...(pool ? { pool } : {}), limit: PAGE, offset } })).data;
+    const first = await fetchPage(0);
+    const total: number = first.total ?? 0;
+    // Count from what came back: a restricted role gets everyone visible in one response, whatever the page size
+    if ((first.resources?.length ?? 0) >= total) return first;
+    const more = Math.min(Math.ceil(total / PAGE), MAX_PAGES) - 1;
+    if (more < 1) return first;
+    const rest = await Promise.all(Array.from({ length: more }, (_, i) => fetchPage((i + 1) * PAGE)));
+    return { ...first, resources: [first, ...rest].flatMap(page => page.resources ?? []) };
   }
 
   // A project's team (U8): picked from its client's pool and My resources

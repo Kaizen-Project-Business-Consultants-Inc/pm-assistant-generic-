@@ -71,15 +71,18 @@ const projectKeys = (projectId: string | undefined): unknown[][] =>
  * again: the ones on screen now, the others (dropped) when they are opened. Marking them stale is
  * not enough: the app never refetches on mount (queryClient.ts), so the critical path kept saying
  * "link your tasks first" after Propose fixes added links (U38). Scoped to the plan and its
- * project (CLAUDE.md lesson 5). projectId is undefined only where the caller can't know it: the
+ * project (CLAUDE.md lesson 5). `people`: the change may have added people (imports). projectId is undefined only where the caller can't know it: the
  * project-wide figures then refresh on their own schedule.
  */
 export function refreshAfterScheduleChange(
   queryClient: QueryClient,
-  { scheduleId, projectId }: { scheduleId: string; projectId: string | undefined },
+  { scheduleId, projectId, people }: { scheduleId: string; projectId: string | undefined; people?: boolean },
 ): void {
   const keys: unknown[][] = SCHEDULE_DERIVED_KEYS.map(k => [k, scheduleId]);
   if (projectId) keys.push(...projectKeys(projectId));
+  // an import creates a person for every name in its Assigned To column: the people list is company-wide
+  // and the app never refetches on mount, so without this Assigned To showed a raw id until a reload
+  if (people) keys.push(['resources']);
   refresh(queryClient, keys);
 }
 

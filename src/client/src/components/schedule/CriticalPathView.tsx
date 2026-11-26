@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../services/api';
 import { formatCalendarDate, toLocalDate } from '../../utils/dateUtils';
-import { useResourceNameMap } from './shared/hooks/useResourceNameMap';
+import { useAssigneeLabel } from './shared/hooks/useResourceNameMap';
 
 /**
  * The schedule's "Critical path" view (UAT U17, 2026-10-14): the chain of tasks that sets the end
@@ -38,7 +38,7 @@ export function CriticalPathView({ scheduleId, tasks }: { scheduleId: string; ta
     queryKey: ['criticalPath', scheduleId],
     queryFn: () => apiService.getCriticalPath(scheduleId),
   });
-  const names = useResourceNameMap();
+  const assigneeText = useAssigneeLabel();
   const { critical, near, watch } = useMemo(() => criticalPathRows(tasks, cpm, toLocalDate()), [tasks, cpm]);
 
   if (isLoading) return <div className="animate-pulse h-40 rounded-xl bg-gray-200 dark:bg-gray-700" />;
@@ -51,7 +51,7 @@ export function CriticalPathView({ scheduleId, tasks }: { scheduleId: string; ta
     );
   }
 
-  const who = (t: ViewTask) => (t.assignedTo ? names.get(t.assignedTo) ?? t.assignedTo : '—');
+  const who = (t: ViewTask) => (assigneeText(t.assignedTo) || '—');
   const date = (d?: string | null) => (d ? formatCalendarDate(d) : '—');
   const table = (title: string, list: Array<{ cpm: CpmTask; task: ViewTask }>, near: boolean) => (
     <section aria-label={title} className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-x-auto">
