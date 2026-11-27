@@ -13,7 +13,6 @@ const FIELD_LABELS: Record<string, string> = {
   status: 'Status',
   priority: 'Priority',
   progressPercentage: 'Progress',
-  estimatedDays: 'Estimate (days)',
   estimatedDurationHours: 'Work (hours)',
   actualStartDate: 'Actual start',
   actualEndDate: 'Actual finish',

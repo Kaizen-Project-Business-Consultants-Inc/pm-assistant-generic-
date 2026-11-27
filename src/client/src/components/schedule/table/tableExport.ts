@@ -51,7 +51,6 @@ export function tableExportValue(task: GanttTask, key: ColumnKey, ctx: TableExpo
     case 'assignedTo': return assigneeSummary(task, ctx.names).names.join(', ');  // the name, as on screen
     case 'notes': return task.description;
     case 'duration': return ctx.durationDays(task);
-    case 'estimatedDays': return task.estimatedDays;
     case 'estimatedDurationHours': return task.estimatedDurationHours;
     case 'dependency': return ctx.dependencyText(task);
     case 'successor':

@@ -61,9 +61,9 @@ describe('Gantt ↔ Table column key map', () => {
     expect(TABLE_TO_GANTT_KEY.notes).toBe('notes');
   });
 
-  it('Est / Work pair with the Table\'s Est Days / Work both ways; only the row-actions column is Gantt-only (2026-10-06)', () => {
-    expect(GANTT_TO_TABLE_KEY.est).toBe('estimatedDays');
-    expect(TABLE_TO_GANTT_KEY.estimatedDays).toBe('est');
+  it('Work pairs with the Table\'s Work both ways; only the row-actions column is Gantt-only (2026-10-06)', () => {
+    expect(GANTT_TO_TABLE_KEY.est).toBeUndefined();
+    expect(TABLE_TO_GANTT_KEY.estimatedDays).toBeUndefined();
     expect(GANTT_TO_TABLE_KEY.work).toBe('estimatedDurationHours');
     expect(TABLE_TO_GANTT_KEY.estimatedDurationHours).toBe('work');
     expect([...GANTT_ONLY_KEYS]).toEqual(['editIcon']);
@@ -75,7 +75,7 @@ describe('mergeGanttOrderIntoTableOrder', () => {
 
   it('moves only the shared columns; Table-only columns keep their slots; rowNum first; no duplicates or Gantt keys', () => {
     const current: ColumnKey[] = ['rowNum', 'name', 'earlyStart', 'status', 'notes', 'wbs', 'priority'];
-    const gantt = ['rowNum', 'name', 'priority', 'status', 'notes', 'est', 'editIcon'];
+    const gantt = ['rowNum', 'name', 'priority', 'status', 'notes', 'work', 'editIcon'];
     const next = mergeGanttOrderIntoTableOrder(current, all, gantt);
     expect(next.slice(0, 7)).toEqual(['rowNum', 'name', 'earlyStart', 'priority', 'status', 'wbs', 'notes']);
     expect(new Set(next).size).toBe(next.length);

@@ -53,7 +53,7 @@ const KIND: Partial<Record<ColumnKey, Kind>> = {
   startDate: 'date', endDate: 'date', actualStartDate: 'date', actualEndDate: 'date', constraintDate: 'date',
   earlyStart: 'date', earlyFinish: 'date', lateStart: 'date', lateFinish: 'date',
   baselineStart: 'date', baselineEnd: 'date',
-  duration: 'days', estimatedDays: 'days', totalFloat: 'days', freeFloat: 'days', baselineDuration: 'days',
+  duration: 'days', totalFloat: 'days', freeFloat: 'days', baselineDuration: 'days',
   startVariance: 'varDays', endVariance: 'varDays',
   estimatedDurationHours: 'hours',
   progressPercentage: 'percent',

@@ -100,8 +100,8 @@ An agentic AI project management platform that combines the scheduling power of 
 - Two-tier timescale header (upper tier: coarser unit, lower tier: finer unit)
 - Segmented zoom control in toolbar (D | W | M | Q | Y)
 - Draggable splitter between task table and timeline (defaults to 45% of container width, persists per schedule)
-- 14 columns in left panel: #, Task Name, Pred, Succ (read-only successor), Start, End, Duration, Est Days, Work, %, Priority, Assigned (main person +N others), Status, Notes
-- **Default visible columns**: 6 essentials (Pred, Start, End, Duration, %, Status) plus always-visible # and Task Name; all others (Succ, Est Days, Work, Priority, Assigned) hidden by default to keep Task Name readable without horizontal scroll pressure
+- 13 columns in left panel: #, Task Name, Pred, Succ (read-only successor), Start, End, Duration, Work, %, Priority, Assigned (main person +N others), Status, Notes
+- **Default visible columns**: 6 essentials (Pred, Start, End, Duration, %, Status) plus always-visible # and Task Name; all others (Succ, Work, Priority, Assigned) hidden by default to keep Task Name readable without horizontal scroll pressure
 - **Task Name is resizable** at 250px default (previously flex-only); all column resize handles show a visible dot indicator; double-click any handle to auto-fit; left panel uses `overflow-x: auto` for horizontal scrolling when columns are added
 - Zoom and splitter width persist per schedule via localStorage
 - **Inline grid editing** — click any cell to edit directly in the left panel (11 editable fields: name, predecessor, start, end, duration, est days, work effort hours, %, priority, assigned, status). Tab/Shift+Tab navigates across cells and rows. Duration edits auto-compute end date. Enter saves, Escape cancels, blur auto-saves, green flash confirms success. Input types match field: text, date picker, number, select dropdown, MS Project predecessor notation.

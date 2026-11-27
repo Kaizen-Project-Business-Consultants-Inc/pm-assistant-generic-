@@ -220,8 +220,7 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
       case 'actualEndDate': return (task as any).actualEndDate || '';
       case 'constraintType': return (task as any).constraintType || 'ASAP';
       case 'constraintDate': return (task as any).constraintDate || '';
-      // Same edit text as the Gantt grid's Est / Work
-      case 'estimatedDays': return task.estimatedDays != null ? String(task.estimatedDays) : '';
+      // Same edit text as the Gantt grid's Work
       case 'estimatedDurationHours': return task.estimatedDurationHours != null ? String(task.estimatedDurationHours) : '';
       default: return '';
     }
@@ -281,7 +280,7 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
       budgetAllocated: 'budgetAllocated', actualCost: 'actualCost',
       actualStartDate: 'actualStartDate', actualEndDate: 'actualEndDate',
       constraintType: 'constraintType', constraintDate: 'constraintDate',
-      estimatedDays: 'estimatedDays', estimatedDurationHours: 'estimatedDurationHours',
+      estimatedDurationHours: 'estimatedDurationHours',
     };
     return visibleColumns
       .filter(c => colKeyToField[c.key])
@@ -474,7 +473,6 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
       case 'baselineCost': return (task as any).baselineCost != null ? `$${Number((task as any).baselineCost).toLocaleString()}` : '\u2014';
       case 'wbs': return wbsMap.get(task.id) || '\u2014';
       case 'rowNum': return String(rowNumMap.get(task.id) || '\u2014');
-      case 'estimatedDays': return task.estimatedDays != null ? `${task.estimatedDays}d` : '\u2014';
       case 'estimatedDurationHours': return task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '\u2014';
       default: return '\u2014';
     }
@@ -1034,13 +1032,12 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
         );
       }
 
-      // Est Days / Work: shown and edited exactly as the Gantt grid's Est / Work (days "5d",
-      // hours "40h", no rounding; numbers only, never below zero - TABLE_EDIT_RULES)
-      case 'estimatedDays':
+      // Work: shown and edited exactly as the Gantt grid's Work (hours "40h", no rounding;
+      // numbers only, never below zero - TABLE_EDIT_RULES)
       case 'estimatedDurationHours': {
         const estField = col.key as EditableField;
-        const val = estField === 'estimatedDays' ? task.estimatedDays : task.estimatedDurationHours;
-        const unit = estField === 'estimatedDays' ? 'd' : 'h';
+        const val = task.estimatedDurationHours;
+        const unit = 'h';
         return (
           <td key={col.key}
             className={`px-3 py-2 text-xs text-gray-600 dark:text-gray-300 w-20 ${editableCellClass(task.id, estField, task)}`}

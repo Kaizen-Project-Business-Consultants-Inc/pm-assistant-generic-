@@ -19,7 +19,6 @@ export const GANTT_TABLE_KEY_PAIRS: ReadonlyArray<readonly [ganttKey: string, ta
   ['start', 'startDate'],
   ['end', 'endDate'],
   ['dur', 'duration'],
-  ['est', 'estimatedDays'],
   ['work', 'estimatedDurationHours'],
   ['pct', 'progressPercentage'],
   ['priority', 'priority'],

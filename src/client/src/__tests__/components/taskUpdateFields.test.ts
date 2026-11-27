@@ -43,10 +43,10 @@ describe('the grids\' task-update field list covers what they send', () => {
     });
   }
 
-  it('Est Days and Work are sent as numbers by both views', () => {
+  it('Work is sent as numbers by both views', () => {
     for (const [, , edit, paste] of views) {
       expect(edit.toSaveValue('estimatedDurationHours', '12.5')).toBe(12.5);
-      expect(paste.toPasteValue('estimatedDays', '3')).toBe(3);
+      expect(paste.toPasteValue('estimatedDurationHours', '3')).toBe(3);
     }
   });
 

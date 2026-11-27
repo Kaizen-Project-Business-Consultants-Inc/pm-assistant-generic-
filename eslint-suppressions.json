@@ -723,13 +723,13 @@
   },
   "src/client/src/components/schedule/gantt/GanttLeftPanelRow.tsx": {
     "jsx-a11y/click-events-have-key-events": {
-      "count": 13
+      "count": 12
     },
     "jsx-a11y/interactive-supports-focus": {
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 12
+      "count": 11
     },
     "sonarjs/cognitive-complexity": {
       "count": 2

@@ -234,7 +234,6 @@ export const GANTT_COLUMNS: GanttColDef[] = [
   { key: 'start',     label: 'Start',    defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'end',       label: 'End',      defaultWidth: 80,  minWidth: 60,  resizable: true },
   { key: 'dur',       label: 'Dur',      defaultWidth: 48,  minWidth: 36,  resizable: true },
-  { key: 'est',       label: 'Est',      defaultWidth: 48,  minWidth: 36,  resizable: true },
   { key: 'work',      label: 'Work',     defaultWidth: 56,  minWidth: 40,  resizable: true },
   { key: 'pct',       label: '%',        defaultWidth: 48,  minWidth: 36,  resizable: true },
   { key: 'priority',  label: 'Priority', defaultWidth: 64,  minWidth: 50,  resizable: true },
@@ -400,8 +399,8 @@ export function buildTimescale(zoom: ZoomLevel, minDate: Date, maxDate: Date, da
 // Inline editing types & constants
 // ---------------------------------------------------------------------------
 
-export type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDays' | 'estimatedDurationHours' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
-export const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage', 'priority', 'assignedTo', 'status'];
+export type EditableField = 'name' | 'dependency' | 'startDate' | 'endDate' | 'duration' | 'estimatedDurationHours' | 'progressPercentage' | 'priority' | 'assignedTo' | 'status';
+export const FIELD_ORDER: EditableField[] = ['name', 'dependency', 'startDate', 'endDate', 'duration', 'estimatedDurationHours', 'progressPercentage', 'priority', 'assignedTo', 'status'];
 export const statusOptions: readonly string[] = PICKABLE_STATUSES;
 export const priorityOptions = ['low', 'medium', 'high', 'urgent'];
 

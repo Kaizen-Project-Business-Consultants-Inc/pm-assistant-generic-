@@ -150,7 +150,6 @@ describe('Gantt: Pred, Succ, Resource, Notes and Assigned sort', () => {
   // 2026-10-06: blank Est / Work used to count as 0 and sort FIRST ascending in the Gantt; now
   // blanks go last both ways, as in the Table (and as every other column already did)
   it.each([
-    ['est', ['z', 'x', 'w', 'y'], ['w', 'x', 'z', 'y']],
     ['work', ['x', 'w', 'z', 'y'], ['z', 'w', 'x', 'y']],
   ])('%s: ascending, descending, blanks last (0 is a value)', (col, asc, desc) => {
     const plan: GanttTask[] = [

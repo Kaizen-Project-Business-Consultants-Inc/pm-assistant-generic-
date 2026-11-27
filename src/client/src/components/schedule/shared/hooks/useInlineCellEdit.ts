@@ -33,13 +33,13 @@ export const GANTT_EDIT_RULES: InlineEditRules<string> = {
   clearDepErrorOnStartAndCancel: true,
   toSaveValue: (field, value) => field === 'progressPercentage'
     ? Math.max(0, Math.min(100, Number(value)))
-    : field === 'estimatedDays' || field === 'estimatedDurationHours'
+    : field === 'estimatedDurationHours'
       ? Math.max(0, Number(value))
       : value,
   toApiField: (field) => field,
 };
 
-/** Table view: Notes is saved as the description; Est Days and Work are numbers >= 0, exactly as
+/** Table view: Notes is saved as the description; Work is a number >= 0, exactly as
  *  the Gantt grid saves them. Budget / Actual Cost are calculated and never typed (isLockedCell). */
 export const TABLE_EDIT_RULES: InlineEditRules<string> = {
   saveNeedsOnTaskUpdate: false,
@@ -47,7 +47,7 @@ export const TABLE_EDIT_RULES: InlineEditRules<string> = {
   clearDepErrorOnStartAndCancel: false,
   toSaveValue: (field, value) => field === 'progressPercentage'
     ? Math.max(0, Math.min(100, Number(value)))
-    : (field === 'estimatedDays' || field === 'estimatedDurationHours')
+    : (field === 'estimatedDurationHours')
       ? Math.max(0, Number(value))
       : value,
   toApiField: (field) => field === 'notes' ? 'description' : field,

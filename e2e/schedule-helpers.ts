@@ -17,6 +17,7 @@ export interface ApiTask {
   status: string;
   priority?: string;
   assignedTo?: string | null;
+  estimatedDays?: number | null;
   parentTaskId?: string | null;
   progressPercentage?: number;
   isSummary?: boolean;

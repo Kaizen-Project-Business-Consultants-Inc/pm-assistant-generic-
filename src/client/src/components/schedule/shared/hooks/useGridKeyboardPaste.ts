@@ -38,20 +38,20 @@ export const GANTT_KEYBOARD_RULES: GridKeyboardRules<string> = {
   toPasteApiField: (field) => field,
   toPasteValue: (field, value) => field === 'progressPercentage'
     ? Math.max(0, Math.min(100, Number(value)))
-    : (field === 'estimatedDays' || field === 'estimatedDurationHours')
+    : field === 'estimatedDurationHours'
       ? Math.max(0, Number(value))
       : value,
   escapeClearsFocusInNav: true,
 };
 
-/** Table view: pasted % clamped 0-100, Est Days and Work numbers >= 0 (as the Gantt grid), everything
+/** Table view: pasted % clamped 0-100, Work a number >= 0 (as the Gantt grid), everything
  *  else as copied (Budget / Actual Cost refuse a paste: calculated); Notes is pasted as the description; Escape is handled by the Table
  *  (it closes the context menu first). */
 export const TABLE_KEYBOARD_RULES: GridKeyboardRules<string> = {
   toPasteApiField: (field) => field === 'notes' ? 'description' : field,
   toPasteValue: (field, value) => field === 'progressPercentage'
     ? Math.max(0, Math.min(100, Number(value)))
-    : (field === 'estimatedDays' || field === 'estimatedDurationHours')
+    : field === 'estimatedDurationHours'
       ? Math.max(0, Number(value))
       : value,
   escapeClearsFocusInNav: false,

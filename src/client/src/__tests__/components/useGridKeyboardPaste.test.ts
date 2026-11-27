@@ -230,7 +230,7 @@ const GANTT_SCENARIOS: GanttScenario[] = [
   { name: 'everything wired' },
   { name: 'read-only (no onTaskUpdate)', readOnly: true },
   { name: 'no bulk update, no duplicate, no reorder', noBulk: true, noDuplicate: true, noReorder: true },
-  { name: 'some columns hidden', hidden: ['pred', 'est', 'work', 'priority'] },
+  { name: 'some columns hidden', hidden: ['pred', 'work', 'priority'] },
 ];
 
 describe('Gantt grid keyboard: same results as before the share', () => {
@@ -353,7 +353,7 @@ describe('GANTT_KEYBOARD_RULES / TABLE_KEYBOARD_RULES', () => {
     }
   });
   it('Gantt pastes estimates as numbers >= 0; other text as copied', () => {
-    expect(GANTT_KEYBOARD_RULES.toPasteValue('estimatedDays', '-2')).toBe(0);
+    expect(GANTT_KEYBOARD_RULES.toPasteValue('estimatedDurationHours', '-2')).toBe(0);
     expect(GANTT_KEYBOARD_RULES.toPasteValue('estimatedDurationHours', '7.5')).toBe(7.5);
     expect(GANTT_KEYBOARD_RULES.toPasteValue('name', 'X')).toBe('X');
   });

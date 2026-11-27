@@ -10,7 +10,6 @@ import {
   firstSuccessorRowNum,
   assignedSortName,
   notesSortText,
-  estimatedDaysSortValue,
   workHoursSortValue,
   sortByValue,
 } from '../../sortValues';
@@ -113,7 +112,6 @@ export function useTableGrouping({
       case 'notes': return notesSortText(task);
       case 'dependency': return firstPredecessorRowNum(task, rowNumMap);
       case 'successor': return firstSuccessorRowNum(task.id, successorIds, rowNumMap);
-      case 'estimatedDays': return estimatedDaysSortValue(task);
       case 'estimatedDurationHours': return workHoursSortValue(task);
       case 'budgetAllocated': return (task as any).budgetAllocated ?? null;
       case 'actualCost': return (task as any).actualCost ?? null;

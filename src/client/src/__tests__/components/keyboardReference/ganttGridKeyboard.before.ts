@@ -74,7 +74,7 @@ export function useGridKeyboardBefore({
   const visibleFieldOrder = useMemo(() => {
     const colKeyToField: Record<string, EditableField> = {
       name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-      dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
+      dur: 'duration', work: 'estimatedDurationHours', pct: 'progressPercentage',
       priority: 'priority', assigned: 'assignedTo', status: 'status',
     };
     return orderedColumns
@@ -146,7 +146,7 @@ export function useGridKeyboardBefore({
                 setTimeout(() => setPasteFlash(null), 800);
                 return;
               }
-              onTaskUpdate(focusedCell.taskId, { [focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : (focusedCell.field === 'estimatedDays' || focusedCell.field === 'estimatedDurationHours') ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
+              onTaskUpdate(focusedCell.taskId, { [focusedCell.field]: focusedCell.field === 'progressPercentage' ? Math.max(0, Math.min(100, Number(copiedValue.value))) : focusedCell.field === 'estimatedDurationHours' ? Math.max(0, Number(copiedValue.value)) : copiedValue.value });
               setPasteFlash({ taskId: focusedCell.taskId, field: focusedCell.field });
               setTimeout(() => setPasteFlash(null), 800);
             }

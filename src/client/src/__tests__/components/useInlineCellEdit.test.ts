@@ -200,7 +200,7 @@ function useOldGantt(p: Props) {
 
     const saveValue = field === 'progressPercentage'
       ? Math.max(0, Math.min(100, Number(value)))
-      : field === 'estimatedDays' || field === 'estimatedDurationHours'
+      : field === 'estimatedDurationHours'
         ? Math.max(0, Number(value))
         : value;
 
@@ -463,7 +463,7 @@ const SCENARIOS: Array<[string, Step[]]> = [
   ['dropdown change saves at once', [['start', 'a', 'status'], ['select', 'a', 'status', 'completed'], ['tick', 300], ['tick', 1200]]],
   ['dropdown change to the same value closes', [['start', 'a', 'status'], ['select', 'a', 'status', 'pending'], ['tick', 2000]]],
   ['date picker change saves at once', [['start', 'a', 'endDate'], ['date', 'a', 'endDate', '2026-03-10'], ['tick', 300], ['tick', 1200]]],
-  ['estimate below zero', [['start', 'a', 'estimatedDays'], ['set', '-3'], ['key', 'Enter', 'a', 'estimatedDays'], ['tick', 300]]],
+  ['estimate below zero', [['start', 'a', 'estimatedDurationHours'], ['set', '-3'], ['key', 'Enter', 'a', 'estimatedDurationHours'], ['tick', 300]]],
   ['work hours', [['start', 'a', 'estimatedDurationHours'], ['set', '12.5'], ['key', 'Enter', 'a', 'estimatedDurationHours'], ['tick', 300]]],
   ['budget typed as $1,200', [['start', 'a', 'budgetAllocated'], ['set', '$1,200'], ['key', 'Enter', 'a', 'budgetAllocated'], ['tick', 300]]],
   ['budget cleared', [['start', 'a', 'budgetAllocated'], ['set', ''], ['key', 'Enter', 'a', 'budgetAllocated'], ['tick', 300]]],
@@ -503,7 +503,7 @@ describe('useInlineCellEdit with the Gantt rules behaves exactly like the old Ga
     ['Tab saves and opens the next cell', [['start', 'a', 'name'], ['set', 'A9'], ['key', 'Tab', 'a', 'name'], ['tick', 300], ['tick', 1200]]],
     ['Shift+Tab goes back, to the previous row', [['start', 'b', 'name'], ['key', 'Tab', 'b', 'name', true]]],
     ['Tab from the last field wraps to the next row', [['start', 'a', 'status'], ['key', 'Tab', 'a', 'status']]],
-    ["Tab on a summary row skips its roll-up cells", [['start', 'p', 'dependency'], ['key', 'Tab', 'p', 'dependency'], ['key', 'Tab', 'p', 'estimatedDays']]],
+    ["Tab on a summary row skips its roll-up cells", [['start', 'p', 'dependency'], ['key', 'Tab', 'p', 'dependency'], ['key', 'Tab', 'p', 'estimatedDurationHours']]],
     ['Tab past the last row stops', [['start', 'c', 'status'], ['set', 'completed'], ['key', 'Tab', 'c', 'status'], ['tick', 300]]],
     ['Tab with a bad predecessor keeps the error and moves on', [['start', 'b', 'dependency'], ['set', 'zz'], ['key', 'Tab', 'b', 'dependency']]],
   ];
@@ -546,8 +546,8 @@ describe('the differences the two views keep (spelled out)', () => {
     expect(lastCall(useNewGantt, [['save', 'a', 'notes', 'n2']]).calls).toEqual([['a', { notes: 'n2' }]]);
   });
   it('estimates: both make numbers >= 0 (Table since 2026-10-06)', () => {
-    expect(lastCall(useNewGantt, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: 0 }]]);
-    expect(lastCall(useNewTable, [['save', 'a', 'estimatedDays', '-3']]).calls).toEqual([['a', { estimatedDays: 0 }]]);
+    expect(lastCall(useNewGantt, [['save', 'a', 'estimatedDurationHours', '-3']]).calls).toEqual([['a', { estimatedDurationHours: 0 }]]);
+    expect(lastCall(useNewTable, [['save', 'a', 'estimatedDurationHours', '-3']]).calls).toEqual([['a', { estimatedDurationHours: 0 }]]);
     expect(lastCall(useNewTable, [['save', 'a', 'estimatedDurationHours', '12.5']]).calls).toEqual([['a', { estimatedDurationHours: 12.5 }]]);
   });
   for (const name of CALCULATED_CHANGED_ON_PURPOSE) {

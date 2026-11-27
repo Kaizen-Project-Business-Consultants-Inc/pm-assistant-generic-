@@ -173,6 +173,7 @@ All endpoints require project membership enforced by `requireProjectAccess`.
 - Each change shows a preview first — how many tasks would move in how many active projects — and nothing is saved until **Apply**. Applying moves tasks in every affected plan and records a line in each plan's Schedule History (Undo puts the dates back; the holiday stays).
 - A project's Manager/Owner can add its own days off, or mark a company holiday (or a Saturday) as a working day for that project only, from **Working calendar** in the schedule toolbar.
 - Holidays differ by province and company, so the list starts empty.
+- One-time clean-up for "one Duration" (Nov 2026): `dist/server/scripts/resyncTaskLengths.js --dry-run` first (counts and shows examples), then without `--dry-run`. It sets each task's stored length to the working days between its own dates (project calendar), redoes the % of the headings above, and prints a `LOG` line per changed task (id, old, new): keep that output to reverse the change. Re-running finds nothing to change.
 - One-time clean-up after the first deploy with working calendars: `dist/server/scripts/moveTasksOffDaysOff.js` (see DEPLOYMENT_GUIDE.md checklist).
 
 

@@ -18,7 +18,7 @@ import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { firstByKey } from '../../utils/lookup';
 import { peopleRows, peopleToSave, type PersonRow } from '../../utils/taskPeople';
 import { useModal } from '../../hooks/useModal';
-import { isWorkingDay, type WorkCalendar } from '../../utils/workingDays';
+import { isWorkingDay, workingDaysBetween, finishAfterWorkingDays, type WorkCalendar } from '../../utils/workingDays';
 import { formatCalendarDate } from '../../utils/dateUtils';
 import { STATUS_LABEL, statusChoices } from '../../utils/taskStatus';
 import { summariesNeedingChoice } from '../../utils/deleteSummaryChoice';
@@ -26,6 +26,10 @@ import { summariesNeedingChoice } from '../../utils/deleteSummaryChoice';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/** The Duration field: the dates' working-day span when both dates are set, else the stored length (a milestone has none) */
+const shownDuration = (spanDays: number | null | undefined, isMilestone: boolean, stored: string): string =>
+  spanDays != null && spanDays > 0 && !isMilestone ? String(spanDays) : stored;
 
 export interface PredecessorEntry {
   dependencyId: string;
@@ -324,7 +328,7 @@ export function TaskFormModal({
         scheduleId: scheduleId || undefined,
       });
       const est = res.estimation;
-      setForm((prev) => ({ ...prev, estimatedDays: String(est.estimatedDays) }));
+      setDuration(String(Math.max(1, Math.round(est.estimatedDays))));
       setEstimationHint(`${est.estimatedDays}d (${est.confidence}% confidence) — ${est.reasoning}`);
     } catch {
       setEstimationHint('Estimation failed. Try again later.');
@@ -333,10 +337,20 @@ export function TaskFormModal({
     }
   };
 
+  // One length per task: typing a Duration moves the End date to fit (working days, project calendar); the
+  // shown Duration follows the dates when both are set (same as the Duration column; 2026-11-27)
+  const setDuration = (value: string) => setForm((prev) => {
+    if (prev.isMilestone) return prev; // a milestone has no length
+    const n = parseInt(value, 10);
+    const end = prev.startDate && n > 0 ? finishAfterWorkingDays(prev.startDate, n, workCalendar) : null;
+    return { ...prev, estimatedDays: value, ...(end ? { endDate: end } : {}) };
+  });
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+    if (name === 'estimatedDays') { setDuration(value); return; }
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -344,6 +358,11 @@ export function TaskFormModal({
     const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
     setForm((prev) => ({ ...prev, progressPercentage: val }));
   };
+
+  const spanDays = form.startDate && form.endDate ? workingDaysBetween(form.startDate, form.endDate, workCalendar) : null;
+  // while the field is being typed in, show what was typed (a cleared field must stay empty); otherwise the dates' span
+  const [typedDuration, setTypedDuration] = useState<string | null>(null);
+  const durationShown = typedDuration ?? shownDuration(spanDays, form.isMilestone, form.estimatedDays);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -353,7 +372,7 @@ export function TaskFormModal({
     const saved = peopleToSave(rows, assignedResource ? '' : form.assignedTo, (task?.assignments?.length ?? 0) > 0);
     // same main person as saved: send the saved value as it was (a linked user id or an older name), so no false "assigned to you" notice
     const assignedTo = task && saved.assignedTo === savedMain ? (task.assignedTo ?? '') : saved.assignedTo;
-    onSave({ ...form, assignedTo, assignments: saved.assignments as typeof form.assignments });
+    onSave({ ...form, estimatedDays: durationShown, assignedTo, assignments: saved.assignments as typeof form.assignments });
   };
 
   // Filter tasks for dependency/parent dropdowns (exclude self)
@@ -594,7 +613,7 @@ export function TaskFormModal({
             );
           })}
 
-          {/* Progress + Estimated Days */}
+          {/* Progress + Duration */}
           <div className="grid grid-cols-2 gap-4">
             {lockedProgress ? (
             <div>
@@ -637,23 +656,24 @@ export function TaskFormModal({
             )}
             <div>
               <label htmlFor={`${uid}-est-duration`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Est. Duration (days)
+                Duration (working days)
               </label>
               <div className="flex gap-1.5">
                 <input
                   id={`${uid}-est-duration`}
                   type="number"
                   name="estimatedDays"
-                  value={form.estimatedDays}
-                  onChange={handleChange}
-                  disabled={isSummary}
-                  min="0.25"
-                  step="0.25"
+                  value={durationShown}
+                  onChange={(e) => { setTypedDuration(e.target.value); setDuration(e.target.value); }}
+                  onBlur={() => setTypedDuration(null)}
+                  disabled={isSummary || form.isMilestone}
+                  min="1"
+                  step="1"
                   placeholder="—"
                   className="input flex-1"
                 />
                 {/* AI estimate is for the project's PM only (user rule, 2026-09-30) — a read-only form has no onSave */}
-                {projectId && onSave && (
+                {projectId && onSave && !form.isMilestone && (
                   <button
                     type="button"
                     onClick={handleAiEstimate}

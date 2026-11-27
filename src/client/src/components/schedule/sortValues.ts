@@ -17,7 +17,6 @@ export const GANTT_SORT_FIELD: Readonly<Record<string, string>> = {
   start: 'startDate',
   end: 'endDate',
   dur: 'duration',
-  est: 'estimatedDays',
   work: 'estimatedDurationHours',
   pct: 'progressPercentage',
   priority: 'priority',
@@ -98,11 +97,6 @@ export function assignedSortName(task: GanttTask, resourceNameOf: Map<string, st
 export function notesSortText(task: GanttTask): string | SortBlank {
   const text = (task.description || '').trim();
   return text ? text.toLowerCase() : null;
-}
-
-/** Est Days (Gantt Est, Table Est Days): the estimated days (blank when none — sorts last; 0 is a value) */
-export function estimatedDaysSortValue(task: GanttTask): number | SortBlank {
-  return task.estimatedDays ?? null;
 }
 
 /** Work (Gantt and Table): the effort hours (blank when none — sorts last; 0 is a value) */

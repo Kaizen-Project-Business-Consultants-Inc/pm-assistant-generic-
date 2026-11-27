@@ -1,3 +1,4 @@
+import { syncLengthsAfterBulk } from '../../services/TaskLengthResyncService';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { taskDatesOf, moveBookingsWithTasks } from '../../database/bookingDates';
 import { syncDependencyMirror } from '../../database/dependencyMirror';
@@ -678,6 +679,11 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         await moveBookingsWithTasks(run, datesBefore);
         await readParents(run);
       });
+
+      // One length per task: dates sent -> the stored length follows them; a length sent alone -> End moves to fit
+      const savedNow = new Set(succeeded.map(d => d.id));
+      await syncLengthsAfterBulk(body.updates.filter(u => savedNow.has(u.id)).map(u => ({ id: u.id, datesSent: u.startDate !== undefined || u.endDate !== undefined, lengthSent: u.estimatedDays !== undefined })))
+        .catch((err: any) => logger.error('[bulk update] length sync failed', { error: err?.message }));
 
       // Awaited BEFORE History records the change, so it doesn't look "changed since"
       await rollUpSummaries(parents);

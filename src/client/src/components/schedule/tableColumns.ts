@@ -7,7 +7,7 @@ export type ColumnKey =
   | 'notes' | 'dependency' | 'successor' | 'wbs'
   | 'budgetAllocated' | 'actualCost' | 'budgetVariance'
   | 'constraintType' | 'constraintDate'
-  | 'estimatedDays' | 'estimatedDurationHours';
+  | 'estimatedDurationHours';
 
 export type ColumnGroup = 'standard' | 'scheduling' | 'baseline' | 'cost' | 'other';
 
@@ -29,8 +29,7 @@ export const COLUMN_DEFS: ColumnDef[] = [
   // column order.
   { key: 'name', label: 'Task Name', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'duration', label: 'Duration', group: 'standard', defaultVisible: true, editable: true, sortable: true },
-  // Est Days (estimated days) and Work (effort hours): hidden by default, as in the Gantt (its Est / Work)
-  { key: 'estimatedDays', label: 'Est Days', group: 'standard', defaultVisible: false, editable: true, sortable: true },
+  // Work (effort hours): hidden by default, as in the Gantt (Est Days was merged into Duration 2026-11-27)
   { key: 'estimatedDurationHours', label: 'Work', group: 'standard', defaultVisible: false, editable: true, sortable: true },
   { key: 'startDate', label: 'Start Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },
   { key: 'endDate', label: 'End Date', group: 'standard', defaultVisible: true, editable: true, sortable: true },

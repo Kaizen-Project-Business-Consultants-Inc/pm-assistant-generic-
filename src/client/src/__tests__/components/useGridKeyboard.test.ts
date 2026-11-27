@@ -90,7 +90,7 @@ function focusCell(s: ReturnType<typeof setup>, taskId: string, field: EditableF
 
 const COL_TO_FIELD: Record<string, EditableField> = {
   name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-  dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
+  dur: 'duration', work: 'estimatedDurationHours', pct: 'progressPercentage',
   priority: 'priority', assigned: 'assignedTo', status: 'status',
 };
 const visibleOrder = (cols: GanttColDef[], vis: (c: GanttColDef) => boolean) =>
@@ -182,18 +182,18 @@ describe('useGridKeyboard — copy / paste', () => {
   });
 
   it('pasted % complete is clamped to 0–100 and estimates to ≥ 0, as numbers', () => {
-    const tasks = TASKS.map(t => (t.id === 'a' ? { ...t, progressPercentage: 140, estimatedDays: -2 } : t));
+    const tasks = TASKS.map(t => (t.id === 'a' ? { ...t, progressPercentage: 140, estimatedDurationHours: -2 } : t));
     const s = setup({ tasks });
     focusCell(s, 'a', 'progressPercentage');
     key('c', { ctrlKey: true });
     key('ArrowDown');
     key('v', { ctrlKey: true });
     expect(s.props.onTaskUpdate).toHaveBeenLastCalledWith('b', { progressPercentage: 100 });
-    focusCell(s, 'a', 'estimatedDays');
+    focusCell(s, 'a', 'estimatedDurationHours');
     key('c', { metaKey: true });
     key('ArrowDown');
     key('v', { metaKey: true });
-    expect(s.props.onTaskUpdate).toHaveBeenLastCalledWith('b', { estimatedDays: 0 });
+    expect(s.props.onTaskUpdate).toHaveBeenLastCalledWith('b', { estimatedDurationHours: 0 });
   });
 
   it('a pasted duration moves the finish the same way typing it does', () => {

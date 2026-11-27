@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 /**
- * Table: Est Days (estimated days) and Work (effort hours) columns (2026-10-06). The Gantt grid
+ * Table: Work (effort hours) column (2026-10-06; Est Days removed 2026-11-26, Duration is the one length). The Gantt grid
  * had Est and Work but the Table didn't, and the project schedule's Gantt uses the Table's column
  * picker — so they could never be switched on there. The Table's columns copy the Gantt's: the
  * same display ("5d", "40h", no rounding, a dash when blank), the same edit (numbers only, never
@@ -66,64 +66,41 @@ function setup(activeTaskId?: string, tasks: GanttTask[] = TASKS) {
 
 beforeEach(() => {
   localStorage.clear();
-  localStorage.setItem(`tableview-cols:${SID}`, JSON.stringify(['rowNum', 'name', 'duration', 'estimatedDays', 'estimatedDurationHours', 'progressPercentage']));
+  localStorage.setItem(`tableview-cols:${SID}`, JSON.stringify(['rowNum', 'name', 'duration', 'estimatedDurationHours', 'progressPercentage']));
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
 
 describe('column definitions and pairing', () => {
-  it('Est Days and Work are Table columns, hidden by default, editable and sortable, in the picker', () => {
-    const est = COLUMN_DEFS.find(c => c.key === 'estimatedDays');
+  it('Work is a Table column, hidden by default, editable and sortable, in the picker; Est Days is gone', () => {
+    expect(COLUMN_DEFS.find(c => (c.key as string) === 'estimatedDays')).toBeUndefined();
     const work = COLUMN_DEFS.find(c => c.key === 'estimatedDurationHours');
-    expect(est).toMatchObject({ label: 'Est Days', defaultVisible: false, editable: true, sortable: true });
     expect(work).toMatchObject({ label: 'Work', defaultVisible: false, editable: true, sortable: true });
-    expect(DEFAULT_VISIBLE_KEYS.has('estimatedDays')).toBe(false);
     expect(DEFAULT_VISIBLE_KEYS.has('estimatedDurationHours')).toBe(false);
   });
 
   it('pair with the Gantt\'s Est / Work both ways, and sort by the same field as the Gantt', () => {
-    expect(GANTT_TO_TABLE_KEY.est).toBe('estimatedDays');
     expect(GANTT_TO_TABLE_KEY.work).toBe('estimatedDurationHours');
-    expect(TABLE_TO_GANTT_KEY.estimatedDays).toBe('est');
     expect(TABLE_TO_GANTT_KEY.estimatedDurationHours).toBe('work');
-    expect(GANTT_SORT_FIELD.est).toBe('estimatedDays');
     expect(GANTT_SORT_FIELD.work).toBe('estimatedDurationHours');
   });
 
   it('a table with no saved columns does not show them', () => {
     localStorage.clear();
     const { headers } = setup();
-    expect(headers.some(h => h.startsWith('Est Days'))).toBe(false);
     expect(headers.some(h => h === 'Work' || h.startsWith('Work'))).toBe(false);
   });
 });
 
 describe('display — same as the Gantt grid', () => {
-  it('days as "5d", hours as "40h", no rounding, a dash when blank', () => {
+  it('hours as "40h", no rounding, a dash when blank', () => {
     const { cell } = setup();
-    expect(cell('Plan', 'Est Days').textContent).toBe('5d');
     expect(cell('Plan', 'Work').textContent).toBe('40h');
-    expect(cell('Build', 'Est Days').textContent).toBe('2.5d');
     expect(cell('Build', 'Work').textContent).toBe('12.25h');
-    expect(cell('Check', 'Est Days').textContent).toBe(DASH);
     expect(cell('Check', 'Work').textContent).toBe(DASH);
   });
 });
 
 describe('inline edit — same payload and clamp as the Gantt grid', () => {
-  it('Est Days: a named number input; saves { estimatedDays: n }', () => {
-    const { cell, onTaskUpdate } = setup('a');
-    fireEvent.click(cell('Plan', 'Est Days'));
-    const input = cell('Plan', 'Est Days').querySelector('input') as HTMLInputElement;
-    expect(input).not.toBeNull();
-    expect(input.getAttribute('aria-label')).toBe('Estimate (days) for Plan');
-    expect(input.type).toBe('number');
-    expect(input.min).toBe('0');
-    expect(input.value).toBe('5');
-    fireEvent.change(input, { target: { value: '7' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onTaskUpdate).toHaveBeenCalledWith('a', { estimatedDays: 7 });
-  });
-
   it('Work: a named number input in half-hour steps; saves { estimatedDurationHours: n }', () => {
     const { cell, onTaskUpdate } = setup('a');
     fireEvent.click(cell('Plan', 'Work'));
@@ -137,12 +114,12 @@ describe('inline edit — same payload and clamp as the Gantt grid', () => {
 
   it('refuses a negative: saved as 0, exactly as the Gantt would', () => {
     const { cell, onTaskUpdate } = setup('a');
-    fireEvent.click(cell('Plan', 'Est Days'));
-    const input = cell('Plan', 'Est Days').querySelector('input') as HTMLInputElement;
+    fireEvent.click(cell('Plan', 'Work'));
+    const input = cell('Plan', 'Work').querySelector('input') as HTMLInputElement;
     fireEvent.change(input, { target: { value: '-3' } });
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(onTaskUpdate).toHaveBeenCalledWith('a', { estimatedDays: 0 });
-    for (const f of ['estimatedDays', 'estimatedDurationHours']) {
+    expect(onTaskUpdate).toHaveBeenCalledWith('a', { estimatedDurationHours: 0 });
+    for (const f of ['estimatedDurationHours']) {
       for (const v of ['-3', '0', '4', '2.5']) {
         expect(TABLE_EDIT_RULES.toSaveValue(f, v)).toBe(GANTT_EDIT_RULES.toSaveValue(f, v));
         expect(TABLE_EDIT_RULES.toApiField(f)).toBe(GANTT_EDIT_RULES.toApiField(f));
@@ -163,16 +140,14 @@ describe('summary rows — the shared roll-up rule (both views)', () => {
   it('a summary\'s Est Days is read-only like its Duration (the server works it out from the dates); its Work stays editable', () => {
     // The same shared rule decides both views
     expect(isSummaryRollupCell({ isSummary: true }, 'duration')).toBe(true);
-    expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDays')).toBe(true);
     expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDurationHours')).toBe(false);
 
     const { cell, onTaskUpdate } = setup('p');
-    for (const label of ['Duration', 'Est Days']) {
+    for (const label of ['Duration']) {
       fireEvent.click(cell('Phase', label));
       expect(cell('Phase', label).querySelector('input'), label).toBeNull();
       expect(cell('Phase', label).className).toContain('cursor-default');
     }
-    expect(cell('Phase', 'Est Days').textContent).toBe('15d'); // still shown
     fireEvent.click(cell('Phase', 'Work'));
     expect(cell('Phase', 'Work').querySelector('input')?.getAttribute('aria-label')).toBe('Work (hours) for Phase');
     expect(onTaskUpdate).not.toHaveBeenCalled();
@@ -190,9 +165,9 @@ describe('paste — the same clamp as the Gantt', () => {
   };
 
   it('a pasted estimate is a number >= 0, sent under the same field name as the Gantt', () => {
-    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDays', '-4')).toEqual([['a', { estimatedDays: 0 }]]);
+    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDurationHours', '-4')).toEqual([['a', { estimatedDurationHours: 0 }]]);
     expect(run(TABLE_KEYBOARD_RULES, 'estimatedDurationHours', '12.5')).toEqual([['a', { estimatedDurationHours: 12.5 }]]);
-    for (const f of ['estimatedDays', 'estimatedDurationHours']) {
+    for (const f of ['estimatedDurationHours']) {
       for (const v of ['-1', '0', '3', '7.5']) {
         expect(run(TABLE_KEYBOARD_RULES, f, v)).toEqual(run(GANTT_KEYBOARD_RULES, f, v));
       }
@@ -200,8 +175,6 @@ describe('paste — the same clamp as the Gantt', () => {
   });
 
   it('pasting into a summary\'s Est Days is refused in both views; its Work takes the paste', () => {
-    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDays', '9', TASKS[0])).toEqual([]);
-    expect(run(GANTT_KEYBOARD_RULES, 'estimatedDays', '9', TASKS[0])).toEqual([]);
     expect(run(TABLE_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([['p', { estimatedDurationHours: 9 }]]);
     expect(run(GANTT_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([['p', { estimatedDurationHours: 9 }]]);
   });
@@ -214,7 +187,7 @@ describe('sort — blanks last in both directions', () => {
     { id: 'z', name: 'Z', status: 'pending', sortOrder: 3, estimatedDays: 0, estimatedDurationHours: 16 },
     { id: 'w', name: 'W', status: 'pending', sortOrder: 4, estimatedDays: 10, estimatedDurationHours: 4.5 },
   ];
-  function sortedBy(key: 'estimatedDays' | 'estimatedDurationHours', dir: 'asc' | 'desc') {
+  function sortedBy(key: 'estimatedDurationHours', dir: 'asc' | 'desc') {
     const { result } = renderHook(() => useTableGrouping({
       tasks: plan, cpmMap: new Map(), baselineMap: new Map(), rowNumMap: buildRowNumberMap(plan), resourceNameOf: new Map(),
     }));
@@ -224,7 +197,6 @@ describe('sort — blanks last in both directions', () => {
   }
 
   it.each([
-    ['estimatedDays', ['z', 'x', 'w', 'y'], ['w', 'x', 'z', 'y']],
     ['estimatedDurationHours', ['x', 'w', 'z', 'y'], ['z', 'w', 'x', 'y']],
   ] as const)('%s', (key, asc, desc) => {
     expect(sortedBy(key, 'asc')).toEqual(asc);

@@ -545,32 +545,6 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
           </div>
         );
 
-        if (col.key === 'est') return (
-          <div
-            key="est"
-            {...cellA11y('estimatedDays')}
-            className={`shrink-0 px-1 text-center text-xs text-gray-500 dark:text-gray-400 ${cellClass('estimatedDays')}`}
-            style={{ width: w }}
-            onClick={(e) => onCellClick(e, task.id, 'estimatedDays', task)}
-          >
-            {isEditingField(editingField, 'estimatedDays') ? (
-              <input
-                aria-label={cellEditLabel('estimatedDays', task.name)}
-                ref={el => { inputRef.current = el; }}
-                type="number"
-                min="0"
-                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset px-0.5 text-center"
-                value={editValue}
-                onChange={e => onEditValueChange(e.target.value)}
-                onBlur={() => onSaveEdit(task.id, 'estimatedDays', editValue)}
-                onKeyDown={e => onKeyDown(e, task.id, 'estimatedDays')}
-              />
-            ) : (
-              task.estimatedDays != null ? `${task.estimatedDays}d` : '\u2014'
-            )}
-          </div>
-        );
-
         if (col.key === 'work') return (
           <div
             key="work"

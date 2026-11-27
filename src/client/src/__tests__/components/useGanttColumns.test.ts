@@ -10,7 +10,7 @@ import { GANTT_COLUMNS, type FlatRow, type GanttTask } from '../../components/sc
 import type { ColumnState } from '../../hooks/useColumnState';
 
 // The Gantt can show every Table column since 2026-11-03: the plan-only columns follow Notes
-const BASE_ORDER = ['rowNum', 'name', 'dur', 'start', 'end', 'pred', 'assigned', 'status', 'succ', 'slack', 'est', 'work', 'pct', 'priority', 'notes'];
+const BASE_ORDER = ['rowNum', 'name', 'dur', 'start', 'end', 'pred', 'assigned', 'status', 'succ', 'slack', 'work', 'pct', 'priority', 'notes'];
 const PLAN_ONLY = ['actualStartDate', 'actualEndDate', 'earlyStart', 'earlyFinish', 'lateStart', 'lateFinish', 'freeFloat', 'critical', 'constraintType', 'constraintDate', 'baselineStart', 'baselineEnd', 'startVariance', 'endVariance', 'baselineDuration', 'baselineCost', 'budgetAllocated', 'actualCost', 'budgetVariance', 'wbs'];
 const DEFAULT_ORDER = [...BASE_ORDER, ...PLAN_ONLY, 'editIcon'];
 const col = (key: string) => GANTT_COLUMNS.find(c => c.key === key)!;
@@ -33,7 +33,7 @@ describe('useGanttColumns — persistence (same keys and formats as before the m
     localStorage.setItem('gantt-col-widths:s1', JSON.stringify({ pct: 99, rowNum: 500 }));
     const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1' }));
 
-    const expectedOrder = ['rowNum', 'name', 'pct', 'status', 'dur', 'start', 'end', 'pred', 'assigned', 'succ', 'slack', 'est', 'work', 'priority', 'notes', ...PLAN_ONLY, 'editIcon'];
+    const expectedOrder = ['rowNum', 'name', 'pct', 'status', 'dur', 'start', 'end', 'pred', 'assigned', 'succ', 'slack', 'work', 'priority', 'notes', ...PLAN_ONLY, 'editIcon'];
     expect(keysOf(result.current.orderedColumns)).toEqual(expectedOrder);
     expect([...result.current.ganttVisibleCols]).toEqual(['pct', 'notes']);
     expect(result.current.isColVisible(col('pct'))).toBe(true);
@@ -118,9 +118,8 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     expect(result.current.isColVisible(col('pct'))).toBe(true);
     expect(result.current.isColVisible(col('start'))).toBe(true);
     expect(result.current.isColVisible(col('dur'))).toBe(false); // own default says visible, Table says not
-    expect(result.current.isColVisible(col('est'))).toBe(false); // Table says hidden
     expect(keysOf(result.current.orderedColumns)).toEqual(
-      ['rowNum', 'name', 'pct', 'start', 'pred', 'succ', 'slack', 'end', 'dur', 'est', 'work', 'priority', 'assigned', 'status', 'notes', ...PLAN_ONLY, 'editIcon'],
+      ['rowNum', 'name', 'pct', 'start', 'pred', 'succ', 'slack', 'end', 'dur', 'work', 'priority', 'assigned', 'status', 'notes', ...PLAN_ONLY, 'editIcon'],
     );
     expect(result.current.ganttKeyToTableKey.pct).toBe('progressPercentage');
   });
@@ -138,20 +137,18 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     expect(r2.current.isColVisible(col('notes'))).toBe(true);
   });
 
-  it('Est and Work follow the Table\'s Est Days / Work visibility and order, whatever the Gantt\'s own state says (2026-10-06)', () => {
-    localStorage.setItem('gantt-visible-cols:s1', JSON.stringify(['est', 'work']));
+  it('Work follows the Table\'s Work visibility and order, whatever the Gantt\'s own state says (2026-10-06)', () => {
+    localStorage.setItem('gantt-visible-cols:s1', JSON.stringify(['work']));
     const cs = external(['status'], []);
     const { result } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs }));
-    expect(result.current.isColVisible(col('est'))).toBe(false);
     expect(result.current.isColVisible(col('work'))).toBe(false);
 
-    // Switched on in the shared picker (the Table's Est Days / Work), in the Table's saved order
-    const cs2 = external(['estimatedDurationHours', 'estimatedDays', 'status'], ['rowNum', 'estimatedDurationHours', 'status', 'estimatedDays']);
+    // Switched on in the shared picker (the Table's Work), in the Table's saved order
+    const cs2 = external(['estimatedDurationHours', 'status'], ['rowNum', 'estimatedDurationHours', 'status']);
     const { result: r2 } = renderHook(() => useGanttColumns({ scheduleId: 's1', columnState: cs2 }));
-    expect(r2.current.isColVisible(col('est'))).toBe(true);
     expect(r2.current.isColVisible(col('work'))).toBe(true);
-    expect(keysOf(r2.current.orderedColumns).slice(0, 5)).toEqual(['rowNum', 'name', 'work', 'status', 'est']);
-    expect(r2.current.ganttKeyToTableKey.est).toBe('estimatedDays');
+    expect(keysOf(r2.current.orderedColumns).slice(0, 4)).toEqual(['rowNum', 'name', 'work', 'status']);
+    expect(r2.current.ganttKeyToTableKey.est).toBeUndefined();
     expect(r2.current.ganttKeyToTableKey.work).toBe('estimatedDurationHours');
   });
 
@@ -178,9 +175,9 @@ describe('useGanttColumns — external columnState (Table keys)', () => {
     // The Gantt shows these Table columns too since 2026-11-03, so they move with the Gantt's order (Resource now before Status); no Gantt-only keys leak in
     expect(next.slice(0, 7)).toEqual(['rowNum', 'name', 'earlyStart', 'priority', 'status', 'notes', 'wbs']);
     expect(next).not.toContain('est');
+    expect(next).not.toContain('estimatedDays');
     expect(next).not.toContain('work');
-    // Est Days / Work are Table columns now: present once each, under their Table keys
-    expect(next.filter(k => k === 'estimatedDays')).toHaveLength(1);
+    // Work is a Table column: present once, under its Table key
     expect(next.filter(k => k === 'estimatedDurationHours')).toHaveLength(1);
     expect(new Set(next).size).toBe(next.length);
   });

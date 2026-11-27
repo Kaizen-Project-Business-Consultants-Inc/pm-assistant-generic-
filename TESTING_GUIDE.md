@@ -1273,7 +1273,7 @@ curl -s -b cookies.txt -X POST https://pm.kpbc.ca/api/v1/ai/estimate-task \
 
 ### UI Tests
 
-- [ ] Open a project schedule → click "Add Task" → the Est. Duration field has a sparkles (AI) button next to it
+- [ ] Open a project schedule → click "Add Task" → the Duration (working days) field has a sparkles (AI) button next to it
 - [ ] Enter a task name → click the sparkles button → spinner appears → estimated days is filled in
 - [ ] A hint line appears below the field showing confidence and reasoning
 - [ ] Button is disabled when task name is empty

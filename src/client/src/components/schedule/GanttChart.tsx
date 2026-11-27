@@ -623,7 +623,6 @@ export function GanttChart({
         const d = workingDaysBetween(task.startDate, task.endDate, workCalendar);
         return d != null ? String(d) : '';
       }
-      case 'estimatedDays': return task.estimatedDays != null ? String(task.estimatedDays) : '';
       case 'estimatedDurationHours': return task.estimatedDurationHours != null ? String(task.estimatedDurationHours) : '';
       case 'progressPercentage': return String(task.progressPercentage ?? 0);
       case 'assignedTo': return task.assignedTo || '';

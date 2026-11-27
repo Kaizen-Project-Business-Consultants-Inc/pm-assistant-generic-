@@ -262,7 +262,6 @@ export function useGanttColumnAutoFit({
         const d = workingDaysBetween(task.startDate, task.endDate, workCalendar);
         return d != null ? `${d}d` : '';
       }
-      case 'est': return task.estimatedDays != null ? `${task.estimatedDays}d` : '';
       case 'work': return task.estimatedDurationHours != null ? `${task.estimatedDurationHours}h` : '';
       case 'pct': return `${task.progressPercentage ?? 0}%`;
       case 'priority': return task.priority || '';

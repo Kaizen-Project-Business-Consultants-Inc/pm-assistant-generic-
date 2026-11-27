@@ -13,7 +13,6 @@ import {
   firstSuccessorRowNum,
   assignedSortName,
   notesSortText,
-  estimatedDaysSortValue,
   workHoursSortValue,
   sortByValue,
 } from '../../sortValues';
@@ -53,7 +52,6 @@ export function ganttSortValue(task: GanttTask, sortField: string, ctx: GanttSor
     case 'endDate': return task.endDate || '';
     case 'duration': return workingDaysBetween(task.startDate, task.endDate, ctx.workCalendar) ?? 0;
     // Blank Est / Work sort last, as in the Table (they used to count as 0 and sort first)
-    case 'estimatedDays': return estimatedDaysSortValue(task);
     case 'estimatedDurationHours': return workHoursSortValue(task);
     case 'progressPercentage': return task.progressPercentage ?? 0;
     case 'priority': return PRIORITY_ORDER[task.priority || 'medium'] ?? 1;

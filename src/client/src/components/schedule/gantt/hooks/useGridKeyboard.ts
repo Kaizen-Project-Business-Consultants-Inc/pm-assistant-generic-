@@ -80,7 +80,7 @@ export function useGridKeyboard({
   const visibleFieldOrder = useMemo(() => {
     const colKeyToField: Record<string, EditableField> = {
       name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate',
-      dur: 'duration', est: 'estimatedDays', work: 'estimatedDurationHours', pct: 'progressPercentage',
+      dur: 'duration', work: 'estimatedDurationHours', pct: 'progressPercentage',
       priority: 'priority', assigned: 'assignedTo', status: 'status',
     };
     return orderedColumns

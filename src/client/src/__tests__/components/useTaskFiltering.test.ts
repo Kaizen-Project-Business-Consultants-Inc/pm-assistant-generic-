@@ -250,7 +250,7 @@ describe('useTaskFiltering — filter panel and header sort state', () => {
 
   it('maps every sortable column key to its task field', () => {
     const map: Record<string, string> = {
-      name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate', dur: 'duration', est: 'estimatedDays',
+      name: 'name', pred: 'dependency', start: 'startDate', end: 'endDate', dur: 'duration',
       work: 'estimatedDurationHours', pct: 'progressPercentage', priority: 'priority', assigned: 'assignedTo', status: 'status',
       succ: 'successor', notes: 'notes',
     };

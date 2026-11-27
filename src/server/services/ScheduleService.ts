@@ -20,7 +20,7 @@ import { PARENT_LOOP_MESSAGE } from '../utils/parentLoop';
 import { planChanged, taskChanged } from './domainEvents';
 import { loginForAssignee } from '../utils/assigneeLogins';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
-import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor } from '../utils/workingDays';
+import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor, taskWorkingDuration } from '../utils/workingDays';
 import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
 import { trackBackground } from '../utils/backgroundWork';
@@ -822,8 +822,8 @@ export class ScheduleService {
     // schedule review penalises. Distinguish "not supplied" from "supplied as zero".
     if (data.isMilestone) {
       data.estimatedDays = 0;
-    } else if (data.estimatedDays == null) {
-      // Both dates given (import, drag-to-create): the estimate is their working-day span
+    } else if (data.estimatedDays == null || (data.startDate && data.endDate)) {
+      // Both dates given (import, drag-to-create, form): the length is their working-day span (one length per task, 2026-11-27)
       const s0 = utcDay(data.startDate), e0 = data.endDate ? utcDay(data.endDate) : null;
       data.estimatedDays = e0 && !isNaN(s0.getTime()) && !isNaN(e0.getTime()) && e0 >= s0
         ? Math.max(1, workingDaysAfter(s0, e0, isWorking) + (isWorking(s0) ? 1 : 0))
@@ -1104,6 +1104,25 @@ export class ScheduleService {
       if (!isNaN(start.getTime())) {
         // Working days from the project calendar, start day counted
         data.endDate = ymdOf(finishFor(start, effectiveEstDays, await this.workingDayTest(oldTask.scheduleId)));
+      }
+    }
+
+    // One length per task (2026-11-27): the stored length and the dates never disagree. Dates edited:
+    // the length is their working-day span. A length sent alone (Duration typed, API, assistant):
+    // the end date moves to fit, like Duration does in the grids. Headings and milestones are left out
+    // (a heading's length comes from its tasks; a milestone is zero).
+    const isHeading = oldTask.isSummary || data.isSummary;
+    const isMilestoneNow = data.isMilestone ?? oldTask.isMilestone;
+    if (!isHeading && !isMilestoneNow) {
+      const datesSent = data.startDate !== undefined || data.endDate !== undefined;
+      const start = data.startDate ?? oldTask.startDate;
+      if (datesSent && data.estimatedDays === undefined) {
+        const end = 'endDate' in data ? data.endDate : oldTask.endDate;
+        if (start && end) {
+          data.estimatedDays = taskWorkingDuration({ startDate: start, endDate: end }, await this.workingDayTest(oldTask.scheduleId));
+        }
+      } else if (!datesSent && data.estimatedDays != null && data.estimatedDays > 0 && start) {
+        data.endDate = ymdOf(finishFor(utcDay(start), data.estimatedDays, await this.workingDayTest(oldTask.scheduleId)));
       }
     }
 

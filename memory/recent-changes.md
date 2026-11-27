@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-27 — One Duration (Est Days column removed)
+- Why: Duration (from dates) and Est Days (stored, not updated when dates changed) disagreed (DBJ plan rows 2, 6). Server `ScheduleService.updateTask`: dates sent -> stored length = working days between them (project calendar); length sent alone -> End moves to fit; headings and milestones left alone. Form field is "Duration (working days)" and moves End. Est Days column removed from Table, Gantt, exports, paste/edit rules. One-time fix: `node dist/server/scripts/resyncTaskLengths.js [--dry-run]` (TaskLengthResyncService). Tests: taskLengthFollowsDates, taskLengthResync, e2e/one-duration.spec.ts.
+
 ## 2026-11-26 — Import no longer clips real names
 - `TRAILING_CELL_REF` (utils/importHeuristics.ts) now strips a trailing cell reference only when joined with + or & or written as a range (D9:D27); "Sam K9" / "Team A1" stay. Test: importHeuristics.test.ts; e2e/assigned-names.spec.ts uses a name ending K9.
 
