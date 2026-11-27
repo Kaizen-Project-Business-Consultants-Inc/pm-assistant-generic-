@@ -40,6 +40,16 @@ describe('cell references', () => {
   it('strips a trailing cell ref glued to a name', () => {
     expect(cleanAssignee('DBJ & JV+D9:D27')).toBe('DBJ & JV');
     expect(cleanAssignee('DBJ')).toBe('DBJ');
+    expect(cleanAssignee('DBJ+D9')).toBe('DBJ');
+    expect(cleanAssignee('DBJ & D9')).toBe('DBJ');
+    expect(cleanAssignee('DBJ D9:D27')).toBe('DBJ');
+    expect(cleanAssignee('d9')).toBeNull();
+  });
+
+  it('keeps a name that merely ends in letters and a number', () => {
+    expect(cleanAssignee('Sam K9')).toBe('Sam K9');
+    expect(cleanAssignee('Team A1')).toBe('Team A1');
+    expect(cleanAssignee('Riley Import gp6')).toBe('Riley Import gp6');
   });
 });
 

@@ -14,8 +14,11 @@ const LABEL_WORDS = new Set([
 /** Whole value is a spreadsheet cell or range reference, e.g. "D9" or "D9:D27". */
 const WHOLE_CELL_REF = /^[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?$/i;
 
-/** A trailing cell/range reference glued onto a name, e.g. "DBJ & JV+D9:D27". */
-const TRAILING_CELL_REF = /\s*[+&]?\s*[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?\s*$/i;
+/**
+ * A trailing cell/range reference glued onto a name, e.g. "DBJ & JV+D9:D27": joined with + or &, or a range with a colon.
+ * A plain "Sam K9" or "Team A1" is kept: a letters-and-number ending can be part of a real name (2026-11-26).
+ */
+const TRAILING_CELL_REF = /\s*[+&]\s*[A-Z]{1,3}\d+(?::[A-Z]{1,3}\d+)?\s*$|\s*[A-Z]{1,3}\d+:[A-Z]{1,3}\d+\s*$/i;
 
 /**
  * True when a row is a legend/artefact rather than a task: its name is a lone
