@@ -233,6 +233,7 @@ test('Gantt grid: inline edit name, start, finish, duration and status; the assi
   // Status opens on the first click (a dropdown)
   await (await ganttCell(page, ids.docs, 'Status')).click();
   await ganttRow(page, ids.docs).locator('select').selectOption('in_progress');
+  await page.getByRole('dialog', { name: 'Start task' }).getByRole('button', { name: 'Start' }).click(); // one task started: it asks the day (today)
   await expectTask(page, scheduleId, 'Docs', t => t.status === 'in_progress');
   await expect(await ganttCell(page, ids.docs, 'Status')).toHaveText(/^(On Track|Late)$/); // Late once the plan's dates are in the past, which they are on a fixed-date fixture
 
@@ -286,6 +287,7 @@ test('Table: inline edit name, start, finish, duration, status and assignee', as
 
   await (await tableCell(page, ids.launch, 'Status')).click();
   await tableRow(page, ids.launch).locator('select').selectOption('completed'); // the Table offers pending / in progress / completed only
+  await page.getByRole('dialog', { name: 'Mark done' }).getByRole('button', { name: 'Mark done' }).click(); // one task finished: it asks the day (today)
   await expectTask(page, scheduleId, 'Launch v2', t => t.status === 'completed');
 
   await (await tableCell(page, ids.docs, 'Assigned To')).click();
