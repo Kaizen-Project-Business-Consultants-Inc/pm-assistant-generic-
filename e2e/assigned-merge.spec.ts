@@ -47,7 +47,7 @@ test('there is no Resource column; Assigned To is the one people column', async 
   expect(headers).toContain('Assigned To');
   expect(headers).not.toContain('Resource');
   await page.getByRole('button', { name: /^Columns/ }).click();
-  await expect(page.getByRole('menu, dialog, listbox').getByText(/^Resource$/)).toHaveCount(0);
+  await expect(page.getByText(/^Resource$/)).toHaveCount(0);
   await page.keyboard.press('Escape');
 });
 
