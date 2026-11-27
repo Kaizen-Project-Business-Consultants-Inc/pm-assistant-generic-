@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-27 — Actual dates follow the status
+- Single-task Completed / In progress asks "Finished on" / "Started on" (ActualDateDialog; ScheduleWorkspace.askActualDate wraps grids, form, Kanban). Server: org-timezone today (not UTC), chosen day kept, future (> tomorrow) refused (ActualDateError, 400), reopen clears Actual Finish, Not started clears both, done plan: 100 = Completed, 0 reopens. Bulk status route NOT changed (still stamps no actual dates; follow-up). Tests: actualDatesFollowStatus, actualDateAsk, e2e/actual-dates.spec.ts.
+
 ## 2026-11-27 — Done / not done progress (per-plan setting)
 - Plan menu > Progress: Percent (default) or Done / not done. T099 `schedules.progress_style`. In a done plan a task is 0 or 100: updateTask/createTask store typed 1-99 as 0, bulk route calls `clampDoneProgress`, switching plans converts in-between tasks and redoes headings. Table + Gantt % cells show Done / Not done (`shared/progressStyle.tsx`). Tests: doneNotDoneProgress.test.ts, e2e/done-not-done.spec.ts.
 

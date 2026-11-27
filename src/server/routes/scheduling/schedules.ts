@@ -3,7 +3,7 @@ import { sendValidationError } from '../../utils/validationError';
 import { loginForAssignee } from '../../utils/assigneeLogins';
 import { mentionablePeople, mentionedHandles, inCurrentCompany } from '../../utils/mentionablePeople';
 import { z } from 'zod';
-import { scheduleService, DependencyValidationError, GroupValidationError, ProjectHasScheduleError } from '../../services/ScheduleService';
+import { scheduleService, ActualDateError, DependencyValidationError, GroupValidationError, ProjectHasScheduleError } from '../../services/ScheduleService';
 import { PoolMismatchError } from '../../services/poolFit';
 import { flowMetricsService } from '../../services/FlowMetricsService';
 import { criticalPathService } from '../../services/CriticalPathService';
@@ -403,7 +403,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     } catch (error) {
       // Bad input is the caller's mistake: the app's error handler answers 400 with the field
       if (error instanceof z.ZodError) throw error;
-      if (error instanceof DependencyValidationError || error instanceof PoolMismatchError) {
+      if (error instanceof DependencyValidationError || error instanceof ActualDateError || error instanceof PoolMismatchError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });
       }
       logger.error('Update task error', { error });

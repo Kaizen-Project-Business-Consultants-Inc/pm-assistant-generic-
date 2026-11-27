@@ -19,6 +19,8 @@ import { TaskFormModal } from '../../../components/schedule/TaskFormModal';
 import { KanbanBoard } from '../../../components/schedule/KanbanBoard';
 import { TableView } from '../../../components/schedule/TableView';
 import { ProgressStyleProvider } from '../../../components/schedule/shared/progressStyle';
+import { ActualDateDialog, type ActualDateKind } from '../../../components/schedule/ActualDateDialog';
+import { actualDateKindFor, withActualDate } from '../../../utils/actualDateAsk';
 import { CalendarView } from '../../../components/schedule/CalendarView';
 import { NetworkDiagramView } from '../../../components/network/NetworkDiagramView';
 import { CriticalPathView } from '../../../components/schedule/CriticalPathView';
@@ -295,6 +297,23 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     rowNumbers, handleBulkLink, handleGroupTasks, handleBulkDelete, handleDuplicateTasks,
     handleKanbanStatusChange,
   } = useScheduleMutations({ schedule, projectId, tasks, queryClient, setShowAddForm, setActiveTaskId, setEditingTask });
+
+  // Marking ONE task Completed / In progress asks for the day first (today by default); bulk changes and imports do not
+  const [actualAsk, setActualAsk] = useState<{ taskName: string; kind: ActualDateKind; notBefore?: string | null; run: (date: string) => void; cancel: () => void } | null>(null);
+  const askActualDate = (taskId: string, data: Record<string, unknown>, apply: (d: Record<string, unknown>) => unknown, whenCancelled: unknown = undefined): Promise<unknown> => {
+    const task = tasks.find(t => t.id === taskId);
+    const kind = actualDateKindFor(task as any, data, schedule.progressStyle === 'done');
+    if (!kind || !task) return Promise.resolve(apply(data));
+    return new Promise<unknown>((resolve) => {
+      setActualAsk({
+        taskName: task.name, kind, notBefore: (task as { actualStartDate?: string | null }).actualStartDate,
+        run: (date) => { setActualAsk(null); resolve(apply(withActualDate(data, kind, date))); },
+        cancel: () => { setActualAsk(null); resolve(whenCancelled); },
+      });
+    });
+  };
+  const updateTaskAsking = (taskId: string, data: Record<string, unknown>): Promise<boolean> =>
+    askActualDate(taskId, data, d => updateTaskWithUndo(taskId, d), false).then(saved => saved === true);
 
   // Deleting from the task form: a heading with tasks under it asks to delete it with its tasks
   // first (the Gantt and Table ask in their own delete dialog; the Kanban has no delete, its cards open the task form)
@@ -810,7 +829,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           } : undefined}
           columnState={columnState}
           onTaskDragEnd={canEdit ? handleTaskDragEndWithUndo : undefined}
-          onTaskUpdate={canEdit ? updateTaskWithUndo : undefined}
+          onTaskUpdate={canEdit ? updateTaskAsking : undefined}
           onTaskReorder={canEdit ? handleTaskReorder : undefined}
           onBulkUpdate={canEdit ? handleBulkUpdate : undefined}
           onMoveTasks={canEdit ? handleMoveUnder : undefined}
@@ -851,7 +870,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           taskRiskMap={taskRiskMap}
           overbookedNotes={overbookedNotes}
           onTaskClick={(task) => { setActiveTaskId(task.id); setEditingTask(task as GanttTask); }}
-          onStatusChange={canEdit ? handleKanbanStatusChange : undefined}
+          onStatusChange={canEdit ? (taskId: string, status: string) => { void askActualDate(taskId, { status }, d => handleKanbanStatusChange(taskId, status, d)); } : undefined}
           onQuickAdd={canEdit ? (name, status) => {
             createMutation.mutate({ name, status, priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
           } : undefined}
@@ -874,7 +893,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           onTaskSelect={(task) => setActiveTaskId(task.id)}
           onTaskClick={(task) => setEditingTask(task)}
           activeTaskId={activeTaskId}
-          onTaskUpdate={canEdit ? updateTaskWithUndo : undefined}
+          onTaskUpdate={canEdit ? updateTaskAsking : undefined}
           onTaskReorder={canEdit ? handleTaskReorder : undefined}
           onQuickAdd={canEdit ? (name) => {
             createMutation.mutate({ name, status: 'pending', priority: 'medium', assignedTo: '', startDate: '', endDate: '', progressPercentage: 0, description: '' } as any);
@@ -952,7 +971,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           scheduleId={schedule.id}
           projectId={projectId}
           workCalendar={workCalendar}
-          onSave={canEdit ? (data) => updateMutation.mutate({ taskId: editingTask.id, data }) : undefined}
+          onSave={canEdit ? (data) => { void askActualDate(editingTask.id, data as unknown as Record<string, unknown>, d => updateMutation.mutate({ taskId: editingTask.id, data: d as unknown as typeof data })); } : undefined}
           onDelete={canEdit ? requestDeleteTask : undefined}
           onClose={() => setEditingTask(null)}
           isSaving={updateMutation.isPending}
@@ -1230,6 +1249,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             </div>
         </AccessibleModal>
       )}
+      {actualAsk && <ActualDateDialog kind={actualAsk.kind} taskName={actualAsk.taskName} notBefore={actualAsk.notBefore} onConfirm={actualAsk.run} onCancel={actualAsk.cancel} />}
     </ProgressStyleProvider>
   );
 }

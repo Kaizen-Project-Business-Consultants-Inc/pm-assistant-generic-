@@ -1761,3 +1761,11 @@ Manual: on a plan with two linked chains where the shorter one is dated later an
 - [ ] Import or paste 60 into a task in this plan: it is saved as Not done.
 - [ ] Switch back to **Percent**: numbers are as they were; typing 40 works again.
 - [ ] Automated: `e2e/done-not-done.spec.ts`, `doneNotDoneProgress.test.ts`.
+
+## Actual dates follow the status (Nov 2026)
+- [ ] Mark one task **Completed** (grid status cell, task form or Kanban): a **Mark done** box asks **Finished on** (today). Pick yesterday: Actual Finish shows yesterday. A future day is refused.
+- [ ] Mark a never-started task **In progress**: **Start task** asks **Started on**.
+- [ ] Bulk-select two tasks and set them Completed: no question is asked.
+- [ ] Reopen a Completed task: Actual Finish is cleared, Actual Start stays. Set it to Not started: both clear.
+- [ ] Done / not done plan: pick **Done** on a task: it asks **Finished on** and the status becomes Completed.
+- [ ] Automated: `e2e/actual-dates.spec.ts`, `actualDatesFollowStatus.test.ts`, `actualDateAsk.test.ts`.

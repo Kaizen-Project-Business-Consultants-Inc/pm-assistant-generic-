@@ -42,7 +42,7 @@ import { isOwnTaskBroadcast, resetOwnTaskSaves } from '../../utils/ownTaskSaves'
 
 const TASKS: GanttTask[] = [
   { id: 'a', name: 'Alpha', status: 'pending', priority: 'medium', startDate: '2026-03-02', endDate: '2026-03-06', sortOrder: 10, assignedTo: 'r1' },
-  { id: 'b', name: 'Beta', status: 'in_progress', startDate: '2026-03-09', endDate: '2026-03-13', sortOrder: 20, parentTaskId: 'p' },
+  { id: 'b', name: 'Beta', status: 'in_progress', startDate: '2026-03-09', endDate: '2026-03-13', sortOrder: 20, parentTaskId: 'p', actualStartDate: '2026-03-09', actualEndDate: '2026-03-12' } as GanttTask,
   { id: 'c', name: 'Gamma', status: 'pending', startDate: '2026-03-16', endDate: '2026-03-20', sortOrder: 30 },
 ];
 
@@ -123,6 +123,16 @@ describe('create / update / delete / baseline mutations', () => {
     expect(api.updateTask).toHaveBeenLastCalledWith('s1', 'a', { status: 'done' });
     expect(invalidated).toEqual([['tasks', 's1'], ['tasks', 's1']]);
     expect(s.setEditingTask).toHaveBeenCalledWith(null);
+  });
+
+  it('a status change remembers the actual days of the task, so Undo puts them back (the server clears Actual Finish on reopen)', async () => {
+    const { result } = setup();
+    act(() => { result.current.updateTaskWithUndo('b', { status: 'pending' }); });
+    await flush();
+    api.updateTask.mockClear();
+    await act(async () => { result.current.undo(); });
+    await flush();
+    expect(api.updateTask).toHaveBeenLastCalledWith('s1', 'b', expect.objectContaining({ status: 'in_progress', actualStartDate: '2026-03-09', actualEndDate: '2026-03-12' }));
   });
 
   it('a failed update puts the last saved value back, says so, drops its Undo entry and refetches this plan\'s tasks', async () => {

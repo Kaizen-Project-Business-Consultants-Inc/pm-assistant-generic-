@@ -1,3 +1,5 @@
+import { organizationTimezone } from './StatusDateService';
+import { today, addDays } from '../utils/calendarDate';
 import { v4 as uuidv4 } from 'uuid';
 import { taskDatesOf, moveBookingsWithTasks } from '../database/bookingDates';
 import { databaseService } from '../database/connection';
@@ -266,6 +268,13 @@ export class GroupValidationError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'GroupValidationError';
+  }
+}
+
+export class ActualDateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ActualDateError';
   }
 }
 
@@ -1136,8 +1145,8 @@ export class ScheduleService {
     }
 
     // A done / not done plan: a task is 0 or 100, so a typed 1-99 means not done (headings roll up and are never typed)
-    if (typeof data.progressPercentage === 'number' && data.progressPercentage > 0 && data.progressPercentage < 100
-        && !oldTask.isSummary && await this.isDoneOnly(oldTask.scheduleId)) data.progressPercentage = 0;
+    const doneOnlyPlan = typeof data.progressPercentage === 'number' && !oldTask.isSummary && await this.isDoneOnly(oldTask.scheduleId);
+    if (doneOnlyPlan && data.progressPercentage! > 0 && data.progressPercentage! < 100) data.progressPercentage = 0;
 
     // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
     const effectiveStart = data.startDate ?? oldTask.startDate;
@@ -1170,20 +1179,40 @@ export class ScheduleService {
       }
     }
 
-    // Auto-populate actual dates on status transitions
-    if (data.status && data.status !== oldTask.status) {
-      const today = new Date().toISOString().split('T')[0];
-      if (data.status === 'in_progress' && !oldTask.actualStartDate && data.actualStartDate === undefined) {
-        data.actualStartDate = today;
-      }
-      if (data.status === 'completed' && !oldTask.actualEndDate && data.actualEndDate === undefined) {
-        data.actualEndDate = today;
-        // Also set actualStartDate if it was never set
-        if (!oldTask.actualStartDate && data.actualStartDate === undefined) {
-          data.actualStartDate = today;
-        }
-      }
+    // A done / not done plan: Done is Completed, and un-ticking a completed task reopens it
+    // (only when the status was not deliberately changed in the same save: a form sends status and % together)
+    if (doneOnlyPlan) {
+      const statusKept = data.status === undefined || data.status === oldTask.status;
+      if (statusKept && data.progressPercentage! >= 100 && oldTask.status !== 'completed') data.status = 'completed';
+      else if (statusKept && data.progressPercentage === 0 && oldTask.status === 'completed') data.status = 'in_progress';
+      else if (!statusKept && oldTask.status === 'completed' && data.status !== 'cancelled' && data.progressPercentage! >= 100) data.progressPercentage = 0; // reopened on purpose
     }
+
+    // Actual dates follow the status (2026-11-27). "Today" is the organisation's day, not the server's (UTC).
+    // A date sent with the change (the "Finished on" / "Started on" choice) is kept, but never in the future
+    // (one day of slack: the person's own day can be a day ahead of the organisation's).
+    const sentDays = [data.actualStartDate, data.actualEndDate].filter(Boolean).map(d => String(d).slice(0, 10));
+    const statusChanges = !!data.status && data.status !== oldTask.status;
+    const orgToday = sentDays.length > 0 || statusChanges ? today(await organizationTimezone()) : null;
+    if (orgToday && sentDays.some(d => d > String(addDays(orgToday, 1)))) throw new ActualDateError('An actual date cannot be in the future');
+    if (data.status && statusChanges) {
+      const day = String(orgToday);
+      if (data.status === 'in_progress' && !oldTask.actualStartDate && data.actualStartDate === undefined) {
+        data.actualStartDate = day;
+      }
+      if (data.status === 'completed' && !oldTask.actualEndDate && data.actualEndDate === undefined) data.actualEndDate = day;
+      // A task finished without ever being started: it started the day it finished
+      if (data.status === 'completed' && !oldTask.actualStartDate && data.actualStartDate === undefined) {
+        data.actualStartDate = data.actualEndDate ?? (oldTask.actualEndDate ? undefined : day);
+      }
+      // Reopened: it is not finished any more (and a task sent back to Not started has not started)
+      const reopened = oldTask.status === 'completed' && data.status !== 'completed' && data.status !== 'cancelled';
+      if ((reopened || data.status === 'pending') && data.actualEndDate === undefined) (data as any).actualEndDate = null;
+      if (data.status === 'pending' && oldTask.status !== 'pending' && data.actualStartDate === undefined) (data as any).actualStartDate = null;
+    }
+    const startedOn = data.actualStartDate === undefined ? oldTask.actualStartDate : data.actualStartDate;
+    const finishedOn = data.actualEndDate === undefined ? oldTask.actualEndDate : data.actualEndDate;
+    if (startedOn && finishedOn && String(finishedOn).slice(0, 10) < String(startedOn).slice(0, 10)) throw new ActualDateError('A task cannot finish before it started');
 
     await databaseService.transaction(async (conn) => {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);

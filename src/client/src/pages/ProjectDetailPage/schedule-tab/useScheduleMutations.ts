@@ -423,6 +423,12 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
       const val = (task as unknown as Record<string, unknown>)[key];
       oldValues[key] = val === undefined ? null : val;
     }
+    // A status change moves the actual days too (reopen clears the finish): Undo puts the original days back, not today's
+    if ('status' in data) {
+      for (const key of ['actualStartDate', 'actualEndDate']) {
+        if (!(key in data)) oldValues[key] = (task as unknown as Record<string, unknown>)[key] ?? null;
+      }
+    }
     // Optimistically update the cache for instant UI feedback
     const optimistic = applyOptimisticPatch(taskId, data);
     const fieldNames = Object.keys(data).join(', ');
@@ -703,8 +709,9 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
   }, [createMutation]);
 
   // Kanban status change
-  const handleKanbanStatusChange = (taskId: string, newStatus: string) => {
-    updateMutation.mutate({ taskId, data: { status: newStatus } });
+  // `extra`: the day chosen in "Finished on" / "Started on", when the change asked for one
+  const handleKanbanStatusChange = (taskId: string, newStatus: string, extra: Record<string, unknown> = {}) => {
+    updateMutation.mutate({ taskId, data: { ...extra, status: newStatus } });
   };
 
   return {
