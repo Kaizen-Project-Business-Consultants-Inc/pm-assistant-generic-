@@ -54,9 +54,10 @@ test('the Table says Done / Not done and the cell becomes a Done / Not done choi
   await page.keyboard.press('Escape');
   await expect(await tableCell(page, doneId, 'Progress')).toContainText('Done');
   await expect(await tableCell(page, midId, 'Progress')).toContainText('Not done');
-  await (await tableCell(page, midId, 'Progress')).click();
-  const choice = page.getByRole('combobox', { name: /Half task/ });
-  await choice.selectOption('100');
+  await (await tableCell(page, midId, 'Task Name')).click(); // a row is selected first, then its cell edits
+  const cell = await tableCell(page, midId, 'Progress');
+  await cell.click();
+  await cell.locator('select').selectOption('100');
   await expect.poll(() => pctOf(midId), { timeout: 15_000 }).toBe(100);
 });
 
