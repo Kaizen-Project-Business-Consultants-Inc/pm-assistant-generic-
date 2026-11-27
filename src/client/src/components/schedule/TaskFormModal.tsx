@@ -1,3 +1,5 @@
+import { useDoneOnly } from './shared/progressStyle';
+import { ProgressInput } from './ProgressInput';
 import React, { useState, useEffect, useRef, useId, useMemo } from 'react';
 import { ResourceLoadWarning } from '../resources/ResourceLoadWarning';
 import { ResourcePickList } from '../resources/ResourcePickList';
@@ -354,11 +356,7 @@ export function TaskFormModal({
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-    setForm((prev) => ({ ...prev, progressPercentage: val }));
-  };
-
+  const doneOnly = useDoneOnly();
   const spanDays = form.startDate && form.endDate ? workingDaysBetween(form.startDate, form.endDate, workCalendar) : null;
   // while the field is being typed in, show what was typed (a cleared field must stay empty); otherwise the dates' span
   const [typedDuration, setTypedDuration] = useState<string | null>(null);
@@ -632,27 +630,8 @@ export function TaskFormModal({
               )}
             </div>
             ) : (
-            <div>
-              <label htmlFor={`${uid}-progress`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Progress: {form.progressPercentage}%
-              </label>
-              <input
-                id={`${uid}-progress`}
-                type="range"
-                min="0"
-                max="100"
-                step="5"
-                value={form.progressPercentage}
-                onChange={handleProgressChange}
-                disabled={isSummary}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer accent-primary-600"
-              />
-              <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                <span>0%</span>
-                <span>50%</span>
-                <span>100%</span>
-              </div>
-            </div>
+            <ProgressInput id={`${uid}-progress`} value={form.progressPercentage} disabled={isSummary} doneOnly={doneOnly && !isSummary}
+              onChange={(v) => setForm((prev) => ({ ...prev, progressPercentage: v }))} />
             )}
             <div>
               <label htmlFor={`${uid}-est-duration`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">

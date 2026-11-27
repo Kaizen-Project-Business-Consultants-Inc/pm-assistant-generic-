@@ -22,6 +22,8 @@ const svc = vi.hoisted(() => ({
   createTask: vi.fn(),
   addDependency: vi.fn(),
   workingDayTest: vi.fn(),
+  clampDoneProgress: vi.fn(async () => {}),
+  isDoneOnly: vi.fn(async () => false),
   recomputeParentRollup: vi.fn(async () => {}),
 }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: svc }));

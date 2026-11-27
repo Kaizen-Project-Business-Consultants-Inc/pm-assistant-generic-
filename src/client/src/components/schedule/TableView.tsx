@@ -1,3 +1,4 @@
+import { useDoneOnly, DONE_OPTIONS, doneLabel } from './shared/progressStyle';
 import { Fragment, useState, useMemo, useCallback, useRef, useEffect, useId } from 'react';
 import { BulkDoneToast } from './shared/BulkDoneToast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -51,6 +52,7 @@ import { useIndentTasks, IndentNotice } from './shared/hooks/useIndentTasks';
 import { menuTargetIds, indentAvailability } from './shared/indentPlan';
 
 export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTasks, scheduleId, onTaskClick, onTaskSelect, activeTaskId, onTaskUpdate, onTaskReorder, onQuickAdd, columnState, cpmData, baselineData, scheduleStartDate, onBulkUpdate, onMoveTasks, onBulkDelete, onInsertAfter, onInsertBefore, onInlineInsert, canUndo, canRedo, undoDescription, redoDescription, onUndo, onRedo, onDuplicateTasks, taskRiskMap, reviewFlagMap, overbookedNotes, focusTaskId, highlightTaskIds, workCalendar }: TableViewProps) {
+  const doneOnly = useDoneOnly();
   const { visibleKeys, visibleColumns, colWidths, setColWidths, moveColumn } = columnState;
   const queryClient = useQueryClient();
 
@@ -937,7 +939,19 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
             {...cellA11y(task, 'progressPercentage')}
             onClick={() => handleCellClick(task.id, 'progressPercentage', task)}
           >
-            {isEditing(task.id, 'progressPercentage') ? (
+            {isEditing(task.id, 'progressPercentage') && doneOnly && !summaryTaskIds.has(task.id) ? (
+              <select
+                aria-label={cellEditLabel('progressPercentage', task.name)}
+                ref={el => { inputRef.current = el; }}
+                className="text-xs border border-primary-300 dark:border-primary-600 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-gray-800 dark:text-gray-100"
+                value={Number(editValue) >= 100 ? '100' : '0'}
+                onChange={e => saveEdit(task.id, 'progressPercentage', e.target.value)}
+                onKeyDown={e => handleKeyDown(e, task.id, 'progressPercentage')}
+                onBlur={() => cancelEditing()}
+              >
+                {DONE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            ) : isEditing(task.id, 'progressPercentage') ? (
               <input
                 aria-label={cellEditLabel('progressPercentage', task.name)}
                 ref={el => { inputRef.current = el; }}
@@ -950,6 +964,8 @@ export function TableView({ tasks, allTasks, scheduleName, onBulkLink, onGroupTa
                 onKeyDown={e => handleKeyDown(e, task.id, 'progressPercentage')}
                 onBlur={() => saveEdit(task.id, 'progressPercentage', editValue)}
               />
+            ) : doneOnly && !summaryTaskIds.has(task.id) ? (
+              <span className={`text-xs ${progress >= 100 ? 'font-medium text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>{doneLabel(progress)}</span>
             ) : (
               <div className="flex items-center gap-2">
                 <div className="h-1.5 flex-1 rounded-full bg-gray-200 dark:bg-gray-700 min-w-[40px]">

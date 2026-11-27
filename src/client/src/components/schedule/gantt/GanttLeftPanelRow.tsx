@@ -1,3 +1,4 @@
+import { useDoneOnly, DONE_OPTIONS, doneLabel } from '../shared/progressStyle';
 import React, { useRef, useEffect } from 'react';
 import { ResourcePickerDropdown } from '../ResourcePickerDropdown';
 import { workingDaysBetween, type WorkCalendar } from '../../../utils/workingDays';
@@ -234,6 +235,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
   const start = toDate(task.startDate);
   const end = toDate(task.endDate);
   const pct = task.progressPercentage ?? 0;
+  const doneOnly = useDoneOnly();
 
   // Shorthand for building cell classes
   const cellClass = (field: string) =>
@@ -580,7 +582,19 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
             style={{ width: w }}
             onClick={(e) => onCellClick(e, task.id, 'progressPercentage', task)}
           >
-            {isEditingField(editingField, 'progressPercentage') ? (
+            {isEditingField(editingField, 'progressPercentage') && doneOnly && !isParent ? (
+              <select
+                aria-label={cellEditLabel('progressPercentage', task.name)}
+                ref={el => { inputRef.current = el; }}
+                className="w-full h-full text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border-0 outline-none focus:ring-2 focus:ring-primary-400 focus:ring-inset"
+                value={Number(editValue) >= 100 ? '100' : '0'}
+                onChange={e => onSaveEdit(task.id, 'progressPercentage', e.target.value)}
+                onBlur={() => onCancelEditing()}
+                onKeyDown={e => onKeyDown(e, task.id, 'progressPercentage')}
+              >
+                {DONE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            ) : isEditingField(editingField, 'progressPercentage') ? (
               <input
                 aria-label={cellEditLabel('progressPercentage', task.name)}
                 ref={el => { inputRef.current = el; }}
@@ -594,7 +608,7 @@ export const GanttLeftPanelRow = React.memo(function GanttLeftPanelRow({
                 onKeyDown={e => onKeyDown(e, task.id, 'progressPercentage')}
               />
             ) : (
-              `${pct}%`
+              doneOnly && !isParent ? doneLabel(pct) : `${pct}%`
             )}
           </div>
         );

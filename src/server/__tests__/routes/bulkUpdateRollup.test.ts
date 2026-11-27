@@ -27,6 +27,8 @@ const svc = vi.hoisted(() => ({
   findById: vi.fn(async () => ({ id: 's1', projectId: 'p1' })),
   recomputeParentRollup: vi.fn(async () => {}),
   workingDayTest: vi.fn(async () => (d: Date) => d.getUTCDay() !== 0 && d.getUTCDay() !== 6),
+  clampDoneProgress: vi.fn(async () => {}),
+  isDoneOnly: vi.fn(async () => false),
   progressFromHoursTaskIds: vi.fn(async () => new Set<string>()),
 }));
 vi.mock('../../services/ScheduleService', () => ({ scheduleService: svc }));

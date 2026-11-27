@@ -1754,3 +1754,10 @@ Manual, on staging as qa.pm: open a plan's Gantt, Columns, tick Critical, Free s
 
 Unit: `CriticalPathService.test.ts` ("slack respects the dates the user set": a later-dated chain gets small positive slack, the DBJ-LMS shape gives 5 not 147, undated plans unchanged at 0/0/3, completed tasks have no slack and are not critical, holidays, no links, cycles), `slackColumn.test.tsx` (completed task shows a dash). E2E on staging: `e2e/slack-dates.spec.ts` builds a dated two-chain plan plus a completed task and checks the API and the Gantt Slack column (0 d, 5 d, dash).
 Manual: on a plan with two linked chains where the shorter one is dated later and ends a few days before the project does, its tasks show those few days of slack (not months), and a Completed task shows a dash in Slack / Total slack.
+
+## Progress: Done / not done (Nov 2026)
+- [ ] Plan menu > Progress: choose **Done / not done**. Tasks that were at 40% now say **Not done**; finished tasks say **Done**; a phase still shows a % (rolled up).
+- [ ] Click a task's % cell and pick **Done**: it saves as Done, and the phase % moves.
+- [ ] Import or paste 60 into a task in this plan: it is saved as Not done.
+- [ ] Switch back to **Percent**: numbers are as they were; typing 40 works again.
+- [ ] Automated: `e2e/done-not-done.spec.ts`, `doneNotDoneProgress.test.ts`.

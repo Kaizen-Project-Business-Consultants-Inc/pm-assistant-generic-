@@ -18,6 +18,7 @@ import { GanttChart, type GanttTask } from '../../../components/schedule/GanttCh
 import { TaskFormModal } from '../../../components/schedule/TaskFormModal';
 import { KanbanBoard } from '../../../components/schedule/KanbanBoard';
 import { TableView } from '../../../components/schedule/TableView';
+import { ProgressStyleProvider } from '../../../components/schedule/shared/progressStyle';
 import { CalendarView } from '../../../components/schedule/CalendarView';
 import { NetworkDiagramView } from '../../../components/network/NetworkDiagramView';
 import { CriticalPathView } from '../../../components/schedule/CriticalPathView';
@@ -658,7 +659,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   ) : historyButton;
 
   return (
-    <>
+    <ProgressStyleProvider value={schedule.progressStyle === 'done'}>
       {/* Row 1: Toolbar + Quick filter pills (merged) */}
       <div className="flex items-center gap-2 flex-wrap mb-1">
         {viewMode !== 'gantt' && (
@@ -1229,6 +1230,6 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
             </div>
         </AccessibleModal>
       )}
-    </>
+    </ProgressStyleProvider>
   );
 }

@@ -330,6 +330,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
       // The project calendar, read only when some task needs its finish worked out
       const needsFinish = body.tasks.some(t => !t.endDate && t.startDate && (t.isMilestone || t.estimatedDays != null));
       const isWorking: IsWorking = needsFinish ? await scheduleService.workingDayTest(body.scheduleId) : weekdaysOnly;
+      const createDoneOnly = await scheduleService.isDoneOnly(body.scheduleId);
 
       await databaseService.transaction(async (connection) => {
         // Each task gets its own position (sort_order), after the schedule's existing tasks
@@ -359,7 +360,7 @@ export async function bulkRoutes(fastify: FastifyInstance) {
               t.startDate || null,
               bulkFinishDate(t, isWorking),
               t.estimatedDays ?? null,
-              t.progressPercentage ?? 0,
+              createDoneOnly && (t.progressPercentage ?? 0) < 100 ? 0 : (t.progressPercentage ?? 0),
               t.status || 'pending',
               t.priority || 'medium',
               t.assignedTo || null,
@@ -682,6 +683,9 @@ export async function bulkRoutes(fastify: FastifyInstance) {
 
       // One length per task: dates sent -> the stored length follows them; a length sent alone -> End moves to fit
       const savedNow = new Set(succeeded.map(d => d.id));
+      // A done / not done plan keeps tasks at 0 or 100 (a bulk edit writes rows directly)
+      await scheduleService.clampDoneProgress(body.updates.filter(u => u.progressPercentage !== undefined && savedNow.has(u.id)).map(u => u.id))
+        .catch((err: any) => logger.error('[bulk update] done/not done clamp failed', { error: err?.message }));
       await syncLengthsAfterBulk(body.updates.filter(u => savedNow.has(u.id)).map(u => ({ id: u.id, datesSent: u.startDate !== undefined || u.endDate !== undefined, lengthSent: u.estimatedDays !== undefined })))
         .catch((err: any) => logger.error('[bulk update] length sync failed', { error: err?.message }));
 

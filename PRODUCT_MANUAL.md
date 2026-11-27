@@ -95,6 +95,8 @@ Each schedule has a `progressMode` setting (default: `duration`) that controls h
 
 The toggle is available in the Gantt toolbar under "% Mode". Changing the mode triggers a re-computation of all parent task rollup values.
 
+**Progress style (Nov 2026):** a second per-plan setting, `schedules.progress_style` (T099: `percent` default, or `done`), in the Plan menu next to % Mode. In a `done` plan a task's progress is 0 or 100: `ScheduleService.updateTask` / `createTask` store a typed 1-99 as 0, the bulk edit route clamps afterwards (`clampDoneProgress`), and switching a plan to `done` turns in-between tasks into 0 and redoes their headings. Headings are never typed and keep their rolled-up %. The Table and Gantt % cells show Done / Not done and edit with a two-choice list.
+
 ### Resource Leveling (Quick Level)
 
 A "Level Resources" button in the Gantt toolbar provides one-click resource leveling. Clicking it calls the existing resource leveling API, which analyzes task resource assignments and detects over-allocations. If adjustments are needed, a modal displays the proposed date changes with reasons. Users can review and click "Apply All" to reschedule the affected tasks, or cancel.

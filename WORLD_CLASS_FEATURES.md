@@ -101,6 +101,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Segmented zoom control in toolbar (D | W | M | Q | Y)
 - Draggable splitter between task table and timeline (defaults to 45% of container width, persists per schedule)
 - 13 columns in left panel: #, Task Name, Pred, Succ (read-only successor), Start, End, Duration, Work, %, Priority, Assigned (main person +N others), Status, Notes
+- **Progress style per plan**: Percent (default) or Done / not done (a task is 0 or 100; phases still roll up) — common practice for weekly reporting (0/100 earned-value rule).
 - **Default visible columns**: 6 essentials (Pred, Start, End, Duration, %, Status) plus always-visible # and Task Name; all others (Succ, Work, Priority, Assigned) hidden by default to keep Task Name readable without horizontal scroll pressure
 - **Task Name is resizable** at 250px default (previously flex-only); all column resize handles show a visible dot indicator; double-click any handle to auto-fit; left panel uses `overflow-x: auto` for horizontal scrolling when columns are added
 - Zoom and splitter width persist per schedule via localStorage

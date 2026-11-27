@@ -68,6 +68,8 @@ export interface Schedule {
   endDate: string;
   status: 'pending' | 'active' | 'completed' | 'on_hold' | 'cancelled';
   progressMode?: 'duration' | 'work';
+  /** 'done' = a task is done (100) or not done (0), never in between; headings still roll up */
+  progressStyle?: 'percent' | 'done';
   isScenario?: boolean;
   sourceScheduleId?: string;
   scenarioLabel?: string;
@@ -278,6 +280,9 @@ export class DependencyValidationError extends Error {
 // Service
 // ---------------------------------------------------------------------------
 
+/** In a done / not done plan a task is 0 or 100: anything in between is not done */
+export const doneOrNot = (pct: number, doneOnly: boolean): number => (doneOnly && pct > 0 && pct < 100 ? 0 : pct);
+
 export class ScheduleService {
 
   // -------------------------------------------------------------------------
@@ -304,7 +309,41 @@ export class ScheduleService {
     if (!existing) return null;
     const updated = await scheduleRepository.update(id, data as Record<string, any>);
     if (!updated) return existing;
+    if (data.progressStyle === 'done' && existing.progressStyle !== 'done') await this.makeTasksDoneOrNot(id);
     return updated;
+  }
+
+  /** A plan switched to done / not done: every task that is neither 0 nor 100 becomes not done; headings above are redone */
+  private async makeTasksDoneOrNot(scheduleId: string): Promise<void> {
+    const rows = await databaseService.query<{ id: string; parent_task_id: string | null }>(
+      `SELECT id, parent_task_id FROM tasks WHERE schedule_id = ? AND COALESCE(is_summary, 0) = 0 AND progress_percentage > 0 AND progress_percentage < 100`, [scheduleId]);
+    if (rows.length === 0) return;
+    await databaseService.query(
+      `UPDATE tasks SET progress_percentage = 0 WHERE schedule_id = ? AND COALESCE(is_summary, 0) = 0 AND progress_percentage > 0 AND progress_percentage < 100`, [scheduleId]);
+    const headings = new Set(rows.map(r => r.parent_task_id).filter((p): p is string => !!p));
+    const isWorking = await this.workingDayTest(scheduleId);
+    for (const parentId of headings) {
+      // eslint-disable-next-line no-await-in-loop -- one heading after another: nested headings settle in order
+      await this.recomputeParentRollup(parentId, 0, { isWorking });
+    }
+    planChanged(scheduleId); // Schedule Review and the plan's watchers hear about it
+  }
+
+  /** Is this plan on done / not done? (a task there is 0 or 100, never in between) */
+  async isDoneOnly(scheduleId: string): Promise<boolean> {
+    return (await this.findById(scheduleId))?.progressStyle === 'done';
+  }
+
+  /** After a bulk edit wrote % straight to rows: in done / not done plans, anything between 1 and 99 becomes 0 (headings left alone) */
+  async clampDoneProgress(taskIds: string[]): Promise<void> {
+    for (let i = 0; i < taskIds.length; i += 200) {
+      const chunk = taskIds.slice(i, i + 200);
+      // eslint-disable-next-line no-await-in-loop -- one statement per 200 tasks
+      await databaseService.query(
+        `UPDATE tasks t JOIN schedules s ON s.id = t.schedule_id SET t.progress_percentage = 0
+         WHERE t.id IN (${chunk.map(() => '?').join(',')}) AND s.progress_style = 'done' AND COALESCE(t.is_summary, 0) = 0
+           AND t.progress_percentage > 0 AND t.progress_percentage < 100`, chunk);
+    }
   }
 
   async delete(id: string): Promise<boolean> {
@@ -777,6 +816,7 @@ export class ScheduleService {
     await assertInProjectPool([data.assignedTo, ...(data.assignments ?? []).map(a => a.resourceId)], data.scheduleId);
     const id = uuidv4();
     const toDateStr = TaskRepository.toDateStr;
+    const doneOnlyPlan = !!data.progressPercentage && data.progressPercentage < 100 && await this.isDoneOnly(data.scheduleId);
 
     // Normalize dependencies: merge legacy single dep into dependencies array
     let deps = data.dependencies || [];
@@ -895,7 +935,7 @@ export class ScheduleService {
           toDateStr(data.baselineFinishDate) || null,
           data.baselineDurationDays ?? null,
           data.baselineCost ?? null,
-          data.progressPercentage ?? 0,
+          doneOnlyPlan ? 0 : (data.progressPercentage ?? 0),
           legacyDepId,
           legacyDepType,
           data.risks || null,
@@ -1094,6 +1134,10 @@ export class ScheduleService {
         if (pct != null) data.progressPercentage = pct; else delete data.progressPercentage;
       } else delete data.progressPercentage;
     }
+
+    // A done / not done plan: a task is 0 or 100, so a typed 1-99 means not done (headings roll up and are never typed)
+    if (typeof data.progressPercentage === 'number' && data.progressPercentage > 0 && data.progressPercentage < 100
+        && !oldTask.isSummary && await this.isDoneOnly(oldTask.scheduleId)) data.progressPercentage = 0;
 
     // Auto-compute endDate when startDate + estimatedDays are known but endDate is missing
     const effectiveStart = data.startDate ?? oldTask.startDate;
@@ -1490,10 +1534,10 @@ export class ScheduleService {
 
     const newId = uuidv4();
     await databaseService.query(
-      `INSERT INTO schedules (id, project_id, name, description, start_date, end_date, status, created_by, is_scenario, source_schedule_id, scenario_label, progress_mode)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, 1, ?, ?, ?)`,
+      `INSERT INTO schedules (id, project_id, name, description, start_date, end_date, status, created_by, is_scenario, source_schedule_id, scenario_label, progress_mode, progress_style)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, 1, ?, ?, ?, ?)`,
       [newId, source.projectId, `${source.name} — ${label}`, source.description || null,
-       source.startDate, source.endDate, userId, scheduleId, label, source.progressMode || 'duration'],
+       source.startDate, source.endDate, userId, scheduleId, label, source.progressMode || 'duration', source.progressStyle || 'percent'],
     );
 
     // Clone all tasks — 200 per statement, then one statement per 200 parents and links
@@ -1600,6 +1644,7 @@ export class ScheduleService {
       id: r.id, projectId: r.project_id, name: r.name, description: r.description ?? undefined,
       startDate: String(r.start_date), endDate: String(r.end_date), status: r.status,
       progressMode: r.progress_mode ?? 'duration',
+      progressStyle: r.progress_style ?? 'percent',
       isScenario: true, sourceScheduleId: r.source_schedule_id, scenarioLabel: r.scenario_label,
       createdBy: r.created_by, createdAt: String(r.created_at), updatedAt: String(r.updated_at),
     }));
@@ -1704,6 +1749,7 @@ export class ScheduleService {
     }
 
     const day = (v: unknown) => (v ? String(v).slice(0, 10) : null);
+    const baseDoneOnly = await this.isDoneOnly(baseId);
     const moves = baseTasks.flatMap(bt => {
       const st = scenarioByOriginal.get(bt.id);
       // a summary's dates and % come from its tasks: it is rolled up below, not copied
@@ -1711,7 +1757,7 @@ export class ScheduleService {
       const m = {
         id: bt.id, start: day(st.startDate), end: day(st.endDate), days: st.estimatedDays ?? null,
         // % from approved hours is the timesheets' to set, not a copy's
-        pct: fromHours.has(bt.id) ? (bt.progressPercentage ?? 0) : (st.progressPercentage ?? 0),
+        pct: fromHours.has(bt.id) ? (bt.progressPercentage ?? 0) : doneOrNot(st.progressPercentage ?? 0, baseDoneOnly),
         parent: bt.parentTaskId ?? null,
         old: { start_date: day(bt.startDate), end_date: day(bt.endDate), estimated_days: bt.estimatedDays ?? null, progress_percentage: bt.progressPercentage ?? 0 },
       };

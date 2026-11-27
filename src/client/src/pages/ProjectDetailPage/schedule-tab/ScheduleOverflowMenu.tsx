@@ -206,6 +206,25 @@ export function ScheduleOverflowMenu(props: ScheduleOverflowMenuProps) {
               <option value="work">Work (Hours)</option>
             </select>
           </div>
+          <div className="px-3 py-1.5 flex items-center gap-2">
+            <span id={`${uid}-style`} className="text-xs font-semibold text-gray-500 uppercase">Progress:</span>
+            <select
+              aria-labelledby={`${uid}-style`}
+              value={props.schedule.progressStyle || 'percent'}
+              onChange={async (e) => {
+                const style = e.target.value as 'percent' | 'done';
+                // Done / not done turns every task between 0% and 100% into Not done, and switching back does not bring the numbers back
+                if (style === 'done' && !window.confirm('Switch to Done / not done?\n\nTasks that are between 0% and 100% become Not done. Switching back to Percent does not bring those numbers back.')) return;
+                await apiService.updateSchedule(props.schedule.id, { progressStyle: style } as any);
+                void props.queryClient.invalidateQueries({ queryKey: ['schedules', props.projectId] });
+                void props.queryClient.invalidateQueries({ queryKey: ['tasks', props.schedule.id] });
+              }}
+              className="text-xs border border-gray-200 dark:border-gray-700 rounded-md px-1.5 py-0.5 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+            >
+              <option value="percent">Percent</option>
+              <option value="done">Done / not done</option>
+            </select>
+          </div>
 
           <div className={divider} />
 

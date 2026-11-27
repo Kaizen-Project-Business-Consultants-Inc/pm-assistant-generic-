@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-27 — Done / not done progress (per-plan setting)
+- Plan menu > Progress: Percent (default) or Done / not done. T099 `schedules.progress_style`. In a done plan a task is 0 or 100: updateTask/createTask store typed 1-99 as 0, bulk route calls `clampDoneProgress`, switching plans converts in-between tasks and redoes headings. Table + Gantt % cells show Done / Not done (`shared/progressStyle.tsx`). Tests: doneNotDoneProgress.test.ts, e2e/done-not-done.spec.ts.
+
 ## 2026-11-27 — One Duration (Est Days column removed)
 - Why: Duration (from dates) and Est Days (stored, not updated when dates changed) disagreed (DBJ plan rows 2, 6). Server `ScheduleService.updateTask`: dates sent -> stored length = working days between them (project calendar); length sent alone -> End moves to fit; headings and milestones left alone. Form field is "Duration (working days)" and moves End. Est Days column removed from Table, Gantt, exports, paste/edit rules. One-time fix: `node dist/server/scripts/resyncTaskLengths.js [--dry-run]` (TaskLengthResyncService). Tests: taskLengthFollowsDates, taskLengthResync, e2e/one-duration.spec.ts.
 

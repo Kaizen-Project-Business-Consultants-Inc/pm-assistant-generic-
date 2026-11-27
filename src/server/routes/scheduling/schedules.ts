@@ -36,6 +36,7 @@ const createScheduleSchema = z.object({
   startDate: z.string().date(),
   endDate: z.string().date(),
   progressMode: z.enum(['duration', 'work']).optional(),
+  progressStyle: z.enum(['percent', 'done']).optional(),
 });
 
 const taskDependencySchema = z.object({

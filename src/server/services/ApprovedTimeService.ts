@@ -74,6 +74,9 @@ export class ApprovedTimeService {
     const scheduleIds = [...new Set(tasks.map((t: any) => t.schedule_id))];
     const bookings = await resourceService.findEffectiveAssignments({ scheduleIds, includeDone: true });
     const calOf = await calendarsFor(scheduleIds, (id) => scheduleService.workingDayTest(id));
+    // A done / not done plan: hours never make a task part-way (it is 0 or 100)
+    const doneOnlyPlans = new Set(scheduleIds.length === 0 ? [] : (await databaseService.query<any>(
+      `SELECT id FROM schedules WHERE progress_style = 'done' AND id IN (${ph(scheduleIds.length)})`, scheduleIds)).map((r: any) => r.id as string));
 
     // Each task's entries and bookings (in list order), looked up per task below
     const entriesOf = groupBy(entries, (e: any) => e.task_id);
@@ -95,7 +98,7 @@ export class ApprovedTimeService {
       const planned = (bookingsOf.get(t.id) ?? [])
         .reduce((n, b) => n + (b.hoursPerWeek / 5) * workingDaysBetween(b.startDate, b.endDate, calOf(t.schedule_id)), 0);
       const done = t.status === 'completed' || t.status === 'cancelled';
-      const progress = !done && planned > 0 ? Math.min(99, Math.round((hours / planned) * 100)) : null;
+      const progress = !done && planned > 0 && !doneOnlyPlans.has(t.schedule_id) ? Math.min(99, Math.round((hours / planned) * 100)) : null;
       const status = !done && hours > 0 && (t.status === 'pending' || t.status === 'not_started') ? 'in_progress' : null;
 
       // Costs and hours alone are not a plan edit: they keep the task's stamp (audit 2026-10-09: every

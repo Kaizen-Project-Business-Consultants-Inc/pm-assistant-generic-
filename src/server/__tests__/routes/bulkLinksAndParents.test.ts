@@ -47,6 +47,8 @@ vi.mock('../../services/ScheduleService', () => ({
     recomputeParentRollup: vi.fn(async () => {}),
     progressFromHoursTaskIds: vi.fn(async () => new Set<string>()),
     workingDayTest: vi.fn(async () => () => true),
+    clampDoneProgress: vi.fn(async () => {}),
+    isDoneOnly: vi.fn(async () => false),
   },
 }));
 const recompute = vi.hoisted(() => vi.fn(async (..._a: any[]) => ({ deltas: [] as any[] })));
