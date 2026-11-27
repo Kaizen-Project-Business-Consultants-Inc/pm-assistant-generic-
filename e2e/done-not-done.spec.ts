@@ -49,9 +49,12 @@ test('a typed 60% is stored as not done', async () => {
 
 test('the Table says Done / Not done and the cell becomes a Done / Not done choice', async () => {
   await openSchedule(page, projectId, scheduleId, 'table');
-  await expect(await tableCell(page, doneId, '%')).toContainText('Done');
-  await expect(await tableCell(page, midId, '%')).toContainText('Not done');
-  await (await tableCell(page, midId, '%')).click();
+  await page.getByRole('button', { name: /^Columns/ }).click();
+  await page.getByRole('checkbox', { name: 'Progress' }).check();
+  await page.keyboard.press('Escape');
+  await expect(await tableCell(page, doneId, 'Progress')).toContainText('Done');
+  await expect(await tableCell(page, midId, 'Progress')).toContainText('Not done');
+  await (await tableCell(page, midId, 'Progress')).click();
   const choice = page.getByRole('combobox', { name: /Half task/ });
   await choice.selectOption('100');
   await expect.poll(() => pctOf(midId), { timeout: 15_000 }).toBe(100);

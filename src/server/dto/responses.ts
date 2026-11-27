@@ -108,6 +108,9 @@ export interface ScheduleDTO {
   startDate: string;
   endDate: string;
   status: string;
+  /** how a heading's % is weighted, and whether tasks are percent or done / not done (the schedule screen reads both) */
+  progressMode?: string;
+  progressStyle?: string;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -122,6 +125,8 @@ export function toScheduleDTO(row: Record<string, any>): ScheduleDTO {
     startDate: String(row.startDate ?? row.start_date),
     endDate: String(row.endDate ?? row.end_date),
     status: row.status,
+    progressMode: row.progressMode ?? row.progress_mode ?? 'duration',
+    progressStyle: row.progressStyle ?? row.progress_style ?? 'percent',
     createdBy: row.createdBy ?? row.created_by,
     createdAt: String(row.createdAt ?? row.created_at),
     updatedAt: String(row.updatedAt ?? row.updated_at),

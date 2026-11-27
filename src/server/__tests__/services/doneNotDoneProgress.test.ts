@@ -106,3 +106,12 @@ describe('doneOrNot (the rule every writer uses)', () => {
     expect([0, 40, 99, 100].map(p => doneOrNot(p, false))).toEqual([0, 40, 99, 100]);
   });
 });
+
+describe('the project summary hands the screen the plan\'s progress settings', () => {
+  it('toScheduleDTO keeps progressMode and progressStyle (the page seeds its schedules from the summary)', async () => {
+    const { toScheduleDTO } = await import('../../dto/responses');
+    const row = { id: 's', project_id: 'p', name: 'Plan', start_date: '2027-03-01', end_date: '2027-04-30', status: 'active', progress_mode: 'work', progress_style: 'done', created_by: 'u', created_at: 'x', updated_at: 'y' };
+    expect(toScheduleDTO(row)).toMatchObject({ progressMode: 'work', progressStyle: 'done' });
+    expect(toScheduleDTO({ ...row, progress_mode: undefined, progress_style: undefined })).toMatchObject({ progressMode: 'duration', progressStyle: 'percent' });
+  });
+});
