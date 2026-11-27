@@ -114,6 +114,12 @@ describe('create / update / delete / baseline mutations', () => {
     expect(invalidated).toEqual([['tasks', 's1'], ['tasks', 's1']]);
   });
 
+  it('updateMutation: the day chosen in Finished on / Started on goes with the form payload', async () => {
+    const { result } = setup();
+    await act(async () => { await result.current.updateMutation.mutateAsync({ taskId: 'a', data: { ...FORM, predecessors: [], actualEndDate: '2026-03-04' } as never }); });
+    expect(api.updateTask).toHaveBeenLastCalledWith('s1', 'a', expect.objectContaining({ actualEndDate: '2026-03-04' }));
+  });
+
   it('updateMutation: a full form becomes the form payload (dependencies always sent); a partial patch goes as is', async () => {
     const { result, s } = setup();
     await act(async () => { await result.current.updateMutation.mutateAsync({ taskId: 'a', data: { ...FORM, predecessors: [] } as never }); });

@@ -218,6 +218,9 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
           effortDriven: d.effortDriven || undefined,
           assignments: d.assignments?.filter(a => a.resourceId), // [] = take everyone off; undefined = leave the saved list alone
           dependencies: deps,
+          // the day chosen in "Finished on" / "Started on" (the form itself has no field for them)
+          actualStartDate: (data as Record<string, unknown>).actualStartDate ?? undefined,
+          actualEndDate: (data as Record<string, unknown>).actualEndDate ?? undefined,
         };
         return apiService.updateTask(schedule.id, taskId, payload);
       }
