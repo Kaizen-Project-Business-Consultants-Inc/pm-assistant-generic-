@@ -361,8 +361,8 @@ Analyze this meeting transcript and extract all actionable information.`;
             // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
             const rescheduled = await scheduleService.updateTask(rescheduleTaskId, rescheduleData);
 
-            // The meeting's dates are kept as given; successors that now start too early are
-            // pushed later (the same rule as a manual edit)
+            // The meeting's dates are kept as given; the tasks that follow move to just
+            // after it, earlier or later (the same rule as a manual edit)
             try {
               // eslint-disable-next-line no-await-in-loop -- meeting updates the PM picked apply in order through the task service (roll-ups, cascades), so later ones see earlier ones
               await moveSuccessorsAfter(taskToReschedule, rescheduled);

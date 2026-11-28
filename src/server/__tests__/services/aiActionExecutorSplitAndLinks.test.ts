@@ -165,12 +165,13 @@ describe('Mjuzi set_dependency checks and list_tasks rows', () => {
   });
 
   it('links a later row after an earlier one without a warning, and re-flows the dates from the linked task', async () => {
-    recompute.mockResolvedValueOnce({ deltas: [], tasksMoved: 2 });
+    recompute.mockResolvedValueOnce({ deltas: [{ movedDays: 7 }, { movedDays: -3 }], held: [{ taskId: 'x', name: 'Sign-off', reason: 'is completed', wouldStart: '2026-10-08' }], tasksMoved: 2 });
     const r = await executor.setDependency({ taskId: 'gov', predecessorId: 'onb' }, CTX);
     expect(r.success).toBe(true);
     expect(r.data.warning).toBeUndefined();
-    expect(recompute).toHaveBeenCalledWith('s1', { onlyFrom: ['gov'], reason: 'link_added' });
-    expect(r.summary).toMatch(/2 tasks moved later to follow it/);
+    expect(recompute).toHaveBeenCalledWith('s1', { onlyFrom: ['gov'], reason: 'link_added', followBothWays: true });
+    expect(r.summary).toMatch(/1 task moved earlier, 1 moved later to follow it/);
+    expect(r.summary).toMatch(/Sign-off is completed, so it was not moved/);
   });
 
   it('still links when the date re-flow fails', async () => {

@@ -1779,3 +1779,13 @@ Manual: on a plan with two linked chains where the shorter one is dated later an
 - [ ] A heading's Work is the total of its tasks and does not open for typing.
 - [ ] The task form has no **Work Hours** box and no **Effort Driven** checkbox.
 - [ ] Automated: `e2e/work-hours.spec.ts`, `taskWork.test.ts` (server), `workHoursFollowDurationAndPeople.test.ts`, `headingWork.test.ts` (client, also pins the form's numbers to the server's).
+
+## Linked tasks follow both ways (Nov 2026)
+- [ ] Plan with rows 5 → 6 → 7 linked (finish-to-start), row 6 starting a week after row 5 ends. Bring row 5's finish forward: rows 6 and 7 move up to the working day after it, keeping their length. The Undo message says "2 tasks moved earlier"; **Details** lists each with its old and new start.
+- [ ] Ctrl+Z (or Undo): rows 6 and 7 and row 5 all go back. Schedule History shows one line with the same details.
+- [ ] Push row 5's finish later: rows 6 and 7 are pushed later as before ("moved later").
+- [ ] A completed successor, a successor with an Actual Start, and one with "Start no earlier than" stay; the message says "n not moved" and Details gives the reason for each.
+- [ ] A successor that was already right after its predecessor is not listed.
+- [ ] Add a link to a task sitting later than its predecessor allows (Link in order, or type the Predecessor cell): it moves up to it. Undo through the message puts it back.
+- [ ] Propose fixes, a calendar change and Team Planner moves still only push later (nothing is pulled up).
+- [ ] Automated: `followBothWays.test.ts`, `followSuccessors.test.ts`, `e2e/linked-follow.spec.ts`.

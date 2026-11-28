@@ -386,11 +386,14 @@ describe('L4 / L6: readable colours in dark mode', () => {
   });
 
   it('the Undo message: not an alert, Ctrl+Z said as the shortcut, a readable hint', () => {
-    const src = read('pages/ProjectDetailPage/schedule-tab/ScheduleWorkspace.tsx');
-    const toast = src.slice(src.indexOf('{/* Undo toast'), src.indexOf('{/* A save that failed'));
+    // the toast is its own component since the follow-on message got a Details list (2026-11-28)
+    const toast = read('components/schedule/UndoToast.tsx');
+    const used = read('pages/ProjectDetailPage/schedule-tab/ScheduleWorkspace.tsx');
+    expect(used).toMatch(/<UndoToast/);
     expect(toast).not.toMatch(/role="alert"/);
     expect(toast).toMatch(/aria-keyshortcuts="Control\+Z"/);
-    expect(toast).toMatch(/onMouseEnter=\{\(\) => holdUndoToast\(true\)\}/);
+    expect(toast).toMatch(/onMouseEnter=\{\(\) => onHold\(true\)\}/);
     expect(toast).toMatch(/text-gray-300 text-xs" aria-hidden="true">Ctrl\+Z/);
+    expect(toast).toMatch(/aria-expanded=\{open\}/); // Details is a real disclosure button
   });
 });

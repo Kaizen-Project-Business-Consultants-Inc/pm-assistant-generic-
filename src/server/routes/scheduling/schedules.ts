@@ -28,6 +28,8 @@ import logger from '../../utils/logger';
 import { toDateString } from '../../utils/calendarDate';
 import { changeHistoryService, DeleteTooLargeError } from '../../services/ChangeHistoryService';
 import { heavyActionLimit } from '../../middleware/rateLimiter';
+import { movedWords, heldNotes, heldSuffix } from '../../utils/movedWords';
+import type { HeldTask } from '../../services/ScheduleRecomputeService';
 
 const createScheduleSchema = z.object({
   projectId: z.string(),
@@ -322,8 +324,8 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const linksBefore = new Set((oldTask.dependencies || []).map(linkKey));
       const linkGained = updatePayload.dependencies !== undefined && (task.dependencies || []).some(d => !linksBefore.has(linkKey(d)));
 
-      // New dates: the tasks that follow are pushed later where they now start too early (never
-      // pulled earlier; recorded in Schedule History). With a new predecessor in the same edit, it
+      // New dates: the tasks that follow move to just after it, earlier or later, unless held in place
+      // (completed, actual dates, a date of their own); recorded in Schedule History. With a new predecessor in the same edit, it
       // may push this task too — one re-flow, one History entry.
       let cascadedChanges = null;
       const datesChanged = toDateString(oldTask.startDate) !== toDateString(task.startDate) || toDateString(oldTask.endDate) !== toDateString(task.endDate);
@@ -332,25 +334,27 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         ? [{ taskId, deps: (oldTask.dependencies || []).map(d => ({ dependencyId: d.dependencyId, dependencyType: d.dependencyType || 'FS', lagDays: d.lagDays ?? 0 })) }]
         : undefined;
       const result = await moveSuccessorsAfter(oldTask, task, { followNewLinks: linkGained, linksBefore: oldLinks });
-      if (result.affectedTasks.length > 0) cascadedChanges = result;
+      if (result.affectedTasks.length > 0 || (result.held?.length ?? 0) > 0) cascadedChanges = result;
       let changeId = result.changeId ?? null;
       // the new predecessor may have pushed this task too: answer (and broadcast) its dates as saved
       if (linkGained && datesChanged) task = (await scheduleService.findTaskById(taskId)) ?? task;
 
       let rescheduled: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
+      let held: HeldTask[] = [];
       if (linkGained && !datesChanged) {
         const { scheduleId } = request.params as { scheduleId: string };
-        rescheduled = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [taskId] })).deltas;
+        ({ deltas: rescheduled, held = [] } = await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [taskId], followBothWays: true }));
         // The new predecessor moved tasks: one Schedule History entry, so Undo (History, or Ctrl+Z
         // through it) puts the old links AND the old dates back — it used to be a client-side
         // "restore these dates" call that skipped History (audit 2026-10-09 M7)
         const projectId = (await scheduleService.findById(scheduleId))?.projectId;
-        if (rescheduled.length && projectId) {
+        if ((rescheduled.length || held.length) && projectId) {
           changeId = await changeHistoryService.record({
             projectId,
             scheduleId,
             kind: 'bulk_update',
-            summary: `Changed ${task.name}'s predecessors · ${rescheduled.length} task${rescheduled.length === 1 ? '' : 's'} moved later`,
+            summary: `Changed ${task.name}'s predecessors${rescheduled.length ? ` · ${movedWords(rescheduled)}` : ''}${heldSuffix(held)}`,
+            notes: heldNotes(held),
             taskIds: [taskId, ...rescheduled.map(m => m.taskId)],
             undo: {
               previous: [],
@@ -396,7 +400,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const notice = ignored.length
         ? `${ignored.join(' and ')} ${ignored.length > 1 ? 'are' : 'is'} calculated (budget = planned hours × rate, actual cost = approved hours × rate + other costs) and ${ignored.length > 1 ? 'were' : 'was'} not changed.`
         : undefined;
-      return { task, cascadedChanges, rescheduled, changeId, ...(notice ? { notice } : {}) };
+      return { task, cascadedChanges, rescheduled, held, changeId, ...(notice ? { notice } : {}) };
     } catch (error) {
       // Bad input is the caller's mistake: the app's error handler answers 400 with the field
       if (error instanceof z.ZodError) throw error;
@@ -524,19 +528,21 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       if (!schedule) return reply.status(404).send({ error: 'Not found', message: 'Schedule not found' });
       const result = await scheduleService.bulkAddDependencies(scheduleId, schedule.projectId ?? null, parsed.data.links);
       let moved: Awaited<ReturnType<typeof scheduleRecomputeService.recompute>>['deltas'] = [];
+      let held: HeldTask[] = [];
       let changeId: string | null = null;
       if (result.added.length > 0) {
-        // Like MS Project: a task that now starts before its new predecessor allows is pushed
-        // later, and so is everything after it. Only the newly linked tasks and their
-        // successors can move; completed / actual-dated tasks never do.
-        moved = (await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [...new Set(result.added.map(a => a.taskId))] })).deltas;
+        // Like MS Project: a linked task moves to just after its new predecessor, earlier or later, and so
+        // does everything after it. Only the newly linked tasks and their successors can move; completed,
+        // actual-dated and date-of-their-own tasks stay (reported in `held`).
+        ({ deltas: moved, held = [] } = await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: [...new Set(result.added.map(a => a.taskId))], followBothWays: true }));
         WebSocketService.broadcast({ type: 'schedule_updated', payload: { scheduleId } }, schedule.projectId);
         const n = result.added.length;
         changeId = await changeHistoryService.record({
           projectId: schedule.projectId,
           scheduleId,
           kind: 'link',
-          summary: `Added ${n} link${n === 1 ? '' : 's'}${moved.length ? ` · ${moved.length} task${moved.length === 1 ? '' : 's'} moved later` : ''}`,
+          summary: `Added ${n} link${n === 1 ? '' : 's'}${moved.length ? ` · ${movedWords(moved)}` : ''}${heldSuffix(held)}`,
+          notes: heldNotes(held),
           taskIds: [...result.added.map(a => a.taskId), ...moved.map(m => m.taskId)],
           undo: {
             links: result.added.map(a => ({ taskId: a.taskId, dependencyId: a.dependencyId })),
@@ -545,7 +551,7 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
         });
       }
       // Undo goes through Schedule History (changeId): latest change only, nothing edited since
-      return { ...result, moved, changeId };
+      return { ...result, moved, held, changeId };
     } catch (error) {
       if (error instanceof DependencyValidationError) {
         return reply.status(400).send({ error: 'Validation error', message: error.message });

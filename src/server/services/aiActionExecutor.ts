@@ -15,6 +15,7 @@ import { knowledgeBaseService } from './KnowledgeBaseService';
 import { taskRepository } from '../database/TaskRepository';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { scheduleRecomputeService } from './ScheduleRecomputeService';
+import { movedWords, heldNotes } from '../utils/movedWords';
 import logger from '../utils/logger';
 import { utcDay, ymdOf, finishFor, shiftWorking, workingDaysAfter } from '../utils/workingDays';
 import { limitRows, limitGrouped, MAX_TOOL_ROWS, MAX_MOVES_WITHOUT_OK, filterTasks, describeTaskFilter, TASK_FILTER_HINT } from './aiToolLimits';
@@ -635,8 +636,8 @@ export class AIActionExecutor {
     if (endDate) dateChanges.push(`end: ${endDate}`);
     if (dueDate) dateChanges.push(`due: ${dueDate}`);
 
-    // The given dates are kept; successors that now start too early are pushed later
-    // (the same rule as a manual edit)
+    // The given dates are kept; the tasks that follow move to just after it, earlier or later
+    // (the same rule as a manual edit); a completed, started or date-of-its-own task stays and is told to the user
     const cascade = await moveSuccessorsAfter(existing, task);
     const pushed = cascade.affectedTasks.map(c => ({ id: c.taskId, name: c.taskName, newStart: c.newStartDate, newEnd: c.newEndDate }));
 
@@ -645,6 +646,7 @@ export class AIActionExecutor {
       toolName: 'reschedule_task',
       summary: `Rescheduled task "${existing.name}" (${taskId}): ${dateChanges.join(', ')}`
         + `${pushed.length ? `; ${pushed.length} downstream task${pushed.length === 1 ? '' : 's'} moved to follow` : ''}`
+        + `${cascade.held?.length ? `; ${heldNotes(cascade.held).join('; ')}` : ''}`
         + `${reason ? `. Reason: ${reason}` : ''}`,
       // changeId: the History entry of the tasks pushed to follow; a typed "task 5 end …" offers Undo through it
       data: { taskId, name: task?.name, startDate, endDate, dueDate, affectedTasks: pushed, changeId: cascade.changeId ?? null },
@@ -811,8 +813,7 @@ export class AIActionExecutor {
     }
     const updated = await scheduleService.updateTask(taskId, targetUpdate);
 
-    // Successors that now start too early are pushed later, in working days (never pulled
-    // earlier) — the same rule as a manual edit.
+    // The tasks that follow move to just after it, earlier or later, in working days — the same rule as a manual edit.
     const newEnd = targetUpdate.endDate ? utcDay(targetUpdate.endDate) : null;
     const cascade = await moveSuccessorsAfter(target, updated);
     const affected = cascade.affectedTasks.map(c => ({
@@ -871,9 +872,12 @@ export class AIActionExecutor {
     } as any);
 
     // dates follow the new link, as when a person links in the app (QA 2026-10-23: a task linked after Handover kept starting before it)
-    let movedByLink = 0;
+    let movedByLink = '';
+    let heldByLink = '';
     try {
-      movedByLink = (await scheduleRecomputeService.recompute(task.scheduleId, { onlyFrom: [taskId], reason: 'link_added' })).tasksMoved ?? 0;
+      const reflow = await scheduleRecomputeService.recompute(task.scheduleId, { onlyFrom: [taskId], reason: 'link_added', followBothWays: true });
+      movedByLink = reflow.deltas.length ? movedWords(reflow.deltas) : '';
+      heldByLink = heldNotes(reflow.held).join('; ');
     } catch (error) {
       logger.warn(`set_dependency: dates not re-flowed for ${taskId}: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -888,7 +892,7 @@ export class AIActionExecutor {
     return {
       success: true,
       toolName: 'set_dependency',
-      summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})${movedByLink ? `; ${movedByLink} task${movedByLink === 1 ? '' : 's'} moved later to follow it` : ''}${warning ? ` WARNING: ${warning}` : ''}`,
+      summary: `Set dependency: "${task.name}" now depends on "${predecessor?.name}" (${depType})${movedByLink ? `; ${movedByLink} to follow it` : ''}${heldByLink ? `; ${heldByLink}` : ''}${warning ? ` WARNING: ${warning}` : ''}`,
       // scheduleId: the chat refreshes that plan's views (critical path, network…; U38)
       data: { taskId, scheduleId: task.scheduleId, taskName: task.name, predecessorId, predecessorName: predecessor?.name, dependencyType: depType, ...(warning ? { warning } : {}) },
     };

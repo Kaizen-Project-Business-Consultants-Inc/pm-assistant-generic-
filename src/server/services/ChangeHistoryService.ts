@@ -24,7 +24,7 @@ import { isUnderItself, PARENT_LOOP_MESSAGE } from '../utils/parentLoop';
  *  - bulk_create   delete the tasks that were created
  *  - review_fix    the Schedule Review proposal's own undo (ref = proposal id)
  *  - ai_reschedule put the dates back
- *  - successors_moved  a task re-dated by hand pushed the tasks after it later: all of their
+ *  - successors_moved  a task re-dated by hand moved the tasks after it (earlier or later): all of their
  *                  dates back, the edited task's too (followSuccessors.ts)
  *  - group         tasks back to their old parent, the new summary removed
  *  - calendar      put the dates back (a working-calendar change, or the days-off clean-up;
@@ -147,6 +147,8 @@ export interface RecordInput {
   taskIds: string[];
   undo: unknown;
   ref?: string;
+  /** Extra lines for the entry's details (tasks a re-flow left in place and why) */
+  notes?: string[];
 }
 
 export interface ChangeEntry {
@@ -633,7 +635,7 @@ class ChangeHistoryService {
       if (input.taskIds.length === 0) return null;
       const ctx = getRequestContext();
       const id = uuidv4();
-      const details = await describeChange(input).catch(() => [] as string[]);
+      const details = [...(await describeChange(input).catch(() => [] as string[])), ...(input.notes ?? [])];
       // Hours bookings the change moved: their exact old dates, so Undo puts them back as they were
       // (audit 2026-10-09 M1: re-following the task on Undo grew a booking that had been cut to fit)
       const bookingMoves = takeBookingMoves(input.taskIds);

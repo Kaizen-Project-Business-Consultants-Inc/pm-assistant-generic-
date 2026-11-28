@@ -54,14 +54,31 @@ const written = () => updateDatesMany.mock.calls.flatMap(c => c[0]);
 describe('moveSuccessorsAfter — successors follow a re-dated task', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('keeps a successor\'s deliberate gap: it is NOT pulled earlier when its predecessor moves later (audit H1)', async () => {
-    // A was Mon 12 – Fri 16, now ends Mon 19. B (FS on A) runs Wed 28 Oct – Tue 3 Nov on purpose.
+  it('pulls a successor up to its predecessor, gap and all (2026-11-28: tasks follow both ways; was audit H1 "never earlier")', async () => {
+    // A was Mon 12 – Fri 16, now ends Mon 19. B (FS on A) ran Wed 28 Oct – Tue 3 Nov: it now starts the day after A, Tue 20.
     const before = task('A', '2026-10-12', '2026-10-16');
     findTasksByScheduleId.mockResolvedValue([task('A', '2026-10-12', '2026-10-19'), task('B', '2026-10-28', '2026-11-03', ['A'])]);
     const r = await moveSuccessorsAfter(before, { startDate: '2026-10-12', endDate: '2026-10-19' });
+    expect(written()).toEqual([{ id: 'B', startDate: '2026-10-20', endDate: '2026-10-26' }]);
+    expect(r.affectedTasks.map(t => [t.taskId, t.deltaDays])).toEqual([['B', -8]]);
+    expect((record.mock.calls[0][0] as any).summary).toBe('Re-dated A; 1 task moved earlier');
+    expect((record.mock.calls[0][0] as any).undo.moved).toContainEqual({ taskId: 'B', startDate: '2026-10-28', endDate: '2026-11-03' });
+  });
+
+  it('a successor with a date of its own keeps its gap, and the answer says why it was not moved', async () => {
+    const before = task('A', '2026-10-12', '2026-10-16');
+    findTasksByScheduleId.mockResolvedValue([
+      task('A', '2026-10-12', '2026-10-19'),
+      task('B', '2026-10-28', '2026-11-03', ['A'], { constraintType: 'SNET', constraintDate: '2026-10-28' }),
+      task('C', '2026-10-28', '2026-11-03', ['A'], { status: 'completed' }),
+    ]);
+    const r = await moveSuccessorsAfter(before, { startDate: '2026-10-12', endDate: '2026-10-19' });
     expect(r.affectedTasks).toEqual([]);
     expect(written()).toEqual([]);
-    expect(record).not.toHaveBeenCalled();
+    expect(r.held).toEqual([
+      { taskId: 'B', name: 'B', reason: 'has a date of its own (starts no earlier than 28 Oct)', wouldStart: '2026-10-20' },
+      { taskId: 'C', name: 'C', reason: 'is completed', wouldStart: '2026-10-20' },
+    ]);
   });
 
   it('dates and a new predecessor in one edit: the predecessor may push the task too — one re-flow, one History entry', async () => {

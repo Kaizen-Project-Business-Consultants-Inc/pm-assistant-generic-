@@ -5,6 +5,7 @@
  * useScheduleMutations. Moved out of ScheduleTab.tsx unchanged, keeping its name ScheduleGantt
  * (the product manual refers to it by that name) — code health item 4, phase 4 batch B (2026-10-05).
  */
+import { UndoToast } from '../../../components/schedule/UndoToast';
 import { useState, useRef, useCallback, useEffect, useMemo, lazy, Suspense, useId } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
@@ -291,7 +292,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   const {
     createBaselineMutation, createMutation, updateMutation,
     canUndo, canRedo, undoDescription, redoDescription, undo, redo,
-    undoToast, setUndoToast, toastTimerRef, holdUndoToast,
+    undoToast, undoToastDetails, setUndoToast, toastTimerRef, holdUndoToast,
     saveError, setSaveError,
     deleteMutation,
     loadWarning, setLoadWarning, loadTimerRef,
@@ -1102,33 +1103,14 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
           page's polite announcer (useScheduleMutations), so it is not a live region itself; it stays
           while the pointer is on it or the focus is in it (audit 2 M5) */}
       {undoToast && (
-        <div
-          data-testid="undo-toast"
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 dark:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200"
-          onMouseEnter={() => holdUndoToast(true)}
-          onMouseLeave={(e) => { if (!e.currentTarget.contains(document.activeElement)) holdUndoToast(false); }}
-          onFocus={() => holdUndoToast(true)}
-          onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) holdUndoToast(false); }}
-        >
-          <span>{undoToast}</span>
-          <button
-            type="button"
-            onClick={() => { holdUndoToast(false); undo(); }}
-            aria-keyshortcuts="Control+Z"
-            className="font-semibold text-primary-300 hover:text-primary-200 transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-          >
-            Undo
-          </button>
-          <span className="text-gray-300 text-xs" aria-hidden="true">Ctrl+Z</span>
-          <button
-            type="button"
-            onClick={() => { holdUndoToast(false); setUndoToast(null); clearTimeout(toastTimerRef.current); }}
-            className="text-gray-300 hover:text-white ml-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-            aria-label="Dismiss notification"
-          >
-            ✕
-          </button>
-        </div>
+        <UndoToast
+          key={undoToast}
+          text={undoToast}
+          details={undoToastDetails}
+          onHold={holdUndoToast}
+          onUndo={undo}
+          onDismiss={() => { setUndoToast(null); clearTimeout(toastTimerRef.current); }}
+        />
       )}
 
       {/* A save that failed: what did not save and what to do (screen readers hear it via announce) */}

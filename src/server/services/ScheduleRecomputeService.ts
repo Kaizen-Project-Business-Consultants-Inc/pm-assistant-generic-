@@ -53,8 +53,9 @@ function auditMoves(
  * a moved task never starts or finishes on a day off, and keeps its working-day
  * length; lag is in working days. Tasks that are completed or carry actual dates
  * are pinned and never moved; other tasks move only later, to satisfy a
- * predecessor they violate (never pulled earlier). A task that doesn't move keeps
- * its dates exactly.
+ * predecessor they violate (never pulled earlier) — except after a hand edit or a new link
+ * (`followBothWays`), when the tasks that follow it also move earlier. A task that doesn't
+ * move keeps its dates exactly.
  *
  * Date constraints: pushing only later can never break "start/finish no earlier than".
  * "Must start/finish on" is a fixed date, so that task is pinned like a finished one; "start/finish
@@ -103,10 +104,33 @@ export interface RecomputeOptions {
    * dates, and only what follows them may move. Use with `onlyFrom` = these tasks.
    */
   keep?: string[];
+  /**
+   * A hand edit or a new link (2026-11-28, user's decision): the tasks that follow move to just after their
+   * predecessors EARLIER as well as later, like MS Project. Only tasks on "As soon as possible" with no actual
+   * dates follow; a completed task, one with actual dates and one with a date of its own stays, and is reported in
+   * `held` when its predecessors disagree. Whole-plan tools never set this (a plan would tighten as a whole).
+   */
+  followBothWays?: boolean;
+  /** With `followBothWays`: these tasks may be pushed later only, never pulled earlier or reported (the task whose dates were just typed) */
+  pushOnly?: string[];
+  /** With `followBothWays`: the dates a task had BEFORE the edit (the saved plan already holds the new ones), so a held task is reported only when what its predecessors ask for changed */
+  wasDates?: Record<string, { startDate: string | null; endDate: string | null }>;
+}
+
+/** A task that follows the edited one, would have moved, and was left where it is — and why (plain words) */
+export interface HeldTask {
+  taskId: string;
+  name: string;
+  /** Finishes the sentence "<task> …": "is completed", "has an actual start (6 Jul)", "must start on 20 Jul" */
+  reason: string;
+  /** Where its predecessors would have put it */
+  wouldStart: string;
 }
 
 export interface RecomputeResult {
   deltas: DateDelta[];
+  /** Only with `followBothWays`: the following tasks left in place although their predecessors say otherwise */
+  held?: HeldTask[];
   tasksMoved: number;
   leafCount: number;
   projectEndBefore: string | null;
@@ -121,6 +145,8 @@ interface Node {
   isSummary: boolean;
   isMilestone: boolean;
   pinned: boolean;
+  /** Why this task stays where it is when its predecessors move (null = it follows them) */
+  heldBecause: string | null;
   /** "Start / finish no later than": the latest start or finish allowed */
   latest: { kind: 'start' | 'finish'; date: Date } | null;
   estimatedDays: number | null;
@@ -147,6 +173,25 @@ function diffDays(a: Date, b: Date): number { return Math.round((a.getTime() - b
  */
 const FIXED_DATE = new Set(['MSO', 'MFO']);
 const NO_LATER_THAN: Record<string, 'start' | 'finish'> = { SNLT: 'start', FNLT: 'finish' };
+/** A date the PM chose, in plain words: such a task is not pulled earlier by its predecessors */
+const CONSTRAINT_WORDS: Record<string, string> = {
+  SNET: 'starts no earlier than', SNLT: 'starts no later than', FNET: 'finishes no earlier than',
+  FNLT: 'finishes no later than', MSO: 'must start on', MFO: 'must finish on',
+};
+const shortDay = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** Why a task stays put when its predecessors move — in words that finish "<task> …" */
+function heldReason(t: { status?: string | null; actualStartDate?: string | null; actualEndDate?: string | null }, constraint: string, constraintDate: Date | null): string | null {
+  if (t.status === 'completed') return 'is completed';
+  const as = parse(t.actualStartDate);
+  if (as) return `has an actual start (${shortDay(as)})`;
+  const ae = parse(t.actualEndDate);
+  if (ae) return `has an actual finish (${shortDay(ae)})`;
+  if (constraint === 'ALAP') return 'is set to start as late as possible';
+  const words = CONSTRAINT_WORDS[constraint];
+  if (words && constraintDate) return `has a date of its own (${words} ${shortDay(constraintDate)})`;
+  return null;
+}
 
 /** Latest start a "no later than" constraint allows for a task this long (on or before a working day) */
 function latestStart(latest: NonNullable<Node['latest']>, dur: number, isWorking: IsWorking): Date {
@@ -182,7 +227,7 @@ interface ReflowTask {
   dependencies?: Dep[] | null;
 }
 
-type ReflowOptions = Pick<RecomputeOptions, 'onlyFrom' | 'respan' | 'moves' | 'keep'> & {
+type ReflowOptions = Pick<RecomputeOptions, 'onlyFrom' | 'respan' | 'moves' | 'keep' | 'followBothWays' | 'pushOnly' | 'wasDates'> & {
   /** The calendar task lengths were planned on (defaults to `isWorking`) */
   wasWorking?: IsWorking;
 };
@@ -206,6 +251,7 @@ export function planReflow(tasks: ReflowTask[], isWorking: IsWorking, opts: Refl
       name: t.name,
       isSummary: !!t.isSummary,
       isMilestone: !!t.isMilestone,
+      heldBecause: opts.followBothWays ? heldReason(t, constraint, constraintDate) : null,
       pinned: t.status === 'completed' || !!t.actualStartDate || !!t.actualEndDate || keep.has(t.id)
         || (FIXED_DATE.has(constraint) && !!constraintDate),
       latest: NO_LATER_THAN[constraint] && constraintDate ? { kind: NO_LATER_THAN[constraint], date: constraintDate } : null,
@@ -236,43 +282,85 @@ export function planReflow(tasks: ReflowTask[], isWorking: IsWorking, opts: Refl
     moved.set(id, { start: ms, end: me });
   }
 
-  for (const id of order) {
-    const n = nodes.get(id)!;
-    if (n.pinned) continue; // anchor: keep its dates
-    if (scope && !scope.has(id)) continue; // outside the change: keep its dates
+  const both = !!opts.followBothWays;
+  const pushOnly = new Set(opts.pushOnly ?? []);
+  const held: HeldTask[] = [];
 
-    const dur = durationOf(n, lengthCalendar);
+  type Where = { startOf: (p: Node) => Date | null; endOf: (p: Node) => Date | null };
+  /** The first day a task this long may start because of ONE link, from where its predecessor is */
+  const startFromLink = (d: Dep, p: Node, dur: number, at: Where, cal: IsWorking): Date | null => {
+    const lag = d.lagDays ?? 0;
+    const type = (d.dependencyType || 'FS').toUpperCase();
+    const back = -Math.max(0, dur - 1); // finish → start of a task this long
+    const pStart = at.startOf(p); const pEnd = at.endOf(p);
+    let cand: Date | null = null;
+    if (type === 'FS' && pEnd) cand = shiftWorking(pEnd, lag + 1, cal);
+    else if (type === 'SS' && pStart) cand = shiftWorking(pStart, lag, cal);
+    else if (type === 'FF' && pEnd) cand = shiftWorking(shiftWorking(pEnd, lag, cal), back, cal);
+    else if (type === 'SF' && pStart) cand = shiftWorking(shiftWorking(pStart, lag, cal), back, cal);
+    return cand ? onOrAfterWorking(cand, cal) : null;
+  };
+  /** The first day a task this long may start, from where its predecessors are; `skip` leaves a link out */
+  const requiredStart = (n: Node, dur: number, at: Where, cal: IsWorking, skip?: (d: Dep, p: Node) => boolean): Date | null => {
     let required: Date | null = null;
     for (const d of n.deps) {
       const p = nodes.get(d.dependencyId);
-      if (!p) continue;
-      const lag = d.lagDays ?? 0;
-      const type = (d.dependencyType || 'FS').toUpperCase();
-      const back = -Math.max(0, dur - 1); // finish → start of a task this long
-      const earliest = (pStart: Date | null, pEnd: Date | null, cal: IsWorking): Date | null => {
-        let c: Date | null = null;
-        if (type === 'FS' && pEnd) c = shiftWorking(pEnd, lag + 1, cal);
-        else if (type === 'SS' && pStart) c = shiftWorking(pStart, lag, cal);
-        else if (type === 'FF' && pEnd) c = shiftWorking(shiftWorking(pEnd, lag, cal), back, cal);
-        else if (type === 'SF' && pStart) c = shiftWorking(shiftWorking(pStart, lag, cal), back, cal);
-        return c ? onOrAfterWorking(c, cal) : null;
-      };
-      // Re-spanning fits the plan to a calendar; it doesn't fix links that already
-      // overlapped (a task started before its predecessor allowed) — leave those as they are.
-      if (respan && n.start) {
-        const before = earliest(p.start, p.end, lengthCalendar);
-        if (before && before > n.start) continue;
-      }
-      const cand = earliest(newStart.get(p.id) ?? p.start, newEnd.get(p.id) ?? p.end, isWorking);
+      if (!p || skip?.(d, p)) continue;
+      const cand = startFromLink(d, p, dur, at, cal);
       if (cand && (!required || cand > required)) required = cand;
     }
+    return required;
+  };
+  const savedPlace: Where = { startOf: p => p.start, endOf: p => p.end };
+  const newPlace: Where = { startOf: p => newStart.get(p.id) ?? p.start, endOf: p => newEnd.get(p.id) ?? p.end };
+  /** A task left where it is although the tasks before it moved: say so (only when what its predecessors ask for changed) */
+  const wasDates = opts.wasDates ?? {};
+  const seeds = new Set(opts.onlyFrom ?? []);
+  /** Does what this task's predecessors ask for differ from before the edit? (A task given a new link has no "before": the link is the change.) */
+  const requirementChanged = (n: Node, dur: number): boolean => {
+    if (seeds.has(n.id)) return true;
+    const was = requiredStart(n, dur, { startOf: p => (wasDates[p.id] ? parse(wasDates[p.id].startDate) : p.start), endOf: p => (wasDates[p.id] ? parse(wasDates[p.id].endDate) : p.end) }, isWorking);
+    const now = requiredStart(n, dur, newPlace, isWorking);
+    return !!now && !(was && was.getTime() === now.getTime());
+  };
+  const reportHeld = (n: Node, dur: number, reason: string) => {
+    const now = requiredStart(n, dur, newPlace, isWorking);
+    if (!now || !requirementChanged(n, dur) || (n.start && n.start.getTime() === now.getTime())) return;
+    held.push({ taskId: n.id, name: n.name, reason, wouldStart: ymd(now) });
+  };
+
+  for (const id of order) {
+    const n = nodes.get(id)!;
+    if (scope && !scope.has(id)) continue; // outside the change: keep its dates
+    if (n.pinned) {
+      // anchor: keep its dates (and tell the PM when it would otherwise have moved)
+      if (both && !keep.has(id) && !pushOnly.has(id) && n.heldBecause) reportHeld(n, durationOf(n, lengthCalendar), n.heldBecause);
+      continue;
+    }
+
+    const dur = durationOf(n, lengthCalendar);
+    // Re-spanning fits the plan to a calendar; it doesn't fix links that already
+    // overlapped (a task started before its predecessor allowed) — leave those as they are.
+    const overlapped = (d: Dep, p: Node) => {
+      if (!respan || !n.start) return false;
+      const was = startFromLink(d, p, dur, savedPlace, lengthCalendar);
+      return !!was && was > n.start;
+    };
+    const required = requiredStart(n, dur, newPlace, isWorking, overlapped);
 
     // Re-spanning (calendar change / days-off clean-up): a task on a day off moves on
     const mv = moved.get(id);
     const cur = mv ? mv.start : n.start && respan ? onOrAfterWorking(n.start, isWorking) : n.start;
     let ns: Date | null;
-    if (required && cur) ns = required > cur ? required : cur; // only push later
-    else if (required) ns = required;
+    if (required && cur) {
+      ns = required > cur ? required : cur; // later: always
+      // earlier: only a task with no date of its own, and only when what its predecessors ask for changed
+      // (a task after something that did not move keeps its gap: one edit never tightens the plan below it)
+      if (both && required < cur && !pushOnly.has(id) && requirementChanged(n, dur)) {
+        if (n.heldBecause) reportHeld(n, dur, n.heldBecause);
+        else ns = required;
+      }
+    } else if (required) ns = required;
     else ns = cur;
     if (!ns) continue; // nothing to anchor from
     // "No later than": pushed at most to the latest start allowed (never pulled before where it is)
@@ -312,6 +400,7 @@ export function planReflow(tasks: ReflowTask[], isWorking: IsWorking, opts: Refl
 
   return {
     deltas,
+    ...(both ? { held } : {}),
     tasksMoved: deltas.length,
     leafCount: leaves.length,
     projectEndBefore,

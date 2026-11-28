@@ -1270,7 +1270,7 @@
   },
   "src/client/src/pages/ProjectDetailPage/schedule-tab/useScheduleMutations.ts": {
     "@typescript-eslint/no-floating-promises": {
-      "count": 11
+      "count": 10
     },
     "@typescript-eslint/no-misused-promises": {
       "count": 6

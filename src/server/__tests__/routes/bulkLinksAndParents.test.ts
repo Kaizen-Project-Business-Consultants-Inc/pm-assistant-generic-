@@ -93,7 +93,7 @@ describe('bulk edit: a predecessor is a real link (H4)', () => {
     expect(ins).toHaveLength(1);
     expect([ins[0].params.slice(1, 4), ins[0].params.slice(5, 8)]).toEqual([['b', 'a', 'SS'], ['c', 'a', 'FS']]);
     // successors only ever pushed later, through the shared re-flow
-    expect(recompute).toHaveBeenCalledWith('s1', { onlyFrom: ['b', 'c'], reason: 'link_added' });
+    expect(recompute).toHaveBeenCalledWith('s1', { onlyFrom: ['b', 'c'], reason: 'link_added', followBothWays: true });
     const undo = record.mock.calls[0][0].undo;
     expect(undo.links).toEqual([
       { taskId: 'b', deps: [{ dependencyId: 'old', dependencyType: 'FS', lagDays: 0 }] },

@@ -273,8 +273,10 @@ export class SchedulesApi extends ApiBase {
     return response.data as {
       added: Array<{ taskId: string; dependencyId: string; dependencyType: string; lagDays: number }>;
       skipped: number;
-      /** Tasks pushed later because of the new links (with their previous dates) */
+      /** Tasks moved (earlier or later) because of the new links, with their previous dates */
       moved: RescheduledTask[];
+      /** Tasks left where they are although the new links say otherwise, and why */
+      held?: Array<{ taskId: string; name: string; reason: string; wouldStart: string }>;
       /** The Schedule History entry; Undo goes through it */
       changeId: string | null;
     };

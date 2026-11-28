@@ -2,7 +2,8 @@ import { syncLengthsAfterBulk } from '../../services/TaskLengthResyncService';
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { taskDatesOf, moveBookingsWithTasks } from '../../database/bookingDates';
 import { syncDependencyMirror } from '../../database/dependencyMirror';
-import { scheduleRecomputeService } from '../../services/ScheduleRecomputeService';
+import { scheduleRecomputeService, type HeldTask } from '../../services/ScheduleRecomputeService';
+import { movedAndHeldWords, heldNotes } from '../../utils/movedWords';
 import { requireProjectAccess, projectsOfSchedules } from '../../middleware/requireProjectAccess';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
@@ -47,6 +48,18 @@ const bodyUpdateSchedules = requireProjectAccess('manager', {
     return Array.isArray(updates) ? projectsOfSchedules(updates.map((u: any) => u?.scheduleId)) : null;
   },
 });
+
+/** A new predecessor moves the task and what follows it, earlier or later; a failure is logged and the edit stands */
+async function replanAfterLinks(scheduleId: string, linked: string[]): Promise<{ moved: Array<{ taskId: string; oldStart: string | null; oldEnd: string | null; movedDays: number }>; held: HeldTask[] }> {
+  if (linked.length === 0) return { moved: [], held: [] };
+  try {
+    const reflow = await scheduleRecomputeService.recompute(scheduleId, { onlyFrom: linked, reason: 'link_added', followBothWays: true });
+    return { moved: reflow.deltas, held: reflow.held ?? [] };
+  } catch (err: any) {
+    logger.error('[bulk update] re-plan after links failed', { error: err?.message });
+    return { moved: [], held: [] };
+  }
+}
 
 /** One History line per schedule touched (MCP bulk tools can span schedules) */
 async function projectOfSchedule(scheduleId: string): Promise<string | null> {
@@ -698,13 +711,12 @@ export async function bulkRoutes(fastify: FastifyInstance) {
         planChanged(sid);
         const ids = doneUpdates.map(u => u.id);
         const idSet = new Set(ids);
-        // A new predecessor pushes the task (and what follows) later if it now starts too early —
-        // the same rule as a single edit; never pulled earlier. Awaited before History records.
+        // A new predecessor moves the task (and what follows) to just after it, earlier or later — the same
+        // rule as a single edit. Awaited before History records.
         // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one)
         const linked = doneUpdates.filter(u => u.dependency || u.dependencyType).map(u => u.id);
         // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one); History entries in order
-        const moved = linked.length ? (await scheduleRecomputeService.recompute(sid, { onlyFrom: linked, reason: 'link_added' })
-          .catch((err: any) => { logger.error('[bulk update] re-plan after links failed', { error: err?.message }); return { deltas: [] }; })).deltas : [];
+        const { moved, held } = await replanAfterLinks(sid, linked);
         // eslint-disable-next-line no-await-in-loop -- per plan (a bulk edit is almost always one); History entries in order
         const projectId = await projectOfSchedule(sid);
         if (projectId) {
@@ -717,8 +729,9 @@ export async function bulkRoutes(fastify: FastifyInstance) {
             projectId,
             scheduleId: sid,
             kind: 'bulk_update',
-            summary: `Edited ${ids.length} task${ids.length === 1 ? '' : 's'} (${describeFields(fields)})`,
-            taskIds: ids,
+            summary: `Edited ${ids.length} task${ids.length === 1 ? '' : 's'} (${describeFields(fields)})${movedAndHeldWords(moved, held)}`,
+            notes: heldNotes(held),
+            taskIds: [...ids, ...moved.map(d => d.taskId)], // the tasks the re-flow moved too: "nothing edited since" covers them
             undo: {
               // eslint-disable-next-line no-restricted-syntax -- once per plan in the batch (almost always one), membership via a Set
               previous: previous.filter(p => idSet.has(p.id)),

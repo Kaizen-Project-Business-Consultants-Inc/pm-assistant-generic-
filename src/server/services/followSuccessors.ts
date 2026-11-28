@@ -4,14 +4,15 @@ import { changeHistoryService, type LinksBefore } from './ChangeHistoryService';
 import { taskRepository } from '../database/TaskRepository';
 import { toDateString } from '../utils/calendarDate';
 import { calendarDaysBetween } from '../utils/workingDays';
+import { movedWords, heldNotes, heldSuffix } from '../utils/movedWords';
 
 type Dated = Pick<Task, 'id' | 'name' | 'scheduleId' | 'startDate' | 'endDate'>;
 
 /**
  * A task's dates were changed by hand (task form, Gantt, AI action, meeting action): the tasks that
- * follow it are pushed later where they now start too early. Same rules as every other re-flow
- * (ScheduleRecomputeService): only ever later, never pulled earlier; working-day lengths kept;
- * finished, started and must-start-on tasks stay; summaries roll up; each move audited. The edited
+ * follow it move to just after it, EARLIER or later (2026-11-28, like MS Project), when they are on
+ * "as soon as possible". Working-day lengths kept; finished, started and date-of-their-own tasks stay and
+ * are reported in `held`; summaries roll up; each move audited. The edited
  * task keeps the dates it was given — unless the same edit gave it a new predecessor
  * (`followNewLinks`): then that predecessor may push it later too, in the same re-flow and the same
  * History entry (2026-10-10 review: a second re-flow moved it again, unrecorded).
@@ -35,10 +36,12 @@ export async function moveSuccessorsAfter(
   const none: CascadeResult = { triggeredByTaskId: before.id, deltaDays, affectedTasks: [] };
   if (!after || (oldStart === newStart && oldEnd === newEnd)) return none;
 
-  const { deltas } = await scheduleRecomputeService.recompute(before.scheduleId, {
+  const { deltas, held = [] } = await scheduleRecomputeService.recompute(before.scheduleId, {
     onlyFrom: [before.id], keep: opts.followNewLinks ? [] : [before.id], reason: 'task_moved',
+    followBothWays: true, pushOnly: opts.followNewLinks ? [before.id] : [],
+    wasDates: { [before.id]: { startDate: oldStart || null, endDate: oldEnd || null } },
   });
-  if (deltas.length === 0) return none;
+  if (deltas.length === 0) return held.length ? { ...none, held } : none;
   // the edited task itself (pushed by a new predecessor) is put back to its dates from before the edit
   const others = deltas.filter(d => d.taskId !== before.id);
 
@@ -65,9 +68,10 @@ export async function moveSuccessorsAfter(
       projectId: schedule.projectId,
       scheduleId: before.scheduleId,
       kind: 'successors_moved',
-      summary: others.length
-        ? `Re-dated ${before.name}; ${others.length} following task${others.length === 1 ? '' : 's'} pushed later`
-        : `Re-dated ${before.name}; its new predecessor pushed it later`,
+      summary: (others.length
+        ? `Re-dated ${before.name}; ${movedWords(others)}`
+        : `Re-dated ${before.name}; its new predecessor pushed it later`) + heldSuffix(held),
+      notes: heldNotes(held),
       taskIds: [before.id, ...others.map(d => d.taskId)],
       undo: {
         moved: [
@@ -80,5 +84,5 @@ export async function moveSuccessorsAfter(
     });
   }
 
-  return { triggeredByTaskId: before.id, deltaDays, affectedTasks, changeId };
+  return { triggeredByTaskId: before.id, deltaDays, affectedTasks, held, changeId };
 }

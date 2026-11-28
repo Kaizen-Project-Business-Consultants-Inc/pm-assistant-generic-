@@ -1,3 +1,4 @@
+import type { HeldTask } from './ScheduleRecomputeService';
 import { organizationTimezone } from './StatusDateService';
 import { today, addDays } from '../utils/calendarDate';
 import { v4 as uuidv4 } from 'uuid';
@@ -245,6 +246,8 @@ export interface CascadeResult {
   triggeredByTaskId: string;
   deltaDays: number;
   affectedTasks: CascadeChange[];
+  /** Following tasks left in place although the edit changes where their predecessors end, and why (completed, actual dates, a date of their own) */
+  held?: HeldTask[];
   /** The Schedule History entry for the change (Undo goes through it), when one was recorded */
   changeId?: string | null;
 }

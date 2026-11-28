@@ -26,9 +26,8 @@ import { firstByKey } from '../../../utils/lookup';
 import { SHOWN_AGAIN, TRY_AGAIN, saveFailedMessage } from '../../../utils/saveFailedMessage';
 import { beginOwnTaskSave, endOwnTaskSave } from '../../../utils/ownTaskSaves';
 import { refreshAfterScheduleChange } from '../../../utils/scheduleChanged';
+import { followMessage, cascadeMoves, rescheduledMoves, type FollowLine, type HeldTask } from '../../../utils/followMessage';
 
-/** " · 3 tasks moved later" — appended to link messages when the re-flow moved dates */
-const movedSuffix = (n: number) => (n > 0 ? ` · ${n} task${n > 1 ? 's' : ''} moved later` : '');
 /** How long the Undo message stays (unless the pointer or the focus is on it) */
 export const UNDO_TOAST_MS = 10_000;
 
@@ -90,6 +89,8 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
   const tasksRef = useRef(tasks);
   tasksRef.current = tasks;
   const taskName = (taskId: string) => tasksRef.current.find(t => t.id === taskId)?.name;
+  /** A task's fixed row number, for the lines of the follow-on message */
+  const rowOf = useCallback((taskId: string) => buildRowNumberMap(tasksRef.current).get(taskId), []);
 
   // What did not save: shown until dismissed, replaced by the next one, or cleared by a good save
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -279,6 +280,8 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
   // screen readers hear it once, politely, with how to undo (audit 2 M5: it was an alert next to a
   // second "Updated N tasks" status, and went after 4 s).
   const [undoToast, setUndoToast] = useState<string | null>(null);
+  // one line for each task the change moved or held in place ("Details" on the toast)
+  const [undoToastDetails, setUndoToastDetails] = useState<FollowLine[] | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const toastActionRef = useRef<Parameters<typeof rawPushAction>[0] | null>(null);
   const toastHeldRef = useRef(false);
@@ -289,8 +292,9 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
     toastTimerRef.current = setTimeout(() => setUndoToast(null), UNDO_TOAST_MS);
   }, []);
   /** Show the Undo toast with this text and say it to screen readers */
-  const showUndoToast = useCallback((text: string) => {
+  const showUndoToast = useCallback((text: string, details: FollowLine[] | null = null) => {
     setUndoToast(text);
+    setUndoToastDetails(details);
     announce(`${text}. Press Ctrl+Z to undo.`);
     startToastTimer();
   }, [startToastTimer]);
@@ -301,10 +305,10 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
     else startToastTimer();
   }, [startToastTimer]);
 
-  const pushAction = useCallback((action: Parameters<typeof rawPushAction>[0]) => {
+  const pushAction = useCallback((action: Parameters<typeof rawPushAction>[0], details: FollowLine[] | null = null) => {
     rawPushAction(action);
     toastActionRef.current = action;
-    showUndoToast(action.description);
+    showUndoToast(action.description, details);
   }, [rawPushAction, showUndoToast]);
 
   // The save behind an Undo entry failed: there is nothing to undo, so the entry (and its toast) goes
@@ -320,6 +324,7 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
   const undo = useCallback(() => {
     rawUndo();
     setUndoToast(null);
+    setUndoToastDetails(null);
     clearTimeout(toastTimerRef.current);
   }, [rawUndo]);
 
@@ -414,7 +419,7 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
 
   // Update task with undo support. Resolves true when saved (the Table/Gantt cell flashes "saved"
   // only then), false when not.
-  const updateTaskWithUndo = useCallback((taskId: string, data: Record<string, unknown>): Promise<boolean> => {
+  const updateTaskWithUndo = useCallback((taskId: string, data: Record<string, unknown>, label?: string): Promise<boolean> => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return saveTask({ taskId, data });
     const oldValues: Record<string, unknown> = {};
@@ -442,9 +447,10 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
       const run = async (patch?: OptimisticPatch, first = false) => {
         const res: any = await updateMutation.mutateAsync({ taskId, data, optimistic: patch, quiet: true });
         const moved: RescheduledTask[] = res?.rescheduled ?? [];
+        const message = followMessage(rescheduledMoves(moved), (res?.held ?? []) as HeldTask[], rowOf);
         changeId = res?.changeId ?? null;
-        if (moved.length) {
-          showUndoToast(`Edit ${task.name} (predecessors)${movedSuffix(moved.length)}`);
+        if (message) {
+          showUndoToast(`Edit ${task.name} (predecessors) · ${message.headline}`, message.lines);
         } else if (first) {
           showUndoToast(depAction.description);
         }
@@ -467,40 +473,45 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
       toastActionRef.current = depAction;
       return run(optimistic, true).then(() => true, () => { dropFailedAction(depAction); return false; });
     }
+    // A date change that moved the tasks that follow it is recorded in Schedule History: Undo goes through
+    // it, so every one of them goes back (an edit of other fields too is undone as an ordinary edit back)
+    let changeId: string | null = null;
     const action = {
-      description: `Edit ${task.name} (${fieldNames})`,
-      undo: () => updateMutation.mutate({ taskId, data: oldValues }),
-      redo: () => updateMutation.mutate({ taskId, data }),
+      description: label ?? `Edit ${task.name} (${fieldNames})`,
+      undo: async () => {
+        if (!changeId) { updateMutation.mutate({ taskId, data: oldValues }); return; }
+        if (!(await undoThroughHistory(changeId))) { dropFailedAction(action); return; }
+        // History put the dates (and every task that moved) back; any other field of the same edit goes back on top
+        const others = Object.fromEntries(Object.entries(oldValues).filter(([k]) => k !== 'startDate' && k !== 'endDate'));
+        if (Object.keys(others).length) updateMutation.mutate({ taskId, data: others, quiet: true });
+      },
+      redo: () => { sendWithFollowOn().catch(() => { dropFailedAction(action); }); },
+    };
+    const sendWithFollowOn = async () => {
+      const res: any = await updateMutation.mutateAsync({ taskId, data, optimistic, quiet: true });
+      const cascade = res?.cascadedChanges;
+      const message = followMessage(cascadeMoves(cascade?.affectedTasks), (cascade?.held ?? []) as HeldTask[], rowOf);
+      changeId = message && ('startDate' in data || 'endDate' in data) ? (cascade?.changeId ?? null) : null;
+      return message;
     };
     pushAction(action);
-    return saveTask({ taskId, data, optimistic, quiet: true }).then(ok => {
-      if (!ok) { dropFailedAction(action); return false; }
+    return sendWithFollowOn().then(message => {
+      if (message) showUndoToast(`${action.description} · ${message.headline}`, message.lines);
       // The over-100% warning only for an assignment that was actually saved
       if (typeof data.assignedTo === 'string' && data.assignedTo && data.assignedTo !== task.assignedTo) {
         warnIfOverloaded({ ...task, ...(data as Partial<GanttTask>) }, data.assignedTo);
       }
       return true;
-    });
-  }, [tasks, updateMutation, saveTask, pushAction, rawPushAction, dropFailedAction, applyOptimisticPatch, warnIfOverloaded, undoThroughHistory, showUndoToast]);
+    }, () => { dropFailedAction(action); return false; });
+  }, [tasks, updateMutation, saveTask, pushAction, rawPushAction, dropFailedAction, applyOptimisticPatch, warnIfOverloaded, undoThroughHistory, showUndoToast, rowOf]);
 
   // Drag-end with undo (bar drag for dates)
   const handleTaskDragEndWithUndo = useCallback((taskId: string, newStart: string, newEnd: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const oldStart = task.startDate;
-    const oldEnd = task.endDate;
-
-    const optimistic = applyOptimisticPatch(taskId, { startDate: newStart, endDate: newEnd });
-
-    const action = {
-      description: `Move ${task.name}`,
-      undo: () => updateMutation.mutate({ taskId, data: { startDate: oldStart, endDate: oldEnd } }),
-      redo: () => updateMutation.mutate({ taskId, data: { startDate: newStart, endDate: newEnd } }),
-    };
-    pushAction(action);
-    saveTask({ taskId, data: { startDate: newStart, endDate: newEnd }, optimistic, quiet: true })
-      .then(ok => { if (!ok) dropFailedAction(action); });
-  }, [tasks, updateMutation, saveTask, pushAction, dropFailedAction, applyOptimisticPatch]);
+    // the same save as a date edit: the tasks that follow move with it, the message says which, and Undo goes through History
+    void updateTaskWithUndo(taskId, { startDate: newStart, endDate: newEnd }, `Move ${task.name}`);
+  }, [tasks, updateTaskWithUndo]);
 
   // Row reorder with undo (supports cross-parent reparenting)
   const handleTaskReorder = useCallback((updates: Array<{ taskId: string; sortOrder: number; parentTaskId?: string | null }>) => {
@@ -618,7 +629,8 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
     planChanged();
     const added = result.added;
     let changeId = result.changeId;
-    const description = built.description + movedSuffix((result.moved ?? []).length);
+    const message = followMessage(rescheduledMoves(result.moved), (result.held ?? []) as HeldTask[], rowOf);
+    const description = message ? `${built.description} · ${message.headline}` : built.description;
     const linkAction = {
       description,
       // Undo goes through Schedule History: the links come off and every task the re-flow moved goes
@@ -636,9 +648,9 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
       },
       redo: async () => { changeId = (await apiService.bulkLinkTasks(schedule.id, added)).changeId; planChanged(); },
     };
-    pushAction(linkAction);
+    pushAction(linkAction, message?.lines ?? null);
     return description;
-  }, [rowNumbers, schedule.id, planChanged, pushAction, showSaveError, undoThroughHistory, dropFailedAction]);
+  }, [rowNumbers, rowOf, schedule.id, planChanged, pushAction, showSaveError, undoThroughHistory, dropFailedAction]);
 
   // Group the selected tasks under a new summary task; undo goes through Schedule History
   const handleGroupTasks = useCallback(async (taskIds: string[], name: string): Promise<string> => {
@@ -716,7 +728,7 @@ export function useScheduleMutations({ schedule, projectId, tasks, queryClient, 
   return {
     createBaselineMutation, createMutation, updateMutation,
     canUndo, canRedo, undoDescription, redoDescription, pushAction, undo, redo,
-    undoToast, setUndoToast, toastTimerRef, holdUndoToast,
+    undoToast, undoToastDetails, setUndoToast, toastTimerRef, holdUndoToast,
     saveError, setSaveError,
     deleteMutation,
     loadWarning, setLoadWarning, loadTimerRef, warnIfOverloaded,
