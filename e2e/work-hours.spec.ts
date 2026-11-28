@@ -98,8 +98,9 @@ test('a heading shows the total of its tasks and cannot be typed into', async ()
   await put(loneId, { parentTaskId: heading.id });
   await openSchedule(page, projectId, scheduleId, 'table');
   await page.getByRole('button', { name: /^Columns/ }).click();
-  await page.getByRole('checkbox', { name: 'Work' }).check().catch(() => page.getByText(/^Work$/).click());
-  await page.keyboard.press('Escape');
+  await page.getByRole('checkbox', { name: 'Work', exact: true }).check();
+  await page.getByRole('button', { name: /^Columns/ }).click(); // closes the picker
+  await expect(page.getByRole('checkbox', { name: 'Work', exact: true })).toHaveCount(0);
   const cell = await tableCell(page, heading.id, 'Work');
   await expect(cell).toContainText('93h'); // 60 (two people, 5 days) + 33 (typed, nobody)
   await cell.click();
