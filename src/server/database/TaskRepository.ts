@@ -4,6 +4,14 @@ import { databaseService } from './connection';
 import type { Task, TaskDependency, TaskComment, TaskActivityEntry } from '../services/ScheduleService';
 import { taskAssignmentRepository } from './TaskAssignmentRepository';
 import { chunksOf } from '../utils/chunksOf';
+import { taskWorkingDuration, ymdOf, weekdaysOnly } from '../utils/workingDays';
+import { personHours, taskWorkHours, workPeople, DEFAULT_HOURS_PER_DAY } from '../utils/taskWork';
+import logger from '../utils/logger';
+
+/** A project's working-day test and hours per day. The database layer doesn't call business logic (importCycleGuard): the app hands it this at startup (services/domainListeners.ts). Without one, Mon–Fri and 8 hours. */
+type WorkCalendarProvider = (projectId: string) => Promise<{ isWorking: (date: string) => boolean; hoursPerDay: number }>;
+let workCalendar: WorkCalendarProvider | null = null;
+export function setWorkCalendarProvider(provider: WorkCalendarProvider | null): void { workCalendar = provider; }
 
 // ---------------------------------------------------------------------------
 // Row mappers
@@ -60,8 +68,6 @@ function rowToTask(row: any): Task {
     isSummary: row.is_summary === 1 || row.is_summary === true,
     constraintType: row.constraint_type || 'ASAP',
     constraintDate: row.constraint_date ? String(row.constraint_date).slice(0, 10) : undefined,
-    workHours: row.work_hours != null ? Number(row.work_hours) : undefined,
-    effortDriven: row.effort_driven === 1 || row.effort_driven === true,
     originalTaskId: row.original_task_id ?? undefined,
     sortOrder: row.sort_order != null ? Number(row.sort_order) : 0,
     createdBy: row.created_by,
@@ -166,6 +172,37 @@ export class TaskRepository {
       }
       task.assignments = assignMap.get(task.id) || [];
       task.progressFromHours = fromHours.has(task.id);
+    }
+    await this.deriveWork(tasks);
+  }
+
+  /**
+   * Work (hours) of a task with people on it: each person's hours = Duration × Units × the project's hours per day,
+   * the task's Work = their total (utils/taskWork). Worked out on every read, never stored, so it cannot drift when
+   * dates re-flow or Units change. A task with nobody, a heading and a milestone keep what is stored.
+   */
+  private async deriveWork(tasks: Task[]): Promise<void> {
+    const withPeople = tasks.filter(t => workPeople(t).length > 0 && !t.isSummary && !t.isMilestone);
+    if (withPeople.length === 0) return;
+    const scheduleIds = [...new Set(withPeople.map(t => t.scheduleId))];
+    const rows = await databaseService.query<{ id: string; project_id: string }>(
+      `SELECT id, project_id FROM schedules WHERE id IN (${scheduleIds.map(() => '?').join(',')})`, scheduleIds);
+    const projectOf = new Map((Array.isArray(rows) ? rows : []).map(r => [r.id, r.project_id]));
+    const calendars = new Map<string, { isWorking: (d: Date) => boolean; hoursPerDay: number }>();
+    // one calendar per project, read side by side (a portfolio read can touch many projects)
+    await Promise.all([...new Set(projectOf.values())].map(async (pid) => {
+      const cal = workCalendar ? await workCalendar(pid).catch((err: any) => {
+        logger.warn('[TaskRepository] project calendar unavailable, using Mon–Fri and 8 h', { projectId: pid, error: err?.message });
+        return null;
+      }) : null;
+      calendars.set(pid, cal ? { isWorking: d => cal.isWorking(ymdOf(d)), hoursPerDay: cal.hoursPerDay } : { isWorking: weekdaysOnly, hoursPerDay: DEFAULT_HOURS_PER_DAY });
+    }));
+    for (const t of withPeople) {
+      const cal = calendars.get(projectOf.get(t.scheduleId) ?? '');
+      if (!cal) continue;
+      const days = taskWorkingDuration(t, cal.isWorking);
+      for (const a of t.assignments ?? []) a.hoursPlanned = personHours(days, a, cal.hoursPerDay);
+      t.estimatedDurationHours = taskWorkHours(days, workPeople(t), cal.hoursPerDay);
     }
   }
 

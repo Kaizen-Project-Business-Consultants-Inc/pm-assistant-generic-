@@ -196,7 +196,6 @@ export function toReviewTask(t: Task): ReviewTask {
     progressPercentage: t.progressPercentage,
     assignedTo: t.assignedTo,
     assignments: t.assignments?.map(a => ({ resourceId: a.resourceId, allocationPct: a.allocationPct, hoursPlanned: a.hoursPlanned })),
-    workHours: t.workHours,
     isMilestone: t.isMilestone,
     isSummary: t.isSummary,
     parentTaskId: t.parentTaskId,

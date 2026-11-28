@@ -7,13 +7,13 @@ import { SUMMARY_ROLLUP_FIELDS } from '../../components/schedule/table/types';
 describe('isSummaryRollupCell — cells a summary task cannot be given by hand', () => {
   const summary = { isSummary: true };
   it('refuses Start, Finish, Duration, % complete, Status, money and Est Days on a summary row', () => {
-    for (const f of ['startDate', 'endDate', 'duration', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'estimatedDays']) {
+    for (const f of ['startDate', 'endDate', 'duration', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'estimatedDays', 'estimatedDurationHours']) {
       expect(isSummaryRollupCell(summary, f)).toBe(true);
     }
   });
   it('leaves the other cells of a summary row editable', () => {
-    // Work isn't rolled up by the server, so a summary keeps its typed Work
-    for (const f of ['name', 'dependency', 'priority', 'assignedTo', 'estimatedDurationHours', 'notes']) {
+    // a heading's Work is the total of its tasks (shared/headingWork.ts), so it is locked with the other roll-ups
+    for (const f of ['name', 'dependency', 'priority', 'assignedTo', 'notes']) {
       expect(isSummaryRollupCell(summary, f)).toBe(false);
     }
   });

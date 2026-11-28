@@ -19,6 +19,7 @@ import { TaskFormModal } from '../../../components/schedule/TaskFormModal';
 import { KanbanBoard } from '../../../components/schedule/KanbanBoard';
 import { TableView } from '../../../components/schedule/TableView';
 import { ProgressStyleProvider } from '../../../components/schedule/shared/progressStyle';
+import { withHeadingWork } from '../../../components/schedule/shared/headingWork';
 import { ActualDateDialog, type ActualDateKind } from '../../../components/schedule/ActualDateDialog';
 import { actualDateKindFor, withActualDate } from '../../../utils/actualDateAsk';
 import { CalendarView } from '../../../components/schedule/CalendarView';
@@ -205,7 +206,8 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
     queryFn: () => apiService.getTasks(schedule.id),
   });
 
-  const tasks: GanttTask[] = useMemo(() => tasksData?.data || tasksData?.tasks || [], [tasksData]);
+  // a heading's Work is the total of its tasks (never typed)
+  const tasks: GanttTask[] = useMemo(() => withHeadingWork(tasksData?.data || tasksData?.tasks || []), [tasksData]);
 
   // Non-working dates for Gantt shading
   const taskDateRange = useMemo(() => {
@@ -231,7 +233,7 @@ export function ScheduleGantt({ schedule, viewMode, projectId, openImportOnLoad,
   const nonWorkingDates = useMemo(() => new Set(nwdData?.dates || []), [nwdData]);
   // The project calendar for the Duration column (working days). Until it loads, weekends are off.
   const workCalendar = useMemo<WorkCalendar | null>(
-    () => (nwdData && taskDateRange ? { nonWorking: nonWorkingDates, from: taskDateRange.start, to: taskDateRange.end } : null),
+    () => (nwdData && taskDateRange ? { nonWorking: nonWorkingDates, from: taskDateRange.start, to: taskDateRange.end, hoursPerDay: nwdData.hoursPerDay } : null),
     [nwdData, nonWorkingDates, taskDateRange],
   );
 

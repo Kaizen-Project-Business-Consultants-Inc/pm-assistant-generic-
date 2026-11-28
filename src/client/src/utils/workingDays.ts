@@ -15,6 +15,8 @@ export interface WorkCalendar {
   nonWorking: Set<string>;
   from: string;
   to: string;
+  /** The calendar's hours in a working day (8 when not set): a task's Work (hours) is worked from it */
+  hoursPerDay?: number;
 }
 
 function ymd(d: string | null | undefined): string | null {

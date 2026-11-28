@@ -19,6 +19,8 @@ import { useInProjectPool } from '../../hooks/useInProjectPool';
 import { findResourceForAssignee } from '../../utils/resourceLookup';
 import { firstByKey } from '../../utils/lookup';
 import { peopleRows, peopleToSave, type PersonRow } from '../../utils/taskPeople';
+import { workFigures } from '../../utils/taskWork';
+import { PersonHours, WorkTotal } from './PersonHours';
 import { useModal } from '../../hooks/useModal';
 import { isWorkingDay, workingDaysBetween, finishAfterWorkingDays, type WorkCalendar } from '../../utils/workingDays';
 import { formatCalendarDate } from '../../utils/dateUtils';
@@ -65,9 +67,7 @@ export interface TaskFormData {
   predecessors: PredecessorEntry[];
   constraintType: string;
   constraintDate: string;
-  workHours: string;
-  effortDriven: boolean;
-  assignments: Array<{ resourceId: string; allocationPct: number; roleOnTask: string; hoursPlanned?: number }>;
+  assignments: Array<{ resourceId: string; allocationPct: number; roleOnTask: string }>;
 }
 
 interface TaskFormModalProps {
@@ -246,8 +246,6 @@ export function TaskFormModal({
     predecessors: [],
     constraintType: 'ASAP',
     constraintDate: '',
-    workHours: '',
-    effortDriven: false,
     assignments: [],
   });
 
@@ -286,13 +284,10 @@ export function TaskFormModal({
         predecessors: deps,
         constraintType: task.constraintType || 'ASAP',
         constraintDate: task.constraintDate || '',
-        workHours: task.workHours != null ? String(task.workHours) : '',
-        effortDriven: task.effortDriven || false,
         assignments: task.assignments?.map(a => ({
           resourceId: a.resourceId,
           allocationPct: a.allocationPct ?? 100,
           roleOnTask: a.roleOnTask || '',
-          hoursPlanned: a.hoursPlanned,
         })) || [],
       });
     }
@@ -361,6 +356,8 @@ export function TaskFormModal({
   // while the field is being typed in, show what was typed (a cleared field must stay empty); otherwise the dates' span
   const [typedDuration, setTypedDuration] = useState<string | null>(null);
   const durationShown = typedDuration ?? shownDuration(spanDays, form.isMilestone, form.estimatedDays);
+  // Work (hours): each person's hours = Duration x Units x the project's hours per day; the task's Work is their total
+  const { lengthDays, hoursPerDay } = workFigures(form.isMilestone, durationShown, workCalendar);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -707,6 +704,14 @@ export function TaskFormModal({
                   title="Allocation %"
                 />
                 <span className="text-xs text-gray-500">%</span>
+                <PersonHours
+                  show={!!a.resourceId && !form.isMilestone}
+                  label={`Hours for person ${idx + 1}`}
+                  days={lengthDays}
+                  allocationPct={a.allocationPct}
+                  hoursPerDay={hoursPerDay}
+                  onDuration={(d) => setDuration(String(d))}
+                />
                 <input
                   aria-label={`Role on task for person ${idx + 1}`}
                   type="text"
@@ -746,6 +751,7 @@ export function TaskFormModal({
                 + Add person
               </button>
             )}
+            <WorkTotal pcts={people.filter(a => a.resourceId).map(a => a.allocationPct)} days={lengthDays} hoursPerDay={hoursPerDay} />
           </div>
 
           {/* Money: worked out, never typed — budget = planned hours × rate, actual = approved hours × rate.
@@ -873,38 +879,6 @@ export function TaskFormModal({
             />
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Mark as Milestone</span>
           </label>
-
-          {/* Effort-Driven Scheduling */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label htmlFor={`${uid}-work-hours`} className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Work Hours</label>
-              <input
-                id={`${uid}-work-hours`}
-                type="number"
-                name="workHours"
-                value={form.workHours}
-                onChange={(e) => setForm((prev) => ({ ...prev, workHours: e.target.value }))}
-                className="input w-full"
-                min="0"
-                step="0.5"
-                placeholder="Total work effort"
-              />
-            </div>
-            <div className="flex items-end pb-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={form.effortDriven}
-                  onChange={(e) => setForm((prev) => ({ ...prev, effortDriven: e.target.checked }))}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Effort Driven</span>
-              </label>
-            </div>
-          </div>
-          {form.effortDriven && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">Duration auto-adjusts when resources are assigned. Work stays constant.</p>
-          )}
 
           {/* Constraint */}
           <div className="grid grid-cols-2 gap-4">

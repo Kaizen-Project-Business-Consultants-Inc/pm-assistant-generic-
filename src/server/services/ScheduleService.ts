@@ -23,6 +23,7 @@ import { planChanged, taskChanged } from './domainEvents';
 import { loginForAssignee } from '../utils/assigneeLogins';
 import { computeScheduleRowNumbers } from '../utils/scheduleRowNumbers';
 import { type IsWorking, weekdaysOnly, onOrAfterWorking, workingDaysAfter, utcDay, ymdOf, finishFor, taskWorkingDuration } from '../utils/workingDays';
+import { daysForWork, workPeople, DEFAULT_HOURS_PER_DAY } from '../utils/taskWork';
 import { calendarService } from './CalendarService';
 import { chunksOf } from '../utils/chunksOf';
 import { trackBackground } from '../utils/backgroundWork';
@@ -35,6 +36,11 @@ export class ProjectHasScheduleError extends Error {
     super('This project already has its schedule. A project has one schedule: add phases to it, or import into it.');
     this.name = 'ProjectHasScheduleError';
   }
+}
+
+/** The people a task has once this save is done: the list sent with it, else the saved one (the main person likewise) */
+function peopleAfterSave(old: Task, data: Partial<Task>): { assignments?: Array<{ allocationPct?: number | null }> | null; assignedTo?: string | null } {
+  return { assignments: (data as any).assignments ?? old.assignments, assignedTo: data.assignedTo !== undefined ? data.assignedTo : old.assignedTo };
 }
 
 /** Rows per statement when copying a plan */
@@ -137,8 +143,6 @@ export interface Task {
   constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
   constraintDate?: string;
   originalTaskId?: string;
-  workHours?: number;
-  effortDriven?: boolean;
   sortOrder: number;
   createdBy: string;
   createdAt: string;
@@ -215,9 +219,7 @@ export interface CreateTaskData {
   actualCost?: number;
   constraintType?: 'ASAP' | 'ALAP' | 'SNET' | 'SNLT' | 'FNET' | 'FNLT' | 'MSO' | 'MFO';
   constraintDate?: Date | string;
-  workHours?: number;
-  effortDriven?: boolean;
-  assignments?: Array<{ resourceId: string; allocationPct?: number; roleOnTask?: string; hoursPlanned?: number }>;
+  assignments?: Array<{ resourceId: string; allocationPct?: number; roleOnTask?: string }>;
 }
 
 export interface TaskComment {
@@ -336,6 +338,17 @@ export class ScheduleService {
       await this.recomputeParentRollup(parentId, 0, { isWorking });
     }
     planChanged(scheduleId); // Schedule Review and the plan's watchers hear about it
+  }
+
+  /** The hours in a working day on this plan's project calendar (8 when it can't be read) — what a task's Work is worked out from */
+  async workHoursPerDay(scheduleId: string): Promise<number> {
+    try {
+      const projectId = (await this.findById(scheduleId))?.projectId;
+      if (projectId) return (await calendarService.getOrCreateDefault(projectId)).hoursPerDay;
+    } catch (err: any) {
+      logger.warn('[ScheduleService] project calendar unavailable, using 8 hours a day', { scheduleId, error: err?.message });
+    }
+    return DEFAULT_HOURS_PER_DAY;
   }
 
   /** Is this plan on done / not done? (a task there is 0 or 100, never in between) */
@@ -774,7 +787,10 @@ export class ScheduleService {
       return;
     }
 
-    const childTasks = children.map(TaskRepository.rowToTask);
+    // On a plan weighted by Work the children are read the way every task read is, so a task's Work is worked out from its people
+    const schedule = await this.findById(parent.scheduleId);
+    const workMode = schedule?.progressMode === 'work';
+    const childTasks = workMode ? await taskRepository.findByIds(children.map((c: any) => c.id)) : children.map(TaskRepository.rowToTask);
 
     // Dates
     const starts = childTasks.map(c => c.startDate).filter(Boolean) as string[];
@@ -783,8 +799,7 @@ export class ScheduleService {
     const rollupEnd = ends.length > 0 ? ends.sort().reverse()[0] : null;
 
     // Progress and status (cancelled children left out — rollupProgressAndStatus)
-    const schedule = await this.findById(parent.scheduleId);
-    const { rollupProgress, rollupStatus } = rollupProgressAndStatus(childTasks, schedule?.progressMode === 'work');
+    const { rollupProgress, rollupStatus } = rollupProgressAndStatus(childTasks, workMode);
 
     // Budget
     const rollupBudget = childTasks.reduce((s, c) => s + (c.budgetAllocated ?? 0), 0) || null;
@@ -863,6 +878,12 @@ export class ScheduleService {
       data.startDate = ymdOf(onOrAfterWorking(utcDay(raw), isWorking));
     }
 
+    // Work typed on a new task that has people but no length: the Duration fits it (its Work is then worked out from the dates and people when read)
+    if (data.estimatedDurationHours != null && !data.isMilestone && data.estimatedDays == null && !data.endDate) {
+      const days = daysForWork(Number(data.estimatedDurationHours), workPeople({ assignments: data.assignments, assignedTo: data.assignedTo }), await this.workHoursPerDay(data.scheduleId));
+      if (days != null) data.estimatedDays = days;
+    }
+
     // Default estimatedDays to 1 if missing — like MS Project's "1 day?" default.
     //
     // A milestone is the exception: it is a moment, not a span, so its duration is zero.
@@ -920,8 +941,8 @@ export class ScheduleService {
           progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, epic_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
-          constraint_type, constraint_date, work_hours, effort_driven, is_summary)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          constraint_type, constraint_date, is_summary)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.scheduleId,
@@ -963,8 +984,6 @@ export class ScheduleService {
           null, // actual cost: from approved hours × rate (ApprovedTimeService)
           data.constraintType || 'ASAP',
           toDateStr(data.constraintDate) || null,
-          data.workHours ?? null,
-          data.effortDriven ? 1 : 0,
           data.taskType === 'epic' ? 1 : 0,
         ],
       );
@@ -1117,8 +1136,6 @@ export class ScheduleService {
       otherCost: 'other_cost',
       constraintType: 'constraint_type',
       constraintDate: 'constraint_date',
-      workHours: 'work_hours',
-      effortDriven: 'effort_driven',
     };
 
     const toDateStr = TaskRepository.toDateStr;
@@ -1127,6 +1144,16 @@ export class ScheduleService {
     // (TaskBudgetService), actual cost = approved hours × rate (ApprovedTimeService). Typed
     // values from any caller — old screens, the API, AI tools — are ignored.
     for (const k of ['budgetAllocated', 'actualCost', 'otherCost', 'labourCost', 'labourHours']) delete (data as any)[k];
+
+    // Work (hours) typed on a task with people on it: its Duration changes to fit (Fixed Units, so each person's Units
+    // stay), and the hours are worked out again from the dates when the plan is read (utils/taskWork). Work is never
+    // stored for these tasks. With nobody on the task it is a typed note of effort and does not move Duration.
+    if (data.estimatedDurationHours !== undefined && !oldTask.isSummary && !oldTask.isMilestone && workPeople(peopleAfterSave(oldTask, data)).length > 0) {
+      const lengthTyped = data.estimatedDays !== undefined || data.startDate !== undefined || data.endDate !== undefined;
+      const days = lengthTyped || data.estimatedDurationHours == null ? null : daysForWork(Number(data.estimatedDurationHours), workPeople(peopleAfterSave(oldTask, data)), await this.workHoursPerDay(oldTask.scheduleId));
+      if (days != null) data.estimatedDays = days;
+      delete data.estimatedDurationHours;
+    }
 
     // Progress on a task with planned hours is the system's (approved ÷ planned, 99% until done —
     // user, 2026-10-02): a typed % is ignored; marking it done sets 100%.
@@ -1292,7 +1319,7 @@ export class ScheduleService {
 
     // Recompute parent rollup if rollup-relevant fields changed. Work (estimatedDurationHours)
     // weights the summary's % when the schedule's progressMode is 'work' (recomputeParentRollup).
-    const rollupFields = ['startDate', 'endDate', 'progressPercentage', 'status', 'estimatedDays', 'estimatedDurationHours', 'budgetAllocated', 'actualCost', 'parentTaskId'];
+    const rollupFields = ['startDate', 'endDate', 'progressPercentage', 'status', 'estimatedDays', 'estimatedDurationHours', 'budgetAllocated', 'actualCost', 'parentTaskId', 'assignments', 'assignedTo'];
     const rollupChanged = rollupFields.some(f => f in data);
     if (rollupChanged) {
       // If parentTaskId changed, recompute both old and new parents (the plan's calendar read once)
@@ -1575,7 +1602,7 @@ export class ScheduleService {
     const oldToNew = new Map(tasks.map(t => [t.id, uuidv4()] as [string, string]));
     // Summary flag, hours and costs, actual dates and baseline fields come too (audit 2026-10-09 M8:
     // without them summaries acted like leaves and the copy's costs and baseline were empty)
-    const COLS = 44;
+    const COLS = 42;
     const taskRows = tasks.map(t => [
       oldToNew.get(t.id), newId, t.name, t.description || null, t.status, t.priority, t.assignedTo || null,
       t.dueDate || null, t.estimatedDays ?? null, t.estimatedDurationHours ?? null, t.actualDurationHours ?? null,
@@ -1587,7 +1614,7 @@ export class ScheduleService {
       t.recurrenceRule || null, null, t.isRecurrenceTemplate ? 1 : 0,
       t.budgetAllocated ?? null, t.actualCost ?? null,
       t.constraintType || 'ASAP', t.constraintDate || null,
-      t.workHours ?? null, t.effortDriven ? 1 : 0, t.id,
+      t.id,
       t.isSummary ? 1 : 0, t.labourHours ?? 0, t.labourCost ?? 0, t.otherCost ?? null,
       t.actualStartDate || null, t.actualEndDate || null,
       t.baselineStartDate || null, t.baselineFinishDate || null, t.baselineDurationDays ?? null, t.baselineCost ?? null,
@@ -1601,7 +1628,7 @@ export class ScheduleService {
           start_date, end_date, progress_percentage, dependency, dependency_type,
           risks, issues, comments, parent_task_id, is_milestone, dependency_lag_days, sort_order, created_by,
           recurrence_rule, recurrence_parent_id, is_recurrence_template, budget_allocated, actual_cost,
-          constraint_type, constraint_date, work_hours, effort_driven, original_task_id,
+          constraint_type, constraint_date, original_task_id,
           is_summary, labour_hours, labour_cost, other_cost, actual_start_date, actual_end_date,
           baseline_start_date, baseline_finish_date, baseline_duration_days, baseline_cost)
          VALUES ${chunk.map(() => row).join(', ')}`,
@@ -1652,11 +1679,11 @@ export class ScheduleService {
         chunk.flat(),
       );
     }
-    const people = tasks.flatMap(t => (t.assignments ?? []).map(a => [uuidv4(), oldToNew.get(t.id), a.resourceId, a.allocationPct, a.roleOnTask ?? null, a.hoursPlanned ?? null]));
+    const people = tasks.flatMap(t => (t.assignments ?? []).map(a => [uuidv4(), oldToNew.get(t.id), a.resourceId, a.allocationPct, a.roleOnTask ?? null]));
     for (const chunk of chunksOf(people, CLONE_CHUNK)) {
       // eslint-disable-next-line no-await-in-loop -- one statement per 200 people on tasks
       await databaseService.query(
-        `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')}`,
+        `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task) VALUES ${chunk.map(() => '(?, ?, ?, ?, ?)').join(', ')}`,
         chunk.flat(),
       );
     }

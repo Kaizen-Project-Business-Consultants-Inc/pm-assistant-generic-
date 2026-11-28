@@ -36,14 +36,14 @@ describe('R42 - tasks longer than one reporting period', () => {
   });
 
   it('flags a short task whose planned effort is over the hours limit', () => {
-    const f = run([task({ id: 'b', name: 'Data migration', startDate: '2026-11-02', endDate: '2026-11-04', estimatedDays: 3, workHours: 62 })]);
+    const f = run([task({ id: 'b', name: 'Data migration', startDate: '2026-11-02', endDate: '2026-11-04', estimatedDays: 3, estimatedDurationHours: 62 })]);
     expect(f).toHaveLength(1);
     expect(f[0].message).toContain('62 hours');
     expect(f[0].message).toContain('37.5 hours');
     expect(f[0].message).not.toContain('it runs');
   });
 
-  it('reads the effort from the hours planned on assignments when Work Hours is empty', () => {
+  it('reads the effort from the hours planned on assignments when the task has no Work typed', () => {
     const f = run([task({ id: 'b', name: 'Data migration', startDate: '2026-11-02', endDate: '2026-11-04', assignments: [{ resourceId: 'r1', hoursPlanned: 50 }, { resourceId: 'r2', hoursPlanned: 50 }] })]);
     expect(f).toHaveLength(1);
     expect(f[0].message).toContain('100 hours for 2 people (50 each)');
@@ -53,18 +53,18 @@ describe('R42 - tasks longer than one reporting period', () => {
   it('shares the effort between the people booked: two people at 37.5 hours each fit a 37.5 hour week', () => {
     const two = [{ resourceId: 'r1', hoursPlanned: 37.5 }, { resourceId: 'r2', hoursPlanned: 37.5 }];
     expect(run([task({ name: 'Shared', startDate: '2026-11-02', endDate: '2026-11-06', assignments: two })])).toHaveLength(0);
-    expect(run([task({ name: 'Shared by Work Hours', startDate: '2026-11-02', endDate: '2026-11-06', workHours: 75, assignments: two })])).toHaveLength(0);
-    expect(run([task({ name: 'One person', startDate: '2026-11-02', endDate: '2026-11-06', workHours: 75, assignments: [two[0]] })])).toHaveLength(1);
+    expect(run([task({ name: 'Shared by Work', startDate: '2026-11-02', endDate: '2026-11-06', estimatedDurationHours: 75, assignments: two })])).toHaveLength(0);
+    expect(run([task({ name: 'One person', startDate: '2026-11-02', endDate: '2026-11-06', assignments: [{ resourceId: 'r1', hoursPlanned: 75 }] })])).toHaveLength(1);
   });
 
   it('says both reasons when duration and effort are over', () => {
-    const f = run([long({ workHours: 100 })]);
+    const f = run([long({ estimatedDurationHours: 100 })]);
     expect(f[0].message).toContain('12 working days');
     expect(f[0].message).toContain('100 hours');
   });
 
   it('leaves a task exactly at the limit alone', () => {
-    expect(run([task({ name: 'Exactly a week', startDate: '2026-11-02', endDate: '2026-11-06', workHours: 37.5 })])).toHaveLength(0);
+    expect(run([task({ name: 'Exactly a week', startDate: '2026-11-02', endDate: '2026-11-06', estimatedDurationHours: 37.5 })])).toHaveLength(0);
   });
 
   it('counts working days, not calendar days (a weekend does not lengthen a task)', () => {

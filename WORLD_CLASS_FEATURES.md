@@ -64,7 +64,7 @@ An agentic AI project management platform that combines the scheduling power of 
 - Multiple resources per task (up to 10)
 - Allocation percentage (1-100%) per resource
 - Role on task label
-- Planned hours per assignment
+- Hours per assignment worked out from Duration × % × the calendar's hours a day (Work follows Duration and the people, Nov 2026)
 - Primary assignee denormalized for backward compatibility
 - Task Form modal multi-resource editor
 - **Benchmark:** MS Project, Primavera P6
@@ -1005,7 +1005,7 @@ Four AI capabilities layered on top of the Phase 1 rules engine, all gracefully 
 | Resource Profile Modal (GET /resources/:id/profile; click resource name to open; shows details/skills/summary cards/assignments table/utilization trend chart) | Done | Enhancement |
 | Rate Types — Overtime (overtime_rate_hourly on resources; rate_type ENUM on time_entries; cost calculation uses overtime rate for OT hours; fallback 1.5× standard; OT Rate field in form+table; migration 080) | Done | Enhancement |
 | Capacity Planning by Role (GET /resources/capacity-by-role; Role Capacity sub-tab; groups resources by role; 12-week capacity vs demand table; green surplus/yellow tight/red over-committed color coding) | Done | Enhancement |
-| Effort-Driven Scheduling (work_hours + effort_driven on tasks; duration auto-recalculated on assignment add/remove; hours_per_day from resource capacity × allocation%; skips weekends; Work Hours + Effort Driven checkbox in TaskFormModal; migration 081) | Done | Enhancement |
+| Work (hours) = Duration × Units × calendar hours per day, per person and in total (MS Project's Fixed Units; replaced the old effort-driven scheduling in Nov 2026: typing Work or a person's hours changes Duration; nothing is typed twice) | Done | Enhancement |
 | Timesheet Approval Workflow (draft→submitted→approved/rejected status flow; week+project submission granularity; manager Approvals tab with TimesheetApprovalPanel; Approve/Reject with required reason; recall before review; status badges + lock icon on TimesheetGrid; 409 guard on edits to non-draft entries; notifications: timesheet_submitted/approved/rejected; role-gated to managers/owners; migration T019_timesheet_approval.sql) | Done | Enhancement |
 | Gantt/Schedule Performance Sprint (memoized dependency arrow paths + minimap bars via useMemo; optimistic single-task cache patching via setQueryData; lazy-loaded scenario/baseline queries with enabled guards; Ctrl+D duplicate shortcut in Gantt+Table; dependency arrow hover tooltips with predecessor→successor/type/lag) | Done | Performance |
 | Schedule UI Audit — Group 1: Schedule Selector (UI-1b) — pill/tab strip for multi-schedule projects; only selected schedule rendered; mobile collapses to `<select>` dropdown | Done | UX |

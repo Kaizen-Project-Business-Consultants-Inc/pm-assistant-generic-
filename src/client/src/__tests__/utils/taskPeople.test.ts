@@ -72,7 +72,7 @@ describe('changeMain: the cell changes the main person and the list with it', ()
     expect(changeMain(undefined, 'c')).toEqual({ assignedTo: 'c' });
   });
   it('picking someone replaces the main row, keeping its %', () => {
-    expect(changeMain(list, 'c')).toEqual({ assignedTo: 'c', assignments: [{ ...row('c', 50), hoursPlanned: undefined }, { ...row('b', 50, 'QA'), hoursPlanned: undefined }] });
+    expect(changeMain(list, 'c')).toEqual({ assignedTo: 'c', assignments: [{ ...row('c', 50) }, { ...row('b', 50, 'QA') }] });
   });
   it('picking someone already in the list does not repeat them', () => {
     expect(changeMain(list, 'b').assignments?.map(a => a.resourceId)).toEqual(['b']);

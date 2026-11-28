@@ -12,6 +12,7 @@ import { approvedTimeService } from './ApprovedTimeService';
 import { registerApprovedProgress } from './approvedProgress';
 import { calendarService } from './CalendarService';
 import { setProjectCalendarProvider } from '../database/bookingDates';
+import { setWorkCalendarProvider } from '../database/TaskRepository';
 import logger from '../utils/logger';
 import { trackBackground } from '../utils/backgroundWork';
 
@@ -67,6 +68,9 @@ export function registerDomainListeners(): void {
 
   // Hours bookings that follow a moved task step over the project's days off (audit 2026-10-09 M1)
   setProjectCalendarProvider(projectId => calendarService.workingDayChecker(projectId));
+
+  // A task's Work (hours) is worked out from its Duration, its people and the project's hours per day
+  setWorkCalendarProvider(projectId => calendarService.workCalendar(projectId));
 }
 
 /** Test hook */

@@ -81,7 +81,7 @@ afterEach(() => { vi.restoreAllMocks(); });
 const FORM = {
   name: 'New', description: '', status: 'pending', priority: 'high', assignedTo: '', startDate: '2026-03-02', endDate: '',
   progressPercentage: 0, parentTaskId: 'p', estimatedDays: '3', recurrenceRule: '', isRecurrenceTemplate: false, isMilestone: false,
-  constraintType: 'ASAP', constraintDate: '', workHours: '7.5', effortDriven: false,
+  constraintType: 'ASAP', constraintDate: '',
   assignments: [{ resourceId: '', allocationPct: 100 }, { resourceId: 'r2', allocationPct: 50 }],
   predecessors: [{ dependencyId: 'a', dependencyType: 'SS', lagDays: '2' }, { dependencyId: '', dependencyType: 'FS', lagDays: '0' }, { dependencyId: 'c', dependencyType: '', lagDays: 'x' }],
 };
@@ -94,7 +94,7 @@ describe('create / update / delete / baseline mutations', () => {
       name: 'New', description: undefined, status: 'pending', priority: 'high', assignedTo: undefined,
       startDate: '2026-03-02', endDate: undefined, progressPercentage: 0, parentTaskId: 'p', estimatedDays: 3,
       recurrenceRule: undefined, isRecurrenceTemplate: undefined, isMilestone: undefined, constraintType: undefined,
-      constraintDate: undefined, workHours: 7.5, effortDriven: undefined,
+      constraintDate: undefined,
       assignments: [{ resourceId: 'r2', allocationPct: 50 }],
       dependencies: [{ dependencyId: 'a', dependencyType: 'SS', lagDays: 2 }, { dependencyId: 'c', dependencyType: 'FS', lagDays: 0 }],
       afterTaskId: 'b', beforeTaskId: undefined,

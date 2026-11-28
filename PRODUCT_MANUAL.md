@@ -309,7 +309,7 @@ Tasks can have multiple resource assignments (`task_assignments` table):
 - **Resource ID** — person or team assigned
 - **Allocation %** — 1-100, how much of the resource's time is dedicated
 - **Role on task** — optional role label
-- **Hours planned** — optional planned hours
+- **Hours** — worked out, not typed: the task's Duration × the person's % × the project's hours a day (see *Work (hours) follows Duration and the people*)
 
 The primary assignee is denormalized to `tasks.assigned_to` for backward compatibility. Assignments are bulk-loaded alongside dependencies for efficient queries. The Task Form modal provides a multi-resource editor with add/remove rows, allocation percentage, and role fields.
 
@@ -4222,16 +4222,16 @@ A new **Role Capacity** sub-tab on the Resources page shows capacity vs demand a
 - Each cell shows allocated/capacity hours and surplus/deficit
 - Useful for identifying which roles are bottlenecks vs overstaffed
 
-### Effort-Driven Scheduling
+### Work (hours) follows Duration and the people (Nov 2026)
 
-Tasks can be marked as **effort-driven**, where duration is a function of work hours and assigned resources:
+Replaces the old effort-driven scheduling (`work_hours` / `effort_driven`, `TaskAssignmentService.recalcEffortDriven`, the form's Work Hours box and Effort Driven checkbox: all removed; the two columns stay in the database, unused).
 
-- **New columns:** `work_hours` DECIMAL and `effort_driven` TINYINT on `tasks` table (migration 081)
-- **Logic:** When `effort_driven = true` and task assignments change, duration is recalculated: `duration = work_hours / (sum of resource hours per day)`
-- Hours per day derived from each resource's `capacityHoursPerWeek / 5`, weighted by allocation percentage
-- End date recalculated skipping weekends
-- **UI:** "Work Hours" number input + "Effort Driven" checkbox in the task edit form (TaskFormModal)
-- Recalculation triggers on `addAssignment()` and `removeAssignment()` in TaskAssignmentService
+- **Rule** (`utils/taskWork.ts`, client mirror `src/client/src/utils/taskWork.ts`, pinned by tests on both sides): a person's hours = Duration (working days) × Units (`allocation_pct`) × the project calendar's `hours_per_day`; the task's Work (`estimatedDurationHours`) = the total over its people (`workPeople`: the assignment list, else the one main person at 100%, else nobody). Fixed Units, not effort-driven.
+- **Worked out on read, never stored** for a task with people: `TaskRepository.deriveWork` (called from `attachDependencies`, the one funnel every task read goes through) sets each assignment's `hoursPlanned` and the task's `estimatedDurationHours`, so it cannot drift when dates re-flow, Units change or people are added. The project calendar comes from `calendarService.workCalendar` handed to the repository at startup (`setWorkCalendarProvider`, `domainListeners.ts`); no calendar (a script) = Monday–Friday, 8 h. A task with nobody, a heading and a milestone keep the stored value. `task_assignments.hours_planned` is no longer written.
+- **Write**: `ScheduleService.updateTask`: Work sent for a task with people becomes a Duration (`daysForWork`, whole days, rounded up; `estimatedDays` set, so End moves to fit) and is not stored; sent together with a Duration or dates it is ignored; with nobody on the task it is stored as typed and Duration does not move.
+- **Headings**: the screen sums the tasks under a heading (`components/schedule/shared/headingWork.ts`); the Work cell is locked on a heading.
+- **Readers**: Resource Usage (`TaskAssignmentService.getResourceUsageForProject`), the project allocations on the Resource Management page (`getProjectAllocationsForAllResources`) and the Instant Reports (who does what when, over-budget people) read the derived hours (never `task_assignments.hours_planned`); a Work-weighted heading % (`recomputeParentRollup`) reads its children the same way, and a change of people re-rolls the heading. A heading's Work total exists only on the screen (`headingWork.ts`), not in the API; Schedule Review R12 skips the hours check for tasks with people and its hours-per-period rule uses the people's hours. `GET /api/v1/projects/:id/non-working-dates` also returns `hoursPerDay`.
+- **Not unified**: the hours bookings of Resource planning (`resource_assignments.hours_per_week`, which price a task's budget and feed Team Planner) are a separate plan of the people's time and are unchanged.
 
 ---
 

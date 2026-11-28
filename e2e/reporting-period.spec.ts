@@ -29,7 +29,7 @@ test.beforeAll(async ({ browser }) => {
   ids = await makeProject(pm, 'QA – e2e reporting period', plusDays(thisMonday(), -28), plusDays(thisMonday(), 90));
   await makeTask(pm, ids.scheduleId, { name: 'E2E short job', startDate: start, endDate: plusDays(start, 2), estimatedDays: 3 });
   longTaskId = (await makeTask(pm, ids.scheduleId, { name: 'E2E build login screens', startDate: start, endDate: plusDays(start, 15), estimatedDays: 12 })).id;
-  heavyTaskId = (await makeTask(pm, ids.scheduleId, { name: 'E2E data migration', startDate: start, endDate: plusDays(start, 2), estimatedDays: 3, workHours: 62 })).id;
+  heavyTaskId = (await makeTask(pm, ids.scheduleId, { name: 'E2E data migration', startDate: start, endDate: plusDays(start, 2), estimatedDays: 3, estimatedDurationHours: 62 })).id;
   // one task planned to finish last week and not done, one done on time
   await makeTask(pm, ids.scheduleId, { name: 'E2E vendor sign-off', startDate: plusDays(thisMonday(), -14), endDate: plusDays(thisMonday(), -10), estimatedDays: 5, status: 'in_progress' });
   await makeTask(pm, ids.scheduleId, { name: 'E2E finished on time', startDate: plusDays(thisMonday(), -14), endDate: plusDays(thisMonday(), -10), estimatedDays: 5, status: 'completed', progressPercentage: 100 });

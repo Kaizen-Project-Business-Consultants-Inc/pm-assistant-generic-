@@ -1087,16 +1087,15 @@ The **Role Capacity** sub-tab shows a 12-week capacity vs demand view grouped by
 - Cells are color-coded: **Green** (surplus >20%), **Yellow** (tight 0-20%), **Red** (over-committed).
 - Each cell shows allocated/capacity and surplus/deficit hours.
 
-### Effort-Driven Scheduling
+### Work (hours) follows Duration and the people (Nov 2026)
 
-Mark a task as **Effort Driven** in the task edit form to have its duration auto-adjust based on resources:
+A task's **Work** is worked out, not typed twice: each person's hours = the task's **Duration** (working days) × their **%** × the project calendar's **hours per day** (8 unless the calendar says otherwise), and the task's Work is the total of its people.
 
-1. Enter the total **Work Hours** (e.g., 80 hours of work).
-2. Check **Effort Driven**.
-3. When resources are assigned or removed, the duration recalculates: `duration = work_hours / total_resource_hours_per_day`.
-4. End date adjusts automatically, skipping weekends.
-
-This mirrors how MS Project and Primavera handle effort-driven tasks — adding more resources shortens the schedule, removing resources extends it.
+- **Task form**: next to each person in **Assigned To** you see their **%** and their **hours**; under the list, **Work: 60 h** is the total. Typing a person's hours changes the task's **Duration** to fit (their % stays, and the other people's hours follow). A heading is never typed: its Work is the total of its tasks.
+- **Table and Gantt Work column**: shows the same total. Typing a Work there changes the **Duration** (and the End date) to fit, in whole working days (rounded up, so 41 h for one person at 8 h a day gives 6 days = 48 h).
+- **Change the dates or Duration**: everyone's hours follow. **Change a person's %**: their hours follow and Duration stays. **Add or remove a person**: Work goes up or down and Duration stays (the task is not effort-driven).
+- **A task with nobody on it**: Work can still be typed as a note of effort; it does not change Duration.
+- The old **Work Hours** box and **Effort Driven** checkbox in the task form are gone (nothing used them).
 
 ### Resource Histogram
 

@@ -5,11 +5,12 @@
  * under it, so on a summary row these cells don't open for typing and refuse a paste. Est Days
  * joined 2026-10-06: the server sets a summary's estimated_days from its dates on every roll-up
  * (ScheduleService.recomputeParentRollup), so a typed value was overwritten (the task form already
- * disabled it). Work (estimatedDurationHours) is not rolled up by the server, so it stays editable.
+ * disabled it). Work (estimatedDurationHours) joined 2026-11-27: a heading's Work is the total of its tasks
+ * (shared/headingWork.ts), so it is never typed.
  */
 export const SUMMARY_ROLLUP_FIELD_NAMES = [
   'startDate', 'endDate', 'progressPercentage', 'status', 'budgetAllocated', 'actualCost', 'duration',
-  'estimatedDays',
+  'estimatedDays', 'estimatedDurationHours',
 ] as const;
 
 const ROLLUP = new Set<string>(SUMMARY_ROLLUP_FIELD_NAMES);

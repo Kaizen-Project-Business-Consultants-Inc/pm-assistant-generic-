@@ -45,7 +45,7 @@ export class SchedulingApi extends ApiBase {
     return (await this.api.post('/company-holidays/apply', change)).data;
   }
 
-  async getNonWorkingDates(projectId: string, start: string, end: string): Promise<{ dates: string[] }> {
+  async getNonWorkingDates(projectId: string, start: string, end: string): Promise<{ dates: string[]; hoursPerDay?: number }> {
     const response = await this.api.get(`/projects/${projectId}/non-working-dates`, { params: { start, end } });
     return response.data;
   }

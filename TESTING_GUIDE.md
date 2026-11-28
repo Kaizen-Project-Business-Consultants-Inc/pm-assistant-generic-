@@ -1769,3 +1769,13 @@ Manual: on a plan with two linked chains where the shorter one is dated later an
 - [ ] Reopen a Completed task: Actual Finish is cleared, Actual Start stays. Set it to Not started: both clear.
 - [ ] Done / not done plan: pick **Done** on a task: it asks **Finished on** and the status becomes Completed.
 - [ ] Automated: `e2e/actual-dates.spec.ts`, `actualDatesFollowStatus.test.ts`, `actualDateAsk.test.ts`.
+
+## Work (hours) follows Duration and the people (Nov 2026)
+- [ ] Task with Ann 100% and Bo 50% over 5 working days: the task form shows **40** and **20** next to them and **Work: 60 h**; the Table **Work** column shows 60h.
+- [ ] In the form type **80** in Ann's hours and press Enter: Duration becomes 10 and the total **120 h**. Cancel: nothing saved.
+- [ ] Table: type **120** in the Work cell: the Duration and End date change to fit (10 days), Work still 120h. Type 41 for one person at 8 h a day: Duration 6, Work 48h.
+- [ ] Change the End date: everyone's hours follow. Change Bo to 100%: his hours follow, Duration stays. Remove Bo: Work drops, Duration stays.
+- [ ] A task with nobody: type 33 in Work: it stays 33 and Duration does not move.
+- [ ] A heading's Work is the total of its tasks and does not open for typing.
+- [ ] The task form has no **Work Hours** box and no **Effort Driven** checkbox.
+- [ ] Automated: `e2e/work-hours.spec.ts`, `taskWork.test.ts` (server), `workHoursFollowDurationAndPeople.test.ts`, `headingWork.test.ts` (client, also pins the form's numbers to the server's).

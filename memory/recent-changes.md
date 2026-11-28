@@ -1,6 +1,9 @@
 # Recent changes and open items (rolling log — newest first)
 
 
+## 2026-11-27 — Work (hours) follows Duration and the people
+- A person's hours = Duration × Units × project calendar hours/day; Work = total (utils/taskWork.ts + client mirror). Derived on read in TaskRepository.deriveWork (via attachDependencies; calendar handed in by domainListeners), never stored for tasks with people. Work typed on a task with people becomes a Duration (ScheduleService.updateTask / daysForWork); nobody on the task = typed note. Headings: client sum (headingWork.ts), cell locked. REMOVED: form Work Hours + Effort Driven, recalcEffortDriven/addAssignment/removeAssignment (unused), tasks.work_hours/effort_driven plumbing (columns stay), task_assignments.hours_planned writes. Bookings (resource_assignments) NOT unified. Tests: taskWork, workHoursFollowDurationAndPeople, headingWork, e2e/work-hours.spec.ts.
+
 ## 2026-11-27 — Actual dates follow the status
 - Single-task Completed / In progress asks "Finished on" / "Started on" (ActualDateDialog; ScheduleWorkspace.askActualDate wraps grids, form, Kanban). Server: org-timezone today (not UTC), chosen day kept, future (> tomorrow) refused (ActualDateError, 400), reopen clears Actual Finish, Not started clears both, done plan: 100 = Completed, 0 reopens. Bulk status route NOT changed (still stamps no actual dates; follow-up). Tests: actualDatesFollowStatus, actualDateAsk, e2e/actual-dates.spec.ts.
 

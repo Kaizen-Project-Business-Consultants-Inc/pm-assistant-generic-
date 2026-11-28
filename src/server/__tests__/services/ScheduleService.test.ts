@@ -246,10 +246,11 @@ describe('ScheduleService', () => {
       const rollupPct = async (mode: 'work' | 'duration', doneHours: number) => {
         mockQuery.mockReset();
         mockQuery.mockImplementation(async (sql: string) => {
-          if (sql.includes('parent_task_id = ?')) return [
+          const kids = [
             { ...sampleTaskRow, id: 'done', parent_task_id: 'phase', progress_percentage: 100, estimated_days: 1, estimated_duration_hours: doneHours },
             { ...sampleTaskRow, id: 'todo', parent_task_id: 'phase', progress_percentage: 0, estimated_days: 1, estimated_duration_hours: 8 },
           ];
+          if (sql.includes('parent_task_id = ?') || sql.includes('WHERE id IN')) return kids; // the children, however they are read
           if (sql.includes('FROM schedules')) return [{ ...sampleScheduleRow, progress_mode: mode }];
           if (sql.includes('FROM tasks')) return [{ ...sampleTaskRow, id: 'phase' }];
           return [];

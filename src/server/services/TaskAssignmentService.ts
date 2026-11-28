@@ -2,10 +2,18 @@ import { v4 as uuidv4 } from 'uuid';
 import { planChanged } from './domainEvents';
 import { databaseService } from '../database/connection';
 import { resourceRepository } from '../database/ResourceRepository';
-import { taskAssignmentRepository, rowToAssignment, type TaskAssignment } from '../database/TaskAssignmentRepository';
-import { toDateString, addDays, isWeekend } from '../utils/calendarDate';
+import { taskAssignmentRepository, type TaskAssignment } from '../database/TaskAssignmentRepository';
+import { taskRepository } from '../database/TaskRepository';
+import { chunksOf } from '../utils/chunksOf';
 
 export type { TaskAssignment } from '../database/TaskAssignmentRepository';
+
+/** The people on a task with their hours (worked out when the task is read): its list, else its one main person at 100% */
+function peopleWithHours(t: { assignments?: Array<{ resourceId: string; allocationPct: number; roleOnTask?: string; hoursPlanned?: number }>; assignedTo?: string | null; estimatedDurationHours?: number; isSummary?: boolean; isMilestone?: boolean }) {
+  if (t.isSummary || t.isMilestone) return [];
+  if (t.assignments && t.assignments.length > 0) return t.assignments;
+  return t.assignedTo ? [{ resourceId: t.assignedTo, allocationPct: 100, roleOnTask: undefined, hoursPlanned: t.estimatedDurationHours }] : [];
+}
 
 export class TaskAssignmentService {
   async getForTask(taskId: string): Promise<TaskAssignment[]> {
@@ -20,19 +28,18 @@ export class TaskAssignmentService {
     resourceId: string;
     allocationPct?: number;
     roleOnTask?: string;
-    hoursPlanned?: number;
   }>): Promise<TaskAssignment[]> {
     await databaseService.transaction(async (conn) => {
       const q = <T = any>(sql: string, params: any[] = []) => databaseService.queryOn<T>(conn, sql, params);
       await q('DELETE FROM task_assignments WHERE task_id = ?', [taskId]);
       // One multi-row INSERT for everyone on the task (rows in the order given)
       if (assignments.length > 0) {
-        const rowsSql = assignments.map(() => '(?, ?, ?, ?, ?, ?)').join(', ');
+        const rowsSql = assignments.map(() => '(?, ?, ?, ?, ?)').join(', ');
         const params = assignments.flatMap((a) => [
-          uuidv4(), taskId, a.resourceId, a.allocationPct ?? 100, a.roleOnTask || null, a.hoursPlanned ?? null,
+          uuidv4(), taskId, a.resourceId, a.allocationPct ?? 100, a.roleOnTask || null,
         ]);
         await q(
-          `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned)
+          `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task)
            VALUES ${rowsSql}`,
           params,
         );
@@ -50,87 +57,6 @@ export class TaskAssignmentService {
     return this.getForTask(taskId);
   }
 
-  async addAssignment(taskId: string, data: {
-    resourceId: string;
-    allocationPct?: number;
-    roleOnTask?: string;
-    hoursPlanned?: number;
-  }): Promise<TaskAssignment> {
-    const id = uuidv4();
-    await databaseService.query(
-      `INSERT INTO task_assignments (id, task_id, resource_id, allocation_pct, role_on_task, hours_planned)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE allocation_pct = VALUES(allocation_pct), role_on_task = VALUES(role_on_task), hours_planned = VALUES(hours_planned)`,
-      [id, taskId, data.resourceId, data.allocationPct ?? 100, data.roleOnTask || null, data.hoursPlanned ?? null],
-    );
-    const rows = await databaseService.query(
-      'SELECT * FROM task_assignments WHERE task_id = ? AND resource_id = ?',
-      [taskId, data.resourceId],
-    );
-    const assignment = rowToAssignment(rows[0]);
-    await this.recalcEffortDriven(taskId);
-    return assignment;
-  }
-
-  async removeAssignment(taskId: string, resourceId: string): Promise<boolean> {
-    const result: any = await databaseService.query(
-      'DELETE FROM task_assignments WHERE task_id = ? AND resource_id = ?',
-      [taskId, resourceId],
-    );
-    const removed = (result.affectedRows ?? 0) > 0;
-    if (removed) {
-      await this.recalcEffortDriven(taskId);
-    }
-    return removed;
-  }
-
-  /** Recalculate duration for effort-driven tasks when assignments change. */
-  async recalcEffortDriven(taskId: string): Promise<void> {
-    const taskRows = await databaseService.query(
-      'SELECT work_hours, effort_driven, start_date FROM tasks WHERE id = ?',
-      [taskId],
-    );
-    if (taskRows.length === 0) return;
-    const task = taskRows[0];
-    if (!task.effort_driven || !task.work_hours || !task.start_date) return;
-
-    const workHours = Number(task.work_hours);
-    const assignments = await this.getForTask(taskId);
-    if (assignments.length === 0) return;
-
-    // Calculate average hours per day across assigned resources
-    // One lookup for every assigned resource
-    const resources = await resourceRepository.findByIds([...new Set(assignments.map((a) => a.resourceId))]);
-    const resourceById = new Map(resources.map((r) => [r.id, r]));
-    let totalHoursPerDay = 0;
-    for (const a of assignments) {
-      const resource = resourceById.get(a.resourceId);
-      const hoursPerDay = resource ? resource.capacityHoursPerWeek / 5 : 8;
-      totalHoursPerDay += hoursPerDay * ((a.allocationPct || 100) / 100);
-    }
-
-    if (totalHoursPerDay <= 0) return;
-
-    const durationDays = Math.max(1, Math.ceil(workHours / totalHoursPerDay));
-    const startDate = new Date(task.start_date);
-    if (isNaN(startDate.getTime())) return;
-
-    // Calculate end date (skip weekends). Walk calendar days: the old version read the
-    // day-of-week in the server's local zone but wrote the result back via
-    // toISOString(), so west of UTC it could skip the wrong days and store a Saturday.
-    let remaining = durationDays;
-    let endDate = toDateString(task.start_date)!;
-    while (remaining > 0) {
-      endDate = addDays(endDate, 1)!;
-      if (!isWeekend(endDate)) remaining--;
-    }
-
-    await databaseService.query(
-      'UPDATE tasks SET end_date = ?, estimated_days = ? WHERE id = ?',
-      [endDate, durationDays, taskId],
-    );
-  }
-
   /** Enhancement B: Per-resource task breakdown for a project (MPP Resource Usage view) */
   async getResourceUsageForProject(projectId: string): Promise<Array<{
     resourceId: string; resourceName: string; role: string;
@@ -141,58 +67,31 @@ export class TaskAssignmentService {
       startDate: string | null; endDate: string | null; status: string;
     }>;
   }>> {
-    const rows = await databaseService.query<any>(
-      `SELECT ta.resource_id, r.name AS resource_name, r.role AS resource_role,
-              r.capacity_hours_per_week, ta.task_id, t.name AS task_name,
-              ta.hours_planned, ta.allocation_pct, ta.role_on_task,
-              t.start_date, t.end_date, t.status AS task_status
-       FROM task_assignments ta
-       JOIN tasks t ON ta.task_id = t.id
-       JOIN schedules s ON t.schedule_id = s.id
-       JOIN resources r ON ta.resource_id = r.id
-       WHERE s.project_id = ?
-       ORDER BY r.name, t.start_date`,
-      [projectId],
-    );
-
-    const map = new Map<string, {
-      resourceId: string; resourceName: string; role: string;
-      capacityHoursPerWeek: number; totalHoursPlanned: number;
-      tasks: Array<{
-        taskId: string; taskName: string; hoursPlanned: number | null;
-        allocationPct: number; roleOnTask: string | null;
-        startDate: string | null; endDate: string | null; status: string;
-      }>;
-    }>();
-
-    for (const row of rows) {
-      const rid = row.resource_id;
-      if (!map.has(rid)) {
-        map.set(rid, {
-          resourceId: rid,
-          resourceName: row.resource_name,
-          role: row.resource_role,
-          capacityHoursPerWeek: Number(row.capacity_hours_per_week) || 40,
-          totalHoursPlanned: 0,
-          tasks: [],
+    // The people's hours are worked out when the tasks are read (Duration × Units × the project's hours per day)
+    const schedules = await databaseService.query<{ id: string }>('SELECT id FROM schedules WHERE project_id = ?', [projectId]);
+    const tasks = (await taskRepository.findByScheduleIds(schedules.map(sc => sc.id)))
+      .filter(t => peopleWithHours(t).length > 0)
+      .sort((x, y) => String(x.startDate ?? '').localeCompare(String(y.startDate ?? ''))); // each person's tasks come out in start order
+    const resources = await resourceRepository.findByIds([...new Set(tasks.flatMap(t => peopleWithHours(t).map(a => a.resourceId)))]);
+    const resourceById = new Map(resources.map(r => [r.id, r]));
+    const usage = new Map<string, Awaited<ReturnType<TaskAssignmentService['getResourceUsageForProject']>>[number]>();
+    for (const t of tasks) {
+      for (const a of peopleWithHours(t)) {
+        const r = resourceById.get(a.resourceId);
+        if (!r) continue;
+        if (!usage.has(r.id)) usage.set(r.id, { resourceId: r.id, resourceName: r.name, role: r.role, capacityHoursPerWeek: Number(r.capacityHoursPerWeek) || 40, totalHoursPlanned: 0, tasks: [] });
+        const entry = usage.get(r.id)!;
+        entry.totalHoursPlanned += a.hoursPlanned ?? 0;
+        entry.tasks.push({
+          taskId: t.id, taskName: t.name, hoursPlanned: a.hoursPlanned ?? null,
+          allocationPct: Number(a.allocationPct) || 100, roleOnTask: a.roleOnTask || null,
+          startDate: t.startDate ? String(t.startDate).slice(0, 10) : null,
+          endDate: t.endDate ? String(t.endDate).slice(0, 10) : null,
+          status: t.status || 'not_started',
         });
       }
-      const entry = map.get(rid)!;
-      const hp = row.hours_planned != null ? Number(row.hours_planned) : null;
-      entry.totalHoursPlanned += hp || 0;
-      entry.tasks.push({
-        taskId: row.task_id,
-        taskName: row.task_name,
-        hoursPlanned: hp,
-        allocationPct: Number(row.allocation_pct) || 100,
-        roleOnTask: row.role_on_task || null,
-        startDate: row.start_date ? String(row.start_date).slice(0, 10) : null,
-        endDate: row.end_date ? String(row.end_date).slice(0, 10) : null,
-        status: row.task_status || 'not_started',
-      });
     }
-
-    return Array.from(map.values());
+    return [...usage.values()].sort((x, y) => x.resourceName.localeCompare(y.resourceName));
   }
 
   /** Enhancement A: Project allocations for all resources (org-level) */
@@ -200,33 +99,37 @@ export class TaskAssignmentService {
     projectId: string; projectName: string; scheduleName: string;
     totalHoursPlanned: number; taskCount: number;
   }>>> {
-    const rows = await databaseService.query<any>(
-      `SELECT ta.resource_id, p.id AS project_id, p.name AS project_name,
-              s.name AS schedule_name, COUNT(ta.id) AS task_count,
-              COALESCE(SUM(ta.hours_planned), 0) AS total_hours_planned
-       FROM task_assignments ta
-       JOIN tasks t ON ta.task_id = t.id
+    // Open tasks that have people, in real projects; their hours are worked out when the tasks are read
+    const open = await databaseService.query<{ id: string; project_id: string; project_name: string; schedule_name: string }>(
+      `SELECT t.id, p.id AS project_id, p.name AS project_name, s.name AS schedule_name
+       FROM tasks t
        JOIN schedules s ON t.schedule_id = s.id
        JOIN projects p ON s.project_id = p.id AND COALESCE(p.is_demo, 0) = 0
-       WHERE t.status NOT IN ('completed', 'cancelled')
-       GROUP BY ta.resource_id, p.id, p.name, s.name`,
+       WHERE t.status NOT IN ('completed', 'cancelled') AND COALESCE(t.is_summary, 0) = 0 AND COALESCE(t.is_milestone, 0) = 0
+         AND (t.assigned_to IS NOT NULL OR EXISTS (SELECT 1 FROM task_assignments ta WHERE ta.task_id = t.id))`,
     );
+    const where = new Map(open.map(r => [r.id, r]));
+    const tasks = (await Promise.all(chunksOf([...where.keys()], 500).map(ids => taskRepository.findByIds(ids)))).flat();
 
     const result: Record<string, Array<{
       projectId: string; projectName: string; scheduleName: string;
       totalHoursPlanned: number; taskCount: number;
     }>> = {};
+    const entries = new Map<string, { projectId: string; projectName: string; scheduleName: string; totalHoursPlanned: number; taskCount: number }>();
 
-    for (const row of rows) {
-      const rid = row.resource_id;
-      if (!result[rid]) result[rid] = [];
-      result[rid].push({
-        projectId: row.project_id,
-        projectName: row.project_name,
-        scheduleName: row.schedule_name,
-        totalHoursPlanned: Number(row.total_hours_planned) || 0,
-        taskCount: Number(row.task_count) || 0,
-      });
+    for (const t of tasks) {
+      const w = where.get(t.id)!;
+      for (const a of peopleWithHours(t)) {
+        const key = `${a.resourceId}|${w.project_id}|${w.schedule_name}`;
+        let e = entries.get(key);
+        if (!e) {
+          e = { projectId: w.project_id, projectName: w.project_name, scheduleName: w.schedule_name, totalHoursPlanned: 0, taskCount: 0 };
+          entries.set(key, e);
+          (result[a.resourceId] ??= []).push(e);
+        }
+        e.totalHoursPlanned = Math.round((e.totalHoursPlanned + (a.hoursPlanned ?? 0)) * 100) / 100;
+        e.taskCount++;
+      }
     }
 
     return result;

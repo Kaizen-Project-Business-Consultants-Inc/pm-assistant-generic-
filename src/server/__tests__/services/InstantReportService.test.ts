@@ -177,6 +177,12 @@ function makeWorkloadEntry(resourceId: string, overrides: Partial<{
 }
 
 // ── Tests ────────────────────────────────────────────────────────────
+/** The reports read the people (with their hours worked out) off the tasks themselves, the way every task read delivers them */
+async function giveTasksTheirPeople(people: Map<string, unknown[]>) {
+  const tasks = await mockFindTasksByScheduleIds();
+  mockFindTasksByScheduleIds.mockResolvedValue(tasks.map((t: any) => ({ ...t, assignments: people.get(t.id) ?? t.assignments })));
+}
+
 describe('InstantReportService', () => {
   let service: InstantReportService;
 
@@ -986,7 +992,7 @@ describe('InstantReportService', () => {
 
       const assignmentMap = new Map();
       assignmentMap.set('t1', [{ resourceId: 'r1', hoursPlanned: 40 }]);
-      mockGetForTasks.mockResolvedValue(assignmentMap);
+      await giveTasksTheirPeople(assignmentMap);
 
       await service.generate('who-does-what-when', 'proj-1');
 
@@ -1006,7 +1012,7 @@ describe('InstantReportService', () => {
       const assignmentMap = new Map();
       assignmentMap.set('t1', [{ resourceId: 'r1', hoursPlanned: 10 }]);
       assignmentMap.set('t2', [{ resourceId: 'r1', hoursPlanned: 10 }]);
-      mockGetForTasks.mockResolvedValue(assignmentMap);
+      await giveTasksTheirPeople(assignmentMap);
 
       await service.generate('who-does-what-when', 'proj-1');
 
@@ -1029,7 +1035,7 @@ describe('InstantReportService', () => {
       const assignmentMap = new Map();
       assignmentMap.set('t1', [{ resourceId: 'r1', hoursPlanned: 20 }]);
       assignmentMap.set('t2', [{ resourceId: 'r2', hoursPlanned: 20 }]);
-      mockGetForTasks.mockResolvedValue(assignmentMap);
+      await giveTasksTheirPeople(assignmentMap);
 
       await service.generate('who-does-what-when', 'proj-1');
 
@@ -1077,7 +1083,7 @@ describe('InstantReportService', () => {
         { resourceId: 'r1', hoursPlanned: 40 },
         { resourceId: 'r2', hoursPlanned: 20 },
       ]);
-      mockGetForTasks.mockResolvedValue(assignmentMap);
+      await giveTasksTheirPeople(assignmentMap);
 
       mockComputeWorkload.mockResolvedValue([
         makeWorkloadEntry('r1', {
@@ -1111,7 +1117,7 @@ describe('InstantReportService', () => {
       const assignmentMap = new Map();
       assignmentMap.set('t1', [{ resourceId: 'r1', hoursPlanned: 10 }]);
       assignmentMap.set('t2', [{ resourceId: 'r2', hoursPlanned: 10 }]);
-      mockGetForTasks.mockResolvedValue(assignmentMap);
+      await giveTasksTheirPeople(assignmentMap);
 
       mockComputeWorkload.mockResolvedValue([
         makeWorkloadEntry('r1', { costRateHourly: 50, weeks: [{ weekStart: '2026-01-05', allocated: 20, capacity: 40, utilization: 50, actual: 20 }] }),
@@ -1133,7 +1139,7 @@ describe('InstantReportService', () => {
 
       const assignmentMap = new Map();
       assignmentMap.set('t1', [{ resourceId: 'r1', hoursPlanned: 40 }]);
-      mockGetForTasks.mockResolvedValue(assignmentMap);
+      await giveTasksTheirPeople(assignmentMap);
 
       mockComputeWorkload.mockResolvedValue([
         makeWorkloadEntry('r1', { costRateHourly: 100, weeks: [{ weekStart: '2026-01-05', allocated: 40, capacity: 40, utilization: 100, actual: 50 }] }),

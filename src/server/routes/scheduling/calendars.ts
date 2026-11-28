@@ -160,9 +160,11 @@ export async function calendarRoutes(fastify: FastifyInstance) {
   fastify.get('/api/v1/projects/:projectId/non-working-dates', async (req) => {
     const { projectId } = req.params as { projectId: string };
     const { start, end } = req.query as { start?: string; end?: string };
-    if (!start || !end) return { dates: [] };
+    // hoursPerDay: the project calendar's hours in a working day — the screens work a task's Work (hours) from it
+    const hoursPerDay = (await calendarService.getOrCreateDefault(projectId)).hoursPerDay;
+    if (!start || !end) return { dates: [], hoursPerDay };
     const dates = await calendarService.getNonWorkingDates(projectId, start, end);
-    return { dates };
+    return { dates, hoursPerDay };
   });
 }
 

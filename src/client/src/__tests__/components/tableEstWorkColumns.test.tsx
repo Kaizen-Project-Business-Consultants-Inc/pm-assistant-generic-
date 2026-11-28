@@ -137,19 +137,17 @@ describe('inline edit — same payload and clamp as the Gantt grid', () => {
 });
 
 describe('summary rows — the shared roll-up rule (both views)', () => {
-  it('a summary\'s Est Days is read-only like its Duration (the server works it out from the dates); its Work stays editable', () => {
+  it('a summary\'s Est Days and Work are read-only like its Duration (the server works out its dates; its Work is the total of its tasks)', () => {
     // The same shared rule decides both views
     expect(isSummaryRollupCell({ isSummary: true }, 'duration')).toBe(true);
-    expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDurationHours')).toBe(false);
+    expect(isSummaryRollupCell({ isSummary: true }, 'estimatedDurationHours')).toBe(true);
 
     const { cell, onTaskUpdate } = setup('p');
-    for (const label of ['Duration']) {
+    for (const label of ['Duration', 'Work']) {
       fireEvent.click(cell('Phase', label));
       expect(cell('Phase', label).querySelector('input'), label).toBeNull();
       expect(cell('Phase', label).className).toContain('cursor-default');
     }
-    fireEvent.click(cell('Phase', 'Work'));
-    expect(cell('Phase', 'Work').querySelector('input')?.getAttribute('aria-label')).toBe('Work (hours) for Phase');
     expect(onTaskUpdate).not.toHaveBeenCalled();
   });
 });
@@ -174,9 +172,9 @@ describe('paste — the same clamp as the Gantt', () => {
     }
   });
 
-  it('pasting into a summary\'s Est Days is refused in both views; its Work takes the paste', () => {
-    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([['p', { estimatedDurationHours: 9 }]]);
-    expect(run(GANTT_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([['p', { estimatedDurationHours: 9 }]]);
+  it('pasting into a summary\'s Est Days or Work is refused in both views', () => {
+    expect(run(TABLE_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([]);
+    expect(run(GANTT_KEYBOARD_RULES, 'estimatedDurationHours', '9', TASKS[0])).toEqual([]);
   });
 });
 

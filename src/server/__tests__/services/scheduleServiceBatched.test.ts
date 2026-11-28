@@ -32,7 +32,7 @@ const task = (i: number, over: any = {}) => ({
   startDate: '2026-11-02', endDate: '2026-11-04', progressPercentage: 10 * (i % 10), risks: null, issues: null,
   comments: null, parentTaskId: null, isMilestone: false, dependencyLagDays: 0, sortOrder: i,
   recurrenceRule: null, isRecurrenceTemplate: false, budgetAllocated: null, actualCost: null,
-  constraintType: 'ASAP', constraintDate: null, workHours: null, effortDriven: false, dependencies: [], ...over,
+  constraintType: 'ASAP', constraintDate: null, dependencies: [], ...over,
 });
 
 describe('copying a plan', () => {
@@ -49,15 +49,15 @@ describe('copying a plan', () => {
     await svc.cloneSchedule('s1', 'What if', 'u1');
 
     const inserts = stmts(/^INSERT INTO tasks/);
-    expect(inserts.map(s => s.params.length / 44)).toEqual([200, 200, 50]);
+    expect(inserts.map(s => s.params.length / 42)).toEqual([200, 200, 50]);
     // new ids: new-1 is the plan, then one per task in order
     const newId = (i: number) => `new-${i + 2}`;
-    const row = (i: number) => { const n = Math.floor(i / 200); const k = i % 200; return inserts[n].params.slice(k * 44, k * 44 + 44); };
+    const row = (i: number) => { const n = Math.floor(i / 200); const k = i % 200; return inserts[n].params.slice(k * 42, k * 42 + 42); };
     expect(row(321)).toEqual([
       newId(321), 'new-1', 'Task 321', null, 'pending', 'medium', null,
       null, 3, null, null, '2026-11-02', '2026-11-04', 10,
       null, null, null, null, null, null,
-      0, 0, 321, 'u1', null, null, 0, null, null, 'ASAP', null, null, 0, 't321',
+      0, 0, 321, 'u1', null, null, 0, null, null, 'ASAP', null, 't321',
       // summary flag, hours, costs, actual dates, baseline (audit M8)
       0, 0, 0, null, null, null, null, null, null, null,
     ]);
@@ -151,7 +151,7 @@ describe('copying a plan keeps its bookings and people (audit M8)', () => {
     vi.spyOn(svc, 'findById').mockResolvedValue({ id: 's1', projectId: 'p1', name: 'Plan' } as any);
     vi.spyOn(svc, 'findTasksByScheduleId').mockResolvedValue([
       task(0, { isSummary: true }),
-      task(1, { parentTaskId: 't0', assignments: [{ resourceId: 'r9', allocationPct: 50, roleOnTask: 'Dev', hoursPlanned: 16 }] }),
+      task(1, { parentTaskId: 't0', assignments: [{ resourceId: 'r9', allocationPct: 50, roleOnTask: 'Dev' }] }),
     ] as any);
     record.mockImplementation(async (sql: string, params: any[] = []) => {
       db.sql.push({ sql, params });
@@ -166,9 +166,9 @@ describe('copying a plan keeps its bookings and people (audit M8)', () => {
     // new-1 the plan, new-2/new-3 the tasks
     expect(bk.params.slice(1)).toEqual(['r9', 'new-3', 'new-1', 20, '2026-11-02', '2026-11-04']);
     const [ta] = stmts(/^INSERT INTO task_assignments/);
-    expect(ta.params.slice(1)).toEqual(['new-3', 'r9', 50, 'Dev', 16]);
+    expect(ta.params.slice(1)).toEqual(['new-3', 'r9', 50, 'Dev']);
     const [ins] = stmts(/^INSERT INTO tasks/);
-    expect(ins.params[34]).toBe(1); // the summary stays a summary
+    expect(ins.params[32]).toBe(1); // the summary stays a summary
   });
 });
 

@@ -4,7 +4,7 @@
  * main person first. Saving a list makes the server set assignedTo to the first person in it.
  * Workload counts the main person at 100% unless they are in the list with a %.
  */
-export interface PersonRow { resourceId: string; allocationPct: number; roleOnTask: string; hoursPlanned?: number }
+export interface PersonRow { resourceId: string; allocationPct: number; roleOnTask: string }
 
 /** The saved main person and list as one list: main first, added at 100% when not in the list yet. */
 export function peopleRows(mainId: string, assignments: ReadonlyArray<PersonRow>): PersonRow[] {
@@ -25,7 +25,7 @@ export function peopleToSave(rows: ReadonlyArray<PersonRow>, keepMain: string, h
   const seen = new Set<string>();
   const filled = rows.filter(r => r.resourceId && !seen.has(r.resourceId) && !!seen.add(r.resourceId));
   if (filled.length === 0) return { assignedTo: keepMain, assignments: hadList ? [] : undefined };
-  const alone = filled.length === 1 && filled[0].allocationPct === 100 && !filled[0].roleOnTask && !filled[0].hoursPlanned;
+  const alone = filled.length === 1 && filled[0].allocationPct === 100 && !filled[0].roleOnTask;
   return { assignedTo: filled[0].resourceId, assignments: alone && !hadList ? undefined : filled };
 }
 
@@ -34,7 +34,7 @@ export function peopleToSave(rows: ReadonlyArray<PersonRow>, keepMain: string, h
  * list changes with it, so the cell never keeps showing someone it just replaced.
  */
 export function changeMain(assignments: ReadonlyArray<Omit<PersonRow, 'roleOnTask'> & { roleOnTask?: string }> | undefined, newId: string): { assignedTo: string; assignments?: PersonRow[] } {
-  const list = (assignments ?? []).map(a => ({ resourceId: a.resourceId, allocationPct: a.allocationPct, roleOnTask: a.roleOnTask ?? '', hoursPlanned: a.hoursPlanned }));
+  const list = (assignments ?? []).map(a => ({ resourceId: a.resourceId, allocationPct: a.allocationPct, roleOnTask: a.roleOnTask ?? '' }));
   if (list.length === 0) return { assignedTo: newId };
   if (!newId) { const rest = list.slice(1); return { assignedTo: rest[0]?.resourceId ?? '', assignments: rest }; }
   return { assignedTo: newId, assignments: [{ ...list[0], resourceId: newId }, ...list.slice(1).filter(a => a.resourceId !== newId)] };

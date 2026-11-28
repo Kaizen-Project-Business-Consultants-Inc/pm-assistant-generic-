@@ -17,7 +17,7 @@ export interface TaskAssignment {
   createdAt: string;
 }
 
-export function rowToAssignment(row: any): TaskAssignment {
+function rowToAssignment(row: any): TaskAssignment {
   return {
     id: row.id,
     taskId: row.task_id,

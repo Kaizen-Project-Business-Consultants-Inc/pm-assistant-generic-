@@ -66,8 +66,6 @@ export interface ReviewTask {
   progressPercentage?: number | null;
   assignedTo?: string | null;
   assignments?: Array<{ resourceId: string; allocationPct?: number | null; hoursPlanned?: number | null }> | null;
-  /** Planned effort in hours (the task's Work Hours); R42 falls back to the hours planned on its assignments */
-  workHours?: number | null;
   isMilestone?: boolean | null;
   isSummary?: boolean | null;
   parentTaskId?: string | null;
@@ -520,7 +518,8 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
     const work = span(s, e);
     if (work < 2) continue;
     const days = Number(t.estimatedDays ?? 0);
-    const hours = Number(t.estimatedDurationHours ?? 0);
+    // with people on the task its hours are worked out from its dates, so they cannot disagree with them (this rule is about typed estimates)
+    const hours = t.assignedTo || t.assignments?.length ? 0 : Number(t.estimatedDurationHours ?? 0);
     // Imports put days in the hours field as either working or calendar days
     const cal = calendarDaySpan(s, e);
     const near = (n: number) => Math.abs(hours - n) <= Math.max(1, 0.1 * n);
@@ -832,11 +831,10 @@ export function evaluateRules(input: ReviewInput): { findings: RawFinding[]; ski
   return { findings, skipped, leafTaskCount: n };
 }
 
-/** Planned effort: the task's Work Hours, else the hours planned on its assignments */
+/** Planned effort: the hours of the people on the task (Duration × Units × hours per day, worked out when the plan is read), else the task's Work (the total of its one main person, or a typed note when nobody is on it) */
 function plannedEffortHours(t: ReviewTask): number {
-  const work = Number(t.workHours ?? 0);
-  if (work > 0) return work;
-  return (t.assignments || []).reduce((sum, a) => sum + Number(a.hoursPlanned ?? 0), 0);
+  const listed = (t.assignments || []).reduce((sum, a) => sum + Number(a.hoursPlanned ?? 0), 0);
+  return listed > 0 ? listed : Number(t.estimatedDurationHours ?? 0);
 }
 
 /** People the effort is shared between (one when no one is booked): the hours limit is what ONE person can do in a period */

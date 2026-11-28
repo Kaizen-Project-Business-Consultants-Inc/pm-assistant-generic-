@@ -34,6 +34,7 @@ export interface CalendarSpec {
   holidays: Set<string>;   // this project's days off
   working: Set<string>;    // this project's extra working days
   company: Set<string>;    // company holidays
+  hoursPerDay?: number;    // the calendar's hours in a working day (8 when not set)
 }
 
 function rowToCalendar(row: any): ProjectCalendar {
@@ -220,7 +221,14 @@ export class CalendarService {
       holidays: new Set(exceptions.filter(e => e.type === 'holiday').map(e => e.exceptionDate)),
       working: new Set(exceptions.filter(e => e.type === 'working').map(e => e.exceptionDate)),
       company: new Set(company.map(c => c.date)),
+      hoursPerDay: calendar.hoursPerDay,
     };
+  }
+
+  /** A project's working-day test and its hours in a working day — what a task's Work (hours) is worked out from */
+  async workCalendar(projectId: string): Promise<{ isWorking: (date: string) => boolean; hoursPerDay: number }> {
+    const spec = await this.calendarSpec(projectId);
+    return { isWorking: date => CalendarService.isWorking(date, spec), hoursPerDay: spec.hoursPerDay ?? 8 };
   }
 
   /**

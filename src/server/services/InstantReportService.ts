@@ -538,8 +538,8 @@ export class InstantReportService {
       resourceService.computeWorkload(projectId),
     ]);
 
-    const taskIds = tasks.map(t => t.id);
-    const assignmentMap = await taskAssignmentService.getForTasks(taskIds);
+    // the people on each task, with their hours worked out from the task's dates (the tasks come through the one read path that derives them)
+    const assignmentMap = new Map(tasks.filter(t => (t.assignments?.length ?? 0) > 0).map(t => [t.id, t.assignments!] as const));
     const taskMap = new Map(tasks.map(t => [t.id, t]));
     const resourceMap = new Map(allResources.map(r => [r.id, r]));
     const workloadMap = new Map(workload.map(w => [w.resourceId, w]));
@@ -645,8 +645,8 @@ export class InstantReportService {
       resourceService.computeWorkload(projectId),
     ]);
 
-    const taskIds = tasks.map(t => t.id);
-    const assignmentMap = await taskAssignmentService.getForTasks(taskIds);
+    // the people on each task, with their hours worked out from the task's dates (the tasks come through the one read path that derives them)
+    const assignmentMap = new Map(tasks.filter(t => (t.assignments?.length ?? 0) > 0).map(t => [t.id, t.assignments!] as const));
     const resourceMap = new Map(allResources.map(r => [r.id, r]));
     const workloadMap = new Map(workload.map(w => [w.resourceId, w]));
 
