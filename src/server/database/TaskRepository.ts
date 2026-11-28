@@ -9,7 +9,7 @@ import { personHours, taskWorkHours, workPeople, DEFAULT_HOURS_PER_DAY } from '.
 import logger from '../utils/logger';
 
 /** A project's working-day test and hours per day. The database layer doesn't call business logic (importCycleGuard): the app hands it this at startup (services/domainListeners.ts). Without one, Mon–Fri and 8 hours. */
-type WorkCalendarProvider = (projectId: string) => Promise<{ isWorking: (date: string) => boolean; hoursPerDay: number }>;
+type WorkCalendarProvider = (projectIds: string[]) => Promise<Map<string, { isWorking: (date: string) => boolean; hoursPerDay: number }>>;
 let workCalendar: WorkCalendarProvider | null = null;
 export function setWorkCalendarProvider(provider: WorkCalendarProvider | null): void { workCalendar = provider; }
 
@@ -189,14 +189,16 @@ export class TaskRepository {
       `SELECT id, project_id FROM schedules WHERE id IN (${scheduleIds.map(() => '?').join(',')})`, scheduleIds);
     const projectOf = new Map((Array.isArray(rows) ? rows : []).map(r => [r.id, r.project_id]));
     const calendars = new Map<string, { isWorking: (d: Date) => boolean; hoursPerDay: number }>();
-    // one calendar per project, read side by side (a portfolio read can touch many projects)
-    await Promise.all([...new Set(projectOf.values())].map(async (pid) => {
-      const cal = workCalendar ? await workCalendar(pid).catch((err: any) => {
-        logger.warn('[TaskRepository] project calendar unavailable, using Mon–Fri and 8 h', { projectId: pid, error: err?.message });
-        return null;
-      }) : null;
+    // every project's calendar in one batch (a portfolio read touches many projects)
+    const projectIds = [...new Set(projectOf.values())];
+    const found = workCalendar ? await workCalendar(projectIds).catch((err: any) => {
+      logger.warn('[TaskRepository] project calendars unavailable, using Mon–Fri and 8 h', { error: err?.message });
+      return null;
+    }) : null;
+    for (const pid of projectIds) {
+      const cal = found?.get(pid);
       calendars.set(pid, cal ? { isWorking: d => cal.isWorking(ymdOf(d)), hoursPerDay: cal.hoursPerDay } : { isWorking: weekdaysOnly, hoursPerDay: DEFAULT_HOURS_PER_DAY });
-    }));
+    }
     for (const t of withPeople) {
       const cal = calendars.get(projectOf.get(t.scheduleId) ?? '');
       if (!cal) continue;

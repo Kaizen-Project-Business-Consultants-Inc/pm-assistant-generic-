@@ -85,7 +85,7 @@ describe('Work (hours) typed on a task', () => {
 describe('Work (hours) when the plan is read', () => {
   const row = (over: Record<string, unknown> = {}) => ({ id: 't1', schedule_id: 's1', name: 'Build', status: 'pending', start_date: '2026-10-12', end_date: '2026-10-16', estimated_days: 5, estimated_duration_hours: 99, is_summary: 0, is_milestone: 0, assigned_to: null, ...over });
   const readWith = async (taskRow: any, people: any[], calendar?: { hoursPerDay: number } | null) => {
-    setWorkCalendarProvider(calendar === null ? null : async () => ({ isWorking: d => weekdaysOnly(new Date(d + 'T00:00:00Z')), hoursPerDay: calendar?.hoursPerDay ?? 8 }));
+    setWorkCalendarProvider(calendar === null ? null : async ids => new Map(ids.map(id => [id, { isWorking: (d: string) => weekdaysOnly(new Date(d + 'T00:00:00Z')), hoursPerDay: calendar?.hoursPerDay ?? 8 }])));
     query.mockImplementation(async (sql: string) => {
       const s = String(sql);
       if (s.includes('FROM task_assignments')) return people;

@@ -70,7 +70,7 @@ export function registerDomainListeners(): void {
   setProjectCalendarProvider(projectId => calendarService.workingDayChecker(projectId));
 
   // A task's Work (hours) is worked out from its Duration, its people and the project's hours per day
-  setWorkCalendarProvider(projectId => calendarService.workCalendar(projectId));
+  setWorkCalendarProvider(projectIds => calendarService.workCalendars(projectIds));
 }
 
 /** Test hook */

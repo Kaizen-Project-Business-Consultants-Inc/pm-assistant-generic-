@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { databaseService } from '../database/connection';
 import { CalendarDate, toDateString, dayOfWeekFor, addDays } from '../utils/calendarDate';
+import { chunksOf } from '../utils/chunksOf';
 
 export interface ProjectCalendar {
   id: string;
@@ -225,10 +226,56 @@ export class CalendarService {
     };
   }
 
-  /** A project's working-day test and its hours in a working day — what a task's Work (hours) is worked out from */
-  async workCalendar(projectId: string): Promise<{ isWorking: (date: string) => boolean; hoursPerDay: number }> {
-    const spec = await this.calendarSpec(projectId);
-    return { isWorking: date => CalendarService.isWorking(date, spec), hoursPerDay: spec.hoursPerDay ?? 8 };
+  /**
+   * The working-day test and the hours in a working day of MANY projects at once, in four queries however many
+   * projects there are (a portfolio read touches every project: one calendar read per project flooded the database
+   * connections on staging, 2026-11-28). A task's Work (hours) is worked out from it. Reads only: a project with no
+   * calendar row yet gets what getOrCreateDefault would create (Mon-Fri, 8 h), without creating it.
+   */
+  async workCalendars(projectIds: string[]): Promise<Map<string, { isWorking: (date: string) => boolean; hoursPerDay: number }>> {
+    const out = new Map<string, { isWorking: (date: string) => boolean; hoursPerDay: number }>();
+    const unique = [...new Set(projectIds)].filter(Boolean);
+    for (const ids of chunksOf(unique, 500)) {
+      // eslint-disable-next-line no-await-in-loop -- four statements per 500 projects
+      const [calendars, holidayCalendars] = await Promise.all([
+        databaseService.query(`SELECT * FROM project_calendars WHERE is_default = 1 AND project_id IN (${ids.map(() => '?').join(',')})`, ids),
+        databaseService.query(
+          `SELECT p.id, COALESCE(g.holiday_calendar_id, ?) AS cal FROM projects p
+             LEFT JOIN project_groups g ON g.id = p.group_id WHERE p.id IN (${ids.map(() => '?').join(',')})`, [HOME_CALENDAR, ...ids]),
+      ]);
+      const calendarOf = new Map<string, ProjectCalendar>();
+      for (const row of calendars) if (!calendarOf.has(row.project_id)) calendarOf.set(row.project_id, rowToCalendar(row));
+      const holidayCalendarOf = new Map<string, string>(holidayCalendars.map((r: any) => [r.id, r.cal ?? HOME_CALENDAR]));
+      const calendarIds = [...calendarOf.values()].map(c => c.id);
+      const holidayCalendarIds = [...new Set([HOME_CALENDAR, ...holidayCalendarOf.values()])];
+      // eslint-disable-next-line no-await-in-loop -- the same four statements, second pair
+      const [exceptions, company] = await Promise.all([
+        calendarIds.length === 0 ? [] : databaseService.query(`SELECT * FROM calendar_exceptions WHERE calendar_id IN (${calendarIds.map(() => '?').join(',')})`, calendarIds),
+        databaseService.query(`SELECT * FROM company_holidays WHERE calendar_id IN (${holidayCalendarIds.map(() => '?').join(',')})`, holidayCalendarIds),
+      ]);
+      const noDays = { holidays: new Set<string>(), working: new Set<string>() };
+      const daysOf = new Map<string, { holidays: Set<string>; working: Set<string> }>();
+      for (const row of exceptions) {
+        const e = rowToException(row);
+        const days = daysOf.get(e.calendarId) ?? daysOf.set(e.calendarId, { holidays: new Set(), working: new Set() }).get(e.calendarId)!;
+        (e.type === 'holiday' ? days.holidays : days.working).add(e.exceptionDate);
+      }
+      const companyOf = new Map<string, Set<string>>();
+      for (const row of company) { const id = row.calendar_id ?? HOME_CALENDAR; (companyOf.get(id) ?? companyOf.set(id, new Set()).get(id)!).add(String(row.holiday_date).slice(0, 10)); }
+      for (const projectId of ids) {
+        const cal = calendarOf.get(projectId);
+        const own = (cal && daysOf.get(cal.id)) || noDays;
+        const spec: CalendarSpec = {
+          workingDays: cal?.workingDays ?? [1, 2, 3, 4, 5],
+          holidays: own.holidays,
+          working: own.working,
+          company: companyOf.get(holidayCalendarOf.get(projectId) ?? HOME_CALENDAR) ?? new Set(),
+          hoursPerDay: cal?.hoursPerDay ?? 8,
+        };
+        out.set(projectId, { isWorking: date => CalendarService.isWorking(date, spec), hoursPerDay: spec.hoursPerDay ?? 8 });
+      }
+    }
+    return out;
   }
 
   /**
